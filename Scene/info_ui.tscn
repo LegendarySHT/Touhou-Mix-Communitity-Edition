@@ -1,0 +1,428 @@
+[gd_scene load_steps=19 format=3 uid="uid://bylmyli6spbd6"]
+
+[ext_resource type="Texture2D" uid="uid://b2x5d0kfa0myq" path="res://icon/midiInfoPage/Arrow.png" id="1_036i2"]
+[ext_resource type="Script" uid="uid://bqp7a8mofv84q" path="res://Scene/MidiList.gd" id="1_mxrx3"]
+[ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://icon/sort.png" id="2_nagrd"]
+[ext_resource type="Texture2D" uid="uid://dtolw6736k65h" path="res://icon/midiInfoPage/info.png" id="3_ua7bn"]
+[ext_resource type="Texture2D" uid="uid://bqehp2aavod7n" path="res://icon/midiInfoPage/delete.png" id="4_f44vb"]
+[ext_resource type="PackedScene" uid="uid://cfx5x8tebymdd" path="res://Scene/option_ui.tscn" id="5_nagrd"]
+[ext_resource type="Texture2D" uid="uid://dd1y1og0c6v5f" path="res://icon/midiInfoPage/track.png" id="7_cve6f"]
+[ext_resource type="Texture2D" uid="uid://d4fwv0fvdi4xy" path="res://icon/midiInfoPage/addToList.png" id="8_pgjff"]
+[ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://icon/midiInfoPage/start.png" id="9_7bkas"]
+[ext_resource type="Texture2D" uid="uid://hsnudy4qrca4" path="res://icon/midiInfoPage/status/time.png" id="10_mxrx3"]
+[ext_resource type="Texture2D" uid="uid://bjb7cd5wc7ybo" path="res://icon/midiInfoPage/status/bpm.png" id="11_sne8w"]
+[ext_resource type="Texture2D" uid="uid://c66nhxresaf43" path="res://icon/midiInfoPage/status/note.png" id="12_migpj"]
+[ext_resource type="Texture2D" uid="uid://dnxy735ve0pcy" path="res://icon/midiInfoPage/status/npm.png" id="13_mxrx3"]
+[ext_resource type="Texture2D" uid="uid://g4b8l2tie156" path="res://icon/midiInfoPage/status/playcount.png" id="14_jiooo"]
+[ext_resource type="Texture2D" uid="uid://yupw24rudalj" path="res://icon/midiInfoPage/status/upCount.png" id="15_27bbn"]
+[ext_resource type="Texture2D" uid="uid://dpwyd6fd4q7j7" path="res://icon/midiInfoPage/status/avgAcc.png" id="16_8spcd"]
+[ext_resource type="Texture2D" uid="uid://dw6l1r7cawiyj" path="res://icon/midiInfoPage/status/avgPP.png" id="17_8kmhx"]
+
+[sub_resource type="Gradient" id="Gradient_2mye3"]
+interpolation_mode = 2
+offsets = PackedFloat32Array(0, 0.24, 0.493333, 0.713333)
+colors = PackedColorArray(0.0431373, 0.419608, 1, 1, 0.573372, 0.67577, 0.995313, 1, 0.476841, 0.644696, 1, 1, 0.185497, 0.416209, 1, 1)
+
+[node name="InfoUI" type="PanelContainer"]
+self_modulate = Color(1, 1, 1, 0)
+
+[node name="MidiWindow" type="Polygon2D" parent="."]
+clip_children = 2
+position = Vector2(109, 1)
+skew = 0.261799
+color = Color(0.411765, 0.478431, 0.611765, 1)
+polygon = PackedVector2Array(50, 17, 49, 413, 990, 413, 990, 17)
+
+[node name="SC" type="ScrollContainer" parent="MidiWindow"]
+offset_left = 51.823
+offset_top = 15.0
+offset_right = 989.823
+offset_bottom = 415.0
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 3
+
+[node name="VBOX" type="VBoxContainer" parent="MidiWindow/SC"]
+layout_mode = 2
+size_flags_vertical = 2
+script = ExtResource("1_mxrx3")
+
+[node name="Left" type="Polygon2D" parent="."]
+z_index = 2
+position = Vector2(2.6694, 1)
+skew = 0.261799
+color = Color(0.133088, 0.413128, 0.707031, 1)
+polygon = PackedVector2Array(152, 12, 149, 417, 260, 417, 260, 12)
+
+[node name="Left2" type="Polygon2D" parent="Left"]
+position = Vector2(0, 1)
+color = Color(0.188235, 0.584314, 1, 1)
+polygon = PackedVector2Array(151, 92, 149, 337, 260, 337, 260, 92)
+
+[node name="Previous" type="MarginContainer" parent="Left"]
+offset_left = -2.93735
+offset_top = -1.03528
+offset_right = 232.063
+offset_bottom = 88.9647
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_constants/margin_left = 170
+theme_override_constants/margin_top = 10
+
+[node name="Button" type="TextureButton" parent="Left/Previous"]
+layout_mode = 2
+texture_normal = ExtResource("1_036i2")
+flip_v = true
+
+[node name="Next" type="MarginContainer" parent="Left"]
+offset_left = 84.1461
+offset_top = 335.429
+offset_right = 234.146
+offset_bottom = 460.429
+size_flags_horizontal = 0
+size_flags_vertical = 8
+theme_override_constants/margin_left = 80
+theme_override_constants/margin_bottom = 45
+
+[node name="Button" type="TextureButton" parent="Left/Next"]
+layout_mode = 2
+texture_normal = ExtResource("1_036i2")
+
+[node name="Option" type="MarginContainer" parent="Left"]
+offset_left = 158.059
+offset_top = 157.362
+offset_right = 258.059
+offset_bottom = 257.362
+size_flags_horizontal = 0
+size_flags_vertical = 0
+
+[node name="Button" type="TextureButton" parent="Left/Option"]
+layout_mode = 2
+texture_normal = ExtResource("2_nagrd")
+flip_v = true
+metadata/_edit_lock_ = true
+
+[node name="Right" type="Polygon2D" parent="."]
+z_index = 2
+position = Vector2(840, 1)
+skew = 0.261799
+color = Color(0.133333, 0.411765, 0.705882, 1)
+polygon = PackedVector2Array(151.885, 12.4233, 149, 417, 260, 417, 262.885, 12.423)
+
+[node name="Right" type="Polygon2D" parent="Right"]
+clip_children = 2
+position = Vector2(0.1, 0)
+color = Color(0.188235, 0.584314, 1, 1)
+polygon = PackedVector2Array(151.885, 92.423, 149, 337, 260, 337, 262.885, 92.423)
+
+[node name="Indicator" type="VBoxContainer" parent="Right/Right"]
+clip_children = 2
+clip_contents = true
+custom_minimum_size = Vector2(0, 240)
+offset_left = 186.9
+offset_top = 94.0
+offset_right = 225.9
+offset_bottom = 338.0
+size_flags_horizontal = 4
+size_flags_vertical = 0
+theme_override_constants/separation = 9
+metadata/_edit_use_anchors_ = true
+
+[node name="Info" type="MarginContainer" parent="Right"]
+offset_left = 153.732
+offset_top = -1.03528
+offset_right = 283.732
+offset_bottom = 85.9647
+size_flags_horizontal = 8
+size_flags_vertical = 0
+theme_override_constants/margin_top = 17
+theme_override_constants/margin_right = 30
+
+[node name="Button" type="TextureButton" parent="Right/Info"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+texture_normal = ExtResource("3_ua7bn")
+ignore_texture_size = true
+stretch_mode = 3
+
+[node name="Delete" type="MarginContainer" parent="Right"]
+offset_left = 167.155
+offset_top = 340.606
+offset_right = 372.155
+offset_bottom = 460.606
+size_flags_horizontal = 8
+size_flags_vertical = 8
+theme_override_constants/margin_right = 125
+theme_override_constants/margin_bottom = 50
+
+[node name="Button" type="TextureButton" parent="Right/Delete"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+texture_normal = ExtResource("4_f44vb")
+ignore_texture_size = true
+stretch_mode = 3
+
+[node name="TextureProgressBar" type="TextureProgressBar" parent="Right"]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="line" type="Line2D" parent="."]
+clip_children = 2
+z_index = 2
+points = PackedVector2Array(152, 13, 44.9534, 404, 993.953, 404, 1100, 13)
+closed = true
+width = 8.0
+default_color = Color(0, 0, 0, 1)
+gradient = SubResource("Gradient_2mye3")
+joint_mode = 2
+round_precision = 30
+antialiased = true
+
+[node name="OptionWindow" parent="." instance=ExtResource("5_nagrd")]
+z_index = -1
+position = Vector2(1021, 1)
+
+[node name="MainButton" type="Polygon2D" parent="."]
+z_index = 1
+z_as_relative = false
+position = Vector2(250, 44)
+skew = 0.261799
+color = Color(0.184314, 0.584314, 1, 1)
+polygon = PackedVector2Array(250, 700, 250, 900, 550, 900, 550, 700)
+
+[node name="Left" type="Polygon2D" parent="MainButton"]
+z_index = -1
+position = Vector2(257.732, -1.03528)
+color = Color(0.129412, 0.411765, 0.705882, 1)
+polygon = PackedVector2Array(250, 725, 250, 875, 550, 875, 550, 725)
+metadata/_edit_lock_ = true
+
+[node name="TextureButton" type="TextureButton" parent="MainButton/Left"]
+z_index = 1
+custom_minimum_size = Vector2(120, 120)
+offset_left = -194.88
+offset_top = 742.293
+offset_right = -74.8804
+offset_bottom = 862.293
+texture_normal = ExtResource("7_cve6f")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Right" type="Polygon2D" parent="MainButton"]
+z_index = -1
+position = Vector2(-259, 2.38419e-07)
+color = Color(0.129412, 0.411765, 0.705882, 1)
+polygon = PackedVector2Array(250, 725, 250, 875, 550, 875, 550, 725)
+metadata/_edit_lock_ = true
+
+[node name="TextureButton" type="TextureButton" parent="MainButton/Right"]
+custom_minimum_size = Vector2(120, 120)
+offset_left = 872.44
+offset_top = 731.94
+offset_right = 992.44
+offset_bottom = 851.94
+texture_normal = ExtResource("8_pgjff")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Play" type="TextureButton" parent="MainButton"]
+custom_minimum_size = Vector2(200, 200)
+offset_left = 297.134
+offset_top = 699.847
+offset_right = 497.134
+offset_bottom = 899.847
+texture_normal = ExtResource("9_7bkas")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Status" type="Line2D" parent="."]
+position = Vector2(168, 12)
+skew = 0.261799
+points = PackedVector2Array(90, 570, 887, 570)
+width = 6.0
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+
+[node name="Panel" type="PanelContainer" parent="Status"]
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(900, 300)
+offset_left = 80.0
+offset_top = 450.0
+offset_right = 1076.0
+offset_bottom = 750.0
+scale = Vector2(0.8, 0.8)
+
+[node name="GC" type="GridContainer" parent="Status/Panel"]
+custom_minimum_size = Vector2(900, 300)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+theme_override_constants/h_separation = 40
+theme_override_constants/v_separation = 40
+columns = 4
+
+[node name="Time" type="HBoxContainer" parent="Status/Panel/GC"]
+custom_minimum_size = Vector2(200, 120)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+
+[node name="icon" type="TextureRect" parent="Status/Panel/GC/Time"]
+custom_minimum_size = Vector2(90, 50)
+layout_mode = 2
+texture = ExtResource("10_mxrx3")
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Status/Panel/GC/Time"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "114:51"
+vertical_alignment = 2
+
+[node name="BPM" type="HBoxContainer" parent="Status/Panel/GC"]
+custom_minimum_size = Vector2(150, 120)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+
+[node name="icon" type="TextureRect" parent="Status/Panel/GC/BPM"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+texture = ExtResource("11_sne8w")
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Status/Panel/GC/BPM"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "114"
+vertical_alignment = 2
+
+[node name="Note" type="HBoxContainer" parent="Status/Panel/GC"]
+custom_minimum_size = Vector2(150, 120)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+
+[node name="icon" type="TextureRect" parent="Status/Panel/GC/Note"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+texture = ExtResource("12_migpj")
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Status/Panel/GC/Note"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "114"
+vertical_alignment = 2
+
+[node name="MPP" type="HBoxContainer" parent="Status/Panel/GC"]
+custom_minimum_size = Vector2(150, 120)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+
+[node name="icon" type="TextureRect" parent="Status/Panel/GC/MPP"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+texture = ExtResource("13_mxrx3")
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Status/Panel/GC/MPP"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "114"
+vertical_alignment = 2
+
+[node name="Play" type="HBoxContainer" parent="Status/Panel/GC"]
+custom_minimum_size = Vector2(200, 120)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+
+[node name="icon" type="TextureRect" parent="Status/Panel/GC/Play"]
+custom_minimum_size = Vector2(90, 50)
+layout_mode = 2
+texture = ExtResource("14_jiooo")
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Status/Panel/GC/Play"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "114"
+vertical_alignment = 2
+
+[node name="UpCount" type="HBoxContainer" parent="Status/Panel/GC"]
+custom_minimum_size = Vector2(200, 120)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+
+[node name="icon" type="TextureRect" parent="Status/Panel/GC/UpCount"]
+custom_minimum_size = Vector2(90, 50)
+layout_mode = 2
+texture = ExtResource("15_27bbn")
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Status/Panel/GC/UpCount"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "114"
+vertical_alignment = 2
+
+[node name="AvgAcc" type="HBoxContainer" parent="Status/Panel/GC"]
+custom_minimum_size = Vector2(200, 120)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+
+[node name="icon" type="TextureRect" parent="Status/Panel/GC/AvgAcc"]
+custom_minimum_size = Vector2(90, 50)
+layout_mode = 2
+texture = ExtResource("16_8spcd")
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Status/Panel/GC/AvgAcc"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "0.99"
+vertical_alignment = 2
+
+[node name="AvgPP" type="HBoxContainer" parent="Status/Panel/GC"]
+custom_minimum_size = Vector2(200, 120)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+
+[node name="icon" type="TextureRect" parent="Status/Panel/GC/AvgPP"]
+custom_minimum_size = Vector2(90, 50)
+layout_mode = 2
+texture = ExtResource("17_8kmhx")
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Status/Panel/GC/AvgPP"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "9"
+vertical_alignment = 2
+
+[connection signal="gui_input" from="MidiWindow/SC" to="MidiWindow/SC/VBOX" method="_input"]
+[connection signal="scroll_started" from="MidiWindow/SC" to="MidiWindow/SC/VBOX" method="_on_scrolling"]
+[connection signal="pressed" from="Left/Previous/Button" to="MidiWindow/SC/VBOX" method="_previous"]
+[connection signal="pressed" from="Left/Next/Button" to="MidiWindow/SC/VBOX" method="_next"]
+[connection signal="pressed" from="Left/Option/Button" to="MidiWindow/SC/VBOX" method="_show_midi_list"]

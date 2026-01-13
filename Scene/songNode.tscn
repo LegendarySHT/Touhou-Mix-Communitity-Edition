@@ -1,0 +1,137 @@
+[gd_scene load_steps=4 format=3 uid="uid://b8gxe8bw01br7"]
+
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://song_cover/1.jpg" id="1_0asqb"]
+[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://方正黑体_GBK.ttf" id="2_5wnnw"]
+
+[sub_resource type="Gradient" id="Gradient_pqbqw"]
+interpolation_mode = 2
+offsets = PackedFloat32Array(0, 0.24, 0.493333, 0.713333)
+colors = PackedColorArray(0.0431373, 0.419608, 1, 1, 0.573372, 0.67577, 0.995313, 1, 0.476841, 0.644696, 1, 1, 0.185497, 0.416209, 1, 1)
+
+[node name="SongNode" type="MarginContainer"]
+custom_minimum_size = Vector2(802, 140)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -961.0
+offset_top = -540.0
+offset_right = -61.0
+offset_bottom = -400.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(-1, 0)
+theme_override_constants/margin_left = 0
+metadata/index = 0
+metadata/sourceSongName = 0.0
+metadata/midiCount = 0
+
+[node name="PC" type="PanelContainer" parent="."]
+layout_mode = 2
+
+[node name="line" type="Line2D" parent="PC"]
+clip_children = 2
+position = Vector2(-100, 0)
+points = PackedVector2Array(100, 0, 100, 140, 995, 140, 995, 0)
+closed = true
+width = 8.0
+default_color = Color(0, 0, 0, 1)
+gradient = SubResource("Gradient_pqbqw")
+joint_mode = 2
+round_precision = 30
+antialiased = true
+
+[node name="Shader" type="Polygon2D" parent="PC"]
+clip_children = 2
+position = Vector2(-29, -218)
+scale = Vector2(0.867977, 0.838323)
+antialiased = true
+polygon = PackedVector2Array(38, 264, 38, 425, 890, 425, 890, 264)
+uv = PackedVector2Array(93, 275.55, 49, 442, 688, 442, 732, 275.55, 347, -13, 95, -39)
+vertex_colors = PackedColorArray(1, 0, 0, 0.682353, 0.87669, 0.338495, 0.094407, 1, 0, 0.597067, 0.878699, 1, 0.687954, 0.363963, 0.861989, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+polygons = [PackedInt32Array(0, 1, 2, 3)]
+internal_vertex_count = 2
+
+[node name="cover" type="TextureRect" parent="PC/Shader"]
+clip_children = 2
+custom_minimum_size = Vector2(1000, 200)
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = 32.2589
+offset_top = 200.4
+offset_right = 1032.26
+offset_bottom = 1200.4
+grow_horizontal = 2
+grow_vertical = 0
+pivot_offset = Vector2(100, 100)
+size_flags_vertical = 0
+mouse_filter = 2
+texture = ExtResource("1_0asqb")
+expand_mode = 5
+stretch_mode = 6
+metadata/_edit_use_anchors_ = true
+
+[node name="SongName" type="Label" parent="PC/Shader"]
+custom_minimum_size = Vector2(300, 40)
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 110.0
+offset_top = 365.0
+offset_right = 772.0
+offset_bottom = 420.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_outline_size = 5
+theme_override_fonts/font = ExtResource("2_5wnnw")
+theme_override_font_sizes/font_size = 40
+text = "Test Title"
+vertical_alignment = 2
+metadata/_edit_use_anchors_ = true
+
+[node name="SongButton" type="Button" parent="PC/Shader"]
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(1030, 170)
+offset_left = 40.0
+offset_top = 260.0
+offset_right = 1070.0
+offset_bottom = 400.0
+size_flags_horizontal = 0
+size_flags_vertical = 4
+mouse_filter = 1
+toggle_mode = true
+metadata/_edit_use_anchors_ = true
+metadata/INDEX = 0
+metadata/sourceSongName = ""
+metadata/midiCount = 0
+
+[node name="CountBase" type="Polygon2D" parent="PC"]
+position = Vector2(-100, -225)
+scale = Vector2(0.867977, 0.838323)
+color = Color(0.423529, 0.721569, 1, 1)
+offset = Vector2(-20, 0)
+polygon = PackedVector2Array(989, 272, 989, 433, 1162, 433, 1162, 272)
+uv = PackedVector2Array(1031.13, 275.55, 988.505, 442.55, 1134.82, 442.55, 1179.75, 275.55)
+
+[node name="SongCount" type="Label" parent="PC/CountBase"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 1035.78
+offset_top = 302.607
+offset_right = 1081.78
+offset_bottom = 412.607
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(20, 42)
+theme_override_font_sizes/font_size = 80
+text = "9"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true

@@ -1,0 +1,882 @@
+[gd_scene load_steps=32 format=3 uid="uid://jvmwtrulpf5g"]
+
+[ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_devvj"]
+[ext_resource type="Script" path="res://UI/Components/camera_2d.gd" id="2_3b0ty"]
+[ext_resource type="Texture2D" uid="uid://cbkgu4o71ikgo" path="res://Resources/Gradient/gradient1.png" id="3_bg4s2"]
+[ext_resource type="Script" path="res://UI/Components/background.gd" id="5_xrxkg"]
+[ext_resource type="Texture2D" uid="uid://7e7lff81aa7n" path="res://Resources/Gradient/gradient2.png" id="6_xrxkg"]
+[ext_resource type="Script" path="res://UI/Components/store_button.gd" id="7_sqvbp"]
+[ext_resource type="Texture2D" uid="uid://bq58thu46jvsq" path="res://Resources/icon/midi_store.png" id="8_hri7i"]
+[ext_resource type="Texture2D" uid="uid://bgvtr3nkhfcdr" path="res://Resources/icon/midiInfoPage/back.png" id="9_w3rk5"]
+[ext_resource type="Texture2D" uid="uid://dj5o6emlgvdmo" path="res://Resources/icon/setting.png" id="10_5mvff"]
+[ext_resource type="Script" path="res://UI/Components/shortcut_menu.gd" id="11_oye8v"]
+[ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="12_40n85"]
+[ext_resource type="Script" path="res://UI/Components/sort_button.gd" id="13_3b0ty"]
+[ext_resource type="Texture2D" uid="uid://b4rxi3wio8sjy" path="res://Resources/icon/Sort/Status/All.png" id="14_3b0ty"]
+[ext_resource type="Texture2D" uid="uid://c8twb3tyhwm1t" path="res://Resources/icon/Sort/Data/Played.png" id="14_sph85"]
+[ext_resource type="ButtonGroup" uid="uid://ba4mkjssd25nv" path="res://Resources/ButtonGroup/SortButton.tres" id="15_bg4s2"]
+[ext_resource type="Texture2D" uid="uid://dto34y0324ext" path="res://Resources/icon/Sort/Time/DownloadTime.png" id="15_o7g6l"]
+[ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="16_vi5kq"]
+[ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
+[ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="18_3ccbu"]
+[ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
+[ext_resource type="Script" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
+[ext_resource type="Script" uid="uid://cc07n4a54nk16" path="res://Scene/AlbumList.gd" id="21_3b0ty"]
+[ext_resource type="Script" uid="uid://dmccjm3n7wwo0" path="res://Scene/SongList.gd" id="22_3b0ty"]
+[ext_resource type="Script" path="res://UI/Components/Sorted_Midi_Scroll.gd" id="23_bg4s2"]
+[ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="24_mxvw5"]
+[ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="25_xrxkg"]
+[ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="26_sqvbp"]
+[ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://Resources/icon/midiInfoPage/start.png" id="27_hri7i"]
+
+[sub_resource type="Gradient" id="Gradient_q6r6c"]
+colors = PackedColorArray(0.477511, 0.510533, 0.894118, 0.690196, 0.326262, 0.0279343, 0.976471, 0.65098)
+
+[sub_resource type="Theme" id="Theme_devvj"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3rk5"]
+bg_color = Color(0.49, 0.7195, 1, 1)
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+size_flags_horizontal = 4
+
+[node name="Player_Info" type="Line2D" parent="."]
+position = Vector2(-44.393, 275.71)
+scale = Vector2(1.02312, 0.751613)
+points = PackedVector2Array(1086.28, 1099.36, 1145, 810, 1910, 810, 1830, 1100)
+closed = true
+gradient = SubResource("Gradient_q6r6c")
+
+[node name="Base" type="Polygon2D" parent="Player_Info"]
+color = Color(0.623805, 0.587409, 0.775723, 1)
+polygon = PackedVector2Array(1148.58, 814.926, 1092.14, 1095.36, 1826.42, 1095.07, 1885.89, 814.926)
+
+[node name="Avator" type="Line2D" parent="Player_Info/Base"]
+position = Vector2(28.3806, 0)
+scale = Vector2(0.975449, 1)
+points = PackedVector2Array(1160, 850, 1310, 850, 1310, 1050, 1160, 1050)
+closed = true
+width = 5.0
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+round_precision = 17
+
+[node name="TextureRect" type="TextureRect" parent="Player_Info/Base/Avator"]
+offset_left = 1162.0
+offset_top = 852.0
+offset_right = 1418.0
+offset_bottom = 1108.0
+scale = Vector2(0.57, 0.76)
+size_flags_horizontal = 8
+texture = ExtResource("1_devvj")
+expand_mode = 3
+stretch_mode = 2
+
+[node name="Label" type="Label" parent="Player_Info/Base"]
+offset_left = 1338.45
+offset_top = 842.575
+offset_right = 1746.45
+offset_bottom = 974.575
+scale = Vector2(1, 1.3)
+theme_override_font_sizes/font_size = 30
+text = "Anonymous Player
+Lv.XXX
+"
+vertical_alignment = 2
+
+[node name="Label2" type="Label" parent="Player_Info/Base"]
+offset_left = 1335.52
+offset_top = 911.759
+offset_right = 1743.52
+offset_bottom = 998.759
+scale = Vector2(1, 1.3)
+theme_override_font_sizes/font_size = 30
+text = "114514 pp"
+vertical_alignment = 2
+
+[node name="Charactor" type="Polygon2D" parent="Player_Info"]
+z_index = -1
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(1291.53, 879.828, 1279.8, -96.7386, 1766.55, -99.3996, 1753.84, 874.506)
+
+[node name="Label" type="Label" parent="Player_Info/Charactor"]
+offset_left = 1437.17
+offset_top = 298.412
+offset_right = 1576.17
+offset_bottom = 340.412
+theme_override_font_sizes/font_size = 30
+text = "character"
+
+[node name="Camera2D" type="Camera2D" parent="."]
+anchor_mode = 0
+position_smoothing_enabled = true
+script = ExtResource("2_3b0ty")
+
+[node name="background" type="TextureRect" parent="."]
+z_index = -2
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+texture = ExtResource("3_bg4s2")
+script = ExtResource("5_xrxkg")
+metadata/_edit_lock_ = true
+
+[node name="ReferenceRect" type="ReferenceRect" parent="."]
+z_index = 5
+offset_left = 289.0
+offset_top = -26.0
+offset_right = 1215.0
+offset_bottom = 1464.0
+rotation = 0.261799
+editor_only = false
+metadata/_edit_lock_ = true
+
+[node name="Store_Background" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(1921, 1080)
+offset_left = 1920.0
+offset_right = 3841.0
+offset_bottom = 1080.0
+texture = ExtResource("6_xrxkg")
+
+[node name="Album" type="Polygon2D" parent="."]
+skew = 0.261799
+
+[node name="AlbumList" type="ScrollContainer" parent="Album"]
+physics_interpolation_mode = 1
+custom_minimum_size = Vector2(1020, 1120)
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 281.0
+offset_top = -1.0
+offset_right = 1301.0
+offset_bottom = 1119.0
+grow_vertical = 2
+size_flags_horizontal = 0
+focus_mode = 2
+theme = SubResource("Theme_devvj")
+follow_focus = true
+horizontal_scroll_mode = 0
+script = ExtResource("21_3b0ty")
+
+[node name="VBox" type="VBoxContainer" parent="Album/AlbumList"]
+custom_minimum_size = Vector2(630, 0)
+layout_mode = 2
+size_flags_horizontal = 2
+mouse_filter = 2
+theme_override_constants/separation = 29
+
+[node name="Song" type="Polygon2D" parent="."]
+skew = 0.261799
+
+[node name="SongList" type="ScrollContainer" parent="Song"]
+physics_interpolation_mode = 1
+custom_minimum_size = Vector2(1014, 725)
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -1041.5
+offset_right = 1014.0
+offset_bottom = -316.5
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+focus_mode = 2
+follow_focus = true
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+script = ExtResource("22_3b0ty")
+
+[node name="VBox" type="VBoxContainer" parent="Song/SongList"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 29
+
+[node name="Store_button" type="Polygon2D" parent="."]
+clip_children = 2
+z_index = 2
+position = Vector2(2032, 343)
+rotation = 0.523599
+polygon = PackedVector2Array(-0.426636, 851.261, 0.00524902, 224.009, 271.505, 694.261)
+
+[node name="Store_Button" type="ColorRect" parent="Store_button"]
+clip_contents = true
+offset_left = 1.0
+offset_top = 218.0
+offset_right = 278.0
+offset_bottom = 859.0
+mouse_filter = 1
+color = Color(0.439216, 0.729412, 0.980392, 1)
+script = ExtResource("7_sqvbp")
+
+[node name="Button" type="Button" parent="Store_button/Store_Button"]
+modulate = Color(1, 1, 1, 0)
+self_modulate = Color(1, 1, 1, 0)
+show_behind_parent = true
+z_index = 4
+layout_mode = 0
+offset_left = -275.0
+offset_top = 163.0
+offset_right = 42.0
+offset_bottom = 967.0
+rotation = -0.523599
+action_mode = 0
+flat = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="Store" type="TextureRect" parent="Store_button/Store_Button"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 410.0
+offset_right = 99.0
+offset_bottom = 471.0
+rotation = -0.523599
+scale = Vector2(2, 2)
+mouse_filter = 2
+texture = ExtResource("8_hri7i")
+
+[node name="Line2D" type="Line2D" parent="Store_button/Store_Button"]
+points = PackedVector2Array(-1.42664, 633.261, -0.494751, 6.87494)
+
+[node name="Back" type="TextureRect" parent="Store_button/Store_Button"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = -50.0
+offset_right = 162.0
+offset_bottom = 100.0
+rotation = -0.523599
+mouse_filter = 2
+texture = ExtResource("9_w3rk5")
+
+[node name="Setting_Button" type="Polygon2D" parent="."]
+z_index = 2
+color = Color(0.188235, 0.419608, 1, 0.709804)
+polygon = PackedVector2Array(0, 0, 225, 0, 0, 602)
+
+[node name="settingbutton" type="TextureButton" parent="Setting_Button"]
+offset_left = 17.0
+offset_top = 8.0
+offset_right = 84.0
+offset_bottom = 77.0
+scale = Vector2(2, 2)
+texture_normal = ExtResource("10_5mvff")
+
+[node name="TextureRect" type="TextureRect" parent="Setting_Button"]
+visible = false
+offset_left = 26.0
+offset_top = 20.0
+offset_right = 146.0
+offset_bottom = 137.0
+texture = ExtResource("10_5mvff")
+
+[node name="Label" type="Label" parent="Setting_Button"]
+offset_left = 34.0
+offset_top = 169.0
+offset_right = 134.0
+offset_bottom = 242.0
+theme_override_font_sizes/font_size = 30
+text = "9999
+ms"
+
+[node name="Line2D" type="Line2D" parent="Setting_Button"]
+points = PackedVector2Array(226, -3, -5, 615)
+width = 6.0
+
+[node name="Menu_Bar" type="HBoxContainer" parent="."]
+offset_left = 1305.0
+offset_top = 15.0
+offset_right = 1793.0
+offset_bottom = 165.0
+metadata/_edit_lock_ = true
+
+[node name="HBC" type="HBoxContainer" parent="Menu_Bar"]
+layout_mode = 2
+size_flags_horizontal = 3
+metadata/_edit_lock_ = true
+
+[node name="Sub_Menu" type="Polygon2D" parent="Menu_Bar/HBC"]
+self_modulate = Color(1, 1, 1, 0.788235)
+clip_children = 2
+light_mask = 0
+position = Vector2(-1303.14, -18.8581)
+color = Color(0.054902, 0.639216, 1, 1)
+antialiased = true
+polygon = PackedVector2Array(1349, 43, 1318, 152, 1443, 152, 1473, 43)
+vertex_colors = PackedColorArray(0.054902, 0.639216, 1, 1, 0.054902, 0.639216, 1, 1, 0.101962, 0.350213, 1, 1, 0.273133, 0.431107, 1, 1)
+script = ExtResource("11_oye8v")
+
+[node name="Page" type="HBoxContainer" parent="Menu_Bar/HBC/Sub_Menu"]
+offset_left = 1290.0
+offset_top = 170.0
+offset_right = 2590.0
+offset_bottom = 870.0
+scale = Vector2(0.9, 0.9)
+mouse_filter = 2
+theme_override_constants/separation = 100
+metadata/_edit_lock_ = true
+
+[node name="SortPage" type="VBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page"]
+custom_minimum_size = Vector2(600, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 15
+
+[node name="SearchBox" type="HBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage"]
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="TextEdit" type="LineEdit" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SearchBox"]
+custom_minimum_size = Vector2(440, 100)
+layout_mode = 2
+theme_override_font_sizes/font_size = 35
+placeholder_text = "please enter..."
+caret_blink = true
+
+[node name="TextureButton" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SearchBox"]
+layout_mode = 2
+texture_normal = ExtResource("12_40n85")
+
+[node name="Line" type="PanelContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage"]
+clip_contents = true
+custom_minimum_size = Vector2(550, 6)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="ColorRect" type="ColorRect" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/Line"]
+layout_mode = 2
+
+[node name="SortButton" type="HBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/separation = 40
+script = ExtResource("13_3b0ty")
+
+[node name="Status" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+texture_normal = ExtResource("14_3b0ty")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Data" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+toggle_mode = true
+button_group = ExtResource("15_bg4s2")
+texture_normal = ExtResource("14_sph85")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Time" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+toggle_mode = true
+button_group = ExtResource("15_bg4s2")
+texture_normal = ExtResource("15_o7g6l")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Ordering" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+texture_normal = ExtResource("16_vi5kq")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="SelectData" type="Line2D" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+self_modulate = Color(1, 1, 1, 0)
+points = PackedVector2Array(135, 0, 245, 0, 245, 100, 135, 100)
+closed = true
+width = 4.0
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+
+[node name="SelectTime" type="Line2D" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+self_modulate = Color(1, 1, 1, 0)
+position = Vector2(138, 0)
+points = PackedVector2Array(135, 0, 245, 0, 245, 100, 135, 100)
+closed = true
+width = 4.0
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+
+[node name="Search" type="PanelContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="SongListPage" type="VBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 60
+
+[node name="List1" type="MarginContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage"]
+custom_minimum_size = Vector2(600, 0)
+layout_mode = 2
+
+[node name="PC" type="PanelContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1"]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+
+[node name="Line2D" type="Line2D" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC"]
+position = Vector2(-1076.14, -28)
+scale = Vector2(0.835749, 0.825806)
+points = PackedVector2Array(1342, 44, 1305, 179, 1457, 179, 1492, 44)
+closed = true
+width = 3.0
+joint_mode = 2
+
+[node name="Button" type="Button" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC/Line2D"]
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(600, 150)
+offset_left = 1301.12
+offset_top = 43.1337
+offset_right = 1421.12
+offset_bottom = 163.134
+
+[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC"]
+layout_mode = 2
+theme_override_constants/margin_left = 190
+theme_override_constants/margin_top = 8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Label" type="Label" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+theme_override_font_sizes/font_size = 30
+text = "Favor"
+horizontal_alignment = 1
+
+[node name="Label2" type="Label" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+text = "11 midis"
+
+[node name="List2" type="MarginContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage"]
+custom_minimum_size = Vector2(600, 0)
+layout_mode = 2
+theme_override_constants/margin_left = -40
+
+[node name="PC" type="PanelContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2"]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+
+[node name="Line2D" type="Line2D" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC"]
+position = Vector2(-1076.14, -28)
+scale = Vector2(0.835749, 0.825806)
+points = PackedVector2Array(1342, 44, 1305, 179, 1457, 179, 1492, 44)
+closed = true
+width = 3.0
+joint_mode = 2
+
+[node name="Button" type="Button" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC/Line2D"]
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(600, 150)
+offset_left = 1301.12
+offset_top = 43.1337
+offset_right = 1421.12
+offset_bottom = 163.134
+
+[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC"]
+layout_mode = 2
+theme_override_constants/margin_left = 190
+theme_override_constants/margin_top = 8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Label" type="Label" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+theme_override_font_sizes/font_size = 30
+text = "Custom SongList"
+horizontal_alignment = 1
+
+[node name="Label2" type="Label" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+text = "11 midis"
+
+[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage"]
+layout_mode = 2
+size_flags_vertical = 10
+theme_override_constants/margin_left = -380
+
+[node name="TextureButton" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 8
+texture_normal = ExtResource("17_5mkgo")
+
+[node name="Sort" type="PanelContainer" parent="Menu_Bar/HBC"]
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(180, 150)
+layout_mode = 2
+metadata/_edit_lock_ = true
+
+[node name="Line2D" type="Line2D" parent="Menu_Bar/HBC/Sort"]
+position = Vector2(-1076.14, -12.8581)
+scale = Vector2(0.835749, 0.825806)
+points = PackedVector2Array(1342, 44, 1305, 179, 1457, 179, 1492, 44)
+closed = true
+width = 3.0
+joint_mode = 2
+
+[node name="Polygon2D" type="Polygon2D" parent="Menu_Bar/HBC/Sort"]
+position = Vector2(-1303.14, -18.8581)
+color = Color(0.054902, 0.639216, 1, 1)
+antialiased = true
+polygon = PackedVector2Array(1349, 43, 1318, 152, 1443, 152, 1473, 43)
+vertex_colors = PackedColorArray(0.054902, 0.639216, 1, 1, 0.054902, 0.639216, 1, 1, 0.101962, 0.350213, 1, 1, 0.273133, 0.431107, 1, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/Sort"]
+layout_mode = 2
+theme_override_constants/margin_top = 30
+
+[node name="TextureButton" type="TextureButton" parent="Menu_Bar/HBC/Sort/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+shortcut_feedback = false
+shortcut_in_tooltip = false
+texture_normal = ExtResource("12_40n85")
+
+[node name="TextureRect" type="TextureRect" parent="Menu_Bar/HBC/Sort/MarginContainer"]
+visible = false
+layout_mode = 2
+texture = ExtResource("18_3ccbu")
+stretch_mode = 2
+
+[node name="SongList" type="PanelContainer" parent="Menu_Bar/HBC"]
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(180, 150)
+layout_mode = 2
+
+[node name="Line2D" type="Line2D" parent="Menu_Bar/HBC/SongList"]
+position = Vector2(-1076.14, -12.8581)
+scale = Vector2(0.835749, 0.825806)
+points = PackedVector2Array(1342, 44, 1305, 179, 1457, 179, 1492, 44)
+closed = true
+width = 3.0
+joint_mode = 2
+
+[node name="Polygon2D" type="Polygon2D" parent="Menu_Bar/HBC/SongList"]
+position = Vector2(-1303.14, -18.8581)
+color = Color(0.054902, 0.639216, 1, 1)
+antialiased = true
+polygon = PackedVector2Array(1349, 43, 1318, 152, 1443, 152, 1473, 43)
+vertex_colors = PackedColorArray(0.054902, 0.639216, 1, 1, 0.054902, 0.639216, 1, 1, 0.101962, 0.350213, 1, 1, 0.273133, 0.431107, 1, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/SongList"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 30
+
+[node name="TextureButton" type="TextureButton" parent="Menu_Bar/HBC/SongList/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+texture_normal = ExtResource("19_ny7u2")
+
+[node name="TextureRect" type="TextureRect" parent="Menu_Bar/HBC/SongList/MarginContainer"]
+visible = false
+layout_mode = 2
+texture = ExtResource("19_ny7u2")
+stretch_mode = 2
+
+[node name="Search" type="PanelContainer" parent="Menu_Bar/HBC"]
+visible = false
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(150, 150)
+layout_mode = 2
+metadata/_edit_lock_ = true
+
+[node name="Line2D" type="Line2D" parent="Menu_Bar/HBC/Search"]
+position = Vector2(-1076.14, -12.8581)
+scale = Vector2(0.835749, 0.825806)
+points = PackedVector2Array(1342, 44, 1305, 179, 1457, 179, 1492, 44)
+closed = true
+width = 3.0
+joint_mode = 2
+
+[node name="Polygon2D" type="Polygon2D" parent="Menu_Bar/HBC/Search"]
+position = Vector2(-1303.14, -18.8581)
+color = Color(0.054902, 0.639216, 1, 1)
+antialiased = true
+polygon = PackedVector2Array(1349, 43, 1318, 152, 1443, 152, 1473, 43)
+vertex_colors = PackedColorArray(0.054902, 0.639216, 1, 1, 0.054902, 0.639216, 1, 1, 0.101962, 0.350213, 1, 1, 0.273133, 0.431107, 1, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/Search"]
+layout_mode = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 30
+
+[node name="TextureRect" type="TextureRect" parent="Menu_Bar/HBC/Search/MarginContainer"]
+layout_mode = 2
+texture = ExtResource("12_40n85")
+stretch_mode = 2
+
+[node name="SettingBackGround" type="Polygon2D" parent="."]
+z_index = -5
+color = Color(0.243137, 0.423529, 0.866667, 1)
+polygon = PackedVector2Array(225, 0, -180, 1080, -190, 1080, -190, 0)
+script = ExtResource("20_x3yn0")
+
+[node name="SortedMidi" type="Polygon2D" parent="."]
+position = Vector2(-1500, 0)
+skew = 0.261799
+
+[node name="List" type="ScrollContainer" parent="SortedMidi"]
+physics_interpolation_mode = 1
+custom_minimum_size = Vector2(1020, 1120)
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 281.0
+offset_top = -1.035
+offset_right = 1301.0
+offset_bottom = 1118.96
+grow_vertical = 2
+size_flags_horizontal = 0
+focus_mode = 2
+theme = SubResource("Theme_devvj")
+follow_focus = true
+horizontal_scroll_mode = 0
+script = ExtResource("23_bg4s2")
+
+[node name="VBox" type="VBoxContainer" parent="SortedMidi/List"]
+custom_minimum_size = Vector2(630, 0)
+layout_mode = 2
+size_flags_horizontal = 2
+mouse_filter = 2
+theme_override_constants/separation = 29
+
+[node name="Store" type="Node2D" parent="."]
+
+[node name="Container" type="ScrollContainer" parent="Store"]
+custom_minimum_size = Vector2(1700, 936)
+offset_left = 1985.0
+offset_top = 119.0
+offset_right = 3804.0
+offset_bottom = 1082.0
+horizontal_scroll_mode = 0
+
+[node name="Container" type="HFlowContainer" parent="Store/Container"]
+custom_minimum_size = Vector2(1790, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/h_separation = 65
+theme_override_constants/v_separation = 40
+
+[node name="StoreMidiNode" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode2" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode3" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode4" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode5" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode6" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode7" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode8" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode9" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode10" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode11" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode12" type="PanelContainer" parent="Store/Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="Back_button" type="Polygon2D" parent="Store"]
+clip_children = 2
+z_index = 2
+position = Vector2(4014, 386)
+rotation = 0.523599
+color = Color(0.439216, 0.729412, 0.980392, 1)
+polygon = PackedVector2Array(0.723877, 803.254, 1.40967, 344.442, 199.044, 688.754)
+
+[node name="Button" type="Button" parent="Store/Back_button"]
+modulate = Color(1, 1, 1, 0)
+self_modulate = Color(1, 1, 1, 0)
+show_behind_parent = true
+z_index = 4
+offset_left = -13.9851
+offset_top = 229.777
+offset_right = 254.015
+offset_bottom = 852.777
+action_mode = 0
+flat = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="Line2D" type="Line2D" parent="Store/Back_button"]
+position = Vector2(1, 218)
+points = PackedVector2Array(-1.42664, 633.261, -0.494751, 6.87494)
+
+[node name="Back" type="TextureRect" parent="Store/Back_button"]
+offset_left = -20.6904
+offset_top = 618.164
+offset_right = 129.31
+offset_bottom = 768.164
+rotation = -0.523599
+mouse_filter = 2
+texture = ExtResource("9_w3rk5")
+
+[node name="Top_bar" type="Polygon2D" parent="Store"]
+self_modulate = Color(0.882813, 0.882813, 0.882813, 1)
+color = Color(0.184314, 0.423529, 1, 1)
+polygon = PackedVector2Array(1920, 0, 1920, 120, 3840, 120, 3840, 0)
+vertex_colors = PackedColorArray(0.054902, 0.631373, 1, 1, 0.054902, 0.635294, 1, 1, 0.0980392, 0.360784, 1, 1, 0.258824, 0.431373, 1, 1)
+
+[node name="Center" type="Polygon2D" parent="Store/Top_bar"]
+polygon = PackedVector2Array(2435, 0, 2475, 150, 3270, 150, 3310, 0)
+vertex_colors = PackedColorArray(0.101961, 0.576471, 1, 1, 0.0666667, 0.556863, 1, 1, 0.0862745, 0.439216, 1, 1, 0.180392, 0.454902, 0.952941, 1)
+
+[node name="LineEdit" type="LineEdit" parent="Store/Top_bar/Center"]
+offset_left = 2520.0
+offset_top = 38.0
+offset_right = 3136.0
+offset_bottom = 107.0
+
+[node name="TextureButton" type="TextureButton" parent="Store/Top_bar/Center"]
+custom_minimum_size = Vector2(80, 80)
+offset_left = 3156.0
+offset_top = 34.0
+offset_right = 3236.0
+offset_bottom = 114.0
+texture_normal = ExtResource("12_40n85")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Left" type="OptionButton" parent="Store/Top_bar"]
+offset_left = 1934.0
+offset_top = 8.0
+offset_right = 2312.0
+offset_bottom = 116.0
+theme_override_constants/h_separation = 30
+theme_override_font_sizes/font_size = 42
+flat = true
+selected = 0
+item_count = 2
+popup/item_0/text = "上传时间"
+popup/item_0/icon = ExtResource("24_mxvw5")
+popup/item_0/id = 0
+popup/item_1/text = "歌曲时长"
+popup/item_1/icon = ExtResource("25_xrxkg")
+popup/item_1/id = 1
+
+[node name="Right" type="TextureButton" parent="Store/Top_bar"]
+self_modulate = Color(1, 1, 1, 0.768627)
+custom_minimum_size = Vector2(80, 80)
+offset_left = 3343.0
+offset_top = 23.0
+offset_right = 3423.0
+offset_bottom = 103.0
+toggle_mode = true
+texture_normal = ExtResource("16_vi5kq")
+texture_pressed = ExtResource("26_sqvbp")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Bottom" type="Polygon2D" parent="Store"]
+color = Color(0.0724486, 0.495733, 1, 1)
+polygon = PackedVector2Array(2650, 1080, 2685, 990, 3035, 990, 3067, 1080)
+uv = PackedVector2Array(371.5, -59)
+
+[node name="Label" type="Label" parent="Store/Bottom"]
+offset_left = 2744.0
+offset_top = 990.0
+offset_right = 2977.0
+offset_bottom = 1080.0
+theme_override_font_sizes/font_size = 45
+theme_override_styles/normal = SubResource("StyleBoxFlat_w3rk5")
+text = "999/999"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TextureButton" type="TextureButton" parent="Store/Bottom"]
+offset_left = 2669.0
+offset_top = 995.0
+offset_right = 2749.0
+offset_bottom = 1086.0
+texture_normal = ExtResource("27_hri7i")
+flip_h = true
+flip_v = true
+
+[node name="TextureButton2" type="TextureButton" parent="Store/Bottom"]
+offset_left = 2970.0
+offset_top = 995.0
+offset_right = 3050.0
+offset_bottom = 1086.0
+texture_normal = ExtResource("27_hri7i")
+flip_v = true
+
+[connection signal="gui_input" from="Song/SongList" to="Song/SongList" method="_input"]
+[connection signal="storeButtonSwitch" from="Song/SongList" to="Store_button/Store_Button" method="_on_song_list_store_button_switch"]
+[connection signal="switch_to_store" from="Store_button/Store_Button" to="Camera2D" method="_switch_to_store"]
+[connection signal="pressed" from="Store_button/Store_Button/Button" to="Store_button/Store_Button" method="_on_button_pressed"]
+[connection signal="pressed" from="Setting_Button/settingbutton" to="SettingBackGround" method="_on_settingbutton_pressed"]
+[connection signal="pressed" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Status" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_status_pressed"]
+[connection signal="toggled" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Data" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_data_toggled"]
+[connection signal="toggled" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Time" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_time_toggled"]
+[connection signal="pressed" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Ordering" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_ordering_pressed"]
+[connection signal="pressed" from="Menu_Bar/HBC/Sort/MarginContainer/TextureButton" to="Menu_Bar/HBC/Sub_Menu" method="_sort_button_pressed"]
+[connection signal="pressed" from="Menu_Bar/HBC/SongList/MarginContainer/TextureButton" to="Menu_Bar/HBC/Sub_Menu" method="_SongList_button_pressed"]
+[connection signal="gui_input" from="SortedMidi/List" to="SortedMidi/List" method="_input"]
+[connection signal="scroll_started" from="SortedMidi/List" to="SortedMidi/List" method="_on_scrolling"]
+[connection signal="pressed" from="Store/Back_button/Button" to="Camera2D" method="_switch_to_store"]

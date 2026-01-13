@@ -1,0 +1,110 @@
+[gd_scene load_steps=4 format=3 uid="uid://ddhnyragi1haf"]
+
+[ext_resource type="Script" uid="uid://fx16kf8h1mc0" path="res://Scene/sorted_midi_node.gd" id="1_rmur8"]
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://song_cover/1.jpg" id="2_eprjm"]
+[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://方正黑体_GBK.ttf" id="3_6d3xq"]
+
+[node name="MidiNode" type="MarginContainer"]
+clip_children = 2
+custom_minimum_size = Vector2(900, 150)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -381.5
+offset_right = -1020.0
+offset_bottom = -1271.5
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(0, 75)
+size_flags_horizontal = 0
+size_flags_vertical = 0
+script = ExtResource("1_rmur8")
+metadata/status = ""
+metadata/artistName = ""
+metadata/trialCount = 0
+metadata/upCount = 0
+metadata/avgAccuracy = 0.0
+metadata/name = ""
+metadata/desc = ""
+metadata/id = ""
+metadata/hash = ""
+metadata/index = 0
+metadata/_edit_use_anchors_ = true
+metadata/album = ""
+metadata/song = ""
+
+[node name="cover" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+texture = ExtResource("2_eprjm")
+expand_mode = 3
+stretch_mode = 6
+
+[node name="MC" type="MarginContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 8
+theme_override_constants/margin_left = 50
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="MC"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+theme_override_constants/separation = 0
+
+[node name="MidiName" type="Label" parent="MC/VBox"]
+custom_minimum_size = Vector2(850, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_outline_size = 5
+theme_override_fonts/font = ExtResource("3_6d3xq")
+theme_override_font_sizes/font_size = 30
+text = "Midi Name"
+clip_text = true
+
+[node name="Author" type="Label" parent="MC/VBox"]
+layout_mode = 2
+size_flags_vertical = 8
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_outline_size = 5
+theme_override_fonts/font = ExtResource("3_6d3xq")
+theme_override_font_sizes/font_size = 30
+text = "Midi Author"
+vertical_alignment = 2
+
+[node name="Line2D" type="Line2D" parent="MC/VBox"]
+position = Vector2(-135, -10)
+points = PackedVector2Array(120, 45, 945, 45)
+width = 4.0
+
+[node name="MC" type="MarginContainer" parent="MC"]
+layout_mode = 2
+theme_override_constants/margin_right = 100
+
+[node name="status" type="Label" parent="MC/MC"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_outline_size = 5
+theme_override_font_sizes/font_size = 30
+text = "Pending"
+
+[node name="Button" type="Button" parent="."]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+toggle_mode = true
+metadata/index = 0
+
+[node name="Line2D" type="Line2D" parent="."]
+points = PackedVector2Array(0, 0, 0, 150, 900, 150, 900, 0)
+closed = true
+width = 4.0
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+
+[connection signal="toggled" from="Button" to="." method="_select"]

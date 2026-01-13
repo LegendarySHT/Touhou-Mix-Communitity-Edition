@@ -1,0 +1,14 @@
+{
+"_id":"Midi信息文件的名字",
+"name":"Midi显示在游戏中的名字",
+"desc":"Midi的简介",
+"hash":"0000.mid",
+"coverUrl":"封面图的链接",
+"coverBlurUrl":"模糊的封面图（用作背景）",
+"artistName":"Midi作者的名字",
+"artistUrl":"Midi作者或Midi的原地址链接",
+"status":"Midi的状态，如PENDING",
+"sourceArtistName":"Midi所属的原曲的作者",
+"sourceAlbumName":"Midi所属的原曲的名字",
+"sourceSongName":"aaa",
+}

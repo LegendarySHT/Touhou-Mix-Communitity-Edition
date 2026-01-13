@@ -1,0 +1,213 @@
+[gd_scene load_steps=9 format=3 uid="uid://dvvggbuqsfxbw"]
+
+[ext_resource type="Texture2D" uid="uid://bgvtr3nkhfcdr" path="res://icon/midiInfoPage/back.png" id="1_iwnjq"]
+[ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://icon/search.png" id="2_e4ark"]
+[ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://icon/上传时间.png" id="3_u7c36"]
+[ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://icon/midi时长.png" id="4_6ial6"]
+[ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://icon/Sort/Ordering/Descent.png" id="5_uoxjv"]
+[ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://icon/Sort/Ordering/Ascent.png" id="6_f6x17"]
+[ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://icon/midiInfoPage/start.png" id="7_4f2e5"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3rk5"]
+bg_color = Color(0.49, 0.7195, 1, 1)
+
+[node name="Store" type="Node2D"]
+
+[node name="Container" type="ScrollContainer" parent="."]
+custom_minimum_size = Vector2(1700, 936)
+offset_left = 1985.0
+offset_top = 119.0
+offset_right = 3804.0
+offset_bottom = 1082.0
+horizontal_scroll_mode = 0
+
+[node name="Container" type="HFlowContainer" parent="Container"]
+custom_minimum_size = Vector2(1790, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/h_separation = 65
+theme_override_constants/v_separation = 40
+
+[node name="StoreMidiNode" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode2" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode3" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode4" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode5" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode6" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode7" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode8" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode9" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode10" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode11" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="StoreMidiNode12" type="PanelContainer" parent="Container/Container"]
+custom_minimum_size = Vector2(550, 300)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="Back_button" type="Polygon2D" parent="."]
+clip_children = 2
+z_index = 2
+position = Vector2(4014, 386)
+rotation = 0.523599
+color = Color(0.439216, 0.729412, 0.980392, 1)
+polygon = PackedVector2Array(0.723877, 803.254, 1.40967, 344.442, 199.044, 688.754)
+
+[node name="Button" type="Button" parent="Back_button"]
+modulate = Color(1, 1, 1, 0)
+self_modulate = Color(1, 1, 1, 0)
+show_behind_parent = true
+z_index = 4
+offset_left = -13.9851
+offset_top = 229.777
+offset_right = 254.015
+offset_bottom = 852.777
+action_mode = 0
+flat = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="Line2D" type="Line2D" parent="Back_button"]
+position = Vector2(1, 218)
+points = PackedVector2Array(-1.42664, 633.261, -0.494751, 6.87494)
+
+[node name="Back" type="TextureRect" parent="Back_button"]
+offset_left = -20.6904
+offset_top = 618.164
+offset_right = 129.31
+offset_bottom = 768.164
+rotation = -0.523599
+mouse_filter = 2
+texture = ExtResource("1_iwnjq")
+
+[node name="Top_bar" type="Polygon2D" parent="."]
+self_modulate = Color(0.882813, 0.882813, 0.882813, 1)
+color = Color(0.184314, 0.423529, 1, 1)
+polygon = PackedVector2Array(1920, 0, 1920, 120, 3840, 120, 3840, 0)
+vertex_colors = PackedColorArray(0.054902, 0.631373, 1, 1, 0.054902, 0.635294, 1, 1, 0.0980392, 0.360784, 1, 1, 0.258824, 0.431373, 1, 1)
+
+[node name="Center" type="Polygon2D" parent="Top_bar"]
+polygon = PackedVector2Array(2435, 0, 2475, 150, 3270, 150, 3310, 0)
+vertex_colors = PackedColorArray(0.101961, 0.576471, 1, 1, 0.0666667, 0.556863, 1, 1, 0.0862745, 0.439216, 1, 1, 0.180392, 0.454902, 0.952941, 1)
+
+[node name="LineEdit" type="LineEdit" parent="Top_bar/Center"]
+offset_left = 2520.0
+offset_top = 38.0
+offset_right = 3136.0
+offset_bottom = 107.0
+
+[node name="TextureButton" type="TextureButton" parent="Top_bar/Center"]
+custom_minimum_size = Vector2(80, 80)
+offset_left = 3156.0
+offset_top = 34.0
+offset_right = 3236.0
+offset_bottom = 114.0
+texture_normal = ExtResource("2_e4ark")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Left" type="OptionButton" parent="Top_bar"]
+offset_left = 1934.0
+offset_top = 8.0
+offset_right = 2312.0
+offset_bottom = 116.0
+theme_override_constants/h_separation = 30
+theme_override_font_sizes/font_size = 42
+flat = true
+selected = 0
+item_count = 2
+popup/item_0/text = "上传时间"
+popup/item_0/icon = ExtResource("3_u7c36")
+popup/item_0/id = 0
+popup/item_1/text = "歌曲时长"
+popup/item_1/icon = ExtResource("4_6ial6")
+popup/item_1/id = 1
+
+[node name="Right" type="TextureButton" parent="Top_bar"]
+self_modulate = Color(1, 1, 1, 0.768627)
+custom_minimum_size = Vector2(80, 80)
+offset_left = 3343.0
+offset_top = 23.0
+offset_right = 3423.0
+offset_bottom = 103.0
+toggle_mode = true
+texture_normal = ExtResource("5_uoxjv")
+texture_pressed = ExtResource("6_f6x17")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Bottom" type="Polygon2D" parent="."]
+color = Color(0.0724486, 0.495733, 1, 1)
+polygon = PackedVector2Array(2650, 1080, 2685, 990, 3035, 990, 3067, 1080)
+uv = PackedVector2Array(371.5, -59)
+
+[node name="Label" type="Label" parent="Bottom"]
+offset_left = 2744.0
+offset_top = 990.0
+offset_right = 2977.0
+offset_bottom = 1080.0
+theme_override_font_sizes/font_size = 45
+theme_override_styles/normal = SubResource("StyleBoxFlat_w3rk5")
+text = "999/999"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TextureButton" type="TextureButton" parent="Bottom"]
+offset_left = 2669.0
+offset_top = 995.0
+offset_right = 2749.0
+offset_bottom = 1086.0
+texture_normal = ExtResource("7_4f2e5")
+flip_h = true
+flip_v = true
+
+[node name="TextureButton2" type="TextureButton" parent="Bottom"]
+offset_left = 2970.0
+offset_top = 995.0
+offset_right = 3050.0
+offset_bottom = 1086.0
+texture_normal = ExtResource("7_4f2e5")
+flip_v = true
