@@ -8,6 +8,7 @@ var data_manager: DataManager
 var event_bus: EventBus
 var state_manager: UIStateManager
 var animation_manager: AnimationManager
+var sorting_engine: SortingEngine
 var gameplay_manager: GameplayManager
 var audio_manager: AudioManager
 var config_loader: ConfigLoader
@@ -57,19 +58,25 @@ func _initialize_core_systems() -> void:
 	add_child(animation_manager)
 	logger.info("AnimationManager initialized", "Main")
 	
-	# 6. 初始化数据管理器
+	# 6. 初始化排序引擎
+	sorting_engine = SortingEngine.new()
+	sorting_engine.name = "SortingEngine"
+	add_child(sorting_engine)
+	logger.info("SortingEngine initialized", "Main")
+	
+	# 7. 初始化数据管理器
 	data_manager = DataManager.new()
 	data_manager.name = "DataManager"
 	add_child(data_manager)
 	logger.info("DataManager initialized", "Main")
 	
-	# 7. 初始化游戏管理器
+	# 8. 初始化游戏管理器
 	gameplay_manager = GameplayManager.new()
 	gameplay_manager.name = "GameplayManager"
 	add_child(gameplay_manager)
 	logger.info("GameplayManager initialized", "Main")
 	
-	# 8. 初始化音频管理器
+	# 9. 初始化音频管理器
 	audio_manager = AudioManager.new()
 	audio_manager.name = "AudioManager"
 	add_child(audio_manager)

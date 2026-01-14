@@ -52,7 +52,7 @@ func load_all_midis_async() -> void:
 
 ## 线程函数：加载MIDI数据
 func _load_midis_thread() -> void:
-	var midis_dir = "user://midis_info/"
+	var midis_dir = "res://Resources/midis_info/"
 	var dir = DirAccess.open(midis_dir)
 	
 	if dir == null:
@@ -195,6 +195,13 @@ func get_midis_by_status(status: String) -> Array[MidiData]:
 		if midi.status == status:
 			result.append(midi)
 	
+	return result
+
+## 获取所有MIDI谱面列表
+func get_all_midis() -> Array[MidiData]:
+	var result: Array[MidiData] = []
+	for midi in midis.values():
+		result.append(midi)
 	return result
 
 ## 获取数据统计信息

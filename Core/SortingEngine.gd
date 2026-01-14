@@ -4,6 +4,9 @@ extends Node
 
 class_name SortingEngine
 
+## 单例实例
+static var instance: SortingEngine
+
 ## 排序方向枚举
 enum SortDirection {
 	ASCENDING,  # 升序
@@ -19,6 +22,14 @@ enum SortField {
 	UPLOADED_DATE,     # 按上传时间排序
 	DEFAULT            # 默认顺序（按专辑）
 }
+
+## 初始化函数
+func _ready() -> void:
+	if instance == null:
+		instance = self
+		add_to_group("singleton")
+	else:
+		queue_free()
 
 ## 排序配置
 var current_sort_field: SortField = SortField.DEFAULT
