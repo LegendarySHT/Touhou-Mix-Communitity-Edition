@@ -37,10 +37,6 @@ func json_get(json, key, default):
 func from_json(json_data: Dictionary) -> void:
 	id = json_data.get("_id", "")
 	name = json_data.get("name", "")
-	#abbreviation = json_data.get("abbr", "")
-	#release_date = json_data.get("date", "")
-	#description = json_data.get("description", "")
-	#cover_url = json_data.get("coverUrl", "")
 	abbreviation = json_get(json_data,"abbr","")
 	release_date = json_get(json_data,"date","")
 	description = json_get(json_data,"description", "")

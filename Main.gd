@@ -29,7 +29,7 @@ func _initialize_core_systems() -> void:
 	print("=== Initializing Core Systems ===")
 	
 	# 1. 初始化日志系统
-	logger = GameLogger.new()
+	logger = GameLogger.instance
 	logger.name = "GameLogger"
 	add_child(logger)
 	logger.info("Logger initialized", "Main")
@@ -41,31 +41,31 @@ func _initialize_core_systems() -> void:
 	logger.info("ConfigLoader initialized", "Main")
 	
 	# 3. 初始化事件总线
-	event_bus = EventBus.new()
+	event_bus = EventBus.instance
 	event_bus.name = "EventBus"
 	add_child(event_bus)
 	logger.info("EventBus initialized", "Main")
 	
 	# 4. 初始化UI状态管理器
-	state_manager = UIStateManager.new()
+	state_manager = UIStateManager.instance
 	state_manager.name = "UIStateManager"
 	add_child(state_manager)
 	logger.info("UIStateManager initialized", "Main")
 	
 	# 5. 初始化动画管理器
-	animation_manager = AnimationManager.new()
+	animation_manager = AnimationManager.instance
 	animation_manager.name = "AnimationManager"
 	add_child(animation_manager)
 	logger.info("AnimationManager initialized", "Main")
 	
 	# 6. 初始化排序引擎
-	sorting_engine = SortingEngine.new()
+	sorting_engine = SortingEngine.instance
 	sorting_engine.name = "SortingEngine"
 	add_child(sorting_engine)
 	logger.info("SortingEngine initialized", "Main")
 	
 	# 7. 初始化数据管理器
-	data_manager = DataManager.new()
+	data_manager = DataManager.instance
 	data_manager.name = "DataManager"
 	add_child(data_manager)
 	logger.info("DataManager initialized", "Main")
@@ -117,6 +117,7 @@ func _load_configuration() -> void:
 		var music_vol = config_loader.get_int(config, "Audio", "music_volume", 80)
 		var sfx_vol = config_loader.get_int(config, "Audio", "effects_volume", 80)
 		
+		# 不注释掉跑不了)
 		#audio_manager.set_master_volume(master_vol)
 		#audio_manager.set_music_volume(music_vol)
 		#audio_manager.set_sfx_volume(sfx_vol)
@@ -131,10 +132,6 @@ func _load_midi_data() -> void:
 ## 数据加载完成回调
 func _on_data_loaded() -> void:
 	logger.info("MIDI data loaded successfully", "Main")
-	
-	var stats = data_manager.get_statistics()
-	logger.info("Albums: %d, Songs: %d, MIDIs: %d" % 
-		[stats.total_albums, stats.total_songs, stats.total_midis], "Main")
 	
 	# 发送数据就绪事件
 	event_bus.data_loaded_complete.emit()

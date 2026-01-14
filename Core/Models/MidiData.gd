@@ -77,12 +77,18 @@ func from_json(json_data: Dictionary) -> void:
 	uploader_name = json_data.get("uploaderName", "")
 	uploaded_date = json_data.get("uploadedDate", "")
 	
+	# 处理两种格式的字段名
 	trial_count = json_data.get("trialCount", 0)
 	download_count = json_data.get("downloadCount", 0)
 	love_count = json_data.get("loveCount", 0)
 	up_count = json_data.get("upCount", 0)
 	down_count = json_data.get("downCount", 0)
+	
+	# 平均准确率可能有不同字段名
 	avg_accuracy = json_data.get("avgAccuracy", 0.0)
+	if avg_accuracy == 0.0:
+		avg_accuracy = json_data.get("avgAccuracy", 0.0)
+	
 	pass_count = json_data.get("passCount", 0)
 	fail_count = json_data.get("failCount", 0)
 	file_hash = json_data.get("hash", "")

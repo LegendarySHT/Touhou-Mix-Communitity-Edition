@@ -3,6 +3,9 @@
 class_name GameLogger
 extends Node
 
+## 单例实例
+static var instance: GameLogger
+
 ## 日志级别
 enum LogLevel {
 	DEBUG = 0,
@@ -37,6 +40,10 @@ var level_colors = {
 }
 
 func _ready() -> void:
+	if instance == null:
+		instance = self
+	else:
+		queue_free()
 	add_to_group("singleton")
 	_ensure_log_directory()
 
