@@ -9,15 +9,13 @@ var last_selection=null #上一次选中的节点
 var is_dragging := false
 #当鼠标开始拖拽至松手前，计算列表滚动值的
 var drag_pos1=0;
-var drag_pos2=0;
+var drag_detla=0;
 #开始拖拽时的列表滚动值
 var start_scroll_v_pos=0
 
 # 这个玩意没在工作
 func _on_scrolling():
-	# 用户正在滚动时标记为拖拽中
-	is_dragging = true
-	start_scroll_v_pos=get_parent().scroll_vertical;
+	pass
 
 #路径
 var INDICATOR="/root/Main/InfoUI/Right/Right/Indicator"
@@ -25,7 +23,10 @@ var INDICATOR="/root/Main/InfoUI/Right/Right/Indicator"
 # 这个玩意也没正常工作
 func _input(event):
 	if Global.UI!=2 or snaping:
+		if snaping and not snaping.get_node("Button").button_pressed:
+			_show_midi_list()
 		return
+
 	# 检测鼠标释放或触摸结束
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
@@ -34,15 +35,15 @@ func _input(event):
 				is_dragging = false
 			#开始拖拽
 			else:
-				_on_scrolling()
+				is_dragging = true
+				start_scroll_v_pos=get_parent().scroll_vertical;
 				drag_pos1=event.global_position.y;
-				drag_pos2=drag_pos1
 	#左键拖拽
 	elif event is InputEventMouseMotion:
 		if  is_dragging:
-			drag_pos2=event.global_position.y-drag_pos1;
-			if drag_pos2!=0:
-				get_parent().scroll_vertical=-drag_pos2*1.5+start_scroll_v_pos
+			drag_detla=event.global_position.y-drag_pos1;
+			if drag_detla!=0:
+				get_parent().scroll_vertical=-drag_detla*1.5+start_scroll_v_pos
 
 
 func _ready():
@@ -100,10 +101,11 @@ func _process(_delta):
 	#吸附
 	if snaping!=null and abs(snaping.position.y-get_parent().scroll_vertical+15)>7:
 		get_parent().scroll_vertical+=(snaping.position.y-get_parent().scroll_vertical+15)/6
+		if not snaping.get_node("Button").button_pressed:
+			_show_midi_list()
 
 func _snap(midi_node):
 	snaping=midi_node
-
 
 func _show_midi_list() -> void:
 	if snaping!=null:
