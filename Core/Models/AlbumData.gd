@@ -27,14 +27,24 @@ var song_ids: Array[String] = []
 ## 该专辑的所有MIDI数量
 var total_midi_count: int = 0
 
+func json_get(json, key, default):
+	var intermediate = json.get(key,default)
+	if not json or not intermediate:
+		return default
+	return json.get(key,default)
+
 ## 从JSON数据构造
 func from_json(json_data: Dictionary) -> void:
 	id = json_data.get("_id", "")
 	name = json_data.get("name", "")
-	abbreviation = json_data.get("abbr", "")
-	release_date = json_data.get("date", "")
-	description = json_data.get("description", "")
-	cover_url = json_data.get("coverUrl", "")
+	#abbreviation = json_data.get("abbr", "")
+	#release_date = json_data.get("date", "")
+	#description = json_data.get("description", "")
+	#cover_url = json_data.get("coverUrl", "")
+	abbreviation = json_get(json_data,"abbr","")
+	release_date = json_get(json_data,"date","")
+	description = json_get(json_data,"description", "")
+	cover_url = json_get(json_data,"coverUrl", "")
 
 ## 转换为字典格式
 func to_dict() -> Dictionary:

@@ -117,9 +117,9 @@ func _load_configuration() -> void:
 		var music_vol = config_loader.get_int(config, "Audio", "music_volume", 80)
 		var sfx_vol = config_loader.get_int(config, "Audio", "effects_volume", 80)
 		
-		audio_manager.set_master_volume(master_vol)
-		audio_manager.set_music_volume(music_vol)
-		audio_manager.set_sfx_volume(sfx_vol)
+		#audio_manager.set_master_volume(master_vol)
+		#audio_manager.set_music_volume(music_vol)
+		#audio_manager.set_sfx_volume(sfx_vol)
 	else:
 		logger.warning("Failed to load configuration file", "Main")
 

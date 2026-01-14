@@ -28,6 +28,12 @@ var is_loading: bool = false
 ## 加载完成信号
 signal data_loaded
 
+func json_get(json, key, default):
+	var intermediate = json.get(key,default)
+	if not json or not intermediate:
+		return default
+	return json.get(key,default)
+
 func _ready() -> void:
 	if instance == null:
 		instance = self
@@ -43,10 +49,10 @@ func load_all_midis_async() -> void:
 	
 	is_loading = true
 	
-	var thread = Thread.new()
-	thread.start(_load_midis_thread)
-	thread.wait_to_finish()
-	
+	#var thread = Thread.new()
+	#thread.start(_load_midis_thread)
+	#thread.wait_to_finish()
+	_load_midis_thread()
 	is_loading = false
 	data_loaded.emit()
 
@@ -101,11 +107,9 @@ func _process_midi_json(json_data: Dictionary) -> void:
 	json_cache[midi_id] = json_data
 	
 	# 处理歌曲信息
-	var song_json = json_data.get("song") as Dictionary
-	if song_json == null:
-		song_json = {}
+	var song_json = json_get(json_data, "song", {}) as Dictionary
 	var song_id = song_json.get("_id", "")
-	if not song_id.is_empty():
+	if song_id and not song_id.is_empty():
 		if not songs.has(song_id):
 			var song = SongData.new()
 			song.from_json(song_json)
@@ -116,11 +120,9 @@ func _process_midi_json(json_data: Dictionary) -> void:
 		midi.song_data = song
 	
 	# 处理专辑信息
-	var album_json = json_data.get("album") as Dictionary
-	if album_json == null:
-		album_json = {}
+	var album_json = json_get(json_data,"album",{}) as Dictionary
 	var album_id = album_json.get("_id", "")
-	if not album_id.is_empty():
+	if album_id and not album_id.is_empty():
 		if not albums.has(album_id):
 			var album = AlbumData.new()
 			album.from_json(album_json)

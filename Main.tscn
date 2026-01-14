@@ -1,17 +1,18 @@
-[gd_scene load_steps=32 format=3 uid="uid://jvmwtrulpf5g"]
+[gd_scene load_steps=33 format=3 uid="uid://jvmwtrulpf5g"]
 
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_devvj"]
-[ext_resource type="Script" path="res://UI/Components/camera_2d.gd" id="2_3b0ty"]
+[ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
+[ext_resource type="Script" uid="uid://lwqxjakjibps" path="res://UI/Components/camera_2d.gd" id="2_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://cbkgu4o71ikgo" path="res://Resources/Gradient/gradient1.png" id="3_bg4s2"]
-[ext_resource type="Script" path="res://UI/Components/background.gd" id="5_xrxkg"]
+[ext_resource type="Script" uid="uid://7yry3gl1v284" path="res://UI/Components/background.gd" id="5_xrxkg"]
 [ext_resource type="Texture2D" uid="uid://7e7lff81aa7n" path="res://Resources/Gradient/gradient2.png" id="6_xrxkg"]
-[ext_resource type="Script" path="res://UI/Components/store_button.gd" id="7_sqvbp"]
+[ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/store_button.gd" id="7_sqvbp"]
 [ext_resource type="Texture2D" uid="uid://bq58thu46jvsq" path="res://Resources/icon/midi_store.png" id="8_hri7i"]
 [ext_resource type="Texture2D" uid="uid://bgvtr3nkhfcdr" path="res://Resources/icon/midiInfoPage/back.png" id="9_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://dj5o6emlgvdmo" path="res://Resources/icon/setting.png" id="10_5mvff"]
-[ext_resource type="Script" path="res://UI/Components/shortcut_menu.gd" id="11_oye8v"]
+[ext_resource type="Script" uid="uid://cohp1v184ht7q" path="res://UI/Components/shortcut_menu.gd" id="11_oye8v"]
 [ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="12_40n85"]
-[ext_resource type="Script" path="res://UI/Components/sort_button.gd" id="13_3b0ty"]
+[ext_resource type="Script" uid="uid://bg7bh1y1ne4ws" path="res://UI/Components/sort_button.gd" id="13_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://b4rxi3wio8sjy" path="res://Resources/icon/Sort/Status/All.png" id="14_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://c8twb3tyhwm1t" path="res://Resources/icon/Sort/Data/Played.png" id="14_sph85"]
 [ext_resource type="ButtonGroup" uid="uid://ba4mkjssd25nv" path="res://Resources/ButtonGroup/SortButton.tres" id="15_bg4s2"]
@@ -20,10 +21,10 @@
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
 [ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="18_3ccbu"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
-[ext_resource type="Script" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
+[ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
 [ext_resource type="Script" uid="uid://cc07n4a54nk16" path="res://Scene/AlbumList.gd" id="21_3b0ty"]
 [ext_resource type="Script" uid="uid://dmccjm3n7wwo0" path="res://Scene/SongList.gd" id="22_3b0ty"]
-[ext_resource type="Script" path="res://UI/Components/Sorted_Midi_Scroll.gd" id="23_bg4s2"]
+[ext_resource type="Script" uid="uid://bfb2dq1g1imm1" path="res://UI/Components/Sorted_Midi_Scroll.gd" id="23_bg4s2"]
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="24_mxvw5"]
 [ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="25_xrxkg"]
 [ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="26_sqvbp"]
@@ -41,6 +42,7 @@ bg_color = Color(0.49, 0.7195, 1, 1)
 layout_mode = 3
 anchors_preset = 0
 size_flags_horizontal = 4
+script = ExtResource("1_w3rk5")
 
 [node name="Player_Info" type="Line2D" parent="."]
 position = Vector2(-44.393, 275.71)
@@ -117,6 +119,7 @@ script = ExtResource("2_3b0ty")
 
 [node name="background" type="TextureRect" parent="."]
 z_index = -2
+layout_mode = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
 mouse_filter = 2
@@ -126,6 +129,7 @@ metadata/_edit_lock_ = true
 
 [node name="ReferenceRect" type="ReferenceRect" parent="."]
 z_index = 5
+layout_mode = 0
 offset_left = 289.0
 offset_top = -26.0
 offset_right = 1215.0
@@ -136,6 +140,7 @@ metadata/_edit_lock_ = true
 
 [node name="Store_Background" type="TextureRect" parent="."]
 custom_minimum_size = Vector2(1921, 1080)
+layout_mode = 0
 offset_left = 1920.0
 offset_right = 3841.0
 offset_bottom = 1080.0
@@ -287,6 +292,7 @@ points = PackedVector2Array(226, -3, -5, 615)
 width = 6.0
 
 [node name="Menu_Bar" type="HBoxContainer" parent="."]
+layout_mode = 0
 offset_left = 1305.0
 offset_top = 15.0
 offset_right = 1793.0
