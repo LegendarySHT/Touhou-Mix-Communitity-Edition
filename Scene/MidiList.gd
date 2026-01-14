@@ -2,8 +2,8 @@ extends VBoxContainer
 var need_initial=1
 var counter =0
 
-var snaping=null
-var last_selection=null
+var snaping=null #当前的展开的节点
+var last_selection=null #上一次选中的节点
 
 #指示当前是否有拖拽操作
 var is_dragging := false
@@ -13,7 +13,7 @@ var drag_pos2=0;
 #开始拖拽时的列表滚动值
 var start_scroll_v_pos=0
 
-
+# 这个玩意没在工作
 func _on_scrolling():
 	# 用户正在滚动时标记为拖拽中
 	is_dragging = true
@@ -22,6 +22,7 @@ func _on_scrolling():
 #路径
 var INDICATOR="/root/Main/InfoUI/Right/Right/Indicator"
 
+# 这个玩意也没正常工作
 func _input(event):
 	if Global.UI!=2 or snaping:
 		return
@@ -51,74 +52,41 @@ func _ready():
 func _process(_delta):
 	if need_initial and Global.UI==2:
 		#读取midi
-		#var album_list=get_node("/root/Main/album_list2")
-		#var song_list=get_node("/root/Main/song_list")
 		var InfoUI=get_node("/root/Main/InfoUI")
 		var midi_list=InfoUI.get_node("MidiWindow/SC/VBOX")
 		var temp
 		
 		var bg=load("res://ButtonGroup/MidiButton.tres")
-		if Global.Sort==0:
-			var data=Global.data[Global.sourceAlbumName][Global.sourceSongName]
-			for i in data.keys():
-				#初始化页面指示器
-				var indicator=get_node(INDICATOR)
-				var point=load("res://Scene/indicator_point.tscn").instantiate()
-				indicator.add_child(point)
-				
-				temp=load("res://Scene/midi_node.tscn").instantiate()
-				
-				var dic=data[i]
-				
-				temp.set_meta("status",dic["status"])
-				temp.set_meta("artistName",dic["artistName"])
-				temp.set_meta("trialCount",dic["trialCount"])
-				temp.set_meta("upCount",dic["upCount"])
-				
-				temp.set_meta("avgAccuracy",dic["avgAccuracy"])
-				temp.set_meta("name",dic["name"])
-				temp.set_meta("desc",dic["desc"])
-				temp.set_meta("id",dic["_id"])
-				temp.set_meta("hash",dic["hash"])
-				temp.set_meta("index",counter)
-				counter+=1
-				
-				temp.snap_target.connect(_snap)
-				temp.get_node("Button").button_group=bg
-				midi_list.add_child(temp)
-				if need_initial:
-					get_child(0).get_node("Button").button_pressed=true
-					need_initial=0;
-		else:
-			for i in get_node("/root/Main/SortedMidi/List/VBox").get_children():
-				#初始化页面指示器
-				var indicator=get_node(INDICATOR)
-				var point=load("res://Scene/indicator_point.tscn").instantiate()
-				indicator.add_child(point)
-				
-				temp=load("res://Scene/midi_node.tscn").instantiate()
-				
-				temp.set_meta("status",i.get_meta("status"))
-				temp.set_meta("artistName",i.get_meta("artistName"))
-				temp.set_meta("trialCount",i.get_meta("trialCount"))
-				temp.set_meta("upCount",i.get_meta("upCount"))
-				
-				temp.set_meta("avgAccuracy",i.get_meta("avgAccuracy"))
-				temp.set_meta("name",i.get_meta("name"))
-				temp.set_meta("desc",i.get_meta("desc"))
-				temp.set_meta("id",i.get_meta("id"))
-				temp.set_meta("hash",i.get_meta("hash"))
-				temp.set_meta("index",counter)
-				counter+=1
-				
-				temp.snap_target.connect(_snap)
-				temp.get_node("Button").button_group=bg
-				midi_list.add_child(temp)
-				
-				if i.get_meta("id")==Global.select_midi:
-					temp.get_node("Button").button_pressed=true
-				if need_initial:
-					need_initial=0;
+		var data=Global.data[Global.sourceAlbumName][Global.sourceSongName]
+		for i in data.keys():
+			#初始化页面指示器
+			var indicator=get_node(INDICATOR)
+			var point=load("res://Scene/indicator_point.tscn").instantiate()
+			indicator.add_child(point)
+			
+			temp=load("res://Scene/midi_node.tscn").instantiate()
+			
+			var dic=data[i]
+			
+			temp.set_meta("status",dic["status"])
+			temp.set_meta("artistName",dic["artistName"])
+			temp.set_meta("trialCount",dic["trialCount"])
+			temp.set_meta("upCount",dic["upCount"])
+			
+			temp.set_meta("avgAccuracy",dic["avgAccuracy"])
+			temp.set_meta("name",dic["name"])
+			temp.set_meta("desc",dic["desc"])
+			temp.set_meta("id",dic["_id"])
+			temp.set_meta("hash",dic["hash"])
+			temp.set_meta("index",counter)
+			counter+=1
+			
+			temp.snap_target.connect(_snap)
+			temp.get_node("Button").button_group=bg
+			midi_list.add_child(temp)
+			if need_initial:
+				get_child(0).get_node("Button").button_pressed=true
+				need_initial=0;
 			
 	elif need_initial==0 and Global.UI!=2:
 		is_dragging=false
@@ -149,28 +117,22 @@ func _show_midi_list() -> void:
 
 
 func _previous() -> void:
-	print("Prev")
-	var Tindex #TargetIndex
-	if snaping:
-		Tindex=snaping.get_meta("index")-1
-	elif last_selection:
-		Tindex=last_selection.get_meta("index")-1
-	if snaping or last_selection:
-		if Tindex<0:
-			Tindex=counter-1
-		get_child(Tindex).get_node("Button").button_pressed=true
-		
+	if last_selection:
+		_show_midi_list()
 
+	# 收起上一个展开的节点
+	get_child(snaping.get_meta("index")).get_node("Button").button_pressed=false
+	
+	var Tindex # 目标索引
+	Tindex=(snaping.get_meta("index")-1) % counter
+	get_child(Tindex).get_node("Button").button_pressed=true
 
 func _next() -> void:
-	print("Next")
+	if last_selection:
+		_show_midi_list()
+
+	get_child(snaping.get_meta("index")).get_node("Button").button_pressed=false
+
 	var Tindex
-	if snaping:
-		Tindex=snaping.get_meta("index")+1
-	elif last_selection:
-		Tindex=last_selection.get_meta("index")+1
-	if snaping or last_selection:
-		if Tindex>counter-1:
-			Tindex=0
-		get_child(Tindex).get_node("Button").button_pressed=true
-		
+	Tindex=(snaping.get_meta("index")+1) % counter
+	get_child(Tindex).get_node("Button").button_pressed=true
