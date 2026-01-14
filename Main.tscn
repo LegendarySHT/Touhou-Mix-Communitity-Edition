@@ -147,7 +147,7 @@ offset_bottom = 1080.0
 texture = ExtResource("6_xrxkg")
 
 [node name="Album" type="Polygon2D" parent="."]
-skew = 0.261799
+skew = 0.2617994
 
 [node name="AlbumList" type="ScrollContainer" parent="Album"]
 physics_interpolation_mode = 1

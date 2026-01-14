@@ -91,6 +91,7 @@ func _initialize_core_systems() -> void:
 	# 异步加载MIDI数据
 	_load_midi_data()
 	
+	Global._initialize_new_architecture_refs()
 	print("=== Core Systems Initialized ===")
 
 ## 连接核心系统信号
@@ -141,6 +142,8 @@ func _on_state_changed(old_state: int, new_state: int) -> void:
 	var old_name = state_manager.get_state_name(old_state)
 	var new_name = state_manager.get_state_name(new_state)
 	logger.debug("UI State changed: %s -> %s" % [old_name, new_name], "Main")
+
+	Global._execute_state_transition_animation(old_state, new_state)
 
 ## 错误处理回调
 func _on_error_occurred(error_code: int, error_message: String) -> void:

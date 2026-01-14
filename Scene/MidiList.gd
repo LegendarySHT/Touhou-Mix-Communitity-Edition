@@ -22,7 +22,7 @@ var INDICATOR="/root/Main/InfoUI/Right/Right/Indicator"
 
 # 这个玩意也没正常工作
 func _input(event):
-	if Global.UI!=2 or snaping:
+	if UiStatMGR.current_state != UiStatMGR.UIState.MIDI_VIEW or snaping:
 		if snaping and not snaping.get_node("Button").button_pressed:
 			_show_midi_list()
 		return
@@ -51,7 +51,7 @@ func _ready():
 		pass
 
 func _process(_delta):
-	if need_initial and Global.UI==2:
+	if need_initial and UiStatMGR.current_state ==UiStatMGR.UIState.MIDI_VIEW:
 		#读取midi
 		var InfoUI=get_node("/root/Main/InfoUI")
 		var midi_list=InfoUI.get_node("MidiWindow/SC/VBOX")
@@ -89,7 +89,7 @@ func _process(_delta):
 				get_child(0).get_node("Button").button_pressed=true
 				need_initial=0;
 			
-	elif need_initial==0 and Global.UI!=2:
+	elif need_initial==0 and UiStatMGR.current_state != UiStatMGR.UIState.MIDI_VIEW:
 		is_dragging=false
 		need_initial=1;
 		counter=0

@@ -14,7 +14,7 @@ var sorting_engine: SortingEngine
 
 ## 旧系统变量（保持兼容性，逐步废弃）
 #当前页面
-var UI=0;#0初始；1二级选曲；2 midi界面；3音轨；5设置
+# var UI=0;#0初始；1二级选曲；2 midi界面；3音轨；5设置
 
 #当前选中的专辑和歌曲的编号
 var album=-1;
@@ -25,7 +25,7 @@ var sourceSongName=[]
 #储存所有midi的json的字典
 var data={}
 #切换ui时的目标ui
-var TargetUI=-1
+# var TargetUI=-1
 
 #存储排序结果 降序（已废弃，使用 SortingEngine）
 var download=LinkList.new() # downloadCount
@@ -52,12 +52,21 @@ var pn=["p6","n6"]
 #MidiList 保存将要加入列表的节点
 var ML=[]
 
+# 动画状态
+var is_animating: bool = false
+
 func _ready():
 	# 获取新架构系统引用
 	_initialize_new_architecture_refs()
 	
 	# 连接菜单信号
 	get_node("/root/Main/Menu_Bar/HBC/Sub_Menu").menu_closed.connect(_close_sort_menu)
+	
+	# 连接UI状态管理器信号
+	#if state_manager:
+		#state_manager.state_entering.connect(_on_state_entering)
+		#state_manager.state_exiting.connect(_on_state_exiting)
+		#state_manager.state_changed.connect(_on_state_changed)
 	
 	# 旧数据加载逻辑（保持兼容）
 	_thread = Thread.new()
@@ -118,10 +127,10 @@ func _initialize_new_architecture_refs() -> void:
 	
 	var main_node = get_node("/root/Main")
 	if main_node:
-		data_manager = main_node.get_node_or_null("DataManager")
-		event_bus = main_node.get_node_or_null("EventBus")
-		state_manager = main_node.get_node_or_null("UIStateManager")
-		animation_manager = main_node.get_node_or_null("AnimationManager")
+		data_manager = DataManager.instance
+		event_bus = EventBus.instance
+		state_manager = UiStatMGR.instance
+		animation_manager = AniMGR.instance
 		
 		if data_manager:
 			print("[Global] Connected to DataManager")
@@ -283,217 +292,373 @@ func list_files_in_folder(folder_path: String, recursive: bool = true, file_exte
 var ALBUMLIST="/root/Main/Album/AlbumList"
 var SONGLIST="/root/Main/Song/SongList"
 var _SS="/root/Main/SS/SS"
-#切换到指定的页
-func switch(TUI):
-	if Global.UI==-1:
+
+
+## 状态进入处理
+# func _on_state_entering(state: UIStateManager.UIState) -> void:
+# 	print("状态进入: ", state_manager.get_state_name(state))
+	
+	# 更新旧UI变量（兼容性）
+	# match state:
+	# 	UIStateManager.UIState.ALBUM_VIEW:
+	# 		UI = 0
+	# 		TargetUI = 0
+	# 	UIStateManager.UIState.SONG_VIEW:
+	# 		UI = 1
+	# 		TargetUI = 1
+	# 	UIStateManager.UIState.MIDI_VIEW:
+	# 		UI = 2
+	# 		TargetUI = 2
+	# 	UIStateManager.UIState.SORTED_VIEW:
+	# 		UI = 0
+	# 		TargetUI = 2
+
+## 状态退出处理
+# func _on_state_exiting(state: UIStateManager.UIState) -> void:
+# 	print("状态退出: ", state_manager.get_state_name(state))
+	# 可以在这里添加退出状态的清理工作
+
+# ## 状态改变处理
+# func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
+# 	print("状态改变: %s -> %s" % [state_manager.get_state_name(old_state), state_manager.get_state_name(new_state)])
+	
+# 	# 执行状态转换动画
+# 	_execute_state_transition_animation(old_state, new_state)
+
+## 执行状态转换动画
+func _execute_state_transition_animation(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
+	if is_animating:
 		return
+	
+	is_animating = true
+	
+	# 根据状态转换执行相应的动画
+	match [old_state, new_state]:
+		[UIStateManager.UIState.ALBUM_VIEW, UIStateManager.UIState.SONG_VIEW]:
+			_animate_album_to_song()
+		[UIStateManager.UIState.SONG_VIEW, UIStateManager.UIState.ALBUM_VIEW]:
+			_animate_song_to_album()
+		[UIStateManager.UIState.ALBUM_VIEW, UIStateManager.UIState.SORTED_VIEW]:
+			_animate_album_to_sorted()
+		[UIStateManager.UIState.SORTED_VIEW, UIStateManager.UIState.ALBUM_VIEW]:
+			_animate_sorted_to_album()
+		[UIStateManager.UIState.SONG_VIEW, UIStateManager.UIState.MIDI_VIEW]:
+			_animate_song_to_midi()
+		[UIStateManager.UIState.MIDI_VIEW, UIStateManager.UIState.SONG_VIEW]:
+			_animate_midi_to_song()
+		[UIStateManager.UIState.MIDI_VIEW, UIStateManager.UIState.SORTED_VIEW]:
+			_animate_midi_to_sorted()
+		_:
+			print("未处理的状态转换: %s -> %s" % [
+				state_manager.get_state_name(old_state),
+				state_manager.get_state_name(new_state)
+			])
+			is_animating = false
+
+## 专辑视图 -> 歌曲视图动画
+func _animate_album_to_song() -> void:
+	print("动画: ALBUM_VIEW -> SONG_VIEW")
+	
 	var SS=get_node(_SS)
 	var album_list=get_node(ALBUMLIST)
 	var song_list=get_node(SONGLIST)
+	
+	# 复制并生成节点
+	var polygon=Polygon2D.new()
+	var copy=album_list.get_node("VBox").get_child(album).duplicate(true)
+	polygon.skew=deg_to_rad(15)
+	copy.name="SS"
+	polygon.add_child(copy)
+	polygon.name="SS"
+	copy=polygon
+	
+	copy.position=album_list.get_node("VBox").get_child(album).global_position
+	
+	# 设置节点
+	var button=copy.get_node("SS/PC/Polygon2D/AlbumButton")
+	button.button_group=null
+	button.toggle_mode=false
+	get_node("/root/Main").add_child(copy)
+	SS=get_node(_SS)
+	
+	# 创建补间动画
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	
+	# 专辑列表移出
+	var time=0.15
+	tween.set_parallel(true)
+	for i in album_list.get_node("VBox").get_children():
+		if abs(i.get_meta("index")-album)<4 and i.get_meta("index")!=album:
+			tween.tween_property(i,"theme_override_constants/margin_left",-1200,time)
+	
+	tween.finished.connect(_finish_album_to_song.bind(tween, SS, album_list, song_list))
+
+## 完成专辑到歌曲的动画
+func _finish_album_to_song(tween: Tween, SS: Node, album_list: Node, song_list: Node) -> void:
+	album_list.visible=false
+	print("专辑列表隐藏")
+	
+	var finish_tween = create_tween()
+	finish_tween.set_ease(Tween.EASE_OUT)
+	finish_tween.set_trans(Tween.TRANS_CUBIC)
+	
+	finish_tween.tween_property(SS,"position", Vector2(0, -SS.global_position.y) ,0.15)
+
+	song_list.visible=true
+	song_list.position=Vector2(285,-679)
+	finish_tween.parallel().tween_property(song_list,"position",Vector2(285,390),0.15)
+	
+	var button=SS.get_node("PC/Polygon2D/AlbumButton")
+	button.pressed.connect(song_list.back)
+	
+	is_animating = false
+
+## 歌曲视图 -> 专辑视图动画
+func _animate_song_to_album() -> void:
+	print("动画: SONG_VIEW -> ALBUM_VIEW")
+	
+	var song_list=get_node(SONGLIST)
+	var album_list=get_node(ALBUMLIST)
+	var SS=get_node(_SS)
+	
+	if SS:
+		SS.get_parent().queue_free()
+	
+	song_list.visible=false
+	album_list.visible=true
+	
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	
+	# 专辑列表出现
+	var time=0.25
+	tween.set_parallel(true)
+	for i in album_list.get_child(0).get_children():
+		if abs(i.get_meta("index")-album)<4:
+			tween.tween_property(i,"theme_override_constants/margin_left",0,time)
+			time+=0.25
+			if time>0.8:
+				time=0.8
+	
+	tween.finished.connect(_finish_song_to_album.bind(song_list))
+
+## 完成歌曲到专辑的动画
+func _finish_song_to_album(song_list: Node) -> void:
+	song_list.initial=0
+	# 释放子项
+	for i in song_list.get_child(0).get_children():
+		i.queue_free()
+	song_list.visible=false
+	
+	is_animating = false
+
+## 专辑视图 -> 排序视图动画
+func _animate_album_to_sorted() -> void:
+	print("动画: ALBUM_VIEW -> SORTED_VIEW")
+	
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	
+	tween.set_parallel(true)
+	tween.tween_property(get_node("/root/Main/SortedMidi"),"position",Vector2(-1500,0),0.25)
+	
+	# 右侧退场
+	tween.tween_property(get_node("/root/Main/Menu_Bar"),"position",Vector2(1305+53.58,-215-800),0.25)
+	tween.tween_property(get_node("/root/Main/Player_Info/Charactor"),"position",Vector2(0,950),0.15)
+	tween.tween_property(get_node("/root/Main/Player_Info"),"position",Vector2(-44.393+650,257.71),0.5)
+	
+	var song_list=get_node(SONGLIST)
+	song_list.storeButtonSwitch.emit(true)
+	
+	# MIDI界面入场
 	var Main=get_node("/root/Main")
+	if not Main.get_node("InfoUI"):
+		var info_window=load("res://Scene/info_ui.tscn").instantiate()
+		Main.add_child(info_window)
+	else:
+		Main.get_node("InfoUI").visible=true
+		Main.get_node("InfoUI").modulate=Color(1,1,1,1)
 	
-	TargetUI=TUI
-	#Tween
-	var tween = create_tween()
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_CUBIC)
+	Main.get_node("InfoUI").position=Vector2(130+500*0.2679,-450)
+	tween.tween_property(Main.get_node("InfoUI"),"position",Vector2(130,50),0.5)
 	
-	if Global.UI==0:
-		if TUI==1:
-			print("Switch: 0-1")
-			Global.UI=-1
-			print("Select Album: ",Global.album)
-			
-			#复制并生成节点
-			var polygon=Polygon2D.new()
-			var copy=album_list.get_node("VBox").get_child(Global.album).duplicate(true)
-			polygon.skew=deg_to_rad(15)
-			copy.name="SS"
-			polygon.add_child(copy)
-			polygon.name="SS"
-			copy=polygon
-			
-			copy.position=album_list.get_node("VBox").get_child(Global.album).global_position
-			
-			#设置节点
-			var button=copy.get_node("SS/PC/Polygon2D/AlbumButton")
-			button.button_group=null
-			button.toggle_mode=false
-			get_node("/root/Main").add_child(copy)
-			SS=get_node(_SS)
-			
-			#专辑列表的移出
-			var time=0.15
-			tween.set_parallel(true)
-			for i in album_list.get_node("VBox").get_children():
-				if abs(i.get_meta("index")-Global.album)<4 and i.get_meta("index")!=Global.album:
-					tween.tween_property(i,"theme_override_constants/margin_left",-1200,time)
-			tween.finished.connect(_switch_step_2)
-		#选中筛选过后的midi
-		elif TUI==2:
-			UI=-1
-			print("Switch: 0-2")
-			tween.set_parallel(true)
-			tween.tween_property(get_node("/root/Main/SortedMidi"),"position",Vector2(-1500,0),0.25)
-			
-			#右侧退场
-			tween.tween_property(get_node("/root/Main/Menu_Bar"),"position",Vector2(1305+53.58,-215-800),0.25)
-			tween.tween_property(get_node("/root/Main/Player_Info/Charactor"),"position",Vector2(0,950),0.15)
-			tween.tween_property(get_node("/root/Main/Player_Info"),"position",Vector2(-44.393+650,257.71),0.5)
-			song_list.storeButtonSwitch.emit(true)
-			#midi界面入场
-			if not Main.get_node("InfoUI"):
-				var info_window=load("res://Scene/info_ui.tscn").instantiate()
-				Main.add_child(info_window)
-			else:
-				Main.get_node("InfoUI").visible=true
-				Main.get_node("InfoUI").modulate=Color(1,1,1,1)
-			Main.get_node("InfoUI").position=Vector2(130+500*0.2679,-450)
-			tween.tween_property(Main.get_node("InfoUI"),"position",Vector2(130,50),0.5);
-			
-			tween.finished.connect(_switch_step_2)
-	elif Global.UI==1:
-		if TUI==10:
-			Global.UI=-1
-			print("Switch: 1-0")
-			tween.parallel();
-			
-			#本页面退场
-			tween.tween_property(song_list,"position",Vector2(1080*0.2679,-779),0.15);
-			tween.tween_property(SS,"position",Vector2(-1200,SS.position.y),0.35);
-			tween.finished.connect(_switch_step_2)
-		if TUI==12:
-			print("Switch: 1-2")
-			Global.UI=-1
-			tween.set_parallel(true);
-			
-			#本页面退场
-			tween.tween_property(song_list,"position",Vector2(1080*0.2679,-779),0.5);
-			#左侧离场
-			tween.tween_property(SS.get_node("PC"),"modulate",Color(1,1,1,0),0.5);
-			#右侧离场
-			tween.tween_property(get_node("/root/Main/Menu_Bar"),"position",Vector2(1305+53.58,-215),0.25)
-			tween.tween_property(get_node("/root/Main/Player_Info/Charactor"),"position",Vector2(0,950),0.15)
-			tween.tween_property(get_node("/root/Main/Player_Info"),"position",Vector2(-44.393+650,257.71),0.5)
-			song_list.storeButtonSwitch.emit(true)
-			
-			#左侧入场
-			if not Main.get_node("InfoUI"):
-				var info_window=load("res://Scene/info_ui.tscn").instantiate()
-				Main.add_child(info_window)
-			else:
-				Main.get_node("InfoUI").visible=true
-				Main.get_node("InfoUI").modulate=Color(1,1,1,1)
-			Main.get_node("InfoUI").position=Vector2(130+500*0.2679,-450)
-			#tween.tween_property(Main.get_node("InfoU"),"position",Vector2(57.331,-10+50),0.5);
-			tween.tween_property(Main.get_node("InfoUI"),"position",Vector2(130,50),0.5);
-			tween.finished.connect(_switch_step_2)
-	elif Global.UI==2:
-		if TUI==21:
-			print("Switch: 2-1")
-			
-			tween.tween_property(Main.get_node("InfoUI"),"modulate",Color(1,1,1,0),0.1)
-			Main.get_node("InfoUI").visible=false
-			Main.get_node("InfoUI/OptionWindow/Option/Rank").button_pressed=true
+	tween.finished.connect(_finish_album_to_sorted)
 
-			tween.set_parallel(true)
-			tween.tween_property(song_list,"position",Vector2(285,390),0.5);
-			#左侧
-			tween.tween_property(SS,"position",Vector2(0,-177.5),0.2)
-			tween.tween_property(SS.get_node("PC"),"modulate",Color(1,1,1,1),0.5);
-			#右侧
-			tween.tween_property(get_node("/root/Main/Menu_Bar"),"position",Vector2(1305,15),0.25)
-			tween.tween_property(get_node("/root/Main/Player_Info/Charactor"),"position",Vector2(0,0),0.15)
-			tween.tween_property(get_node("/root/Main/Player_Info"),"position",Vector2(-44.393,257.71),0.5)
-			song_list.storeButtonSwitch.emit(false)
-			#信息框
-			
-			#tween.tween_property(SS,"position",Vector2(SS.position.x+0.2679*(SS.position.y+10),-10),0.5)
-			song_list.visible=true
-			SS.visible=true
-			Global.UI=1
-			Global.song=-1
-		elif TUI==20:
-			tween.tween_property(Main.get_node("InfoUI"),"modulate",Color(1,1,1,0),0.1)
-			Main.get_node("InfoUI").visible=false
-			Main.get_node("InfoUI/OptionWindow/Option/Rank").button_pressed=true
+## 完成专辑到排序的动画
+func _finish_album_to_sorted() -> void:
+	print("切换到排序视图完成")
+	get_node("/root/Main/SortedMidi").visible=false
+	
+	is_animating = false
 
-			tween.set_parallel(true)
-			tween.tween_property(song_list,"position",Vector2(285,390),0.5);
-			#右侧s
-			tween.tween_property(get_node("/root/Main/Menu_Bar"),"position",Vector2(1305,15),0.25)
-			tween.tween_property(get_node("/root/Main/Player_Info/Charactor"),"position",Vector2(0,0),0.15)
-			tween.tween_property(get_node("/root/Main/Player_Info"),"position",Vector2(-44.393,257.71),0.5)
-			song_list.storeButtonSwitch.emit(false)
-			
-			get_node("/root/Main/SortedMidi").visible=true
-			tween.tween_property(get_node("/root/Main/SortedMidi"),"position",Vector2(0,0),1)
-			UI=0
-			get_node("/root/Main/Menu_Bar/HBC/Sub_Menu").switch_table(1)
-			#Sort=1
-			
-func _switch_step_2():
+## 排序视图 -> 专辑视图动画
+func _animate_sorted_to_album() -> void:
+	print("动画: SORTED_VIEW -> ALBUM_VIEW")
+	
+	var Main=get_node("/root/Main")
 	var tween = create_tween()
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_CUBIC)
+	
+	tween.tween_property(Main.get_node("InfoUI"),"modulate",Color(1,1,1,0),0.1)
+	
+	tween.finished.connect(_finish_sorted_to_album_first.bind(Main))
+
+## 完成排序到专辑的第一步动画
+func _finish_sorted_to_album_first(Main: Node) -> void:
+	Main.get_node("InfoUI").visible=false
+	if Main.get_node("InfoUI/OptionWindow/Option/Rank"):
+		Main.get_node("InfoUI/OptionWindow/Option/Rank").button_pressed=true
+	
+	var tween = create_tween()
+	tween.set_parallel(true)
+	
+	var song_list=get_node(SONGLIST)
+	tween.tween_property(song_list,"position",Vector2(285,390),0.5)
+	
+	# 右侧
+	tween.tween_property(get_node("/root/Main/Menu_Bar"),"position",Vector2(1305,15),0.25)
+	tween.tween_property(get_node("/root/Main/Player_Info/Charactor"),"position",Vector2(0,0),0.15)
+	tween.tween_property(get_node("/root/Main/Player_Info"),"position",Vector2(-44.393,257.71),0.5)
+	
+	song_list.storeButtonSwitch.emit(false)
+	
+	get_node("/root/Main/SortedMidi").visible=true
+	tween.tween_property(get_node("/root/Main/SortedMidi"),"position",Vector2(0,0),1)
+	
+	tween.finished.connect(_finish_sorted_to_album_final)
+
+## 完成排序到专辑的最终动画
+func _finish_sorted_to_album_final() -> void:
+	get_node("/root/Main/Menu_Bar/HBC/Sub_Menu").switch_table(1)
+	is_animating = false
+
+## 歌曲视图 -> MIDI视图动画
+func _animate_song_to_midi() -> void:
+	print("动画: SONG_VIEW -> MIDI_VIEW")
 	
 	var SS=get_node(_SS)
-	var album_list=get_node(ALBUMLIST)
 	var song_list=get_node(SONGLIST)
 	
-	if TargetUI==1:
-		#var copy =get_node("/root/Main/SS")
-		album_list.visible=false
-		print("hided")
-		tween.tween_property(SS,"position",Vector2(0,-177.5),0.15)
-		song_list.visible=true
-		song_list.position=Vector2(285,-679)
-		tween.tween_property(song_list,"position",Vector2(285,390),0.15)
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.set_parallel(true)
+	
+	# 本页面退场
+	tween.tween_property(song_list,"position",Vector2(1080*0.2679,-779),0.5)
+	# 左侧离场
+	tween.tween_property(SS.get_node("PC"),"modulate",Color(1,1,1,0),0.5)
+	# 右侧离场
+	tween.tween_property(get_node("/root/Main/Menu_Bar"),"position",Vector2(1305+53.58,-215),0.25)
+	tween.tween_property(get_node("/root/Main/Player_Info/Charactor"),"position",Vector2(0,950),0.15)
+	tween.tween_property(get_node("/root/Main/Player_Info"),"position",Vector2(-44.393+650,257.71),0.5)
+	
+	song_list.storeButtonSwitch.emit(true)
+	
+	# 左侧入场
+	var Main=get_node("/root/Main")
+	if not Main.get_node("InfoUI"):
+		var info_window=load("res://Scene/info_ui.tscn").instantiate()
+		Main.add_child(info_window)
+	else:
+		Main.get_node("InfoUI").visible=true
+		Main.get_node("InfoUI").modulate=Color(1,1,1,1)
+	
+	Main.get_node("InfoUI").position=Vector2(130+500*0.2679,-450)
+	tween.tween_property(Main.get_node("InfoUI"),"position",Vector2(130,50),0.5)
+	
+	tween.finished.connect(_finish_song_to_midi.bind(SS, song_list))
 
-		var button=SS.get_node("PC/Polygon2D/AlbumButton")
-		button.pressed.connect(song_list.back)
-		
-		Global.UI=1
-	elif  TargetUI==10:
-		if SS:
-			SS.get_parent().queue_free()
-		song_list.visible=false
-		if Sort==0:
-			album_list.visible =true
-		
-		#一级页面出现
-		var time=0.25
-		tween.set_parallel(true)
-		for i in album_list.get_child(0).get_children():
-			if abs(i.get_meta("index")-Global.album)<4:
-				#tween.tween_property(i,"theme_override_constants/margin_left",130-int(i.get_screen_position().y*0.26795),time)
-				tween.tween_property(i,"theme_override_constants/margin_left",0,time)
-				time+=0.25
-				if time>0.8:
-					time=0.8
-		tween.finished.connect(_switch_step_3)
-	elif TargetUI==12:
-		song_list.visible=false
-		SS.visible=false
-		Global.UI=2
-	elif TargetUI==2:
-		print("switch to 2")
-		get_node("/root/Main/SortedMidi").visible=false
-		Global.UI=2
-	elif TargetUI==20:
-		get_node("/root/Main/SortedMidi").visible=true
-		Global.UI=0
-func _switch_step_3():
+## 完成歌曲到MIDI的动画
+func _finish_song_to_midi(SS: Node, song_list: Node) -> void:
+	song_list.visible=false
+	SS.visible=false
+	
+	is_animating = false
+
+## MIDI视图 -> 歌曲视图动画
+func _animate_midi_to_song() -> void:
+	print("动画: MIDI_VIEW -> SONG_VIEW")
+	
+	var Main=get_node("/root/Main")
+	var tween = create_tween()
+	
+	tween.tween_property(Main.get_node("InfoUI"),"modulate",Color(1,1,1,0),0.1)
+	
+	tween.finished.connect(_finish_midi_to_song_first.bind(Main))
+
+## 完成MIDI到歌曲的第一步动画
+func _finish_midi_to_song_first(Main: Node) -> void:
+	Main.get_node("InfoUI").visible=false
+	if Main.get_node("InfoUI/OptionWindow/Option/Rank"):
+		Main.get_node("InfoUI/OptionWindow/Option/Rank").button_pressed=true
+	
+	var SS=get_node(_SS)
 	var song_list=get_node(SONGLIST)
 	
-	if TargetUI==10:
-		Global.UI=0
-		Global.song=-1
-		song_list.initial=0
-		#释放子项
-		for i in song_list.get_child(0).get_children():
-			i.queue_free()
-		song_list.visible=false
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(song_list,"position",Vector2(285,390),0.5)
+	# 左侧
+	tween.tween_property(SS,"position",Vector2(0,-177.5),0.2)
+	tween.tween_property(SS.get_node("PC"),"modulate",Color(1,1,1,1),0.5)
+	# 右侧
+	tween.tween_property(get_node("/root/Main/Menu_Bar"),"position",Vector2(1305,15),0.25)
+	tween.tween_property(get_node("/root/Main/Player_Info/Charactor"),"position",Vector2(0,0),0.15)
+	tween.tween_property(get_node("/root/Main/Player_Info"),"position",Vector2(-44.393,257.71),0.5)
+	
+	song_list.storeButtonSwitch.emit(false)
+	
+	song_list.visible=true
+	SS.visible=true
+	song = -1
+	
+	tween.finished.connect(_finish_midi_to_song_final)
+
+## 完成MIDI到歌曲的最终动画
+func _finish_midi_to_song_final() -> void:
+	is_animating = false
+
+## MIDI视图 -> 排序视图动画
+func _animate_midi_to_sorted() -> void:
+	print("动画: MIDI_VIEW -> SORTED_VIEW")
+	
+	# 这个转换与 SORTED_VIEW -> ALBUM_VIEW 类似，但目标不同
+	_animate_sorted_to_album()
+	
+	is_animating = false
+
+## ================================================
+## 兼容性函数 - 逐步迁移
+## ================================================
+
+## 切换到指定的页（兼容旧代码）
+func switch(TUI):
+	# 将旧的目标UI映射到新的状态
+	var target_state: UIStateManager.UIState
+	
+	match TUI:
+		0, 10, 20:  # 返回专辑/排序视图
+			if Sort == 0:
+				target_state = UIStateManager.UIState.ALBUM_VIEW
+			else:
+				target_state = UIStateManager.UIState.SORTED_VIEW
+		21, 1:  # 歌曲视图
+			target_state = UIStateManager.UIState.SONG_VIEW
+		2, 12:  # MIDI视图
+			target_state = UIStateManager.UIState.MIDI_VIEW
+		_:
+			print("未知的目标UI: ", TUI)
+			return
+	
+	# 使用状态管理器切换状态
+	if state_manager:
+		state_manager.change_state(target_state)
+	else:
+		print("状态管理器未初始化")
 
 
 

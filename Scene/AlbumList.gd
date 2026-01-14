@@ -81,7 +81,7 @@ func _initialize_album_list():
 	print("成功读取", counter, "个专辑")
 
 func _process(delta):
-	if Global.UI != 0 or Global.Sort:
+	if UiStatMGR.current_state != UiStatMGR.UIState.ALBUM_VIEW or Global.Sort:
 		return
 	if is_dragging:
 		release_delta1 = release_delta2;
@@ -136,7 +136,7 @@ func _scrollbar_input(event):
 		scroll_velocity = 0;
 
 func _input(event):
-	if Global.UI != 0 or Global.Sort:
+	if UiStatMGR.current_state != UIStateManager.UIState.ALBUM_VIEW or Global.Sort:
 		return
 	# 检测鼠标释放或触摸结束
 	if event is InputEventMouseButton:

@@ -10,9 +10,9 @@ func _SongList_button_pressed() -> void:
 	print("song list button clicked")
 	switch_table(2)
 func _process(_delta):
-	if not (Global.UI==0 or Global.UI==1 or Global.UI==-1) and view!=0:
+	if not (UiStatMGR.current_state in [UiStatMGR.UIState.ALBUM_VIEW, UiStatMGR.UIState.SONG_VIEW]) and view!=0:
 		switch_table(view)
-	if view==0 and Global.Sort!=0 and (Global.UI==1 or Global.UI==0):
+	if view==0 and Global.Sort!=0 and (UiStatMGR.current_state in [UiStatMGR.UIState.ALBUM_VIEW, UiStatMGR.UIState.SONG_VIEW]):
 		get_node("Page/SortPage/SortButton/Data").button_pressed=false
 		get_node("Page/SortPage/SortButton/Time").button_pressed=false
 		get_node("Page/SortPage/SortButton").select=0

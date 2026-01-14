@@ -13,7 +13,7 @@ var drag_pos2=0;
 var start_scroll_v_pos=0
 
 func _process(_delta: float):
-	if Global.UI!=1:
+	if UiStatMGR.current_state != UiStatMGR.UIState.SONG_VIEW:
 		return
 	
 	if initial==0:
@@ -78,7 +78,7 @@ func _on_scrolling():
 
 
 func _input(event):
-	if Global.UI!=1:
+	if UiStatMGR.current_state != UIStateManager.UIState.SONG_VIEW:
 		return
 	# 检测鼠标释放或触摸结束
 	if event is InputEventMouseButton:

@@ -18,12 +18,12 @@ config/icon="res://icon/icon.svg"
 [autoload]
 
 Global="*res://Global.gd"
-Data_Manager="*res://Core/DataManager.gd"
-Event_Bus="*res://Core/EventBus.gd"
-Sorting_Engine="*res://Core/SortingEngine.gd"
-UI_State_Manager="*res://Core/UIStateManager.gd"
-Animation_Manager="*res://UI/Animations/AnimationManager.gd"
-Global_Logger="*res://Utilities/Logger.gd"
+DataMGR="*res://Core/DataManager.gd"
+EvtBus="*res://Core/EventBus.gd"
+SortEngine="*res://Core/SortingEngine.gd"
+UiStatMGR="*res://Core/UIStateManager.gd"
+AniMGR="*res://UI/Animations/AnimationManager.gd"
+GLogger="*res://Utilities/Logger.gd"
 
 [display]
 
