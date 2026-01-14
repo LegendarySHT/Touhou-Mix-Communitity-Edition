@@ -101,7 +101,9 @@ func _process_midi_json(json_data: Dictionary) -> void:
 	json_cache[midi_id] = json_data
 	
 	# 处理歌曲信息
-	var song_json = json_data.get("song", {}) as Dictionary
+	var song_json = json_data.get("song") as Dictionary
+	if song_json == null:
+		song_json = {}
 	var song_id = song_json.get("_id", "")
 	if not song_id.is_empty():
 		if not songs.has(song_id):
@@ -114,7 +116,9 @@ func _process_midi_json(json_data: Dictionary) -> void:
 		midi.song_data = song
 	
 	# 处理专辑信息
-	var album_json = json_data.get("album", {}) as Dictionary
+	var album_json = json_data.get("album") as Dictionary
+	if album_json == null:
+		album_json = {}
 	var album_id = album_json.get("_id", "")
 	if not album_id.is_empty():
 		if not albums.has(album_id):
