@@ -39,6 +39,22 @@ func animate_position(target: Node, to_pos: Vector2, duration: float = DURATION_
 	tween.tween_property(target, "position", to_pos, duration)
 	return tween
 
+## 列表项水平滑动动画
+func animate_list_item_horizontal(target: Node, excluded_index: int, horizon_delta: int, tween_id: String = "") -> Tween:
+	var tween = _create_tween(tween_id)
+	tween.set_ease(EASING_STANDARD)
+	tween.set_trans(Tween.TRANS_CUBIC)
+
+	var time=0.15
+	tween.set_parallel(true)
+	for i in range(excluded_index-4 if excluded_index-4>=0 else 0,excluded_index+5 if excluded_index+5<target.get_node("VBox").get_child_count() else target.get_node("VBox").get_child_count()):
+		if i != excluded_index:
+			var tag = target.get_node("VBox").get_child(i)
+			time = time + 0.15 if time < 0.3 else 0.3
+			tween.tween_property(tag,"theme_override_constants/margin_left",horizon_delta,time)
+
+	return tween
+
 ## 创建透明度动画
 func animate_modulate(target: Node, to_color: Color, duration: float = DURATION_NORMAL,
 					  tween_id: String = "") -> Tween:

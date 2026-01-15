@@ -24,7 +24,8 @@ func _on_button_pressed() -> void:
 		get_node("/root/Main/Song/SongList").storeButtonSwitch.emit(false)
 		if Global.Sort:
 			Global.switch(20)
+			UiStatMGR.change_state(UiStatMGR.UIState.ALBUM_VIEW)
 		else:
-			Global.switch(21)
+			UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
 	else:
 		switch_to_store.emit()
