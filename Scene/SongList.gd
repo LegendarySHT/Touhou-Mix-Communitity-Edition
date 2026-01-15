@@ -47,7 +47,7 @@ func _process(_delta: float):
 		cover.position.y=250-((1.0*cover.get_parent().get_parent().get_parent().get_meta("index")/index)*800)
 
 func back():
-	Global.switch(10)
+	UiStatMGR.change_state(UiStatMGR.UIState.ALBUM_VIEW)
 
 #按钮组
 func _on_button_toggled(toggled_on: bool, button):
@@ -62,7 +62,7 @@ func _on_button_toggled(toggled_on: bool, button):
 		if Global.song==songNode.get_meta("index"):
 			Global.sourceSongName=songNode.get_meta("sourceSongName");
 			print("Select Song: ",songNode.get_meta("sourceSongName"))
-			Global.switch(12)
+			UiStatMGR.change_state(UiStatMGR.UIState.MIDI_VIEW)
 			
 		tween.tween_property(songNode,"scale",Vector2(1.05,1.05),0.1)
 		Global.song=songNode.get_meta("index")

@@ -19,7 +19,7 @@ func _select(toggled_on):
 		if be_selected:
 			print("选中：%s / %s"%[get_meta("album"),get_meta("song")])
 			Global.select_midi=get_meta("id")
-			Global.switch(02)
+			UiStatMGR.change_state(UiStatMGR.UIState.MIDI_VIEW)
 		tween.tween_property(self,"scale",Vector2(1.07,1.07),0.15)
 		tween.tween_property(get_node("Line2D"),"default_color",Color("#938aff"),0.15)
 		be_selected=1

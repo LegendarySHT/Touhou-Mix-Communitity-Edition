@@ -191,7 +191,7 @@ func reset_selection():
 func _on_button_toggled(toggled_on: bool, button):
 	if toggled_on:
 		if Global.album == button.get_meta("index") and Global.album != -1:
-			Global.switch(1)
+			UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
 		need_snap = true;
 		snap_index = button.get_meta("index")
 		
