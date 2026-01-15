@@ -68,6 +68,7 @@ func _initialize_album_list():
 		
 		# 配置按钮
 		button.button_group = bg
+		button.set_meta("album_id",album_data.id)
 		button.toggled.connect(get_node("/root/Main/Album/AlbumList")._on_button_toggled.bind(button))
 		
 		# 添加到容器
@@ -191,8 +192,19 @@ func reset_selection():
 func _on_button_toggled(toggled_on: bool, button):
 	if toggled_on:
 		if Global.album == button.get_meta("index") and Global.album != -1:
+			# 设置专辑ID
+			var album_id = button.get_meta("album_id")
+			Global.album_id = album_id
+			
+			# 通过事件总线触发专辑选择
+			if EventBus.instance and DataManager.instance:
+				var album_data = DataManager.instance.get_album_by_id(album_id)
+				if album_data:
+					EventBus.instance.emit_album_selected(album_id, album_data)
+			
 			UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
-		need_snap = true;
+		
+		need_snap = true
 		snap_index = button.get_meta("index")
 		
 		Global.album = button.get_meta("index")
