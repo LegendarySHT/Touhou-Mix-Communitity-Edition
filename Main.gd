@@ -28,59 +28,54 @@ func _ready():
 func _initialize_core_systems() -> void:
 	print("=== Initializing Core Systems ===")
 	
-	# 1. 初始化日志系统
+	# 1. 初始化日志系统（单例，已自动管理）
 	logger = GameLogger.instance
-	logger.name = "GameLogger"
-	add_child(logger)
-	logger.info("Logger initialized", "Main")
+	if logger:
+		logger.info("Logger initialized", "Main")
 	
 	# 2. 初始化配置加载器
 	config_loader = ConfigLoader.new()
-	config_loader.name = "ConfigLoader"
-	add_child(config_loader)
-	logger.info("ConfigLoader initialized", "Main")
+	if logger:
+		logger.info("ConfigLoader initialized", "Main")
 	
-	# 3. 初始化事件总线
+	# 3. 初始化事件总线（单例，已自动管理）
 	event_bus = EventBus.instance
-	event_bus.name = "EventBus"
-	add_child(event_bus)
-	logger.info("EventBus initialized", "Main")
+	if event_bus and logger:
+		logger.info("EventBus initialized", "Main")
 	
-	# 4. 初始化UI状态管理器
+	# 4. 初始化UI状态管理器（单例，已自动管理）
 	state_manager = UIStateManager.instance
-	state_manager.name = "UIStateManager"
-	add_child(state_manager)
-	logger.info("UIStateManager initialized", "Main")
+	if state_manager and logger:
+		logger.info("UIStateManager initialized", "Main")
 	
-	# 5. 初始化动画管理器
+	# 5. 初始化动画管理器（单例，已自动管理）
 	animation_manager = AnimationManager.instance
-	animation_manager.name = "AnimationManager"
-	add_child(animation_manager)
-	logger.info("AnimationManager initialized", "Main")
+	if animation_manager and logger:
+		logger.info("AnimationManager initialized", "Main")
 	
-	# 6. 初始化排序引擎
+	# 6. 初始化排序引擎（单例，已自动管理）
 	sorting_engine = SortingEngine.instance
-	sorting_engine.name = "SortingEngine"
-	add_child(sorting_engine)
-	logger.info("SortingEngine initialized", "Main")
+	if sorting_engine and logger:
+		logger.info("SortingEngine initialized", "Main")
 	
-	# 7. 初始化数据管理器
+	# 7. 初始化数据管理器（单例，已自动管理）
 	data_manager = DataManager.instance
-	data_manager.name = "DataManager"
-	add_child(data_manager)
-	logger.info("DataManager initialized", "Main")
+	if data_manager and logger:
+		logger.info("DataManager initialized", "Main")
 	
 	# 8. 初始化游戏管理器
 	gameplay_manager = GameplayManager.new()
 	gameplay_manager.name = "GameplayManager"
 	add_child(gameplay_manager)
-	logger.info("GameplayManager initialized", "Main")
+	if logger:
+		logger.info("GameplayManager initialized", "Main")
 	
 	# 9. 初始化音频管理器
 	audio_manager = AudioManager.new()
 	audio_manager.name = "AudioManager"
 	add_child(audio_manager)
-	logger.info("AudioManager initialized", "Main")
+	if logger:
+		logger.info("AudioManager initialized", "Main")
 	
 	# 连接信号
 	_connect_signals()
@@ -118,10 +113,9 @@ func _load_configuration() -> void:
 		var music_vol = config_loader.get_int(config, "Audio", "music_volume", 80)
 		var sfx_vol = config_loader.get_int(config, "Audio", "effects_volume", 80)
 		
-		# 不注释掉跑不了)
-		#audio_manager.set_master_volume(master_vol)
-		#audio_manager.set_music_volume(music_vol)
-		#audio_manager.set_sfx_volume(sfx_vol)
+		audio_manager.set_master_volume(master_vol)
+		audio_manager.set_music_volume(music_vol)
+		audio_manager.set_sfx_volume(sfx_vol)
 	else:
 		logger.warning("Failed to load configuration file", "Main")
 

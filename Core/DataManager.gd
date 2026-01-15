@@ -54,7 +54,7 @@ func load_all_midis_async() -> void:
 
 ## 线程函数：加载MIDI数据
 func _load_midis_thread() -> void:
-	var midis_dir = "res://Resources/midis_info/"
+	var midis_dir = "res://Resources/midis_info/" #后期实现midi导入时应该会把它挪到user://目录下,现在先保留。
 	var dir = DirAccess.open(midis_dir)
 	
 	if dir == null:
@@ -139,9 +139,9 @@ func _process_nested_format(json_data: Dictionary, midi: MidiData, midi_id: Stri
 	
 	if song_id and not song_id.is_empty():
 		if not songs.has(song_id):
-			var song = SongData.new()
-			song.from_json(song_json)
-			songs[song_id] = song
+			var currentSong = SongData.new()
+			currentSong.from_json(song_json)
+			songs[song_id] = currentSong
 		
 		var song = songs[song_id]
 		song.add_midi_id(midi_id)
@@ -157,11 +157,11 @@ func _process_nested_format(json_data: Dictionary, midi: MidiData, midi_id: Stri
 			album.from_json(album_json)
 			albums[album_id] = album
 		
-		var album = albums[album_id]
+		var currentAlbum = albums[album_id]
 		if not song_id.is_empty():
-			album.add_song_id(song_id)
-		album.total_midi_count += 1
-		midi.album_data = album
+			currentAlbum.add_song_id(song_id)
+		currentAlbum.total_midi_count += 1
+		midi.album_data = currentAlbum
 		
 		# 构建树结构
 		_add_to_midi_tree(album_id, song_id, midi_id)
@@ -184,18 +184,18 @@ func _process_flat_format(json_data: Dictionary, midi: MidiData, midi_id: String
 	
 	# 处理歌曲信息
 	if not songs.has(song_id):
-		var song = SongData.new()
-		song.id = song_id
-		song.name = source_song_name
-		song.name_en = source_song_name
-		song.track_number = 0
+		var currentSong = SongData.new()
+		currentSong.id = song_id
+		currentSong.name = source_song_name
+		currentSong.name_en = source_song_name
+		currentSong.track_number = 0
 		
 		# 从touhouSongIndex获取音轨号（如果可用）
 		var touhou_song_index = json_data.get("touhouSongIndex", -1)
 		if touhou_song_index >= 0:
-			song.track_number = touhou_song_index
+			currentSong.track_number = touhou_song_index
 		
-		songs[song_id] = song
+		songs[song_id] = currentSong
 	
 	var song = songs[song_id]
 	song.add_midi_id(midi_id)
@@ -203,14 +203,14 @@ func _process_flat_format(json_data: Dictionary, midi: MidiData, midi_id: String
 	
 	# 处理专辑信息
 	if not albums.has(album_id):
-		var album = AlbumData.new()
-		album.id = album_id
-		album.name = source_album_name
+		var currentAlbum = AlbumData.new()
+		currentAlbum.id = album_id
+		currentAlbum.name = source_album_name
 		
 		# 尝试从touhouAlbumIndex获取缩写
 		var touhou_album_index = json_data.get("touhouAlbumIndex", -1)
 		if touhou_album_index >= 0:
-			album.abbreviation = "TH%02d" % touhou_album_index
+			currentAlbum.abbreviation = "TH%02d" % touhou_album_index
 		
 		# 从uploadedDate获取发布日期
 		var uploaded_date = json_get(json_data, "uploadedDate", "")
@@ -218,14 +218,14 @@ func _process_flat_format(json_data: Dictionary, midi: MidiData, midi_id: String
 			# 尝试解析日期
 			var date_parts = uploaded_date.split("T")[0].split("-")
 			if date_parts.size() >= 3:
-				album.release_date = "%s年%s月%s日" % [date_parts[0], date_parts[1], date_parts[2]]
+				currentAlbum.release_date = "%s年%s月%s日" % [date_parts[0], date_parts[1], date_parts[2]]
 		
 		# 封面URL
 		var cover_url = json_get(json_data, "coverUrl", "")
 		if not cover_url.is_empty():
-			album.cover_url = cover_url
+			currentAlbum.cover_url = cover_url
 		
-		albums[album_id] = album
+		albums[album_id] = currentAlbum
 	
 	var album = albums[album_id]
 	if not song_id.is_empty():
