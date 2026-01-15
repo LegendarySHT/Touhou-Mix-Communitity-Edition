@@ -50,8 +50,24 @@ func _ready() -> void:
 ## 确保日志目录存在
 func _ensure_log_directory() -> void:
 	var dir = DirAccess.open("user://")
-	if not dir.dir_exists("user://logs"):
-		dir.make_dir("user://logs")
+	
+	if dir == null:
+		push_error("Failed to open user:// directory")
+		return
+	
+	if not dir.dir_exists("logs"):
+		var new_error = dir.make_dir("logs")
+		if new_error != OK:
+			push_error("Failed to create logs directory: %s" % new_error)
+			return
+	
+	# 确保日志文件存在
+	if not FileAccess.file_exists(log_file_path):
+		var file = FileAccess.open(log_file_path, FileAccess.WRITE)
+		if file == null:
+			push_error("Failed to create log file: %s" % log_file_path)
+		else:
+			file.store_line("=== Game Logger Started ===")
 
 ## 调试日志
 func debug(message: String, context: String = "") -> void:
@@ -89,12 +105,23 @@ func _log(level: LogLevel, message: String, context: String = "") -> void:
 
 ## 写入到日志文件
 func _write_to_file(message: String) -> void:
+	# 检查日志目录是否存在
+	if not FileAccess.file_exists(log_file_path):
+		_ensure_log_directory()
+	
+	# 尝试以追加模式打开（WRITE模式会从头开始覆盖）
 	var file = FileAccess.open(log_file_path, FileAccess.READ_WRITE)
 	if file == null:
-		push_error("Failed to open log file: %s" % log_file_path)
-		return
+		# 如果失败，尝试创建新文件
+		file = FileAccess.open(log_file_path, FileAccess.WRITE)
+		if file == null:
+			push_error("Failed to open or create log file: %s" % log_file_path)
+			return
 	
-	file.seek_end()
+	# 移动到文件末尾以追加
+	if file.get_length() > 0:
+		file.seek_end()
+	
 	file.store_line(message)
 
 ## 设置日志级别

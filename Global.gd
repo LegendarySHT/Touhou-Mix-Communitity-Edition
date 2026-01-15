@@ -12,6 +12,11 @@ var state_manager: UIStateManager
 var animation_manager: AnimationManager
 var sorting_engine: SortingEngine
 
+## 初始化标志（防止重复初始化）
+var _architecture_initialized: bool = false
+
+## 动画状态标志
+var is_animating: bool = false
 
 #当前选中的专辑和歌曲的编号
 var album=-1;
@@ -41,6 +46,11 @@ func _ready():
 	
 ## 初始化新架构系统引用
 func _initialize_new_architecture_refs() -> void:
+	# 防止重复初始化
+	if _architecture_initialized:
+		return
+	_architecture_initialized = true
+	
 	# 等待一帧确保Main节点已初始化
 	await get_tree().process_frame
 	
@@ -48,14 +58,16 @@ func _initialize_new_architecture_refs() -> void:
 	if main_node:
 		data_manager = DataManager.instance
 		event_bus = EventBus.instance
-		state_manager = UiStatMGR.instance
-		animation_manager = AniMGR.instance
+		state_manager = UIStateManager.instance
+		animation_manager = AnimationManager.instance
 		
 		if data_manager:
 			print("[Global] Connected to DataManager")
 		if event_bus:
 			print("[Global] Connected to EventBus")
-			# 连接新架构的事件
+			# 连接新架构的事件（先断开已有连接再重新连接）
+			if event_bus.data_loaded_complete.is_connected(_on_new_data_loaded):
+				event_bus.data_loaded_complete.disconnect(_on_new_data_loaded)
 			event_bus.data_loaded_complete.connect(_on_new_data_loaded)
 		if state_manager:
 			print("[Global] Connected to UIStateManager")
@@ -127,9 +139,15 @@ func _execute_state_transition_animation(old_state: UIStateManager.UIState, new_
 func _animate_album_to_song() -> void:
 	print("动画: ALBUM_VIEW -> SONG_VIEW")
 	
-	var SS=get_node(_SS)
-	var album_list=get_node(ALBUMLIST)
-	var song_list=get_node(SONGLIST)
+	# 检查节点是否存在
+	var SS = get_node_or_null(_SS)
+	var album_list = get_node_or_null(ALBUMLIST)
+	var song_list = get_node_or_null(SONGLIST)
+	
+	if not album_list or not song_list:
+		push_error("动画节点不存在: ALBUMLIST=%s, SONGLIST=%s" % [ALBUMLIST, SONGLIST])
+		is_animating = false
+		return
 	
 	# 复制并生成节点
 	var polygon=Polygon2D.new()
@@ -282,8 +300,13 @@ func _finish_sorted_to_album_final() -> void:
 func _animate_song_to_midi() -> void:
 	print("动画: SONG_VIEW -> MIDI_VIEW")
 	
-	var SS=get_node(_SS)
-	var song_list=get_node(SONGLIST)
+	var SS = get_node_or_null(_SS)
+	var song_list = get_node_or_null(SONGLIST)
+	
+	if not song_list:
+		push_error("动画节点不存在: SONGLIST=%s" % SONGLIST)
+		is_animating = false
+		return
 	
 	var tween = create_tween()
 	tween.set_ease(Tween.EASE_OUT)
@@ -292,26 +315,46 @@ func _animate_song_to_midi() -> void:
 	
 	# 本页面退场
 	tween.tween_property(song_list,"position",Vector2(1080*0.2679,-779),0.5)
-	# 左侧离场
-	tween.tween_property(SS.get_node("PC"),"modulate",Color(1,1,1,0),0.5)
-	# 右侧离场
-	tween.tween_property(get_node("/root/Main/Menu_Bar"),"position",Vector2(1305+53.58,-215),0.25)
-	tween.tween_property(get_node("/root/Main/Player_Info/Charactor"),"position",Vector2(0,950),0.15)
-	tween.tween_property(get_node("/root/Main/Player_Info"),"position",Vector2(-44.393+650,257.71),0.5)
+	
+	# 左侧离场（检查SS节点是否存在）
+	if SS:
+		var pc_node = SS.get_node_or_null("PC")
+		if pc_node:
+			tween.tween_property(pc_node,"modulate",Color(1,1,1,0),0.5)
+	
+	# 右侧离场（使用安全的节点获取）
+	var menu_bar = get_node_or_null("/root/Main/Menu_Bar")
+	var player_info = get_node_or_null("/root/Main/Player_Info")
+	var charactor = get_node_or_null("/root/Main/Player_Info/Charactor")
+	
+	if menu_bar:
+		tween.tween_property(menu_bar,"position",Vector2(1305+53.58,-215),0.25)
+	if charactor:
+		tween.tween_property(charactor,"position",Vector2(0,950),0.15)
+	if player_info:
+		tween.tween_property(player_info,"position",Vector2(-44.393+650,257.71),0.5)
 	
 	song_list.storeButtonSwitch.emit(true)
 	
 	# 左侧入场
-	var Main=get_node("/root/Main")
-	if not Main.get_node("InfoUI"):
-		var info_window=load("res://Scene/info_ui.tscn").instantiate()
-		Main.add_child(info_window)
-	else:
-		Main.get_node("InfoUI").visible=true
-		Main.get_node("InfoUI").modulate=Color(1,1,1,1)
+	var Main = get_node_or_null("/root/Main")
+	if not Main:
+		push_error("Main节点不存在")
+		is_animating = false
+		return
 	
-	Main.get_node("InfoUI").position=Vector2(130+500*0.2679,-450)
-	tween.tween_property(Main.get_node("InfoUI"),"position",Vector2(130,50),0.5)
+	var info_ui = Main.get_node_or_null("InfoUI")
+	if not info_ui:
+		var info_window = load("res://Scene/info_ui.tscn").instantiate()
+		Main.add_child(info_window)
+		info_ui = Main.get_node_or_null("InfoUI")
+	else:
+		info_ui.visible = true
+		info_ui.modulate = Color(1,1,1,1)
+	
+	if info_ui:
+		info_ui.position = Vector2(130+500*0.2679,-450)
+		tween.tween_property(info_ui,"position",Vector2(130,50),0.5)
 	
 	tween.finished.connect(_finish_song_to_midi.bind(SS, song_list))
 
@@ -324,7 +367,18 @@ func _finish_song_to_midi(SS: Node, song_list: Node) -> void:
 func _animate_midi_to_song() -> void:
 	print("动画: MIDI_VIEW -> SONG_VIEW")
 	
-	var Main=get_node("/root/Main")
+	var Main = get_node_or_null("/root/Main")
+	if not Main:
+		push_error("Main节点不存在")
+		is_animating = false
+		return
+	
+	var info_ui = Main.get_node_or_null("InfoUI")
+	if not info_ui:
+		push_error("InfoUI节点不存在")
+		is_animating = false
+		return
+	
 	var tween = create_tween()
 	
 	tween.tween_property(Main.get_node("InfoUI"),"modulate",Color(1,1,1,0),0.1)
@@ -333,21 +387,35 @@ func _animate_midi_to_song() -> void:
 
 ## 完成MIDI到歌曲的第一步动画
 func _finish_midi_to_song_first(Main: Node) -> void:
-	Main.get_node("InfoUI").visible=false
-	if Main.get_node("InfoUI/OptionWindow/Option/Rank"):
-		Main.get_node("InfoUI/OptionWindow/Option/Rank").button_pressed=true
+	var info_ui = Main.get_node_or_null("InfoUI")
+	if info_ui:
+		info_ui.visible=false
+		if info_ui.get_node_or_null("OptionWindow/Option/Rank"):
+			info_ui.get_node("OptionWindow/Option/Rank").button_pressed=true
 	
-	var SS=get_node(_SS)
-	var song_list=get_node(SONGLIST)
-
-	# 歌曲列表入场	
+	var SS = get_node_or_null(_SS)
+	var song_list = get_node_or_null(SONGLIST)
+	
+	if not song_list:
+		push_error("SongList节点不存在")
+		is_animating = false
+		return
+	
+	if not SS:
+		push_error("SS节点不存在")
+		is_animating = false
+		return
+	
+	# 歌曲列表入场
 	animation_manager.animate_position(song_list, Vector2(song_list.position.x, 440), 0.5, "SongListPosition")
 	# 信息框入场
 	animation_manager.animate_position(SS, Vector2(0, -177.5), 0.2, "SSPosition")
-	animation_manager.animate_fade_in(SS.get_node("PC"), 0.25, "SSFadeIn")
+	var pc_node = SS.get_node_or_null("PC")
+	if pc_node:
+		animation_manager.animate_fade_in(pc_node, 0.25, "SSFadeIn")
 	# 右侧组件入场
 	_right_comp_InOut(true)
-
+	
 	song_list.storeButtonSwitch.emit(false)
 	
 	song_list.visible=true

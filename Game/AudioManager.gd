@@ -99,17 +99,35 @@ func play_sfx(audio_stream: AudioStream, volume: float = 1.0) -> void:
 	AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), 
 							 master_volume == 0)
 
+## 设置主音量
+func set_master_volume(volume: float) -> void:
+	master_volume = clamp(volume, 0.0, 100.0)
+	var db = linear_to_db(master_volume / 100.0)
+	var bus_idx = AudioServer.get_bus_index("Master")
+	if bus_idx >= 0:
+		AudioServer.set_bus_volume_db(bus_idx, db)
+
 ## 设置音乐音量
 func set_music_volume(volume: float) -> void:
 	music_volume = clamp(volume, 0.0, 100.0)
 	var db = linear_to_db(music_volume / 100.0)
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), db)
+	var bus_idx = AudioServer.get_bus_index("Music")
+	if bus_idx >= 0:
+		AudioServer.set_bus_volume_db(bus_idx, db)
+	else:
+		# 如果 Music 总线不存在，使用 Master 总线
+		AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Master"), db)
 
 ## 设置音效音量
 func set_sfx_volume(volume: float) -> void:
 	sfx_volume = clamp(volume, 0.0, 100.0)
 	var db = linear_to_db(sfx_volume / 100.0)
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("SFX"), db)
+	var bus_idx = AudioServer.get_bus_index("SFX")
+	if bus_idx >= 0:
+		AudioServer.set_bus_volume_db(bus_idx, db)
+	else:
+		# 如果 SFX 总线不存在，使用 Master 总线
+		AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Master"), db)
 
 ## 启用/禁用音频
 func set_audio_enabled(enabled: bool) -> void:
