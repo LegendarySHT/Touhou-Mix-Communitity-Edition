@@ -10,19 +10,28 @@ signal storeButtonSwitch(showBackButton:bool)
 @onready var event_bus = EventBus.instance
 
 # 指示当前是否有拖拽操作
-var is_dragging := false
-# 当鼠标开始拖拽至松手前，计算列表滚动值的
-var drag_pos1 = 0;
-var drag_pos2 = 0;
+# var is_dragging := false
+# # 当鼠标开始拖拽至松手前，计算列表滚动值的
+# var drag_pos1 = 0;
+# var drag_pos2 = 0;
 # 开始拖拽时的列表滚动值
-var start_scroll_v_pos = 0
+# var start_scroll_v_pos = 0
+
+var scroll: GeneralScroll
 
 func _ready():
 	# 连接事件总线
 	if event_bus:
 		event_bus.album_selected.connect(_on_album_selected)
+	scroll = GeneralScroll.new(self)
+	scroll.enable()
 
-func _process(_delta: float):
+func _exit_tree():
+	if scroll:
+		scroll.disable()
+
+func _process(delta: float):
+	scroll.process(delta)
 	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
 		return
 	
@@ -109,32 +118,33 @@ func _on_button_toggled(toggled_on: bool, button, song_id: String):
 func _update_polygon(np: Vector2, i, polygon):
 	polygon.polygon[i] = np
 
-func _on_scrolling():
-	# 用户正在滚动时标记为拖拽中
-	is_dragging = true
-	start_scroll_v_pos = scroll_vertical
+# func _on_scrolling():
+# 	# 用户正在滚动时标记为拖拽中
+# 	is_dragging = true
+# 	start_scroll_v_pos = scroll_vertical
 
 func _input(event):
-	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
-		return
-	
-	# 检测鼠标释放或触摸结束
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			# 停止拖拽
-			if not event.pressed:
-				is_dragging = false
-			# 开始拖拽
-			else:
-				_on_scrolling()
-				drag_pos1 = event.global_position.y
-				drag_pos2 = drag_pos1
-	# 左键拖拽
-	elif event is InputEventMouseMotion:
-		if is_dragging:
-			drag_pos2 = event.global_position.y - drag_pos1
-			if drag_pos2 != 0:
-				scroll_vertical = -drag_pos2 * 1.5 + start_scroll_v_pos
+	scroll.input(event)
+	#if state_manager.current_state != state_manager.UIState.SONG_VIEW:
+		#return
+	#
+	## 检测鼠标释放或触摸结束
+	#if event is InputEventMouseButton:
+		#if event.button_index == MOUSE_BUTTON_LEFT:
+			## 停止拖拽
+			#if not event.pressed:
+				#is_dragging = false
+			## 开始拖拽
+			#else:
+				#_on_scrolling()
+				#drag_pos1 = event.global_position.y
+				#drag_pos2 = drag_pos1
+	## 左键拖拽
+	#elif event is InputEventMouseMotion:
+		#if is_dragging:
+			#drag_pos2 = event.global_position.y - drag_pos1
+			#if drag_pos2 != 0:
+				#scroll_vertical = -drag_pos2 * 1.5 + start_scroll_v_pos
 
 func _on_album_selected(album_id: String, album_data: AlbumData):
 	Global.album_id = album_id

@@ -24,9 +24,10 @@ signal navigate_to_detail_view(midi_id: String)
 signal navigate_back
 
 ## ========== 排序和筛选事件 ==========
-signal sort_field_changed(sort_field: int)
-signal sort_direction_changed(ascending: bool)
-signal status_filter_changed(status: String)
+signal sort_finished
+# signal sort_field_changed(sort_field: int)
+# signal sort_direction_changed(ascending: bool)
+# signal status_filter_changed(status: String)
 signal search_query_changed(query: String)
 
 ## ========== UI交互事件 ==========

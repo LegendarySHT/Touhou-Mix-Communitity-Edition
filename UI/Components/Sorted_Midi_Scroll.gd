@@ -1,3 +1,5 @@
+# 这个文件已经废弃，如果没有使用，需要删除
+
 extends ScrollContainer
 
 #指示当前是否有拖拽操作
@@ -39,8 +41,6 @@ func _scrollbar_input(event):
 		scroll_velocity=0;
 
 func _input(event):
-	if not Global.Sort:
-		return
 	# 检测鼠标释放或触摸结束
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:

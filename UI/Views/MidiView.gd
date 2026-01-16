@@ -80,7 +80,7 @@ func _on_sort_changed(sort_field: int) -> void:
 	
 	# 获取排序方向（假设默认降序）
 	var direction = SortingEngine.SortDirection.DESCENDING
-	current_midis = sorting_engine.get_sorted_midis(
+	current_midis = sorting_engine._sort_midis(
 		current_midis,
 		sort_field,
 		direction

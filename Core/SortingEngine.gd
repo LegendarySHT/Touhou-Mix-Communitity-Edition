@@ -13,14 +13,23 @@ enum SortDirection {
 	DESCENDING  # 降序
 }
 
-## 排序字段枚举
-enum SortField {
+## 数据排序字段枚举
+enum SortDataField {
+	DEFAULT,            # 默认顺序（按专辑）
 	DOWNLOAD_COUNT,    # 按下载数排序
 	LOVE_COUNT,        # 按收藏数排序
 	UP_COUNT,          # 按好评数排序
 	TRIAL_COUNT,       # 按试玩数排序
-	UPLOADED_DATE,     # 按上传时间排序
-	DEFAULT            # 默认顺序（按专辑）
+	UPLOADED_DATE     # 按上传时间排序
+}
+
+## 状态排序字段枚举
+enum SortStatField {
+	ALL, 
+	PENDING,
+	APPROVED,
+	INCLUDED,
+	DEAD
 }
 
 ## 初始化函数
@@ -32,34 +41,76 @@ func _ready() -> void:
 		queue_free()
 
 ## 排序配置
-var current_sort_field: SortField = SortField.DEFAULT
+var current_sort_field: SortDataField = SortDataField.DEFAULT
+var current_sort_stat_field: SortStatField = SortStatField.ALL
 var current_sort_direction: SortDirection = SortDirection.DESCENDING
 
 ## 缓存排序结果，避免重复排序
 var sort_cache: Dictionary = {}
 var cache_key: String = ""
 
-## 获取排序后的MIDI列表
-func get_sorted_midis(midis: Array[MidiData], 
-					   sort_field: SortField = SortField.DEFAULT,
-					   sort_direction: SortDirection = SortDirection.DESCENDING) -> Array[MidiData]:
+## 排序线程
+var sort_thread: Thread = null
+var should_stop_sorting: bool = false
+var is_sorting_active: bool = false
+
+## 当前的midi列表
+var current_midis: Array[MidiData] = []
+
+## 安全的开始排序线程
+func _start_sort_thread(status: SortStatField, sort_field: SortDataField, sort_direction: SortDirection) -> void:
+	# 如果已有线程在运行，请求停止并等待
+	if sort_thread and sort_thread.is_alive():
+		print("已有线程在运行，请求停止并等待")
+		stop_sorting()
+		sort_thread.wait_to_finish()
 	
+	# 重置停止标志
+	should_stop_sorting = false
+	is_sorting_active = true
+	
+	# 创建新线程
+	sort_thread = Thread.new()
+	sort_thread.start(_sort_mode_thread.bind(status, sort_field, sort_direction))
+
+## 停止排序线程
+func stop_sorting() -> void:
+	if is_sorting_active:
+		should_stop_sorting = true
+
+## 检查是否应该停止
+func _should_stop() -> bool:
+	return should_stop_sorting
+
+## 获取排序后的MIDI列表
+func _sort_midis(midis: Array[MidiData], 
+					   sort_field: SortDataField = SortDataField.DEFAULT,
+					   sort_direction: SortDirection = SortDirection.DESCENDING) -> Array[MidiData]:
 	# 更新排序配置
 	current_sort_field = sort_field
 	current_sort_direction = sort_direction
 	
 	# 生成缓存key
-	cache_key = "%d_%d" % [sort_field, sort_direction]
-	
+	cache_key = "%d_%d_%d" % [midis.size(), sort_field, sort_direction]
+	print("生成缓存key:", cache_key)
+
 	# 检查缓存
 	if sort_cache.has(cache_key):
+		print("使用缓存结果")
 		return sort_cache[cache_key]
 	
 	# 执行排序
 	var sorted_result = midis.duplicate()
+	
+	# 使用自定义排序函数，并在每次比较前检查停止标志
 	sorted_result.sort_custom(func(a: MidiData, b: MidiData) -> bool:
+		# 快速检查停止标志（虽然这里影响不大）
 		return _compare_midis(a, b)
 	)
+	
+	# 检查是否应该停止
+	if should_stop_sorting:
+		return []
 	
 	# 缓存结果
 	sort_cache[cache_key] = sorted_result
@@ -72,22 +123,22 @@ func _compare_midis(midi_a: MidiData, midi_b: MidiData) -> bool:
 	var result: int = 0
 	
 	match current_sort_field:
-		SortField.DOWNLOAD_COUNT:
+		SortDataField.DOWNLOAD_COUNT:
 			result = _compare_int(midi_a.download_count, midi_b.download_count)
 		
-		SortField.LOVE_COUNT:
+		SortDataField.LOVE_COUNT:
 			result = _compare_int(midi_a.love_count, midi_b.love_count)
 		
-		SortField.UP_COUNT:
+		SortDataField.UP_COUNT:
 			result = _compare_int(midi_a.up_count, midi_b.up_count)
 		
-		SortField.TRIAL_COUNT:
+		SortDataField.TRIAL_COUNT:
 			result = _compare_int(midi_a.trial_count, midi_b.trial_count)
 		
-		SortField.UPLOADED_DATE:
+		SortDataField.UPLOADED_DATE:
 			result = _compare_string(midi_a.uploaded_date, midi_b.uploaded_date)
 		
-		SortField.DEFAULT:
+		SortDataField.DEFAULT:
 			# 默认排序：按专辑名->歌曲名->谱面名
 			result = _compare_string(midi_a.album_data.name if midi_a.album_data else "", 
 									  midi_b.album_data.name if midi_b.album_data else "")
@@ -121,30 +172,100 @@ func _compare_string(a: String, b: String) -> int:
 	else:
 		return 0
 
-## 按状态过滤MIDI列表
-func filter_by_status(midis: Array[MidiData], status: String) -> Array[MidiData]:
+## 按状态过滤MIDI列表（可中断版本）
+func _filter_midis(midis: Array[MidiData], status: String) -> Array[MidiData]:
 	var result: Array[MidiData] = []
 	
-	for midi in midis:
+	for i in range(midis.size()):
+		# 定期检查停止标志（每处理10个元素检查一次）
+		if i % 10 == 0 and should_stop_sorting:
+			return []  # 返回空数组表示被中断
+		
+		var midi = midis[i]
 		if midi.status == status:
 			result.append(midi)
 	
 	return result
 
-## 按状态和排序过滤MIDI列表
-func filter_and_sort(midis: Array[MidiData],
-					 status: String = "",
-					 sort_field: SortField = SortField.DEFAULT,
-					 sort_direction: SortDirection = SortDirection.DESCENDING) -> Array[MidiData]:
+## 按状态过滤MIDI列表（批量处理版本，更高效）
+func _filter_midis_batch(midis: Array[MidiData], status: String, batch_size: int = 50) -> Array[MidiData]:
+	var result: Array[MidiData] = []
 	
-	var filtered = midis
+	for i in range(0, midis.size(), batch_size):
+		# 检查停止标志
+		if should_stop_sorting:
+			return []
+		
+		var end_index = min(i + batch_size, midis.size())
+		for j in range(i, end_index):
+			var midi = midis[j]
+			if midi.status == status:
+				result.append(midi)
 	
-	# 先过滤状态
-	if not status.is_empty():
-		filtered = filter_by_status(midis, status)
+	return result
+
+## 给UI获取Midi列表用
+func get_midis() -> Array[MidiData]:
+	return current_midis
+
+## 设置排序模式
+func set_sort_mode(status: SortStatField = SortStatField.ALL,
+					sort_field: SortDataField = SortDataField.DEFAULT,
+					sort_direction: SortDirection = SortDirection.DESCENDING):
+	_start_sort_thread(status, sort_field, sort_direction)
+
+## 按状态和排序过滤MIDI列表（线程函数）
+func _sort_mode_thread(status: SortStatField = SortStatField.ALL,
+					 sort_field: SortDataField = SortDataField.DEFAULT,
+					 sort_direction: SortDirection = SortDirection.DESCENDING):
+	print("开始排序线程: 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction])
+
+	var midi_sorted: bool = false
 	
-	# 再排序
-	return get_sorted_midis(filtered, sort_field, sort_direction)
+	# 如果需要重新排序
+	if sort_field != current_sort_field or sort_direction != current_sort_direction:
+		var midis = DataMGR.midis.values().duplicate()
+		current_sort_field = sort_field
+		current_sort_direction = sort_direction
+		current_midis = _sort_midis(midis, sort_field, sort_direction)
+		midi_sorted = true
+	
+	# 检查是否应该停止
+	if should_stop_sorting:
+		_cleanup_thread()
+		return
+	
+	# 如果需要过滤状态
+	if status != current_sort_stat_field or midi_sorted:
+		current_sort_stat_field = status
+		match status:
+			SortStatField.PENDING:
+				current_midis = _filter_midis_batch(current_midis, "PENDING", 100)
+			SortStatField.APPROVED:
+				current_midis = _filter_midis_batch(current_midis, "APPROVED", 100)
+			SortStatField.INCLUDED:
+				current_midis = _filter_midis_batch(current_midis, "INCLUDED", 100)
+			SortStatField.DEAD:
+				current_midis = _filter_midis_batch(current_midis, "DEAD", 100)
+	
+	# 检查是否应该停止
+	if should_stop_sorting:
+		_cleanup_thread()
+		return
+	elif current_sort_field == sort_field and current_sort_direction == sort_direction and current_sort_stat_field == status:
+		call_deferred("_emit_sort_finished")
+	
+	# 清理线程状态
+	_cleanup_thread()
+
+## 清理线程状态
+func _cleanup_thread() -> void:
+	is_sorting_active = false
+
+## 发射排序完成信号
+func _emit_sort_finished() -> void:
+	print("排序完成")
+	EvtBus.sort_finished.emit()
 
 ## 清空缓存
 func clear_cache() -> void:
@@ -159,10 +280,52 @@ func search_midis(midis: Array[MidiData], query: String) -> Array[MidiData]:
 	var search_text = query.to_lower()
 	var result: Array[MidiData] = []
 	
+	# 添加中断检查
 	for midi in midis:
+		if _should_stop():
+			break
+		
 		if (midi.name.to_lower().contains(search_text) or
 			midi.artist_name.to_lower().contains(search_text) or
 			midi.uploader_name.to_lower().contains(search_text)):
 			result.append(midi)
 	
 	return result
+
+## 场景退出时的清理
+func _exit_tree() -> void:
+	# 停止排序线程
+	stop_sorting()
+	
+	# 等待线程结束
+	if sort_thread and sort_thread.is_active():
+		sort_thread.wait_to_finish()
+	
+	# 清理缓存
+	clear_cache()
+
+## 强制终止并重新开始（用于紧急情况）
+func force_restart_sorting(status: SortStatField = SortStatField.ALL,
+							sort_field: SortDataField = SortDataField.DEFAULT,
+							sort_direction: SortDirection = SortDirection.DESCENDING):
+	# 强制停止
+	should_stop_sorting = true
+	
+	# 等待一小段时间让线程有机会退出
+	if sort_thread and sort_thread.is_active():
+		# 等待最多100ms
+		var wait_time = 0
+		while sort_thread.is_active() and wait_time < 100:
+			OS.delay_msec(10)
+			wait_time += 10
+	
+	# 如果线程还在运行，强制等待（这是最后的手段）
+	if sort_thread and sort_thread.is_active():
+		sort_thread.wait_to_finish()
+	
+	# 重置状态
+	is_sorting_active = false
+	should_stop_sorting = false
+	
+	# 重新开始排序
+	set_sort_mode(status, sort_field, sort_direction)

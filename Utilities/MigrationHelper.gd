@@ -88,10 +88,10 @@ static func convert_old_ui_state(old_ui: int) -> int:
 static func convert_sort_field(old_ptr) -> int:
 	# 根据旧的LinkList指针名称判断
 	if old_ptr == null:
-		return SortingEngine.SortField.DEFAULT
+		return SortingEngine.SortDataField.DEFAULT
 	
 	# 这里需要根据实际的指针类型判断
-	return SortingEngine.SortField.DEFAULT
+	return SortingEngine.SortDataField.DEFAULT
 
 ## 桥接旧数据到新架构
 static func bridge_old_data_to_new(old_data: Dictionary, data_manager: DataManager) -> void:

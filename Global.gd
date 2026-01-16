@@ -15,25 +15,17 @@ var sorting_engine: SortingEngine
 ## 初始化标志（防止重复初始化）
 var _architecture_initialized: bool = false
 
-## 动画状态标志
-var is_animating: bool = false
-
 #当前选中的专辑和歌曲的编号
-var album=-1;
-var song=-1;
-#当前选中的专辑和歌曲的名字
-var album_id = ""
-var song_id = ""
-
-var _thread: Thread
-var Sorting=0
+var album: int= -1
+var song: int = -1
 
 #选中的经过筛选的midi
-var select_midi=-1
+var select_midi: int = -1
 
-#指示当前是否启用筛选 1表示降序，2表示升序
-var Sort=0
-var SortStatus=0 #0全要 1保留Pending 2Approved 3Included 4Dead
+#当前选中的专辑和歌曲的名字
+var album_id: String = ""
+var song_id: String = ""
+
 
 
 
@@ -100,9 +92,7 @@ func _close_sort_menu() -> void:
 	pass
 
 func _exit_tree():
-	# 确保退出时释放线程
-	if _thread != null && _thread.is_alive():
-		_thread.wait_to_finish()
+	pass
 
 #路径
 var ALBUMLIST="/root/Main/Album/AlbumList"
@@ -146,7 +136,6 @@ func _animate_album_to_song() -> void:
 	
 	if not album_list or not song_list:
 		push_error("动画节点不存在: ALBUMLIST=%s, SONGLIST=%s" % [ALBUMLIST, SONGLIST])
-		is_animating = false
 		return
 	
 	# 复制并生成节点
@@ -305,7 +294,6 @@ func _animate_song_to_midi() -> void:
 	
 	if not song_list:
 		push_error("动画节点不存在: SONGLIST=%s" % SONGLIST)
-		is_animating = false
 		return
 	
 	var tween = create_tween()
@@ -340,7 +328,6 @@ func _animate_song_to_midi() -> void:
 	var Main = get_node_or_null("/root/Main")
 	if not Main:
 		push_error("Main节点不存在")
-		is_animating = false
 		return
 	
 	var info_ui = Main.get_node_or_null("InfoUI")
@@ -370,13 +357,11 @@ func _animate_midi_to_song() -> void:
 	var Main = get_node_or_null("/root/Main")
 	if not Main:
 		push_error("Main节点不存在")
-		is_animating = false
 		return
 	
 	var info_ui = Main.get_node_or_null("InfoUI")
 	if not info_ui:
 		push_error("InfoUI节点不存在")
-		is_animating = false
 		return
 	
 	var tween = create_tween()
@@ -398,12 +383,10 @@ func _finish_midi_to_song_first(Main: Node) -> void:
 	
 	if not song_list:
 		push_error("SongList节点不存在")
-		is_animating = false
 		return
 	
 	if not SS:
 		push_error("SS节点不存在")
-		is_animating = false
 		return
 	
 	# 歌曲列表入场

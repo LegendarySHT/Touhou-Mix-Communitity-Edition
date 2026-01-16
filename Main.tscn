@@ -24,9 +24,9 @@
 [ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
 [ext_resource type="Script" uid="uid://cc07n4a54nk16" path="res://Scene/AlbumList.gd" id="21_3b0ty"]
 [ext_resource type="Script" uid="uid://dmccjm3n7wwo0" path="res://Scene/SongList.gd" id="22_3b0ty"]
-[ext_resource type="Script" uid="uid://bfb2dq1g1imm1" path="res://UI/Components/Sorted_Midi_Scroll.gd" id="23_bg4s2"]
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="24_mxvw5"]
 [ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="25_xrxkg"]
+[ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView.gd" id="26_5mvff"]
 [ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="26_sqvbp"]
 [ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://Resources/icon/midiInfoPage/start.png" id="27_hri7i"]
 
@@ -380,6 +380,7 @@ ignore_texture_size = true
 stretch_mode = 5
 
 [node name="Time" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+visible = false
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 toggle_mode = true
@@ -405,6 +406,7 @@ begin_cap_mode = 2
 end_cap_mode = 2
 
 [node name="SelectTime" type="Line2D" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+visible = false
 self_modulate = Color(1, 1, 1, 0)
 position = Vector2(138, 0)
 points = PackedVector2Array(135, 0, 245, 0, 245, 100, 135, 100)
@@ -646,7 +648,7 @@ script = ExtResource("20_x3yn0")
 position = Vector2(-1500, 0)
 skew = 0.261799
 
-[node name="List" type="ScrollContainer" parent="SortedMidi"]
+[node name="SortedMidisList" type="ScrollContainer" parent="SortedMidi"]
 physics_interpolation_mode = 1
 custom_minimum_size = Vector2(1020, 1120)
 anchors_preset = 4
@@ -662,9 +664,9 @@ focus_mode = 2
 theme = SubResource("Theme_devvj")
 follow_focus = true
 horizontal_scroll_mode = 0
-script = ExtResource("23_bg4s2")
+script = ExtResource("26_5mvff")
 
-[node name="VBox" type="VBoxContainer" parent="SortedMidi/List"]
+[node name="VBox" type="VBoxContainer" parent="SortedMidi/SortedMidisList"]
 custom_minimum_size = Vector2(630, 0)
 layout_mode = 2
 size_flags_horizontal = 2
@@ -872,7 +874,6 @@ offset_bottom = 1086.0
 texture_normal = ExtResource("27_hri7i")
 flip_v = true
 
-[connection signal="gui_input" from="Song/SongList" to="Song/SongList" method="_input"]
 [connection signal="storeButtonSwitch" from="Song/SongList" to="Store_button/Store_Button" method="_on_song_list_store_button_switch"]
 [connection signal="switch_to_store" from="Store_button/Store_Button" to="Camera2D" method="_switch_to_store"]
 [connection signal="pressed" from="Store_button/Store_Button/Button" to="Store_button/Store_Button" method="_on_button_pressed"]
@@ -883,6 +884,4 @@ flip_v = true
 [connection signal="pressed" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Ordering" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_ordering_pressed"]
 [connection signal="pressed" from="Menu_Bar/HBC/Sort/MarginContainer/TextureButton" to="Menu_Bar/HBC/Sub_Menu" method="_sort_button_pressed"]
 [connection signal="pressed" from="Menu_Bar/HBC/SongList/MarginContainer/TextureButton" to="Menu_Bar/HBC/Sub_Menu" method="_SongList_button_pressed"]
-[connection signal="gui_input" from="SortedMidi/List" to="SortedMidi/List" method="_input"]
-[connection signal="scroll_started" from="SortedMidi/List" to="SortedMidi/List" method="_on_scrolling"]
 [connection signal="pressed" from="Store/Back_button/Button" to="Camera2D" method="_switch_to_store"]

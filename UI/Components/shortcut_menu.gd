@@ -2,6 +2,8 @@ extends Polygon2D
 var view = 0 #为1或2时表示切换到对应页
 signal menu_closed
 
+var SE = SortEngine.instance
+
 func _sort_button_pressed() -> void:
 	print("sort button clicked")
 	switch_table(1)
@@ -9,16 +11,16 @@ func _sort_button_pressed() -> void:
 func _SongList_button_pressed() -> void:
 	print("song list button clicked")
 	switch_table(2)
-func _process(_delta):
-	if not (UiStatMGR.current_state in [UiStatMGR.UIState.ALBUM_VIEW, UiStatMGR.UIState.SONG_VIEW]) and view!=0:
-		switch_table(view)
-	if view==0 and Global.Sort!=0 and (UiStatMGR.current_state in [UiStatMGR.UIState.ALBUM_VIEW, UiStatMGR.UIState.SONG_VIEW]):
-		get_node("Page/SortPage/SortButton/Data").button_pressed=false
-		get_node("Page/SortPage/SortButton/Time").button_pressed=false
-		get_node("Page/SortPage/SortButton").select=0
-		Global.Sort=0
-		Global.SortHeadPTR=Global.default
-		print("关闭筛选")
+# func _process(_delta):
+	# if not (UiStatMGR.current_state in [UiStatMGR.UIState.ALBUM_VIEW, UiStatMGR.UIState.SONG_VIEW]) and view!=0:
+	# 	switch_table(view)
+	# if SE.curr and view==0 and (UiStatMGR.current_state in [UiStatMGR.UIState.ALBUM_VIEW, UiStatMGR.UIState.SONG_VIEW]): # and Global.Sort!=0
+	# 	get_node("Page/SortPage/SortButton/Data").button_pressed=false
+	# 	get_node("Page/SortPage/SortButton/Time").button_pressed=false
+		#get_node("Page/SortPage/SortButton").select=0
+		#Global.Sort=0
+		#Global.SortHeadPTR=Global.default
+		# print("关闭筛选")
 func switch_table(page):
 	var tween =create_tween();
 	tween.set_ease(Tween.EASE_OUT)
@@ -36,8 +38,6 @@ func switch_table(page):
 		tween.tween_method(func(t):_update_polygon(t,2),polygon[2],Vector2(1443,152),0.5);
 		tween.tween_method(func(t):_update_polygon(t,3),polygon[3],Vector2(1473,43),0.5);
 	else:
-		Global.Sort=1
-		print("开启筛选")
 		#框展开
 		tween.tween_method(func(t):_update_polygon(t,1),polygon[1],Vector2(1318-0.2679*660,812),0.5);
 		tween.tween_method(func(t):_update_polygon(t,2),polygon[2],Vector2(1443-0.2679*660+406,812),0.5);

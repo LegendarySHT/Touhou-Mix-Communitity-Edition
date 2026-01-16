@@ -107,9 +107,9 @@ func test_sorting_engine() -> void:
 	var sorting_engine = SortingEngine.new()
 	
 	# 测试降序排序
-	var sorted_desc = sorting_engine.get_sorted_midis(
+	var sorted_desc = sorting_engine._sort_midis(
 		test_midis,
-		SortingEngine.SortField.DOWNLOAD_COUNT,
+		SortingEngine.SortDataField.DOWNLOAD_COUNT,
 		SortingEngine.SortDirection.DESCENDING
 	)
 	
