@@ -137,8 +137,6 @@ func _on_state_changed(old_state: int, new_state: int) -> void:
 	var new_name = state_manager.get_state_name(new_state)
 	logger.debug("UI State changed: %s -> %s" % [old_name, new_name], "Main")
 
-	Global._execute_state_transition_animation(old_state, new_state)
-
 ## 错误处理回调
 func _on_error_occurred(error_code: int, error_message: String) -> void:
 	logger.error("Error %d: %s" % [error_code, error_message], "Main")

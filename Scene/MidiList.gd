@@ -119,7 +119,7 @@ func _load_midis():
 		temp.set_meta("name", midi_data.name)
 		temp.set_meta("desc", midi_data.description)
 		temp.set_meta("id", midi_data.id)
-		#temp.set_meta("hash", midi_data.hash)
+		temp.set_meta("hash", midi_data.file_hash)
 		temp.set_meta("index", counter)
 		temp.set_meta("midi_data", midi_data)  # 存储整个对象以备后用
 		

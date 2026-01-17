@@ -16,11 +16,11 @@ signal song_selected(song_id: String, song_data: SongData)
 signal midi_selected(midi_id: String, midi_data: MidiData)
 
 ## ========== UI导航事件 ==========
-signal navigate_to_album_view
-signal navigate_to_song_view(album_id: String)
-signal navigate_to_midi_view(song_id: String)
-signal navigate_to_sort_view
-signal navigate_to_detail_view(midi_id: String)
+# signal navigate_to_album_view
+# signal navigate_to_song_view(album_id: String)
+# signal navigate_to_midi_view(song_id: String)
+# signal navigate_to_sort_view
+# signal navigate_to_detail_view(midi_id: String)
 signal navigate_back
 
 ## ========== 排序和筛选事件 ==========

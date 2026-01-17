@@ -29,11 +29,13 @@ var state_history: Array[UIState] = []
 
 ## 状态改变信号
 signal state_changed(old_state: UIState, new_state: UIState)
-signal state_entering(state: UIState)
-signal state_exiting(state: UIState)
+# signal state_entering(state: UIState)
+# signal state_exiting(state: UIState)
 
 ## 最大历史记录深度
 const MAX_HISTORY_DEPTH: int = 10
+
+var signal_conn:bool = false
 
 func _ready() -> void:
 	if instance == null:
@@ -42,16 +44,24 @@ func _ready() -> void:
 		queue_free()
 	add_to_group("singleton")
 
+# func _process(delta: float) -> void:
+# 	# 连接场景退出信号
+# 	if not signal_conn:
+# 		var ANI: AnimationManager = AniMGR.instance
+# 		if ANI:
+# 			ANI.scene_transition_fin.connect(_scene_transition_exit)
+# 			signal_conn = true
+
 ## 转换状态
 func change_state(new_state: UIState) -> void:
 	if new_state == current_state:
+		print("can not change state")
 		return
 	
 	var old_state = current_state
 	
-	# 发出状态退出信号
-	state_exiting.emit(old_state)
-	
+	# 发出状态退出信号)
+	# state_exiting.emit(old_state)
 	# 记录历史
 	if state_history.size() >= MAX_HISTORY_DEPTH:
 		state_history.pop_front()
@@ -60,10 +70,14 @@ func change_state(new_state: UIState) -> void:
 	# 更新状态
 	previous_state = old_state
 	current_state = new_state
-	
-	# 发出状态进入和改变信号
-	state_entering.emit(new_state)
+
 	state_changed.emit(old_state, new_state)
+
+# 收到动画结束信号再发射新状态信号 (感觉可能可以改成通知ui释放组件的)
+# func _scene_transition_exit() -> void:
+# 	# 发出状态进入和改变信号
+# 	print("Change state to %s" % get_state_name(current_state))
+# 	state_entering.emit(current_state)
 
 ## 返回上一个状态
 func go_back() -> bool:

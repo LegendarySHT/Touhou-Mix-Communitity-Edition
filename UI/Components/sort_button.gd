@@ -1,6 +1,12 @@
 extends HBoxContainer
 var SortByStatus: int = 0
 var SortByData: int = 0
+var Ascending: bool = true
+
+var UI: UIStateManager
+
+func _ready():
+	UI = UIStateManager.instance
 
 func _on_status_pressed() -> void:
 	# Midi状态筛选
@@ -22,6 +28,9 @@ func _on_status_pressed() -> void:
 		4: # 筛选dead状态
 			get_node("Status").texture_normal=load("res://Resources/icon/Sort/Status/Dead.png")
 			SE.set_sort_mode(SE.SortStatField.DEAD)
+
+	if UI.current_state!=UI.UIState.SORTED_VIEW:
+		UI.change_state(UI.UIState.SORTED_VIEW)
 
 # 数据筛选和下面的时间筛选是二选一的
 func _on_data_toggled(toggled_on: bool) -> void:
@@ -50,33 +59,38 @@ func _on_data_toggled(toggled_on: bool) -> void:
 			5: # 筛选上传时间
 				get_node("Data").texture_normal=load("res://Resources/icon/Sort/Data/CreateTime.png")
 				SE.set_sort_mode(SE.current_sort_stat_field, SE.SortDataField.UPLOADED_DATE)
-
-
-
-func _on_time_toggled(toggled_on: bool) -> void:
-	create_tween().tween_property(get_node("SelectTime"),"self_modulate",Color(1, 1, 1,(1 if toggled_on else 0) * 0.87),0.25).set_trans(Tween.TRANS_SINE)
-	if toggled_on:
-		# if select==2:
-		# 	Global.StartSort=1
-		# select=2
-		#Global.SortHeadPTR=Global.create_time
-		#Global.pn=["p5","n5"]
-		# create_tween().tween_property(get_node("SelectTime"),"self_modulate",Color("ffffffdd"),0.25).set_trans(Tween.TRANS_SINE)
-		# print("wait1")
 		
-		print("筛选：按创建时间")
+		if UI.current_state!=UI.UIState.SORTED_VIEW:
+			UI.change_state(UI.UIState.SORTED_VIEW)
+
+
+# func _on_time_toggled(toggled_on: bool) -> void:
+# 	create_tween().tween_property(get_node("SelectTime"),"self_modulate",Color(1, 1, 1,(1 if toggled_on else 0) * 0.87),0.25).set_trans(Tween.TRANS_SINE)
+# 	if toggled_on:
+# 		# if select==2:
+# 		# 	Global.StartSort=1
+# 		# select=2
+# 		#Global.SortHeadPTR=Global.create_time
+# 		#Global.pn=["p5","n5"]
+# 		# create_tween().tween_property(get_node("SelectTime"),"self_modulate",Color("ffffffdd"),0.25).set_trans(Tween.TRANS_SINE)
+# 		# print("wait1")
+		
+# 		print("筛选：按创建时间")
 	# else:
 	# 	create_tween().tween_property(get_node("SelectTime"),"self_modulate",Color("ffffff00"),0.25).set_trans(Tween.TRANS_SINE)
 
 
 func _on_ordering_pressed() -> void:
-	if Global.Sort==1:
+	Ascending = not Ascending
+	var SE = SortEngine.instance
+	if Ascending:
 		print("筛选：升序")
 		get_node("Ordering").texture_normal=load("res://Resources/icon/Sort/Ordering/Ascent.png")
-		# Global.Sort=2
-	elif Global.Sort==2:
+		SE.set_sort_mode(SE.current_sort_stat_field, SE.current_sort_field, SE.SortDirection.ASCENDING)
+	else:
 		print("筛选：降序")
 		get_node("Ordering").texture_normal=load("res://Resources/icon/Sort/Ordering/Descent.png")
-		# Global.Sort=1
-	print("wait2")
-	# Global.StartSort=1
+		SE.set_sort_mode(SE.current_sort_stat_field, SE.current_sort_field, SE.SortDirection.DESCENDING)
+
+	if UI.current_state!=UI.UIState.SORTED_VIEW:
+		UI.change_state(UI.UIState.SORTED_VIEW)

@@ -24,6 +24,23 @@ var data_manager: DataManager
 var event_bus: EventBus
 var sorting_engine: SortingEngine
 
+# ========== 新增的加载控制变量 ==========
+## 是否正在加载
+var _is_loading: bool = false
+## 当前加载任务ID（用于识别和终止旧任务）
+var _current_load_task_id: int = 0
+## 当前加载的MIDI数据列表
+var _midis_to_load: Array[MidiData] = []
+## 当前加载的索引
+var _current_load_index: int = 0
+## 每帧加载的节点数量（可调整以平衡性能）
+var _nodes_per_frame: int = 5
+## 加载延迟（帧数，用于降低每帧压力）
+var _load_frame_delay: int = 0
+## 延迟计数器
+var _delay_counter: int = 0
+# ======================================
+
 func _ready() -> void:
 	super._ready()
 	scroll = GeneralScroll.new(self)
@@ -39,60 +56,113 @@ func _ready() -> void:
 		return
 	
 	# 连接事件
-	# event_bus.sort_field_changed.connect(_on_sort_field_changed)
-	# event_bus.sort_direction_changed.connect(_on_sort_direction_changed)
-	# event_bus.status_filter_changed.connect(_on_status_filter_changed)
 	event_bus.search_query_changed.connect(_on_search_query_changed)
-	event_bus.navigate_to_sort_view.connect(_on_enter_sort_view)
-
-	# 刷新列表事件
 	event_bus.sort_finished.connect(_load_sorted_midis)
+	# 注意：sort_finished 事件已经连接过了，这里不需要重复连接
 
 func _process(delta):
 	scroll.process(delta)
-
+	
+	# 处理分帧加载
+	_process_loading()
 
 func _input(event):
 	scroll.input(event)
 
-## 进入排序视图
-func _on_enter_sort_view() -> void:
-	_load_sorted_midis()
+## 处理分帧加载逻辑
+func _process_loading() -> void:
+	if not _is_loading or _midis_to_load.is_empty():
+		return
+	
+	# 处理加载延迟
+	if _delay_counter < _load_frame_delay:
+		_delay_counter += 1
+		return
+	_delay_counter = 0
+	
+	# 计算本帧要加载的节点数量
+	var nodes_to_load_this_frame = min(_nodes_per_frame, _midis_to_load.size() - _current_load_index)
+	
+	# 加载本帧的节点
+	for i in range(nodes_to_load_this_frame):
+		var index = _current_load_index + i
+		if index >= _midis_to_load.size():
+			break
+			
+		var midi = _midis_to_load[index]
+		var node = load("res://Scene/SortedMidiNode.tscn").instantiate()
+		node.setup_with_midi(midi, index)
+		get_node("VBox").add_child(node)
+	
+	# 更新索引
+	_current_load_index += nodes_to_load_this_frame
+	
+	# 检查是否加载完成
+	if _current_load_index >= _midis_to_load.size():
+		_finish_loading()
+		print("Loaded %d midis" % _midis_to_load.size())
 
-## 加载排序的MIDI列表
+## 完成加载任务
+func _finish_loading() -> void:
+	_is_loading = false
+	_midis_to_load.clear()
+	_current_load_index = 0
+	_delay_counter = 0
+
+## 加载排序的MIDI列表（启动新的加载任务）
 func _load_sorted_midis() -> void:
 	if not data_manager or not sorting_engine:
 		print("Missing manager instances")
 		return
 	
-	# 获取所有MIDI
+	# 生成新的任务ID（用于标识当前任务）
+	var new_task_id = _current_load_task_id + 1
+	_current_load_task_id = new_task_id
+	
 	var midis: Array = sorting_engine.get_midis()
-	# for midi in midis:
-	# 	print("midi: %s" % midi.name)
-	
-	
-	_refresh_display()
-
-## 刷新显示
-func _refresh_display() -> void:
-	# 清空现有项
+	print("Loading %d midis" % midis.size())
+	# 清空现有列表（这会立即移除所有子节点）
 	_clear_list()
 	
-	# 添加新项
-	for midi in current_midis:
-		var item = create_and_add_item(midi.id, "sorted_midi")
-		if item:
-			_initialize_midi_item(item, midi)
+	# 检查是否已经有加载任务在进行
+	if _is_loading:
+		# 中断当前的加载任务
+		_finish_loading()
+	
+	# 启动新的加载任务
+	_is_loading = true
+	_midis_to_load = midis
+	_current_load_index = 0
+	_delay_counter = 0
+	
+	# 立即加载第一个节点以提供即时反馈
+	if not _midis_to_load.is_empty():
+		var node = load("res://Scene/SortedMidiNode.tscn").instantiate()
+		node.setup_with_midi(_midis_to_load[0], 0)
+		get_node("VBox").add_child(node)
+		_current_load_index = 1
+		
+		# 如果只有一个节点，直接完成
+		if _midis_to_load.size() == 1:
+			_finish_loading()
+			print("Loaded %d midis" % _midis_to_load.size())
 
-## 清空列表
+## 清空列表（优化版本）
 func _clear_list() -> void:
-	if container == null:
+	if get_node("VBox") == null:
 		return
 	
-	for item in container.get_children():
-		item.queue_free()
+	# 使用批量移除以提高性能
+	var children = get_node("VBox").get_children()
+	for i in range(children.size() - 1, -1, -1):
+		children[i].queue_free()
 	
 	list_items.clear()
+
+## 刷新显示（使用分帧加载）
+func _refresh_display() -> void:
+	# 这里可以调用 _load_sorted_midis() 或者实现类似逻辑
+	_load_sorted_midis()
 
 ## 初始化MIDI项
 func _initialize_midi_item(item: ListItemBase, midi: MidiData) -> void:
@@ -103,17 +173,14 @@ func _initialize_midi_item(item: ListItemBase, midi: MidiData) -> void:
 
 ## 排序字段改变
 func _on_sort_field_changed(sort_field: int) -> void:
-	# current_sort_field = sort_field
 	_load_sorted_midis()
 
 ## 排序方向改变
 func _on_sort_direction_changed(ascending: bool) -> void:
-	# current_sort_direction = SortingEngine.SortDirection.ASCENDING if ascending else SortingEngine.SortDirection.DESCENDING
 	_load_sorted_midis()
 
 ## 状态过滤改变
 func _on_status_filter_changed(status: String) -> void:
-	# current_status_filter = status
 	_load_sorted_midis()
 
 ## 搜索查询改变
@@ -128,12 +195,7 @@ func _on_search_query_changed(query: String) -> void:
 	
 	if query.is_empty():
 		# 如果搜索为空，恢复正常排序视图
-		current_midis = sorting_engine.get_sorted_midis(
-			all_midis,
-			# current_status_filter,
-			# current_sort_field,
-			# current_sort_direction
-		)
+		current_midis = sorting_engine.get_sorted_midis(all_midis)
 	else:
 		# 执行搜索
 		current_midis = sorting_engine.search_midis(all_midis, query)
@@ -156,3 +218,17 @@ func _on_item_hovered(item_id: String) -> void:
 ## 列表项取消悬停回调
 func _on_item_unhovered() -> void:
 	pass
+
+## 设置每帧加载的节点数量（性能调优）
+func set_nodes_per_frame(count: int) -> void:
+	_nodes_per_frame = max(1, count)
+
+## 设置加载延迟（每多少帧加载一次，0表示每帧都加载）
+func set_load_frame_delay(delay: int) -> void:
+	_load_frame_delay = max(0, delay)
+
+## 新增：强制停止所有加载任务
+func cancel_all_loading() -> void:
+	if _is_loading:
+		_finish_loading()
+		print("All loading tasks cancelled")

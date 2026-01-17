@@ -27,3 +27,25 @@ func _select(toggled_on):
 		tween.tween_property(self,"scale",Vector2(1,1),0.25)
 		tween.tween_property(get_node("Line2D"),"default_color",Color("#ffffff"),0.25)
 		be_selected=0
+
+func setup_with_midi(midi:MidiData, index:int):
+	set_meta("status",midi.status)
+	set_meta("trialCount",midi.trial_count)
+	set_meta("downloadCount",midi.download_count)
+	set_meta("loveCount",midi.love_count)
+	set_meta("upCount",midi.up_count)
+
+	set_meta("name",midi.name)
+	set_meta("desc", midi.description)
+	set_meta("id",midi.id)
+	set_meta("artistName",midi.artist_name)
+	set_meta("hash", midi.file_hash)
+	set_meta("index", index)
+	if midi.album_data:
+		set_meta("album",midi.album_data.name)
+	if midi.song_data:
+		set_meta("song",midi.song_data.name)
+
+	get_node("MC/MC/status").text=midi.status
+	get_node("MC/VBox/MidiName").text=midi.name
+	get_node("MC/VBox/Author").text=midi.artist_name

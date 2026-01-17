@@ -22,9 +22,8 @@ func _on_song_list_store_button_switch(showBackButton: bool):
 func _on_button_pressed() -> void:
 	if ShowBackButton:
 		get_node("/root/Main/Song/SongList").storeButtonSwitch.emit(false)
-		if Global.Sort:
-			Global.switch(20)
-			UiStatMGR.change_state(UiStatMGR.UIState.ALBUM_VIEW)
+		if UiStatMGR.current_state == UiStatMGR.UIState.SORTED_VIEW:
+			UiStatMGR.change_state(UiStatMGR.previous_state)
 		else:
 			UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
 	else:
