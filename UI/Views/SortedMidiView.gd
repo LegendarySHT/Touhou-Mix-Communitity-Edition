@@ -145,7 +145,6 @@ func _load_sorted_midis() -> void:
 		# 如果只有一个节点，直接完成
 		if _midis_to_load.size() == 1:
 			_finish_loading()
-			print("Loaded %d midis" % _midis_to_load.size())
 
 ## 清空列表（优化版本）
 func _clear_list() -> void:

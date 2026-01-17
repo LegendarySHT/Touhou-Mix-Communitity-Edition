@@ -49,3 +49,4 @@ func setup_with_midi(midi:MidiData, index:int):
 	get_node("MC/MC/status").text=midi.status
 	get_node("MC/VBox/MidiName").text=midi.name
 	get_node("MC/VBox/Author").text=midi.artist_name
+	get_node("MC/Data").text="%d %d %d %d"%[midi.download_count,midi.trial_count,midi.up_count,midi.love_count]

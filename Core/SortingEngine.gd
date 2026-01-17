@@ -91,20 +91,19 @@ func _sort_midis(midis: Array[MidiData],
 	current_sort_direction = sort_direction
 	
 	# 生成缓存key
-	cache_key = "%d_%d_%d" % [midis.size(), sort_field, sort_direction]
-	print("生成缓存key:", cache_key)
+	# cache_key = "%d_%d_%d" % [midis.size(), sort_field, sort_direction]
+	# print("生成缓存key:", cache_key)
 
-	# 检查缓存
-	if sort_cache.has(cache_key):
-		print("使用缓存结果")
-		return sort_cache[cache_key]
+	# # 检查缓存
+	# if sort_cache.has(cache_key):
+	# 	print("使用缓存结果")
+	# 	return sort_cache[cache_key]
 	
 	# 执行排序
-	var sorted_result = midis.duplicate()
+	var sorted_result = midis
 	
 	# 使用自定义排序函数，并在每次比较前检查停止标志
 	sorted_result.sort_custom(func(a: MidiData, b: MidiData) -> bool:
-		# 快速检查停止标志（虽然这里影响不大）
 		return _compare_midis(a, b)
 	)
 	
@@ -113,13 +112,13 @@ func _sort_midis(midis: Array[MidiData],
 		return []
 	
 	# 缓存结果
-	sort_cache[cache_key] = sorted_result
+	# sort_cache[cache_key] = sorted_result
 	
 	return sorted_result
 
 ## 比较两个MIDI谱面
 func _compare_midis(midi_a: MidiData, midi_b: MidiData) -> bool:
-	var is_ascending = current_sort_direction == SortDirection.ASCENDING
+	var is_ascending = current_sort_direction == SortDirection.DESCENDING
 	var result: int = 0
 	
 	match current_sort_field:
@@ -175,7 +174,7 @@ func _compare_string(a: String, b: String) -> int:
 ## 按状态过滤MIDI列表（可中断版本）
 func _filter_midis(midis: Array[MidiData], status: String) -> Array[MidiData]:
 	var result: Array[MidiData] = []
-	
+	# midis = midis.duplicate()
 	for i in range(midis.size()):
 		# 定期检查停止标志（每处理10个元素检查一次）
 		if i % 10 == 0 and should_stop_sorting:
@@ -206,6 +205,7 @@ func _filter_midis_batch(midis: Array[MidiData], status: String, batch_size: int
 
 ## 给UI获取Midi列表用
 func get_midis() -> Array[MidiData]:
+	print("当前midi数量:", current_midis.size())
 	return current_midis
 
 ## 设置排序模式
@@ -220,40 +220,40 @@ func _sort_mode_thread(status: SortStatField = SortStatField.ALL,
 					 sort_direction: SortDirection = SortDirection.DESCENDING):
 	print("开始排序线程: 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction])
 
-	var midi_sorted: bool = false
+	var midis = DataMGR.midis.values().duplicate()
+	current_sort_field = sort_field
+	current_sort_direction = sort_direction
+	var temp_list = _sort_midis(midis, sort_field, sort_direction)
 	
-	# 如果需要重新排序
-	if sort_field != current_sort_field or sort_direction != current_sort_direction:
-		var midis = DataMGR.midis.values().duplicate()
-		current_sort_field = sort_field
-		current_sort_direction = sort_direction
-		current_midis = _sort_midis(midis, sort_field, sort_direction)
-		midi_sorted = true
+	# 检查是否应该停止
+	if should_stop_sorting:
+		_cleanup_thread()
+		return
+	current_midis = temp_list
+	
+	current_sort_stat_field = status
+	print("过滤前midi数量", current_midis.size())
+	match status:
+		SortStatField.PENDING:
+			temp_list = _filter_midis_batch(current_midis, "PENDING", 100)
+			print("过滤PENDING完成", current_midis.size())
+		SortStatField.APPROVED:
+			temp_list = _filter_midis_batch(current_midis, "APPROVED", 100)
+			print("过滤APPROVED完成", current_midis.size())
+		SortStatField.INCLUDED:
+			temp_list = _filter_midis_batch(current_midis, "INCLUDED", 100)
+			print("过滤INCLUDED完成", current_midis.size())
+		SortStatField.DEAD:
+			temp_list = _filter_midis_batch(current_midis, "DEAD", 100)
+			print("过滤DEAD完成", current_midis.size())
 	
 	# 检查是否应该停止
 	if should_stop_sorting:
 		_cleanup_thread()
 		return
 	
-	# 如果需要过滤状态
-	if status != current_sort_stat_field or midi_sorted:
-		current_sort_stat_field = status
-		match status:
-			SortStatField.PENDING:
-				current_midis = _filter_midis_batch(current_midis, "PENDING", 100)
-			SortStatField.APPROVED:
-				current_midis = _filter_midis_batch(current_midis, "APPROVED", 100)
-			SortStatField.INCLUDED:
-				current_midis = _filter_midis_batch(current_midis, "INCLUDED", 100)
-			SortStatField.DEAD:
-				current_midis = _filter_midis_batch(current_midis, "DEAD", 100)
-	
-	# 检查是否应该停止
-	if should_stop_sorting:
-		_cleanup_thread()
-		return
-	elif current_sort_field == sort_field and current_sort_direction == sort_direction and current_sort_stat_field == status:
-		call_deferred("_emit_sort_finished")
+	current_midis = temp_list
+	call_deferred("_emit_sort_finished")
 	
 	# 清理线程状态
 	_cleanup_thread()

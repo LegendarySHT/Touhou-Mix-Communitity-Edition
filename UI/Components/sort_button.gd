@@ -1,7 +1,7 @@
 extends HBoxContainer
 var SortByStatus: int = 0
 var SortByData: int = 0
-var Ascending: bool = true
+var Ascending: bool = false
 
 var UI: UIStateManager
 
