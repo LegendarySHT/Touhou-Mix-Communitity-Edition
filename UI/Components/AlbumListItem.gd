@@ -3,12 +3,12 @@
 extends ListItemBase
 
 ## 引用节点路径
-@onready var album_name_label: Label = get_node("PC/Polygon2D/AlbumName") if has_node("PC/Polygon2D/AlbumName") else null
-@onready var song_count_label: Label = get_node("PC/Polygon2D/CountBase/SongCount") if has_node("PC/Polygon2D/CountBase/SongCount") else null
-@onready var cover_texture: TextureRect = get_node("PC/Polygon2D/cover") if has_node("PC/Polygon2D/cover") else null
-@onready var album_button: Button = get_node("PC/Polygon2D/AlbumButton") if has_node("PC/Polygon2D/AlbumButton") else null
-@onready var polygon: Polygon2D = get_node("PC/Polygon2D") if has_node("PC/Polygon2D") else null
-@onready var line: Line2D = get_node("PC/line") if has_node("PC/line") else null
+@onready var album_name_label: Label = $PC/Polygon2D/AlbumName if has_node("PC/Polygon2D/AlbumName") else null
+@onready var song_count_label: Label = $PC/Polygon2D/CountBase/SongCount if has_node("PC/Polygon2D/CountBase/SongCount") else null
+@onready var cover_texture: TextureRect = $PC/Polygon2D/cover if has_node("PC/Polygon2D/cover") else null
+@onready var album_button: Button = $PC/Polygon2D/AlbumButton if has_node("PC/Polygon2D/AlbumButton") else null
+@onready var polygon: Polygon2D = $PC/Polygon2D if has_node("PC/Polygon2D") else null
+@onready var line: Line2D = $PC/line if has_node("PC/line") else null
 @onready var decorated_line: Node = $PC/Polygon2D/DecoratedLine if has_node("PC/Polygon2D/DecoratedLine") else null
 
 ## 专辑数据
@@ -27,6 +27,16 @@ func _ready() -> void:
 	if album_button:
 		album_button.toggled.connect(_on_album_button_toggled)
 
+func _update_display() -> void:
+	# 初始化显示
+	if not album_name_label:
+		album_name_label = get_node("PC/Polygon2D/AlbumName")
+	if not song_count_label:
+		song_count_label = get_node("PC/Polygon2D/CountBase/SongCount")
+
+	album_name_label.text = " %s" % album_data.name if album_data.name else "Unknown"
+	song_count_label.text = "%d" % album_data.song_ids.size()
+
 ## 从AlbumData初始化显示
 func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: ButtonGroup) -> void:
 	album_data = album
@@ -34,13 +44,7 @@ func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: Button
 	item_type = "album"
 
 	set_meta("index", index)
-	
-	# 更新显示
-	album_name_label = get_node("PC/Polygon2D/AlbumName")
-	album_name_label.text = " %s" % album.name if album.name else "Unknown"
-	
-	song_count_label = get_node("PC/Polygon2D/CountBase/SongCount")
-	song_count_label.text = "%d" % album.song_ids.size()
+	_update_display()
 
 	var button = get_node(ALBUMBUTTON)
 	button.button_group = bg

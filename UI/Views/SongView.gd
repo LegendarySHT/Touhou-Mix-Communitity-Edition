@@ -6,32 +6,42 @@ class_name SongView
 
 ## 当前显示的歌曲列表
 var current_songs: Array[SongData] = []
-
-## 当前选中的专辑ID
-var current_album_id: String = ""
+var selected_song: int = -1
 
 ## 管理器引用
-var data_manager: DataManager
-var event_bus: EventBus
+@onready var data_manager: DataManager = DataManager.instance
+@onready var event_bus: EventBus = EvtBus.instance
+@onready var state_manager = UIStateManager.instance
+
+# 滚动逻辑
+@onready var scroll: GeneralScroll = GeneralScroll.new(self)
 
 func _ready() -> void:
 	super._ready()
 	
 	# 获取管理器引用
-	data_manager = DataManager.instance
-	event_bus = EventBus.instance
-	
 	if not data_manager or not event_bus:
 		push_error("SongView: Missing manager instances")
 		return
 	
 	# 连接事件
-	event_bus.album_selected.connect(_on_album_selected)
+	event_bus.album_selected.connect(_load_songs)
 
-## 处理专辑选择事件
-func _on_album_selected(album_id: String, album_data: AlbumData) -> void:
-	current_album_id = album_id
-	_load_songs(album_id)
+func _process(delta: float):
+	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
+		return
+	scroll.process(delta)
+
+	# 图片移动（保持原有视觉效果）
+	for i in range(get_child(0).get_child_count()):
+		var cover = get_child(0).get_child(i).get_node("PC/Shader/cover")
+		if cover:
+			cover.position.y = 250 - ((1.0 * i / max(1, get_child(0).get_child_count() - 1)) * 800)
+
+func _input(event):
+	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
+		return
+	scroll.input(event)
 
 ## 加载指定专辑的歌曲
 func _load_songs(album_id: String) -> void:
@@ -46,11 +56,15 @@ func _refresh_display() -> void:
 	# 清空现有项
 	_clear_list()
 	
+	var counter:int = 0
+	var bg = ButtonGroup.new()
 	# 添加新项
 	for song in current_songs:
 		var item = create_and_add_item(song.id, "song")
 		if item:
-			_initialize_song_item(item, song)
+			item.setup_with_song(self, song, counter, bg)
+			counter += 1
+			get_child(0).add_child(item)
 
 ## 清空列表
 func _clear_list() -> void:
@@ -62,25 +76,28 @@ func _clear_list() -> void:
 	
 	list_items.clear()
 
-## 初始化歌曲项
-func _initialize_song_item(item: ListItemBase, song: SongData) -> void:
-	# 如果item有setup方法，调用它
-	if item.has_method("setup_with_song"):
-		item.setup_with_song(song)
+func _on_button_toggled(toggled_on: bool, songNode, song_id: String):
+	if toggled_on:
+		if selected_song == songNode.get_meta("index"):
+			print("Select Song:", songNode.song_data.name)
+			# 切换到MIDI视图
+			state_manager.change_state(state_manager.UIState.MIDI_VIEW)
+			event_bus.emit_song_selected(song_id)
+		selected_song = songNode.get_meta("index")
 
-## 列表项选中回调
-func _on_item_selected(item_id: String) -> void:
-	if event_bus:
-		# 查找对应的歌曲
-		for song in current_songs:
-			if song.id == item_id:
-				event_bus.emit_song_selected(item_id, song)
-				break
+# ## 列表项选中回调
+# func _on_item_selected(item_id: String) -> void:
+# 	if event_bus:
+# 		# 查找对应的歌曲
+# 		for song in current_songs:
+# 			if song.id == item_id:
+# 				event_bus.emit_song_selected(item_id, song)
+# 				break
 
-## 列表项悬停回调
-func _on_item_hovered(item_id: String) -> void:
-	pass
+# ## 列表项悬停回调
+# func _on_item_hovered(item_id: String) -> void:
+# 	pass
 
-## 列表项取消悬停回调
-func _on_item_unhovered() -> void:
-	pass
+# ## 列表项取消悬停回调
+# func _on_item_unhovered() -> void:
+# 	pass

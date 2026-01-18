@@ -1,22 +1,22 @@
 [gd_scene load_steps=19 format=3 uid="uid://bylmyli6spbd6"]
 
-[ext_resource type="Texture2D" uid="uid://b2x5d0kfa0myq" path="res://icon/midiInfoPage/Arrow.png" id="1_036i2"]
-[ext_resource type="Script" uid="uid://bqp7a8mofv84q" path="res://Scene/MidiList.gd" id="1_mxrx3"]
-[ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://icon/sort.png" id="2_nagrd"]
-[ext_resource type="Texture2D" uid="uid://dtolw6736k65h" path="res://icon/midiInfoPage/info.png" id="3_ua7bn"]
-[ext_resource type="Texture2D" uid="uid://bqehp2aavod7n" path="res://icon/midiInfoPage/delete.png" id="4_f44vb"]
+[ext_resource type="Texture2D" uid="uid://b2x5d0kfa0myq" path="res://Resources/icon/midiInfoPage/Arrow.png" id="1_036i2"]
+[ext_resource type="Script" uid="uid://ddhvc24jriuwq" path="res://UI/Views/MidiView.gd" id="1_mxrx3"]
+[ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="2_nagrd"]
+[ext_resource type="Texture2D" uid="uid://dtolw6736k65h" path="res://Resources/icon/midiInfoPage/info.png" id="3_ua7bn"]
+[ext_resource type="Texture2D" uid="uid://bqehp2aavod7n" path="res://Resources/icon/midiInfoPage/delete.png" id="4_f44vb"]
 [ext_resource type="PackedScene" uid="uid://cfx5x8tebymdd" path="res://Scene/option_ui.tscn" id="5_nagrd"]
-[ext_resource type="Texture2D" uid="uid://dd1y1og0c6v5f" path="res://icon/midiInfoPage/track.png" id="7_cve6f"]
-[ext_resource type="Texture2D" uid="uid://d4fwv0fvdi4xy" path="res://icon/midiInfoPage/addToList.png" id="8_pgjff"]
-[ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://icon/midiInfoPage/start.png" id="9_7bkas"]
-[ext_resource type="Texture2D" uid="uid://hsnudy4qrca4" path="res://icon/midiInfoPage/status/time.png" id="10_mxrx3"]
-[ext_resource type="Texture2D" uid="uid://bjb7cd5wc7ybo" path="res://icon/midiInfoPage/status/bpm.png" id="11_sne8w"]
-[ext_resource type="Texture2D" uid="uid://c66nhxresaf43" path="res://icon/midiInfoPage/status/note.png" id="12_migpj"]
-[ext_resource type="Texture2D" uid="uid://dnxy735ve0pcy" path="res://icon/midiInfoPage/status/npm.png" id="13_mxrx3"]
-[ext_resource type="Texture2D" uid="uid://g4b8l2tie156" path="res://icon/midiInfoPage/status/playcount.png" id="14_jiooo"]
-[ext_resource type="Texture2D" uid="uid://yupw24rudalj" path="res://icon/midiInfoPage/status/upCount.png" id="15_27bbn"]
-[ext_resource type="Texture2D" uid="uid://dpwyd6fd4q7j7" path="res://icon/midiInfoPage/status/avgAcc.png" id="16_8spcd"]
-[ext_resource type="Texture2D" uid="uid://dw6l1r7cawiyj" path="res://icon/midiInfoPage/status/avgPP.png" id="17_8kmhx"]
+[ext_resource type="Texture2D" uid="uid://dd1y1og0c6v5f" path="res://Resources/icon/midiInfoPage/track.png" id="7_cve6f"]
+[ext_resource type="Texture2D" uid="uid://d4fwv0fvdi4xy" path="res://Resources/icon/midiInfoPage/addToList.png" id="8_pgjff"]
+[ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://Resources/icon/midiInfoPage/start.png" id="9_7bkas"]
+[ext_resource type="Texture2D" uid="uid://hsnudy4qrca4" path="res://Resources/icon/midiInfoPage/status/time.png" id="10_mxrx3"]
+[ext_resource type="Texture2D" uid="uid://bjb7cd5wc7ybo" path="res://Resources/icon/midiInfoPage/status/bpm.png" id="11_sne8w"]
+[ext_resource type="Texture2D" uid="uid://c66nhxresaf43" path="res://Resources/icon/midiInfoPage/status/note.png" id="12_migpj"]
+[ext_resource type="Texture2D" uid="uid://dnxy735ve0pcy" path="res://Resources/icon/midiInfoPage/status/npm.png" id="13_mxrx3"]
+[ext_resource type="Texture2D" uid="uid://g4b8l2tie156" path="res://Resources/icon/midiInfoPage/status/playcount.png" id="14_jiooo"]
+[ext_resource type="Texture2D" uid="uid://yupw24rudalj" path="res://Resources/icon/midiInfoPage/status/upCount.png" id="15_27bbn"]
+[ext_resource type="Texture2D" uid="uid://dpwyd6fd4q7j7" path="res://Resources/icon/midiInfoPage/status/avgAcc.png" id="16_8spcd"]
+[ext_resource type="Texture2D" uid="uid://dw6l1r7cawiyj" path="res://Resources/icon/midiInfoPage/status/avgPP.png" id="17_8kmhx"]
 
 [sub_resource type="Gradient" id="Gradient_2mye3"]
 interpolation_mode = 2
@@ -40,11 +40,13 @@ offset_right = 989.823
 offset_bottom = 415.0
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 3
+script = ExtResource("1_mxrx3")
+container_path = NodePath("VBOX")
+list_item_class = "res://Scene/midi_node.tscn"
 
 [node name="VBOX" type="VBoxContainer" parent="MidiWindow/SC"]
 layout_mode = 2
 size_flags_vertical = 2
-script = ExtResource("1_mxrx3")
 
 [node name="Left" type="Polygon2D" parent="."]
 z_index = 2
@@ -115,7 +117,6 @@ color = Color(0.188235, 0.584314, 1, 1)
 polygon = PackedVector2Array(151.885, 92.423, 149, 337, 260, 337, 262.885, 92.423)
 
 [node name="Indicator" type="VBoxContainer" parent="Right/Right"]
-clip_children = 2
 clip_contents = true
 custom_minimum_size = Vector2(0, 240)
 offset_left = 186.9
@@ -421,8 +422,6 @@ theme_override_font_sizes/font_size = 40
 text = "9"
 vertical_alignment = 2
 
-[connection signal="gui_input" from="MidiWindow/SC" to="MidiWindow/SC/VBOX" method="_input"]
-[connection signal="scroll_started" from="MidiWindow/SC" to="MidiWindow/SC/VBOX" method="_on_scrolling"]
-[connection signal="pressed" from="Left/Previous/Button" to="MidiWindow/SC/VBOX" method="_previous"]
-[connection signal="pressed" from="Left/Next/Button" to="MidiWindow/SC/VBOX" method="_next"]
-[connection signal="pressed" from="Left/Option/Button" to="MidiWindow/SC/VBOX" method="_show_midi_list"]
+[connection signal="pressed" from="Left/Previous/Button" to="MidiWindow/SC" method="_previous"]
+[connection signal="pressed" from="Left/Next/Button" to="MidiWindow/SC" method="_next"]
+[connection signal="pressed" from="Left/Option/Button" to="MidiWindow/SC" method="_show_midi_list"]

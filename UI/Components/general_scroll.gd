@@ -26,8 +26,8 @@ var _previ_scroll_vertical := 0.0
 # 配置参数
 var deceleration_rate := 0.99  # 基础减速速率
 var drag_sensitivity := 1.5  # 拖拽灵敏度
-var max_velocity := 6500.0  # 最大速度
-var wheel_velocity := 450.0  # 滚轮速度增量
+var max_velocity := 5000.0  # 最大速度
+var wheel_velocity := 425.0  # 滚轮速度增量
 
 func _init(scroll_container: ScrollContainer) -> void:
 	_scroll_container = scroll_container
@@ -75,6 +75,8 @@ func process(delta: float) -> void:
 		var max_scroll := 0.0
 		if _scroll_container.get_v_scroll_bar():
 			max_scroll = _scroll_container.get_v_scroll_bar().max_value
+		if abs(_scroll_velocity) > max_velocity:
+			_scroll_velocity = max_velocity * sign(_scroll_velocity)
 		if _scroll_container.scroll_vertical < max_scroll:
 			_scroll_velocity *= deceleration_rate
 		
@@ -113,11 +115,11 @@ func input(event: InputEvent) -> void:
 	# 鼠标移动事件
 	elif event is InputEventMouseMotion and _is_dragging:
 		_drag_pos2 = event.global_position.y - _drag_pos1
-		if abs(event.velocity.y) > abs(_scroll_velocity) or _scroll_velocity * event.velocity.y > 0.0:
+		# 异号或者速度大于最大速度就更新速度
+		if _scroll_velocity * event.velocity.y > 0.0 or abs(event.velocity.y) > abs(_scroll_velocity):
 			_scroll_velocity = - event.velocity.y
 		if _drag_pos2 != 0:
 			_scroll_container.scroll_vertical = int(-_drag_pos2 * drag_sensitivity + _start_scroll_v_pos)
-
 
 func _on_scrollbar_input(event: InputEvent, orientation: String) -> void:
 	if not _is_enabled:

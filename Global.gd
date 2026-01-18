@@ -17,14 +17,14 @@ var _architecture_initialized: bool = false
 
 #当前选中的专辑和歌曲的编号
 var album: int= -1
-var song: int = -1
+# var song: int = -1
 
 #选中的经过筛选的midi
 var select_midi: int = -1
 
 #当前选中的专辑和歌曲的名字
-var album_id: String = ""
-var song_id: String = ""
+# var album_id: String = ""
+# var song_id: String = ""
 
 
 

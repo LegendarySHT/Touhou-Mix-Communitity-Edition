@@ -302,7 +302,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			tween = animate_list_item_horizontal(album_list, Global.album-4, Global.album+5, tindex, -1200, tween_id)
 			tween.finished.connect(func() -> void:
 				album_list.visible=false
-				album_list.get_node("VBox").get_child(Global.album).modulate = Color(1, 1, 1, 0)
+			# 	album_list.get_node("VBox").get_child(Global.album).modulate = Color(1, 1, 1, 0)
 			)
 		"Song_List":
 			if new_state == UIStateManager.UIState.ALBUM_VIEW:
@@ -317,11 +317,13 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			if new_state == UIStateManager.UIState.MIDI_VIEW:
 				tween.finished.connect(func() -> void:
 					SS.visible=false
+					song_list.visible=false
+					song_list.selected_song=-1
 				)
 		"Sorted_List":
 			var sort_midi_list = get_node("/root/Main/SortedMidi")
 			
-			song_list.storeButtonSwitch.emit(false)
+			EventBus.instance.storeButtonSwitch.emit(false)
 
 			tween = animate_position(sort_midi_list, Vector2(-1500, sort_midi_list.position.y), 0.25, tween_id)
 			tween.finished.connect(func() -> void:
@@ -336,7 +338,6 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 				info_ui.visible=false
 				if info_ui.get_node_or_null("OptionWindow/Option/Rank"):
 					info_ui.get_node("OptionWindow/Option/Rank").button_pressed=true
-				Global.song = -1
 			)
 		"Right_Part":
 			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305+53.58,-215-800), 0.25, "MenuBarPosition")
@@ -364,6 +365,8 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state
 	match ui_name:
 		"Album_List":
 			album_list.visible=true
+			song_list.visible=false
+			
 			album_list.get_node("VBox").get_child(Global.album).modulate = Color(1, 1, 1, 1)
 			var tindex = Global.album if old_state != UIStateManager.UIState.SORTED_VIEW else -1
 			tween = animate_list_item_horizontal(album_list, Global.album-4, Global.album+5, tindex, 0, tween_id)
@@ -372,8 +375,6 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state
 			if SS:
 				SS.get_parent().queue_free()
 			
-			song_list.initial=0
-			song_list.visible=false
 			for i in song_list.get_child(0).get_children():
 				if i:
 					i.queue_free()
@@ -387,28 +388,24 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state
 			song_list.visible=true
 			song_list.position=Vector2(285,-679)
 			animate_position(song_list, Vector2(song_list.position.x, 440), 0.15, tween_id)
-			tween = animate_fade_in(song_list, 1, "SongListFadeIn")
+			tween = animate_fade_in(song_list, 0.4, "SongListFadeIn")
 
 			# 不要问为什么在播放动画的地方做初始化
 			var button=SS.get_node("PC/Polygon2D/AlbumButton")
-			button.pressed.connect(song_list.back)
+			var ui: UIStateManager = UiStatMGR.instance
+			button.pressed.connect(func() -> void:
+				ui.change_state(ui.UIState.ALBUM_VIEW))
 		"Sorted_List":
 			var sort_midi_list = get_node("/root/Main/SortedMidi")
 			sort_midi_list.visible = true
-			song_list.storeButtonSwitch.emit(true)
+			EventBus.instance.storeButtonSwitch.emit(true)
 
 			animate_position(sort_midi_list, Vector2(0, sort_midi_list.position.y), 0.25, tween_id)
 		"Midi_Info_View":
-			song_list.storeButtonSwitch.emit(true)
+			EvtBus.instance.storeButtonSwitch.emit(true)
 			
-			var Main = get_node_or_null("/root/Main")
+			var info_ui = get_node_or_null("/root/Main/InfoUI")
 
-			var info_ui = Main.get_node_or_null("InfoUI")
-			if not info_ui:
-				var info_window = load("res://Scene/info_ui.tscn").instantiate()
-				Main.add_child(info_window)
-				info_ui = Main.get_node_or_null("InfoUI")
-			
 			info_ui.visible = true
 			info_ui.modulate = Color(1,1,1,1)
 		

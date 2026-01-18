@@ -8,11 +8,11 @@ class_name EventBus
 static var instance: EventBus
 
 ## ========== 数据事件 ==========
-signal data_ready(data_manager: DataManager)
+# signal data_ready(data_manager: DataManager)
 signal data_loaded_complete
-signal midi_data_updated(midi_id: String)
-signal album_selected(album_id: String, album_data: AlbumData)
-signal song_selected(song_id: String, song_data: SongData)
+# signal midi_data_updated(midi_id: String)
+signal album_selected(album_id: String)
+signal song_selected(song_id: String)
 signal midi_selected(midi_id: String, midi_data: MidiData)
 
 ## ========== UI导航事件 ==========
@@ -23,6 +23,8 @@ signal midi_selected(midi_id: String, midi_data: MidiData)
 # signal navigate_to_detail_view(midi_id: String)
 signal navigate_back
 
+signal storeButtonSwitch(showBackButton:bool)
+
 ## ========== 排序和筛选事件 ==========
 signal sort_finished
 # signal sort_field_changed(sort_field: int)
@@ -31,12 +33,12 @@ signal sort_finished
 signal search_query_changed(query: String)
 
 ## ========== UI交互事件 ==========
-signal shortcut_menu_toggled(is_open: bool)
-signal sort_menu_toggled(is_open: bool)
-signal scroll_started(scroll_view_name: String)
-signal scroll_finished(scroll_view_name: String)
-signal item_hovered(item_type: String, item_id: String)
-signal item_unhovered
+# signal shortcut_menu_toggled(is_open: bool)
+# signal sort_menu_toggled(is_open: bool)
+# signal scroll_started(scroll_view_name: String)
+# signal scroll_finished(scroll_view_name: String)
+# signal item_hovered(item_type: String, item_id: String)
+# signal item_unhovered
 
 ## ========== 设置和配置事件 ==========
 signal settings_changed(setting_name: String, value: Variant)
@@ -55,12 +57,12 @@ func _ready() -> void:
 		queue_free()
 
 ## 便利函数：发出专辑选择事件
-func emit_album_selected(album_id: String, album_data: AlbumData) -> void:
-	album_selected.emit(album_id, album_data)
+func emit_album_selected(album_id: String) -> void:
+	album_selected.emit(album_id)
 
 ## 便利函数：发出歌曲选择事件
-func emit_song_selected(song_id: String, song_data: SongData) -> void:
-	song_selected.emit(song_id, song_data)
+func emit_song_selected(song_id: String) -> void:
+	song_selected.emit(song_id)
 
 ## 便利函数：发出MIDI选择事件
 func emit_midi_selected(midi_id: String, midi_data: MidiData) -> void:

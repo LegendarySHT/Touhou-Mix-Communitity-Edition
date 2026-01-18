@@ -134,5 +134,3 @@ position = Vector2(-100, -411)
 rect = Rect2(0, 0, 700, 1000)
 enable_node_path = NodePath("")
 metadata/_edit_lock_ = true
-
-[connection signal="toggled" from="PC/Polygon2D/AlbumButton" to="." method="_on_album_button_toggled"]

@@ -28,6 +28,8 @@ func _ready():
 func _initialize_core_systems() -> void:
 	print("=== Initializing Core Systems ===")
 	
+	_init_ui()
+
 	# 1. 初始化日志系统（单例，已自动管理）
 	logger = GameLogger.instance
 	if logger:
@@ -88,6 +90,16 @@ func _initialize_core_systems() -> void:
 	
 	Global._initialize_new_architecture_refs()
 	print("=== Core Systems Initialized ===")
+
+func _init_ui() -> void:
+	# Midi详细界面 (不提前初始化的话，内部的midi list可能收不到信号)
+	var Main = get_node_or_null("/root/Main")
+	var info_ui = Main.get_node_or_null("InfoUI")
+	if not info_ui:
+		var info_window = load("res://Scene/info_ui.tscn").instantiate()
+		info_window.visible = false
+		Main.add_child(info_window)
+		info_ui = Main.get_node_or_null("InfoUI")
 
 ## 连接核心系统信号
 func _connect_signals() -> void:

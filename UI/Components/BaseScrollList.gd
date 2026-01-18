@@ -97,7 +97,7 @@ func create_and_add_item(item_id: String, item_type: String = "") -> ListItemBas
 	
 	if list_item_class is GDScript:
 		item = list_item_class.new()
-	else:
+	elif list_item_class:
 		item = load(list_item_class).instantiate()
 	
 	item.initialize(item_id, item_type)

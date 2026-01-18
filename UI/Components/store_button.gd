@@ -3,25 +3,24 @@ var ShowBackButton=false
 
 signal  switch_to_store
 
-func _on_song_list_store_button_switch(showBackButton: bool):
-	var tween =create_tween()
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_QUINT)
-	ShowBackButton=showBackButton
-	
-	tween.set_parallel(true)
-	if showBackButton:
-		tween.tween_property(get_node("Store"),"position",Vector2(12,960),0.25)
-		tween.tween_property(get_node("Back"),"position",Vector2(12,400),0.25)#
-	else:
-		tween.tween_property(get_node("Store"),"position",Vector2(12,410),0.25)#
-		tween.tween_property(get_node("Back"),"position",Vector2(12,-50),0.25)
-		
+var RIGHTBOTTOM="/root/Main/RightBottom/Store_Button"
+@onready var animation_manager:AnimationManager = AniMGR.instance
+@onready var event_bus:EventBus = EvtBus.instance
 
+func _ready():
+	event_bus.storeButtonSwitch.connect(_animate_switch_btn)
+
+func _animate_switch_btn(showBackButton: bool):
+	ShowBackButton = showBackButton
+	var expa = 1 if showBackButton else 0
+	var rb = get_node(RIGHTBOTTOM)
+
+	animation_manager.animate_position(rb.get_node("Store"), Vector2(12, 410 +550*expa), 0.25, "SBP1")
+	animation_manager.animate_position(rb.get_node("Back"), Vector2(12, -50 +450*expa), 0.25, "SBP2")
 
 func _on_button_pressed() -> void:
 	if ShowBackButton:
-		get_node("/root/Main/Song/SongList").storeButtonSwitch.emit(false)
+		event_bus.storeButtonSwitch.emit(false)
 		if UiStatMGR.current_state == UiStatMGR.UIState.SORTED_VIEW:
 			UiStatMGR.change_state(UiStatMGR.previous_state)
 		else:

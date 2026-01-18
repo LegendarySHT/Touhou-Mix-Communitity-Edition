@@ -1,9 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://dcmlyvps8badu"]
+[gd_scene load_steps=4 format=3 uid="uid://dcmlyvps8badu"]
 
-[ext_resource type="Script" uid="uid://truifwrlnmio" path="res://Scene/midi_node.gd" id="1_t5w3i"]
-[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://song_cover/1.jpg" id="2_jdrqc"]
-[ext_resource type="ButtonGroup" uid="uid://b4575qiw146bo" path="res://ButtonGroup/MidiButton.tres" id="2_sh4ns"]
-[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://方正黑体_GBK.ttf" id="3_jdrqc"]
+[ext_resource type="Script" uid="uid://cax20p7g1wjmk" path="res://UI/Components/MidiListItem.gd" id="1_t5w3i"]
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_jdrqc"]
+[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_jdrqc"]
 
 [node name="MidiNode" type="MarginContainer"]
 clip_children = 2
@@ -93,7 +92,6 @@ text = "Pending"
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 toggle_mode = true
-button_group = ExtResource("2_sh4ns")
 metadata/index = 0
 
 [connection signal="toggled" from="Button" to="." method="_on_button_toggled"]

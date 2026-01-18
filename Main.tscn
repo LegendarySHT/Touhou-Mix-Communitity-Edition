@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/store_button.gd" id="7_sqvbp"]
 [ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView.gd" id="7_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://bq58thu46jvsq" path="res://Resources/icon/midi_store.png" id="8_hri7i"]
+[ext_resource type="Script" uid="uid://cka36xm3jh6b" path="res://UI/Views/SongView.gd" id="8_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://bgvtr3nkhfcdr" path="res://Resources/icon/midiInfoPage/back.png" id="9_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://dj5o6emlgvdmo" path="res://Resources/icon/setting.png" id="10_5mvff"]
 [ext_resource type="Script" uid="uid://cohp1v184ht7q" path="res://UI/Components/shortcut_menu.gd" id="11_oye8v"]
@@ -23,7 +24,6 @@
 [ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="18_3ccbu"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
 [ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
-[ext_resource type="Script" uid="uid://dmccjm3n7wwo0" path="res://Scene/SongList.gd" id="22_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="24_mxvw5"]
 [ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="25_xrxkg"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView.gd" id="26_5mvff"]
@@ -166,6 +166,7 @@ theme = SubResource("Theme_devvj")
 follow_focus = true
 horizontal_scroll_mode = 0
 script = ExtResource("7_w3rk5")
+container_path = NodePath("VBox")
 list_item_class = "res://Scene/albumNode.tscn"
 
 [node name="VBox" type="VBoxContainer" parent="Album/AlbumList"]
@@ -194,21 +195,23 @@ focus_mode = 2
 follow_focus = true
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
-script = ExtResource("22_3b0ty")
+script = ExtResource("8_w3rk5")
+container_path = NodePath("VBox")
+list_item_class = "res://Scene/songNode.tscn"
 
 [node name="VBox" type="VBoxContainer" parent="Song/SongList"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 29
 
-[node name="Store_button" type="Polygon2D" parent="."]
+[node name="RightBottom" type="Polygon2D" parent="."]
 clip_children = 2
 z_index = 2
 position = Vector2(2032, 343)
 rotation = 0.523599
 polygon = PackedVector2Array(-0.426636, 851.261, 0.00524902, 224.009, 271.505, 694.261)
 
-[node name="Store_Button" type="ColorRect" parent="Store_button"]
+[node name="Store_Button" type="ColorRect" parent="RightBottom"]
 clip_contents = true
 offset_left = 1.0
 offset_top = 218.0
@@ -218,7 +221,7 @@ mouse_filter = 1
 color = Color(0.439216, 0.729412, 0.980392, 1)
 script = ExtResource("7_sqvbp")
 
-[node name="Button" type="Button" parent="Store_button/Store_Button"]
+[node name="Button" type="Button" parent="RightBottom/Store_Button"]
 modulate = Color(1, 1, 1, 0)
 self_modulate = Color(1, 1, 1, 0)
 show_behind_parent = true
@@ -234,7 +237,7 @@ flat = true
 icon_alignment = 1
 expand_icon = true
 
-[node name="Store" type="TextureRect" parent="Store_button/Store_Button"]
+[node name="Store" type="TextureRect" parent="RightBottom/Store_Button"]
 layout_mode = 0
 offset_left = 12.0
 offset_top = 410.0
@@ -245,10 +248,10 @@ scale = Vector2(2, 2)
 mouse_filter = 2
 texture = ExtResource("8_hri7i")
 
-[node name="Line2D" type="Line2D" parent="Store_button/Store_Button"]
+[node name="Line2D" type="Line2D" parent="RightBottom/Store_Button"]
 points = PackedVector2Array(-1.42664, 633.261, -0.494751, 6.87494)
 
-[node name="Back" type="TextureRect" parent="Store_button/Store_Button"]
+[node name="Back" type="TextureRect" parent="RightBottom/Store_Button"]
 layout_mode = 0
 offset_left = 12.0
 offset_top = -50.0
@@ -666,6 +669,8 @@ theme = SubResource("Theme_devvj")
 follow_focus = true
 horizontal_scroll_mode = 0
 script = ExtResource("26_5mvff")
+container_path = NodePath("VBox")
+list_item_class = "res://Scene/SortedMidiNode.tscn"
 
 [node name="VBox" type="VBoxContainer" parent="SortedMidi/SortedMidisList"]
 custom_minimum_size = Vector2(630, 0)
@@ -875,9 +880,8 @@ offset_bottom = 1086.0
 texture_normal = ExtResource("27_hri7i")
 flip_v = true
 
-[connection signal="storeButtonSwitch" from="Song/SongList" to="Store_button/Store_Button" method="_on_song_list_store_button_switch"]
-[connection signal="switch_to_store" from="Store_button/Store_Button" to="Camera2D" method="_switch_to_store"]
-[connection signal="pressed" from="Store_button/Store_Button/Button" to="Store_button/Store_Button" method="_on_button_pressed"]
+[connection signal="switch_to_store" from="RightBottom/Store_Button" to="Camera2D" method="_switch_to_store"]
+[connection signal="pressed" from="RightBottom/Store_Button/Button" to="RightBottom/Store_Button" method="_on_button_pressed"]
 [connection signal="pressed" from="Setting_Button/settingbutton" to="SettingBackGround" method="_on_settingbutton_pressed"]
 [connection signal="pressed" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Status" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_status_pressed"]
 [connection signal="toggled" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Data" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_data_toggled"]

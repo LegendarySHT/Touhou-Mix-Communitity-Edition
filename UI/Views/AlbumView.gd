@@ -6,11 +6,12 @@ class_name AlbumView
 
 ## 当前显示的专辑列表
 var current_albums: Array[AlbumData] = []
+var selected_album: int = -1
 
 ## 排序引擎引用
-@onready var sorting_engine: SortingEngine = SortingEngine.instance
-@onready var data_manager: DataManager = DataManager.instance
-@onready var event_bus: EventBus = EventBus.instance
+@onready var sorting_engine: SortingEngine = SortEngine.instance
+@onready var data_manager: DataManager = DataMGR.instance
+@onready var event_bus: EventBus = EvtBus.instance
 
 # 基本滚动逻辑
 @onready var scroll:GeneralScroll = GeneralScroll.new(self)
@@ -106,7 +107,7 @@ func _process(delta):
 	
 	else:
 		_stop_snap()
-		if Global.album != -1 and albumNode.is_expanded and (albumNode.global_position.y < 0 or albumNode.global_position.y > 1080):
+		if Global.album != -1 and albumNode.is_expanded and (albumNode.global_position.y < 100 or albumNode.global_position.y > 1080):
 			reset_selection()
 
 func _input(event):
@@ -130,14 +131,10 @@ func _on_button_toggled(toggled_on: bool, button):
 		if  Global.album != -1 and Global.album == button.get_meta("index"):
 			# 设置专辑ID
 			var album_id = button.get_meta("album_id")
-			Global.album_id = album_id
+			# Global.album_id = album_id
 			
 			# 通过事件总线触发专辑选择
-			if EventBus.instance and DataManager.instance:
-				var album_data = DataManager.instance.get_album_by_id(album_id)
-				if album_data:
-					EventBus.instance.emit_album_selected(album_id, album_data)
-			
+			event_bus.album_selected.emit(album_id)
 			UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
 		
 		need_snap = true
@@ -147,41 +144,41 @@ func _on_button_toggled(toggled_on: bool, button):
 
 
 ## 搜索改变回调
-func _on_search_changed(query: String) -> void:
-	if query.is_empty():
-		_load_albums()
-	else:
-		# 实现搜索逻辑
-		var search_results = sorting_engine.search_midis(
-			data_manager.get_all_midis() if data_manager else [],
-			query
-		)
-		# TODO: 根据MIDI结果过滤专辑
-		pass
+# func _on_search_changed(query: String) -> void:
+# 	if query.is_empty():
+# 		_load_albums()
+# 	else:
+# 		# 实现搜索逻辑
+# 		var search_results = sorting_engine.search_midis(
+# 			data_manager.get_all_midis() if data_manager else [],
+# 			query
+# 		)
+# 		# TODO: 根据MIDI结果过滤专辑
+# 		pass
 
-## 列表项选中回调
-func _on_item_selected(item_id: String) -> void:
-	if event_bus:
-		# 查找对应的专辑
-		for album in current_albums:
-			if album.id == item_id:
-				event_bus.emit_album_selected(item_id, album)
-				break
+# ## 列表项选中回调
+# func _on_item_selected(item_id: String) -> void:
+# 	if event_bus:
+# 		# 查找对应的专辑
+# 		for album in current_albums:
+# 			if album.id == item_id:
+# 				event_bus.emit_album_selected(item_id, album)
+# 				break
 
-## 列表项悬停回调
-func _on_item_hovered(item_id: String) -> void:
-	pass
+# ## 列表项悬停回调
+# func _on_item_hovered(item_id: String) -> void:
+# 	pass
 
-## 列表项取消悬停回调
-func _on_item_unhovered() -> void:
-	pass
+# ## 列表项取消悬停回调
+# func _on_item_unhovered() -> void:
+# 	pass
 
-## 获取所有MIDI方法（供搜索使用）
-func _get_all_midis() -> Array:
-	if not data_manager:
-		return []
+# ## 获取所有MIDI方法（供搜索使用）
+# func _get_all_midis() -> Array:
+# 	if not data_manager:
+# 		return []
 	
-	var all_midis: Array = []
-	for midi in data_manager.midis.values():
-		all_midis.append(midi)
-	return all_midis
+# 	var all_midis: Array = []
+# 	for midi in data_manager.midis.values():
+# 		all_midis.append(midi)
+# 	return all_midis

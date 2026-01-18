@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3 uid="uid://b8gxe8bw01br7"]
+[gd_scene load_steps=5 format=3 uid="uid://b8gxe8bw01br7"]
 
-[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://song_cover/1.jpg" id="1_0asqb"]
-[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://方正黑体_GBK.ttf" id="2_5wnnw"]
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="1_0asqb"]
+[ext_resource type="Script" uid="uid://bt0e0os76bnfm" path="res://UI/Components/SongListItem.gd" id="1_5wnnw"]
+[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="2_5wnnw"]
 
 [sub_resource type="Gradient" id="Gradient_pqbqw"]
 interpolation_mode = 2
@@ -23,6 +24,7 @@ grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(-1, 0)
 theme_override_constants/margin_left = 0
+script = ExtResource("1_5wnnw")
 metadata/index = 0
 metadata/sourceSongName = 0.0
 metadata/midiCount = 0
@@ -54,7 +56,6 @@ polygons = [PackedInt32Array(0, 1, 2, 3)]
 internal_vertex_count = 2
 
 [node name="cover" type="TextureRect" parent="PC/Shader"]
-clip_children = 2
 custom_minimum_size = Vector2(1000, 200)
 anchors_preset = 7
 anchor_left = 0.5

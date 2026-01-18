@@ -3,69 +3,49 @@
 extends ListItemBase
 
 ## 引用节点（需要根据实际场景结构调整）
-@onready var song_name_label: Label = $SongName if has_node("SongName") else null
-@onready var midi_count_label: Label = $MidiCount if has_node("MidiCount") else null
-@onready var button: Button = $Button if has_node("Button") else null
+@onready var song_name_label: Label = $PC/Shader/SongName if has_node("PC/Shader/SongName") else null
+@onready var midi_count_label: Label = $PC/CountBase/SongCount if has_node("PC/CountBase/SongCount") else null
+@onready var button: Button = $PC/Shader/SongButton if has_node("PC/Shader/SongButton") else null
 
 ## 歌曲数据
 var song_data: SongData
 
 ## 选中动画补间
-var select_tween: Tween
+var tween: Tween
 
-func _ready() -> void:
-	# 连接按钮信号
-	if button:
-		button.pressed.connect(_on_button_pressed)
+func _update_display() -> void:
+	# 初始化显示
+	if not song_name_label:
+		song_name_label = get_node("PC/Shader/SongName")
+	if not midi_count_label:
+		midi_count_label = get_node("PC/CountBase/SongCount")
+	song_name_label.text = " %s" % song_data.name if song_data.name else "Unknown"
+	midi_count_label.text = "%d" % song_data.midi_ids.size()
 
 ## 从SongData初始化显示
-func setup_with_song(song: SongData, index: int = 0) -> void:
+func setup_with_song(parent: SongView, song: SongData, index: int, bg: ButtonGroup) -> void:
 	song_data = song
 	item_id = song.id
 	item_type = "song"
-	
-	# 更新显示
-	if song_name_label:
-		song_name_label.text = song.name if not song.name.is_empty() else "Unknown"
-	
-	if midi_count_label:
-		midi_count_label.text = "%d MIDI" % song.midi_count
-	
-	if button:
-		button.set_meta("index", index)
+
+	_update_display()
+
+	var btn = get_node("PC/Shader/SongButton")
+	btn.button_group = bg
+	btn.toggled.connect(parent._on_button_toggled.bind(self, song_data.id))
+	btn.toggled.connect(_on_song_button_toggled.bind(self))
 	
 	# 设置元数据
+	btn.set_meta("index", index)
 	set_meta("index", index)
-	set_meta("song_id", song.id)
 
-## 按钮按下回调
-func _on_button_pressed() -> void:
-	_on_song_selected()
 
-## 歌曲选中
-func _on_song_selected() -> void:
-	# 播放选中动画
-	if select_tween and select_tween.is_running():
-		select_tween.kill()
-	
-	select_tween = create_tween()
-	select_tween.set_ease(Tween.EASE_OUT)
-	select_tween.set_trans(Tween.TRANS_BACK)
-	select_tween.set_parallel(true)
-	
-	# 简单的缩放反馈
-	select_tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.1)
-	select_tween.chain().tween_property(self, "scale", Vector2(1, 1), 0.1)
-	
-	# 发射选中信号
-	set_selected(true)
+# 动画
+func _on_song_button_toggled(toggled_on: bool, songNode) -> void:
+	tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_parallel(true)
 
-## 选中状态改变时调用
-func _on_selected() -> void:
-	# 可以在这里添加选中视觉效果
-	pass
-
-## 取消选中时调用
-func _on_deselected() -> void:
-	# 可以在这里添加取消选中视觉效果
-	pass
+	var expa = 1 if toggled_on else 0
+	tween.tween_property(songNode, "scale", Vector2(1+ expa *0.05, 1+ expa *0.05), 0.1)
