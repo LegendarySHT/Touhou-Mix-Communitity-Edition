@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://7yry3gl1v284" path="res://UI/Components/background.gd" id="5_xrxkg"]
 [ext_resource type="Texture2D" uid="uid://7e7lff81aa7n" path="res://Resources/Gradient/gradient2.png" id="6_xrxkg"]
 [ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/store_button.gd" id="7_sqvbp"]
+[ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView.gd" id="7_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://bq58thu46jvsq" path="res://Resources/icon/midi_store.png" id="8_hri7i"]
 [ext_resource type="Texture2D" uid="uid://bgvtr3nkhfcdr" path="res://Resources/icon/midiInfoPage/back.png" id="9_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://dj5o6emlgvdmo" path="res://Resources/icon/setting.png" id="10_5mvff"]
@@ -22,7 +23,6 @@
 [ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="18_3ccbu"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
 [ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
-[ext_resource type="Script" uid="uid://cc07n4a54nk16" path="res://Scene/AlbumList.gd" id="21_3b0ty"]
 [ext_resource type="Script" uid="uid://dmccjm3n7wwo0" path="res://Scene/SongList.gd" id="22_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="24_mxvw5"]
 [ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="25_xrxkg"]
@@ -165,7 +165,8 @@ focus_mode = 2
 theme = SubResource("Theme_devvj")
 follow_focus = true
 horizontal_scroll_mode = 0
-script = ExtResource("21_3b0ty")
+script = ExtResource("7_w3rk5")
+list_item_class = "res://Scene/albumNode.tscn"
 
 [node name="VBox" type="VBoxContainer" parent="Album/AlbumList"]
 custom_minimum_size = Vector2(630, 0)

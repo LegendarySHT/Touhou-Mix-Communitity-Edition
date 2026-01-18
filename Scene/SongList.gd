@@ -31,9 +31,9 @@ func _exit_tree():
 		scroll.disable()
 
 func _process(delta: float):
-	scroll.process(delta)
 	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
 		return
+	scroll.process(delta)
 	
 	if initial == 0:
 		_load_songs()
@@ -124,9 +124,9 @@ func _update_polygon(np: Vector2, i, polygon):
 # 	start_scroll_v_pos = scroll_vertical
 
 func _input(event):
+	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
+		return
 	scroll.input(event)
-	#if state_manager.current_state != state_manager.UIState.SONG_VIEW:
-		#return
 	#
 	## 检测鼠标释放或触摸结束
 	#if event is InputEventMouseButton:

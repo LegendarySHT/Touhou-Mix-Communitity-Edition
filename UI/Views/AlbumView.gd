@@ -8,29 +8,32 @@ class_name AlbumView
 var current_albums: Array[AlbumData] = []
 
 ## 排序引擎引用
-var sorting_engine: SortingEngine
-var data_manager: DataManager
-var event_bus: EventBus
+@onready var sorting_engine: SortingEngine = SortingEngine.instance
+@onready var data_manager: DataManager = DataManager.instance
+@onready var event_bus: EventBus = EventBus.instance
+
+# 基本滚动逻辑
+@onready var scroll:GeneralScroll = GeneralScroll.new(self)
+
+# 吸附相关
+@export var item_height: float = 173
+var need_snap = false # 指示是否需要吸附
+var snap_velocity = 800 # 开始吸附的速度临界值
+var snap_index = -1 # 当需要吸附且该值为1时，就近吸附，否则吸附到指定位置
+var snap_distant = 0 # 用于指示距离吸附完成位置的距离
+
+# 路径
+var ALBUMBUTTON = "PC/Polygon2D/AlbumButton"
 
 func _ready() -> void:
 	super._ready()
-	
-	# 获取管理器引用
-	data_manager = DataManager.instance
-	event_bus = EventBus.instance
-	sorting_engine = SortingEngine.instance
 	
 	if not data_manager or not event_bus or not sorting_engine:
 		push_error("AlbumView: Missing manager instances")
 		return
 	
 	# 连接事件
-	event_bus.data_loaded_complete.connect(_on_data_loaded)
-	event_bus.sort_field_changed.connect(_on_sort_changed)
-	event_bus.search_query_changed.connect(_on_search_changed)
-	
-	# 初始化
-	_load_albums()
+	data_manager.data_loaded.connect(_load_albums)
 
 ## 加载专辑数据
 func _load_albums() -> void:
@@ -46,10 +49,14 @@ func _refresh_display() -> void:
 	_clear_list()
 	
 	# 添加新项
+	var counter = 0
+	var bg = ButtonGroup.new()
 	for album in current_albums:
 		var item = create_and_add_item(album.id, "album")
-		if item:
-			_initialize_album_item(item, album)
+		item.setup_with_album(self, album, counter, bg)
+
+		get_child(0).add_child(item)
+		counter += 1
 
 ## 清空列表
 func _clear_list() -> void:
@@ -61,19 +68,83 @@ func _clear_list() -> void:
 	
 	list_items.clear()
 
-## 初始化专辑项
-func _initialize_album_item(item: ListItemBase, album: AlbumData) -> void:
-	# 如果item是AlbumListItem，调用setup方法
-	if item.has_method("setup_with_album"):
-		item.setup_with_album(album)
 
-## 数据加载完成回调
-func _on_data_loaded() -> void:
-	_load_albums()
+func _process(delta):
+	if UiStatMGR.current_state != UiStatMGR.UIState.ALBUM_VIEW:
+		return
+	scroll.process(delta)
+	
+	var albumNode = get_child(0).get_child(Global.album)
+	
+	if abs(scroll._scroll_velocity) < 800 and not scroll._is_dragging:
+		if need_snap:
+			# 获取一个吸附对象
+			if snap_index == -1:
+				scroll._scroll_velocity = 0
+				if Global.album == -1:
+					snap_index = round((scroll_vertical + item_height) / (item_height))
+				else:
+					snap_index = Global.album
 
-## 排序改变回调
-func _on_sort_changed(sort_field: int) -> void:
-	_load_albums()
+			var temp = get_node("/root/Main/Album/AlbumList/VBox").get_child(snap_index)
+			if temp.is_expanded == false:
+				#print("emited")
+				temp.get_node(ALBUMBUTTON).button_pressed = true
+
+			snap_distant = get_child(0).get_child(snap_index).global_position.y - item_height
+			if abs(snap_distant) < 2 or (snap_index == 0):
+				_stop_snap()
+		# 低速时吸附
+		elif abs(scroll._scroll_velocity) < snap_velocity and (abs(get_child(0).get_child(Global.album).global_position.y - 200) > 20 or Global.album == -1):
+			need_snap = true
+		
+		
+		# 吸附时的移动
+		if need_snap:
+			scroll_vertical += floor((snap_distant) / 6)
+		# 选中的曲子在屏幕外时缩小
+	
+	else:
+		_stop_snap()
+		if Global.album != -1 and albumNode.is_expanded and (albumNode.global_position.y < 0 or albumNode.global_position.y > 1080):
+			reset_selection()
+
+func _input(event):
+	if UiStatMGR.current_state != UIStateManager.UIState.ALBUM_VIEW or 0:# Global.Sort:
+		return
+	scroll.input(event)
+
+func _stop_snap():
+	need_snap = false;
+	snap_index = -1;
+	
+func reset_selection():
+	if Global.album != -1:
+		var temp = get_child(0).get_child(Global.album)
+		temp.get_node(ALBUMBUTTON).button_pressed = false
+
+		Global.album = -1
+
+func _on_button_toggled(toggled_on: bool, button):
+	if toggled_on:
+		if  Global.album != -1 and Global.album == button.get_meta("index"):
+			# 设置专辑ID
+			var album_id = button.get_meta("album_id")
+			Global.album_id = album_id
+			
+			# 通过事件总线触发专辑选择
+			if EventBus.instance and DataManager.instance:
+				var album_data = DataManager.instance.get_album_by_id(album_id)
+				if album_data:
+					EventBus.instance.emit_album_selected(album_id, album_data)
+			
+			UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
+		
+		need_snap = true
+		snap_index = button.get_meta("index")
+		
+		Global.album = button.get_meta("index")
+
 
 ## 搜索改变回调
 func _on_search_changed(query: String) -> void:

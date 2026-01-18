@@ -1,9 +1,9 @@
 [gd_scene load_steps=6 format=3 uid="uid://cmg2kkhga3yj5"]
 
-[ext_resource type="Script" uid="uid://3oeuaf73vlmx" path="res://Scene/albumNote.gd" id="1_7q325"]
-[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://song_cover/1.jpg" id="2_7q325"]
-[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://方正黑体_GBK.ttf" id="3_ly0fl"]
-[ext_resource type="Texture2D" uid="uid://co2vcj4yav5cd" path="res://icon/Count_Base.png" id="4_f2bii"]
+[ext_resource type="Script" uid="uid://dye4gnjw1k7du" path="res://UI/Components/AlbumListItem.gd" id="1_7q325"]
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_7q325"]
+[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_ly0fl"]
+[ext_resource type="Texture2D" uid="uid://co2vcj4yav5cd" path="res://Resources/icon/Count_Base.png" id="4_f2bii"]
 
 [sub_resource type="Gradient" id="Gradient_uj0r1"]
 interpolation_mode = 2

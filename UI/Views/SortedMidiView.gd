@@ -20,9 +20,10 @@ var scroll: GeneralScroll
 # var current_status_filter: SortEngine.SortStatField = SortingEngine.SortStatField.ALL
 
 ## 管理器引用
-var data_manager: DataManager
-var event_bus: EventBus
-var sorting_engine: SortingEngine
+@onready var state_manager: UIStateManager = UIStateManager.instance
+@onready var data_manager: DataManager = DataManager.instance
+@onready var event_bus: EventBus = EventBus.instance
+@onready var sorting_engine: SortingEngine = SortingEngine.instance
 
 # ========== 新增的加载控制变量 ==========
 ## 是否正在加载
@@ -46,11 +47,6 @@ func _ready() -> void:
 	scroll = GeneralScroll.new(self)
 	scroll.enable()
 	
-	# 获取管理器引用
-	data_manager = DataManager.instance
-	event_bus = EventBus.instance
-	sorting_engine = SortingEngine.instance
-	
 	if not data_manager or not event_bus or not sorting_engine:
 		push_error("SortedMidiView: Missing manager instances")
 		return
@@ -61,12 +57,16 @@ func _ready() -> void:
 	# 注意：sort_finished 事件已经连接过了，这里不需要重复连接
 
 func _process(delta):
+	if state_manager.current_state != state_manager.UIState.SORTED_VIEW:
+		return
 	scroll.process(delta)
 	
 	# 处理分帧加载
 	_process_loading()
 
 func _input(event):
+	if state_manager.current_state != state_manager.UIState.SORTED_VIEW:
+		return
 	scroll.input(event)
 
 ## 处理分帧加载逻辑
