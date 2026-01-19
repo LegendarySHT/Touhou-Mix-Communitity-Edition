@@ -70,6 +70,8 @@ func _start_sort_thread(status: SortStatField, sort_field: SortDataField, sort_d
 	is_sorting_active = true
 	
 	# 创建新线程
+	if sort_thread:
+		sort_thread.wait_to_finish()
 	sort_thread = Thread.new()
 	sort_thread.start(_sort_mode_thread.bind(status, sort_field, sort_direction))
 

@@ -14,9 +14,6 @@ extends ListItemBase
 ## MIDI数据
 var midi_data: MidiData
 
-## 是否被选中（用于双击检测）
-var be_selected: int = 0
-
 ## 选择动画补间
 var select_tween: Tween
 
@@ -32,6 +29,7 @@ func _update_display() -> void:
 		button = get_node("Button")
 
 	# 显示MIDI信息
+	get_node("MC/Data").text = "%d %d %d %d" % [midi_data.download_count, midi_data.trial_count, midi_data.up_count, midi_data.love_count]
 	status_label.text = midi_data.status
 	midi_name_label.text = midi_data.name
 	author_label.text = midi_data.artist_name if not midi_data.artist_name.is_empty() else "Unknown"
@@ -47,31 +45,29 @@ func setup_with_midi(midi: MidiData, index: int, bg:ButtonGroup) -> void:
 
 	button.set_meta("index", index)
 	button.button_group = bg
+
+	enable_selected_animation(button)
 	
 	# 设置元数据
 	set_meta("index", index)
 
 ## 按钮切换回调
 func _on_button_toggled(toggled_on: bool) -> void:
-	if select_tween and select_tween.is_running():
-		select_tween.kill()
 	
 	select_tween = create_tween()
 	select_tween.set_ease(Tween.EASE_IN_OUT)
 	select_tween.set_trans(Tween.TRANS_SINE)
-	select_tween.set_parallel(true)
 	
-	if toggled_on and be_selected:
+	if toggled_on and is_selected:
 		print("选中：%s / %s" % [midi_data.song_data.name, midi_data.name])
 		var event_bus = EventBus.instance
 		if event_bus and midi_data:
 			state_manager.change_state(UIStateManager.UIState.MIDI_VIEW)
 			event_bus.emit_midi_selected(midi_data.id, midi_data)
 
-	be_selected = 1 if toggled_on else 0
+	is_selected = toggled_on
 
-	select_tween.tween_property(self, "scale", Vector2(1 +0.07 *be_selected, 1+0.07 *be_selected), 0.15)
-	select_tween.tween_property(line, "default_color", Color("#938aff" if be_selected else "ffffff"), 0.15)
+	select_tween.tween_property(line, "default_color", Color("#938aff" if toggled_on else "ffffff"), 0.15)
 		
 
 ## 选中状态改变时调用
