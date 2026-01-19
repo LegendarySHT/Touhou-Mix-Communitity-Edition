@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://ddhnyragi1haf"]
 
-[ext_resource type="Script" uid="uid://fx16kf8h1mc0" path="res://Scene/sorted_midi_node.gd" id="1_rmur8"]
+[ext_resource type="Script" uid="uid://c4gjvjg4gl57p" path="res://UI/Components/SortedMidiListItem.gd" id="1_8dgkb"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_eprjm"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_6d3xq"]
 
@@ -18,7 +18,7 @@ grow_vertical = 2
 pivot_offset = Vector2(0, 75)
 size_flags_horizontal = 0
 size_flags_vertical = 0
-script = ExtResource("1_rmur8")
+script = ExtResource("1_8dgkb")
 metadata/status = ""
 metadata/artistName = ""
 metadata/trialCount = 0
@@ -118,4 +118,4 @@ joint_mode = 2
 begin_cap_mode = 2
 end_cap_mode = 2
 
-[connection signal="toggled" from="Button" to="." method="_select"]
+[connection signal="toggled" from="Button" to="." method="_on_button_toggled"]

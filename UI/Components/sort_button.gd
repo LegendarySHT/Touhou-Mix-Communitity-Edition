@@ -63,23 +63,6 @@ func _on_data_toggled(toggled_on: bool) -> void:
 		if UI.current_state!=UI.UIState.SORTED_VIEW:
 			UI.change_state(UI.UIState.SORTED_VIEW)
 
-
-# func _on_time_toggled(toggled_on: bool) -> void:
-# 	create_tween().tween_property(get_node("SelectTime"),"self_modulate",Color(1, 1, 1,(1 if toggled_on else 0) * 0.87),0.25).set_trans(Tween.TRANS_SINE)
-# 	if toggled_on:
-# 		# if select==2:
-# 		# 	Global.StartSort=1
-# 		# select=2
-# 		#Global.SortHeadPTR=Global.create_time
-# 		#Global.pn=["p5","n5"]
-# 		# create_tween().tween_property(get_node("SelectTime"),"self_modulate",Color("ffffffdd"),0.25).set_trans(Tween.TRANS_SINE)
-# 		# print("wait1")
-		
-# 		print("筛选：按创建时间")
-	# else:
-	# 	create_tween().tween_property(get_node("SelectTime"),"self_modulate",Color("ffffff00"),0.25).set_trans(Tween.TRANS_SINE)
-
-
 func _on_ordering_pressed() -> void:
 	Ascending = not Ascending
 	var SE = SortEngine.instance

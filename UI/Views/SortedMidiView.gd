@@ -42,6 +42,8 @@ var _load_frame_delay: int = 0
 var _delay_counter: int = 0
 # ======================================
 
+var item_bg: ButtonGroup
+
 func _ready() -> void:
 	super._ready()
 	scroll = GeneralScroll.new(self)
@@ -54,7 +56,6 @@ func _ready() -> void:
 	# 连接事件
 	event_bus.search_query_changed.connect(_on_search_query_changed)
 	event_bus.sort_finished.connect(_load_sorted_midis)
-	# 注意：sort_finished 事件已经连接过了，这里不需要重复连接
 
 func _process(delta):
 	if state_manager.current_state != state_manager.UIState.SORTED_VIEW:
@@ -73,7 +74,7 @@ func _input(event):
 func _process_loading() -> void:
 	if not _is_loading or _midis_to_load.is_empty():
 		return
-	
+
 	# 处理加载延迟
 	if _delay_counter < _load_frame_delay:
 		_delay_counter += 1
@@ -90,9 +91,9 @@ func _process_loading() -> void:
 			break
 			
 		var midi = _midis_to_load[index]
-		var node = load("res://Scene/SortedMidiNode.tscn").instantiate()
-		node.setup_with_midi(midi, index)
-		get_node("VBox").add_child(node)
+		var node = create_and_add_item(midi.id, "midi")
+		node.setup_with_midi(midi, index, item_bg)
+		container.add_child(node)
 	
 	# 更新索引
 	_current_load_index += nodes_to_load_this_frame
@@ -115,6 +116,9 @@ func _load_sorted_midis() -> void:
 		print("Missing manager instances")
 		return
 	
+	if not item_bg:
+		item_bg = ButtonGroup.new()
+
 	# 生成新的任务ID（用于标识当前任务）
 	var new_task_id = _current_load_task_id + 1
 	_current_load_task_id = new_task_id
@@ -137,8 +141,8 @@ func _load_sorted_midis() -> void:
 	
 	# 立即加载第一个节点以提供即时反馈
 	if not _midis_to_load.is_empty():
-		var node = load("res://Scene/SortedMidiNode.tscn").instantiate()
-		node.setup_with_midi(_midis_to_load[0], 0)
+		var node = create_and_add_item(_midis_to_load[0].id, "midi")
+		node.setup_with_midi(_midis_to_load[0], 0, item_bg)
 		get_node("VBox").add_child(node)
 		_current_load_index = 1
 		
@@ -146,13 +150,13 @@ func _load_sorted_midis() -> void:
 		if _midis_to_load.size() == 1:
 			_finish_loading()
 
-## 清空列表（优化版本）
+## 清空列表
 func _clear_list() -> void:
-	if get_node("VBox") == null:
+	if container == null:
 		return
 	
 	# 使用批量移除以提高性能
-	var children = get_node("VBox").get_children()
+	var children = container.get_children()
 	for i in range(children.size() - 1, -1, -1):
 		children[i].queue_free()
 	

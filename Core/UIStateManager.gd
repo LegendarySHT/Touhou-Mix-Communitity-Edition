@@ -83,9 +83,11 @@ func change_state(new_state: UIState) -> void:
 func go_back() -> bool:
 	if state_history.is_empty():
 		return false
+	var back_state =  state_history.pop_back()
+	previous_state = state_history.back()
 	
-	var previous = state_history.pop_back()
-	change_state(previous)
+	state_changed.emit(current_state, back_state)
+	current_state = back_state
 	return true
 
 ## 获取当前状态

@@ -17,7 +17,6 @@ config/icon="uid://von2js75nk2a"
 
 [autoload]
 
-Global="*res://Global.gd"
 DataMGR="*res://Core/DataManager.gd"
 EvtBus="*res://Core/EventBus.gd"
 SortEngine="*res://Core/SortingEngine.gd"

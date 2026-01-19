@@ -21,9 +21,9 @@ func _animate_switch_btn(showBackButton: bool):
 func _on_button_pressed() -> void:
 	if ShowBackButton:
 		event_bus.storeButtonSwitch.emit(false)
-		if UiStatMGR.current_state == UiStatMGR.UIState.SORTED_VIEW:
-			UiStatMGR.change_state(UiStatMGR.previous_state)
-		else:
-			UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
+		# if UiStatMGR.current_state == UiStatMGR.UIState.SORTED_VIEW:
+		UiStatMGR.go_back()
+		# else:
+		# 	UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
 	else:
 		switch_to_store.emit()

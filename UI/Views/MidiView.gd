@@ -30,6 +30,14 @@ func _ready() -> void:
 	
 	# 连接事件
 	event_bus.song_selected.connect(_load_midis)
+	event_bus.midi_selected.connect(_load_midi)
+
+func _load_midi(_midi_id: String, midi:MidiData) -> void:
+	if not data_manager:
+		return
+
+	current_midis = [midi]
+	_refresh_display()
 
 ## 加载指定歌曲的MIDI谱面
 func _load_midis(song_id: String) -> void:

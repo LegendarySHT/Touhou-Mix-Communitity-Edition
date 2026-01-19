@@ -275,14 +275,16 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 	
 	# 播放动画的组件
 	var SS = get_node_or_null(_SS)
-	var album_list = get_node_or_null(ALBUMLIST)
-	var song_list = get_node_or_null(SONGLIST)
+	var album_list:AlbumView = get_node_or_null(ALBUMLIST)
+	var song_list:SongView = get_node_or_null(SONGLIST)
 
 	match ui_name:	
 		"Album_List":
+			var sIndex = album_list.selected_album
+			
 			if new_state == UIStateManager.UIState.SONG_VIEW:
 				var polygon=Polygon2D.new()
-				var copy=album_list.get_node("VBox").get_child(Global.album).duplicate(true)
+				var copy=album_list.container.get_child(sIndex).duplicate(true)
 
 				polygon.skew=deg_to_rad(15)
 				copy.name="SS"
@@ -290,7 +292,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 				polygon.name="SS"
 				copy=polygon
 
-				copy.position=album_list.get_node("VBox").get_child(Global.album).global_position
+				copy.position=album_list.container.get_child(sIndex).global_position
 
 				# 设置节点
 				var button=copy.get_node("SS/PC/Polygon2D/AlbumButton")
@@ -298,11 +300,11 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 				button.toggle_mode=false
 				get_node("/root/Main").add_child(copy)
 
-			var tindex = Global.album if new_state!= UIStateManager.UIState.SORTED_VIEW else -1
-			tween = animate_list_item_horizontal(album_list, Global.album-4, Global.album+5, tindex, -1200, tween_id)
+			var tindex = sIndex if new_state!= UIStateManager.UIState.SORTED_VIEW else -1
+			tween = animate_list_item_horizontal(album_list, sIndex-4, sIndex+5, tindex, -1200, tween_id)
 			tween.finished.connect(func() -> void:
 				album_list.visible=false
-			# 	album_list.get_node("VBox").get_child(Global.album).modulate = Color(1, 1, 1, 0)
+			# 	album_list.get_node("VBox").get_child(sIndex).modulate = Color(1, 1, 1, 0)
 			)
 		"Song_List":
 			if new_state == UIStateManager.UIState.ALBUM_VIEW:
@@ -359,17 +361,19 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state
 
 	# 播放动画的组件
 	var SS = get_node_or_null(_SS)
-	var album_list = get_node_or_null(ALBUMLIST)
-	var song_list = get_node_or_null(SONGLIST)
+	var album_list:AlbumView = get_node_or_null(ALBUMLIST)
+	var song_list:SongView = get_node_or_null(SONGLIST)
 
 	match ui_name:
 		"Album_List":
 			album_list.visible=true
 			song_list.visible=false
 			
-			album_list.get_node("VBox").get_child(Global.album).modulate = Color(1, 1, 1, 1)
-			var tindex = Global.album if old_state != UIStateManager.UIState.SORTED_VIEW else -1
-			tween = animate_list_item_horizontal(album_list, Global.album-4, Global.album+5, tindex, 0, tween_id)
+			var sIndex = album_list.selected_album
+			
+			album_list.get_node("VBox").get_child(sIndex).modulate = Color(1, 1, 1, 1)
+			var tindex = sIndex if old_state != UIStateManager.UIState.SORTED_VIEW else -1
+			tween = animate_list_item_horizontal(album_list, sIndex-4, sIndex+5, tindex, 0, tween_id)
 			
 			# 从Song_List回来时会触发下面的
 			if SS:
@@ -381,7 +385,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state
 		"Song_List":
 			if old_state == UIStateManager.UIState.ALBUM_VIEW:
 				animate_position(SS, Vector2(0, -SS.global_position.y), 0.15, "SSPosition")
-			else:
+			elif SS:
 				SS.visible=true
 				animate_fade_in(SS, 0.15, "SSPosition")
 

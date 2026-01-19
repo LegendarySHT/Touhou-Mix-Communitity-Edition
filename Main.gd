@@ -88,7 +88,6 @@ func _initialize_core_systems() -> void:
 	# 异步加载MIDI数据
 	_load_midi_data()
 	
-	Global._initialize_new_architecture_refs()
 	print("=== Core Systems Initialized ===")
 
 func _init_ui() -> void:
