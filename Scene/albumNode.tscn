@@ -20,8 +20,6 @@ size_flags_vertical = 0
 theme_override_constants/margin_left = 0
 script = ExtResource("1_7q325")
 metadata/index = 0
-metadata/sourceAlbumName = ""
-metadata/songCount = 0
 
 [node name="PC" type="PanelContainer" parent="."]
 layout_mode = 2

@@ -66,8 +66,6 @@ func _refresh_display() -> void:
 
 			item.setup_with_midi(self, midi, counter, bg)
 			container.add_child(item)
-			if counter==0:
-				item.get_node("Button").button_pressed = true
 			counter += 1
 
 
@@ -91,7 +89,7 @@ func _clear_list() -> void:
 	var indicator = get_node(INDICATOR)
 	if indicator:
 		for child in indicator.get_children():
-			child.queue_free()
+			child.free() # 因为初始化指示器时根据索引位置来设置颜色的，所以得立即清除
 	
 	snaping = null
 	print("清空了MIDI谱面列表")
@@ -140,6 +138,8 @@ func _snap(midi_node):
 	snaping = midi_node
 
 func _show_midi_list() -> void:
+	if current_midis.size() == 1:
+		return
 	if snaping != null:
 		snaping.get_node("Button").button_pressed = false
 		last_selection = snaping
@@ -150,6 +150,9 @@ func _show_midi_list() -> void:
 		last_selection = null
 
 func _previous() -> void:
+	if current_midis.size() == 1:
+		return
+
 	if last_selection:
 		_show_midi_list()
 
@@ -161,6 +164,9 @@ func _previous() -> void:
 		container.get_child(Tindex).get_node("Button").button_pressed = true
 
 func _next() -> void:
+	if current_midis.size() == 1:
+		return
+
 	if last_selection:
 		_show_midi_list()
 

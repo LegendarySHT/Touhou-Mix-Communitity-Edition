@@ -26,8 +26,6 @@ pivot_offset = Vector2(-1, 0)
 theme_override_constants/margin_left = 0
 script = ExtResource("1_5wnnw")
 metadata/index = 0
-metadata/sourceSongName = 0.0
-metadata/midiCount = 0
 
 [node name="PC" type="PanelContainer" parent="."]
 layout_mode = 2

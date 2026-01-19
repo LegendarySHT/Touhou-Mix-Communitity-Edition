@@ -110,6 +110,9 @@ func animate_fade_in(target: Node, duration: float = DURATION_NORMAL,
 	var tween = _create_tween(tween_id)
 	tween.set_ease(EASING_STANDARD)
 	tween.set_trans(Tween.TRANS_CUBIC)
+	if not target.visible:
+		target.visible = true
+
 	target.modulate.a = 0.0
 	tween.tween_property(target, "modulate:a", 1.0, duration)
 	return tween
@@ -121,6 +124,10 @@ func animate_fade_out(target: Node, duration: float = DURATION_NORMAL,
 	tween.set_ease(EASING_STANDARD)
 	tween.set_trans(Tween.TRANS_CUBIC)
 	tween.tween_property(target, "modulate:a", 0.0, duration)
+	tween.finished.connect(func() -> void:
+		if target.visible:
+			target.visible = false
+	)
 	return tween
 
 ## 创建菜单展开动画
@@ -304,7 +311,6 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			tween = animate_list_item_horizontal(album_list, sIndex-4, sIndex+5, tindex, -1200, tween_id)
 			tween.finished.connect(func() -> void:
 				album_list.visible=false
-			# 	album_list.get_node("VBox").get_child(sIndex).modulate = Color(1, 1, 1, 0)
 			)
 		"Song_List":
 			if new_state == UIStateManager.UIState.ALBUM_VIEW:
@@ -318,8 +324,6 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 
 			if new_state == UIStateManager.UIState.MIDI_VIEW:
 				tween.finished.connect(func() -> void:
-					SS.visible=false
-					song_list.visible=false
 					song_list.selected_song=-1
 				)
 		"Sorted_List":
@@ -334,15 +338,15 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 		"Midi_Info_View":
 			var info_ui = get_node_or_null("/root/Main/InfoUI")
 			
-			tween = animate_modulate(info_ui, Color(1,1,1,0), 0.1, tween_id)
+			tween = animate_fade_out(info_ui, 0.3, tween_id)
 			
 			tween.finished.connect(func() -> void:
-				info_ui.visible=false
 				if info_ui.get_node_or_null("OptionWindow/Option/Rank"):
 					info_ui.get_node("OptionWindow/Option/Rank").button_pressed=true
 			)
 		"Right_Part":
-			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305+53.58,-215-800), 0.25, "MenuBarPosition")
+			var tan15 = tan(deg_to_rad(15))
+			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305+900*tan15, 15-900), 0.25, "MenuBarPosition")
 			animate_position(get_node("/root/Main/Player_Info/Charactor"), Vector2(0,950), 0.15, "CharactorPosition")
 			animate_position(get_node("/root/Main/Player_Info"), Vector2(-44.393+650,257.71), 0.5, "PlayerInfoPosition")
 			
@@ -386,7 +390,6 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state
 			if old_state == UIStateManager.UIState.ALBUM_VIEW:
 				animate_position(SS, Vector2(0, -SS.global_position.y), 0.15, "SSPosition")
 			elif SS:
-				SS.visible=true
 				animate_fade_in(SS, 0.15, "SSPosition")
 
 			song_list.visible=true
@@ -410,10 +413,10 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state
 			
 			var info_ui = get_node_or_null("/root/Main/InfoUI")
 
-			info_ui.visible = true
-			info_ui.modulate = Color(1,1,1,1)
-		
-			info_ui.position = Vector2(130+500*0.2679,-450)
+			animate_fade_in(info_ui, 0.1, "InfoUIFadeIn")
+
+			var tan15 = tan(deg_to_rad(15))
+			info_ui.position = Vector2(130+500*tan15,-500)
 			tween = animate_position(info_ui, Vector2(130,50), 0.5, tween_id)
 		"Right_Part":
 			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305, 15), 0.25, "MenuBarPosition")

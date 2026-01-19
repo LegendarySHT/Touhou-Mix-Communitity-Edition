@@ -19,21 +19,8 @@ pivot_offset = Vector2(0, 75)
 size_flags_horizontal = 0
 size_flags_vertical = 0
 script = ExtResource("1_8dgkb")
-metadata/status = ""
-metadata/artistName = ""
-metadata/trialCount = 0
-metadata/upCount = 0
-metadata/avgAccuracy = 0.0
-metadata/name = ""
-metadata/desc = ""
-metadata/id = ""
-metadata/hash = ""
 metadata/index = 0
 metadata/_edit_use_anchors_ = true
-metadata/album = ""
-metadata/song = ""
-metadata/downloadCount = 0
-metadata/loveCount = 0
 
 [node name="cover" type="TextureRect" parent="."]
 custom_minimum_size = Vector2(0, 150)
