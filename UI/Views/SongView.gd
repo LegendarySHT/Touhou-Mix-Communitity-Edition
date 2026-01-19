@@ -24,6 +24,9 @@ func _ready() -> void:
 		push_error("SongView: Missing manager instances")
 		return
 	
+	item_height = 169
+	item_spacing = 29
+
 	# 连接事件
 	event_bus.album_selected.connect(_load_songs)
 
@@ -31,12 +34,6 @@ func _process(delta: float):
 	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
 		return
 	scroll.process(delta)
-
-	# 图片移动（保持原有视觉效果）
-	for i in range(get_child(0).get_child_count()):
-		var cover = get_child(0).get_child(i).get_node("PC/Shader/cover")
-		if cover:
-			cover.position.y = 250 - ((1.0 * i / max(1, get_child(0).get_child_count() - 1)) * 800)
 
 func _input(event):
 	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
@@ -56,6 +53,7 @@ func _refresh_display() -> void:
 	# 清空现有项
 	_clear_list()
 	
+	selected_song = -1
 	var counter:int = 0
 	var bg = ButtonGroup.new()
 	# 添加新项
@@ -64,6 +62,14 @@ func _refresh_display() -> void:
 		if item:
 			item.setup_with_song(self, song, counter, bg)
 			counter += 1
+	
+	
+	# 设置图片位置
+	for i in range(counter):
+		var cover = get_child(0).get_child(i).get_node("PC/Shader/cover")
+		if cover:
+			var y_pos = -(floori(item_height * i ) % int(cover.size.y-item_height))
+			cover.position.y = y_pos
 
 ## 清空列表
 func _clear_list() -> void:

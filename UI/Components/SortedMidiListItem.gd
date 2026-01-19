@@ -8,6 +8,7 @@ extends ListItemBase
 @onready var author_label: Label = $MC/VBox/Author if has_node("MC/VBox/Author") else null
 @onready var button: Button = $Button if has_node("Button") else null
 @onready var line: Line2D = $Line2D if has_node("Line2D") else null
+@onready var cover_texture: TextureRect = $Polygon2D/cover if has_node("Polygon2D/cover") else null
 
 @onready var state_manager:UIStateManager = UIStateManager.instance
 

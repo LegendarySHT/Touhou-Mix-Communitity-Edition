@@ -322,10 +322,6 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			animate_fade_out(song_list, 0.25, "SongListFadeOut")
 			tween = animate_position(song_list, Vector2(song_list.position.x, 2*song_list.position.y), 0.25, tween_id)
 
-			if new_state == UIStateManager.UIState.MIDI_VIEW:
-				tween.finished.connect(func() -> void:
-					song_list.selected_song=-1
-				)
 		"Sorted_List":
 			var sort_midi_list = get_node("/root/Main/SortedMidi")
 			

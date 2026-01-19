@@ -43,21 +43,13 @@ func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: Button
 	item_id = album.id
 	item_type = "album"
 
-	set_meta("index", index)
 	_update_display()
 
 	var button = get_node(ALBUMBUTTON)
 	button.button_group = bg
-	button.set_meta("album_id",album_data.id)
-	button.set_meta("index", index)
-	button.toggled.connect(parent._on_button_toggled.bind(button))
-
-## 处理_process中的视觉效果
-func _process(_delta: float) -> void:
-	# 图片位移效果
-	if cover_texture and cover_texture.visible and abs(global_position.y - 800)<= 1500:
-		cover_texture.position = Vector2(35, 250 - cover_texture.global_position.y / 1080.0 * 650.0)
-
+	button.toggled.connect(parent._on_button_toggled.bind(index, album_data.id))
+	enable_selected_animation(button)
+	
 ## 专辑按钮切换回调
 func _on_album_button_toggled(toggled_on: bool) -> void:
 	if expand_tween and expand_tween.is_running():
@@ -91,18 +83,18 @@ func _animate_expand(tween: Tween, expand: bool) -> void:
 
 	# 字体
 	tween.tween_property(album_name_label,"theme_override_font_sizes/font_size",25 + 20*expa,0.15)
-	tween.tween_property(album_name_label,"position",Vector2(70 + 10*expa,375 +265*expa),0.15)
+	tween.tween_property(album_name_label,"position",Vector2(20 + 30*expa,115 +285*expa),0.15)
 	tween.tween_property(album_name_label,"custom_minimum_size",Vector2(660 +395*expa,40),0.15)
 
 	# 专辑的歌曲数字
-	tween.tween_property(get_node("PC/Polygon2D/CountBase"),"position",Vector2(550 +430*expa,287),0.15)
+	tween.tween_property(get_node("PC/Polygon2D/CountBase"),"position",Vector2(550 +400*expa,20),0.15)
 	
 	# 专辑图片放大
 	tween.tween_property(cover_texture,"scale",Vector2(1+0.57*expa,1+0.57*expa),0.15)
 	
 	#按钮放大
 	tween.tween_property(album_button,"scale",Vector2(1 +0.7*expa,1 +1.49*expa),0.15)
-	tween.tween_property(album_button,"position",Vector2(40 -70 *expa,260+10*expa),0.15)
+	tween.tween_property(album_button,"position",Vector2(40 -70 *expa,40+10*expa),0.15)
 
 ## 更新线框点位置的辅助函数
 func _update_line_point(new_pos: Vector2, index: int) -> void:

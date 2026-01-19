@@ -6,6 +6,7 @@
 
 [node name="MidiNode" type="MarginContainer"]
 clip_children = 2
+clip_contents = true
 custom_minimum_size = Vector2(900, 150)
 anchors_preset = 15
 anchor_right = 1.0
@@ -15,19 +16,31 @@ offset_right = -1020.0
 offset_bottom = -1271.5
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(0, 75)
 size_flags_horizontal = 0
 size_flags_vertical = 0
 script = ExtResource("1_8dgkb")
 metadata/index = 0
 metadata/_edit_use_anchors_ = true
 
-[node name="cover" type="TextureRect" parent="."]
-custom_minimum_size = Vector2(0, 150)
-layout_mode = 2
+[node name="Polygon2D" type="Polygon2D" parent="."]
+position = Vector2(0, 0.5)
+scale = Vector2(0.867977, 0.838323)
+internal_vertex_count = 2
+
+[node name="cover" type="TextureRect" parent="Polygon2D"]
+custom_minimum_size = Vector2(700, 200)
+offset_right = 900.0
+offset_bottom = 900.00006
+grow_horizontal = 2
+grow_vertical = 0
+scale = Vector2(1.15, 1.15)
+pivot_offset = Vector2(0, 350)
+size_flags_vertical = 0
+mouse_filter = 2
 texture = ExtResource("2_eprjm")
-expand_mode = 3
+expand_mode = 5
 stretch_mode = 6
+metadata/_edit_use_anchors_ = true
 
 [node name="MC" type="MarginContainer" parent="."]
 layout_mode = 2
@@ -100,7 +113,7 @@ metadata/index = 0
 [node name="Line2D" type="Line2D" parent="."]
 points = PackedVector2Array(0, 0, 0, 150, 900, 150, 900, 0)
 closed = true
-width = 4.0
+width = 5.0
 joint_mode = 2
 begin_cap_mode = 2
 end_cap_mode = 2

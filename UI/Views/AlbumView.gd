@@ -17,7 +17,6 @@ var selected_album: int = -1
 @onready var scroll:GeneralScroll = GeneralScroll.new(self)
 
 # 吸附相关
-@export var item_height: float = 173
 var need_snap = false # 指示是否需要吸附
 var snap_velocity = 800 # 开始吸附的速度临界值
 var snap_index = -1 # 当需要吸附且该值为1时，就近吸附，否则吸附到指定位置
@@ -33,6 +32,9 @@ func _ready() -> void:
 		push_error("AlbumView: Missing manager instances")
 		return
 	
+	item_height = 173 # 间距29 项高144
+	item_spacing = 29
+
 	# 连接事件
 	data_manager.data_loaded.connect(_load_albums)
 
@@ -108,6 +110,9 @@ func _process(delta):
 		if selected_album!= -1 and albumNode.is_expanded and (albumNode.global_position.y < 100 or albumNode.global_position.y > 1080):
 			reset_selection()
 
+	# 图片移动
+	process_item_cover_move()
+
 func _input(event):
 	if UiStatMGR.current_state != UIStateManager.UIState.ALBUM_VIEW or 0:
 		return
@@ -124,19 +129,16 @@ func reset_selection():
 
 		selected_album= -1
 
-func _on_button_toggled(toggled_on: bool, button):
+func _on_button_toggled(toggled_on: bool, index:int, album_id:String):
 	if toggled_on:
-		if  selected_album!= -1 and selected_album== button.get_meta("index"):
-			# 设置专辑ID
-			var album_id = button.get_meta("album_id")
-			
+		if  selected_album!= -1 and selected_album== index:
 			# 通过事件总线触发专辑选择
 			event_bus.album_selected.emit(album_id)
 			UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
 		
 		need_snap = true
-		snap_index = button.get_meta("index")		
-		selected_album= button.get_meta("index")
+		snap_index = index
+		selected_album= index
 
 
 ## 搜索改变回调

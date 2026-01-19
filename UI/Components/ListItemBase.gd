@@ -30,7 +30,6 @@ var press_tween: Tween
 ## 初始化函数
 func enable_selected_animation(btn: Button) -> void:
 	_item_btn = btn
-	pivot_offset = Vector2(0, size.y / 2)
 	
 	# 连接按钮信号
 	_item_btn.button_down.connect(_on_button_down)

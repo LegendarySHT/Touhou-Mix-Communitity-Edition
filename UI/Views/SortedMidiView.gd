@@ -53,6 +53,9 @@ func _ready() -> void:
 		push_error("SortedMidiView: Missing manager instances")
 		return
 	
+	item_height = 179 # 间距29 项高150
+	item_spacing = 29
+
 	# 连接事件
 	event_bus.search_query_changed.connect(_on_search_query_changed)
 	event_bus.sort_finished.connect(_load_sorted_midis)
@@ -64,6 +67,8 @@ func _process(delta):
 	
 	# 处理分帧加载
 	_process_loading()
+
+	process_item_cover_move()
 
 func _input(event):
 	if state_manager.current_state != state_manager.UIState.SORTED_VIEW:

@@ -11,8 +11,8 @@ class_name BaseScrollList
 ## 列表项场景或预制体
 @export var list_item_class: Variant
 
-## 列表项的高度/宽度
-@export var item_size: float = 100.0
+## 列表项的高度
+@export var item_height: float = 100.0
 
 ## 启用吸附效果
 @export var enable_snap: bool = true
@@ -38,7 +38,7 @@ var snap_target: float = -1.0
 ## 吸附动画Tween
 var snap_tween: Tween
 
-## 所有列表项
+# ## 所有列表项
 var list_items: Array[ListItemBase] = []
 
 ## 滚动开始信号
@@ -154,14 +154,14 @@ func scroll_to_index(index: int) -> void:
 	if index < 0 or index >= list_items.size():
 		return
 	
-	var target_y = index * (item_size + item_spacing)
+	var target_y = index * (item_height + item_spacing)
 	snap_target = target_y
 	_animate_scroll_to(target_y)
 
 ## 触发吸附效果
 func _trigger_snap() -> void:
-	var snap_index = round(last_scroll_position / (item_size + item_spacing))
-	var target_y = snap_index * (item_size + item_spacing)
+	var snap_index = round(last_scroll_position / (item_height + item_spacing))
+	var target_y = snap_index * (item_height + item_spacing)
 	snap_target = target_y
 	_animate_scroll_to(target_y)
 
@@ -199,3 +199,15 @@ func _on_scroll_finished() -> void:
 func _exit_tree() -> void:
 	if snap_tween:
 		snap_tween.kill()
+
+## 列表项图片位移
+func process_item_cover_move() -> void:
+	var window_height = get_viewport_rect().size.y
+	var idx:int = floori(scroll_vertical / item_height) - 3
+	idx = idx if idx >= 0 else 0
+	var midx = clampi(0,list_items.size(),idx + 10 + window_height/item_height)
+	
+	# 调用这个方法需要在item中添加cover_texture对象
+	for i in range(idx, midx):
+		var tex_r:TextureRect = container.get_child(i).cover_texture
+		tex_r.position = Vector2(0 , - tex_r.global_position.y / window_height * tex_r.size.y)

@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="test"
+config/name="Touhou Mix Comunitity Edition"
 run/main_scene="uid://jvmwtrulpf5g"
 config/features=PackedStringArray("4.5", "Mobile")
 config/icon="uid://von2js75nk2a"
