@@ -20,10 +20,6 @@ var expand_tween: Tween
 ## 吸附目标信号（用于滚动吸附）
 signal snap_node_target(midi_node)
 
-func _ready() -> void:
-	# 连接按钮信号
-	button.toggled.connect(_on_button_toggled)
-
 func _update_display() -> void:
 	# 初始化显示
 	if not status_label:

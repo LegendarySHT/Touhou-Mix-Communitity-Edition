@@ -85,9 +85,9 @@ func add_list_item(item: ListItemBase) -> void:
 	list_items.append(item)
 	
 	# 连接列表项信号
-	item.selected.connect(_on_item_selected)
-	item.hovered.connect(_on_item_hovered)
-	item.unhovered.connect(_on_item_unhovered)
+	#item.selected.connect(_on_item_selected)
+	#item.hovered.connect(_on_item_hovered)
+	#item.unhovered.connect(_on_item_unhovered)
 	
 	list_updated.emit()
 

@@ -14,63 +14,121 @@ var item_type: String = ""
 var is_selected: bool = false
 
 ## 是否被悬停
-var is_hovered: bool = false
+# var is_hovered: bool = false
 
 ## 选中状态改变信号
-signal selected(item_id: String)
-signal deselected(item_id: String)
-signal hovered(item_id: String)
-signal unhovered
+# signal selected(item_id: String)
+# signal deselected(item_id: String)
+# signal hovered(item_id: String)
+# signal unhovered
 
-## 虚函数：初始化列表项
+## 选中动画相关
+var _item_btn: Button
+var pulse_tween: Tween
+var press_tween: Tween
+
+## 初始化函数
+func enable_selected_animation(btn: Button) -> void:
+	_item_btn = btn
+	pivot_offset = Vector2(0, size.y / 2)
+	
+	# 连接按钮信号
+	_item_btn.button_down.connect(_on_button_down)
+	_item_btn.button_up.connect(_on_button_up)
+	_item_btn.toggled.connect(_on_toggled)
+
+func _on_button_down():
+	# 按下效果
+	if press_tween:
+		press_tween.kill()
+	if pulse_tween:
+		pulse_tween.kill()
+	
+	press_tween = create_tween()
+	press_tween.tween_property(self, "scale", Vector2(0.96, 0.96), 0.07).set_ease(Tween.EASE_OUT)
+
+func _on_button_up():
+	# 松开弹起效果
+	if press_tween:
+		press_tween.kill()
+	
+	press_tween = create_tween()
+	press_tween.tween_property(self, "scale", Vector2(1.03, 1.03), 0.06).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BOUNCE)
+	
+	press_tween.tween_property(self, "scale", Vector2(0.98, 0.98), 0.34).set_ease(Tween.EASE_IN_OUT)
+
+func _on_toggled(toggled_on: bool):
+	# 切换选中状态
+	if toggled_on:
+		# 等待弹起动画完成
+		await get_tree().create_timer(0.4).timeout
+	_pulse_animation(toggled_on)
+	
+func _pulse_animation(enable: bool):
+	if pulse_tween:
+		pulse_tween.kill()
+		pulse_tween = null
+	
+	if enable:
+		pulse_tween = create_tween()
+		pulse_tween.set_loops()
+		
+		# 柔和的脉冲
+		pulse_tween.tween_property(self, "scale", Vector2(1.01, 1.01), 0.8).set_ease(Tween.EASE_IN_OUT)
+		
+		pulse_tween.tween_property(self, "scale", Vector2(0.99, 0.99), 0.8).set_ease(Tween.EASE_IN_OUT)
+	else:
+		create_tween().tween_property(self, "scale", Vector2.ONE, 0.2).set_ease(Tween.EASE_IN_OUT)
+
+# ## 虚函数：初始化列表项
 func initialize(id: String, type: String) -> void:
 	item_id = id
 	item_type = type
 
-## 虚函数：设置选中状态
-func set_selected(selected: bool) -> void:
-	is_selected = selected
-	if selected:
-		_on_selected()
-		self.selected.emit(item_id)
-	else:
-		_on_deselected()
-		self.deselected.emit(item_id)
+# ## 虚函数：设置选中状态
+# func set_selected(selected: bool) -> void:
+# 	is_selected = selected
+# 	if selected:
+# 		_on_selected()
+# 		self.selected.emit(item_id)
+# 	else:
+# 		_on_deselected()
+# 		self.deselected.emit(item_id)
 
-## 虚函数：设置悬停状态
-func set_hovered(hovered: bool) -> void:
-	is_hovered = hovered
-	if hovered:
-		_on_hovered()
-		self.hovered.emit(item_id)
-	else:
-		_on_unhovered()
-		unhovered.emit()
+# ## 虚函数：设置悬停状态
+# func set_hovered(hovered: bool) -> void:
+# 	is_hovered = hovered
+# 	if hovered:
+# 		_on_hovered()
+# 		self.hovered.emit(item_id)
+# 	else:
+# 		_on_unhovered()
+# 		unhovered.emit()
 
-## 虚函数：当被选中时调用
-func _on_selected() -> void:
-	pass
+# ## 虚函数：当被选中时调用
+# func _on_selected() -> void:
+# 	pass
 
-## 虚函数：当被取消选中时调用
-func _on_deselected() -> void:
-	pass
+# ## 虚函数：当被取消选中时调用
+# func _on_deselected() -> void:
+# 	pass
 
-## 虚函数：当被悬停时调用
-func _on_hovered() -> void:
-	pass
+# ## 虚函数：当被悬停时调用
+# func _on_hovered() -> void:
+# 	pass
 
-## 虚函数：当取消悬停时调用
-func _on_unhovered() -> void:
-	pass
+# ## 虚函数：当取消悬停时调用
+# func _on_unhovered() -> void:
+# 	pass
 
-## 虚函数：更新视觉效果（在选中/悬停状态改变时调用）
-func update_appearance() -> void:
-	pass
+# ## 虚函数：更新视觉效果（在选中/悬停状态改变时调用）
+# func update_appearance() -> void:
+# 	pass
 
-## 获取列表项ID
-func get_item_id() -> String:
-	return item_id
+# ## 获取列表项ID
+# func get_item_id() -> String:
+# 	return item_id
 
-## 获取列表项类型
-func get_item_type() -> String:
-	return item_type
+# ## 获取列表项类型
+# func get_item_type() -> String:
+# 	return item_type

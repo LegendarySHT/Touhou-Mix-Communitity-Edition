@@ -1,12 +1,12 @@
 [gd_scene load_steps=9 format=3 uid="uid://dvvggbuqsfxbw"]
 
-[ext_resource type="Texture2D" uid="uid://bgvtr3nkhfcdr" path="res://icon/midiInfoPage/back.png" id="1_iwnjq"]
-[ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://icon/search.png" id="2_e4ark"]
-[ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://icon/上传时间.png" id="3_u7c36"]
-[ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://icon/midi时长.png" id="4_6ial6"]
-[ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://icon/Sort/Ordering/Descent.png" id="5_uoxjv"]
-[ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://icon/Sort/Ordering/Ascent.png" id="6_f6x17"]
-[ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://icon/midiInfoPage/start.png" id="7_4f2e5"]
+[ext_resource type="Texture2D" uid="uid://bgvtr3nkhfcdr" path="res://Resources/icon/midiInfoPage/back.png" id="1_iwnjq"]
+[ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="2_e4ark"]
+[ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="3_u7c36"]
+[ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="4_6ial6"]
+[ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="5_uoxjv"]
+[ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="6_f6x17"]
+[ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://Resources/icon/midiInfoPage/start.png" id="7_4f2e5"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3rk5"]
 bg_color = Color(0.49, 0.7195, 1, 1)

@@ -93,7 +93,6 @@ func _process_loading() -> void:
 		var midi = _midis_to_load[index]
 		var node = create_and_add_item(midi.id, "midi")
 		node.setup_with_midi(midi, index, item_bg)
-		container.add_child(node)
 	
 	# 更新索引
 	_current_load_index += nodes_to_load_this_frame
@@ -143,7 +142,6 @@ func _load_sorted_midis() -> void:
 	if not _midis_to_load.is_empty():
 		var node = create_and_add_item(_midis_to_load[0].id, "midi")
 		node.setup_with_midi(_midis_to_load[0], 0, item_bg)
-		get_node("VBox").add_child(node)
 		_current_load_index = 1
 		
 		# 如果只有一个节点，直接完成

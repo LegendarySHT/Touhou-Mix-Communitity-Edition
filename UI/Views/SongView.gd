@@ -64,7 +64,6 @@ func _refresh_display() -> void:
 		if item:
 			item.setup_with_song(self, song, counter, bg)
 			counter += 1
-			get_child(0).add_child(item)
 
 ## 清空列表
 func _clear_list() -> void:

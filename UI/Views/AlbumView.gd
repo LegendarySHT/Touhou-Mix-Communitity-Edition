@@ -56,7 +56,6 @@ func _refresh_display() -> void:
 		var item = create_and_add_item(album.id, "album")
 		item.setup_with_album(self, album, counter, bg)
 
-		get_child(0).add_child(item)
 		counter += 1
 
 ## 清空列表

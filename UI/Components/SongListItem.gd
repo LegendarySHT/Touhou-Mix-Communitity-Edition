@@ -33,19 +33,21 @@ func setup_with_song(parent: SongView, song: SongData, index: int, bg: ButtonGro
 	var btn = get_node("PC/Shader/SongButton")
 	btn.button_group = bg
 	btn.toggled.connect(parent._on_button_toggled.bind(self, song_data.id))
-	btn.toggled.connect(_on_song_button_toggled.bind(self))
+	# btn.toggled.connect(_on_song_button_toggled.bind(self))
 	
+	enable_selected_animation(btn)
 	# 设置元数据
 	btn.set_meta("index", index)
 	set_meta("index", index)
 
 
 # 动画
-func _on_song_button_toggled(toggled_on: bool, songNode) -> void:
-	tween = create_tween()
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_SINE)
-	tween.set_parallel(true)
+# func _on_song_button_toggled(toggled_on: bool, songNode) -> void:
+# 	tween = create_tween()
+# 	tween.set_ease(Tween.EASE_OUT)
+# 	tween.set_trans(Tween.TRANS_SINE)
+# 	tween.set_parallel(true)
 
-	var expa = 1 if toggled_on else 0
-	tween.tween_property(songNode, "scale", Vector2(1+ expa *0.05, 1+ expa *0.05), 0.1)
+# 	var expa = 1 if toggled_on else 0
+# 	tween.tween_property(songNode, "scale", Vector2(1+ expa *0.05, 1+ expa *0.05), 0.1)
+	# pulse_animation(toggled_on)

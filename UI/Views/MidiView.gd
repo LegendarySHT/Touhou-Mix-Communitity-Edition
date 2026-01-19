@@ -65,7 +65,6 @@ func _refresh_display() -> void:
 			indicator.add_child(point.instantiate())
 
 			item.setup_with_midi(self, midi, counter, bg)
-			container.add_child(item)
 			counter += 1
 
 

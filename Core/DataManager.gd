@@ -115,12 +115,7 @@ func _process_midi_json(json_data: Dictionary) -> void:
 	_process_song_and_album_info(json_data, midi, midi_id)
 
 ## 处理歌曲和专辑信息
-func _process_song_and_album_info(json_data: Dictionary, midi: MidiData, midi_id: String) -> void:
-	var song_id = ""
-	var album_id = ""
-	var song_data: SongData = null
-	var album_data: AlbumData = null
-	
+func _process_song_and_album_info(json_data: Dictionary, midi: MidiData, midi_id: String) -> void:	
 	# 检查是哪种格式
 	# 格式1：有直接的song和album对象（嵌套格式）
 	if json_data.has("song") and json_data.has("album"):

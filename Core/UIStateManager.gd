@@ -84,7 +84,9 @@ func go_back() -> bool:
 	if state_history.is_empty():
 		return false
 	var back_state =  state_history.pop_back()
-	previous_state = state_history.back()
+	var temp = state_history.back()
+	if temp:
+		previous_state = temp
 	
 	state_changed.emit(current_state, back_state)
 	current_state = back_state

@@ -24,7 +24,7 @@ var active_tweens: Dictionary[String, Tween] = {}
 var tween_counter: int = 0
 
 # 场景退出信号
-signal scene_transition_fin
+# signal scene_transition_fin
 
 func _ready() -> void:
 	if instance == null:
