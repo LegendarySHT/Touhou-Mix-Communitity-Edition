@@ -1,6 +1,0 @@
-[gd_scene format=3 uid="uid://ga34yvfoh7q2"]
-
-[node name="indicator_point" type="ColorRect"]
-custom_minimum_size = Vector2(20, 20)
-size_flags_horizontal = 4
-size_flags_vertical = 4

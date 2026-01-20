@@ -55,14 +55,21 @@ func _refresh_display() -> void:
 	
 	# 添加新项
 	var counter = 0
-	var bg = load("res://Resources/ButtonGroup/MidiButton.tres")
-	var point = load("res://Scene/indicator_point.tscn")
+	var bg = ButtonGroup.new()
+
 	for midi in current_midis:
 		var item = create_and_add_item(midi.id, "midi")
 		if item:
 			# 添加指示器点
+			var point = ColorRect.new()
+			point.name = "Indicator"
+			point.custom_minimum_size = Vector2(20, 20)
+			point.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			point.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			point.color = Color.WHITE
+
 			var indicator = get_node(INDICATOR)
-			indicator.add_child(point.instantiate())
+			indicator.add_child(point)
 
 			item.setup_with_midi(self, midi, counter, bg)
 			counter += 1

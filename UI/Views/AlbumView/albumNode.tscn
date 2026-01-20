@@ -1,9 +1,9 @@
 [gd_scene load_steps=6 format=3 uid="uid://cmg2kkhga3yj5"]
 
-[ext_resource type="Script" uid="uid://dye4gnjw1k7du" path="res://UI/Components/AlbumListItem.gd" id="1_7q325"]
-[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_7q325"]
-[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_ly0fl"]
-[ext_resource type="Texture2D" uid="uid://co2vcj4yav5cd" path="res://Resources/icon/Count_Base.png" id="4_f2bii"]
+[ext_resource type="Script" uid="uid://dye4gnjw1k7du" path="res://UI/Views/AlbumView/AlbumListItem.gd" id="1_pxpjj"]
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_fljdd"]
+[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_j1pth"]
+[ext_resource type="Texture2D" uid="uid://co2vcj4yav5cd" path="res://Resources/icon/Count_Base.png" id="4_4cpa4"]
 
 [sub_resource type="Gradient" id="Gradient_uj0r1"]
 interpolation_mode = 2
@@ -18,7 +18,7 @@ offset_bottom = 144.0
 size_flags_horizontal = 0
 size_flags_vertical = 0
 theme_override_constants/margin_left = 0
-script = ExtResource("1_7q325")
+script = ExtResource("1_pxpjj")
 metadata/index = 0
 
 [node name="PC" type="PanelContainer" parent="."]
@@ -42,7 +42,7 @@ grow_vertical = 0
 pivot_offset = Vector2(0, 350)
 size_flags_vertical = 0
 mouse_filter = 2
-texture = ExtResource("2_7q325")
+texture = ExtResource("2_fljdd")
 expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true
@@ -59,7 +59,7 @@ offset_bottom = 155.0
 grow_vertical = 0
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
-theme_override_fonts/font = ExtResource("3_ly0fl")
+theme_override_fonts/font = ExtResource("3_j1pth")
 theme_override_font_sizes/font_size = 25
 text = "Test Title aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 vertical_alignment = 2
@@ -76,7 +76,7 @@ offset_left = 550.0
 offset_top = 20.0
 offset_right = 690.0
 offset_bottom = 160.0
-texture = ExtResource("4_f2bii")
+texture = ExtResource("4_4cpa4")
 metadata/_edit_use_anchors_ = true
 
 [node name="SongCount" type="Label" parent="PC/Polygon2D/CountBase"]

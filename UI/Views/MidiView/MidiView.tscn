@@ -1,11 +1,11 @@
 [gd_scene load_steps=19 format=3 uid="uid://bylmyli6spbd6"]
 
 [ext_resource type="Texture2D" uid="uid://b2x5d0kfa0myq" path="res://Resources/icon/midiInfoPage/Arrow.png" id="1_036i2"]
-[ext_resource type="Script" uid="uid://ddhvc24jriuwq" path="res://UI/Views/MidiView.gd" id="1_mxrx3"]
+[ext_resource type="Script" uid="uid://ddhvc24jriuwq" path="res://UI/Views/MidiView/MidiView.gd" id="1_mxrx3"]
 [ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="2_nagrd"]
 [ext_resource type="Texture2D" uid="uid://dtolw6736k65h" path="res://Resources/icon/midiInfoPage/info.png" id="3_ua7bn"]
 [ext_resource type="Texture2D" uid="uid://bqehp2aavod7n" path="res://Resources/icon/midiInfoPage/delete.png" id="4_f44vb"]
-[ext_resource type="PackedScene" uid="uid://cfx5x8tebymdd" path="res://Scene/option_ui.tscn" id="5_nagrd"]
+[ext_resource type="PackedScene" uid="uid://cfx5x8tebymdd" path="res://UI/Views/MidiView/option_ui.tscn" id="5_nagrd"]
 [ext_resource type="Texture2D" uid="uid://dd1y1og0c6v5f" path="res://Resources/icon/midiInfoPage/track.png" id="7_cve6f"]
 [ext_resource type="Texture2D" uid="uid://d4fwv0fvdi4xy" path="res://Resources/icon/midiInfoPage/addToList.png" id="8_pgjff"]
 [ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://Resources/icon/midiInfoPage/start.png" id="9_7bkas"]
@@ -42,7 +42,7 @@ horizontal_scroll_mode = 0
 vertical_scroll_mode = 3
 script = ExtResource("1_mxrx3")
 container_path = NodePath("VBOX")
-list_item_class = "res://Scene/midi_node.tscn"
+list_item_class = "res://UI/Views/MidiView/midiNode.tscn"
 
 [node name="VBOX" type="VBoxContainer" parent="MidiWindow/SC"]
 layout_mode = 2

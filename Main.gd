@@ -14,6 +14,9 @@ var audio_manager: AudioManager
 var config_loader: ConfigLoader
 var logger: GameLogger
 
+# UI组件路径
+@export var midi_view_path: String
+
 func _ready():
 	# 四边拉伸到父级（全屏）
 	anchor_left = 0.0
@@ -95,7 +98,7 @@ func _init_ui() -> void:
 	var Main = get_node_or_null("/root/Main")
 	var info_ui = Main.get_node_or_null("InfoUI")
 	if not info_ui:
-		var info_window = load("res://Scene/info_ui.tscn").instantiate()
+		var info_window = load(midi_view_path).instantiate()
 		info_window.visible = false
 		Main.add_child(info_window)
 		info_ui = Main.get_node_or_null("InfoUI")

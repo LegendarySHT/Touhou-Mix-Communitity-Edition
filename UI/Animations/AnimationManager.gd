@@ -246,14 +246,15 @@ var ui_exist = {
 	"Sorted_List" : false, # 程序启动时排序列表不存在
 	"Midi_Info_View" : false, # 程序启动时MIDI信息视图不存在
 	"Right_Part" : false, # 程序启动时右侧部分(按钮，立绘和头像区域)不存在
+	"Back_Button": false, # False为显示商店按钮
 }
 
 ## 记录每个页面存在哪些组件
 var ui_part = {
 	UIStateManager.UIState.ALBUM_VIEW: ["Album_List", "Right_Part"],
-	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Right_Part"],
-	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Right_Part"],
-	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View"],
+	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Right_Part", "Back_Button"],
+	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Right_Part", "Back_Button"],
+	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View", "Back_Button"],
 }
 
 var ALBUMLIST="/root/Main/Album/AlbumList"
@@ -324,8 +325,6 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 
 		"Sorted_List":
 			var sort_midi_list = get_node("/root/Main/SortedMidi")
-			
-			EventBus.instance.storeButtonSwitch.emit(false)
 
 			tween = animate_position(sort_midi_list, Vector2(-1500, sort_midi_list.position.y), 0.25, tween_id)
 			tween.finished.connect(func() -> void:
@@ -345,7 +344,9 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305+900*tan15, 15-900), 0.25, "MenuBarPosition")
 			animate_position(get_node("/root/Main/Player_Info/Charactor"), Vector2(0,950), 0.15, "CharactorPosition")
 			animate_position(get_node("/root/Main/Player_Info"), Vector2(-44.393+650,257.71), 0.5, "PlayerInfoPosition")
-			
+		
+		"Back_Button":
+			EventBus.instance.storeButtonSwitch.emit(false)
 
 	# 发射结束信号
 	if tween:
@@ -401,7 +402,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state
 		"Sorted_List":
 			var sort_midi_list = get_node("/root/Main/SortedMidi")
 			sort_midi_list.visible = true
-			EventBus.instance.storeButtonSwitch.emit(true)
+			# EventBus.instance.storeButtonSwitch.emit(true)
 
 			animate_position(sort_midi_list, Vector2(0, sort_midi_list.position.y), 0.25, tween_id)
 		"Midi_Info_View":
@@ -418,7 +419,9 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state
 			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305, 15), 0.25, "MenuBarPosition")
 			animate_position(get_node("/root/Main/Player_Info/Charactor"), Vector2(0, 0), 0.15, "CharactorPosition")
 			animate_position(get_node("/root/Main/Player_Info"), Vector2(-44.393, 257.71), 0.5, "PlayerInfoPosition")
-	
+		"Back_Button":
+			EventBus.instance.storeButtonSwitch.emit(true)
+
 	# 播放完毕
 	if tween:
 		tween.finished.connect(func() -> void:

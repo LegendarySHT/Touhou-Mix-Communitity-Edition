@@ -7,14 +7,14 @@
 [ext_resource type="Script" uid="uid://7yry3gl1v284" path="res://UI/Components/background.gd" id="5_xrxkg"]
 [ext_resource type="Texture2D" uid="uid://7e7lff81aa7n" path="res://Resources/Gradient/gradient2.png" id="6_xrxkg"]
 [ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/store_button.gd" id="7_sqvbp"]
-[ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView.gd" id="7_w3rk5"]
+[ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView/AlbumView.gd" id="7_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://bq58thu46jvsq" path="res://Resources/icon/midi_store.png" id="8_hri7i"]
-[ext_resource type="Script" uid="uid://cka36xm3jh6b" path="res://UI/Views/SongView.gd" id="8_w3rk5"]
+[ext_resource type="Script" uid="uid://cka36xm3jh6b" path="res://UI/Views/SongView/SongView.gd" id="8_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://bgvtr3nkhfcdr" path="res://Resources/icon/midiInfoPage/back.png" id="9_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://dj5o6emlgvdmo" path="res://Resources/icon/setting.png" id="10_5mvff"]
 [ext_resource type="Script" uid="uid://cohp1v184ht7q" path="res://UI/Components/shortcut_menu.gd" id="11_oye8v"]
 [ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="12_40n85"]
-[ext_resource type="Script" uid="uid://bg7bh1y1ne4ws" path="res://UI/Components/sort_button.gd" id="13_3b0ty"]
+[ext_resource type="Script" uid="uid://bg7bh1y1ne4ws" path="res://UI/Views/SortedMidiView/sort_button.gd" id="13_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://b4rxi3wio8sjy" path="res://Resources/icon/Sort/Status/All.png" id="14_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://c8twb3tyhwm1t" path="res://Resources/icon/Sort/Data/Played.png" id="14_sph85"]
 [ext_resource type="ButtonGroup" uid="uid://ba4mkjssd25nv" path="res://Resources/ButtonGroup/SortButton.tres" id="15_bg4s2"]
@@ -26,7 +26,7 @@
 [ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="24_mxvw5"]
 [ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="25_xrxkg"]
-[ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView.gd" id="26_5mvff"]
+[ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 [ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="26_sqvbp"]
 [ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://Resources/icon/midiInfoPage/start.png" id="27_hri7i"]
 
@@ -43,6 +43,7 @@ layout_mode = 3
 anchors_preset = 0
 size_flags_horizontal = 4
 script = ExtResource("1_w3rk5")
+midi_view_path = "res://UI/Views/MidiView/MidiView.tscn"
 
 [node name="Player_Info" type="Line2D" parent="."]
 position = Vector2(-44.393, 275.71)
@@ -167,7 +168,7 @@ follow_focus = true
 horizontal_scroll_mode = 0
 script = ExtResource("7_w3rk5")
 container_path = NodePath("VBox")
-list_item_class = "res://Scene/albumNode.tscn"
+list_item_class = "res://UI/Views/AlbumView/albumNode.tscn"
 
 [node name="VBox" type="VBoxContainer" parent="Album/AlbumList"]
 custom_minimum_size = Vector2(630, 0)
@@ -197,7 +198,7 @@ horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 script = ExtResource("8_w3rk5")
 container_path = NodePath("VBox")
-list_item_class = "res://Scene/songNode.tscn"
+list_item_class = "res://UI/Views/SongView/songNode.tscn"
 
 [node name="VBox" type="VBoxContainer" parent="Song/SongList"]
 layout_mode = 2
@@ -670,7 +671,7 @@ follow_focus = true
 horizontal_scroll_mode = 0
 script = ExtResource("26_5mvff")
 container_path = NodePath("VBox")
-list_item_class = "res://Scene/SortedMidiNode.tscn"
+list_item_class = "res://UI/Views/SortedMidiView/sortedMidiNode.tscn"
 
 [node name="VBox" type="VBoxContainer" parent="SortedMidi/SortedMidisList"]
 custom_minimum_size = Vector2(630, 0)

@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://b8gxe8bw01br7"]
 
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="1_0asqb"]
-[ext_resource type="Script" uid="uid://bt0e0os76bnfm" path="res://UI/Components/SongListItem.gd" id="1_5wnnw"]
+[ext_resource type="Script" uid="uid://bt0e0os76bnfm" path="res://UI/Views/SongView/SongListItem.gd" id="1_5wnnw"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="2_5wnnw"]
 
 [sub_resource type="Gradient" id="Gradient_pqbqw"]
