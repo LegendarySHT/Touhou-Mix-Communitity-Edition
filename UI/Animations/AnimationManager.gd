@@ -247,6 +247,7 @@ var ui_exist = {
 	"Midi_Info_View" : false, # 程序启动时MIDI信息视图不存在
 	"Right_Part" : false, # 程序启动时右侧部分(按钮，立绘和头像区域)不存在
 	"Back_Button": false, # False为显示商店按钮
+	"Store_View": false,
 }
 
 ## 记录每个页面存在哪些组件
@@ -255,6 +256,7 @@ var ui_part = {
 	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Right_Part", "Back_Button"],
 	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Right_Part", "Back_Button"],
 	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View", "Back_Button"],
+	UIStateManager.UIState.STORE_VIEW: ["Store_View", "Back_Button"],
 }
 
 var ALBUMLIST="/root/Main/Album/AlbumList"
@@ -263,14 +265,18 @@ var _SS="/root/Main/SS/SS"
 
 ## 页面组件退出动画
 func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
-	# 发出状态进入和改变信号
+	# 商店界面进入时无需退出其它组件
+	if new_state == UIStateManager.UIState.STORE_VIEW:
+		_scene_transition_enter(old_state, new_state)
+		ui_exist["Store_View"] = true
+		return
+
 	for key in ui_exist.keys():
 		if ui_exist[key] and (key in ui_part[old_state]) and (key not in ui_part[new_state]):
 			animate_ui_out(key, old_state, new_state)
 			ui_exist[key] = false
 
 func _scene_transition_enter(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
-	# 发出状态进入和改变信号
 	for key in ui_exist.keys():
 		if not ui_exist[key] and key in ui_part[new_state]:
 			animate_ui_in(key, old_state, new_state)
@@ -348,6 +354,19 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 		"Back_Button":
 			EventBus.instance.storeButtonSwitch.emit(false)
 
+		"Store_View":
+			var store_node = get_node("/root/Main/Store")
+			# var top_bar = store_node.get_node("Top_bar")
+			# top_bar.position.y = -500
+			# animate_position(top_bar, Vector2(0, 0), 0.25, tween_id)
+
+			# var bottom = store_node.get_node("Bottom")
+			# bottom.position.y = bottom.position.y + 500
+			# animate_position(bottom, Vector2(bottom.position.x, bottom.position.y - 500), 0.25, tween_id)
+
+			tween = animate_fade_out(store_node, 0.35, tween_id)
+			
+
 	# 发射结束信号
 	if tween:
 		tween.finished.connect(func() -> void:
@@ -421,6 +440,17 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state
 			animate_position(get_node("/root/Main/Player_Info"), Vector2(-44.393, 257.71), 0.5, "PlayerInfoPosition")
 		"Back_Button":
 			EventBus.instance.storeButtonSwitch.emit(true)
+		"Store_View":
+			var store_node = get_node("/root/Main/Store")
+			var top_bar = store_node.get_node("Top_bar")
+			top_bar.position.y = -500
+			animate_position(top_bar, Vector2(0, 0), 0.25, "top_bar_in")
+
+			var bottom = store_node.get_node("Bottom")
+			bottom.position.y = bottom.position.y + 500
+			animate_position(bottom, Vector2(bottom.position.x, bottom.position.y - 500), 0.25, "bottom_in")
+
+			tween = animate_fade_in(store_node, 0.45, tween_id)
 
 	# 播放完毕
 	if tween:

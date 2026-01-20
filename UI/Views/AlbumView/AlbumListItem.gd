@@ -14,9 +14,6 @@ extends ListItemBase
 ## 专辑数据
 var album_data: AlbumData
 
-## 是否展开
-var is_expanded: bool = false
-
 ## 展开动画补间
 var expand_tween: Tween
 
@@ -60,7 +57,7 @@ func _on_album_button_toggled(toggled_on: bool) -> void:
 	expand_tween.set_trans(Tween.TRANS_SINE)
 	expand_tween.set_parallel(true)
 	
-	is_expanded = toggled_on
+	is_selected = toggled_on
 	_animate_expand(expand_tween, toggled_on)
 
 func _update_point(np,i):

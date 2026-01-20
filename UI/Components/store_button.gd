@@ -1,8 +1,6 @@
 extends ColorRect
 var ShowBackButton=false
 
-signal  switch_to_store
-
 var RIGHTBOTTOM="/root/Main/RightBottom/Store_Button"
 @onready var animation_manager:AnimationManager = AniMGR.instance
 @onready var event_bus:EventBus = EvtBus.instance
@@ -20,10 +18,6 @@ func _animate_switch_btn(showBackButton: bool):
 
 func _on_button_pressed() -> void:
 	if ShowBackButton:
-		# event_bus.storeButtonSwitch.emit(false)
-		# if UiStatMGR.current_state == UiStatMGR.UIState.SORTED_VIEW:
 		UiStatMGR.go_back()
-		# else:
-		# 	UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
 	else:
-		switch_to_store.emit()
+		UiStatMGR.change_state(UiStatMGR.UIState.STORE_VIEW)

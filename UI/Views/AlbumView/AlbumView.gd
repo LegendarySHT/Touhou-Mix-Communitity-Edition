@@ -76,7 +76,7 @@ func _process(delta):
 		return
 	scroll.process(delta)
 	
-	var albumNode = get_child(0).get_child(selected_album)
+	var albumNode = container.get_child(selected_album)
 	
 	if abs(scroll._scroll_velocity) < 800 and not scroll._is_dragging:
 		if need_snap:
@@ -88,15 +88,15 @@ func _process(delta):
 				else:
 					snap_index = selected_album
 
-			var temp = get_node("/root/Main/Album/AlbumList/VBox").get_child(snap_index)
-			if temp.is_expanded == false:
+			var temp = container.get_child(snap_index)
+			if temp.is_selected == false:
 				temp.get_node(ALBUMBUTTON).button_pressed = true
 
-			snap_distant = get_child(0).get_child(snap_index).global_position.y - item_height
+			snap_distant = container.get_child(snap_index).global_position.y - item_height
 			if abs(snap_distant) < 2 or (snap_index == 0):
 				_stop_snap()
 		# 低速时吸附
-		elif abs(scroll._scroll_velocity) < snap_velocity and (abs(get_child(0).get_child(selected_album).global_position.y - 200) > 20 or selected_album== -1):
+		elif abs(scroll._scroll_velocity) < snap_velocity and (abs(container.get_child(selected_album).global_position.y - 200) > 20 or selected_album== -1):
 			need_snap = true
 		
 		
@@ -107,7 +107,7 @@ func _process(delta):
 	
 	else:
 		_stop_snap()
-		if selected_album!= -1 and albumNode.is_expanded and (albumNode.global_position.y < 100 or albumNode.global_position.y > 1080):
+		if selected_album!= -1 and albumNode.is_selected and (albumNode.global_position.y < 100 or albumNode.global_position.y > 1080):
 			reset_selection()
 
 	# 图片移动

@@ -17,6 +17,7 @@ var filesystem_manager: FileSystemManager
 
 # UI组件路径
 @export var midi_view_path: String
+@export var store_view_path: String
 
 func _ready():
 	# 四边拉伸到父级（全屏）
@@ -113,6 +114,16 @@ func _init_ui() -> void:
 		info_window.visible = false
 		Main.add_child(info_window)
 		info_ui = Main.get_node_or_null("InfoUI")
+
+	# Midi商店
+	var store_page = load(store_view_path).instantiate()
+	store_page.visible = false
+	store_page.z_index = 10
+	Main.add_child(store_page)
+
+	var right_bottom = get_node("RightBottom")
+	move_child(right_bottom ,-1)
+	right_bottom.z_index = 20
 
 ## 连接核心系统信号
 func _connect_signals() -> void:
