@@ -13,9 +13,6 @@ var selected_song: int = -1
 @onready var event_bus: EventBus = EvtBus.instance
 @onready var state_manager = UIStateManager.instance
 
-# 滚动逻辑
-@onready var scroll: GeneralScroll = GeneralScroll.new(self)
-
 func _ready() -> void:
 	super._ready()
 	
@@ -33,12 +30,12 @@ func _ready() -> void:
 func _process(delta: float):
 	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
 		return
-	scroll.process(delta)
+	super._process(delta)
 
 func _input(event):
 	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
 		return
-	scroll.input(event)
+	super._input(event)
 
 ## 加载指定专辑的歌曲
 func _load_songs(album_id: String) -> void:

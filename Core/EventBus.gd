@@ -21,7 +21,7 @@ signal midi_selected(midi_id: String, midi_data: MidiData)
 # signal navigate_to_midi_view(song_id: String)
 # signal navigate_to_sort_view
 # signal navigate_to_detail_view(midi_id: String)
-signal navigate_back
+#signal navigate_back
 
 signal storeButtonSwitch(showBackButton:bool)
 

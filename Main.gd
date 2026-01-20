@@ -125,6 +125,9 @@ func _init_ui() -> void:
 	move_child(right_bottom ,-1)
 	right_bottom.z_index = 20
 
+	for i in range(30):
+		store_page.get_node("StoreMidiList").create_and_add_item("%d" % i, "StoreMidiItem")
+
 ## 连接核心系统信号
 func _connect_signals() -> void:
 	# 数据加载完成信号

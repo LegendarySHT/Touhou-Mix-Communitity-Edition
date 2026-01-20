@@ -1,0 +1,118 @@
+[gd_scene load_steps=6 format=3 uid="uid://sc0mnsr50ilm"]
+
+[ext_resource type="Script" uid="uid://ds2byracy7vto" path="res://UI/Views/StorePage/StoreMidiListItem.gd" id="1_j6ifx"]
+[ext_resource type="Texture2D" uid="uid://c1weed4a7xiuj" path="res://Resources/song_cover/2.jpg" id="2_jmah3"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jmah3"]
+bg_color = Color(0, 0, 0, 0.39215687)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mnugo"]
+bg_color = Color(0.21, 0.21, 0.21, 0.77254903)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_blend = true
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_csklb"]
+bg_color = Color(0.873, 0.9473667, 0.97, 0.8)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+shadow_size = 80
+shadow_offset = Vector2(0, -100)
+
+[node name="StoreMidiNode" type="PanelContainer"]
+clip_contents = true
+custom_minimum_size = Vector2(550, 550)
+anchors_preset = -1
+anchor_left = 0.143
+anchor_top = 0.30100003
+anchor_right = 0.143
+anchor_bottom = 0.30100003
+offset_left = -274.56
+offset_top = -325.08002
+offset_right = 275.44
+offset_bottom = 224.91998
+theme_override_styles/panel = SubResource("StyleBoxFlat_jmah3")
+script = ExtResource("1_j6ifx")
+
+[node name="CoverPanel" type="Panel" parent="."]
+visible = false
+clip_children = 2
+clip_contents = true
+custom_minimum_size = Vector2(0, 550)
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_mnugo")
+
+[node name="cover" type="TextureRect" parent="CoverPanel"]
+layout_mode = 0
+offset_right = 550.0
+offset_bottom = 550.0
+texture = ExtResource("2_jmah3")
+expand_mode = 3
+stretch_mode = 4
+
+[node name="InfoPanel" type="Panel" parent="."]
+visible = false
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+size_flags_vertical = 8
+theme_override_styles/panel = SubResource("StyleBoxFlat_csklb")
+
+[node name="MidiName" type="Label" parent="InfoPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = -75.0
+offset_right = 97.0
+offset_bottom = -56.0
+theme_override_font_sizes/font_size = 28
+text = "Midi Name"
+
+[node name="Author" type="Label" parent="InfoPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = -35.0
+offset_right = 135.0
+offset_bottom = -7.0
+theme_override_font_sizes/font_size = 18
+text = "author"
+
+[node name="Uploader" type="Label" parent="InfoPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = 168.0
+offset_bottom = 40.0
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 22
+text = "Upload by xxxx"
+
+[node name="AlbumName" type="Label" parent="InfoPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 60.0
+offset_right = 168.0
+offset_bottom = 85.0
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 25
+text = "Album Name"
+
+[node name="SongName" type="Label" parent="InfoPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 105.0
+offset_right = 168.0
+offset_bottom = 130.0
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 22
+text = "Album Name"

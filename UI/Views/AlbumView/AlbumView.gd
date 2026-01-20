@@ -13,9 +13,6 @@ var selected_album: int = -1
 @onready var data_manager: DataManager = DataMGR.instance
 @onready var event_bus: EventBus = EvtBus.instance
 
-# 基本滚动逻辑
-@onready var scroll:GeneralScroll = GeneralScroll.new(self)
-
 # 吸附相关
 var need_snap = false # 指示是否需要吸附
 var snap_velocity = 800 # 开始吸附的速度临界值
@@ -74,15 +71,16 @@ func _clear_list() -> void:
 func _process(delta):
 	if UiStatMGR.current_state != UiStatMGR.UIState.ALBUM_VIEW:
 		return
-	scroll.process(delta)
+	super._process(delta)
+	# scroll.process(delta)
 	
 	var albumNode = container.get_child(selected_album)
 	
-	if abs(scroll._scroll_velocity) < 800 and not scroll._is_dragging:
+	if abs(scroll_velocity) < 800 and not is_scrolling:
 		if need_snap:
 			# 获取一个吸附对象
 			if snap_index == -1:
-				scroll._scroll_velocity = 0
+				scroll_velocity = 0
 				if selected_album== -1:
 					snap_index = round((scroll_vertical + item_height) / (item_height))
 				else:
@@ -96,7 +94,7 @@ func _process(delta):
 			if abs(snap_distant) < 2 or (snap_index == 0):
 				_stop_snap()
 		# 低速时吸附
-		elif abs(scroll._scroll_velocity) < snap_velocity and (abs(container.get_child(selected_album).global_position.y - 200) > 20 or selected_album== -1):
+		elif abs(scroll_velocity) < snap_velocity and (abs(container.get_child(selected_album).global_position.y - 200) > 20 or selected_album== -1):
 			need_snap = true
 		
 		
@@ -116,7 +114,8 @@ func _process(delta):
 func _input(event):
 	if UiStatMGR.current_state != UIStateManager.UIState.ALBUM_VIEW or 0:
 		return
-	scroll.input(event)
+	super._input(event)
+# 	# scroll.input(event)
 
 func _stop_snap():
 	need_snap = false;

@@ -1,5 +1,6 @@
-[gd_scene load_steps=9 format=3 uid="uid://dvvggbuqsfxbw"]
+[gd_scene load_steps=10 format=3 uid="uid://dvvggbuqsfxbw"]
 
+[ext_resource type="Script" uid="uid://dbgwcersgki3c" path="res://UI/Views/StorePage/StoreView.gd" id="1_77ghf"]
 [ext_resource type="Texture2D" uid="uid://7e7lff81aa7n" path="res://Resources/Gradient/gradient2.png" id="1_aexbj"]
 [ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="2_e4ark"]
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="3_u7c36"]
@@ -19,80 +20,23 @@ offset_right = 1921.0
 offset_bottom = 1080.0
 texture = ExtResource("1_aexbj")
 
-[node name="Container" type="ScrollContainer" parent="."]
+[node name="StoreMidiList" type="ScrollContainer" parent="."]
 custom_minimum_size = Vector2(1700, 936)
 offset_left = 65.0
 offset_top = 119.0
 offset_right = 1884.0
 offset_bottom = 1082.0
 horizontal_scroll_mode = 0
+script = ExtResource("1_77ghf")
+container_path = NodePath("HFlowBox")
+list_item_class = "res://UI/Views/StorePage/storeMidiNode.tscn"
 
-[node name="Container" type="HFlowContainer" parent="Container"]
+[node name="HFlowBox" type="HFlowContainer" parent="StoreMidiList"]
 custom_minimum_size = Vector2(1790, 0)
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/h_separation = 65
 theme_override_constants/v_separation = 40
-
-[node name="StoreMidiNode" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode2" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode3" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode4" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode5" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode6" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode7" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode8" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode9" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode10" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode11" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
-
-[node name="StoreMidiNode12" type="PanelContainer" parent="Container/Container"]
-custom_minimum_size = Vector2(550, 300)
-layout_mode = 2
-mouse_filter = 1
 
 [node name="Top_bar" type="Polygon2D" parent="."]
 self_modulate = Color(0.882813, 0.882813, 0.882813, 1)

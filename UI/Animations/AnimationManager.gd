@@ -279,7 +279,7 @@ func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStat
 func _scene_transition_enter(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	for key in ui_exist.keys():
 		if not ui_exist[key] and key in ui_part[new_state]:
-			animate_ui_in(key, old_state, new_state)
+			animate_ui_in(key, old_state)
 			ui_exist[key] = true
 
 func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
@@ -374,7 +374,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			_scene_transition_enter(old_state, new_state)
 		)
 
-func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
+func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 	print("组件进入动画: %s" % ui_name)
 	var tween_id = "%s_in" % ui_name
 	var tween : Tween

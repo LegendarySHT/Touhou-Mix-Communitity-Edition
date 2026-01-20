@@ -1,9 +1,8 @@
-[gd_scene load_steps=27 format=3 uid="uid://jvmwtrulpf5g"]
+[gd_scene load_steps=26 format=3 uid="uid://jvmwtrulpf5g"]
 
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_devvj"]
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://cbkgu4o71ikgo" path="res://Resources/Gradient/gradient1.png" id="3_bg4s2"]
-[ext_resource type="Script" uid="uid://7yry3gl1v284" path="res://UI/Components/background.gd" id="5_xrxkg"]
 [ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/store_button.gd" id="7_sqvbp"]
 [ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView/AlbumView.gd" id="7_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://bq58thu46jvsq" path="res://Resources/icon/midi_store.png" id="8_hri7i"]
@@ -106,14 +105,13 @@ offset_bottom = 340.412
 theme_override_font_sizes/font_size = 30
 text = "character"
 
-[node name="background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 z_index = -2
 layout_mode = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
 mouse_filter = 2
 texture = ExtResource("3_bg4s2")
-script = ExtResource("5_xrxkg")
 metadata/_edit_lock_ = true
 
 [node name="ReferenceRect" type="ReferenceRect" parent="."]

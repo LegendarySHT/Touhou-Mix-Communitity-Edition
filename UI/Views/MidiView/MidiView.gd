@@ -18,8 +18,6 @@ var last_selection = null # 上一次选中的节点
 # 路径
 var INDICATOR = "/root/Main/InfoUI/Right/Right/Indicator"
 
-var scroll: GeneralScroll = GeneralScroll.new(self)
-
 func _ready() -> void:
 	super._ready()
 	
@@ -78,7 +76,8 @@ func _refresh_display() -> void:
 	# container.get_child(0).get_node("Button").button_pressed = true
 	print("加载了%d个MIDI谱面" % counter)
 
-func _on_button_toggled(toggled_on: bool, midiNode, midi_id: String):
+# 在此处判断是否开游戏
+func _on_button_toggled(_toggled_on: bool, _midiNode, _midi_id: String):
 	pass
 
 ## 清空列表
@@ -109,27 +108,19 @@ func _on_item_selected(item_id: String) -> void:
 				event_bus.emit_midi_selected(item_id, midi)
 				break
 
-## 列表项悬停回调
-func _on_item_hovered(item_id: String) -> void:
-	pass
-
-## 列表项取消悬停回调
-func _on_item_unhovered() -> void:
-	pass
-
 func _input(event):
 	if state_manager.current_state != state_manager.UIState.MIDI_VIEW or snaping:
 		if snaping and not snaping.get_node("Button").button_pressed:
 			_show_midi_list()
 		return
 	else:
-		scroll.input(event)
+		super._input(event)
 
 func _process(_delta):
 	if state_manager.current_state != state_manager.UIState.MIDI_VIEW:
 		return
 	
-	scroll.process(_delta)
+	super._process(_delta)
 
 	# 吸附
 	if snaping != null and abs(snaping.position.y - scroll_vertical + 15) > 7:

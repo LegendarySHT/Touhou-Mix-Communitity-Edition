@@ -7,9 +7,6 @@ class_name SortedMidiView
 ## 当前显示的MIDI列表
 var current_midis: Array[MidiData] = []
 
-## 滚动逻辑
-var scroll: GeneralScroll
-
 ## 当前排序字段
 # var current_sort_field: int = SortingEngine.SortDataField.DOWNLOAD_COUNT
 
@@ -46,8 +43,6 @@ var item_bg: ButtonGroup
 
 func _ready() -> void:
 	super._ready()
-	scroll = GeneralScroll.new(self)
-	scroll.enable()
 	
 	if not data_manager or not event_bus or not sorting_engine:
 		push_error("SortedMidiView: Missing manager instances")
@@ -63,7 +58,7 @@ func _ready() -> void:
 func _process(delta):
 	if state_manager.current_state != state_manager.UIState.SORTED_VIEW:
 		return
-	scroll.process(delta)
+	super._process(delta)
 	
 	# 处理分帧加载
 	_process_loading()
@@ -73,7 +68,7 @@ func _process(delta):
 func _input(event):
 	if state_manager.current_state != state_manager.UIState.SORTED_VIEW:
 		return
-	scroll.input(event)
+	super._input(event)
 
 ## 处理分帧加载逻辑
 func _process_loading() -> void:
@@ -177,18 +172,6 @@ func _initialize_midi_item(item: ListItemBase, midi: MidiData) -> void:
 		var index = current_midis.find(midi)
 		item.setup_with_midi(midi, index)
 
-## 排序字段改变
-func _on_sort_field_changed(sort_field: int) -> void:
-	_load_sorted_midis()
-
-## 排序方向改变
-func _on_sort_direction_changed(ascending: bool) -> void:
-	_load_sorted_midis()
-
-## 状态过滤改变
-func _on_status_filter_changed(status: String) -> void:
-	_load_sorted_midis()
-
 ## 搜索查询改变
 func _on_search_query_changed(query: String) -> void:
 	if not sorting_engine or not data_manager:
@@ -216,14 +199,6 @@ func _on_item_selected(item_id: String) -> void:
 			if midi.id == item_id:
 				event_bus.emit_midi_selected(item_id, midi)
 				break
-
-## 列表项悬停回调
-func _on_item_hovered(item_id: String) -> void:
-	pass
-
-## 列表项取消悬停回调
-func _on_item_unhovered() -> void:
-	pass
 
 ## 设置每帧加载的节点数量（性能调优）
 func set_nodes_per_frame(count: int) -> void:

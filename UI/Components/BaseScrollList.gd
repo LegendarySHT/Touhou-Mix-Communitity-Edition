@@ -6,19 +6,13 @@ class_name BaseScrollList
 
 ## 容器（放置列表项的VBox或HBox）
 @export var container_path: NodePath
-@onready var container: BoxContainer = get_node(container_path) if container_path else null
+@onready var container: Container = get_node(container_path) if container_path else null
 
 ## 列表项场景或预制体
 @export var list_item_class: Variant
 
 ## 列表项的高度
 @export var item_height: float = 100.0
-
-## 启用吸附效果
-@export var enable_snap: bool = true
-
-## 吸附阈值（滚动速度小于此值时触发吸附）
-@export var snap_threshold: float = 100.0
 
 ## 列表项间距
 @export var item_spacing: float = 10.0
@@ -32,49 +26,73 @@ var last_scroll_position: float = 0.0
 ## 是否正在滚动
 var is_scrolling: bool = false
 
-## 吸附目标位置
-var snap_target: float = -1.0
+var _start_pos: float = 0.0
+var _mouse_start_pos: float = 0.0
 
-## 吸附动画Tween
-var snap_tween: Tween
+# 配置参数
+var deceleration_rate := 0.99  # 基础减速速率
+var drag_sensitivity := 1.5  # 拖拽灵敏度
+var max_velocity := 5000.0  # 最大速度
+var wheel_velocity := 425.0  # 滚轮速度增量
 
-# ## 所有列表项
+## 所有列表项
 var list_items: Array[ListItemBase] = []
-
-## 滚动开始信号
-signal list_scroll_started
-signal list_scroll_finished
-signal item_focused(item_id: String)
-signal list_updated
 
 func _ready() -> void:
 	if container == null:
 		push_error("Container not found at path: %s" % container_path)
 		return
-	
-	list_scroll_started.connect(_on_scroll_started)
-	list_scroll_finished.connect(_on_scroll_finished)
 
 func _process(delta: float) -> void:
 	if container == null:
 		return
-	
-	var current_scroll = get_v_scroll_bar().value
-	scroll_velocity = (current_scroll - last_scroll_position) / delta
-	last_scroll_position = current_scroll
-	
-	# 更新滚动状态
-	if abs(scroll_velocity) > 0.1:
-		if not is_scrolling:
-			is_scrolling = true
-			list_scroll_started.emit()
-	else:
+
+	if not is_scrolling:
+		# 动态计算最大滚动值
+		var max_scroll := 0.0
+		if get_v_scroll_bar():
+			max_scroll = get_v_scroll_bar().max_value
+		if abs(scroll_velocity) > max_velocity:
+			scroll_velocity = max_velocity * sign(scroll_velocity)
+		if scroll_vertical < max_scroll:
+			scroll_velocity *= deceleration_rate
+		
+		scroll_vertical += int(scroll_velocity * delta)
+
+		# 动不了就停止
+		if last_scroll_position == scroll_vertical:
+			scroll_velocity = 0.0
+		last_scroll_position = scroll_vertical
+		
+		# 当速度很小时停止
+		if abs(scroll_velocity) < 30.0:
+			scroll_velocity = 0.0
+
+func _input(event: InputEvent) -> void:
+	# 鼠标按钮事件
+	if event is InputEventMouseButton:
+		match event.button_index:
+			MOUSE_BUTTON_LEFT:
+				is_scrolling = event.pressed
+				if event.pressed:
+					scroll_velocity = 0
+					_start_pos = scroll_vertical
+					_mouse_start_pos = event.global_position.y
+		
+			# 鼠标滚轮
+			MOUSE_BUTTON_WHEEL_UP:
+				scroll_velocity -= wheel_velocity
+			MOUSE_BUTTON_WHEEL_DOWN:
+				scroll_velocity += wheel_velocity
+		# 鼠标移动事件
+	elif event is InputEventMouseMotion:
 		if is_scrolling:
-			is_scrolling = false
-			# 检查是否需要吸附
-			if enable_snap and abs(scroll_velocity) < snap_threshold:
-				_trigger_snap()
-			list_scroll_finished.emit()
+			var _mouse_delta = event.global_position.y - _mouse_start_pos
+			# 异号或者速度大于最大速度就更新速度
+			if scroll_velocity * event.velocity.y > 0.0 or abs(event.velocity.y) > abs(scroll_velocity):
+				scroll_velocity = - event.velocity.y
+			if _mouse_delta != 0:
+				scroll_vertical = int(-_mouse_delta * drag_sensitivity + _start_pos)
 
 ## 添加列表项
 func add_list_item(item: ListItemBase) -> void:
@@ -84,13 +102,6 @@ func add_list_item(item: ListItemBase) -> void:
 	container.add_child(item)
 	list_items.append(item)
 	
-	# 连接列表项信号
-	#item.selected.connect(_on_item_selected)
-	#item.hovered.connect(_on_item_hovered)
-	#item.unhovered.connect(_on_item_unhovered)
-	
-	list_updated.emit()
-
 ## 创建并添加列表项
 func create_and_add_item(item_id: String, item_type: String = "") -> ListItemBase:
 	var item: ListItemBase
@@ -114,7 +125,6 @@ func clear_items() -> void:
 		item.queue_free()
 	
 	list_items.clear()
-	list_updated.emit()
 
 ## 获取所有列表项
 func get_all_items() -> Array[ListItemBase]:
@@ -141,64 +151,6 @@ func get_focused_item() -> ListItemBase:
 			closest_item = item
 	
 	return closest_item
-
-## 滚动到特定列表项
-func scroll_to_item(item_id: String) -> void:
-	for i in range(list_items.size()):
-		if list_items[i].item_id == item_id:
-			scroll_to_index(i)
-			return
-
-## 滚动到特定索引
-func scroll_to_index(index: int) -> void:
-	if index < 0 or index >= list_items.size():
-		return
-	
-	var target_y = index * (item_height + item_spacing)
-	snap_target = target_y
-	_animate_scroll_to(target_y)
-
-## 触发吸附效果
-func _trigger_snap() -> void:
-	var snap_index = round(last_scroll_position / (item_height + item_spacing))
-	var target_y = snap_index * (item_height + item_spacing)
-	snap_target = target_y
-	_animate_scroll_to(target_y)
-
-## 动画滚动到目标位置
-func _animate_scroll_to(target_y: float) -> void:
-	if snap_tween:
-		snap_tween.kill()
-	
-	snap_tween = create_tween()
-	snap_tween.set_ease(Tween.EASE_OUT)
-	snap_tween.set_trans(Tween.TRANS_CUBIC)
-	snap_tween.tween_property(get_v_scroll_bar(), "value", target_y, 0.3)
-
-## 列表项选中时的回调
-func _on_item_selected(item_id: String) -> void:
-	item_focused.emit(item_id)
-
-## 列表项悬停时的回调
-func _on_item_hovered(item_id: String) -> void:
-	pass
-
-## 列表项取消悬停时的回调
-func _on_item_unhovered() -> void:
-	pass
-
-## 滚动开始时的回调
-func _on_scroll_started() -> void:
-	pass
-
-## 滚动结束时的回调
-func _on_scroll_finished() -> void:
-	pass
-
-## 销毁时清理
-func _exit_tree() -> void:
-	if snap_tween:
-		snap_tween.kill()
 
 ## 列表项图片位移
 func process_item_cover_move() -> void:

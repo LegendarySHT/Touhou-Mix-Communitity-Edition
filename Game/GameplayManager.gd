@@ -158,7 +158,7 @@ func _calculate_final_score() -> Dictionary:
 	}
 
 ## MIDI选择信号处理
-func _on_midi_selected(midi_id: String, midi_data: MidiData) -> void:
+func _on_midi_selected(_midi_id: String, midi_data: MidiData) -> void:
 	current_midi = midi_data
 	if current_song:
 		print("Selected MIDI: %s from %s" % [midi_data.name, current_song.name])
