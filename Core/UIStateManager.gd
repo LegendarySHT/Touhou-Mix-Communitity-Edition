@@ -83,10 +83,10 @@ func change_state(new_state: UIState) -> void:
 func go_back() -> bool:
 	if state_history.is_empty():
 		return false
-	var back_state =  state_history.pop_back()
-	var temp = state_history.back()
-	if temp:
-		previous_state = temp
+	var back_state = state_history.pop_back()
+	# 检查历史栈是否还有元素，有则更新previous_state
+	if not state_history.is_empty():
+		previous_state = state_history.back()
 	
 	state_changed.emit(current_state, back_state)
 	current_state = back_state
