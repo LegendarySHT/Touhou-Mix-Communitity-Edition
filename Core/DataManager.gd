@@ -54,7 +54,8 @@ func load_all_midis_async() -> void:
 
 ## 线程函数：加载MIDI数据
 func _load_midis_thread() -> void:
-	var midis_dir = "res://Resources/midis_info/" #后期实现midi导入时应该会把它挪到user://目录下,现在先保留。
+	# 使用 FileSystemManager 提供的谱面目录
+	var midis_dir = FileSystemManager.instance.get_charts_directory() if FileSystemManager.instance else "res://Resources/midis_info/"
 	var dir = DirAccess.open(midis_dir)
 	
 	if dir == null:

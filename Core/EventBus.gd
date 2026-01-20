@@ -45,6 +45,13 @@ signal settings_changed(setting_name: String, value: Variant)
 signal theme_changed(theme_name: String)
 signal language_changed(language_code: String)
 
+## ========== 文件系统事件 ==========
+signal filesystem_initialized
+signal resources_scanned(resource_type: String, count: int)
+signal chart_imported(chart_id: String)
+signal skin_imported(skin_name: String)
+signal resource_validation_failed(resource_id: String, reason: String)
+
 ## ========== 错误和警告事件 ==========
 signal error_occurred(error_code: int, error_message: String)
 signal warning_occurred(warning_message: String)

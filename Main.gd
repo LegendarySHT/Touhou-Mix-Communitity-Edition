@@ -13,6 +13,7 @@ var gameplay_manager: GameplayManager
 var audio_manager: AudioManager
 var config_loader: ConfigLoader
 var logger: GameLogger
+var filesystem_manager: FileSystemManager
 
 # UI组件路径
 @export var midi_view_path: String
@@ -43,39 +44,49 @@ func _initialize_core_systems() -> void:
 	if logger:
 		logger.info("ConfigLoader initialized", "Main")
 	
-	# 3. 初始化事件总线（单例，已自动管理）
+	# 3. 初始化文件系统管理器（单例，已自动管理）
+	filesystem_manager = FileSystemManager.new()
+	filesystem_manager.name = "FileSystemManager"
+	add_child(filesystem_manager)
+	if logger:
+		logger.info("FileSystemManager initialized", "Main")
+	
+	# 初始化目录结构
+	filesystem_manager.initialize_directory_structure()
+	
+	# 4. 初始化事件总线（单例，已自动管理）
 	event_bus = EventBus.instance
 	if event_bus and logger:
 		logger.info("EventBus initialized", "Main")
 	
-	# 4. 初始化UI状态管理器（单例，已自动管理）
+	# 5. 初始化UI状态管理器（单例，已自动管理）
 	state_manager = UIStateManager.instance
 	if state_manager and logger:
 		logger.info("UIStateManager initialized", "Main")
 	
-	# 5. 初始化动画管理器（单例，已自动管理）
+	# 6. 初始化动画管理器（单例，已自动管理）
 	animation_manager = AnimationManager.instance
 	if animation_manager and logger:
 		logger.info("AnimationManager initialized", "Main")
 	
-	# 6. 初始化排序引擎（单例，已自动管理）
+	# 7. 初始化排序引擎（单例，已自动管理）
 	sorting_engine = SortingEngine.instance
 	if sorting_engine and logger:
 		logger.info("SortingEngine initialized", "Main")
 	
-	# 7. 初始化数据管理器（单例，已自动管理）
+	# 8. 初始化数据管理器（单例，已自动管理）
 	data_manager = DataManager.instance
 	if data_manager and logger:
 		logger.info("DataManager initialized", "Main")
 	
-	# 8. 初始化游戏管理器
+	# 9. 初始化游戏管理器
 	gameplay_manager = GameplayManager.new()
 	gameplay_manager.name = "GameplayManager"
 	add_child(gameplay_manager)
 	if logger:
 		logger.info("GameplayManager initialized", "Main")
 	
-	# 9. 初始化音频管理器
+	# 10. 初始化音频管理器
 	audio_manager = AudioManager.new()
 	audio_manager.name = "AudioManager"
 	add_child(audio_manager)
