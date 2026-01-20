@@ -31,63 +31,40 @@
 ## 关键模式与约定
 
 ### 单例访问
-所有管理器使用 **静态 `instance` 变量**：
 ```gdscript
 var data = DataManager.instance
 var bus = EventBus.instance
-var state = UIStateManager.instance
-```
 在 `Main.gd` 的 `_initialize_core_systems()` 中注册。使用前请始终检查 `if manager:`。
 
-### 事件驱动通信
-用 `EventBus` 信号替代节点路径查找：
-```gdscript
-# 监听：EventBus.album_selected.connect(_on_album_selected)
 # 发送：EventBus.emit_album_selected(album_id, album_data)
 ```
 查看 `Core/EventBus.gd` 获取所有约 20 个信号定义。优先使用事件而非 `get_node()`。
-
 ### 数据查询
 使用 `DataManager` 进行一致性数据访问：
 ```gdscript
-var albums = DataManager.instance.get_all_albums()
 var songs = DataManager.instance.get_songs_by_album(album_id)
 var midis = DataManager.instance.get_midis_by_song(song_id)
-```
-数据已缓存；避免重复加载。数据树结构：专辑 → 歌曲 → MIDI。
 
 ### 排序与过滤
-始终使用 `SortingEngine`：
-```gdscript
-var sorted = SortingEngine.instance.get_sorted_midis(
     midis, 
     SortingEngine.SortField.DOWNLOAD_COUNT,
-    SortingEngine.SortDirection.DESCENDING
 )
 ```
 不要本地实现排序；请使用 `filter_and_sort()` 和 `search_midis()`。
 
 ### 动画
 使用 `AnimationManager`（不要直接使用补间动画）：
-```gdscript
 AnimationManager.instance.animate_fade_in(node, 0.2)
 AnimationManager.instance.animate_bounce(node, start, end, 0.5)
 ```
 预设动画：`fade_in/out`、`pulse`、`bounce`、`menu_expand/collapse`、`scale`、`position`。
-
 ### UI 状态切换
 通过 `UIStateManager` 管理，支持返回导航：
 ```gdscript
 UIStateManager.instance.change_state(UIStateManager.UIState.SONG_VIEW)
 UIStateManager.instance.go_back()  # 撤销上一个状态
-```
-状态包括：ALBUM_VIEW、SONG_VIEW、MIDI_VIEW、SORT_VIEW、DETAIL_VIEW。
-
 ## 文件组织规则
 
-- **场景文件** (`.tscn`)：迁移期间存放于 `Scene/`，逻辑脚本与文件同名
-- **GDScript 文件** (`.gd`)：按层次存放于 `Core/`、`UI/`、`Game/`、`Utilities/`
-- **资源文件** (`.ini`, `.json`)：不要硬编码路径；使用 `ConfigLoader` 或 `DataManager`
 - **数据模型**：存放于 `Core/Models/`，仅包含最少逻辑
 
 ## 开发工作流

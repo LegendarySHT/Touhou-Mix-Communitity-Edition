@@ -1,10 +1,10 @@
-[gd_scene load_steps=33 format=3 uid="uid://jvmwtrulpf5g"]
+[gd_scene load_steps=34 format=3 uid="uid://jvmwtrulpf5g"]
 
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_devvj"]
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
-[ext_resource type="Script" uid="uid://lwqxjakjibps" path="res://UI/Components/camera_2d.gd" id="2_3b0ty"]
+[ext_resource type="Script" path="res://UI/Components/camera_2d.gd" id="2_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://cbkgu4o71ikgo" path="res://Resources/Gradient/gradient1.png" id="3_bg4s2"]
-[ext_resource type="Script" uid="uid://7yry3gl1v284" path="res://UI/Components/background.gd" id="5_xrxkg"]
+[ext_resource type="Script" path="res://UI/Components/background.gd" id="5_xrxkg"]
 [ext_resource type="Texture2D" uid="uid://7e7lff81aa7n" path="res://Resources/Gradient/gradient2.png" id="6_xrxkg"]
 [ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/store_button.gd" id="7_sqvbp"]
 [ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView.gd" id="7_w3rk5"]
@@ -23,12 +23,13 @@
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
 [ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="18_3ccbu"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
-[ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
+[ext_resource type="Script" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="24_mxvw5"]
 [ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="25_xrxkg"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView.gd" id="26_5mvff"]
 [ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="26_sqvbp"]
 [ext_resource type="Texture2D" uid="uid://dbtgtrbm1b5bj" path="res://Resources/icon/midiInfoPage/start.png" id="27_hri7i"]
+[ext_resource type="Script" uid="uid://dsi2l4l78yssy" path="res://Utilities/FileSystemTest.gd" id="30_5mvff"]
 
 [sub_resource type="Gradient" id="Gradient_q6r6c"]
 colors = PackedColorArray(0.477511, 0.510533, 0.894118, 0.690196, 0.326262, 0.0279343, 0.976471, 0.65098)
@@ -879,6 +880,9 @@ offset_right = 3050.0
 offset_bottom = 1086.0
 texture_normal = ExtResource("27_hri7i")
 flip_v = true
+
+[node name="TestNode" type="Node2D" parent="."]
+script = ExtResource("30_5mvff")
 
 [connection signal="switch_to_store" from="RightBottom/Store_Button" to="Camera2D" method="_switch_to_store"]
 [connection signal="pressed" from="RightBottom/Store_Button/Button" to="RightBottom/Store_Button" method="_on_button_pressed"]

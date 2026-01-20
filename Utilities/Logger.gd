@@ -20,8 +20,8 @@ var current_level: LogLevel = LogLevel.DEBUG
 ## 是否输出到文件
 var log_to_file: bool = true
 
-## 日志文件路径
-var log_file_path: String = "user://logs/game.log"
+## 日志文件路径（会在 _ready 中初始化）
+var log_file_path: String = ""
 
 ## 日志前缀映射
 var level_names = {
@@ -45,29 +45,53 @@ func _ready() -> void:
 	else:
 		queue_free()
 	add_to_group("singleton")
+	
+	# 初始化日志文件路径（包含日期）
+	var date = Time.get_date_string_from_system()
+	var logs_dir = "user://Logs/"  # 默认路径
+	
+	# 如果 FileSystemManager 可用，使用其提供的路径
+	if FileSystemManager and FileSystemManager.instance:
+		logs_dir = FileSystemManager.instance.get_logs_directory()
+	
+	log_file_path = logs_dir.path_join("game_%s.log" % date)
+	
 	_ensure_log_directory()
 
 ## 确保日志目录存在
 func _ensure_log_directory() -> void:
+	# 获取日志目录路径
+	var log_dir = log_file_path.get_base_dir()
 	var dir = DirAccess.open("user://")
 	
 	if dir == null:
 		push_error("Failed to open user:// directory")
 		return
 	
-	if not dir.dir_exists("logs"):
-		var new_error = dir.make_dir("logs")
+	# 创建日志目录（如果不存在）
+	var relative_path = log_dir.replace("user://", "")
+	if not dir.dir_exists(relative_path):
+		var new_error = dir.make_dir_recursive(relative_path)
 		if new_error != OK:
 			push_error("Failed to create logs directory: %s" % new_error)
 			return
 	
-	# 确保日志文件存在
+	# 确保日志文件存在，或者追加到现有文件
 	if not FileAccess.file_exists(log_file_path):
 		var file = FileAccess.open(log_file_path, FileAccess.WRITE)
 		if file == null:
 			push_error("Failed to create log file: %s" % log_file_path)
 		else:
-			file.store_line("=== Game Logger Started ===")
+			file.store_line("=== Game Logger Started at %s ===" % Time.get_datetime_string_from_system())
+			file.close()
+	else:
+		# 文件已存在，追加一个会话开始标记
+		var file = FileAccess.open(log_file_path, FileAccess.READ_WRITE)
+		if file:
+			file.seek_end()
+			file.store_line("\n=== New Session Started at %s ===" % Time.get_datetime_string_from_system())
+			file.close()
+
 
 ## 调试日志
 func debug(message: String, context: String = "") -> void:
