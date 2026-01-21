@@ -18,17 +18,18 @@ var last_selection = null # 上一次选中的节点
 # 路径
 var INDICATOR = "/root/Main/InfoUI/Right/Right/Indicator"
 
-func _ready() -> void:
-	super._ready()
-	
+func _ready() -> void:	
 	# 获取管理器引用
 	if not data_manager or not event_bus:
 		push_error("MidiView: Missing manager instances")
 		return
-	
+
+	work_state = UIStateManager.UIState.MIDI_VIEW
 	# 连接事件
 	event_bus.song_selected.connect(_load_midis)
 	event_bus.midi_selected.connect(_load_midi)
+
+	super._ready()
 
 func _load_midi(_midi_id: String, midi:MidiData) -> void:
 	if not data_manager:
@@ -73,7 +74,6 @@ func _refresh_display() -> void:
 			counter += 1
 
 
-	# container.get_child(0).get_node("Button").button_pressed = true
 	print("加载了%d个MIDI谱面" % counter)
 
 # 在此处判断是否开游戏
@@ -97,7 +97,6 @@ func _clear_list() -> void:
 			child.free() # 因为初始化指示器时根据索引位置来设置颜色的，所以得立即清除
 	
 	snaping = null
-	print("清空了MIDI谱面列表")
 
 ## 列表项选中回调
 func _on_item_selected(item_id: String) -> void:
@@ -109,17 +108,19 @@ func _on_item_selected(item_id: String) -> void:
 				break
 
 func _input(event):
-	if state_manager.current_state != state_manager.UIState.MIDI_VIEW or snaping:
+	if snaping:
 		if snaping and not snaping.get_node("Button").button_pressed:
 			_show_midi_list()
-		return
+		if event is InputEventMouseButton and event.pressed:
+			match event.button_index:
+				MOUSE_BUTTON_WHEEL_UP:
+					_previous()
+				MOUSE_BUTTON_WHEEL_DOWN:
+					_next()
 	else:
 		super._input(event)
 
 func _process(_delta):
-	if state_manager.current_state != state_manager.UIState.MIDI_VIEW:
-		return
-	
 	super._process(_delta)
 
 	# 吸附
@@ -154,9 +155,6 @@ func _previous() -> void:
 		_show_midi_list()
 
 	if snaping:
-		# 收起上一个展开的节点
-		container.get_child(snaping.get_meta("index")).get_node("Button").button_pressed = false
-		
 		var Tindex = (snaping.get_meta("index") - 1) % current_midis.size()
 		container.get_child(Tindex).get_node("Button").button_pressed = true
 
@@ -168,7 +166,5 @@ func _next() -> void:
 		_show_midi_list()
 
 	if snaping:
-		container.get_child(snaping.get_meta("index")).get_node("Button").button_pressed = false
-		
 		var Tindex = (snaping.get_meta("index") + 1) % current_midis.size()
 		container.get_child(Tindex).get_node("Button").button_pressed = true

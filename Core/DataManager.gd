@@ -314,7 +314,7 @@ func get_all_albums() -> Array[AlbumData]:
 	
 	# 按发布日期排序
 	result.sort_custom(func(a: AlbumData, b: AlbumData) -> bool:
-		return a.release_date > b.release_date
+		return a.release_date < b.release_date
 	)
 	
 	return result

@@ -41,13 +41,12 @@ var _delay_counter: int = 0
 
 var item_bg: ButtonGroup
 
-func _ready() -> void:
-	super._ready()
-	
+func _ready() -> void:	
 	if not data_manager or not event_bus or not sorting_engine:
 		push_error("SortedMidiView: Missing manager instances")
 		return
 	
+	work_state = UIStateManager.UIState.SORTED_VIEW
 	item_height = 179 # 间距29 项高150
 	item_spacing = 29
 
@@ -55,9 +54,9 @@ func _ready() -> void:
 	event_bus.search_query_changed.connect(_on_search_query_changed)
 	event_bus.sort_finished.connect(_load_sorted_midis)
 
+	super._ready()
+
 func _process(delta):
-	if state_manager.current_state != state_manager.UIState.SORTED_VIEW:
-		return
 	super._process(delta)
 	
 	# 处理分帧加载
@@ -65,10 +64,8 @@ func _process(delta):
 
 	process_item_cover_move()
 
-func _input(event):
-	if state_manager.current_state != state_manager.UIState.SORTED_VIEW:
-		return
-	super._input(event)
+# func _input(event):
+# 	super._input(event)
 
 ## 处理分帧加载逻辑
 func _process_loading() -> void:

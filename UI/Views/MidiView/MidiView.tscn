@@ -33,7 +33,7 @@ skew = 0.261799
 color = Color(0.411765, 0.478431, 0.611765, 1)
 polygon = PackedVector2Array(50, 17, 49, 413, 990, 413, 990, 17)
 
-[node name="SC" type="ScrollContainer" parent="MidiWindow"]
+[node name="MidiView" type="ScrollContainer" parent="MidiWindow"]
 offset_left = 51.823
 offset_top = 15.0
 offset_right = 989.823
@@ -44,7 +44,7 @@ script = ExtResource("1_mxrx3")
 container_path = NodePath("VBOX")
 list_item_class = "res://UI/Views/MidiView/midiNode.tscn"
 
-[node name="VBOX" type="VBoxContainer" parent="MidiWindow/SC"]
+[node name="VBOX" type="VBoxContainer" parent="MidiWindow/MidiView"]
 layout_mode = 2
 size_flags_vertical = 2
 
@@ -422,6 +422,6 @@ theme_override_font_sizes/font_size = 40
 text = "9"
 vertical_alignment = 2
 
-[connection signal="pressed" from="Left/Previous/Button" to="MidiWindow/SC" method="_previous"]
-[connection signal="pressed" from="Left/Next/Button" to="MidiWindow/SC" method="_next"]
-[connection signal="pressed" from="Left/Option/Button" to="MidiWindow/SC" method="_show_midi_list"]
+[connection signal="pressed" from="Left/Previous/Button" to="MidiWindow/MidiView" method="_previous"]
+[connection signal="pressed" from="Left/Next/Button" to="MidiWindow/MidiView" method="_next"]
+[connection signal="pressed" from="Left/Option/Button" to="MidiWindow/MidiView" method="_show_midi_list"]

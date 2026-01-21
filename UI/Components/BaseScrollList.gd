@@ -17,6 +17,8 @@ class_name BaseScrollList
 ## 列表项间距
 @export var item_spacing: float = 10.0
 
+var work_state: UIStateManager.UIState = UIStateManager.UIState.NONE
+
 ## 当前滚动速度
 var scroll_velocity: float = 0.0
 
@@ -24,7 +26,10 @@ var scroll_velocity: float = 0.0
 var last_scroll_position: float = 0.0
 
 ## 是否正在滚动
-var is_scrolling: bool = false
+var is_dragging_list: bool = false # 区分点击事件
+var _is_dragging_list: bool = false
+var is_dragging_bar: bool = false
+var is_wheel_scrolling: bool = false
 
 var _start_pos: float = 0.0
 var _mouse_start_pos: float = 0.0
@@ -38,16 +43,37 @@ var wheel_velocity := 425.0  # 滚轮速度增量
 ## 所有列表项
 var list_items: Array[ListItemBase] = []
 
+var scroll_timer: Timer
+
 func _ready() -> void:
 	if container == null:
 		push_error("Container not found at path: %s" % container_path)
 		return
+	
+	# 创建计时器
+	scroll_timer = Timer.new()
+	scroll_timer.wait_time = 0.3
+	scroll_timer.one_shot = true  # 单次触发
+	scroll_timer.timeout.connect(_on_scroll_timer_timeout)
+	add_child(scroll_timer)
+
+	UIStateManager.instance.state_changed.connect(_on_state_changed)
+	_on_state_changed(UIStateManager.UIState.NONE, UIStateManager.instance.current_state)
+
+	get_v_scroll_bar().gui_input.connect(_on_v_scrollbar_gui_input)
+
+func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
+	var enable:bool = state == work_state
+	set_process(enable)
+	set_process_input(enable)
+	if enable:
+		print("Node: %s , ProcessMode: %s" % [self.name, enable])
 
 func _process(delta: float) -> void:
 	if container == null:
 		return
 
-	if not is_scrolling:
+	if not _is_dragging_list:
 		# 动态计算最大滚动值
 		var max_scroll := 0.0
 		if get_v_scroll_bar():
@@ -68,25 +94,54 @@ func _process(delta: float) -> void:
 		if abs(scroll_velocity) < 30.0:
 			scroll_velocity = 0.0
 
+func _on_v_scrollbar_gui_input(event):
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			is_dragging_bar = event.pressed
+			if event.pressed:
+				scroll_velocity = 0.0
+				
+func _on_scroll_timer_timeout():
+	is_wheel_scrolling = false
+
 func _input(event: InputEvent) -> void:
 	# 鼠标按钮事件
+
 	if event is InputEventMouseButton:
-		match event.button_index:
-			MOUSE_BUTTON_LEFT:
-				is_scrolling = event.pressed
-				if event.pressed:
-					scroll_velocity = 0
-					_start_pos = scroll_vertical
-					_mouse_start_pos = event.global_position.y
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_is_dragging_list = event.pressed
+			if event.pressed:
+				scroll_velocity = 0
+				_start_pos = scroll_vertical
+				_mouse_start_pos = event.global_position.y
+			else:
+				is_dragging_list = false
 		
-			# 鼠标滚轮
-			MOUSE_BUTTON_WHEEL_UP:
-				scroll_velocity -= wheel_velocity
-			MOUSE_BUTTON_WHEEL_DOWN:
-				scroll_velocity += wheel_velocity
-		# 鼠标移动事件
+		# 鼠标滚轮事件
+		if event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_UP]:
+			var sig = 1.0 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1.0
+			if scroll_velocity * sig < 0.0:
+				scroll_velocity = 0
+
+			var tIndex = 0
+			if work_state in [UIStateManager.UIState.ALBUM_VIEW] and has_method("reset_selection"):
+				tIndex = (self.selected_album + int(sig)) % list_items.size()
+				call("reset_selection")
+
+			if not is_wheel_scrolling:
+
+				is_wheel_scrolling = true
+				scroll_timer.start()
+				
+				container.get_child(tIndex).button.button_pressed = true
+			else:
+				scroll_velocity += wheel_velocity * sig
+				scroll_timer.stop()
+				scroll_timer.start()
+	# 鼠标移动事件
 	elif event is InputEventMouseMotion:
-		if is_scrolling:
+		if _is_dragging_list and not is_dragging_bar:
+			is_dragging_list = true
 			var _mouse_delta = event.global_position.y - _mouse_start_pos
 			# 异号或者速度大于最大速度就更新速度
 			if scroll_velocity * event.velocity.y > 0.0 or abs(event.velocity.y) > abs(scroll_velocity):

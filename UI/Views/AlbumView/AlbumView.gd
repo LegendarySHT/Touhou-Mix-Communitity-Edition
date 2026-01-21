@@ -9,7 +9,6 @@ var current_albums: Array[AlbumData] = []
 var selected_album: int = -1
 
 ## 排序引擎引用
-@onready var sorting_engine: SortingEngine = SortEngine.instance
 @onready var data_manager: DataManager = DataMGR.instance
 @onready var event_bus: EventBus = EvtBus.instance
 
@@ -23,17 +22,18 @@ var snap_distant = 0 # 用于指示距离吸附完成位置的距离
 var ALBUMBUTTON = "PC/Polygon2D/AlbumButton"
 
 func _ready() -> void:
-	super._ready()
-	
-	if not data_manager or not event_bus or not sorting_engine:
+	if not data_manager or not event_bus:
 		push_error("AlbumView: Missing manager instances")
 		return
 	
+	work_state = UIStateManager.UIState.ALBUM_VIEW
 	item_height = 173 # 间距29 项高144
 	item_spacing = 29
 
 	# 连接事件
 	data_manager.data_loaded.connect(_load_albums)
+
+	super._ready()
 
 ## 加载专辑数据
 func _load_albums() -> void:
@@ -69,18 +69,9 @@ func _clear_list() -> void:
 
 
 func _process(delta):
-	if UiStatMGR.current_state != UiStatMGR.UIState.ALBUM_VIEW:
-		return
 	super._process(delta)
-	# scroll.process(delta)
 	
-	# 检查是否有有效的专辑节点
-	if selected_album < 0 or container.get_child_count() == 0:
-		return
-	
-	var albumNode = container.get_child(selected_album)
-	
-	if abs(scroll_velocity) < 800 and not is_scrolling:
+	if abs(scroll_velocity) < 400 and not (is_dragging_list or is_dragging_bar):
 		if need_snap:
 			# 获取一个吸附对象
 			if snap_index == -1:
@@ -95,12 +86,11 @@ func _process(delta):
 				temp.get_node(ALBUMBUTTON).button_pressed = true
 
 			snap_distant = container.get_child(snap_index).global_position.y - item_height
-			if abs(snap_distant) < 2 or (snap_index == 0):
+			if abs(snap_distant) < 2:
 				_stop_snap()
 		# 低速时吸附
-		elif abs(scroll_velocity) < snap_velocity and (abs(container.get_child(selected_album).global_position.y - 200) > 20 or selected_album== -1):
-			need_snap = true
-		
+		elif abs(scroll_velocity) < snap_velocity and (abs(container.get_child(selected_album).global_position.y - 200) > 20 or selected_album== -1) and selected_album !=0:
+			need_snap = true		
 		
 		# 吸附时的移动
 		if need_snap:
@@ -109,17 +99,11 @@ func _process(delta):
 	
 	else:
 		_stop_snap()
-		if selected_album!= -1 and albumNode.is_selected and (albumNode.global_position.y < 100 or albumNode.global_position.y > 1080):
+		if selected_album!= -1 and (is_dragging_list or is_dragging_bar):
 			reset_selection()
 
 	# 图片移动
 	process_item_cover_move()
-
-func _input(event):
-	if UiStatMGR.current_state != UIStateManager.UIState.ALBUM_VIEW or 0:
-		return
-	super._input(event)
-# 	# scroll.input(event)
 
 func _stop_snap():
 	need_snap = false;
@@ -134,7 +118,7 @@ func reset_selection():
 
 func _on_button_toggled(toggled_on: bool, index:int, album_id:String):
 	if toggled_on:
-		if  selected_album!= -1 and selected_album== index:
+		if selected_album!= -1 and selected_album== index:
 			# 通过事件总线触发专辑选择
 			event_bus.album_selected.emit(album_id)
 			UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)

@@ -14,28 +14,25 @@ var selected_song: int = -1
 @onready var state_manager = UIStateManager.instance
 
 func _ready() -> void:
-	super._ready()
-	
 	# 获取管理器引用
 	if not data_manager or not event_bus:
 		push_error("SongView: Missing manager instances")
 		return
 	
+	work_state = UIStateManager.UIState.SONG_VIEW
 	item_height = 169
 	item_spacing = 29
 
 	# 连接事件
 	event_bus.album_selected.connect(_load_songs)
 
-func _process(delta: float):
-	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
-		return
-	super._process(delta)
+	super._ready()
 
-func _input(event):
-	if state_manager.current_state != state_manager.UIState.SONG_VIEW:
-		return
-	super._input(event)
+# func _process(delta: float):
+# 	super._process(delta)
+
+# func _input(event):
+# 	super._input(event)
 
 ## 加载指定专辑的歌曲
 func _load_songs(album_id: String) -> void:

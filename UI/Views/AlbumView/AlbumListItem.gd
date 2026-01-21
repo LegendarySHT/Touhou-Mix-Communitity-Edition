@@ -6,7 +6,7 @@ extends ListItemBase
 @onready var album_name_label: Label = $PC/Polygon2D/AlbumName if has_node("PC/Polygon2D/AlbumName") else null
 @onready var song_count_label: Label = $PC/Polygon2D/CountBase/SongCount if has_node("PC/Polygon2D/CountBase/SongCount") else null
 @onready var cover_texture: TextureRect = $PC/Polygon2D/cover if has_node("PC/Polygon2D/cover") else null
-@onready var album_button: Button = $PC/Polygon2D/AlbumButton if has_node("PC/Polygon2D/AlbumButton") else null
+@onready var button: Button = $PC/Polygon2D/AlbumButton if has_node("PC/Polygon2D/AlbumButton") else null
 @onready var polygon: Polygon2D = $PC/Polygon2D if has_node("PC/Polygon2D") else null
 @onready var line: Line2D = $PC/line if has_node("PC/line") else null
 @onready var decorated_line: Node = $PC/Polygon2D/DecoratedLine if has_node("PC/Polygon2D/DecoratedLine") else null
@@ -21,8 +21,8 @@ var ALBUMBUTTON = "PC/Polygon2D/AlbumButton"
 
 func _ready() -> void:
 	# 连接按钮信号
-	if album_button:
-		album_button.toggled.connect(_on_album_button_toggled)
+	if button:
+		button.toggled.connect(_on_album_button_toggled)
 
 func _update_display() -> void:
 	# 初始化显示
@@ -90,13 +90,8 @@ func _animate_expand(tween: Tween, expand: bool) -> void:
 	tween.tween_property(cover_texture,"scale",Vector2(1+0.57*expa,1+0.57*expa),0.15)
 	
 	#按钮放大
-	tween.tween_property(album_button,"scale",Vector2(1 +0.7*expa,1 +1.49*expa),0.15)
-	tween.tween_property(album_button,"position",Vector2(40 -70 *expa,40+10*expa),0.15)
-
-## 更新线框点位置的辅助函数
-func _update_line_point(new_pos: Vector2, index: int) -> void:
-	if line and index < line.points.size():
-		line.points[index] = new_pos
+	tween.tween_property(button,"scale",Vector2(1 +0.7*expa,1 +1.49*expa),0.15)
+	tween.tween_property(button,"position",Vector2(40 -70 *expa,40+10*expa),0.15)
 
 ## 选中状态改变时调用
 func _on_selected() -> void:

@@ -9,6 +9,7 @@ static var instance: UIStateManager
 
 ## UI状态枚举
 enum UIState {
+	NONE = -1,           # 无状态
 	ALBUM_VIEW = 0,      # 专辑列表页面
 	SONG_VIEW = 1,       # 歌曲选择页面
 	MIDI_VIEW = 2,       # MIDI谱面列表页面
