@@ -320,20 +320,24 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 			has_audio = true
 			break
 	
-	# 查找封面图（可选）
-	var cover_extensions = ["jpg", "jpeg", "png"]
-	for ext in cover_extensions:
-		var cover_patterns = [
-			chart_path.path_join(chart_id + "-cover." + ext),
-			chart_path.path_join("cover." + ext),
-			chart_path.path_join("thumbnail." + ext)
-		]
-		for cover_path in cover_patterns:
-			if FileAccess.file_exists(cover_path):
-				metadata["cover_path"] = cover_path
-				break
-		if metadata.has("cover_path"):
-			break
+	# 查找封面图（可选）- 搜索所有可能的封面文件
+	var cover_found = false
+	var dir = DirAccess.open(chart_path)
+	if dir:
+		dir.list_dir_begin()
+		var file_name = dir.get_next()
+		while file_name != "":
+			if not dir.current_is_dir():
+				var lower_name = file_name.to_lower()
+				# 检查是否是封面文件（包含 cover 或 thumbnail，且是图片格式）
+				if (lower_name.contains("cover") or lower_name.contains("thumbnail")) and \
+				   (lower_name.ends_with(".jpg") or lower_name.ends_with(".jpeg") or \
+				    lower_name.ends_with(".png") or lower_name.ends_with(".webp")):
+					metadata["cover_path"] = chart_path.path_join(file_name)
+					cover_found = true
+					break
+			file_name = dir.get_next()
+		dir.list_dir_end()
 	
 	metadata["is_complete"] = has_audio  # 仅当有音频文件时才算完整
 	metadata["path"] = chart_path

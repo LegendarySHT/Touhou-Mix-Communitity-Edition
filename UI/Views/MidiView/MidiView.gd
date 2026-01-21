@@ -56,8 +56,10 @@ func _refresh_display() -> void:
 	var counter = 0
 	var bg = ButtonGroup.new()
 
+	print("[MidiView] Refreshing display with %d midis" % current_midis.size())
 	for midi in current_midis:
 		var item = create_and_add_item(midi.id, "midi")
+		print("[MidiView] Created item: %s, type: %s" % [item, item.get_class() if item else "null"])
 		if item:
 			# 添加指示器点
 			var point = ColorRect.new()
@@ -70,7 +72,11 @@ func _refresh_display() -> void:
 			var indicator = get_node(INDICATOR)
 			indicator.add_child(point)
 
-			item.setup_with_midi(self, midi, counter, bg)
+			print("[MidiView] Calling setup_with_midi for: %s" % midi.name)
+			if item.has_method("setup_with_midi"):
+				item.setup_with_midi(self, midi, counter, bg)
+			else:
+				print("[MidiView] ERROR: Item does not have setup_with_midi method!")
 			counter += 1
 
 
