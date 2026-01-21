@@ -48,38 +48,99 @@ func load_all_midis_async() -> void:
 		return
 	
 	var thread = Thread.new()
-	
-	thread.start(_load_midis_thread)
-	thread.wait_to_finish()
+	var result = thread.start(_load_midis_thread)
+	print("[DataMGR] Thread started, result: %s" % result)
+	var thread_result = thread.wait_to_finish()
+	print("[DataMGR] Thread finished, result: %s" % thread_result)
+	print("[DataMGR] About to emit data_loaded signal...")
+	_emit_data_loaded()
 
 ## 线程函数：加载MIDI数据
+## 使用新的谱面格式（从 FileSystemManager 获取谱面索引）
 func _load_midis_thread() -> void:
-	# 使用 FileSystemManager 提供的谱面目录
-	var midis_dir = FileSystemManager.instance.get_charts_directory() if FileSystemManager.instance else "res://Resources/midis_info/"
-	var dir = DirAccess.open(midis_dir)
+	print("[DataMGR] Thread started, loading MIDI data...")
 	
-	if dir == null:
-		push_error("Failed to open midis_info directory: %s" % midis_dir)
+	# 确保 FileSystemManager 已初始化并扫描完成
+	if FileSystemManager.instance == null:
+		push_error("FileSystemManager not initialized")
 		return
 	
-	dir.list_dir_begin()
-	var file_name = dir.get_next()
+	# 等待资源扫描完成（线程中不能用 await，使用轮询）
+	var timeout = 0
+	while not FileSystemManager.instance.is_initialized and timeout < 100:
+		OS.delay_msec(100)
+		timeout += 1
 	
-	while file_name != "":
-		if file_name.ends_with(".json") and not file_name.begins_with("."):
-			var file_path = midis_dir.path_join(file_name)
-			_load_midi_file(file_path)
+	if not FileSystemManager.instance.is_initialized:
+		print("[DataMGR] FileSystemManager timeout or not initialized after 10 seconds")
+	
+	# 获取谱面索引
+	var charts = FileSystemManager.instance.get_charts_index()
+	print("[DataMGR] Got charts index: %d charts" % charts.size())
+	
+	if charts.is_empty():
+		print("[DataMGR] No charts found in FileSystemManager index")
+		return
+	
+	# 处理每个谱面
+	var processed_count = 0
+	print("[DataMGR] Starting to process %d charts..." % charts.size())
+	
+	for folder_name in charts.keys():
+		var metadata = charts[folder_name]
+		_process_new_format_chart(metadata)
+		processed_count += 1
 		
-		file_name = dir.get_next()
-
-	call_deferred("_emit_data_loaded")
+		# 每处理 100 个谱面打印一次进度
+		if processed_count % 100 == 0:
+			print("[DataMGR] Processing charts: %d/%d" % [processed_count, charts.size()])
+	
+	print("[DataMGR] Finished processing %d charts, now emitting signal..." % processed_count)
+	print("[DataMGR] Midis in dictionary: %d" % midis.size())
 
 func _emit_data_loaded():
+	print("[DataMGR] _emit_data_loaded() called")
 	is_loading = false
 	var stats = get_statistics()
-	GameLogger.instance.info("Albums: %d, Songs: %d, MIDIs: %d" %
-		[stats.total_albums, stats.total_songs, stats.total_midis], "DataMGR")
+	print("[DataMGR] Stats - Albums: %d, Songs: %d, MIDIs: %d" %
+		[stats.total_albums, stats.total_songs, stats.total_midis])
+	print("[DataMGR] Emitting data_loaded signal...")
 	data_loaded.emit()
+	print("[DataMGR] data_loaded signal emitted!")
+
+## 处理新格式的谱面数据（文件夹结构）
+func _process_new_format_chart(metadata: Dictionary) -> void:
+	var chart_id = metadata.get("id", "")
+	var json_data = metadata.get("data", {})
+	var folder_name = metadata.get("folder_name", "")
+	
+	# 调试日志
+	if chart_id.is_empty():
+		print("[DataMGR] WARN: Chart metadata missing id field. Folder: %s" % folder_name)
+		return
+	
+	if json_data.is_empty():
+		print("[DataMGR] WARN: Chart %s has empty JSON data. Folder: %s" % [chart_id, folder_name])
+		return
+	
+	# 创建MIDI数据对象
+	var midi = MidiData.new()
+	midi.from_json(json_data)
+	
+	# 验证是否成功设置了 id
+	if midi.id.is_empty():
+		print("[DataMGR] WARN: Failed to set MIDI id for chart %s" % chart_id)
+		return
+	
+	print("[DataMGR] DEBUG: Adding MIDI %s (from folder %s) to dictionary" % [chart_id, folder_name])
+	midis[chart_id] = midi
+	print("[DataMGR] DEBUG: MIDI added. Current midis count: %d" % midis.size())
+	
+	# 缓存原始JSON
+	json_cache[chart_id] = json_data
+	
+	# 处理歌曲和专辑信息
+	_process_song_and_album_info(json_data, midi, chart_id)
 
 ## 加载单个MIDI文件
 func _load_midi_file(file_path: String) -> void:

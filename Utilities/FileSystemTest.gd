@@ -23,6 +23,7 @@ func test_filesystem_manager():
 	
 	# 测试目录路径
 	print("\n[Test] Directory Paths:")
+	print("  User Path: %s" % ProjectSettings.globalize_path("user://"))
 	print("  Charts: %s" % fs_mgr.get_charts_directory())
 	print("  Skins: %s" % fs_mgr.SKINS_DIR)
 	print("  Soundfont: %s" % fs_mgr.SOUNDFONT_DIR)

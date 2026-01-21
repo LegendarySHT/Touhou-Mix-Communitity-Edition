@@ -26,7 +26,7 @@ func _ready():
 	anchor_top = 0.0
 	anchor_bottom = 1.0
 	
-	# 初始化新架构的核心系统
+	# 初始化架构的核心系统
 	_initialize_core_systems()
 
 ## 初始化核心系统
@@ -161,6 +161,20 @@ func _load_configuration() -> void:
 ## 加载MIDI数据
 func _load_midi_data() -> void:
 	logger.info("Starting MIDI data load...", "Main")
+	
+	# 等待 FileSystemManager 资源准备完毕
+	var max_wait_frames = 300  # 最多等待5秒（300帧 * 60fps）
+	var wait_count = 0
+	
+	while not filesystem_manager.resources_scanned and wait_count < max_wait_frames:
+		await get_tree().process_frame
+		wait_count += 1
+	
+	if not filesystem_manager.resources_scanned:
+		logger.warning("FileSystemManager resources timeout - proceeding anyway", "Main")
+	else:
+		logger.info("FileSystemManager resources scanned, starting MIDI load...", "Main")
+	
 	data_manager.load_all_midis_async()
 
 ## 数据加载完成回调

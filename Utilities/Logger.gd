@@ -48,12 +48,12 @@ func _ready() -> void:
 	
 	# 初始化日志文件路径（包含日期）
 	var date = Time.get_date_string_from_system()
-	var logs_dir = "user://Logs/"  # 默认路径
-	
-	# 如果 FileSystemManager 可用，使用其提供的路径
-	if FileSystemManager and FileSystemManager.instance:
+	var logs_dir = "user://files/Logs/"  # 默认路径
+
+	# 如果 FileSystemManager 已初始化则使用其目录，否则回落到默认
+	if FileSystemManager and FileSystemManager.instance: #由于初始化顺序问题，这段检查事实上永远不会通过，但是先留着吧:(
 		logs_dir = FileSystemManager.instance.get_logs_directory()
-	
+
 	log_file_path = logs_dir.path_join("game_%s.log" % date)
 	
 	_ensure_log_directory()

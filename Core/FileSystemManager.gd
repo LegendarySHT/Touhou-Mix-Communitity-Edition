@@ -10,15 +10,15 @@ static var instance: FileSystemManager
 
 ## ========== 目录常量定义 ==========
 const BASE_DIR = "user://"
-const CHARTS_DIR = "user://Charts/"
-const SKINS_DIR = "user://Skins/"
-const SOUNDFONT_DIR = "user://Soundfont/"
-const BACKGROUND_DIR = "user://BackgroundImage/"
-const LOGS_DIR = "user://Logs/"
-const SETTINGS_DIR = "user://Settings/"
+const CHARTS_DIR = "user://files/Charts/"
+const SKINS_DIR = "user://files/Skins/"
+const SOUNDFONT_DIR = "user://files/Soundfont/"
+const BACKGROUND_DIR = "user://files/BackgroundImage/"
+const LOGS_DIR = "user://files/Logs/"
+const SETTINGS_DIR = "user://files/Settings/"
 
 ## 默认资源源目录
-const DEFAULT_CHARTS_SRC = "res://Resources/midis_info/"
+const DEFAULT_CHARTS_SRC = "res://Resources/Charts/"
 const DEFAULT_SKINS_SRC = "res://Resources/Skins/"
 const DEFAULT_SOUNDFONT_SRC = "res://Resources/Soundfont/"
 const DEFAULT_BACKGROUND_SRC = "res://Resources/BackgroundImage/"
@@ -39,6 +39,7 @@ var backgrounds_index: Dictionary = {}
 ## ========== 状态标志 ==========
 var is_initialized: bool = false
 var is_scanning: bool = false
+var resources_scanned: bool = false  ## 标记资源扫描是否已完成
 
 ## ========== 信号 ==========
 signal initialization_complete
@@ -119,10 +120,10 @@ func _check_and_copy_default_resources() -> void:
 
 ## 线程函数：复制默认资源
 func _copy_default_resources_thread() -> void:
-	# 检查是否需要复制谱面
+	# 检查是否需要复制谱面（递归复制整个目录结构）
 	if _is_directory_empty(CHARTS_DIR):
 		GameLogger.instance.info("Charts directory is empty, copying default charts...", "FileSystemMGR")
-		_copy_directory_contents(DEFAULT_CHARTS_SRC, CHARTS_DIR, "json")
+		_copy_directory_recursive(DEFAULT_CHARTS_SRC, CHARTS_DIR)
 	
 	# 检查是否需要复制皮肤
 	if _is_directory_empty(SKINS_DIR):
@@ -250,10 +251,12 @@ func _scan_all_resources() -> void:
 	scan_backgrounds()
 	
 	is_scanning = false
+	resources_scanned = true
 	resources_ready.emit()
 	GameLogger.instance.info("All resources scanned and ready", "FileSystemMGR")
 
 ## 扫描谱面目录
+## 仅扫描新的谱面文件夹格式（每个文件夹一个谱面）
 func scan_charts() -> void:
 	charts_index.clear()
 	
@@ -271,7 +274,7 @@ func scan_charts() -> void:
 			var chart_path = CHARTS_DIR.path_join(folder_name)
 			var metadata = _load_chart_metadata(chart_path, folder_name)
 			
-			if metadata != null:
+			if metadata != null and not metadata.is_empty():
 				charts_index[folder_name] = metadata
 				count += 1
 		
@@ -279,33 +282,20 @@ func scan_charts() -> void:
 	
 	dir.list_dir_end()
 	
-	# 同时扫描旧的 JSON 文件（向后兼容）
-	dir.list_dir_begin()
-	var file_name = dir.get_next()
-	
-	while file_name != "":
-		if not dir.current_is_dir() and file_name.ends_with(".json"):
-			var chart_id = file_name.get_basename()
-			var json_path = CHARTS_DIR.path_join(file_name)
-			var metadata = _load_chart_from_json(json_path, chart_id)
-			
-			if metadata != null:
-				charts_index[chart_id] = metadata
-				count += 1
-		
-		file_name = dir.get_next()
-	
-	dir.list_dir_end()
-	
 	resource_scan_completed.emit("charts", count)
 	GameLogger.instance.info("Scanned %d charts" % count, "FileSystemMGR")
 
 ## 加载谱面元数据（从谱面文件夹）
-func _load_chart_metadata(chart_path: String, chart_id: String) -> Dictionary:
+## 文件夹命名格式：{hash}_{song_name}_{difficulty}/
+## 文件命名格式：{hash}.json, {hash}.mid, {hash}-cover.jpg
+func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary:
+	# 从文件夹名称提取 chart_id（哈希值）
+	var chart_id = folder_name.split("_")[0]
 	var json_path = chart_path.path_join(chart_id + ".json")
 	
 	# 检查必需文件是否存在
 	if not FileAccess.file_exists(json_path):
+		GameLogger.instance.warning("Chart folder %s missing JSON file: %s" % [folder_name, json_path], "FileSystemMGR")
 		return {}
 	
 	# 读取 JSON 元数据
@@ -313,20 +303,41 @@ func _load_chart_metadata(chart_path: String, chart_id: String) -> Dictionary:
 	if metadata.is_empty():
 		return {}
 	
-	# 验证谱面完整性
-	var required_files = [
-		chart_path.path_join(chart_id + ".mid"),
-		chart_path.path_join(chart_id + ".ogg"),
-	]
+	# 验证谱面完整性（检查 .mid 文件）
+	var mid_path = chart_path.path_join(chart_id + ".mid")
+	if not FileAccess.file_exists(mid_path):
+		GameLogger.instance.warning("Chart %s missing MIDI file: %s" % [chart_id, mid_path], "FileSystemMGR")
+		metadata["is_complete"] = false
+		return metadata
 	
-	for file_path in required_files:
-		if not FileAccess.file_exists(file_path):
-			GameLogger.instance.warning("Chart %s missing required file: %s" % [chart_id, file_path], "FileSystemMGR")
-			metadata["is_complete"] = false
-			return metadata
+	# 音频文件不是必需的，但会查找
+	var audio_extensions = ["ogg", "mp3", "wav"]
+	var has_audio = false
+	for ext in audio_extensions:
+		var audio_path = chart_path.path_join(chart_id + "." + ext)
+		if FileAccess.file_exists(audio_path):
+			metadata["audio_path"] = audio_path
+			has_audio = true
+			break
 	
-	metadata["is_complete"] = true
+	# 查找封面图（可选）
+	var cover_extensions = ["jpg", "jpeg", "png"]
+	for ext in cover_extensions:
+		var cover_patterns = [
+			chart_path.path_join(chart_id + "-cover." + ext),
+			chart_path.path_join("cover." + ext),
+			chart_path.path_join("thumbnail." + ext)
+		]
+		for cover_path in cover_patterns:
+			if FileAccess.file_exists(cover_path):
+				metadata["cover_path"] = cover_path
+				break
+		if metadata.has("cover_path"):
+			break
+	
+	metadata["is_complete"] = has_audio  # 仅当有音频文件时才算完整
 	metadata["path"] = chart_path
+	metadata["folder_name"] = folder_name
 	return metadata
 
 ## 从 JSON 文件加载谱面数据

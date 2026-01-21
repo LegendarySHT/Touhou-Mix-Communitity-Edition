@@ -74,6 +74,10 @@ func _process(delta):
 	super._process(delta)
 	# scroll.process(delta)
 	
+	# 检查是否有有效的专辑节点
+	if selected_album < 0 or container.get_child_count() == 0:
+		return
+	
 	var albumNode = container.get_child(selected_album)
 	
 	if abs(scroll_velocity) < 800 and not is_scrolling:

@@ -22,30 +22,12 @@
    - `AnimationManager`：基于补间动画的管理器（15+ 动画预设）
    - `Components/`：基础类（如 `ListItemBase`、`BaseScrollList`）
    - `Views/`：具体的 UI 视图（迁移中）
-
-4. **Resources/** (配置与资源)
-   - `config.ini`：全局游戏设置
    - `midis_info/*.json`：MIDI 元数据文件
    - 主题/皮肤配置
-
-## 关键模式与约定
-
-### 单例访问
-```gdscript
 var data = DataManager.instance
 var bus = EventBus.instance
-在 `Main.gd` 的 `_initialize_core_systems()` 中注册。使用前请始终检查 `if manager:`。
-
-# 发送：EventBus.emit_album_selected(album_id, album_data)
-```
-查看 `Core/EventBus.gd` 获取所有约 20 个信号定义。优先使用事件而非 `get_node()`。
 ### 数据查询
 使用 `DataManager` 进行一致性数据访问：
-```gdscript
-var songs = DataManager.instance.get_songs_by_album(album_id)
-var midis = DataManager.instance.get_midis_by_song(song_id)
-
-### 排序与过滤
     midis, 
     SortingEngine.SortField.DOWNLOAD_COUNT,
 )
@@ -91,33 +73,15 @@ var value = settings["section"]["key"]
 ```gdscript
 logger.info("Message", "ComponentName")  # 基于标签的日志
 logger.warning("Warn msg", "Tag")
-logger.error("Error msg", "Tag")
-```
-
 ### 测试
 - `Utilities/IntegrationTest.gd`：完整系统验证
-- `Utilities/QuickTest.gd`：临时测试
-- 通过 Godot 编辑器运行；查看控制台输出
-
 ## 常见问题
 
-1. **不要使用 `get_node()`** 进行跨组件通信 → 使用 `EventBus`
-2. **始终通过 `UIStateManager` 链接状态变化**，不要直接切换场景
-3. **不要创建管理器实例**；通过 `ClassName.instance` 访问
-4. **MIDI 数据是分层的**：使用 `DataManager` 方法，不要手动遍历树
 5. **Godot 4.5 语法**：使用 `func_name() -> ReturnType` 类型提示；类型检查优先使用 `is` 而非 `==`
 
-## 迁移状态（第 1 阶段完成）
-
-✅ 核心系统初始化  
-✅ 数据模型 + DataManager 工作正常  
 ✅ EventBus 含 20+ 信号  
 🔄 第 2 阶段：UI 视图迁移（albumNote → AlbumView 等）  
-⏳ 第 3 阶段：旧场景事件系统迁移  
-⏳ 第 4 阶段：动画系统集成  
-
 查看 `Doc/MIGRATION_PROGRESS.md` 获取详细迁移进度。
-
 ## 关键文件参考
 
 - **架构文档**: [Doc/ARCHITECTURE_OVERVIEW.md](../Doc/ARCHITECTURE_OVERVIEW.md)
