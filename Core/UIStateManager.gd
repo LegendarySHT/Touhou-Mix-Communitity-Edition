@@ -12,11 +12,12 @@ enum UIState {
 	NONE = -1,           # 无状态
 	ALBUM_VIEW = 0,      # 专辑列表页面
 	SONG_VIEW = 1,       # 歌曲选择页面
-	MIDI_VIEW = 2,       # MIDI谱面列表页面
-	SORTED_VIEW = 20,    # 排序后的MIDI列表页面
-	DETAIL_VIEW = 30,    # 详情页面
-	STORE_VIEW = 40,     # Store页面
-	SETTINGS_VIEW = 50   # 设置页面
+	MIDI_VIEW = 2,       # MIDI详细页面
+	TRACK_VIEW = 21, 	 # 音轨界面
+	PLAY_VIEW = 22,		 # 打歌界面
+	SORTED_VIEW = 3,     # 排序后的MIDI列表页面
+	STORE_VIEW = 4,      # Store页面
+	SETTINGS_VIEW = 5    # 设置页面
 }
 
 ## 当前UI状态
@@ -112,8 +113,6 @@ func get_state_name(state: UIState) -> String:
 			return "MIDI_VIEW"
 		UIState.SORTED_VIEW:
 			return "SORTED_VIEW"
-		UIState.DETAIL_VIEW:
-			return "DETAIL_VIEW"
 		UIState.STORE_VIEW:
 			return "STORE_VIEW"
 		UIState.SETTINGS_VIEW:

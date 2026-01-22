@@ -17,10 +17,6 @@ var midi_data: MidiData
 ## 选择动画补间
 var select_tween: Tween
 
-func _ready() -> void:
-	if not button:
-		button = get_node_or_null("Button")
-
 func _update_display() -> void:
 	# 初始化显示
 	if not status_label:
@@ -43,35 +39,22 @@ func setup_with_midi(midi: MidiData, index: int, bg:ButtonGroup) -> void:
 	midi_data = midi
 	item_id = midi.id
 	item_type = "sorted_midi"
+	item_index = index
 	
 	# 更新显示
 	_update_display()
 	_load_cover_image()
 
-	button.set_meta("index", index)
 	button.button_group = bg
 
-	enable_selected_animation(button)
+	enable_selected_animation(button, get_parent().get_parent())
 	
-	# 设置元数据
-	set_meta("index", index)
-
 ## 按钮切换回调
 func _on_button_toggled(toggled_on: bool) -> void:
 	
 	select_tween = create_tween()
-	select_tween.set_ease(Tween.EASE_IN_OUT)
 	select_tween.set_trans(Tween.TRANS_SINE)
 	
-	if toggled_on and is_selected:
-		print("选中：%s / %s" % [midi_data.song_data.name, midi_data.name])
-		var event_bus = EventBus.instance
-		if event_bus and midi_data:
-			state_manager.change_state(UIStateManager.UIState.MIDI_VIEW)
-			event_bus.emit_midi_selected(midi_data.id, midi_data)
-
-	is_selected = toggled_on
-
 	select_tween.tween_property(line, "default_color", Color("#938aff" if toggled_on else "ffffff"), 0.15)
 		
 func _load_cover_image() -> void:

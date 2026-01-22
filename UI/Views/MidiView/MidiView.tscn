@@ -197,7 +197,7 @@ color = Color(0.129412, 0.411765, 0.705882, 1)
 polygon = PackedVector2Array(250, 725, 250, 875, 550, 875, 550, 725)
 metadata/_edit_lock_ = true
 
-[node name="TextureButton" type="TextureButton" parent="MainButton/Left"]
+[node name="TrackViewBtn" type="TextureButton" parent="MainButton/Left"]
 z_index = 1
 custom_minimum_size = Vector2(120, 120)
 offset_left = -194.88
@@ -215,7 +215,7 @@ color = Color(0.129412, 0.411765, 0.705882, 1)
 polygon = PackedVector2Array(250, 725, 250, 875, 550, 875, 550, 725)
 metadata/_edit_lock_ = true
 
-[node name="TextureButton" type="TextureButton" parent="MainButton/Right"]
+[node name="FavorListBtn" type="TextureButton" parent="MainButton/Right"]
 custom_minimum_size = Vector2(120, 120)
 offset_left = 872.44
 offset_top = 731.94
@@ -225,7 +225,7 @@ texture_normal = ExtResource("8_pgjff")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="Play" type="TextureButton" parent="MainButton"]
+[node name="PlayBtn" type="TextureButton" parent="MainButton"]
 custom_minimum_size = Vector2(200, 200)
 offset_left = 297.134
 offset_top = 699.847
@@ -425,3 +425,4 @@ vertical_alignment = 2
 [connection signal="pressed" from="Left/Previous/Button" to="MidiWindow/MidiView" method="_previous"]
 [connection signal="pressed" from="Left/Next/Button" to="MidiWindow/MidiView" method="_next"]
 [connection signal="pressed" from="Left/Option/Button" to="MidiWindow/MidiView" method="_show_midi_list"]
+[connection signal="pressed" from="MainButton/Left/TrackViewBtn" to="MidiWindow/MidiView" method="_on_click_track_btn"]

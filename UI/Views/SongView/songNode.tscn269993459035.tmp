@@ -5,10 +5,9 @@
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="2_5wnnw"]
 
 [sub_resource type="Gradient" id="Gradient_pqbqw"]
-resource_local_to_scene = true
 interpolation_mode = 2
-offsets = PackedFloat32Array(0, 0.24000001, 0.49333298, 0.713333)
-colors = PackedColorArray(0.04000002, 0.42399985, 1, 0.5882353, 0.57, 0.67033345, 1, 0.5882353, 0.48000002, 0.6446668, 1, 0.5882353, 0.18, 0.4123333, 1, 0.5882353)
+offsets = PackedFloat32Array(0, 0.24, 0.493333, 0.713333)
+colors = PackedColorArray(0.0431373, 0.419608, 1, 1, 0.573372, 0.67577, 0.995313, 1, 0.476841, 0.644696, 1, 1, 0.185497, 0.416209, 1, 1)
 
 [node name="SongNode" type="MarginContainer"]
 custom_minimum_size = Vector2(802, 140)

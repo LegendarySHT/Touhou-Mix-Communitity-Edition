@@ -20,12 +20,6 @@ var expand_tween: Tween
 ## 吸附目标信号（用于滚动吸附）
 signal snap_node_target(midi_node_index)
 
-func _ready() -> void:
-	if not button:
-		button = get_node_or_null("Button")
-		btn_toggled.connect(_on_button_toggled)
-		init_btn(button)
-
 func _update_display() -> void:
 	# 初始化显示
 	if not status_label:
@@ -44,22 +38,25 @@ func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg:ButtonGrou
 	midi_data = midi
 	item_id = midi.id
 	item_type = "midi"
+	item_index = index
 
 	button = get_node("Button")
 	button.button_group = bg
-	button.set_meta("index", index)
+
+	init_btn(button, parent)
 
 	_update_display()
 	_load_cover_image()
 	
 	# 信号
-	snap_node_target.connect(parent._snap)
+	snap_node_target.connect(
+		func(midi_node_index) -> void:
+			parent.selected_item = midi_node_index
+	)
+	btn_confirmed.connect(parent._show_midi_list)
 
 	if index == 0:
 		button.button_pressed = true
-
-	# 设置元数据（用于其他系统访问）
-	set_meta("index", index)
 
 ## 加载封面图片
 func _load_cover_image() -> void:
@@ -85,8 +82,7 @@ func _on_button_toggled(toggled_on: bool):
 	tween.set_trans(Tween.TRANS_QUINT)
 	tween.set_parallel(true)
 	
-	is_selected = toggled_on
-	print ("indx : %d state : %s" % [get_meta("index"),toggled_on])
+	print ("indx : %d state : %s" % [item_index,toggled_on])
 
 	var indicator=get_node("/root/Main/InfoUI/Right/Right/Indicator")
 	var expa = 1 if toggled_on else 0
@@ -97,11 +93,11 @@ func _on_button_toggled(toggled_on: bool):
 	tween.tween_property(get_node("MC/VBox"),"theme_override_constants/separation",15+15*expa,0.15)
 	tween.tween_property(get_node("MC/VBox/Line2D"),"position",Vector2(-135,-10 +32*expa),0.15)
 	#指示器
-	tween.tween_property(indicator.get_child(get_meta("index")),"color",Color(0.129, 0.412, 0.702) if expa else Color(1, 1, 1) ,0.15)
-	tween.tween_property(indicator,"position",Vector2(186.9,214-(get_meta("index")+1)*20-get_meta("index")*9),0.35)
+	tween.tween_property(indicator.get_child(item_index),"color",Color(0.129, 0.412, 0.702) if expa else Color(1, 1, 1) ,0.15)
+	tween.tween_property(indicator,"position",Vector2(186.9,214-(item_index+1)*20-item_index*9),0.35)
 	
 	if toggled_on:
-		snap_node_target.emit(get_meta("index"))
+		snap_node_target.emit(item_index)
 		_update_data_display()
 
 ## 更新信息面板

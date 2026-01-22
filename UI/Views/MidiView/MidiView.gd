@@ -9,7 +9,9 @@ var current_midis: Array[MidiData] = []
 
 var last_selection:int = -1 # 上一次选中的节点
 
-@onready var button: Button = $Button if has_node("Button") else null
+var track_view_btn: TextureButton
+var play_btn: TextureButton
+var favor_list_btn: TextureButton
 
 ## 管理器引用
 @onready var data_manager: DataManager = DataManager.instance
@@ -19,11 +21,24 @@ var last_selection:int = -1 # 上一次选中的节点
 # 路径
 var INDICATOR = "/root/Main/InfoUI/Right/Right/Indicator"
 
+func _init_btn():
+	var main_btn_area = get_parent().get_parent().get_node("MainButton")
+	track_view_btn = main_btn_area.get_node("Left/TrackViewBtn")
+	favor_list_btn = main_btn_area.get_node("Right/FavorListBtn")
+	play_btn = main_btn_area.get_node("PlayBtn")
+
+	if not (track_view_btn and favor_list_btn and play_btn):
+		print("Failed to find main btn")
+		return
+
+	play_btn.pressed.connect(_on_click_start_btn)
+
 func _ready() -> void:	
 	# 获取管理器引用
 	if not data_manager or not event_bus:
 		push_error("MidiView: Missing manager instances")
 		return
+	_init_btn()
 
 	work_state = UIStateManager.UIState.MIDI_VIEW
 	item_height = 150
@@ -87,8 +102,31 @@ func _refresh_display() -> void:
 
 	print("加载了%d个MIDI谱面" % counter)
 
-# 在此处判断是否开游戏 (信号没连)
-func _on_button_toggled(_toggled_on: bool, _midiNode, _midi_id: String):
+func _get_selection() -> MidiData:
+	if selected_item == -1:
+		print("未选择Midi")
+		return null
+	
+	return current_midis[selected_item]
+
+# 点击开始游戏的事件
+func _on_click_start_btn() -> void:
+	var midi:MidiData = _get_selection()
+	if not midi:
+		return
+	print("选择歌曲： %d" % midi.name)
+
+	# EventBus.instance.
+	UIStateManager.instance.change_state(UIStateManager.UIState.PLAY_VIEW)
+
+func _on_click_track_btn():
+	var midi:MidiData = _get_selection()
+	if not midi:
+		return
+	
+	UIStateManager.instance.change_state(UIStateManager.UIState.TRACK_VIEW)
+
+func _on_button_toggled(_toggled_on: bool, _index):
 	pass
 
 ## 清空列表
@@ -131,7 +169,6 @@ func _process(_delta):
 
 	# 吸附	
 	if not (is_dragging_list or need_snap) and selected_item != -1 and abs(get_snap_node().global_position.y - item_height + snap_offset_y) > 7:
-		# print("need snap idx: %d" % selected_item)
 		need_snap = true
 	
 	if abs(_mouse_delta) > 50 and is_dragging_list and not waiting:
@@ -139,12 +176,8 @@ func _process(_delta):
 		await wait_dragging()
 		var direction:int = 1 if _mouse_delta < 0.0 else -1
 		scroll_velocity = 0.0
-		# is_dragging_list = false
-		# _is_dragging_list = false
 		need_snap = true
-		selected_item = select_item(selected_item + direction)
-		print("selected_item: %d" % selected_item)
-		
+		select_item(selected_item + direction)		
 
 func wait_dragging():
 	while Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -152,23 +185,14 @@ func wait_dragging():
 	waiting = false
 	return true
 
-# 吸附
-func _snap(midi_node_index: int):
-	if selected_item == midi_node_index and get_snap_node().button.button_pressed:
-		_show_midi_list()
-	else:
-		selected_item = midi_node_index
-
-func _show_midi_list() -> void:
+func _show_midi_list(_index: int = 0) -> void:
 	if current_midis.size() == 1:
 		return
-	print("fold or expand")
-	# if selected_item != -1:
-	if get_snap_node().button.button_pressed:
+
+	if selected_item != -1:
 		get_snap_node().button.button_pressed = false
 		last_selection = selected_item
 		selected_item = -1
-	# elif last_selection != -1:
 	else:
 		selected_item = last_selection
 		get_snap_node().button.button_pressed = true
@@ -178,10 +202,10 @@ func _previous() -> void:
 	if current_midis.size() == 1:
 		return
 
-	selected_item = select_item(selected_item - 1)
+	select_item(selected_item - 1)
 
 func _next() -> void:
 	if current_midis.size() == 1:
 		return
 
-	selected_item = select_item(selected_item + 1)
+	select_item(selected_item + 1)

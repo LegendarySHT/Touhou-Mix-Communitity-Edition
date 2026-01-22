@@ -19,7 +19,7 @@ func _ready() -> void:
 		return
 	
 	work_state = UIStateManager.UIState.SONG_VIEW
-	item_height = 169
+	item_height = 140
 	item_spacing = 29
 
 	# 连接事件
@@ -46,7 +46,6 @@ func _refresh_display() -> void:
 	# 清空现有项
 	_clear_list()
 	
-	selected_item = -1
 	var counter:int = 0
 	var bg = ButtonGroup.new()
 	# 添加新项
@@ -74,29 +73,13 @@ func _clear_list() -> void:
 	
 	list_items.clear()
 
-func _on_button_toggled(toggled_on: bool, songNode, song_id: String):
+func _on_button_toggled(toggled_on: bool, index: int):
 	if toggled_on:
-		if selected_item == songNode.get_meta("index"):
-			print("Select Song:", songNode.song_data.name)
-			# 切换到MIDI视图
-			state_manager.change_state(state_manager.UIState.MIDI_VIEW)
-			event_bus.emit_song_selected(song_id)
-		selected_item = songNode.get_meta("index")
-		songNode.is_selected = true
+		selected_item = index
 
-# ## 列表项选中回调
-# func _on_item_selected(item_id: String) -> void:
-# 	if event_bus:
-# 		# 查找对应的歌曲
-# 		for song in current_songs:
-# 			if song.id == item_id:
-# 				event_bus.emit_song_selected(item_id, song)
-# 				break
-
-# ## 列表项悬停回调
-# func _on_item_hovered(item_id: String) -> void:
-# 	pass
-
-# ## 列表项取消悬停回调
-# func _on_item_unhovered() -> void:
-# 	pass
+func _on_button_confirmed(index: int):
+	var song_data:SongData = current_songs[index]
+	print("Select Song:", song_data.name)
+	# 切换到MIDI视图
+	state_manager.change_state(state_manager.UIState.MIDI_VIEW)
+	event_bus.emit_song_selected(song_data.id)

@@ -15,7 +15,7 @@ func _ready() -> void:
 		button = get_node_or_null("Button")
 		
 	pivot_offset = size / 2
-	enable_selected_animation(button)
+	enable_selected_animation(button, get_parent().get_parent())
 
 # 设置midi数据 传入无效值时重置
 func set_display(midi) -> void:

@@ -85,54 +85,12 @@ func reset_selection():
 
 		selected_item= -1
 
-func _on_button_toggled(toggled_on: bool, index:int, album_id:String):
+func _on_button_confirmed(index: int):
+	var album_id = current_albums[index].id
+	event_bus.album_selected.emit(album_id)
+	UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
+
+func _on_button_toggled(toggled_on: bool, index:int):
 	if toggled_on:
-		if selected_item!= -1 and selected_item== index:
-			# 通过事件总线触发专辑选择
-			event_bus.album_selected.emit(album_id)
-			UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
-		
 		need_snap = true
-		# snap_index = index
-		selected_item= index
-
-
-## 搜索改变回调
-# func _on_search_changed(query: String) -> void:
-# 	if query.is_empty():
-# 		_load_albums()
-# 	else:
-# 		# 实现搜索逻辑
-# 		var search_results = sorting_engine.search_midis(
-# 			data_manager.get_all_midis() if data_manager else [],
-# 			query
-# 		)
-# 		# TODO: 根据MIDI结果过滤专辑
-# 		pass
-
-# ## 列表项选中回调
-# func _on_item_selected(item_id: String) -> void:
-# 	if event_bus:
-# 		# 查找对应的专辑
-# 		for album in current_albums:
-# 			if album.id == item_id:
-# 				event_bus.emit_album_selected(item_id, album)
-# 				break
-
-# ## 列表项悬停回调
-# func _on_item_hovered(item_id: String) -> void:
-# 	pass
-
-# ## 列表项取消悬停回调
-# func _on_item_unhovered() -> void:
-# 	pass
-
-# ## 获取所有MIDI方法（供搜索使用）
-# func _get_all_midis() -> Array:
-# 	if not data_manager:
-# 		return []
-	
-# 	var all_midis: Array = []
-# 	for midi in data_manager.midis.values():
-# 		all_midis.append(midi)
-# 	return all_midis
+		selected_item = index

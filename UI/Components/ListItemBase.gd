@@ -7,6 +7,9 @@ class_name ListItemBase
 ## 列表项所代表的数据ID
 var item_id: String = ""
 
+## 列表项的索引
+var item_index: int = -1
+
 ## 列表项类型（"album"、"song"、"midi"等）
 var item_type: String = ""
 
@@ -26,19 +29,30 @@ var _mouse_press: bool = false
 var _mouse_press_pos:Vector2 = Vector2.ZERO
 
 signal btn_toggled(toggled_on: bool)
-signal btn_confirmed
+signal btn_confirmed(index: int)
 
 ## 初始化函数
-func enable_selected_animation(btn: Button) -> void:
-	init_btn(btn)
+func enable_selected_animation(btn: Button, parent) -> void:
+	init_btn(btn, parent)
 	_enable_ani = true
 
-func init_btn(btn: Button) -> void:
+func init_btn(btn: Button, parent) -> void:
+	if _item_btn:
+		return
+
 	_item_btn = btn
+	
 	# 连接按钮信号
 	_item_btn.button_down.connect(_on_button_down)
 	_item_btn.button_up.connect(_on_button_up)
 	_item_btn.toggled.connect(_on_toggled)
+
+	if parent.has_method("_on_button_toggled"):
+		btn_toggled.connect(parent._on_button_toggled.bind(item_index))
+	if parent.has_method("_on_button_confirmed"):
+		btn_confirmed.connect(parent._on_button_confirmed)
+	if has_method("_on_button_toggled"):
+		btn_toggled.connect(self._on_button_toggled)
 
 func _on_button_down():
 	_mouse_press_pos = get_global_mouse_position()
@@ -79,20 +93,22 @@ func _on_toggled(toggled_on: bool):
 	var final: bool = false
 	if dis < 30 or not _mouse_press:
 		final = toggled_on
-	
-	btn_toggled.emit(final)
-	if _enable_ani:
-		await get_tree().create_timer(0.4).timeout
-		# if toggled_on == final:
-		print("btn idx ", _item_btn.get_meta("index"),final)
-		_pulse_animation(final)
-			# await get_tree().create_timer(0.4).timeout
-		# else:
-		# 	print("branch 2 %d" % _item_btn.get_meta("index"))
-		# 	_pulse_animation(is_selected)
 
+	var temp = is_selected
+	is_selected = final
 	_mouse_press_pos = Vector2.ZERO
 	_mouse_press = false
+
+	if final and temp:
+		btn_confirmed.emit(item_index)
+	else:
+		btn_toggled.emit(final)
+
+	if _enable_ani:
+		await get_tree().create_timer(0.4).timeout
+		_pulse_animation(final)
+	
+
 	
 func _pulse_animation(enable: bool):
 	if pulse_tween:
@@ -114,51 +130,3 @@ func _pulse_animation(enable: bool):
 func initialize(id: String, type: String) -> void:
 	item_id = id
 	item_type = type
-
-# ## 虚函数：设置选中状态
-# func set_selected(selected: bool) -> void:
-# 	is_selected = selected
-# 	if selected:
-# 		_on_selected()
-# 		self.selected.emit(item_id)
-# 	else:
-# 		_on_deselected()
-# 		self.deselected.emit(item_id)
-
-# ## 虚函数：设置悬停状态
-# func set_hovered(hovered: bool) -> void:
-# 	is_hovered = hovered
-# 	if hovered:
-# 		_on_hovered()
-# 		self.hovered.emit(item_id)
-# 	else:
-# 		_on_unhovered()
-# 		unhovered.emit()
-
-# ## 虚函数：当被选中时调用
-# func _on_selected() -> void:
-# 	pass
-
-# ## 虚函数：当被取消选中时调用
-# func _on_deselected() -> void:
-# 	pass
-
-# ## 虚函数：当被悬停时调用
-# func _on_hovered() -> void:
-# 	pass
-
-# ## 虚函数：当取消悬停时调用
-# func _on_unhovered() -> void:
-# 	pass
-
-# ## 虚函数：更新视觉效果（在选中/悬停状态改变时调用）
-# func update_appearance() -> void:
-# 	pass
-
-# ## 获取列表项ID
-# func get_item_id() -> String:
-# 	return item_id
-
-# ## 获取列表项类型
-# func get_item_type() -> String:
-# 	return item_type

@@ -7,15 +7,6 @@ class_name SortedMidiView
 ## 当前显示的MIDI列表
 var current_midis: Array[MidiData] = []
 
-## 当前排序字段
-# var current_sort_field: int = SortingEngine.SortDataField.DOWNLOAD_COUNT
-
-## 当前排序方向
-# var current_sort_direction: int = SortingEngine.SortDirection.DESCENDING
-
-## 当前状态过滤
-# var current_status_filter: SortEngine.SortStatField = SortingEngine.SortStatField.ALL
-
 ## 管理器引用
 @onready var state_manager: UIStateManager = UIStateManager.instance
 @onready var data_manager: DataManager = DataManager.instance
@@ -98,6 +89,13 @@ func _process_loading() -> void:
 	if _current_load_index >= _midis_to_load.size():
 		_finish_loading()
 		print("Loaded %d midis" % _midis_to_load.size())
+
+func _on_button_confirmed(index: int) -> void:
+	var midi:MidiData = current_midis[index]
+	print("选中：%s / %s" % [midi.song_data.name, midi.name])
+	if event_bus and midi:
+		state_manager.change_state(UIStateManager.UIState.MIDI_VIEW)
+		event_bus.emit_midi_selected(midi.id, midi)
 
 ## 完成加载任务
 func _finish_loading() -> void:
@@ -187,23 +185,6 @@ func _on_search_query_changed(query: String) -> void:
 		current_midis = sorting_engine.search_midis(all_midis, query)
 	
 	_refresh_display()
-
-## 列表项选中回调
-func _on_item_selected(item_id: String) -> void:
-	if event_bus:
-		# 查找对应的MIDI
-		for midi in current_midis:
-			if midi.id == item_id:
-				event_bus.emit_midi_selected(item_id, midi)
-				break
-
-## 设置每帧加载的节点数量（性能调优）
-func set_nodes_per_frame(count: int) -> void:
-	_nodes_per_frame = max(1, count)
-
-## 设置加载延迟（每多少帧加载一次，0表示每帧都加载）
-func set_load_frame_delay(delay: int) -> void:
-	_load_frame_delay = max(0, delay)
 
 ## 新增：强制停止所有加载任务
 func cancel_all_loading() -> void:

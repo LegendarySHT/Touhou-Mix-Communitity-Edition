@@ -18,13 +18,6 @@ var expand_tween: Tween
 
 var ALBUMBUTTON = "PC/Polygon2D/AlbumButton"
 
-func _ready() -> void:
-	# 连接按钮信号
-	if not button:
-		button = get_node_or_null(ALBUMBUTTON)
-	if button:
-		btn_toggled.connect(_on_album_button_toggled)
-
 func _update_display() -> void:
 	# 初始化显示
 	if not album_name_label:
@@ -40,15 +33,15 @@ func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: Button
 	album_data = album
 	item_id = album.id
 	item_type = "album"
+	item_index = index
 
 	_update_display()
 	_load_cover_image()
 
-	var btn = get_node(ALBUMBUTTON)
-	btn.button_group = bg
-	btn.set_meta("index", index)
-	btn_toggled.connect(parent._on_button_toggled.bind(index, album_data.id))
-	enable_selected_animation(btn)
+	button = get_node(ALBUMBUTTON)
+	button.button_group = bg
+	
+	enable_selected_animation(button, parent)
 
 ## 加载封面图片：选择专辑下首个存在封面的 MIDI，否则默认
 func _load_cover_image() -> void:
@@ -70,7 +63,7 @@ func _load_cover_image() -> void:
 		cover_texture.texture = fs_mgr.get_cover_by_midiData(midis[0])
 	
 ## 专辑按钮切换回调
-func _on_album_button_toggled(toggled_on: bool) -> void:
+func _on_button_toggled(toggled_on: bool) -> void:
 	if expand_tween and expand_tween.is_running():
 		expand_tween.kill()
 	
@@ -79,7 +72,6 @@ func _on_album_button_toggled(toggled_on: bool) -> void:
 	expand_tween.set_trans(Tween.TRANS_SINE)
 	expand_tween.set_parallel(true)
 	
-	is_selected = toggled_on
 	_animate_expand(expand_tween, toggled_on)
 
 func _update_point(np,i):

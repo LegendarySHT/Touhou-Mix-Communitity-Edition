@@ -190,13 +190,21 @@ func _input(event: InputEvent) -> void:
 			accept_event()
 
 	elif event is InputEventKey and event.pressed:
-		match event.keycode:
-			KEY_UP, KEY_W:
-				select_item(selected_item - 1)
-				accept_event()
-			KEY_DOWN, KEY_S:
-				select_item(selected_item + 1)				
-				accept_event()
+		if event.keycode in [KEY_UP, KEY_W, KEY_DOWN, KEY_S]:
+			var direction = -1
+			match event.keycode:
+				KEY_DOWN, KEY_S:
+					direction = 1
+
+			# 防止使用键盘移动时超出区域
+			if work_state in [UIStateManager.UIState.SONG_VIEW]:
+				var idx = select_item(selected_item + direction)
+				selected_item = idx
+				var y_pos = get_snap_node().global_position.y
+				snap_offset_y = -800 if y_pos >= 1080 else -350
+				if y_pos > 1080 or y_pos < 400:
+					need_snap = true
+			accept_event()
 
 	# 鼠标移动事件
 	elif event is InputEventMouseMotion:
