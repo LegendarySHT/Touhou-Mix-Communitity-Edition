@@ -332,7 +332,7 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 				# 检查是否是封面文件（包含 cover 或 thumbnail，且是图片格式）
 				if (lower_name.contains("cover") or lower_name.contains("thumbnail")) and \
 				   (lower_name.ends_with(".jpg") or lower_name.ends_with(".jpeg") or \
-				    lower_name.ends_with(".png") or lower_name.ends_with(".webp")):
+					lower_name.ends_with(".png") or lower_name.ends_with(".webp")):
 					metadata["cover_path"] = chart_path.path_join(file_name)
 					cover_found = true
 					break
@@ -534,3 +534,21 @@ func get_skin_path(skin_name: String) -> String:
 	
 	var metadata = skins_index[skin_name]
 	return metadata.get("path", "")
+
+func get_cover_by_midiData(midi: MidiData) -> ImageTexture:
+	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
+	var fs_mgr := FileSystemManager.instance
+	var data_mgr := DataManager.instance
+	if not fs_mgr or not data_mgr:
+		print("Failed to access FileSystemManager or DataManager")
+		return load(DEFAULT_COVER_PATH)
+
+	for folder_name in charts_index.keys():
+		var metadata: Dictionary = charts_index[folder_name]
+		var chart_id: String = metadata.get("id", "")
+		if chart_id == midi.file_hash or metadata.get("data", {}).get("_id", "") == midi.id:
+			var path: String = metadata.get("cover_path", "")
+			if not path.is_empty() and FileAccess.file_exists(path):
+				return load(path)
+
+	return load(DEFAULT_COVER_PATH)

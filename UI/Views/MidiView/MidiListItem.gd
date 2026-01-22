@@ -12,9 +12,6 @@ extends ListItemBase
 @onready var margin_container: MarginContainer = $MC if has_node("MC") else null
 @onready var cover: TextureRect = $cover if has_node("cover") else null
 
-## 默认封面路径
-const DEFAULT_COVER_PATH = "res://Resources/song_cover/1.jpg"
-
 ## MIDI数据
 var midi_data: MidiData
 
@@ -75,44 +72,8 @@ func _load_cover_image() -> void:
 	var fs_manager = FileSystemManager.instance
 	if not fs_manager:
 		print("[MidiListItem] FileSystemManager not found, using default cover")
-		_set_default_cover()
 		return
-	
-	var charts_index = fs_manager.get_charts_index()
-	print("[MidiListItem] Charts index size: %d" % charts_index.size())
-	var cover_path: String = ""
-	
-	# 在索引中查找匹配的 chart（通过 hash 或 id）
-	for folder_name in charts_index.keys():
-		var metadata = charts_index[folder_name]
-		var chart_id = metadata.get("id", "")
-		
-		# 检查是否匹配当前 MIDI 的 hash 或 id
-		if chart_id == midi_data.file_hash or metadata.get("data", {}).get("_id", "") == midi_data.id:
-			print("[MidiListItem] Found matching chart: %s" % folder_name)
-			if metadata.has("cover_path"):
-				cover_path = metadata["cover_path"]
-				print("[MidiListItem] Cover path: %s" % cover_path)
-				break
-	
-	# 加载封面图片
-	if not cover_path.is_empty() and FileAccess.file_exists(cover_path):
-		var image = Image.load_from_file(cover_path)
-		if image:
-			var texture = ImageTexture.create_from_image(image)
-			cover.texture = texture
-			print("[MidiListItem] Loaded cover for MIDI %s: %s" % [midi_data.name, cover_path])
-		else:
-			print("[MidiListItem] Failed to load image from: %s" % cover_path)
-			_set_default_cover()
-	else:
-		print("[MidiListItem] Cover not found, using default. Path was: %s" % cover_path)
-		_set_default_cover()
-
-## 设置默认封面
-func _set_default_cover() -> void:
-	if cover:
-		cover.texture = load(DEFAULT_COVER_PATH)
+	cover.texture = fs_manager.get_cover_by_midiData(midi_data)	
 
 ## 按钮切换回调
 func _on_button_toggled(toggled_on: bool):

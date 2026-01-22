@@ -43,6 +43,7 @@ func setup_with_midi(midi: MidiData, index: int, bg:ButtonGroup) -> void:
 	
 	# 更新显示
 	_update_display()
+	_load_cover_image()
 
 	button.set_meta("index", index)
 	button.button_group = bg
@@ -70,6 +71,14 @@ func _on_button_toggled(toggled_on: bool) -> void:
 
 	select_tween.tween_property(line, "default_color", Color("#938aff" if toggled_on else "ffffff"), 0.15)
 		
+func _load_cover_image() -> void:
+	if not cover_texture:
+		cover_texture = get_node_or_null("Polygon2D/cover")
+	if not cover_texture:
+		return
+
+	var fs_mgr := FileSystemManager.instance
+	cover_texture.texture = fs_mgr.get_cover_by_midiData(midi_data)
 
 ## 选中状态改变时调用
 func _on_selected() -> void:

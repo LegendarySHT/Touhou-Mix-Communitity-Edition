@@ -11,8 +11,6 @@ extends ListItemBase
 @onready var line: Line2D = $PC/line if has_node("PC/line") else null
 @onready var decorated_line: Node = $PC/Polygon2D/DecoratedLine if has_node("PC/Polygon2D/DecoratedLine") else null
 
-const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
-
 ## 专辑数据
 var album_data: AlbumData
 
@@ -45,10 +43,10 @@ func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: Button
 	_update_display()
 	_load_cover_image()
 
-	var button = get_node(ALBUMBUTTON)
-	button.button_group = bg
-	button.toggled.connect(parent._on_button_toggled.bind(index, album_data.id))
-	enable_selected_animation(button)
+	var btn = get_node(ALBUMBUTTON)
+	btn.button_group = bg
+	btn.toggled.connect(parent._on_button_toggled.bind(index, album_data.id))
+	enable_selected_animation(btn)
 
 ## 加载封面图片：选择专辑下首个存在封面的 MIDI，否则默认
 func _load_cover_image() -> void:
@@ -60,44 +58,14 @@ func _load_cover_image() -> void:
 	var fs_mgr := FileSystemManager.instance
 	var data_mgr := DataManager.instance
 	if not fs_mgr or not data_mgr:
-		_set_default_cover()
 		return
 
-	var charts_index := fs_mgr.get_charts_index()
 	var songs := data_mgr.get_songs_by_album(album_data.id)
-	var cover_path := ""
 
-	for song in songs:
-		var midis := data_mgr.get_midis_by_song(song.id)
-		for midi in midis:
-			cover_path = _find_cover_for_midi(midi, charts_index)
-			if not cover_path.is_empty():
-				break
-		if not cover_path.is_empty():
-			break
-
-	if not cover_path.is_empty() and FileAccess.file_exists(cover_path):
-		var img := Image.load_from_file(cover_path)
-		if img:
-			cover_texture.texture = ImageTexture.create_from_image(img)
-			return
-
-	_set_default_cover()
-
-## 在索引中查找对应 MIDI 的封面
-func _find_cover_for_midi(midi: MidiData, charts_index: Dictionary) -> String:
-	for folder_name in charts_index.keys():
-		var metadata: Dictionary = charts_index[folder_name]
-		var chart_id: String = metadata.get("id", "")
-		if chart_id == midi.file_hash or metadata.get("data", {}).get("_id", "") == midi.id:
-			var path: String = metadata.get("cover_path", "")
-			if not path.is_empty():
-				return path
-	return ""
-
-func _set_default_cover() -> void:
-	if cover_texture:
-		cover_texture.texture = load(DEFAULT_COVER_PATH)
+	if songs:
+		var midis := data_mgr.get_midis_by_song(songs[0].id)
+	
+		cover_texture.texture = fs_mgr.get_cover_by_midiData(midis[0])
 	
 ## 专辑按钮切换回调
 func _on_album_button_toggled(toggled_on: bool) -> void:

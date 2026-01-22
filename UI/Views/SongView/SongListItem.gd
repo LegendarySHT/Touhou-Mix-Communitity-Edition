@@ -8,7 +8,7 @@ extends ListItemBase
 @onready var button: Button = $PC/Shader/SongButton if has_node("PC/Shader/SongButton") else null
 @onready var cover: TextureRect = $PC/Shader/cover if has_node("PC/Shader/cover") else null
 
-const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
+# const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 
 ## 歌曲数据
 var song_data: SongData
@@ -54,40 +54,10 @@ func _load_cover_image() -> void:
 	var fs_mgr := FileSystemManager.instance
 	var data_mgr := DataManager.instance
 	if not fs_mgr or not data_mgr:
-		_set_default_cover()
 		return
 
-	var charts_index := fs_mgr.get_charts_index()
 	var midis := data_mgr.get_midis_by_song(song_data.id)
-	var cover_path := ""
-
-	for midi in midis:
-		cover_path = _find_cover_for_midi(midi, charts_index)
-		if not cover_path.is_empty():
-			break
-
-	if not cover_path.is_empty() and FileAccess.file_exists(cover_path):
-		var img := Image.load_from_file(cover_path)
-		if img:
-			cover.texture = ImageTexture.create_from_image(img)
-			return
-
-	_set_default_cover()
-
-## 在索引中查找对应 MIDI 的封面
-func _find_cover_for_midi(midi: MidiData, charts_index: Dictionary) -> String:
-	for folder_name in charts_index.keys():
-		var metadata: Dictionary = charts_index[folder_name]
-		var chart_id: String = metadata.get("id", "")
-		if chart_id == midi.file_hash or metadata.get("data", {}).get("_id", "") == midi.id:
-			var path: String = metadata.get("cover_path", "")
-			if not path.is_empty():
-				return path
-	return ""
-
-func _set_default_cover() -> void:
-	if cover:
-		cover.texture = load(DEFAULT_COVER_PATH)
+	cover.texture = fs_mgr.get_cover_by_midiData(midis[get_meta("index")])
 
 
 # 动画
