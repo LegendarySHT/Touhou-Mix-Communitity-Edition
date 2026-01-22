@@ -6,12 +6,14 @@ extends ListItemBase
 @onready var uploader:Label = $InfoPanel/Uploader
 @onready var album_name:Label = $InfoPanel/AlbumName
 @onready var song_name:Label = $InfoPanel/SongName
-@onready var button:Button = $Button
 
 # midi数据
 var midi_data:MidiData
 
 func _ready() -> void:
+	if not button:
+		button = get_node_or_null("Button")
+		
 	pivot_offset = size / 2
 	enable_selected_animation(button)
 

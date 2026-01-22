@@ -13,40 +13,52 @@ var item_type: String = ""
 ## 是否被选中
 var is_selected: bool = false
 
-## 是否被悬停
-# var is_hovered: bool = false
-
-## 选中状态改变信号
-# signal selected(item_id: String)
-# signal deselected(item_id: String)
-# signal hovered(item_id: String)
-# signal unhovered
+## 列表项的按钮
+var button: Button
 
 ## 选中动画相关
+var _enable_ani: bool = false
 var _item_btn: Button
 var pulse_tween: Tween
 var press_tween: Tween
 
+var _mouse_press: bool = false
+var _mouse_press_pos:Vector2 = Vector2.ZERO
+
+signal btn_toggled(toggled_on: bool)
+signal btn_confirmed
+
 ## 初始化函数
 func enable_selected_animation(btn: Button) -> void:
+	init_btn(btn)
+	_enable_ani = true
+
+func init_btn(btn: Button) -> void:
 	_item_btn = btn
-	
 	# 连接按钮信号
 	_item_btn.button_down.connect(_on_button_down)
 	_item_btn.button_up.connect(_on_button_up)
 	_item_btn.toggled.connect(_on_toggled)
 
 func _on_button_down():
+	_mouse_press_pos = get_global_mouse_position()
+	_mouse_press = true
+	if not _enable_ani:
+		return
+
 	# 按下效果
 	if press_tween:
 		press_tween.kill()
 	if pulse_tween:
 		pulse_tween.kill()
-	
+
 	press_tween = create_tween()
 	press_tween.tween_property(self, "scale", Vector2(0.96, 0.96), 0.07).set_ease(Tween.EASE_OUT)
 
 func _on_button_up():
+	if not _enable_ani:
+		return
+
 	# 松开弹起效果
 	if press_tween:
 		press_tween.kill()
@@ -56,12 +68,31 @@ func _on_button_up():
 	
 	press_tween.tween_property(self, "scale", Vector2(0.98, 0.98), 0.34).set_ease(Tween.EASE_IN_OUT)
 
+	press_tween.finished.connect(func ():
+		if not is_selected:
+			_pulse_animation(false)
+	)
+
 func _on_toggled(toggled_on: bool):
 	# 切换选中状态
-	if toggled_on:
-		# 等待弹起动画完成
+	var dis = get_global_mouse_position().distance_to(_mouse_press_pos)
+	var final: bool = false
+	if dis < 30 or not _mouse_press:
+		final = toggled_on
+	
+	btn_toggled.emit(final)
+	if _enable_ani:
 		await get_tree().create_timer(0.4).timeout
-	_pulse_animation(toggled_on)
+		# if toggled_on == final:
+		print("btn idx ", _item_btn.get_meta("index"),final)
+		_pulse_animation(final)
+			# await get_tree().create_timer(0.4).timeout
+		# else:
+		# 	print("branch 2 %d" % _item_btn.get_meta("index"))
+		# 	_pulse_animation(is_selected)
+
+	_mouse_press_pos = Vector2.ZERO
+	_mouse_press = false
 	
 func _pulse_animation(enable: bool):
 	if pulse_tween:

@@ -132,9 +132,9 @@ func _process_new_format_chart(metadata: Dictionary) -> void:
 		print("[DataMGR] WARN: Failed to set MIDI id for chart %s" % chart_id)
 		return
 	
-	print("[DataMGR] DEBUG: Adding MIDI %s (from folder %s) to dictionary" % [chart_id, folder_name])
+	# print("[DataMGR] DEBUG: Adding MIDI %s (from folder %s) to dictionary" % [chart_id, folder_name])
 	midis[chart_id] = midi
-	print("[DataMGR] DEBUG: MIDI added. Current midis count: %d" % midis.size())
+	# print("[DataMGR] DEBUG: MIDI added. Current midis count: %d" % midis.size())
 	
 	# 缓存原始JSON
 	json_cache[chart_id] = json_data

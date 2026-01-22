@@ -84,5 +84,3 @@ self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 toggle_mode = true
 metadata/index = 0
-
-[connection signal="toggled" from="Button" to="." method="_on_button_toggled"]

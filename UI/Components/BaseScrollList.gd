@@ -17,24 +17,27 @@ class_name BaseScrollList
 ## 列表项间距
 @export var item_spacing: float = 10.0
 
+## 工作状态，当不处于该状态时停止处理操作
 var work_state: UIStateManager.UIState = UIStateManager.UIState.NONE
 
 ## 当前滚动速度
 var scroll_velocity: float = 0.0
 
 ## 上一帧的滚动位置
-var last_scroll_position: float = 0.0
+var last_scroll_position: int = 0
+var last_bar_position: int = 0
 
 ## 是否正在滚动
-var is_dragging_list: bool = false # 区分点击事件
-var _is_dragging_list: bool = false
-var is_dragging_bar: bool = false
-var is_wheel_scrolling: bool = false
+var is_dragging_list: bool = false # 区分点击事件,当鼠标按下并有位移时为true
+var _is_dragging_list: bool = false # 当鼠标按下时为true
+var is_dragging_bar: bool = false # 当鼠标拖动滚动条时为true
+var is_wheel_scrolling: bool = false # 当滚轮滚动时为true
 
-var _start_pos: float = 0.0
-var _mouse_start_pos: float = 0.0
+var _list_start_pos: float = 0.0 # 开始拖拽时的列表起始位置
+var _mouse_start_pos: float = 0.0 # 开始拖拽时的鼠标位置
+var _mouse_delta: float = 0.0 # 鼠标拖动的距离
 
-# 配置参数
+## 配置参数
 var deceleration_rate := 0.99  # 基础减速速率
 var drag_sensitivity := 1.5  # 拖拽灵敏度
 var max_velocity := 5000.0  # 最大速度
@@ -42,8 +45,16 @@ var wheel_velocity := 425.0  # 滚轮速度增量
 
 ## 所有列表项
 var list_items: Array[ListItemBase] = []
+var selected_item: int = -1 # 选中的项，或者snap的目标项
 
-var scroll_timer: Timer
+## snap相关
+var need_snap: bool = false # 吸附完成后为false
+var snap_offset_y: int = 500 # 吸附偏移量
+var snap_distant: int = 0 # 距离吸附目标位置的距离
+
+## 计时器
+var wheel_scroll_cooldown_timer: Timer
+var scroll_state_reset_timer: Timer
 
 func _ready() -> void:
 	if container == null:
@@ -51,16 +62,33 @@ func _ready() -> void:
 		return
 	
 	# 创建计时器
-	scroll_timer = Timer.new()
-	scroll_timer.wait_time = 0.3
-	scroll_timer.one_shot = true  # 单次触发
-	scroll_timer.timeout.connect(_on_scroll_timer_timeout)
-	add_child(scroll_timer)
+	wheel_scroll_cooldown_timer = Timer.new()
+	wheel_scroll_cooldown_timer.wait_time = 0.3
+	wheel_scroll_cooldown_timer.one_shot = true  # 单次触发
+	wheel_scroll_cooldown_timer.timeout.connect(func() -> void:
+		is_wheel_scrolling = false)
+	add_child(wheel_scroll_cooldown_timer)
+
+	scroll_state_reset_timer = Timer.new()
+	scroll_state_reset_timer.wait_time = 0.3
+	scroll_state_reset_timer.one_shot = true  # 单次触发
+	scroll_state_reset_timer.timeout.connect(func()->void:
+		scroll_velocity = 0.0)
+	add_child(scroll_state_reset_timer)
 
 	UIStateManager.instance.state_changed.connect(_on_state_changed)
 	_on_state_changed(UIStateManager.UIState.NONE, UIStateManager.instance.current_state)
 
 	get_v_scroll_bar().gui_input.connect(_on_v_scrollbar_gui_input)
+	get_v_scroll_bar().value_changed.connect(_on_v_scrollbar_changed)
+
+func _on_v_scrollbar_changed(_value: float):
+	if scroll_state_reset_timer.is_stopped():
+		scroll_state_reset_timer.start()
+	elif abs(last_bar_position - scroll_vertical) > 10:
+		scroll_state_reset_timer.stop()
+		scroll_state_reset_timer.start()
+	last_bar_position = scroll_vertical
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == work_state
@@ -69,19 +97,19 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	if enable:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
 
+	# 重置值
+	is_dragging_list = false
+	_is_dragging_list = false
+
 func _process(delta: float) -> void:
 	if container == null:
 		return
 
 	if not _is_dragging_list:
 		# 动态计算最大滚动值
-		var max_scroll := 0.0
-		if get_v_scroll_bar():
-			max_scroll = get_v_scroll_bar().max_value
 		if abs(scroll_velocity) > max_velocity:
 			scroll_velocity = max_velocity * sign(scroll_velocity)
-		if scroll_vertical < max_scroll:
-			scroll_velocity *= deceleration_rate
+		scroll_velocity *= deceleration_rate
 		
 		scroll_vertical += int(scroll_velocity * delta)
 
@@ -94,15 +122,29 @@ func _process(delta: float) -> void:
 		if abs(scroll_velocity) < 30.0:
 			scroll_velocity = 0.0
 
+	if need_snap and not (is_dragging_list):
+		var snap_index = selected_item if selected_item != -1 else round((scroll_vertical + item_height) / (item_height))
+		snap_index = clampi(snap_index, 0, list_items.size() - 1)
+		var snap_node = container.get_child(snap_index) as ListItemBase
+		if not snap_node.is_selected:
+			if work_state in [UIStateManager.UIState.MIDI_VIEW]:
+				return
+			snap_node.button.button_pressed = true
+
+		snap_distant = snap_node.global_position.y - item_height + snap_offset_y
+		var temp = scroll_vertical
+		scroll_vertical += int(snap_distant * 0.3)
+		if abs(snap_distant) < 2:
+			need_snap = false
+		elif temp == scroll_vertical: # 动不了就停止
+			need_snap = false
+
 func _on_v_scrollbar_gui_input(event):
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			is_dragging_bar = event.pressed
 			if event.pressed:
 				scroll_velocity = 0.0
-				
-func _on_scroll_timer_timeout():
-	is_wheel_scrolling = false
 
 func _input(event: InputEvent) -> void:
 	# 鼠标按钮事件
@@ -110,9 +152,9 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_is_dragging_list = event.pressed
-			if event.pressed:
+			if event.pressed and get_global_rect().has_point(get_global_mouse_position()):
 				scroll_velocity = 0
-				_start_pos = scroll_vertical
+				_list_start_pos = scroll_vertical
 				_mouse_start_pos = event.global_position.y
 			else:
 				is_dragging_list = false
@@ -120,34 +162,68 @@ func _input(event: InputEvent) -> void:
 		# 鼠标滚轮事件
 		if event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_UP]:
 			var sig = 1.0 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1.0
-			if scroll_velocity * sig < 0.0:
+			if scroll_velocity * sig < 0.0: # 方向相反时重置
 				scroll_velocity = 0
 
-			var tIndex = 0
-			if work_state in [UIStateManager.UIState.ALBUM_VIEW] and has_method("reset_selection"):
-				tIndex = (self.selected_album + int(sig)) % list_items.size()
-				call("reset_selection")
+			if work_state in [UIStateManager.UIState.ALBUM_VIEW, UIStateManager.UIState.MIDI_VIEW]:
+				if get_global_rect().has_point(get_global_mouse_position()):
+					if not is_wheel_scrolling and selected_item != -1:
+						var tIndex = (selected_item + int(sig)) % list_items.size()
 
-			if not is_wheel_scrolling:
-
-				is_wheel_scrolling = true
-				scroll_timer.start()
-				
-				container.get_child(tIndex).button.button_pressed = true
-			else:
+						is_wheel_scrolling = true
+						wheel_scroll_cooldown_timer.start()
+						
+						container.get_child(tIndex).button.button_pressed = true
+					else:
+						scroll_velocity += wheel_velocity * sig
+						
+						if has_method("reset_selection"): # AlbumView的
+							call("reset_selection")
+						
+						wheel_scroll_cooldown_timer.stop()
+						wheel_scroll_cooldown_timer.start()
+			
+			# 一般逻辑
+			elif not is_wheel_scrolling:
 				scroll_velocity += wheel_velocity * sig
-				scroll_timer.stop()
-				scroll_timer.start()
+			
+			accept_event()
+
+	elif event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_UP, KEY_W:
+				select_item(selected_item - 1)
+				accept_event()
+			KEY_DOWN, KEY_S:
+				select_item(selected_item + 1)				
+				accept_event()
+
 	# 鼠标移动事件
 	elif event is InputEventMouseMotion:
 		if _is_dragging_list and not is_dragging_bar:
 			is_dragging_list = true
-			var _mouse_delta = event.global_position.y - _mouse_start_pos
+			_mouse_delta = (event.global_position.y - _mouse_start_pos) * drag_sensitivity
+			
+			# 限制滚动范围
+			if work_state in [UIStateManager.UIState.MIDI_VIEW] and abs(_mouse_delta * drag_sensitivity) > item_height:
+				_mouse_delta = item_height * sign(_mouse_delta)
+
 			# 异号或者速度大于最大速度就更新速度
 			if scroll_velocity * event.velocity.y > 0.0 or abs(event.velocity.y) > abs(scroll_velocity):
 				scroll_velocity = - event.velocity.y
 			if _mouse_delta != 0:
-				scroll_vertical = int(-_mouse_delta * drag_sensitivity + _start_pos)
+				scroll_vertical = int(-_mouse_delta + _list_start_pos)
+		
+func select_item(index: int) -> int:
+	if index == selected_item:
+		return index
+
+	index = (index + list_items.size()) % list_items.size()
+	container.get_child(index).button.button_pressed = true
+	return index
+
+func get_snap_node() -> Node2D:
+	return container.get_child(selected_item)
 
 ## 添加列表项
 func add_list_item(item: ListItemBase) -> void:

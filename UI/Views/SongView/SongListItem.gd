@@ -5,7 +5,6 @@ extends ListItemBase
 ## 引用节点（需要根据实际场景结构调整）
 @onready var song_name_label: Label = $PC/Shader/SongName if has_node("PC/Shader/SongName") else null
 @onready var midi_count_label: Label = $PC/CountBase/SongCount if has_node("PC/CountBase/SongCount") else null
-@onready var button: Button = $PC/Shader/SongButton if has_node("PC/Shader/SongButton") else null
 @onready var cover: TextureRect = $PC/Shader/cover if has_node("PC/Shader/cover") else null
 
 # const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
@@ -15,6 +14,10 @@ var song_data: SongData
 
 ## 选中动画补间
 var tween: Tween
+
+func _ready() -> void:
+	if not button:
+		button = get_node_or_null("PC/Shader/SongButton")
 
 func _update_display() -> void:
 	# 初始化显示
@@ -36,7 +39,7 @@ func setup_with_song(parent: SongView, song: SongData, index: int, bg: ButtonGro
 
 	var btn = get_node("PC/Shader/SongButton")
 	btn.button_group = bg
-	btn.toggled.connect(parent._on_button_toggled.bind(self, song_data.id))
+	btn_toggled.connect(parent._on_button_toggled.bind(self, song_data.id))
 	# btn.toggled.connect(_on_song_button_toggled.bind(self))
 	
 	enable_selected_animation(btn)

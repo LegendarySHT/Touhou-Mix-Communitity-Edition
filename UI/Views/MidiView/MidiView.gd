@@ -7,8 +7,9 @@ class_name MidiView
 ## 当前显示的MIDI列表
 var current_midis: Array[MidiData] = []
 
-var snaping = null # 当前的展开的节点
-var last_selection = null # 上一次选中的节点
+var last_selection:int = -1 # 上一次选中的节点
+
+@onready var button: Button = $Button if has_node("Button") else null
 
 ## 管理器引用
 @onready var data_manager: DataManager = DataManager.instance
@@ -25,6 +26,10 @@ func _ready() -> void:
 		return
 
 	work_state = UIStateManager.UIState.MIDI_VIEW
+	item_height = 150
+	item_spacing = 4
+	snap_offset_y = 85 #+ int(item_height)
+
 	# 连接事件
 	event_bus.song_selected.connect(_load_midis)
 	event_bus.midi_selected.connect(_load_midi)
@@ -82,7 +87,7 @@ func _refresh_display() -> void:
 
 	print("加载了%d个MIDI谱面" % counter)
 
-# 在此处判断是否开游戏
+# 在此处判断是否开游戏 (信号没连)
 func _on_button_toggled(_toggled_on: bool, _midiNode, _midi_id: String):
 	pass
 
@@ -102,7 +107,7 @@ func _clear_list() -> void:
 		for child in indicator.get_children():
 			child.free() # 因为初始化指示器时根据索引位置来设置颜色的，所以得立即清除
 	
-	snaping = null
+	selected_item = -1
 
 ## 列表项选中回调
 func _on_item_selected(item_id: String) -> void:
@@ -114,63 +119,69 @@ func _on_item_selected(item_id: String) -> void:
 				break
 
 func _input(event):
-	if snaping:
-		if snaping and not snaping.get_node("Button").button_pressed:
-			_show_midi_list()
-		if event is InputEventMouseButton and event.pressed:
-			match event.button_index:
-				MOUSE_BUTTON_WHEEL_UP:
-					_previous()
-				MOUSE_BUTTON_WHEEL_DOWN:
-					_next()
-	else:
-		super._input(event)
+	if event is InputEventKey and event.pressed and get_snap_node().is_selected:
+		if event.keycode in [KEY_UP, KEY_W, KEY_DOWN, KEY_S]:
+			accept_event()
+	super._input(event)
+
+var waiting: bool = false
 
 func _process(_delta):
 	super._process(_delta)
 
-	# 吸附
-	if snaping != null and abs(snaping.position.y - scroll_vertical + 15) > 7:
-		scroll_vertical += (snaping.position.y - scroll_vertical + 15) / 6
-		if not snaping.get_node("Button").button_pressed:
-			_show_midi_list()
+	# 吸附	
+	if not (is_dragging_list or need_snap) and selected_item != -1 and abs(get_snap_node().global_position.y - item_height + snap_offset_y) > 7:
+		# print("need snap idx: %d" % selected_item)
+		need_snap = true
+	
+	if abs(_mouse_delta) > 50 and is_dragging_list and not waiting:
+		waiting = true
+		await wait_dragging()
+		var direction:int = 1 if _mouse_delta < 0.0 else -1
+		scroll_velocity = 0.0
+		# is_dragging_list = false
+		# _is_dragging_list = false
+		need_snap = true
+		selected_item = select_item(selected_item + direction)
+		print("selected_item: %d" % selected_item)
+		
+
+func wait_dragging():
+	while Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		await get_tree().create_timer(0.2).timeout
+	waiting = false
+	return true
 
 # 吸附
-func _snap(midi_node):
-	if snaping == midi_node and snaping != last_selection:
+func _snap(midi_node_index: int):
+	if selected_item == midi_node_index and get_snap_node().button.button_pressed:
 		_show_midi_list()
-	snaping = midi_node
+	else:
+		selected_item = midi_node_index
 
 func _show_midi_list() -> void:
 	if current_midis.size() == 1:
 		return
-	if snaping != null:
-		snaping.get_node("Button").button_pressed = false
-		last_selection = snaping
-		snaping = null
-	elif last_selection != null:
-		snaping = last_selection
-		snaping.get_node("Button").button_pressed = true
-		last_selection = null
+	print("fold or expand")
+	# if selected_item != -1:
+	if get_snap_node().button.button_pressed:
+		get_snap_node().button.button_pressed = false
+		last_selection = selected_item
+		selected_item = -1
+	# elif last_selection != -1:
+	else:
+		selected_item = last_selection
+		get_snap_node().button.button_pressed = true
+		last_selection = -1
 
 func _previous() -> void:
 	if current_midis.size() == 1:
 		return
 
-	if last_selection:
-		_show_midi_list()
-
-	if snaping:
-		var Tindex = (snaping.get_meta("index") - 1) % current_midis.size()
-		container.get_child(Tindex).get_node("Button").button_pressed = true
+	selected_item = select_item(selected_item - 1)
 
 func _next() -> void:
 	if current_midis.size() == 1:
 		return
 
-	if last_selection:
-		_show_midi_list()
-
-	if snaping:
-		var Tindex = (snaping.get_meta("index") + 1) % current_midis.size()
-		container.get_child(Tindex).get_node("Button").button_pressed = true
+	selected_item = select_item(selected_item + 1)

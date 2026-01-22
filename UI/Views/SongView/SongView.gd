@@ -6,7 +6,6 @@ class_name SongView
 
 ## 当前显示的歌曲列表
 var current_songs: Array[SongData] = []
-var selected_song: int = -1
 
 ## 管理器引用
 @onready var data_manager: DataManager = DataManager.instance
@@ -47,7 +46,7 @@ func _refresh_display() -> void:
 	# 清空现有项
 	_clear_list()
 	
-	selected_song = -1
+	selected_item = -1
 	var counter:int = 0
 	var bg = ButtonGroup.new()
 	# 添加新项
@@ -77,12 +76,13 @@ func _clear_list() -> void:
 
 func _on_button_toggled(toggled_on: bool, songNode, song_id: String):
 	if toggled_on:
-		if selected_song == songNode.get_meta("index"):
+		if selected_item == songNode.get_meta("index"):
 			print("Select Song:", songNode.song_data.name)
 			# 切换到MIDI视图
 			state_manager.change_state(state_manager.UIState.MIDI_VIEW)
 			event_bus.emit_song_selected(song_id)
-		selected_song = songNode.get_meta("index")
+		selected_item = songNode.get_meta("index")
+		songNode.is_selected = true
 
 # ## 列表项选中回调
 # func _on_item_selected(item_id: String) -> void:

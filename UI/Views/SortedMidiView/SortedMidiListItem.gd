@@ -6,7 +6,6 @@ extends ListItemBase
 @onready var status_label: Label = $MC/MC/status if has_node("MC/MC/status") else null
 @onready var midi_name_label: Label = $MC/VBox/MidiName if has_node("MC/VBox/MidiName") else null
 @onready var author_label: Label = $MC/VBox/Author if has_node("MC/VBox/Author") else null
-@onready var button: Button = $Button if has_node("Button") else null
 @onready var line: Line2D = $Line2D if has_node("Line2D") else null
 @onready var cover_texture: TextureRect = $Polygon2D/cover if has_node("Polygon2D/cover") else null
 
@@ -17,6 +16,10 @@ var midi_data: MidiData
 
 ## 选择动画补间
 var select_tween: Tween
+
+func _ready() -> void:
+	if not button:
+		button = get_node_or_null("Button")
 
 func _update_display() -> void:
 	# 初始化显示

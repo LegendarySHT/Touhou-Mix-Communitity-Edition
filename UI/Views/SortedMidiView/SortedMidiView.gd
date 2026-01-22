@@ -64,8 +64,8 @@ func _process(delta):
 
 	process_item_cover_move()
 
-# func _input(event):
-# 	super._input(event)
+func _input(event):
+	super._input(event)
 
 ## 处理分帧加载逻辑
 func _process_loading() -> void:

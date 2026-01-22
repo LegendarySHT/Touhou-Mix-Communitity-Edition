@@ -294,7 +294,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 
 	match ui_name:	
 		"Album_List":
-			var sIndex = album_list.selected_album
+			var sIndex = album_list.selected_item
 			
 			if new_state == UIStateManager.UIState.SONG_VIEW:
 				var polygon=Polygon2D.new()
@@ -389,7 +389,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			album_list.visible=true
 			song_list.visible=false
 			
-			var sIndex = album_list.selected_album
+			var sIndex = album_list.selected_item
 			
 			album_list.get_node("VBox").get_child(sIndex).modulate = Color(1, 1, 1, 1)
 			var tindex = sIndex if old_state != UIStateManager.UIState.SORTED_VIEW else -1

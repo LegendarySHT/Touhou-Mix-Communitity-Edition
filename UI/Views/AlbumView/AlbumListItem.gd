@@ -6,7 +6,6 @@ extends ListItemBase
 @onready var album_name_label: Label = $PC/Polygon2D/AlbumName if has_node("PC/Polygon2D/AlbumName") else null
 @onready var song_count_label: Label = $PC/Polygon2D/CountBase/SongCount if has_node("PC/Polygon2D/CountBase/SongCount") else null
 @onready var cover_texture: TextureRect = $PC/Polygon2D/cover if has_node("PC/Polygon2D/cover") else null
-@onready var button: Button = $PC/Polygon2D/AlbumButton if has_node("PC/Polygon2D/AlbumButton") else null
 @onready var polygon: Polygon2D = $PC/Polygon2D if has_node("PC/Polygon2D") else null
 @onready var line: Line2D = $PC/line if has_node("PC/line") else null
 @onready var decorated_line: Node = $PC/Polygon2D/DecoratedLine if has_node("PC/Polygon2D/DecoratedLine") else null
@@ -21,8 +20,10 @@ var ALBUMBUTTON = "PC/Polygon2D/AlbumButton"
 
 func _ready() -> void:
 	# 连接按钮信号
+	if not button:
+		button = get_node_or_null(ALBUMBUTTON)
 	if button:
-		button.toggled.connect(_on_album_button_toggled)
+		btn_toggled.connect(_on_album_button_toggled)
 
 func _update_display() -> void:
 	# 初始化显示
@@ -45,7 +46,8 @@ func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: Button
 
 	var btn = get_node(ALBUMBUTTON)
 	btn.button_group = bg
-	btn.toggled.connect(parent._on_button_toggled.bind(index, album_data.id))
+	btn.set_meta("index", index)
+	btn_toggled.connect(parent._on_button_toggled.bind(index, album_data.id))
 	enable_selected_animation(btn)
 
 ## 加载封面图片：选择专辑下首个存在封面的 MIDI，否则默认
