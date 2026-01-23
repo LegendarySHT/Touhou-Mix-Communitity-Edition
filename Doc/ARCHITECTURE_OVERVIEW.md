@@ -11,8 +11,11 @@ THMIX Community Version/
 │   │   ├── 📄 SongData.gd                    # 歌曲数据模型 (33行)
 │   │   └── 📄 AlbumData.gd                   # 专辑数据模型 (33行)
 │   │
-│   ├── 📄 DataManager.gd                      # 数据管理器 (180行)
+│   ├── 📄 DataManager.gd                      # 数据管理器 (250行)
 │   │   └── 功能: 加载、查询、统计MIDI数据
+│   │
+│   ├── 📄 FileSystemManager.gd                # 文件系统管理器 (555行)
+│   │   └── 功能: user://目录管理、资源扫描、索引维护
 │   │
 │   ├── 📄 SortingEngine.gd                    # 排序和过滤引擎 (170行)
 │   │   └── 功能: 6种排序、状态过滤、搜索
@@ -27,15 +30,24 @@ THMIX Community Version/
 │   ├── 📂 Components/
 │   │   ├── 📄 ListItemBase.gd                # 列表项基类 (58行)
 │   │   │   └── 功能: 选中、悬停、外观管理
-│   │   │
-│   │   └── 📄 BaseScrollList.gd              # 滚动列表基类 (170行)
-│   │       └── 功能: 滚动、吸附、列表管理
+│   │   ├── 📄 BaseScrollList.gd              # 滚动列表基类 (170行)
+│   │   │   └── 功能: 滚动、吸附、列表管理
+│   │   ├── 📄 shortcut_menu.gd               # 快捷菜单组件
+│   │   └── 📄 store_button.gd                # 商店按钮组件
 │   │
-│   ├── 📂 Views/                             # 视图脚本（待迁移）
-│   │   ├── AlbumView.gd        (待创建)
-│   │   ├── SongView.gd         (待创建)
-│   │   ├── MidiView.gd         (待创建)
-│   │   └── SortedMidiView.gd   (待创建)
+│   ├── 📂 Views/                             # 视图脚本（已实现）
+│   │   ├── 📂 AlbumView/                     # 专辑视图
+│   │   │   ├── AlbumView.gd                  # 专辑列表主视图
+│   │   │   └── AlbumListItem.gd              # 专辑列表项
+│   │   ├── 📂 SongView/                      # 歌曲视图
+│   │   │   ├── SongView.gd                   # 歌曲列表主视图
+│   │   │   └── SongListItem.gd               # 歌曲列表项
+│   │   ├── 📂 MidiView/                      # MIDI视图
+│   │   │   ├── MidiView.gd                   # MIDI列表主视图
+│   │   │   └── MidiListItem.gd               # MIDI列表项
+│   │   ├── 📂 SortedMidiView/                # 排序MIDI视图
+│   │   ├── 📂 StorePage/                     # 商店页面
+│   │   └── 📄 SettingPage.gd                 # 设置页面
 │   │
 │   └── 📂 Animations/
 │       └── 📄 AnimationManager.gd             # 动画管理 (280行)
@@ -61,8 +73,12 @@ THMIX Community Version/
 │   │       ├── Display 配置 (分辨率、全屏)
 │   │       ├── Audio 配置 (音量)
 │   │       └── Gameplay 配置 (判定参数)
-│   ├── 📂 midis_info/                            # MIDI数据目录
-│   │       └── *.json                               # MIDI元数据文件
+│   │
+│   ├── 📂 Charts/                            # 谱面目录（新格式）
+│   │   └── [chart_id]_[midi_name]/  # 独立谱面文件夹
+│   │       ├── chart.json                    # 谱面元数据
+│   │       ├── chart.mid                     # MIDI 文件
+│   │       └── audio.ogg                     # 音频文件（可选）
 │   │
 │   ├── 📂 Skins/
 │   │   └── 📄 default_theme.ini              # 默认主题配置
@@ -81,8 +97,17 @@ THMIX Community Version/
 │   ├── 📄 ConfigLoader.gd                    # 配置加载器 (75行)
 │   │   └── 功能: INI解析、缓存、类型转换
 │   │
-│   └── 📄 Logger.gd                          # 日志系统 (100行)
-│       └── 功能: 多级日志、文件输出
+│   ├── 📄 Logger.gd                          # 日志系统 (100行)
+│   │   └── 功能: 多级日志、文件输出
+│   │
+│   ├── 📄 IntegrationTest.gd                 # 集成测试工具
+│   │   └── 功能: 系统完整性验证
+│   │
+│   ├── 📄 MigrationHelper.gd                 # 迁移辅助工具
+│   │   └── 功能: 数据格式迁移
+│   │
+│   └── 📄 QuickDebug.gd                      # 快速调试工具
+│       └── 功能: 开发调试辅助
 │
 │
 ├── 📂 Scene/                                  # 原UI场景（保留）
@@ -113,6 +138,10 @@ THMIX Community Version/
     ├── 📖 MIGRATION_PROGRESS.md              # 迁移进度
     ├── 📖 BUGFIX_REPORT_2026-01-13.md        # 2026-01-13 修复记录
     ├── 📖 SINGLETON_PATTERN_GUIDE.md         # 单例模式统一指南
+    ├── 📖 FILESYSTEM_MANAGER_GUIDE.md        # 文件系统管理器指南
+    ├── 📖 CHART_FORMAT_MIGRATION.md          # 谱面格式迁移指南
+    ├── 📖 DATAMANAGER_FIX_SUMMARY.md         # DataManager 修复总结
+    ├── 📖 DATAMANAGER_LOADING_FIX.md         # DataManager 加载修复
     └── 📖 INDEX.md                           # 文档索引
 ```
 
@@ -221,18 +250,23 @@ THMIX Community Version/
 ```
 Main._ready()
     │
-    ├─► GameLogger.new()         初始化日志
-    ├─► ConfigLoader.new()       加载INI配置
-    ├─► EventBus.new()           创建事件总线
-    ├─► UIStateManager.new()     初始化UI状态
-    ├─► AnimationManager.new()   初始化动画管理
-    ├─► DataManager.new()        准备MIDI数据
-    ├─► GameplayManager.new()    初始化游戏流程
-    └─► AudioManager.new()       初始化音频系统
+    ├─► GameLogger.new()            初始化日志
+    ├─► ConfigLoader.new()          加载INI配置
+    ├─► FileSystemManager.new()     初始化文件系统
+    │   └─► initialize_directory_structure()  创建目录结构
+    │       └─► scan_all_resources()          扫描所有资源
+    ├─► EventBus.new()              创建事件总线
+    ├─► UIStateManager.new()        初始化UI状态
+    ├─► AnimationManager.new()      初始化动画管理
+    ├─► SortingEngine.new()         初始化排序引擎
+    ├─► DataManager.new()           准备MIDI数据
+    ├─► GameplayManager.new()       初始化游戏流程
+    └─► AudioManager.new()          初始化音频系统
     
     ◄─── 所有管理器就位
     
     ConfigLoader.apply_audio(audio_manager)
+    等待 FileSystemManager.resources_scanned
     DataManager.load_all_midis_async()
         │
         └─► data_loaded 信号
@@ -324,11 +358,14 @@ Show Results
 全局访问方式:
 
 DataManager.instance
+FileSystemManager.instance
+SortingEngine.instance
 UIStateManager.instance
 EventBus.instance
 AnimationManager.instance
 GameplayManager.instance
 AudioManager.instance
+GameLogger.instance
 ```
 
 ---
@@ -340,22 +377,23 @@ AudioManager.instance
 | 模块 | 文件数 | 代码行数 | 功能数 |
 |------|--------|----------|--------|
 | Core/Models | 3 | 108 | 9 |
-| Core 管理器 | 4 | 545 | 32 |
-| UI/Components | 2 | 228 | 18 |
+| Core 管理器 | 5 | ~1100 | 45 |
+| UI/Components | 4 | ~350 | 25 |
+| UI/Views | 8+ | ~800 | 40 |
 | UI/Animations | 1 | 280 | 20 |
 | Game | 4 | 505 | 28 |
-| Utilities | 2 | 175 | 12 |
-| **总计** | **16** | **~1841** | **~119** |
+| Utilities | 5+ | ~300 | 20 |
+| **总计** | **30+** | **~3443** | **~187** |
 
 ### 按类型
 
 ```
-GDScript 代码:    1841 行  (73%)
-配置文件:         80 行   (3%)
-文档注释:         800 行  (17%)
-文档文件:         1100+ 行 (7%)
+GDScript 代码:    3443 行  (65%)
+配置文件:         80 行   (2%)
+文档注释:         1200 行 (23%)
+文档文件:         1600+ 行 (10%)
 
-总代码+文档:      ~3900+ 行
+总代码+文档:      ~6300+ 行
 ```
 
 ---
@@ -364,11 +402,12 @@ GDScript 代码:    1841 行  (73%)
 
 | 文件类型 | 数量 | 总大小 |
 |---------|------|--------|
-| GDScript | 19 | ~150KB |
+| GDScript | 30+ | ~250KB |
 | INI配置 | 3 | ~15KB |
-| Markdown文档 | 11 | ~400KB |
-| 现存资源 | 100+ | ~50MB |
-| **项目总大小** | | **~50.5MB** |
+| Markdown文档 | 15 | ~600KB |
+| 谱面资源 (Charts) | 300+ | ~150MB |
+| 其他资源 | 100+ | ~50MB |
+| **项目总大小** | | **~200MB** |
 
 ---
 
@@ -433,3 +472,10 @@ GDScript 代码:    1841 行  (73%)
 - 详细的代码文档
 
 现在可以开始实现具体的游戏逻辑了！ 🚀
+
+---
+
+**最后更新**: 2026-01-22  
+**Godot 版本**: 4.5  
+**主要语言**: GDScript  
+**项目状态**: 第 1 阶段完成，UI/Views 已迁移，新谱面格式已启用

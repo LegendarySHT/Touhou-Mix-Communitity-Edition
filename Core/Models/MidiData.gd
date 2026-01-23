@@ -67,6 +67,29 @@ var rank_distribution: Dictionary = {
 ## 文件哈希
 var file_hash: String = ""
 
+## ========== MIDI播放相关字段 ==========
+
+## MIDI文件完整路径
+var midi_file_path: String = ""
+
+## MIDI轨道总数
+var track_count: int = 1
+
+## 已选中的轨道索引列表（支持多轨选择）
+var selected_track_indices: Array[int] = []
+
+## 已选中的音源文件名（默认为空表示使用系统默认）
+var use_soundfont: String = ""
+
+## 已解析的MIDI音符列表（未分类）
+var parsed_notes: Array = []
+
+## MIDI每分钟节拍数（BPM）
+var bpm: float = 120.0
+
+## MIDI总时长（毫秒）
+var duration_ms: float = 0.0
+
 ## 从JSON数据构造MIDI数据
 func from_json(json_data: Dictionary) -> void:
 	id = json_data.get("_id", "")
@@ -120,5 +143,23 @@ func to_dict() -> Dictionary:
 		"pass_count": pass_count,
 		"fail_count": fail_count,
 		"rank_distribution": rank_distribution,
-		"file_hash": file_hash
+		"file_hash": file_hash,
+		"midi_file_path": midi_file_path,
+		"track_count": track_count,
+		"selected_track_indices": selected_track_indices,
+		"use_soundfont": use_soundfont,
+		"bpm": bpm,
+		"duration_ms": duration_ms
 	}
+
+## 设置选中的轨道
+func set_selected_tracks(track_indices: Array[int]) -> void:
+	selected_track_indices = track_indices
+
+## 设置音源
+func set_soundfont(soundfont_name: String) -> void:
+	use_soundfont = soundfont_name
+
+## 清空已解析的音符列表
+func clear_parsed_notes() -> void:
+	parsed_notes.clear()

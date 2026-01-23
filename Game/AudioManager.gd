@@ -13,6 +13,9 @@ static var instance: AudioManager
 ## 音效播放器池
 var sfx_players: Array[AudioStreamPlayer] = []
 
+## MIDI播放管理器引用
+var midi_playback_manager: MidiPlaybackManager
+
 ## 是否启用音频
 var audio_enabled: bool = true
 
@@ -24,6 +27,9 @@ var music_volume: float = 80.0
 
 ## 音效音量（0-100）
 var sfx_volume: float = 80.0
+
+## 可用SoundFont列表缓存
+var soundfont_cache: Array = []
 
 func _ready() -> void:
 	if instance == null:
@@ -148,3 +154,99 @@ func get_bgm_duration() -> float:
 ## 获取背景音乐是否在播放
 func is_bgm_playing() -> bool:
 	return bgm_player.playing
+
+## ========== MIDI相关方法 ==========
+
+## 获取MidiPlaybackManager实例
+func get_midi_playback_manager() -> MidiPlaybackManager:
+	if midi_playback_manager == null:
+		midi_playback_manager = MidiPlaybackManager.instance
+	return midi_playback_manager
+
+## 获取可用的SoundFont列表
+func get_available_soundfonts() -> Array:
+	if soundfont_cache.is_empty():
+		var midi_mgr = get_midi_playback_manager()
+		if midi_mgr != null:
+			soundfont_cache = midi_mgr.get_available_soundfonts()
+	return soundfont_cache.duplicate()
+
+## 加载MIDI文件进行播放
+func load_midi(midi_data: MidiData) -> bool:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr == null:
+		push_error("MidiPlaybackManager not initialized")
+		return false
+	
+	return midi_mgr.load_midi(midi_data)
+
+## 播放MIDI
+func play_midi() -> void:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		midi_mgr.play()
+
+## 停止MIDI播放
+func stop_midi() -> void:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		midi_mgr.stop()
+
+## 暂停MIDI播放
+func pause_midi() -> void:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		midi_mgr.pause()
+
+## 恢复MIDI播放
+func resume_midi() -> void:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		midi_mgr.resume()
+
+## 设置MIDI音源
+func set_midi_soundfont(soundfont_name: String) -> bool:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		return midi_mgr.set_soundfont(soundfont_name)
+	return false
+
+## 获取MIDI当前播放位置（毫秒）
+func get_midi_position() -> float:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		return midi_mgr.position_ms
+	return 0.0
+
+## 获取MIDI总时长（毫秒）
+func get_midi_duration() -> float:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		return midi_mgr.duration_ms
+	return 0.0
+
+## 设置MIDI的选中轨道
+func set_midi_tracks(track_indices: Array[int]) -> void:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		midi_mgr.set_selected_tracks(track_indices)
+
+## 获取MIDI轨道信息
+func get_midi_track_infos() -> Array:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		return midi_mgr.get_track_infos()
+	return []
+
+## 检查MIDI是否正在播放
+func is_midi_playing() -> bool:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		return midi_mgr.is_playing
+	return false
+
+## 设置MIDI音量
+func set_midi_volume(volume_db: float) -> void:
+	var midi_mgr = get_midi_playback_manager()
+	if midi_mgr != null:
+		midi_mgr.set_volume_db(volume_db)

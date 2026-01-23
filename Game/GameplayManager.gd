@@ -38,6 +38,23 @@ var total_duration: float = 0.0
 ## 是否处于调试模式
 var debug_mode: bool = false
 
+## ========== MIDI相关组件 ==========
+
+## MIDI播放管理器引用
+var midi_playback_manager: MidiPlaybackManager
+
+## 键序列管理器引用
+var key_sequence_manager: KeySequenceManager
+
+## 音频管理器引用
+var audio_manager: AudioManager
+
+## NotesRenderer引用（待实现的UI组件）
+var notes_renderer: Node
+
+## ScoreCalculator引用
+var score_calculator: Node
+
 ## 游戏状态改变信号
 signal game_state_changed(old_state: GameState, new_state: GameState)
 signal game_time_updated(current_time: float, total_time: float)
@@ -53,6 +70,10 @@ func _ready() -> void:
 	else:
 		queue_free()
 	add_to_group("singleton")
+	
+	# 获取管理器引用
+	_initialize_managers()
+	
 	# 连接事件总线信号
 	if EventBus.instance:
 		EventBus.instance.midi_selected.connect(_on_midi_selected)
@@ -60,6 +81,17 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if current_state == GameState.PLAYING:
 		_update_game_time(delta)
+		_sync_playback_position()
+
+## 初始化管理器引用
+func _initialize_managers() -> void:
+	midi_playback_manager = MidiPlaybackManager.instance
+	key_sequence_manager = KeySequenceManager.instance
+	audio_manager = AudioManager.instance
+	
+	# 连接MIDI播放管理器信号
+	if midi_playback_manager:
+		midi_playback_manager.midi_finished.connect(_on_midi_finished)
 
 ## 设置游戏状态
 func set_game_state(new_state: GameState) -> void:
@@ -79,51 +111,102 @@ func set_game_state(new_state: GameState) -> void:
 			_on_game_finished()
 
 ## 开始游戏
+## 加载MIDI、初始化播放、分类Note、启动背景音乐
 func start_game(midi: MidiData) -> void:
 	current_midi = midi
 	set_game_state(GameState.LOADING)
 	
-	# 异步加载谱面
-	_load_midi_async(midi)
+	# 异步加载和初始化MIDI
+	_load_and_initialize_midi_async(midi)
 
-## 加载MIDI谱面（异步）
-func _load_midi_async(midi: MidiData) -> void:
+## 加载并初始化MIDI（异步）
+func _load_and_initialize_midi_async(midi: MidiData) -> void:
 	var thread = Thread.new()
-	thread.start(_load_midi_thread.bind(midi))
+	var result = thread.start(_load_midi_thread.bind(midi))
 	thread.wait_to_finish()
 	
+	# 初始化完成，进入播放状态
 	set_game_state(GameState.PLAYING)
 	midi_loaded.emit(midi)
 
 ## MIDI加载线程
+## 负责MIDI加载、解析、Note分类等耗时操作
 func _load_midi_thread(midi: MidiData) -> void:
-	# 这里应该加载MIDI文件、音频等资源
-	# 当前为占位符
-	await get_tree().process_frame
-	print("Loading MIDI: %s" % midi.name)
+	if midi_playback_manager == null:
+		push_error("MidiPlaybackManager not initialized")
+		return
+	
+	# 1. 加载MIDI文件
+	var load_success = midi_playback_manager.load_midi(midi)
+	if not load_success:
+		push_error("Failed to load MIDI: %s" % midi.name)
+		return
+	
+	# 获取加载后的MIDI数据
+	var parsed_notes = midi_playback_manager.current_notes
+	var track_infos = midi_playback_manager.get_track_infos()
+	
+	if parsed_notes.is_empty():
+		push_error("No notes found in MIDI: %s" % midi.name)
+		return
+	
+	# 2. 更新游戏时长
+	total_duration = midi_playback_manager.duration_ms / 1000.0
+	
+	# 3. 分类Note为gameSequences和backgroundSequences
+	if key_sequence_manager != null:
+		key_sequence_manager.classify_sequences(midi, parsed_notes)
+		
+		# 获取选中轨道的Note用于游戏
+		var selected_track_notes = midi_playback_manager.get_selected_track_notes()
+		
+		# 为选中的Note生成键
+		key_sequence_manager.generate_keys(selected_track_notes)
+		
+		# 应用配置文件中的优化设置（可选）
+		if ConfigLoader.new().load_config("res://Resources/Config/config.ini").has("Gameplay"):
+			var config = ConfigLoader.new().load_config("res://Resources/Config/config.ini")
+			var min_spacing = config.get("Gameplay", {}).get("min_note_spacing_ms", 10.0)
+			key_sequence_manager.apply_optimization_config({"min_note_spacing_ms": min_spacing})
+		
+		# 执行键优化（框架）
+		key_sequence_manager.optimize_keys()
+	
+	print("[GameplayManager] MIDI loaded: %s, Total duration: %.2f seconds, Notes: %d" %
+		[midi.name, total_duration, parsed_notes.size()])
 
 ## 暂停游戏
 func pause_game() -> void:
 	if current_state == GameState.PLAYING:
 		set_game_state(GameState.PAUSED)
+		if midi_playback_manager != null:
+			midi_playback_manager.pause()
 
 ## 恢复游戏
 func resume_game() -> void:
 	if current_state == GameState.PAUSED:
 		set_game_state(GameState.PLAYING)
+		if midi_playback_manager != null:
+			midi_playback_manager.resume()
 		game_resumed.emit()
 
 ## 结束游戏
 func finish_game() -> void:
 	set_game_state(GameState.FINISHED)
+	if midi_playback_manager != null:
+		midi_playback_manager.stop()
 
 ## 游戏失败
 func game_over() -> void:
 	set_game_state(GameState.GAME_OVER)
+	if midi_playback_manager != null:
+		midi_playback_manager.stop()
 
 ## 重新开始游戏
 func restart_game() -> void:
 	game_time = 0.0
+	if midi_playback_manager != null:
+		midi_playback_manager.stop()
 	start_game(current_midi)
 
 ## 返回菜单
@@ -134,11 +217,30 @@ func return_to_menu() -> void:
 	game_time = 0.0
 	total_duration = 0.0
 	set_game_state(GameState.IDLE)
+	
+	if midi_playback_manager != null:
+		midi_playback_manager.stop()
+	
+	if key_sequence_manager != null:
+		key_sequence_manager.clear_sequences()
 
 ## 更新游戏时间
 func _update_game_time(delta: float) -> void:
 	game_time += delta
 	game_time_updated.emit(game_time, total_duration)
+
+## 同步播放位置（从MidiPlaybackManager获取）
+func _sync_playback_position() -> void:
+	if midi_playback_manager == null:
+		return
+	
+	# 从MidiPlaybackManager获取当前播放位置
+	var midi_position_ms = midi_playback_manager.position_ms
+	game_time = midi_position_ms / 1000.0
+	
+	# 启动MIDI播放（第一次调用时）
+	if not midi_playback_manager.is_playing and current_state == GameState.PLAYING:
+		midi_playback_manager.play()
 
 ## 游戏结束处理
 func _on_game_finished() -> void:
@@ -156,6 +258,10 @@ func _calculate_final_score() -> Dictionary:
 		"accuracy": 0.0,
 		"rank": "F"
 	}
+
+## MIDI播放完成回调
+func _on_midi_finished() -> void:
+	finish_game()
 
 ## MIDI选择信号处理
 func _on_midi_selected(_midi_id: String, midi_data: MidiData) -> void:
