@@ -14,6 +14,7 @@ signal data_loaded_complete
 signal album_selected(album_id: String)
 signal song_selected(song_id: String)
 signal midi_selected(midi_id: String, midi_data: MidiData)
+signal enter_track_view_with(midi: MidiData)
 
 ## ========== UI导航事件 ==========
 # signal navigate_to_album_view
