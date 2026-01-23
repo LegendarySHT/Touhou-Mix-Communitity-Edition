@@ -248,6 +248,7 @@ var ui_exist = {
 	"Right_Part" : false, # 程序启动时右侧部分(按钮，立绘和头像区域)不存在
 	"Back_Button": false, # False为显示商店按钮
 	"Store_View": false,
+	"Track_List": false, # 音轨界面的那个列表
 }
 
 ## 记录每个页面存在哪些组件
@@ -257,11 +258,14 @@ var ui_part = {
 	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Right_Part", "Back_Button"],
 	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View", "Back_Button"],
 	UIStateManager.UIState.STORE_VIEW: ["Store_View", "Back_Button"],
+	UIStateManager.UIState.TRACK_VIEW: ["Track_List", "Back_Button"],
 }
 
 var ALBUMLIST="/root/Main/Album/AlbumList"
 var SONGLIST="/root/Main/Song/SongList"
 var _SS="/root/Main/SS/SS"
+
+var tan15 = tan(deg_to_rad(15))
 
 ## 页面组件退出动画
 func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
@@ -346,7 +350,6 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 					info_ui.get_node("OptionWindow/Option/Rank").button_pressed=true
 			)
 		"Right_Part":
-			var tan15 = tan(deg_to_rad(15))
 			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305+900*tan15, 15-900), 0.25, "MenuBarPosition")
 			animate_position(get_node("/root/Main/Player_Info/Charactor"), Vector2(0,950), 0.15, "CharactorPosition")
 			animate_position(get_node("/root/Main/Player_Info"), Vector2(-44.393+650,257.71), 0.5, "PlayerInfoPosition")
@@ -358,13 +361,17 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			var store_node = get_node("/root/Main/Store")
 			# var top_bar = store_node.get_node("Top_bar")
 			# top_bar.position.y = -500
-			# animate_position(top_bar, Vector2(0, 0), 0.25, tween_id)
+			# animate_position(top_bar, Vector2.ZERO, 0.25, tween_id)
 
 			# var bottom = store_node.get_node("Bottom")
 			# bottom.position.y = bottom.position.y + 500
 			# animate_position(bottom, Vector2(bottom.position.x, bottom.position.y - 500), 0.25, tween_id)
 
 			tween = animate_fade_out(store_node, 0.35, tween_id)
+		"Track_List":
+			var track_list = get_node("/root/Main/TrackView")
+			tween = animate_fade_out(track_list, 0.35, tween_id)
+			animate_position(track_list, Vector2(track_list.position.x-1080*tan15, 1080), 0.25, "track_pos")
 			
 
 	# 发射结束信号
@@ -431,12 +438,11 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 
 			animate_fade_in(info_ui, 0.1, "InfoUIFadeIn")
 
-			var tan15 = tan(deg_to_rad(15))
 			info_ui.position = Vector2(130+500*tan15,-500)
 			tween = animate_position(info_ui, Vector2(130,50), 0.5, tween_id)
 		"Right_Part":
 			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305, 15), 0.25, "MenuBarPosition")
-			animate_position(get_node("/root/Main/Player_Info/Charactor"), Vector2(0, 0), 0.15, "CharactorPosition")
+			animate_position(get_node("/root/Main/Player_Info/Charactor"), Vector2.ZERO, 0.15, "CharactorPosition")
 			animate_position(get_node("/root/Main/Player_Info"), Vector2(-44.393, 257.71), 0.5, "PlayerInfoPosition")
 		"Back_Button":
 			EventBus.instance.storeButtonSwitch.emit(true)
@@ -444,13 +450,18 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			var store_node = get_node("/root/Main/Store")
 			var top_bar = store_node.get_node("Top_bar")
 			top_bar.position.y = -500
-			animate_position(top_bar, Vector2(0, 0), 0.25, "top_bar_in")
+			animate_position(top_bar, Vector2.ZERO, 0.25, "top_bar_in")
 
 			var bottom = store_node.get_node("Bottom")
 			bottom.position.y = bottom.position.y + 500
 			animate_position(bottom, Vector2(bottom.position.x, bottom.position.y - 500), 0.25, "bottom_in")
 
 			tween = animate_fade_in(store_node, 0.45, tween_id)
+		"Track_List":
+			var track_list = get_node("/root/Main/TrackView")
+			track_list.get_node("Track/TrackList").scroll_vertical = 300
+			tween = animate_fade_in(track_list, 0.45, tween_id)
+			animate_position(track_list, Vector2.ZERO, 0.25, "track_pos")
 
 	# 播放完毕
 	if tween:

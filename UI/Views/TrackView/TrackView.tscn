@@ -68,6 +68,8 @@ horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 scroll_deadzone = 1000
 script = ExtResource("1_7vp1s")
+container_path = NodePath("VBox")
+list_item_class = "res://UI/Views/TrackView/midiTrack.tscn"
 
 [node name="VBox" type="VBoxContainer" parent="Track/TrackList"]
 custom_minimum_size = Vector2(1631, 0)
@@ -104,10 +106,15 @@ theme_override_constants/separation = 0
 script = ExtResource("2_8bk0u")
 
 [node name="noteFlowArea" type="Panel" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea"]
-custom_minimum_size = Vector2(1250, 0)
+custom_minimum_size = Vector2(1250, 270)
 layout_mode = 2
 size_flags_stretch_ratio = 10.08
 theme_override_styles/panel = SubResource("StyleBoxFlat_3id1m")
+
+[node name="canvas" type="Polygon2D" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea/noteFlowArea"]
+clip_children = 1
+polygon = PackedVector2Array(3, 3, 3, 267, 1247, 267, 1250, 3)
+uv = PackedVector2Array(-305, -59, -313, 67, 96, 51, 94, -60)
 
 [node name="noteTotal" type="Panel" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea"]
 custom_minimum_size = Vector2(250, 0)

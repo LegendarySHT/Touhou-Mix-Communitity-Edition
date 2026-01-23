@@ -20,8 +20,8 @@
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
 [ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="18_3ccbu"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
-[ext_resource type="Script" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
-[ext_resource type="Script" uid="uid://qkk8vvd47is2" path="res://Utilities/ChartMigrationTest.gd" id="23_bg4s2"]
+[ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
+[ext_resource type="Script" path="res://Utilities/ChartMigrationTest.gd" id="23_bg4s2"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 
 [sub_resource type="Gradient" id="Gradient_q6r6c"]
@@ -36,6 +36,7 @@ size_flags_horizontal = 4
 script = ExtResource("1_w3rk5")
 midi_view_path = "res://UI/Views/MidiView/MidiView.tscn"
 store_view_path = "res://UI/Views/StorePage/MidiStore.tscn"
+track_view_path = "res://UI/Views/TrackView/TrackView.tscn"
 
 [node name="Player_Info" type="Line2D" parent="."]
 position = Vector2(-44.393, 275.71)

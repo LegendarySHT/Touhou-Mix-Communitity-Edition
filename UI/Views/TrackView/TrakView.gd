@@ -1,4 +1,6 @@
-extends ScrollContainer
+extends BaseScrollList
+
+class_name TrackView
 
 @onready var total_note: NoteDisplayer = $VBox/TotalView/VBoxC/flowArea
 @onready var current_time: Label = $VBox/TotalView/VBoxC/playArea/currentTime
@@ -17,3 +19,11 @@ extends ScrollContainer
 
 # 底部填充，增加新项时需要把这个移到底部
 @onready var bottom: MarginContainer = $VBox/PaddingBottom
+
+func _ready() -> void:
+	work_state = UIStateManager.UIState.TRACK_VIEW
+
+	super._ready()
+
+func _input(event: InputEvent) -> void:
+	super._input(event)

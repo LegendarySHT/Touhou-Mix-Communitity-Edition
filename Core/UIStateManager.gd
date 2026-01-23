@@ -117,6 +117,10 @@ func get_state_name(state: UIState) -> String:
 			return "STORE_VIEW"
 		UIState.SETTINGS_VIEW:
 			return "SETTINGS_VIEW"
+		UIState.TRACK_VIEW:
+			return "TRACK_VIEW"
+		UIState.PLAY_VIEW:
+			return "PLAY_VIEW"
 		_:
 			return "UNKNOWN_STATE"
 

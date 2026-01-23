@@ -177,8 +177,13 @@ theme_override_constants/separation = 0
 script = ExtResource("2_7rc5s")
 
 [node name="noteFlowArea" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea"]
-custom_minimum_size = Vector2(940, 0)
+custom_minimum_size = Vector2(940, 160)
 layout_mode = 2
+
+[node name="canvas" type="Polygon2D" parent="HBoxC/MC/HBoxC/MC/flowArea/noteFlowArea"]
+clip_children = 1
+polygon = PackedVector2Array(0, 0, 0, 160, 940, 160, 940, 0)
+uv = PackedVector2Array(-305, -59, -313, 67, 96, 51, 94, -60)
 
 [node name="noteTotal" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea"]
 custom_minimum_size = Vector2(200, 0)
