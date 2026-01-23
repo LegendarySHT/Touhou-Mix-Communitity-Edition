@@ -1,0 +1,270 @@
+[gd_scene load_steps=9 format=3 uid="uid://ttmjc3cbi1bi"]
+
+[ext_resource type="Texture2D" uid="uid://balwiilkbpuhy" path="res://Resources/icon/TrackView/note.png" id="1_ni118"]
+[ext_resource type="Texture2D" uid="uid://bvpw7fu0xco14" path="res://Resources/icon/TrackView/volume.png" id="2_phpps"]
+[ext_resource type="Texture2D" uid="uid://df7u4t3bhlafy" path="res://Resources/icon/TrackView/microphone.png" id="3_7rc5s"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_31lmn"]
+bg_color = Color(0.23490001, 0.50328004, 0.81, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7vp1s"]
+bg_color = Color(0.23947008, 0.16940002, 0.77, 1)
+shadow_color = Color(0, 0, 0, 0.21176471)
+shadow_size = 5
+shadow_offset = Vector2(5, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8bk0u"]
+bg_color = Color(0.32926846, 0.65212256, 1, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.8776157, 0.8776158, 0.87761563, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.1882353)
+shadow_size = 5
+shadow_offset = Vector2(-3, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xcqgn"]
+bg_color = Color(0.31686592, 0.6146278, 0.93180776, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1, 1, 1, 1)
+shadow_color = Color(0, 0, 0, 0.24313726)
+shadow_size = 10
+shadow_offset = Vector2(5, 0)
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_7vp1s"]
+color = Color(1, 1, 1, 1)
+thickness = 4
+
+[node name="MidiTrack" type="Panel"]
+custom_minimum_size = Vector2(1600, 250)
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
+
+[node name="HBoxC" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="Panel" parent="HBoxC"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_7vp1s")
+
+[node name="TrackBtn" type="Button" parent="HBoxC/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -0.14700317
+offset_bottom = -0.36956787
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/line_spacing = 0
+theme_override_font_sizes/font_size = 32
+toggle_mode = true
+text = "T
+r
+a
+c
+k
+1"
+flat = true
+icon_alignment = 1
+
+[node name="MC" type="MarginContainer" parent="HBoxC"]
+layout_mode = 2
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC"]
+custom_minimum_size = Vector2(1080, 0)
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="BtnPanel" type="Panel" parent="HBoxC/MC/HBoxC"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_8bk0u")
+
+[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC/HBoxC/BtnPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="TextureButton" type="TextureButton" parent="HBoxC/MC/HBoxC/BtnPanel/HBoxC"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+texture_normal = ExtResource("1_ni118")
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="HBoxC/MC/HBoxC/BtnPanel/HBoxC"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "已启用"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MC" type="MarginContainer" parent="HBoxC/MC/HBoxC"]
+layout_mode = 2
+theme_override_constants/margin_top = 25
+theme_override_constants/margin_bottom = 25
+
+[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="noteFlowArea" type="Panel" parent="HBoxC/MC/HBoxC/MC/HBoxC"]
+custom_minimum_size = Vector2(940, 0)
+layout_mode = 2
+
+[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel1" type="Panel" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+
+[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC/Panel1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxC" type="VBoxContainer" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC/Panel1/HBoxC"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="MuteBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC/Panel1/HBoxC/VBoxC"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+texture_normal = ExtResource("2_phpps")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="SoloBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC/Panel1/HBoxC/VBoxC"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+texture_normal = ExtResource("3_7rc5s")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="MC" type="MarginContainer" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC/Panel1/HBoxC"]
+custom_minimum_size = Vector2(310, 0)
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 50
+theme_override_constants/margin_bottom = 50
+
+[node name="VBoxC" type="VBoxContainer" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC/Panel1/HBoxC/MC"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC/Panel1/HBoxC/MC/VBoxC"]
+layout_mode = 2
+
+[node name="HSlider" type="HSlider" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC/Panel1/HBoxC/MC/VBoxC/HBoxC"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.5
+
+[node name="volumeLabel" type="Label" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC/Panel1/HBoxC/MC/VBoxC/HBoxC"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "-1.00dB"
+horizontal_alignment = 2
+
+[node name="instrumentOptBtn" type="OptionButton" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteFlowArea/HBoxC/Panel1/HBoxC/MC/VBoxC"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+theme_override_constants/arrow_margin = 10
+alignment = 1
+selected = 0
+item_count = 1
+popup/item_0/text = "Grand Piano"
+popup/item_0/id = 0
+
+[node name="noteTotal" type="Panel" parent="HBoxC/MC/HBoxC/MC/HBoxC"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_xcqgn")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteTotal"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -90.0
+offset_top = -80.0
+offset_right = 110.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="passedNote" type="Label" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteTotal/VBoxContainer"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 44
+text = "999"
+vertical_alignment = 1
+
+[node name="Control" type="Control" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteTotal/VBoxContainer"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+
+[node name="HSeparator" type="HSeparator" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteTotal/VBoxContainer/Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 35.0
+offset_top = 15.0
+offset_right = -65.0
+offset_bottom = 15.0
+grow_horizontal = 2
+grow_vertical = 2
+rotation = -0.34906584
+theme_override_styles/separator = SubResource("StyleBoxLine_7vp1s")
+
+[node name="totalNote" type="Label" parent="HBoxC/MC/HBoxC/MC/HBoxC/noteTotal/VBoxContainer"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 8
+theme_override_font_sizes/font_size = 44
+text = "9999"
+vertical_alignment = 1
