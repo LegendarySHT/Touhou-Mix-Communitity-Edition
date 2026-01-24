@@ -1,0 +1,400 @@
+[gd_scene load_steps=8 format=3 uid="uid://dufml4k4gftxf"]
+
+[ext_resource type="Texture2D" uid="uid://baootjbuf8yhl" path="res://Resources/icon/pause.png" id="1_8cbrq"]
+[ext_resource type="Script" uid="uid://biwqlg4kwm815" path="res://UI/Views/PlayView/PlayView.gd" id="1_uj6qe"]
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_7ak4s"]
+
+[sub_resource type="Gradient" id="Gradient_7ak4s"]
+colors = PackedColorArray(0.3882353, 0.20392157, 0.654902, 1, 0.71, 0.355, 0.71, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_uj6qe"]
+gradient = SubResource("Gradient_7ak4s")
+fill_to = Vector2(1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_uj6qe"]
+bg_color = Color(0, 0.6260657, 0.9940639, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jlvmc"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(0, 0, 0, 0.21176471)
+shadow_size = 15
+
+[node name="PlayView" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_uj6qe")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = SubResource("GradientTexture2D_uj6qe")
+
+[node name="Line2D" type="Line2D" parent="."]
+position = Vector2(0, -200)
+points = PackedVector2Array(0, 1080, 1920, 1080)
+width = 8.0
+joint_mode = 2
+
+[node name="BackBtn" type="TextureButton" parent="."]
+layout_mode = 0
+offset_left = 30.0
+offset_top = 30.0
+offset_right = 90.0
+offset_bottom = 90.0
+texture_normal = ExtResource("1_8cbrq")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="CenterData" type="HBoxContainer" parent="."]
+modulate = Color(1, 1, 1, 0.8117647)
+custom_minimum_size = Vector2(1500, 500)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -750.0
+offset_top = -300.0
+offset_right = 750.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(750, 260)
+theme_override_constants/separation = 60
+alignment = 1
+
+[node name="Combo" type="VBoxContainer" parent="CenterData"]
+custom_minimum_size = Vector2(450, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="type" type="Label" parent="CenterData/Combo"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "COMBO"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="count" type="Label" parent="CenterData/Combo"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 72
+text = "99,999"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Center" type="VBoxContainer" parent="CenterData"]
+custom_minimum_size = Vector2(450, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="up" type="Label" parent="CenterData/Center"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "0 ms early"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="type" type="Label" parent="CenterData/Center"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 72
+text = "PERFECT"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="down" type="Label" parent="CenterData/Center"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "0 ms late"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Score" type="VBoxContainer" parent="CenterData"]
+custom_minimum_size = Vector2(450, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="type" type="Label" parent="CenterData/Score"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "SCORE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="count" type="Label" parent="CenterData/Score"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 72
+text = "99,999"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TopProgressBar" type="ProgressBar" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 8.0
+grow_horizontal = 2
+value = 40.0
+show_percentage = false
+
+[node name="LeftBottom" type="Label" parent="."]
+custom_minimum_size = Vector2(250, 100)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -110.0
+offset_right = 260.0
+offset_bottom = -10.0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 64
+text = "99.99 pp"
+vertical_alignment = 2
+
+[node name="RightBottom" type="Label" parent="."]
+custom_minimum_size = Vector2(250, 100)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -260.0
+offset_top = -110.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 64
+text = "99.61%"
+horizontal_alignment = 2
+vertical_alignment = 2
+
+[node name="CenterBackGround" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.75686276)
+
+[node name="Menu" type="HBoxContainer" parent="CenterBackGround"]
+visible = false
+modulate = Color(1, 1, 1, 0.8117647)
+custom_minimum_size = Vector2(1500, 500)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -750.0
+offset_top = -300.0
+offset_right = 750.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(750, 260)
+theme_override_constants/separation = 60
+alignment = 1
+
+[node name="retry" type="Button" parent="CenterBackGround/Menu"]
+custom_minimum_size = Vector2(250, 250)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 72
+theme_override_styles/normal = SubResource("StyleBoxFlat_uj6qe")
+text = "重试"
+
+[node name="continue" type="Button" parent="CenterBackGround/Menu"]
+custom_minimum_size = Vector2(250, 250)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 72
+theme_override_styles/normal = SubResource("StyleBoxFlat_uj6qe")
+text = "继续"
+
+[node name="quit" type="Button" parent="CenterBackGround/Menu"]
+custom_minimum_size = Vector2(250, 250)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 72
+theme_override_styles/normal = SubResource("StyleBoxFlat_uj6qe")
+text = "退出"
+
+[node name="SongInfo" type="HBoxContainer" parent="CenterBackGround"]
+custom_minimum_size = Vector2(1000, 600)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 100
+
+[node name="PanelContainer" type="PanelContainer" parent="CenterBackGround/SongInfo"]
+custom_minimum_size = Vector2(400, 400)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_jlvmc")
+
+[node name="TextureRect" type="TextureRect" parent="CenterBackGround/SongInfo/PanelContainer"]
+custom_minimum_size = Vector2(400, 400)
+layout_mode = 2
+texture = ExtResource("2_7ak4s")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="GridContainer" type="GridContainer" parent="CenterBackGround/SongInfo"]
+custom_minimum_size = Vector2(490, 0)
+layout_mode = 2
+size_flags_vertical = 4
+columns = 2
+
+[node name="Label1" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "专辑"
+vertical_alignment = 1
+
+[node name="album" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "1111111"
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Label2" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "歌名"
+vertical_alignment = 1
+
+[node name="song" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "1111111"
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Label3" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "作曲"
+vertical_alignment = 1
+
+[node name="artist" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "1111111"
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="HSeparator" type="HSeparator" parent="CenterBackGround/SongInfo/GridContainer"]
+modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+
+[node name="HSeparator2" type="HSeparator" parent="CenterBackGround/SongInfo/GridContainer"]
+modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+
+[node name="Label4" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Midi名"
+vertical_alignment = 1
+
+[node name="midiName" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "1111111"
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Label5" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Midi作者"
+vertical_alignment = 1
+
+[node name="midiAuthor" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "1111111"
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Label6" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "时长"
+vertical_alignment = 1
+
+[node name="midiDuration" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "99:61:000"
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Label7" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "难度"
+vertical_alignment = 1
+
+[node name="difficulty" type="Label" parent="CenterBackGround/SongInfo/GridContainer"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "Lunatic"
+vertical_alignment = 1
+autowrap_mode = 3

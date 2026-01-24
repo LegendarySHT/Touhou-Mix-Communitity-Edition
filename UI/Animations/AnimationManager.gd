@@ -249,6 +249,7 @@ var ui_exist = {
 	"Back_Button": false, # False为显示商店按钮
 	"Store_View": false,
 	"Track_List": false, # 音轨界面的那个列表
+	"Play_View": false
 }
 
 ## 记录每个页面存在哪些组件
@@ -259,6 +260,7 @@ var ui_part = {
 	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View", "Back_Button"],
 	UIStateManager.UIState.STORE_VIEW: ["Store_View", "Back_Button"],
 	UIStateManager.UIState.TRACK_VIEW: ["Track_List", "Back_Button"],
+	UIStateManager.UIState.PLAY_VIEW: ["Play_View", "Store_View", "Back_Button"],
 }
 
 var ALBUMLIST="/root/Main/Album/AlbumList"
@@ -372,7 +374,9 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			var track_list = get_node("/root/Main/TrackView")
 			tween = animate_fade_out(track_list, 0.35, tween_id)
 			animate_position(track_list, Vector2(track_list.position.x-1080*tan15, 1080), 0.25, "track_pos")
-			
+		"Play_View":
+			var play_view = get_node("/root/Main/PlayView")
+			tween = animate_fade_out(play_view, 0.45, tween_id)
 
 	# 发射结束信号
 	if tween:
@@ -462,6 +466,9 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			track_list.get_node("Track/TrackList").scroll_vertical = 300
 			tween = animate_fade_in(track_list, 0.45, tween_id)
 			animate_position(track_list, Vector2.ZERO, 0.25, "track_pos")
+		"Play_View":
+			var play_view = get_node("/root/Main/PlayView")
+			tween = animate_fade_in(play_view, 0.45, tween_id)
 
 	# 播放完毕
 	if tween:

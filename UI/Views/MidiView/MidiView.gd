@@ -116,7 +116,7 @@ func _on_click_start_btn() -> void:
 		return
 	print("选择歌曲： %d" % midi.name)
 
-	# EventBus.instance.
+	EventBus.instance.start_game_with.emit(midi)
 	UIStateManager.instance.change_state(UIStateManager.UIState.PLAY_VIEW)
 
 func _on_click_track_btn():

@@ -19,6 +19,7 @@ var filesystem_manager: FileSystemManager
 @export var midi_view_path: String
 @export var store_view_path: String
 @export var track_view_path: String
+@export var play_view_path: String
 
 func _ready():
 	# 四边拉伸到父级（全屏）
@@ -131,6 +132,12 @@ func _init_ui() -> void:
 	track_list.position = Vector2(track_list.position.x-1080*tan(deg_to_rad(15)), 1080)
 	Main.add_child(track_list)
 	
+	# 播放界面
+	var play_page = load(play_view_path).instantiate()
+	play_page.visible = false
+	play_page.z_index = 21
+	Main.add_child(play_page)
+
 	# 移动返回按钮到上层
 	var right_bottom = get_node("RightBottom")
 	move_child(right_bottom ,-1)

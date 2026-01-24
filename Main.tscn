@@ -37,6 +37,7 @@ script = ExtResource("1_w3rk5")
 midi_view_path = "res://UI/Views/MidiView/MidiView.tscn"
 store_view_path = "res://UI/Views/StorePage/MidiStore.tscn"
 track_view_path = "res://UI/Views/TrackView/TrackView.tscn"
+play_view_path = "res://UI/Views/PlayView/PlayView.tscn"
 
 [node name="Player_Info" type="Line2D" parent="."]
 position = Vector2(-44.393, 275.71)
