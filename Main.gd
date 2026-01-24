@@ -11,6 +11,8 @@ var animation_manager: AnimationManager
 var sorting_engine: SortingEngine
 var gameplay_manager: GameplayManager
 var audio_manager: AudioManager
+var midi_playback_manager: MidiPlaybackManager
+var key_sequence_manager: KeySequenceManager
 var config_loader: ConfigLoader
 var logger: GameLogger
 var filesystem_manager: FileSystemManager
@@ -34,8 +36,7 @@ func _ready():
 ## 初始化核心系统
 func _initialize_core_systems() -> void:
 	print("=== Initializing Core Systems ===")
-	
-	_init_ui()
+
 
 	# 1. 初始化日志系统（单例，已自动管理）
 	logger = GameLogger.instance
@@ -95,6 +96,23 @@ func _initialize_core_systems() -> void:
 	add_child(audio_manager)
 	if logger:
 		logger.info("AudioManager initialized", "Main")
+	
+	# 11. 初始化MIDI播放管理器
+	midi_playback_manager = MidiPlaybackManager.new()
+	midi_playback_manager.name = "MidiPlaybackManager"
+	add_child(midi_playback_manager)
+	if logger:
+		logger.info("MidiPlaybackManager initialized", "Main")
+	
+	# 12. 初始化键序列管理器
+	key_sequence_manager = KeySequenceManager.new()
+	key_sequence_manager.name = "KeySequenceManager"
+	add_child(key_sequence_manager)
+	if logger:
+		logger.info("KeySequenceManager initialized", "Main")
+
+	# 13. 初始化并加载UI（确保各管理器已就绪）
+	_init_ui()
 	
 	# 连接信号
 	_connect_signals()

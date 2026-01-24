@@ -35,8 +35,11 @@ var is_previewing: bool = false
 func _ready() -> void:
 	work_state = UIStateManager.UIState.TRACK_VIEW
 
-	# 获取管理器引用
-	midi_playback_manager = MidiPlaybackManager.instance if MidiPlaybackManager.instance else MidiPlaybackManager.new()
+	# 获取管理器引用（使用单例模式）
+	midi_playback_manager = MidiPlaybackManager.instance
+	if midi_playback_manager == null:
+		push_error("MidiPlaybackManager not initialized in Main! MIDI features will not work.")
+		return
 	
 	# 初始化MIDI配置UI
 	_initialize_midi_config_ui()
@@ -110,15 +113,17 @@ func _create_track_views() -> void:
 	# 为每个轨道创建UI
 	for track_info in track_infos:
 		var track_scene = MIDI_TRACK_SCENE.instantiate()
+		
+		# 先加入scene tree，让 _ready() 执行并初始化 @onready 变量
+		container.add_child(track_scene)
+		container.move_child(bottom, container.get_child_count() - 1)
+		
+		# 设置基本属性
 		track_scene.track_index = track_info.index
 		track_scene.track_name = track_info.name
 		
-		# 配置轨道UI
+		# 现在可以安全地配置轨道UI
 		_configure_track_view(track_scene, track_info)
-		
-		# 添加到container（在bottom之前）
-		container.add_child(track_scene)
-		container.move_child(bottom, container.get_child_count() - 1)
 		
 		midi_tracks.append(track_scene)
 	
@@ -127,7 +132,7 @@ func _create_track_views() -> void:
 		_select_soundfont(current_midi_data.use_soundfont)
 
 # 配置轨道视图
-func _configure_track_view(track_view: MidiTrack, track_info: Dictionary) -> void:
+func _configure_track_view(track_view: MidiTrack, track_info) -> void:
 	# 设置轨道名称
 	track_view.track_btn.text = "%s (ID: %d)" % [track_info.name, track_info.index]
 	
@@ -282,8 +287,29 @@ func _on_track_enable_toggled(is_checked: bool, track_index: int) -> void:
 
 # 轨道静音切换
 func _on_track_mute_toggled(is_muted: bool, track_index: int) -> void:
-	print("Track %d muted: %s" % [track_index, is_muted])
-	# TODO: 实现轨道静音逻辑
+	if midi_playback_manager == null:
+		return
+	
+	# 获取当前选中的轨道列表
+	var selected_tracks = current_midi_data.selected_track_indices.duplicate() if current_midi_data else []
+	
+	if is_muted:
+		# 静音：移除该轨道
+		if track_index in selected_tracks:
+			selected_tracks.erase(track_index)
+	else:
+		# 取消静音：添加该轨道
+		if track_index not in selected_tracks:
+			selected_tracks.append(track_index)
+	
+	# 更新选中轨道列表
+	if current_midi_data:
+		current_midi_data.set_selected_tracks(selected_tracks)
+	midi_playback_manager.set_selected_tracks(selected_tracks)
+	
+	# 如果正在预览，立即更新
+	if is_previewing:
+		_update_preview()
 
 # 轨道独奏切换
 func _on_track_solo_toggled(is_solo: bool, track_index: int) -> void:
@@ -292,14 +318,42 @@ func _on_track_solo_toggled(is_solo: bool, track_index: int) -> void:
 
 # 轨道音量改变
 func _on_track_volume_changed(value: float, track_index: int) -> void:
-	print("Track %d volume: %f" % [track_index, value])
-	# TODO: 实现轨道音量控制
+	if midi_playback_manager == null:
+		return
+	
+	# 获取对应的轨道UI
+	var track_ui: MidiTrack = null
+	for track in midi_tracks:
+		if track.track_index == track_index:
+			track_ui = track
+			break
+	
+	if track_ui == null:
+		return
+	
+	# 转换为dB (-80 ~ 0)
+	var volume_db = linear_to_db(value / 100.0)
+	
+	# 调用MidiPlaybackManager设置轨道音量
+	# 注：这里假设MidiPlaybackManager支持按轨道设置音量
+	# 如果不支持，需要扩展MidiPlaybackManager的功能
+	midi_playback_manager.set_track_volume_db(track_index, volume_db)
+	
+	# 更新标签
+	track_ui.volume_label.text = "%d%%" % value
 
 # 乐器选择
 func _on_instrument_selected(index: int, track_index: int) -> void:
+	if track_index >= midi_tracks.size():
+		return
+	
 	var instrument_name = midi_tracks[track_index].instruments_option_btn.get_item_text(index)
+	
+	# 注：乐器切换通过MIDI的Program Change消息实现
+	# 当前版本记录选择，具体实现需要通过MidiPlayer的乐器配置
 	print("Track %d instrument changed to: %s" % [track_index, instrument_name])
-	# TODO: 实现乐器切换逻辑
+	
+	# TODO: 后续可扩展支持通过MidiPlayer的API设置轨道乐器
 
 # 更新预览（当轨道或音源改变时）
 func _update_preview() -> void:

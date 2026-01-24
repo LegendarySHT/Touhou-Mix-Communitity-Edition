@@ -197,6 +197,11 @@ text = "99:60:60"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="PreviewButton" type="Button" parent="Track/TrackList/VBox/TotalView/VBoxC/playArea"]
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+text = "播放预览"
+
 [node name="VolumeView" type="Panel" parent="Track/TrackList/VBox"]
 custom_minimum_size = Vector2(1600, 200)
 layout_mode = 2
@@ -224,6 +229,14 @@ toggle_mode = true
 texture_normal = ExtResource("1_3id1m")
 ignore_texture_size = true
 stretch_mode = 5
+
+[node name="SoundfontSelector" type="OptionButton" parent="Track/TrackList/VBox/VolumeView/HBoxC/VBoxC2"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "默认音源"
+item_count = 1
+selected = 0
+popup/item_0/text = "默认音源"
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Track/TrackList/VBox/VolumeView/HBoxC/VBoxC2"]
 layout_mode = 2

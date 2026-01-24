@@ -47,10 +47,18 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 		"timebase": 480
 	}
 	
-	# 检查文件是否存在
-	if not ResourceLoader.exists(file_path):
-		push_error("MIDI file not found: %s" % file_path)
-		return result
+	# 检查文件是否存在（user:// 使用 FileAccess）
+	if not FileAccess.file_exists(file_path):
+		# 后备：尝试将 user://files 替换为 res://Resources
+		var fallback_path = file_path
+		if file_path.begins_with("user://files"):
+			fallback_path = file_path.replace("user://files", "res://Resources")
+
+		if not FileAccess.file_exists(fallback_path):
+			push_error("MIDI file not found: %s" % file_path)
+			return result
+		else:
+			file_path = fallback_path
 	
 	# 使用SMF解析MIDI文件
 	var smf = SMF.new()

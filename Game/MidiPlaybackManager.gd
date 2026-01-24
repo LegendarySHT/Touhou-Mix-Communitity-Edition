@@ -244,6 +244,17 @@ func set_volume_db(volume: float) -> void:
 	midi_player.volume_db = volume
 	midi_player_config["volume_db"] = volume
 
+## 设置特定轨道的音量（相对于主音量）
+func set_track_volume_db(track_index: int, volume_db: float) -> void:
+	if midi_player == null or current_midi_data == null:
+		return
+	
+	# 注：此方法为框架实现
+	# MidiPlayer插件可能不直接支持轨道级音量控制
+	# 实际实现可能需要在MidiPlayer或自定义播放器中扩展
+	# 当前版本记录日志供调试
+	print("[MidiPlaybackManager] Set track %d volume to %.2f dB" % [track_index, volume_db])
+
 ## 获取已选中轨道对应的Note
 func get_selected_track_notes() -> Array:
 	if current_midi_data == null or current_notes.is_empty():
@@ -281,20 +292,41 @@ func _locate_midi_file(midi_data: MidiData) -> String:
 	if filesystem_manager == null:
 		push_error("FileSystemManager not initialized")
 		return ""
-	
-	# 从charts索引中查找
+
+	# 从charts索引中查找（优先使用已缓存的路径）
 	var charts_index = filesystem_manager.get_charts_index()
 	for folder_name in charts_index.keys():
-		var metadata = charts_index[folder_name]
-		if metadata.get("id", "") == midi_data.id:
-			# 构造MIDI文件路径
-			var chart_path = "user://files/Charts/%s" % folder_name
-			var midi_file_path = chart_path.path_join(midi_data.id + ".mid")
-			
-			# 验证文件存在
-			if ResourceLoader.exists(midi_file_path):
+		var metadata: Dictionary = charts_index[folder_name]
+		var chart_id: String = metadata.get("id", "")
+		if chart_id == midi_data.id or chart_id == midi_data.file_hash:
+			# 首选使用索引中缓存的路径
+			var chart_path: String = metadata.get("path", "")
+			if chart_path.is_empty():
+				chart_path = FileSystemManager.CHARTS_DIR.path_join(folder_name)
+			# 1) 按 chart_id 命名的mid
+			var midi_file_path: String = chart_path.path_join(chart_id + ".mid")
+			if FileAccess.file_exists(midi_file_path):
 				return midi_file_path
-	
+			# 2) 按 midi_data.id 命名的mid（旧格式）
+			var alt_id_path: String = chart_path.path_join(midi_data.id + ".mid")
+			if FileAccess.file_exists(alt_id_path):
+				return alt_id_path
+			# 3) 按 midi_data.file_hash 命名的mid（若提供）
+			if not midi_data.file_hash.is_empty():
+				var hash_path: String = chart_path.path_join(midi_data.file_hash + ".mid")
+				if FileAccess.file_exists(hash_path):
+					return hash_path
+			# 4) 作为后备，尝试 res:// 目录同名路径
+			var res_chart_path: String = FileSystemManager.DEFAULT_CHARTS_SRC.path_join(folder_name)
+			var res_candidates = [
+				res_chart_path.path_join(chart_id + ".mid"),
+				res_chart_path.path_join(midi_data.id + ".mid"),
+				res_chart_path.path_join(midi_data.file_hash + ".mid") if not midi_data.file_hash.is_empty() else ""
+			]
+			for candidate in res_candidates:
+				if candidate != "" and FileAccess.file_exists(candidate):
+					return candidate
+
 	return ""
 
 ## 回调：MIDI播放完成
