@@ -10,13 +10,15 @@ func _ready() -> void:
 		idx += 1
 
 	# 设置按钮信号链接
-	get_node("/root/Main/LeftTop/settingbutton").pressed.connect(
-		func():
-			if UIStateManager.instance.current_state != UIStateManager.UIState.SETTINGS_VIEW:
-				UIStateManager.instance.change_state(UIStateManager.UIState.SETTINGS_VIEW)
-			else:
-				UIStateManager.instance.go_back()
-	)
+	var setting_btn = get_node("/root/Main/LT_Btn/Button")
+	if setting_btn:
+		setting_btn.pressed.connect(
+			func():
+				if UIStateManager.instance.current_state != UIStateManager.UIState.SETTINGS_VIEW:
+					UIStateManager.instance.change_state(UIStateManager.UIState.SETTINGS_VIEW)
+				else:
+					UIStateManager.instance.go_back()
+		)
 
 	# 样例
 	# 这个配置应该从配置管理器获取，此处是个示例

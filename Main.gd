@@ -24,13 +24,7 @@ var filesystem_manager: FileSystemManager
 @export var play_view_path: String
 @export var setting_view_path: String
 
-func _ready():
-	# 四边拉伸到父级（全屏）
-	anchor_left = 0.0
-	anchor_right = 1.0
-	anchor_top = 0.0
-	anchor_bottom = 1.0
-	
+func _ready():	
 	# 初始化架构的核心系统
 	_initialize_core_systems()
 
@@ -164,12 +158,12 @@ func _init_ui() -> void:
 
 
 	# 移动返回按钮到上层
-	var right_bottom = get_node("RightBottom")
+	var right_bottom = get_node("RB_Btn")
 	move_child(right_bottom ,-1)
 	right_bottom.z_index = 20
 
 	# 设置按钮
-	var left_top = get_node("LeftTop")
+	var left_top = get_node("LT_Btn")
 	move_child(left_top ,-1)
 	left_top.z_index = 20
 

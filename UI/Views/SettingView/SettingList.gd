@@ -7,6 +7,55 @@ var setting_items: Dictionary = {}  # 存储所有设置项，键为id，值为S
 # 设置项分组数据
 var setting_groups = [
 	{
+		"name": "常规设置",
+		"settings": [
+			{
+				"id": "online_mode",
+				"name_en": "Online Mode",
+				"name_zh": "线上模式",
+				"description": "选择no后，需要网络的功能不会运作",
+				"type": "TYPE_OPTION",
+				"default_value": "0",
+				"options": [
+					{"text_en": "Off", "text_zh": "关闭"},
+					{"text_en": "On", "text_zh": "开启"}
+				]
+			},
+			{
+				"id": "language",
+				"name_en": "Language",
+				"name_zh": "语言",
+				"description": "选择游戏界面的语言",
+				"type": "TYPE_OPTION",
+				"default_value": "1",
+				"options": [
+					{"text_en": "English", "text_zh": "英文"},
+					{"text_en": "Chinese", "text_zh": "中文"}
+				]
+			},
+			{
+				"id": "server_address",
+				"name_en": "Server Address",
+				"name_zh": "服务器地址",
+				"description": "输入服务器的地址",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "thmix.org",
+			},
+			{
+				"id": "reload_builtin_resources",
+				"name_en": "Reload Built-in Resources",
+				"name_zh": "重置内置资源",
+				"description": "选择后，内置的资源将重新加载",
+				"type": "TYPE_OPTION",
+				"default_value": "0",
+				"options": [
+					{"text_en": "Off", "text_zh": "关闭"},
+					{"text_en": "On", "text_zh": "开启"}
+				]
+			}
+		]
+	},
+	{
 		"name": "播放设置",
 		"settings": [
 			{

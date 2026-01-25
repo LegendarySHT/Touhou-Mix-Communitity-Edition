@@ -117,8 +117,7 @@ func _load_sorted_midis() -> void:
 	var new_task_id = _current_load_task_id + 1
 	_current_load_task_id = new_task_id
 	
-	var midis: Array = sorting_engine.get_midis()
-	print("Loading %d midis" % midis.size())
+	current_midis = sorting_engine.get_midis()
 	# 清空现有列表（这会立即移除所有子节点）
 	_clear_list()
 	
@@ -129,7 +128,7 @@ func _load_sorted_midis() -> void:
 	
 	# 启动新的加载任务
 	_is_loading = true
-	_midis_to_load = midis
+	_midis_to_load = current_midis.duplicate()
 	_current_load_index = 0
 	_delay_counter = 0
 	

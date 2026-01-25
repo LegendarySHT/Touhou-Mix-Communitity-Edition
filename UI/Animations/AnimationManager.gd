@@ -241,28 +241,29 @@ func _exit_tree() -> void:
 
 ## 记录所有组件的状态
 var ui_exist = {
-	"Album_List" : true, # 程序启动时专辑列表存在
-	"Song_List" : false, # 程序启动时歌曲列表不存在
-	"Sorted_List" : false, # 程序启动时排序列表不存在
-	"Midi_Info_View" : false, # 程序启动时MIDI信息视图不存在
-	"Right_Part" : true, # 程序启动时右侧部分(按钮，立绘和头像区域)不存在
-	"Back_Button": false, # False为显示商店按钮
+	"Album_List" : true, 		# 程序启动时专辑列表存在
+	"Right_Part" : true, 		# 程序启动时右侧部分(按钮，立绘和头像区域)
+	"LT_Btn" : true, 			# 左上方设置按钮
+	"Song_List" : false, 		# 程序启动时歌曲列表不存在
+	"Sorted_List" : false,  	# 程序启动时排序列表不存在
+	"Midi_Info_View" : false, 	# 程序启动时MIDI信息视图不存在
+	"RB_Btn": false, 			# False为显示商店按钮
 	"Store_View": false,
-	"Track_List": false, # 音轨界面的那个列表
+	"Track_List": false, 		# 音轨界面的那个列表
 	"Play_View": false,
 	"Setting_View": false,
 }
 
 ## 记录每个页面存在哪些组件
 var ui_part = {
-	UIStateManager.UIState.ALBUM_VIEW: ["Album_List", "Right_Part"],
-	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Right_Part", "Back_Button"],
-	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Right_Part", "Back_Button"],
-	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View", "Back_Button"],
-	UIStateManager.UIState.STORE_VIEW: ["Store_View", "Back_Button"],
-	UIStateManager.UIState.TRACK_VIEW: ["Track_List", "Back_Button"],
-	UIStateManager.UIState.PLAY_VIEW: ["Play_View", "Store_View", "Back_Button"],
-	UIStateManager.UIState.SETTINGS_VIEW: ["Setting_View", "Back_Button"],
+	UIStateManager.UIState.ALBUM_VIEW: ["Album_List", "Right_Part", "LT_Btn"],
+	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Right_Part", "RB_Btn", "LT_Btn"],
+	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Right_Part", "RB_Btn", "LT_Btn"],
+	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View", "RB_Btn", "LT_Btn"],
+	UIStateManager.UIState.STORE_VIEW: ["Store_View", "RB_Btn"],
+	UIStateManager.UIState.TRACK_VIEW: ["Track_List", "RB_Btn", "LT_Btn"],
+	UIStateManager.UIState.PLAY_VIEW: ["Play_View", "Store_View", "RB_Btn", "LT_Btn"],
+	UIStateManager.UIState.SETTINGS_VIEW: ["Setting_View", "RB_Btn", "LT_Btn"],
 }
 
 var ALBUMLIST="/root/Main/Album/AlbumList"
@@ -273,12 +274,6 @@ var tan15 = tan(deg_to_rad(15))
 
 ## 页面组件退出动画
 func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
-	# 商店界面进入时无需退出其它组件
-	if new_state == UIStateManager.UIState.STORE_VIEW:
-		_scene_transition_enter(old_state, new_state)
-		ui_exist["Store_View"] = true
-		return
-
 	for key in ui_exist.keys():
 		if ui_exist[key] and (key in ui_part[old_state]) and (key not in ui_part[new_state]):
 			animate_ui_out(key, old_state, new_state)
@@ -354,13 +349,17 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 					info_ui.get_node("OptionWindow/Option/Rank").button_pressed=true
 			)
 		"Right_Part":
+			var pi = get_node("/root/Main/PlayerInfo")
+			var chara = get_node("/root/Main/PlayerInfo/Chara")
 			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305+900*tan15, 15-900), 0.25, "MenuBarPosition")
-			animate_position(get_node("/root/Main/Player_Info/Charactor"), Vector2(0,950), 0.15, "CharactorPosition")
-			animate_position(get_node("/root/Main/Player_Info"), Vector2(-44.393+650,257.71), 0.5, "PlayerInfoPosition")
+			animate_position(chara, Vector2(chara.position.x, chara.position.y + chara.size.y), 0.35, "CharactorPosition")
+			animate_position(pi, Vector2(pi.position.x + 900, pi.position.y + 200), 0.55, "PlayerInfoPosition")
 		
-		"Back_Button":
+		"RB_Btn":
 			EventBus.instance.storeButtonSwitch.emit(false)
-
+		"LT_Btn":
+			var lt_btn = get_node("/root/Main/LT_Btn")
+			animate_position(lt_btn, Vector2(lt_btn.position.x - 250, lt_btn.position.y), 0.25, tween_id)
 		"Store_View":
 			var store_node = get_node("/root/Main/Store")
 			# var top_bar = store_node.get_node("Top_bar")
@@ -449,11 +448,16 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			info_ui.position = Vector2(130+500*tan15,-500)
 			tween = animate_position(info_ui, Vector2(130,50), 0.5, tween_id)
 		"Right_Part":
+			var pi = get_node("/root/Main/PlayerInfo")
+			var chara = get_node("/root/Main/PlayerInfo/Chara")
 			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305, 15), 0.25, "MenuBarPosition")
-			animate_position(get_node("/root/Main/Player_Info/Charactor"), Vector2.ZERO, 0.15, "CharactorPosition")
-			animate_position(get_node("/root/Main/Player_Info"), Vector2(-44.393, 257.71), 0.5, "PlayerInfoPosition")
-		"Back_Button":
+			animate_position(pi, Vector2(pi.position.x - 900, pi.position.y - 200), 0.35, "PlayerInfoPosition")
+			animate_position(chara, Vector2(chara.position.x, chara.position.y - chara.size.y), 0.55, "CharactorPosition")
+		"RB_Btn":
 			EventBus.instance.storeButtonSwitch.emit(true)
+		"LT_Btn":
+			var lt_btn = get_node("/root/Main/LT_Btn")
+			animate_position(lt_btn, Vector2(lt_btn.position.x + 250, lt_btn.position.y), 0.25, tween_id)
 		"Store_View":
 			var store_node = get_node("/root/Main/Store")
 			var top_bar = store_node.get_node("Top_bar")

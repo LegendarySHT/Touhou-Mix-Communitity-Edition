@@ -1,7 +1,8 @@
-[gd_scene load_steps=25 format=3 uid="uid://jvmwtrulpf5g"]
+[gd_scene load_steps=29 format=3 uid="uid://jvmwtrulpf5g"]
 
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_devvj"]
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
+[ext_resource type="Texture2D" uid="uid://bf7nd5qojdcla" path="res://Resources/icon/lily-white.png" id="2_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://cbkgu4o71ikgo" path="res://Resources/Gradient/gradient1.png" id="3_bg4s2"]
 [ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/store_button.gd" id="7_sqvbp"]
 [ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView/AlbumView.gd" id="7_w3rk5"]
@@ -20,17 +21,55 @@
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
 [ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="18_3ccbu"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
-[ext_resource type="Script" path="res://Utilities/ChartMigrationTest.gd" id="23_bg4s2"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 
-[sub_resource type="Gradient" id="Gradient_q6r6c"]
-colors = PackedColorArray(0.477511, 0.510533, 0.894118, 0.690196, 0.326262, 0.0279343, 0.976471, 0.65098)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg4s2"]
+bg_color = Color(0.35644194, 0.4824527, 0.6469952, 1)
+border_width_left = 8
+border_width_top = 8
+border_color = Color(0.18, 0.35766667, 1, 0.5686275)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hhcpw"]
+draw_center = false
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+expand_margin_left = 6.0
+expand_margin_top = 6.0
+expand_margin_right = 6.0
+expand_margin_bottom = 6.0
+shadow_color = Color(0, 0, 0, 0.24313726)
+shadow_size = 12
+shadow_offset = Vector2(2, 2)
 
 [sub_resource type="Theme" id="Theme_devvj"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3b0ty"]
+bg_color = Color(0.4392157, 0.7294118, 0.98039216, 1)
+border_width_left = 5
+border_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mxvw5"]
+bg_color = Color(0.28665888, 0.46829945, 0.90240985, 1)
+border_width_right = 8
+border_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xrxkg"]
+bg_color = Color(0, 0, 0, 0.18431373)
+
 [node name="Main" type="Control"]
 layout_mode = 3
-anchors_preset = 0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 size_flags_horizontal = 4
 script = ExtResource("1_w3rk5")
 midi_view_path = "res://UI/Views/MidiView/MidiView.tscn"
@@ -39,93 +78,133 @@ track_view_path = "res://UI/Views/TrackView/TrackView.tscn"
 play_view_path = "res://UI/Views/PlayView/PlayView.tscn"
 setting_view_path = "res://UI/Views/SettingView/SettingView.tscn"
 
-[node name="Player_Info" type="Line2D" parent="."]
-position = Vector2(-44.393, 275.71)
-scale = Vector2(1.02312, 0.751613)
-points = PackedVector2Array(1086.28, 1099.36, 1145, 810, 1910, 810, 1830, 1100)
-closed = true
-gradient = SubResource("Gradient_q6r6c")
+[node name="PlayerInfo" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -40.0
+offset_top = -40.0
+grow_horizontal = 0
+grow_vertical = 0
 
-[node name="Base" type="Polygon2D" parent="Player_Info"]
-color = Color(0.623805, 0.587409, 0.775723, 1)
-polygon = PackedVector2Array(1148.58, 814.926, 1092.14, 1095.36, 1826.42, 1095.07, 1885.89, 814.926)
+[node name="Chara" type="Control" parent="PlayerInfo"]
+custom_minimum_size = Vector2(800, 1000)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -600.0
+offset_top = -1000.0
+grow_horizontal = 0
+grow_vertical = 0
 
-[node name="Avator" type="Line2D" parent="Player_Info/Base"]
-position = Vector2(28.3806, 0)
-scale = Vector2(0.975449, 1)
-points = PackedVector2Array(1160, 850, 1310, 850, 1310, 1050, 1160, 1050)
-closed = true
-width = 5.0
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
-round_precision = 17
+[node name="texture" type="TextureRect" parent="PlayerInfo/Chara"]
+custom_minimum_size = Vector2(600, 0)
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -855.0
+offset_right = 300.0
+offset_bottom = -0.835022
+grow_horizontal = 2
+grow_vertical = 0
+texture = ExtResource("2_3b0ty")
+expand_mode = 5
+stretch_mode = 6
 
-[node name="TextureRect" type="TextureRect" parent="Player_Info/Base/Avator"]
-offset_left = 1162.0
-offset_top = 852.0
-offset_right = 1418.0
-offset_bottom = 1108.0
-scale = Vector2(0.57, 0.76)
+[node name="Info" type="Node2D" parent="PlayerInfo"]
+skew = 0.2617994
+
+[node name="Panel" type="Panel" parent="PlayerInfo/Info"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -810.0
+offset_top = -160.0
+offset_right = 40.0
+offset_bottom = 40.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_bg4s2")
+
+[node name="skew" type="Node2D" parent="PlayerInfo/Info/Panel"]
+scale = Vector2(1, 0.9999999)
+skew = -0.26179945
+
+[node name="Panel" type="Panel" parent="PlayerInfo/Info/Panel/skew"]
+custom_minimum_size = Vector2(150, 150)
+offset_left = 20.0
+offset_top = 35.0
+offset_right = 170.0
+offset_bottom = 185.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_hhcpw")
+
+[node name="TextureRect" type="TextureRect" parent="PlayerInfo/Info/Panel/skew/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 size_flags_horizontal = 8
 texture = ExtResource("1_devvj")
 expand_mode = 3
-stretch_mode = 2
+stretch_mode = 5
 
-[node name="Label" type="Label" parent="Player_Info/Base"]
-offset_left = 1338.45
-offset_top = 842.575
-offset_right = 1746.45
-offset_bottom = 974.575
-scale = Vector2(1, 1.3)
+[node name="Data" type="VBoxContainer" parent="PlayerInfo/Info/Panel/skew"]
+custom_minimum_size = Vector2(0, 160)
+offset_left = 200.0
+offset_top = 25.0
+offset_right = 490.0
+offset_bottom = 185.0
+alignment = 1
+
+[node name="name" type="Label" parent="PlayerInfo/Info/Panel/skew/Data"]
+layout_mode = 2
 theme_override_font_sizes/font_size = 30
-text = "Anonymous Player
-Lv.XXX
-"
+text = "Anonymous Player"
 vertical_alignment = 2
 
-[node name="Label2" type="Label" parent="Player_Info/Base"]
-offset_left = 1335.52
-offset_top = 911.759
-offset_right = 1743.52
-offset_bottom = 998.759
-scale = Vector2(1, 1.3)
+[node name="level" type="Label" parent="PlayerInfo/Info/Panel/skew/Data"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Lv256"
+vertical_alignment = 2
+
+[node name="pp" type="Label" parent="PlayerInfo/Info/Panel/skew/Data"]
+layout_mode = 2
 theme_override_font_sizes/font_size = 30
 text = "114514 pp"
 vertical_alignment = 2
 
-[node name="Charactor" type="Polygon2D" parent="Player_Info"]
-z_index = -1
-color = Color(0, 0, 0, 1)
-polygon = PackedVector2Array(1291.53, 879.828, 1279.8, -96.7386, 1766.55, -99.3996, 1753.84, 874.506)
+[node name="MC" type="MarginContainer" parent="PlayerInfo/Info/Panel/skew/Data"]
+layout_mode = 2
+theme_override_constants/margin_top = 10
 
-[node name="Label" type="Label" parent="Player_Info/Charactor"]
-offset_left = 1437.17
-offset_top = 298.412
-offset_right = 1576.17
-offset_bottom = 340.412
-theme_override_font_sizes/font_size = 30
-text = "character"
+[node name="ProgressBar" type="ProgressBar" parent="PlayerInfo/Info/Panel/skew/Data/MC"]
+layout_mode = 2
 
 [node name="Background" type="TextureRect" parent="."]
 z_index = -2
-layout_mode = 0
-offset_right = 1920.0
-offset_bottom = 1080.0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 texture = ExtResource("3_bg4s2")
-metadata/_edit_lock_ = true
-
-[node name="ReferenceRect" type="ReferenceRect" parent="."]
-visible = false
-z_index = 5
-layout_mode = 0
-offset_left = 289.0
-offset_top = -26.0
-offset_right = 1215.0
-offset_bottom = 1464.0
-rotation = 0.261799
-editor_only = false
 metadata/_edit_lock_ = true
 
 [node name="Album" type="Polygon2D" parent="."]
@@ -186,96 +265,116 @@ layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 29
 
-[node name="RightBottom" type="Polygon2D" parent="."]
-clip_children = 2
-z_index = 2
-position = Vector2(2032, 343)
-rotation = 0.523599
-polygon = PackedVector2Array(-0.426636, 851.261, 0.00524902, 224.009, 271.505, 694.261)
-
-[node name="Store_Button" type="ColorRect" parent="RightBottom"]
+[node name="RB_Btn" type="Panel" parent="."]
 clip_contents = true
-offset_left = 1.0
-offset_top = 218.0
-offset_right = 278.0
-offset_bottom = 859.0
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -253.0
+offset_top = -468.0
+offset_right = 24.0
+offset_bottom = 173.0
+grow_horizontal = 0
+grow_vertical = 0
+rotation = 0.5235988
+pivot_offset = Vector2(266.30273, 475.3533)
 mouse_filter = 1
-color = Color(0.439216, 0.729412, 0.980392, 1)
+theme_override_styles/panel = SubResource("StyleBoxFlat_3b0ty")
 script = ExtResource("7_sqvbp")
 
-[node name="Button" type="Button" parent="RightBottom/Store_Button"]
+[node name="Button" type="Button" parent="RB_Btn"]
 modulate = Color(1, 1, 1, 0)
 self_modulate = Color(1, 1, 1, 0)
 show_behind_parent = true
 z_index = 4
-layout_mode = 0
-offset_left = -275.0
-offset_top = 163.0
-offset_right = 42.0
-offset_bottom = 967.0
-rotation = -0.523599
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 action_mode = 0
 flat = true
 icon_alignment = 1
 expand_icon = true
 
-[node name="Store" type="TextureRect" parent="RightBottom/Store_Button"]
+[node name="Store" type="TextureRect" parent="RB_Btn"]
 layout_mode = 0
-offset_left = 12.0
-offset_top = 410.0
-offset_right = 99.0
-offset_bottom = 471.0
+offset_left = 3.0
+offset_top = 430.0
+offset_right = 90.0
+offset_bottom = 491.0
 rotation = -0.523599
 scale = Vector2(2, 2)
 mouse_filter = 2
 texture = ExtResource("8_hri7i")
 
-[node name="Line2D" type="Line2D" parent="RightBottom/Store_Button"]
-points = PackedVector2Array(-1.42664, 633.261, -0.494751, 6.87494)
-
-[node name="Back" type="TextureRect" parent="RightBottom/Store_Button"]
+[node name="Back" type="TextureRect" parent="RB_Btn"]
 layout_mode = 0
-offset_left = 12.0
-offset_top = -50.0
-offset_right = 162.0
-offset_bottom = 100.0
+offset_left = 3.0
+offset_top = -30.0
+offset_right = 153.0
+offset_bottom = 120.0
 rotation = -0.523599
 mouse_filter = 2
 texture = ExtResource("9_w3rk5")
 
-[node name="LeftTop" type="Polygon2D" parent="."]
-z_index = 2
-color = Color(0.188235, 0.419608, 1, 0.709804)
-polygon = PackedVector2Array(0, 0, 225, 0, 0, 602)
+[node name="LT_Btn" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 25.999996
+offset_top = -73.999985
+offset_right = 235.52328
+offset_bottom = 588.7093
+rotation = 0.34906584
+theme_override_styles/panel = SubResource("StyleBoxFlat_mxvw5")
 
-[node name="settingbutton" type="TextureButton" parent="LeftTop"]
-offset_left = 17.0
-offset_top = 8.0
-offset_right = 84.0
-offset_bottom = 77.0
-scale = Vector2(2, 2)
-texture_normal = ExtResource("10_5mvff")
+[node name="Button" type="Button" parent="LT_Btn"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -7.9132843
+offset_bottom = -0.70928955
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_xrxkg")
 
-[node name="Label" type="Label" parent="LeftTop"]
-offset_left = 34.0
-offset_top = 169.0
-offset_right = 134.0
-offset_bottom = 242.0
+[node name="Setting" type="TextureRect" parent="LT_Btn"]
+custom_minimum_size = Vector2(140, 140)
+layout_mode = 1
+offset_left = 25.0
+offset_top = 90.0
+offset_right = 165.0
+offset_bottom = 230.0
+rotation = -0.34906584
+mouse_filter = 2
+texture = ExtResource("10_5mvff")
+stretch_mode = 5
+
+[node name="Lag" type="Label" parent="LT_Btn"]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 260.0
+offset_right = 199.99998
+offset_bottom = 332.99994
+rotation = -0.34906584
 theme_override_font_sizes/font_size = 30
 text = "9999
 ms"
 
-[node name="Line2D" type="Line2D" parent="LeftTop"]
-points = PackedVector2Array(226, -3, -5, 615)
-width = 6.0
-
 [node name="Menu_Bar" type="HBoxContainer" parent="."]
-layout_mode = 0
-offset_left = 1305.0
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -615.0
 offset_top = 15.0
-offset_right = 1793.0
+offset_right = -127.0
 offset_bottom = 165.0
-metadata/_edit_lock_ = true
+grow_horizontal = 0
 
 [node name="HBC" type="HBoxContainer" parent="Menu_Bar"]
 layout_mode = 2
@@ -649,7 +748,7 @@ theme_override_constants/separation = 29
 
 [node name="TestNode" type="Node2D" parent="."]
 
-[connection signal="pressed" from="RightBottom/Store_Button/Button" to="RightBottom/Store_Button" method="_on_button_pressed"]
+[connection signal="pressed" from="RB_Btn/Button" to="RB_Btn" method="_on_button_pressed"]
 [connection signal="pressed" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Status" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_status_pressed"]
 [connection signal="toggled" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Data" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_data_toggled"]
 [connection signal="toggled" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Time" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_time_toggled"]
