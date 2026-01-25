@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3 uid="uid://jvmwtrulpf5g"]
+[gd_scene load_steps=25 format=3 uid="uid://jvmwtrulpf5g"]
 
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_devvj"]
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
@@ -20,8 +20,7 @@
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
 [ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="18_3ccbu"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
-[ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
-[ext_resource type="Script" path="res://Utilities/ChartMigrationTest.gd" id="23_bg4s2"]
+[ext_resource type="Script" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 
 [sub_resource type="Gradient" id="Gradient_q6r6c"]
@@ -662,7 +661,6 @@ mouse_filter = 2
 theme_override_constants/separation = 29
 
 [node name="TestNode" type="Node2D" parent="."]
-script = ExtResource("23_bg4s2")
 
 [connection signal="pressed" from="RightBottom/Store_Button/Button" to="RightBottom/Store_Button" method="_on_button_pressed"]
 [connection signal="pressed" from="Setting_Button/settingbutton" to="SettingBackGround" method="_on_settingbutton_pressed"]
