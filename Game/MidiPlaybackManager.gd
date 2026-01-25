@@ -16,6 +16,9 @@ var current_midi_data: MidiData
 ## 当前解析的音符列表
 var current_notes: Array = []
 
+## MIDI的BPM变化时间线 (用于精确时间计算)
+var bpm_timeline: Array = []
+
 ## MIDI播放状态
 var is_playing: bool = false
 
@@ -82,8 +85,9 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if is_playing and midi_player != null:
-		# 更新当前播放位置
-		position_ms = midi_player.position
+		# 使用BPM时间线来计算准确的播放时间
+		if midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
+			position_ms = _calculate_position_with_bpm_timeline(midi_player.position, midi_player.smf_data.timebase)
 
 ## 初始化MIDI播放器
 func _initialize_midi_player() -> void:
@@ -135,6 +139,7 @@ func load_midi(midi_data: MidiData) -> bool:
 	
 	# 保存解析结果
 	current_notes = parse_result["notes"]
+	bpm_timeline = parse_result.get("bpm_timeline", [])  # 获取BPM时间线
 	current_midi_data.parsed_notes = current_notes
 	current_midi_data.track_count = parse_result["track_infos"].size()
 	current_midi_data.bpm = parse_result["bpm"]
@@ -202,12 +207,89 @@ func resume() -> void:
 	midi_started.emit()
 
 ## 跳转到指定位置
+## position: 位置（毫秒）
 func seek(position: float) -> void:
 	if midi_player == null:
 		return
 	
 	position_ms = position
-	midi_player.seek(position)
+	# 使用BPM时间线来计算精确的tick位置
+	if midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
+		var target_tick = _calculate_tick_from_position_with_bpm_timeline(position, midi_player.smf_data.timebase)
+		midi_player.seek(target_tick)
+
+## 辅助函数：根据BPM时间线计算当前的实际播放时间（毫秒）
+func _calculate_position_with_bpm_timeline(current_tick: float, timebase: int) -> float:
+	if bpm_timeline.is_empty():
+		# 如果没有BPM时间线，使用默认计算方式
+		var seconds_per_tick: float = 60.0 / (120.0 * timebase)  # 默认120 BPM
+		return current_tick * seconds_per_tick * 1000.0
+	
+	var cumulative_time_ms: float = 0.0
+	
+	# 遍历BPM时间线找到当前tick所在的段
+	for i in range(bpm_timeline.size()):
+		var entry = bpm_timeline[i]
+		var entry_tick = entry["tick"]
+		
+		# 确定下一个BPM变化的tick
+		var next_tempo_tick: float
+		if i + 1 < bpm_timeline.size():
+			next_tempo_tick = bpm_timeline[i + 1]["tick"]
+		else:
+			next_tempo_tick = current_tick + 1000000  # 大数字，表示无限远
+		
+		if current_tick < next_tempo_tick:
+			# 当前tick在这个BPM段内
+			var bpm = entry["bpm"]
+			var tick_delta = current_tick - entry_tick
+			var ms_per_tick = (60000.0 / bpm) / timebase
+			var segment_time_ms = tick_delta * ms_per_tick
+			
+			return cumulative_time_ms + segment_time_ms
+		else:
+			# 继续下一个BPM段
+			if i + 1 < bpm_timeline.size():
+				var next_entry = bpm_timeline[i + 1]
+				var bpm = entry["bpm"]
+				var tick_delta = next_entry["tick"] - entry_tick
+				var ms_per_tick = (60000.0 / bpm) / timebase
+				var segment_time_ms = tick_delta * ms_per_tick
+				cumulative_time_ms += segment_time_ms
+	
+	return cumulative_time_ms
+
+## 辅助函数：根据BPM时间线计算从时间位置（毫秒）到tick的转换
+func _calculate_tick_from_position_with_bpm_timeline(target_time_ms: float, timebase: int) -> float:
+	if bpm_timeline.is_empty():
+		# 如果没有BPM时间线，使用默认计算方式
+		var seconds_per_tick: float = 60.0 / (120.0 * timebase)  # 默认120 BPM
+		return target_time_ms / 1000.0 / seconds_per_tick
+	
+	var cumulative_time_ms: float = 0.0
+	
+	# 遍历BPM时间线找到目标时间所在的段
+	for i in range(bpm_timeline.size()):
+		var entry = bpm_timeline[i]
+		var entry_tick = entry["tick"]
+		var entry_time_ms = entry["time_ms"]
+		
+		# 确定下一个BPM变化
+		var next_entry = null
+		if i + 1 < bpm_timeline.size():
+			next_entry = bpm_timeline[i + 1]
+		
+		if next_entry == null or target_time_ms <= next_entry["time_ms"]:
+			# 目标时间在这个BPM段内
+			var bpm = entry["bpm"]
+			var time_in_segment = target_time_ms - entry_time_ms
+			var ms_per_tick = (60000.0 / bpm) / timebase
+			var tick_offset = time_in_segment / ms_per_tick
+			
+			return entry_tick + tick_offset
+	
+	# 不应该到达这里，返回最后的tick
+	return bpm_timeline[-1]["tick"]
 
 ## 设置选中的轨道
 func set_selected_tracks(track_indices: Array[int]) -> void:
