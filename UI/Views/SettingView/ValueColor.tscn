@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://bp0ngpd342feu"]
+
+[node name="ValueColor" type="HBoxContainer"]
+custom_minimum_size = Vector2(500, 0)
+theme_override_constants/separation = 20
+
+[node name="HexColor" type="LineEdit" parent="."]
+custom_minimum_size = Vector2(390, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+alignment = 1
+max_length = 10
+
+[node name="ColorPickerButton" type="ColorPickerButton" parent="."]
+custom_minimum_size = Vector2(86, 0)
+layout_mode = 2
+color = Color(1, 1, 1, 1)
+edit_intensity = false

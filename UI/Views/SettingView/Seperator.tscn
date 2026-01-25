@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3 uid="uid://dqfuc8qy1qhb7"]
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_m3shx"]
+color = Color(1, 1, 1, 1)
+grow_begin = 50.0
+grow_end = 300.0
+thickness = 8
+
+[node name="Seperator" type="HSeparator"]
+custom_minimum_size = Vector2(0, 150)
+size_flags_horizontal = 3
+theme_override_styles/separator = SubResource("StyleBoxLine_m3shx")

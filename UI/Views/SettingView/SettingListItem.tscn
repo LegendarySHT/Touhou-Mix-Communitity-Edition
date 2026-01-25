@@ -1,0 +1,23 @@
+[gd_scene load_steps=2 format=3 uid="uid://bck8sytodsc1p"]
+
+[ext_resource type="Script" uid="uid://11gqhll7nlom" path="res://UI/Views/SettingView/SettingListItem.gd" id="1_oiux8"]
+
+[node name="Key" type="VBoxContainer"]
+custom_minimum_size = Vector2(500, 0)
+offset_right = 800.0
+offset_bottom = 86.0
+alignment = 1
+script = ExtResource("1_oiux8")
+
+[node name="name" type="Label" parent="."]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "设置项的名字"
+
+[node name="desc" type="Label" parent="."]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "设置项的说明"
+autowrap_mode = 3

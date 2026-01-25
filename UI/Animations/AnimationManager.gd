@@ -245,11 +245,12 @@ var ui_exist = {
 	"Song_List" : false, # 程序启动时歌曲列表不存在
 	"Sorted_List" : false, # 程序启动时排序列表不存在
 	"Midi_Info_View" : false, # 程序启动时MIDI信息视图不存在
-	"Right_Part" : false, # 程序启动时右侧部分(按钮，立绘和头像区域)不存在
+	"Right_Part" : true, # 程序启动时右侧部分(按钮，立绘和头像区域)不存在
 	"Back_Button": false, # False为显示商店按钮
 	"Store_View": false,
 	"Track_List": false, # 音轨界面的那个列表
-	"Play_View": false
+	"Play_View": false,
+	"Setting_View": false,
 }
 
 ## 记录每个页面存在哪些组件
@@ -261,6 +262,7 @@ var ui_part = {
 	UIStateManager.UIState.STORE_VIEW: ["Store_View", "Back_Button"],
 	UIStateManager.UIState.TRACK_VIEW: ["Track_List", "Back_Button"],
 	UIStateManager.UIState.PLAY_VIEW: ["Play_View", "Store_View", "Back_Button"],
+	UIStateManager.UIState.SETTINGS_VIEW: ["Setting_View", "Back_Button"],
 }
 
 var ALBUMLIST="/root/Main/Album/AlbumList"
@@ -320,7 +322,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 				button.toggle_mode=false
 				get_node("/root/Main").add_child(copy)
 
-			var tindex = sIndex if new_state!= UIStateManager.UIState.SORTED_VIEW else -1
+			var tindex = sIndex if new_state == UIStateManager.UIState.SONG_VIEW else -1
 			tween = animate_list_item_horizontal(album_list, sIndex-4, sIndex+5, tindex, -1200, tween_id)
 			tween.finished.connect(func() -> void:
 				album_list.visible=false
@@ -377,11 +379,13 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 		"Play_View":
 			var play_view = get_node("/root/Main/PlayView")
 			tween = animate_fade_out(play_view, 0.45, tween_id)
+		"Setting_View":
+			var setting_view = get_node("/root/Main/SettingView")
+			tween = animate_fade_out(setting_view, 0.35, tween_id)
 
 	# 发射结束信号
 	if tween:
 		tween.finished.connect(func() -> void:
-			# scene_transition_fin.emit()
 			_scene_transition_enter(old_state, new_state)
 		)
 
@@ -403,7 +407,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			var sIndex = album_list.selected_item
 			
 			album_list.get_node("VBox").get_child(sIndex).modulate = Color(1, 1, 1, 1)
-			var tindex = sIndex if old_state != UIStateManager.UIState.SORTED_VIEW else -1
+			var tindex = sIndex if old_state == UIStateManager.UIState.SONG_VIEW else -1
 			tween = animate_list_item_horizontal(album_list, sIndex-4, sIndex+5, tindex, 0, tween_id)
 			
 			# 从Song_List回来时会触发下面的
@@ -469,6 +473,9 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 		"Play_View":
 			var play_view = get_node("/root/Main/PlayView")
 			tween = animate_fade_in(play_view, 0.45, tween_id)
+		"Setting_View":
+			var setting_view = get_node("/root/Main/SettingView")
+			tween = animate_fade_in(setting_view, 0.45, tween_id)
 
 	# 播放完毕
 	if tween:

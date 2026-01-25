@@ -125,8 +125,8 @@ func _process(delta: float) -> void:
 	if need_snap and not (is_dragging_list):
 		var snap_index = selected_item if selected_item != -1 else round((scroll_vertical + item_height) / (item_height))
 		snap_index = clampi(snap_index, 0, list_items.size() - 1)
-		var snap_node = container.get_child(snap_index) as ListItemBase
-		if not snap_node.is_selected:
+		var snap_node = container.get_child(snap_index)
+		if snap_node is ListItemBase and not snap_node.is_selected:
 			if work_state in [UIStateManager.UIState.MIDI_VIEW]:
 				return
 			snap_node.button.button_pressed = true

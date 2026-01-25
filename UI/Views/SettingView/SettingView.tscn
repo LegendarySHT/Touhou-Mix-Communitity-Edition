@@ -1,0 +1,87 @@
+[gd_scene load_steps=4 format=3 uid="uid://c2kvbawgs74cy"]
+
+[ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingView/SettingView.gd" id="1_4walt"]
+[ext_resource type="Script" uid="uid://cgxt234w25s7r" path="res://UI/Views/SettingView/SettingList.gd" id="2_3x48f"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_tf36t"]
+
+[node name="SettingView" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_4walt")
+
+[node name="Node2D" type="Node2D" parent="."]
+position = Vector2(130, 0)
+skew = 0.2617994
+
+[node name="HBoxC" type="HBoxContainer" parent="Node2D"]
+offset_left = 170.0
+offset_right = 1724.0
+offset_bottom = 1097.0
+alignment = 1
+
+[node name="ShortCut" type="VBoxContainer" parent="Node2D/HBoxC"]
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="Btn1" type="Button" parent="Node2D/HBoxC/ShortCut"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+toggle_mode = true
+button_group = SubResource("ButtonGroup_tf36t")
+text = "播放"
+
+[node name="Btn2" type="Button" parent="Node2D/HBoxC/ShortCut"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+toggle_mode = true
+button_group = SubResource("ButtonGroup_tf36t")
+text = "轨道"
+
+[node name="Btn3" type="Button" parent="Node2D/HBoxC/ShortCut"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+toggle_mode = true
+button_group = SubResource("ButtonGroup_tf36t")
+text = "判定"
+
+[node name="Btn4" type="Button" parent="Node2D/HBoxC/ShortCut"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+toggle_mode = true
+button_group = SubResource("ButtonGroup_tf36t")
+text = "生成"
+
+[node name="Btn5" type="Button" parent="Node2D/HBoxC/ShortCut"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+toggle_mode = true
+button_group = SubResource("ButtonGroup_tf36t")
+text = "外观"
+
+[node name="SettingList" type="ScrollContainer" parent="Node2D/HBoxC"]
+custom_minimum_size = Vector2(1300, 0)
+layout_mode = 2
+follow_focus = true
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+script = ExtResource("2_3x48f")
+container_path = NodePath("GridC")
+list_item_class = "res://UI/Views/SettingView/SettingListItem.tscn"
+
+[node name="GridC" type="GridContainer" parent="Node2D/HBoxC/SettingList"]
+layout_mode = 2
+size_flags_horizontal = 6
+theme_override_constants/h_separation = 100
+theme_override_constants/v_separation = 20
+columns = 2

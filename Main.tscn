@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3 uid="uid://jvmwtrulpf5g"]
+[gd_scene load_steps=25 format=3 uid="uid://jvmwtrulpf5g"]
 
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_devvj"]
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
@@ -20,7 +20,6 @@
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
 [ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="18_3ccbu"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
-[ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingPage.gd" id="20_x3yn0"]
 [ext_resource type="Script" path="res://Utilities/ChartMigrationTest.gd" id="23_bg4s2"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 
@@ -38,6 +37,7 @@ midi_view_path = "res://UI/Views/MidiView/MidiView.tscn"
 store_view_path = "res://UI/Views/StorePage/MidiStore.tscn"
 track_view_path = "res://UI/Views/TrackView/TrackView.tscn"
 play_view_path = "res://UI/Views/PlayView/PlayView.tscn"
+setting_view_path = "res://UI/Views/SettingView/SettingView.tscn"
 
 [node name="Player_Info" type="Line2D" parent="."]
 position = Vector2(-44.393, 275.71)
@@ -243,12 +243,12 @@ rotation = -0.523599
 mouse_filter = 2
 texture = ExtResource("9_w3rk5")
 
-[node name="Setting_Button" type="Polygon2D" parent="."]
+[node name="LeftTop" type="Polygon2D" parent="."]
 z_index = 2
 color = Color(0.188235, 0.419608, 1, 0.709804)
 polygon = PackedVector2Array(0, 0, 225, 0, 0, 602)
 
-[node name="settingbutton" type="TextureButton" parent="Setting_Button"]
+[node name="settingbutton" type="TextureButton" parent="LeftTop"]
 offset_left = 17.0
 offset_top = 8.0
 offset_right = 84.0
@@ -256,15 +256,7 @@ offset_bottom = 77.0
 scale = Vector2(2, 2)
 texture_normal = ExtResource("10_5mvff")
 
-[node name="TextureRect" type="TextureRect" parent="Setting_Button"]
-visible = false
-offset_left = 26.0
-offset_top = 20.0
-offset_right = 146.0
-offset_bottom = 137.0
-texture = ExtResource("10_5mvff")
-
-[node name="Label" type="Label" parent="Setting_Button"]
+[node name="Label" type="Label" parent="LeftTop"]
 offset_left = 34.0
 offset_top = 169.0
 offset_right = 134.0
@@ -273,7 +265,7 @@ theme_override_font_sizes/font_size = 30
 text = "9999
 ms"
 
-[node name="Line2D" type="Line2D" parent="Setting_Button"]
+[node name="Line2D" type="Line2D" parent="LeftTop"]
 points = PackedVector2Array(226, -3, -5, 615)
 width = 6.0
 
@@ -624,12 +616,6 @@ layout_mode = 2
 texture = ExtResource("12_40n85")
 stretch_mode = 2
 
-[node name="SettingBackGround" type="Polygon2D" parent="."]
-z_index = -5
-color = Color(0.243137, 0.423529, 0.866667, 1)
-polygon = PackedVector2Array(225, 0, -180, 1080, -190, 1080, -190, 0)
-script = ExtResource("20_x3yn0")
-
 [node name="SortedMidi" type="Polygon2D" parent="."]
 position = Vector2(-1500, 0)
 skew = 0.261799
@@ -665,7 +651,6 @@ theme_override_constants/separation = 29
 script = ExtResource("23_bg4s2")
 
 [connection signal="pressed" from="RightBottom/Store_Button/Button" to="RightBottom/Store_Button" method="_on_button_pressed"]
-[connection signal="pressed" from="Setting_Button/settingbutton" to="SettingBackGround" method="_on_settingbutton_pressed"]
 [connection signal="pressed" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Status" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_status_pressed"]
 [connection signal="toggled" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Data" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_data_toggled"]
 [connection signal="toggled" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Time" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_time_toggled"]

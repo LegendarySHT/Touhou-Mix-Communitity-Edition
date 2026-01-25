@@ -22,6 +22,7 @@ var filesystem_manager: FileSystemManager
 @export var store_view_path: String
 @export var track_view_path: String
 @export var play_view_path: String
+@export var setting_view_path: String
 
 func _ready():
 	# 四边拉伸到父级（全屏）
@@ -156,10 +157,21 @@ func _init_ui() -> void:
 	play_page.z_index = 21
 	Main.add_child(play_page)
 
+	# 设置界面
+	var setting_page = load(setting_view_path).instantiate()
+	setting_page.visible = false
+	Main.add_child(setting_page)
+
+
 	# 移动返回按钮到上层
 	var right_bottom = get_node("RightBottom")
 	move_child(right_bottom ,-1)
 	right_bottom.z_index = 20
+
+	# 设置按钮
+	var left_top = get_node("LeftTop")
+	move_child(left_top ,-1)
+	left_top.z_index = 20
 
 ## 连接核心系统信号
 func _connect_signals() -> void:
