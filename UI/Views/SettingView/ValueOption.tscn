@@ -3,6 +3,7 @@
 [node name="ValueOption" type="OptionButton"]
 custom_minimum_size = Vector2(500, 80)
 size_flags_vertical = 4
+mouse_filter = 1
 theme_override_font_sizes/font_size = 32
 alignment = 1
 clip_text = true

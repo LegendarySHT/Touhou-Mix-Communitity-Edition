@@ -42,6 +42,7 @@ offset_left = -274.56
 offset_top = -325.08002
 offset_right = 275.44
 offset_bottom = 224.91998
+mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_jmah3")
 script = ExtResource("1_j6ifx")
 
@@ -120,3 +121,4 @@ text = "Album Name"
 [node name="Button" type="Button" parent="."]
 modulate = Color(1, 1, 1, 0)
 layout_mode = 2
+mouse_filter = 1

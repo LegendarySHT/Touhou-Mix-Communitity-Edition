@@ -1,14 +1,16 @@
-[gd_scene load_steps=4 format=3 uid="uid://dcmlyvps8badu"]
+[gd_scene load_steps=5 format=3 uid="uid://dcmlyvps8badu"]
 
 [ext_resource type="Script" uid="uid://cax20p7g1wjmk" path="res://UI/Views/MidiView/MidiListItem.gd" id="1_t5w3i"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_jdrqc"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_jdrqc"]
 
-[node name="MidiNode" type="MarginContainer"]
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yxlt8"]
+
+[node name="MidiNode" type="Panel"]
 clip_children = 2
-custom_minimum_size = Vector2(900, 150)
-anchors_preset = 15
-anchor_right = 1.0
+custom_minimum_size = Vector2(750, 150)
+anchors_preset = -1
+anchor_right = 0.9479167
 anchor_bottom = 1.0
 offset_top = -381.5
 offset_right = -1020.0
@@ -17,42 +19,65 @@ grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(0, 75)
 size_flags_vertical = 0
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBoxEmpty_yxlt8")
 script = ExtResource("1_t5w3i")
 metadata/index = 0
 metadata/_edit_use_anchors_ = true
 
 [node name="cover" type="TextureRect" parent="."]
 custom_minimum_size = Vector2(0, 150)
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 texture = ExtResource("2_jdrqc")
 expand_mode = 3
 stretch_mode = 6
 
-[node name="MC" type="MarginContainer" parent="."]
-layout_mode = 2
-size_flags_vertical = 8
-theme_override_constants/margin_left = 150
-theme_override_constants/margin_bottom = 10
+[node name="GC" type="GridContainer" parent="."]
+custom_minimum_size = Vector2(700, 0)
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 50.0
+offset_top = -76.0
+offset_right = -50.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/v_separation = 10
+columns = 2
 
-[node name="VBox" type="VBoxContainer" parent="MC"]
+[node name="MidiName" type="Label" parent="GC"]
+custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 2
 size_flags_vertical = 8
-theme_override_constants/separation = 0
-
-[node name="MidiName" type="Label" parent="MC/VBox"]
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
+mouse_filter = 1
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
 theme_override_fonts/font = ExtResource("3_jdrqc")
 theme_override_font_sizes/font_size = 30
 text = "Midi Name"
 
-[node name="Author" type="Label" parent="MC/VBox"]
+[node name="Control" type="Control" parent="GC"]
 layout_mode = 2
+mouse_filter = 1
+
+[node name="Line2D" type="Line2D" parent="GC"]
+position = Vector2(-100, -5)
+points = PackedVector2Array(80, 45, 810, 45)
+width = 6.0
+
+[node name="Author" type="Label" parent="GC"]
+layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 8
+mouse_filter = 1
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
@@ -61,26 +86,30 @@ theme_override_font_sizes/font_size = 30
 text = "Midi Author"
 vertical_alignment = 2
 
-[node name="Line2D" type="Line2D" parent="MC/VBox"]
-position = Vector2(-135, -10)
-points = PackedVector2Array(70, 45, 820, 45)
-width = 6.0
-
-[node name="MC" type="MarginContainer" parent="MC"]
-layout_mode = 2
-theme_override_constants/margin_right = 100
-
-[node name="status" type="Label" parent="MC/MC"]
+[node name="status" type="Label" parent="GC"]
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
+mouse_filter = 1
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
 theme_override_font_sizes/font_size = 30
 text = "Pending"
+horizontal_alignment = 2
+
+[node name="MC" type="MarginContainer" parent="GC"]
+layout_mode = 2
+size_flags_vertical = 8
+theme_override_constants/margin_bottom = 0
 
 [node name="Button" type="Button" parent="."]
-self_modulate = Color(1, 1, 1, 0)
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
 toggle_mode = true
+flat = true
 metadata/index = 0

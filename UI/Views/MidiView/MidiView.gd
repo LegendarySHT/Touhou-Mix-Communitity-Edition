@@ -9,9 +9,9 @@ var current_midis: Array[MidiData] = []
 
 var last_selection:int = -1 # 上一次选中的节点
 
-var track_view_btn: TextureButton
-var play_btn: TextureButton
-var favor_list_btn: TextureButton
+var track_view_btn: Button
+var play_btn: Button
+var favor_list_btn: Button
 
 ## 管理器引用
 @onready var data_manager: DataManager = DataManager.instance
@@ -19,12 +19,12 @@ var favor_list_btn: TextureButton
 @onready var state_manager = UIStateManager.instance
 
 # 路径
-var INDICATOR = "/root/Main/InfoUI/Right/Right/Indicator"
+var INDICATOR = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
 
 func _init_btn():
-	var main_btn_area = get_parent().get_parent().get_node("MainButton")
-	track_view_btn = main_btn_area.get_node("Left/TrackViewBtn")
-	favor_list_btn = main_btn_area.get_node("Right/FavorListBtn")
+	var main_btn_area = get_parent().get_parent().get_parent().get_node("MainBtn")
+	track_view_btn = main_btn_area.get_node("TrackViewBtn")
+	favor_list_btn = main_btn_area.get_node("FavorListBtn")
 	play_btn = main_btn_area.get_node("PlayBtn")
 
 	if not (track_view_btn and favor_list_btn and play_btn):
@@ -32,6 +32,7 @@ func _init_btn():
 		return
 
 	play_btn.pressed.connect(_on_click_start_btn)
+	track_view_btn.pressed.connect(_on_click_track_btn)
 
 func _ready() -> void:	
 	# 获取管理器引用
@@ -43,13 +44,19 @@ func _ready() -> void:
 	work_state = UIStateManager.UIState.MIDI_VIEW
 	item_height = 150
 	item_spacing = 4
-	snap_offset_y = 85 #+ int(item_height)
+	snap_offset_y = 150
 
 	# 连接事件
 	event_bus.song_selected.connect(_load_midis)
 	event_bus.midi_selected.connect(_load_midi)
 
+	get_window().size_changed.connect(_on_window_size_changed)
+
 	super._ready()
+
+func _on_window_size_changed() -> void:
+	var left_area = get_parent().get_parent().get_parent()
+	left_area.get_parent().size = get_viewport().get_visible_rect().size
 
 func _load_midi(_midi_id: String, midi:MidiData) -> void:
 	if not data_manager:
@@ -157,11 +164,11 @@ func _on_item_selected(item_id: String) -> void:
 				event_bus.emit_midi_selected(item_id, midi)
 				break
 
-func _input(event):
+func _gui_input(event):
 	if event is InputEventKey and event.pressed and get_snap_node().is_selected:
 		if event.keycode in [KEY_UP, KEY_W, KEY_DOWN, KEY_S]:
 			accept_event()
-	super._input(event)
+	super._gui_input(event)
 
 var waiting: bool = false
 
@@ -169,10 +176,10 @@ func _process(_delta):
 	super._process(_delta)
 
 	# 吸附	
-	if not (is_dragging_list or need_snap) and selected_item != -1 and abs(get_snap_node().global_position.y - item_height + snap_offset_y) > 7:
+	if not (is_dragging_list or need_snap or selected_item == -1) and abs(scroll_vertical - get_snap_node().position.y - item_height + snap_offset_y) > 7:
 		need_snap = true
 	
-	if abs(_mouse_delta) > 50 and is_dragging_list and not waiting:
+	if abs(_mouse_delta) > 50 and is_dragging_list and not waiting and selected_item != -1:
 		waiting = true
 		await wait_dragging()
 		var direction:int = 1 if _mouse_delta < 0.0 else -1

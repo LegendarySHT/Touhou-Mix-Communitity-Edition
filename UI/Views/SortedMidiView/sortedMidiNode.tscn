@@ -107,6 +107,7 @@ text = "Pending"
 [node name="Button" type="Button" parent="."]
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
+mouse_filter = 1
 toggle_mode = true
 metadata/index = 0
 

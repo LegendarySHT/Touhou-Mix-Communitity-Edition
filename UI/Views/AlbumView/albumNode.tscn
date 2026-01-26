@@ -23,6 +23,7 @@ metadata/index = 0
 
 [node name="PC" type="PanelContainer" parent="."]
 layout_mode = 2
+mouse_filter = 1
 
 [node name="Polygon2D" type="Polygon2D" parent="PC"]
 scale = Vector2(0.867977, 0.838323)

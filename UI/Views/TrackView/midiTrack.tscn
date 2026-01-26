@@ -105,6 +105,7 @@ thickness = 4
 [node name="MidiTrack" type="Panel"]
 custom_minimum_size = Vector2(1600, 250)
 size_flags_horizontal = 4
+mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
 script = ExtResource("1_7rc5s")
 
@@ -120,6 +121,7 @@ grow_vertical = 2
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 size_flags_horizontal = 0
+mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_7vp1s")
 
 [node name="TrackBtn" type="Button" parent="HBoxC/Panel"]
@@ -131,6 +133,7 @@ offset_right = -0.14700317
 offset_bottom = -0.36956787
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 1
 theme_override_constants/line_spacing = 0
 theme_override_font_sizes/font_size = 32
 toggle_mode = true
@@ -157,6 +160,7 @@ theme_override_constants/separation = 0
 [node name="enableBtn" type="Button" parent="HBoxC/MC/HBoxC"]
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
+mouse_filter = 1
 theme_override_font_sizes/font_size = 48
 theme_override_styles/normal = SubResource("StyleBoxFlat_7rc5s")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_8bk0u")
@@ -179,6 +183,7 @@ script = ExtResource("2_7rc5s")
 [node name="noteFlowArea" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea"]
 custom_minimum_size = Vector2(940, 160)
 layout_mode = 2
+mouse_filter = 1
 
 [node name="canvas" type="Polygon2D" parent="HBoxC/MC/HBoxC/MC/flowArea/noteFlowArea"]
 clip_children = 1
@@ -188,6 +193,7 @@ uv = PackedVector2Array(-305, -59, -313, 67, 96, 51, 94, -60)
 [node name="noteTotal" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea"]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
+mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_xcqgn")
 
 [node name="VBoxC" type="VBoxContainer" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal"]
@@ -243,6 +249,7 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 0
+mouse_filter = 1
 
 [node name="GridC" type="GridContainer" parent="HBoxC/MC/HBoxC/MC/ControlPanel"]
 layout_mode = 1

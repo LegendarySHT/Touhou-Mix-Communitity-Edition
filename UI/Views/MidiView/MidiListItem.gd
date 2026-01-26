@@ -3,12 +3,10 @@
 extends ListItemBase
 
 ## 引用节点
-@onready var status_label: Label = $MC/MC/status if has_node("MC/MC/status") else null
-@onready var midi_name_label: Label = $MC/VBox/MidiName if has_node("MC/VBox/MidiName") else null
-@onready var author_label: Label = $MC/VBox/Author if has_node("MC/VBox/Author") else null
-@onready var vbox: VBoxContainer = $MC/VBox if has_node("MC/VBox") else null
-@onready var line: Line2D = $MC/VBox/Line2D if has_node("MC/VBox/Line2D") else null
-@onready var margin_container: MarginContainer = $MC if has_node("MC") else null
+@onready var status_label: Label = $GC/status if has_node("GC/status") else null
+@onready var midi_name_label: Label = $GC/MidiName if has_node("GC/MidiName") else null
+@onready var author_label: Label = $GC/Author if has_node("GC/Author") else null
+@onready var line: Line2D = $GC/Line2D if has_node("GC/Line2D") else null
 @onready var cover: TextureRect = $cover if has_node("cover") else null
 
 ## MIDI数据
@@ -20,21 +18,22 @@ var expand_tween: Tween
 ## 吸附目标信号（用于滚动吸附）
 signal snap_node_target(midi_node_index)
 
+var INDICATOR = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
+
 func _update_display() -> void:
 	# 初始化显示
 	if not status_label:
-		status_label = get_node("MC/MC/status")
+		status_label = get_node("GC/status")
 	if not midi_name_label:
-		midi_name_label = get_node("MC/VBox/MidiName")
+		midi_name_label = get_node("GC/MidiName")
 	if not author_label:
-		author_label = get_node("MC/VBox/Author")
+		author_label = get_node("GC/Author")
 	status_label.text = midi_data.status
 	midi_name_label.text = midi_data.name
 	author_label.text = midi_data.artist_name if not midi_data.artist_name.is_empty() else "Unknown"
 
 ## 从MidiData初始化显示
 func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg:ButtonGroup) -> void:
-	print("[MidiListItem] setup_with_midi called for: %s" % midi.name)
 	midi_data = midi
 	item_id = midi.id
 	item_type = "midi"
@@ -60,7 +59,6 @@ func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg:ButtonGrou
 
 ## 加载封面图片
 func _load_cover_image() -> void:
-	print("[MidiListItem] _load_cover_image called")
 	if not cover:
 		cover = get_node_or_null("cover")
 	
@@ -84,17 +82,16 @@ func _on_button_toggled(toggled_on: bool):
 	
 	print ("indx : %d state : %s" % [item_index,toggled_on])
 
-	var indicator=get_node("/root/Main/InfoUI/Right/Right/Indicator")
+	var indicator=get_node(INDICATOR)
 	var expa = 1 if toggled_on else 0
-	tween.tween_property(self,"custom_minimum_size",Vector2(900,150 + 350*expa),0.5)
-	tween.tween_property(get_node("MC"),"theme_override_constants/margin_bottom",10 +110*expa,0.15)
+	tween.tween_property(self,"custom_minimum_size",Vector2(750,150 + 240*expa),0.5)
+	tween.tween_property(get_node("GC/MC"),"theme_override_constants/margin_bottom",50 * expa, 0.15)
 	#文字
-	tween.tween_property(get_node("MC/VBox/MidiName"),"theme_override_font_sizes/font_size",30 +10*expa,0.25)
-	tween.tween_property(get_node("MC/VBox"),"theme_override_constants/separation",15+15*expa,0.15)
-	tween.tween_property(get_node("MC/VBox/Line2D"),"position",Vector2(-135,-10 +32*expa),0.15)
+	tween.tween_property(get_node("GC/MidiName"),"theme_override_font_sizes/font_size",30 +10*expa,0.25)
+	tween.tween_property(get_node("GC/Line2D"),"position",Vector2(-100,-5 + 10*expa),0.15)
 	#指示器
 	tween.tween_property(indicator.get_child(item_index),"color",Color(0.129, 0.412, 0.702) if expa else Color(1, 1, 1) ,0.15)
-	tween.tween_property(indicator,"position",Vector2(186.9,214-(item_index+1)*20-item_index*9),0.35)
+	tween.tween_property(indicator,"position",Vector2(30,100 -item_index*24),0.35)
 	
 	if toggled_on:
 		snap_node_target.emit(item_index)
@@ -102,7 +99,7 @@ func _on_button_toggled(toggled_on: bool):
 
 ## 更新信息面板
 func _update_data_display() -> void:
-	var info_node = get_node_or_null("/root/Main/InfoUI/Status/Panel/GC")
+	var info_node = get_node_or_null("/root/Main/InfoUI/Base/LeftArea/DetailData")
 	if not info_node:
 		print("Info node not found!")
 		return

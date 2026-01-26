@@ -56,11 +56,18 @@ var snap_distant: int = 0 # 距离吸附目标位置的距离
 var wheel_scroll_cooldown_timer: Timer
 var scroll_state_reset_timer: Timer
 
+## 动态布局相关
+var is_skew: bool = false
+
 func _ready() -> void:
 	if container == null:
 		push_error("Container not found at path: %s" % container_path)
 		return
 	
+	if get_parent() is Node2D:
+		if work_state != UIStateManager.UIState.MIDI_VIEW:
+			is_skew = true
+
 	# 创建计时器
 	wheel_scroll_cooldown_timer = Timer.new()
 	wheel_scroll_cooldown_timer.wait_time = 0.3
@@ -82,6 +89,10 @@ func _ready() -> void:
 	get_v_scroll_bar().gui_input.connect(_on_v_scrollbar_gui_input)
 	get_v_scroll_bar().value_changed.connect(_on_v_scrollbar_changed)
 
+	# 监听窗口大小变化
+	if is_skew:
+		get_window().size_changed.connect(_on_window_size_changed)
+
 func _on_v_scrollbar_changed(_value: float):
 	if scroll_state_reset_timer.is_stopped():
 		scroll_state_reset_timer.start()
@@ -96,6 +107,10 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	set_process_input(enable)
 	if enable:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
+		# 更新列表高度
+
+	if is_skew:
+		size.y = get_viewport().get_visible_rect().size.y+50
 
 	# 重置值
 	is_dragging_list = false
@@ -127,11 +142,13 @@ func _process(delta: float) -> void:
 		snap_index = clampi(snap_index, 0, list_items.size() - 1)
 		var snap_node = container.get_child(snap_index)
 		if snap_node is ListItemBase and not snap_node.is_selected:
-			if work_state in [UIStateManager.UIState.MIDI_VIEW]:
-				return
 			snap_node.button.button_pressed = true
-
-		snap_distant = snap_node.global_position.y - item_height + snap_offset_y
+		
+		# midi view的吸附距离用相对位置算，不然窗口尺寸变化时有偏移
+		if work_state in [UIStateManager.UIState.MIDI_VIEW]:
+			snap_distant = -(scroll_vertical - snap_node.position.y - item_height + snap_offset_y)
+		else:
+			snap_distant = snap_node.global_position.y - item_height + snap_offset_y
 		var temp = scroll_vertical
 		scroll_vertical += int(snap_distant * 0.3)
 		if abs(snap_distant) < 2:
@@ -146,7 +163,7 @@ func _on_v_scrollbar_gui_input(event):
 			if event.pressed:
 				scroll_velocity = 0.0
 
-func _input(event: InputEvent) -> void:
+func _gui_input(event: InputEvent) -> void:
 	# 鼠标按钮事件
 
 	if event is InputEventMouseButton:
@@ -213,14 +230,14 @@ func _input(event: InputEvent) -> void:
 			_mouse_delta = (event.global_position.y - _mouse_start_pos) * drag_sensitivity
 			
 			# 限制滚动范围
-			if work_state in [UIStateManager.UIState.MIDI_VIEW] and abs(_mouse_delta * drag_sensitivity) > item_height:
+			if work_state in [UIStateManager.UIState.MIDI_VIEW] and abs(_mouse_delta * drag_sensitivity) > item_height and selected_item != -1:
 				_mouse_delta = item_height * sign(_mouse_delta)
 
 			# 异号或者速度大于最大速度就更新速度
 			if scroll_velocity * event.velocity.y > 0.0 or abs(event.velocity.y) > abs(scroll_velocity):
 				scroll_velocity = - event.velocity.y
 			if _mouse_delta != 0:
-				scroll_vertical = int(-_mouse_delta + _list_start_pos)
+				scroll_vertical = clamp(int(-_mouse_delta + _list_start_pos), 0, get_v_scroll_bar().max_value)
 		
 func select_item(index: int) -> int:
 	if index == selected_item:
@@ -302,3 +319,8 @@ func process_item_cover_move() -> void:
 	for i in range(idx, midx):
 		var tex_r:TextureRect = container.get_child(i).cover_texture
 		tex_r.position = Vector2(0 , - tex_r.global_position.y / window_height * tex_r.size.y)
+
+## 响应式布局
+func _on_window_size_changed():
+	# 根据实际像素布局
+	size.y = get_viewport().get_visible_rect().size.y+50

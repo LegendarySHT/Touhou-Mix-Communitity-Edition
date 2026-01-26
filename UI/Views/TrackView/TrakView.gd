@@ -403,8 +403,8 @@ func _format_time(ms: float) -> String:
 	var seconds = total_seconds % 60
 	return "%02d:%02d" % [minutes, seconds]
 
-func _input(event: InputEvent) -> void:
-	super._input(event)
+func _gui_input(event: InputEvent) -> void:
+	super._gui_input(event)
 
 # 清理资源
 func _exit_tree() -> void:

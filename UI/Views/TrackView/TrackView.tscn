@@ -1,7 +1,7 @@
 [gd_scene load_steps=12 format=3 uid="uid://dqo15t7ofwbtb"]
 
 [ext_resource type="Texture2D" uid="uid://b6ypeml7dno8b" path="res://Resources/icon/TrackView/import.png" id="1_3id1m"]
-[ext_resource type="Script" uid="uid://c272m3fk4qq3r" path="res://UI/Views/TrackView/TrakView.gd" id="1_7vp1s"]
+[ext_resource type="Script" uid="uid://ca1rxwt3t1wel" path="res://UI/Views/TrackView/TrakView.gd" id="1_7vp1s"]
 [ext_resource type="Script" uid="uid://bnt65j78d2po7" path="res://UI/Views/TrackView/noteDisplayer.gd" id="2_8bk0u"]
 [ext_resource type="Texture2D" uid="uid://balwiilkbpuhy" path="res://Resources/icon/TrackView/note.png" id="2_xcqgn"]
 [ext_resource type="Texture2D" uid="uid://bvpw7fu0xco14" path="res://Resources/icon/TrackView/volume.png" id="3_7vp1s"]
@@ -86,6 +86,7 @@ theme_override_constants/margin_top = 300
 custom_minimum_size = Vector2(1600, 350)
 layout_mode = 2
 size_flags_horizontal = 4
+mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
 
 [node name="VBoxC" type="VBoxContainer" parent="Track/TrackList/VBox/TotalView"]
@@ -109,6 +110,7 @@ script = ExtResource("2_8bk0u")
 custom_minimum_size = Vector2(1250, 270)
 layout_mode = 2
 size_flags_stretch_ratio = 10.08
+mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_3id1m")
 
 [node name="canvas" type="Polygon2D" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea/noteFlowArea"]
@@ -119,6 +121,7 @@ uv = PackedVector2Array(-305, -59, -313, 67, 96, 51, 94, -60)
 [node name="noteTotal" type="Panel" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea"]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
+mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_xcqgn")
 
 [node name="VBoxC" type="VBoxContainer" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea/noteTotal"]
@@ -206,6 +209,7 @@ text = "播放预览"
 custom_minimum_size = Vector2(1600, 200)
 layout_mode = 2
 size_flags_horizontal = 4
+mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
 
 [node name="HBoxC" type="HBoxContainer" parent="Track/TrackList/VBox/VolumeView"]
@@ -233,10 +237,10 @@ stretch_mode = 5
 [node name="SoundfontSelector" type="OptionButton" parent="Track/TrackList/VBox/VolumeView/HBoxC/VBoxC2"]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
-text = "默认音源"
-item_count = 1
 selected = 0
+item_count = 1
 popup/item_0/text = "默认音源"
+popup/item_0/id = 0
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Track/TrackList/VBox/VolumeView/HBoxC/VBoxC2"]
 layout_mode = 2

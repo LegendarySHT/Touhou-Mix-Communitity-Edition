@@ -19,6 +19,7 @@ position = Vector2(130, 0)
 skew = 0.2617994
 
 [node name="HBoxC" type="HBoxContainer" parent="Node2D"]
+anchors_preset = -1
 offset_left = 170.0
 offset_right = 1724.0
 offset_bottom = 1097.0
@@ -78,6 +79,7 @@ button_group = SubResource("ButtonGroup_tf36t")
 text = "外观"
 
 [node name="SettingList" type="ScrollContainer" parent="Node2D/HBoxC"]
+clip_contents = false
 custom_minimum_size = Vector2(1300, 0)
 layout_mode = 2
 follow_focus = true

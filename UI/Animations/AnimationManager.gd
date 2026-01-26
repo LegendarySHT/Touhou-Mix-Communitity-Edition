@@ -266,8 +266,8 @@ var ui_part = {
 	UIStateManager.UIState.SETTINGS_VIEW: ["Setting_View", "RB_Btn", "LT_Btn"],
 }
 
-var ALBUMLIST="/root/Main/Album/AlbumList"
-var SONGLIST="/root/Main/Song/SongList"
+var ALBUMLIST="/root/Main/skew/AlbumList"
+var SONGLIST="/root/Main/skew/SongList"
 var _SS="/root/Main/SS/SS"
 
 var tan15 = tan(deg_to_rad(15))
@@ -460,7 +460,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			animate_position(lt_btn, Vector2(lt_btn.position.x + 250, lt_btn.position.y), 0.25, tween_id)
 		"Store_View":
 			var store_node = get_node("/root/Main/Store")
-			var top_bar = store_node.get_node("Top_bar")
+			var top_bar = store_node.get_node("TopBar")
 			top_bar.position.y = -500
 			animate_position(top_bar, Vector2.ZERO, 0.25, "top_bar_in")
 

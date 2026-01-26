@@ -30,6 +30,7 @@ metadata/index = 0
 
 [node name="PC" type="PanelContainer" parent="."]
 layout_mode = 2
+mouse_filter = 1
 
 [node name="line" type="Line2D" parent="PC"]
 clip_children = 2

@@ -812,3 +812,6 @@ func reset_to_defaults():
 					if setting_item:
 						setting_item.set_value(setting_data.default_value)
 					break
+
+func _gui_input(event: InputEvent) -> void:
+	super._gui_input(event)
