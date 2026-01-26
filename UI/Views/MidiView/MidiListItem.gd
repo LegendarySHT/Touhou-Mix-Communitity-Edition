@@ -3,11 +3,11 @@
 extends ListItemBase
 
 ## 引用节点
-@onready var status_label: Label = $GC/status if has_node("GC/status") else null
-@onready var midi_name_label: Label = $GC/MidiName if has_node("GC/MidiName") else null
-@onready var author_label: Label = $GC/Author if has_node("GC/Author") else null
-@onready var line: Line2D = $GC/Line2D if has_node("GC/Line2D") else null
-@onready var cover: TextureRect = $cover if has_node("cover") else null
+@onready var status_label: Label = $VBoxC/HBoxC/status
+@onready var midi_name_label: Label = $VBoxC/MidiName
+@onready var author_label: Label = $VBoxC/HBoxC/Author
+@onready var line: Line2D = $VBoxC/Line2D
+@onready var cover: TextureRect = $cover
 
 ## MIDI数据
 var midi_data: MidiData
@@ -23,11 +23,11 @@ var INDICATOR = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Right/Center/I
 func _update_display() -> void:
 	# 初始化显示
 	if not status_label:
-		status_label = get_node("GC/status")
+		status_label = get_node("VBoxC/HBoxC/status")
 	if not midi_name_label:
-		midi_name_label = get_node("GC/MidiName")
+		midi_name_label = get_node("VBoxC/MidiName")
 	if not author_label:
-		author_label = get_node("GC/Author")
+		author_label = get_node("VBoxC/HBoxC/Author")
 	status_label.text = midi_data.status
 	midi_name_label.text = midi_data.name
 	author_label.text = midi_data.artist_name if not midi_data.artist_name.is_empty() else "Unknown"
@@ -85,10 +85,10 @@ func _on_button_toggled(toggled_on: bool):
 	var indicator=get_node(INDICATOR)
 	var expa = 1 if toggled_on else 0
 	tween.tween_property(self,"custom_minimum_size",Vector2(750,150 + 240*expa),0.5)
-	tween.tween_property(get_node("GC/MC"),"theme_override_constants/margin_bottom",50 * expa, 0.15)
+	tween.tween_property(get_node("VBoxC/MC"),"theme_override_constants/margin_bottom",20 * expa, 0.15)
 	#文字
-	tween.tween_property(get_node("GC/MidiName"),"theme_override_font_sizes/font_size",30 +10*expa,0.25)
-	tween.tween_property(get_node("GC/Line2D"),"position",Vector2(-100,-5 + 10*expa),0.15)
+	tween.tween_property(midi_name_label,"theme_override_font_sizes/font_size",30 +10*expa,0.25)
+	tween.tween_property(line,"position",Vector2(-50,12 - 5*expa),0.15)
 	#指示器
 	tween.tween_property(indicator.get_child(item_index),"color",Color(0.129, 0.412, 0.702) if expa else Color(1, 1, 1) ,0.15)
 	tween.tween_property(indicator,"position",Vector2(30,100 -item_index*24),0.35)

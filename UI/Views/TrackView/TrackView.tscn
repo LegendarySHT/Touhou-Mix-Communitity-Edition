@@ -1,11 +1,10 @@
-[gd_scene load_steps=12 format=3 uid="uid://dqo15t7ofwbtb"]
+[gd_scene load_steps=11 format=3 uid="uid://dqo15t7ofwbtb"]
 
 [ext_resource type="Texture2D" uid="uid://b6ypeml7dno8b" path="res://Resources/icon/TrackView/import.png" id="1_3id1m"]
 [ext_resource type="Script" uid="uid://ca1rxwt3t1wel" path="res://UI/Views/TrackView/TrakView.gd" id="1_7vp1s"]
 [ext_resource type="Script" uid="uid://bnt65j78d2po7" path="res://UI/Views/TrackView/noteDisplayer.gd" id="2_8bk0u"]
 [ext_resource type="Texture2D" uid="uid://balwiilkbpuhy" path="res://Resources/icon/TrackView/note.png" id="2_xcqgn"]
 [ext_resource type="Texture2D" uid="uid://bvpw7fu0xco14" path="res://Resources/icon/TrackView/volume.png" id="3_7vp1s"]
-[ext_resource type="PackedScene" uid="uid://ttmjc3cbi1bi" path="res://UI/Views/TrackView/midiTrack.tscn" id="5_7vp1s"]
 
 [sub_resource type="Theme" id="Theme_3sdsj"]
 
@@ -174,10 +173,11 @@ text = "9999"
 vertical_alignment = 1
 
 [node name="playArea" type="HBoxContainer" parent="Track/TrackList/VBox/TotalView/VBoxC"]
-custom_minimum_size = Vector2(0, 30)
+custom_minimum_size = Vector2(1500, 40)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 15
+alignment = 1
 
 [node name="currentTime" type="Label" parent="Track/TrackList/VBox/TotalView/VBoxC/playArea"]
 custom_minimum_size = Vector2(100, 0)
@@ -188,8 +188,9 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="progressBar" type="HSlider" parent="Track/TrackList/VBox/TotalView/VBoxC/playArea"]
-custom_minimum_size = Vector2(1275, 20)
+custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 4
 
 [node name="totalTime" type="Label" parent="Track/TrackList/VBox/TotalView/VBoxC/playArea"]
@@ -301,9 +302,6 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 30
 text = "-1.99 dB"
 vertical_alignment = 1
-
-[node name="MidiTrack" parent="Track/TrackList/VBox" instance=ExtResource("5_7vp1s")]
-layout_mode = 2
 
 [node name="PaddingBottom" type="MarginContainer" parent="Track/TrackList/VBox"]
 layout_mode = 2

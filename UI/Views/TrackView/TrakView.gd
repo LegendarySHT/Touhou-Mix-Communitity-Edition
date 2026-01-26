@@ -24,6 +24,9 @@ class_name TrackView
 # 底部填充，增加新项时需要把这个移到底部
 @onready var bottom: MarginContainer = $VBox/PaddingBottom
 
+# 给midi轨道访问的默认值
+var instrument_options: Array = ["钢琴", "吉他", "贝斯", "鼓", "弦乐"]
+
 # MIDI轨道预制场景
 const MIDI_TRACK_SCENE = preload("res://UI/Views/TrackView/midiTrack.tscn")
 
@@ -114,67 +117,16 @@ func _create_track_views() -> void:
 	for track_info in track_infos:
 		var track_scene = MIDI_TRACK_SCENE.instantiate()
 		
-		# 先加入scene tree，让 _ready() 执行并初始化 @onready 变量
+		track_scene.setup_track(self , track_info.index, track_info.name, instrument_options)
+
 		container.add_child(track_scene)
 		container.move_child(bottom, container.get_child_count() - 1)
-		
-		# 设置基本属性
-		track_scene.track_index = track_info.index
-		track_scene.track_name = track_info.name
-		
-		# 现在可以安全地配置轨道UI
-		_configure_track_view(track_scene, track_info)
 		
 		midi_tracks.append(track_scene)
 	
 	# 更新音源选择
 	if soundfont_selector and current_midi_data.use_soundfont:
 		_select_soundfont(current_midi_data.use_soundfont)
-
-# 配置轨道视图
-func _configure_track_view(track_view: MidiTrack, track_info) -> void:
-	# 设置轨道名称
-	track_view.track_btn.text = "%s (ID: %d)" % [track_info.name, track_info.index]
-	
-	# 连接启用按钮
-	track_view.enable_btn.toggled.connect(_on_track_enable_toggled.bind(track_info.index))
-	
-	# 设置初始启用状态
-	var is_enabled = track_info.index in current_midi_data.selected_track_indices
-	track_view.enable_btn.button_pressed = is_enabled
-	
-	# 连接静音按钮
-	track_view.mute_btn.toggled.connect(_on_track_mute_toggled.bind(track_info.index))
-	
-	# 连接独奏按钮
-	track_view.solo_btn.toggled.connect(_on_track_solo_toggled.bind(track_info.index))
-	
-	# 连接音量滑块
-	track_view.volume_slider.value_changed.connect(_on_track_volume_changed.bind(track_info.index))
-	
-	# 设置初始音量
-	track_view.volume_slider.value = 80
-	track_view.volume_label.text = "80%"
-	
-	# 配置乐器选择
-	_configure_instrument_selector(track_view.instruments_option_btn, track_info.index)
-	
-	# 更新音符显示（这里需要根据实际数据来）
-	# track_view.note_display.init_display(track_info.note_count)
-
-# 配置乐器选择器
-func _configure_instrument_selector(option_btn: OptionButton, track_index: int) -> void:
-	# 这里应该从MIDI数据中获取乐器和音色
-	# 暂时添加一些示例乐器
-	option_btn.clear()
-	option_btn.add_item("钢琴")
-	option_btn.add_item("吉他")
-	option_btn.add_item("贝斯")
-	option_btn.add_item("鼓")
-	option_btn.add_item("弦乐")
-	
-	# 连接选择信号
-	option_btn.item_selected.connect(_on_instrument_selected.bind(track_index))
 
 # 更新总音符显示
 func _update_total_note_display() -> void:
@@ -287,9 +239,9 @@ func _on_track_enable_toggled(is_checked: bool, track_index: int) -> void:
 
 # 轨道静音切换
 func _on_track_mute_toggled(is_muted: bool, track_index: int) -> void:
+	print("Track %d mute: %s" % [track_index, is_muted])
 	if midi_playback_manager == null:
 		return
-	
 	# 获取当前选中的轨道列表
 	var selected_tracks = current_midi_data.selected_track_indices.duplicate() if current_midi_data else []
 	
@@ -339,11 +291,8 @@ func _on_track_volume_changed(value: float, track_index: int) -> void:
 	# 如果不支持，需要扩展MidiPlaybackManager的功能
 	midi_playback_manager.set_track_volume_db(track_index, volume_db)
 	
-	# 更新标签
-	track_ui.volume_label.text = "%d%%" % value
-
 # 乐器选择
-func _on_instrument_selected(index: int, track_index: int) -> void:
+func _on_track_instrument_changed(index: int, track_index: int) -> void:
 	if track_index >= midi_tracks.size():
 		return
 	

@@ -20,6 +20,8 @@ var active_notes: Array = []
 var base_scroll_speed: float = 200.0
 
 func _ready():
+	if size.y > 250:
+		flow_area_lane_count = 24
 	flow_area_height = flow_area.get_parent().size.y
 	flow_area_width = flow_area.get_parent().size.x
 	lane_height = flow_area_height / flow_area_lane_count
@@ -143,7 +145,7 @@ func generate_test_notes():
 		# 随机参数
 		var lane = randi() % flow_area_lane_count
 		var duration = randf_range(0.5, 2.0)
-		var speed = randf_range(0.8, 1.2)
+		var speed = 1 #randf_range(0.8, 1.2)
 		var pitch = 48 + (lane * 2)  # 根据轨道决定基础音高
 		
 		# 稍作延迟，使音符分批出现

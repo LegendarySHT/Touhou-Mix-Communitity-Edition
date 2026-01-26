@@ -50,21 +50,32 @@ func animate_position(target: Node, to_pos: Vector2, duration: float = DURATION_
 	return tween
 
 ## 列表项水平滑动动画
-func animate_list_item_horizontal(target: Node,range_left:int, range_right:int, excluded_index: int, horizon_delta: int, tween_id: String = "") -> Tween:
+var out_item_idx: int = -1
+func animate_list_item_horizontal(target: BaseScrollList, center_index: int, excluded_index: int, horizon_delta: int, tween_id: String = "") -> Tween:
 	var tween = _create_tween(tween_id)
 	tween.set_ease(EASING_STANDARD)
 	tween.set_trans(Tween.TRANS_CUBIC)
 
-	range_left = range_left if range_left >= 0 else 0
-	range_right = range_right if range_right <= target.get_node("VBox").get_child_count() else target.get_node("VBox").get_child_count()
+	var screen_rect = get_viewport().get_visible_rect()
+	var ctn:int = floori(screen_rect.size.y / 175) +2
+	var container: Container = target.container
 
-	var time=0.15
+	var range_left = center_index - ctn
+	var range_right = center_index + ctn
+	range_left = range_left if range_left >= 0 else 0
+	range_right = range_right if range_right <= container.get_child_count() else container.get_child_count()
+
+	var time=0.08
 	tween.set_parallel(true)
 	for i in range(range_left, range_right):
-		if i != excluded_index:
-			var tag = target.get_node("VBox").get_child(i)
-			time = time + 0.15 if time < 0.3 else 0.3
-			tween.tween_property(tag,"theme_override_constants/margin_left",horizon_delta,time)
+		if i == excluded_index:
+			continue
+
+		var tag = container.get_child(i)
+		if not tag.get_global_rect().intersects(screen_rect):
+			pass
+		time = time + 0.08 if time < 0.7 else 0.7
+		tween.tween_property(tag,"theme_override_constants/margin_left",horizon_delta,time).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 
 	return tween
 
@@ -268,7 +279,7 @@ var ui_part = {
 
 var ALBUMLIST="/root/Main/skew/AlbumList"
 var SONGLIST="/root/Main/skew/SongList"
-var _SS="/root/Main/SS/SS"
+var _SS="/root/Main/skew/SS"
 
 var tan15 = tan(deg_to_rad(15))
 
@@ -294,37 +305,37 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 	var SS = get_node_or_null(_SS)
 	var album_list:AlbumView = get_node_or_null(ALBUMLIST)
 	var song_list:SongView = get_node_or_null(SONGLIST)
+	var skew = get_node_or_null("/root/Main/skew")
 
 	match ui_name:	
 		"Album_List":
 			var sIndex = album_list.selected_item
-			
+			var tindex = -1 # 目标状态不是歌曲列表时所有项都要播放退场动画
+
 			if new_state == UIStateManager.UIState.SONG_VIEW:
-				var polygon=Polygon2D.new()
-				var copy=album_list.container.get_child(sIndex).duplicate(true)
-
-				polygon.skew=deg_to_rad(15)
+				var sItem = album_list.container.get_child(sIndex)
+				var copy=sItem.duplicate(true)
 				copy.name="SS"
-				polygon.add_child(copy)
-				polygon.name="SS"
-				copy=polygon
+				skew.add_child(copy)
 
-				copy.position=album_list.container.get_child(sIndex).global_position
+				copy.position = skew.to_local(sItem.global_position)
 
 				# 设置节点
-				var button=copy.get_node("SS/PC/Polygon2D/AlbumButton")
+				var button=copy.get_node("PC/Polygon2D/AlbumButton")
 				button.button_group=null
 				button.toggle_mode=false
-				get_node("/root/Main").add_child(copy)
 
-			var tindex = sIndex if new_state == UIStateManager.UIState.SONG_VIEW else -1
-			tween = animate_list_item_horizontal(album_list, sIndex-4, sIndex+5, tindex, -1200, tween_id)
+				tindex = sIndex
+				sItem.modulate.a = 0.0
+
+			tween = animate_list_item_horizontal(album_list, sIndex, tindex, -1200, tween_id)
+			out_item_idx = sIndex
 			tween.finished.connect(func() -> void:
 				album_list.visible=false
 			)
 		"Song_List":
 			if new_state == UIStateManager.UIState.ALBUM_VIEW:
-				animate_position(SS, Vector2(0, SS.global_position.y), 0.15, "SSPosition")
+				animate_position(SS, skew.to_local(album_list.container.get_child(out_item_idx).global_position), 0.25, "SSPosition")
 			else:
 				animate_fade_out(SS, 0.15, "SSPosition")
 			
@@ -333,7 +344,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			tween = animate_position(song_list, Vector2(song_list.position.x, 2*song_list.position.y), 0.25, tween_id)
 
 		"Sorted_List":
-			var sort_midi_list = get_node("/root/Main/SortedMidi")
+			var sort_midi_list = get_node("/root/Main/skew/SortedMidisList")
 
 			tween = animate_position(sort_midi_list, Vector2(-1500, sort_midi_list.position.y), 0.25, tween_id)
 			tween.finished.connect(func() -> void:
@@ -351,7 +362,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 		"Right_Part":
 			var pi = get_node("/root/Main/PlayerInfo")
 			var chara = get_node("/root/Main/PlayerInfo/Chara")
-			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305+900*tan15, 15-900), 0.25, "MenuBarPosition")
+			animate_position(get_node("/root/Main/ShortCutMenu"), Vector2(1920+500*tan15, 75-500), 0.25, "MenuBarPosition")
 			animate_position(chara, Vector2(chara.position.x, chara.position.y + chara.size.y), 0.35, "CharactorPosition")
 			animate_position(pi, Vector2(pi.position.x + 900, pi.position.y + 200), 0.55, "PlayerInfoPosition")
 		
@@ -397,28 +408,28 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 	var SS = get_node_or_null(_SS)
 	var album_list:AlbumView = get_node_or_null(ALBUMLIST)
 	var song_list:SongView = get_node_or_null(SONGLIST)
+	var skew = get_node_or_null("/root/Main/skew")
 
 	match ui_name:
 		"Album_List":
 			album_list.visible=true
 			song_list.visible=false
 			
-			var sIndex = album_list.selected_item
+			var sIndex = out_item_idx
 			
 			album_list.get_node("VBox").get_child(sIndex).modulate = Color(1, 1, 1, 1)
 			var tindex = sIndex if old_state == UIStateManager.UIState.SONG_VIEW else -1
-			tween = animate_list_item_horizontal(album_list, sIndex-4, sIndex+5, tindex, 0, tween_id)
+			tween = animate_list_item_horizontal(album_list, sIndex, tindex, 0, tween_id)
 			
 			# 从Song_List回来时会触发下面的
 			if SS:
-				SS.get_parent().queue_free()
+				SS.queue_free()
 			
 			for i in song_list.get_child(0).get_children():
-				if i:
-					i.queue_free()
+				i.queue_free()
 		"Song_List":
 			if old_state == UIStateManager.UIState.ALBUM_VIEW:
-				animate_position(SS, Vector2(0, -SS.global_position.y), 0.15, "SSPosition")
+				animate_position(SS, skew.to_local(Vector2(250, 10)), 0.15, "SSPosition")
 			elif SS:
 				animate_fade_in(SS, 0.15, "SSPosition")
 
@@ -433,11 +444,11 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			button.pressed.connect(func() -> void:
 				ui.change_state(ui.UIState.ALBUM_VIEW))
 		"Sorted_List":
-			var sort_midi_list = get_node("/root/Main/SortedMidi")
+			var sort_midi_list = get_node("/root/Main/skew/SortedMidisList")
 			sort_midi_list.visible = true
 			# EventBus.instance.storeButtonSwitch.emit(true)
 
-			animate_position(sort_midi_list, Vector2(0, sort_midi_list.position.y), 0.25, tween_id)
+			animate_position(sort_midi_list, Vector2(280, sort_midi_list.position.y), 0.25, tween_id)
 		"Midi_Info_View":
 			EvtBus.instance.storeButtonSwitch.emit(true)
 			
@@ -450,7 +461,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 		"Right_Part":
 			var pi = get_node("/root/Main/PlayerInfo")
 			var chara = get_node("/root/Main/PlayerInfo/Chara")
-			animate_position(get_node("/root/Main/Menu_Bar"), Vector2(1305, 15), 0.25, "MenuBarPosition")
+			animate_position(get_node("/root/Main/ShortCutMenu"), Vector2(1920, 75), 0.25, "MenuBarPosition")
 			animate_position(pi, Vector2(pi.position.x - 900, pi.position.y - 200), 0.35, "PlayerInfoPosition")
 			animate_position(chara, Vector2(chara.position.x, chara.position.y - chara.size.y), 0.55, "CharactorPosition")
 		"RB_Btn":

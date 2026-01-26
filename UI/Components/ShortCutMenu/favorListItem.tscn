@@ -1,0 +1,58 @@
+[gd_scene load_steps=3 format=3 uid="uid://xgcfhg1x2v6p"]
+
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="1_2ct6a"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3rk5"]
+draw_center = false
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[node name="FavorListItem" type="HBoxContainer"]
+custom_minimum_size = Vector2(500, 0)
+size_flags_horizontal = 4
+theme_override_constants/separation = 40
+alignment = 1
+
+[node name="Cover" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(130, 130)
+layout_mode = 2
+texture = ExtResource("1_2ct6a")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="PanelContainer" type="PanelContainer" parent="Cover"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_w3rk5")
+
+[node name="Detail" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
+
+[node name="name" type="Label" parent="Detail"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+theme_override_font_sizes/font_size = 30
+text = "Test"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="midiCount" type="Label" parent="Detail"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+text = "11 midis"

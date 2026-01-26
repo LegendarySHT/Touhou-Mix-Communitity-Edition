@@ -110,7 +110,7 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 		# 更新列表高度
 
 	if is_skew:
-		size.y = get_viewport().get_visible_rect().size.y+50
+		_on_window_size_changed()
 
 	# 重置值
 	is_dragging_list = false
@@ -323,4 +323,4 @@ func process_item_cover_move() -> void:
 ## 响应式布局
 func _on_window_size_changed():
 	# 根据实际像素布局
-	size.y = get_viewport().get_visible_rect().size.y+50
+	size.y = get_viewport().get_visible_rect().size.y+40 - ( 450 if work_state == UIStateManager.UIState.SONG_VIEW else 0)

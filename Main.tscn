@@ -1,4 +1,4 @@
-[gd_scene load_steps=29 format=3 uid="uid://jvmwtrulpf5g"]
+[gd_scene load_steps=42 format=3 uid="uid://jvmwtrulpf5g"]
 
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_devvj"]
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
@@ -10,17 +10,16 @@
 [ext_resource type="Script" uid="uid://cka36xm3jh6b" path="res://UI/Views/SongView/SongView.gd" id="8_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://bgvtr3nkhfcdr" path="res://Resources/icon/midiInfoPage/back.png" id="9_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://dj5o6emlgvdmo" path="res://Resources/icon/setting.png" id="10_5mvff"]
-[ext_resource type="Script" uid="uid://cohp1v184ht7q" path="res://UI/Components/shortcut_menu.gd" id="11_oye8v"]
+[ext_resource type="Script" uid="uid://cohp1v184ht7q" path="res://UI/Components/ShortCutMenu/shortcut_menu.gd" id="11_oye8v"]
 [ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="12_40n85"]
-[ext_resource type="Script" uid="uid://bg7bh1y1ne4ws" path="res://UI/Views/SortedMidiView/sort_button.gd" id="13_3b0ty"]
+[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="12_bg4s2"]
 [ext_resource type="Texture2D" uid="uid://b4rxi3wio8sjy" path="res://Resources/icon/Sort/Status/All.png" id="14_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://c8twb3tyhwm1t" path="res://Resources/icon/Sort/Data/Played.png" id="14_sph85"]
 [ext_resource type="ButtonGroup" uid="uid://ba4mkjssd25nv" path="res://Resources/ButtonGroup/SortButton.tres" id="15_bg4s2"]
-[ext_resource type="Texture2D" uid="uid://dto34y0324ext" path="res://Resources/icon/Sort/Time/DownloadTime.png" id="15_o7g6l"]
 [ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="16_vi5kq"]
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
-[ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="18_3ccbu"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
+[ext_resource type="PackedScene" uid="uid://xgcfhg1x2v6p" path="res://UI/Components/ShortCutMenu/favorListItem.tscn" id="20_devvj"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg4s2"]
@@ -62,6 +61,126 @@ border_color = Color(1, 1, 1, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xrxkg"]
 bg_color = Color(0, 0, 0, 0.18431373)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1vlqv"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.1, 0.1, 0.3)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_h2hjl"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0.75)
+draw_center = false
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+expand_margin_left = 2.0
+expand_margin_top = 2.0
+expand_margin_right = 2.0
+expand_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vye1d"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1061225, 0.36658674, 0.6358604, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="Gradient" id="Gradient_hhcpw"]
+colors = PackedColorArray(0.05490196, 0.63529414, 1, 1, 0.2627451, 0.42745098, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_mxvw5"]
+gradient = SubResource("Gradient_hhcpw")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_xrxkg"]
+texture = SubResource("GradientTexture2D_mxvw5")
+
+[sub_resource type="Gradient" id="Gradient_devvj"]
+colors = PackedColorArray(4.428029e-06, 0.4779185, 0.77078056, 1, 0.21819931, 0.32262802, 0.6375564, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_3b0ty"]
+gradient = SubResource("Gradient_devvj")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_bg4s2"]
+texture = SubResource("GradientTexture2D_3b0ty")
+
+[sub_resource type="Theme" id="Theme_sqvbp"]
+Button/colors/font_color = Color(0.8745098, 0.8745098, 0.8745098, 1)
+Button/colors/font_disabled_color = Color(0.875, 0.875, 0.875, 0.5)
+Button/colors/font_focus_color = Color(0.95, 0.95, 0.95, 1)
+Button/colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
+Button/colors/font_hover_pressed_color = Color(1, 1, 1, 1)
+Button/colors/font_outline_color = Color(0, 0, 0, 1)
+Button/colors/font_pressed_color = Color(1, 1, 1, 1)
+Button/colors/icon_disabled_color = Color(1, 1, 1, 0.4)
+Button/colors/icon_focus_color = Color(1, 1, 1, 1)
+Button/colors/icon_hover_color = Color(1, 1, 1, 1)
+Button/colors/icon_hover_pressed_color = Color(1, 1, 1, 1)
+Button/colors/icon_normal_color = Color(1, 1, 1, 1)
+Button/colors/icon_pressed_color = Color(1, 1, 1, 1)
+Button/constants/align_to_largest_stylebox = 0
+Button/constants/h_separation = 4
+Button/constants/icon_max_width = 0
+Button/constants/outline_size = 0
+Button/font_sizes/font_size = 16
+Button/fonts/font = ExtResource("12_bg4s2")
+Button/styles/disabled = SubResource("StyleBoxFlat_1vlqv")
+Button/styles/focus = SubResource("StyleBoxFlat_h2hjl")
+Button/styles/hover = SubResource("StyleBoxFlat_vye1d")
+Button/styles/normal = SubResource("StyleBoxTexture_xrxkg")
+Button/styles/pressed = SubResource("StyleBoxTexture_bg4s2")
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_3b0ty"]
+allow_unpress = true
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hri7i"]
+draw_center = false
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 1, 1, 1)
+shadow_color = Color(0, 0, 0, 0.19900002)
+shadow_size = 15
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sqvbp"]
+bg_color = Color(0.050708726, 0.53013366, 1, 1)
+border_width_left = 4
+border_width_top = 4
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+expand_margin_top = 125.0
+shadow_color = Color(0, 0, 0, 0.19900002)
+shadow_size = 15
+shadow_offset = Vector2(15, 15)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_devvj"]
+content_margin_left = 20.0
+bg_color = Color(0, 0, 0, 0.37254903)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -208,6 +327,7 @@ texture = ExtResource("3_bg4s2")
 metadata/_edit_lock_ = true
 
 [node name="skew" type="Node2D" parent="."]
+editor_description = "用来摆放需要倾斜的组件的"
 skew = 0.2617994
 
 [node name="AlbumList" type="ScrollContainer" parent="skew"]
@@ -260,6 +380,33 @@ list_item_class = "res://UI/Views/SongView/songNode.tscn"
 
 [node name="VBox" type="VBoxContainer" parent="skew/SongList"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 29
+
+[node name="SortedMidisList" type="ScrollContainer" parent="skew"]
+physics_interpolation_mode = 1
+custom_minimum_size = Vector2(1020, 1120)
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -1219.0
+offset_top = -1.0375025
+offset_right = -199.0
+offset_bottom = 1118.9625
+grow_vertical = 2
+size_flags_horizontal = 0
+focus_mode = 2
+theme = SubResource("Theme_devvj")
+follow_focus = true
+horizontal_scroll_mode = 0
+script = ExtResource("26_5mvff")
+container_path = NodePath("VBox")
+list_item_class = "res://UI/Views/SortedMidiView/sortedMidiNode.tscn"
+
+[node name="VBox" type="VBoxContainer" parent="skew/SortedMidisList"]
+custom_minimum_size = Vector2(630, 0)
+layout_mode = 2
+size_flags_horizontal = 2
 mouse_filter = 2
 theme_override_constants/separation = 29
 
@@ -363,89 +510,162 @@ theme_override_font_sizes/font_size = 30
 text = "9999
 ms"
 
-[node name="Menu_Bar" type="HBoxContainer" parent="."]
+[node name="ShortCutMenu" type="Control" parent="."]
+editor_description = "快捷菜单含筛选及收藏夹功能"
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -615.0
-offset_top = 15.0
-offset_right = -127.0
-offset_bottom = 165.0
+offset_top = 75.0
+offset_bottom = 75.0
 grow_horizontal = 0
 
-[node name="HBC" type="HBoxContainer" parent="Menu_Bar"]
-layout_mode = 2
-size_flags_horizontal = 3
-metadata/_edit_lock_ = true
+[node name="skew" type="Node2D" parent="ShortCutMenu"]
+skew = 0.2617994
 
-[node name="Sub_Menu" type="Polygon2D" parent="Menu_Bar/HBC"]
-self_modulate = Color(1, 1, 1, 0.788235)
-clip_children = 2
-light_mask = 0
-position = Vector2(-1303.14, -18.8581)
-color = Color(0.054902, 0.639216, 1, 1)
-antialiased = true
-polygon = PackedVector2Array(1349, 43, 1318, 152, 1443, 152, 1473, 43)
-vertex_colors = PackedColorArray(0.054902, 0.639216, 1, 1, 0.054902, 0.639216, 1, 1, 0.101962, 0.350213, 1, 1, 0.273133, 0.431107, 1, 1)
+[node name="VBoxC" type="VBoxContainer" parent="ShortCutMenu/skew"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -600.0
+offset_bottom = 824.0
+grow_horizontal = 0
+size_flags_horizontal = 4
 script = ExtResource("11_oye8v")
 
-[node name="Page" type="HBoxContainer" parent="Menu_Bar/HBC/Sub_Menu"]
-offset_left = 1290.0
-offset_top = 170.0
-offset_right = 2590.0
-offset_bottom = 870.0
+[node name="Btns" type="HBoxContainer" parent="ShortCutMenu/skew/VBoxC"]
+z_index = 1
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_horizontal = 4
+theme = SubResource("Theme_sqvbp")
+theme_override_constants/separation = 50
+alignment = 1
+
+[node name="Search" type="Button" parent="ShortCutMenu/skew/VBoxC/Btns"]
+custom_minimum_size = Vector2(120, 120)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_3b0ty")
+icon_alignment = 1
+
+[node name="Control" type="PanelContainer" parent="ShortCutMenu/skew/VBoxC/Btns/Search"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hri7i")
+
+[node name="TextureRect" type="TextureRect" parent="ShortCutMenu/skew/VBoxC/Btns/Search"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("12_40n85")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="FavorList" type="Button" parent="ShortCutMenu/skew/VBoxC/Btns"]
+custom_minimum_size = Vector2(120, 120)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_3b0ty")
+icon_alignment = 1
+expand_icon = true
+
+[node name="Control" type="PanelContainer" parent="ShortCutMenu/skew/VBoxC/Btns/FavorList"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hri7i")
+
+[node name="TextureRect" type="TextureRect" parent="ShortCutMenu/skew/VBoxC/Btns/FavorList"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("19_ny7u2")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="Panel" type="Panel" parent="ShortCutMenu/skew/VBoxC"]
+clip_children = 2
+custom_minimum_size = Vector2(600, 700)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_sqvbp")
+
+[node name="Page" type="HBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 50.0
+offset_right = 1340.0
+offset_bottom = 750.0
 scale = Vector2(0.9, 0.9)
 mouse_filter = 2
 theme_override_constants/separation = 100
 metadata/_edit_lock_ = true
 
-[node name="SortPage" type="VBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page"]
+[node name="SortPage" type="VBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page"]
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 15
 
-[node name="SearchBox" type="HBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage"]
+[node name="SearchBox" type="HBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage"]
 layout_mode = 2
-size_flags_horizontal = 8
 
-[node name="TextEdit" type="LineEdit" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SearchBox"]
+[node name="TextEdit" type="LineEdit" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SearchBox"]
 custom_minimum_size = Vector2(440, 100)
 layout_mode = 2
 theme_override_font_sizes/font_size = 35
+theme_override_styles/normal = SubResource("StyleBoxFlat_devvj")
 placeholder_text = "please enter..."
+alignment = 1
 caret_blink = true
 
-[node name="TextureButton" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SearchBox"]
+[node name="SearchBtn" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SearchBox"]
+custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 texture_normal = ExtResource("12_40n85")
+ignore_texture_size = true
+stretch_mode = 5
 
-[node name="Line" type="PanelContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage"]
-clip_contents = true
-custom_minimum_size = Vector2(550, 6)
+[node name="Line" type="ColorRect" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage"]
+custom_minimum_size = Vector2(600, 5)
 layout_mode = 2
 size_flags_horizontal = 4
-size_flags_vertical = 4
 
-[node name="ColorRect" type="ColorRect" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/Line"]
-layout_mode = 2
-
-[node name="SortButton" type="HBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage"]
+[node name="SortButton" type="HBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage"]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 4
 theme_override_constants/separation = 40
-script = ExtResource("13_3b0ty")
 
-[node name="Status" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+[node name="Status" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SortButton"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 texture_normal = ExtResource("14_3b0ty")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="Data" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+[node name="Data" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SortButton"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 toggle_mode = true
@@ -454,303 +674,46 @@ texture_normal = ExtResource("14_sph85")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="Time" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
-visible = false
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-toggle_mode = true
-button_group = ExtResource("15_bg4s2")
-texture_normal = ExtResource("15_o7g6l")
-ignore_texture_size = true
-stretch_mode = 5
-
-[node name="Ordering" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
+[node name="Ordering" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SortButton"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 texture_normal = ExtResource("16_vi5kq")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="SelectData" type="Line2D" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
-self_modulate = Color(1, 1, 1, 0)
-points = PackedVector2Array(135, 0, 245, 0, 245, 100, 135, 100)
-closed = true
-width = 4.0
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
-
-[node name="SelectTime" type="Line2D" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton"]
-visible = false
-self_modulate = Color(1, 1, 1, 0)
-position = Vector2(138, 0)
-points = PackedVector2Array(135, 0, 245, 0, 245, 100, 135, 100)
-closed = true
-width = 4.0
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
-
-[node name="Search" type="PanelContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SortPage"]
-custom_minimum_size = Vector2(0, 100)
+[node name="MarginContainer" type="MarginContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SortButton"]
 layout_mode = 2
-size_flags_horizontal = 0
+theme_override_constants/margin_right = 20
 
-[node name="SongListPage" type="VBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page"]
+[node name="SongListPage" type="VBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 60
 
-[node name="List1" type="MarginContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage"]
-custom_minimum_size = Vector2(600, 0)
+[node name="FavorList" type="ScrollContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SongListPage"]
+custom_minimum_size = Vector2(500, 530)
 layout_mode = 2
 
-[node name="PC" type="PanelContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1"]
-self_modulate = Color(1, 1, 1, 0)
+[node name="VBoxC" type="VBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SongListPage/FavorList"]
 layout_mode = 2
 
-[node name="Line2D" type="Line2D" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC"]
-position = Vector2(-1076.14, -28)
-scale = Vector2(0.835749, 0.825806)
-points = PackedVector2Array(1342, 44, 1305, 179, 1457, 179, 1492, 44)
-closed = true
-width = 3.0
-joint_mode = 2
-
-[node name="Button" type="Button" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC/Line2D"]
-self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(600, 150)
-offset_left = 1301.12
-offset_top = 43.1337
-offset_right = 1421.12
-offset_bottom = 163.134
-
-[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC"]
-layout_mode = 2
-theme_override_constants/margin_left = 190
-theme_override_constants/margin_top = 8
-
-[node name="VBoxContainer" type="VBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC/MarginContainer"]
-layout_mode = 2
-theme_override_constants/separation = 20
-
-[node name="Label" type="Label" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC/MarginContainer/VBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
-theme_override_font_sizes/font_size = 30
-text = "Favor"
-horizontal_alignment = 1
-
-[node name="Label2" type="Label" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List1/PC/MarginContainer/VBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
-text = "11 midis"
-
-[node name="List2" type="MarginContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage"]
-custom_minimum_size = Vector2(600, 0)
-layout_mode = 2
-theme_override_constants/margin_left = -40
-
-[node name="PC" type="PanelContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2"]
-self_modulate = Color(1, 1, 1, 0)
+[node name="FavorListItem" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SongListPage/FavorList/VBoxC" instance=ExtResource("20_devvj")]
 layout_mode = 2
 
-[node name="Line2D" type="Line2D" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC"]
-position = Vector2(-1076.14, -28)
-scale = Vector2(0.835749, 0.825806)
-points = PackedVector2Array(1342, 44, 1305, 179, 1457, 179, 1492, 44)
-closed = true
-width = 3.0
-joint_mode = 2
-
-[node name="Button" type="Button" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC/Line2D"]
-self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(600, 150)
-offset_left = 1301.12
-offset_top = 43.1337
-offset_right = 1421.12
-offset_bottom = 163.134
-
-[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC"]
+[node name="CreateList" type="HBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SongListPage"]
 layout_mode = 2
-theme_override_constants/margin_left = 190
-theme_override_constants/margin_top = 8
+alignment = 1
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC/MarginContainer"]
-layout_mode = 2
-theme_override_constants/separation = 20
-
-[node name="Label" type="Label" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC/MarginContainer/VBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
-theme_override_font_sizes/font_size = 30
-text = "Custom SongList"
-horizontal_alignment = 1
-
-[node name="Label2" type="Label" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/List2/PC/MarginContainer/VBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
-text = "11 midis"
-
-[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage"]
-layout_mode = 2
-size_flags_vertical = 10
-theme_override_constants/margin_left = -380
-
-[node name="TextureButton" type="TextureButton" parent="Menu_Bar/HBC/Sub_Menu/Page/SongListPage/MarginContainer"]
+[node name="AddBtn" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SongListPage/CreateList"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 8
 texture_normal = ExtResource("17_5mkgo")
 
-[node name="Sort" type="PanelContainer" parent="Menu_Bar/HBC"]
-self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(180, 150)
-layout_mode = 2
-metadata/_edit_lock_ = true
-
-[node name="Line2D" type="Line2D" parent="Menu_Bar/HBC/Sort"]
-position = Vector2(-1076.14, -12.8581)
-scale = Vector2(0.835749, 0.825806)
-points = PackedVector2Array(1342, 44, 1305, 179, 1457, 179, 1492, 44)
-closed = true
-width = 3.0
-joint_mode = 2
-
-[node name="Polygon2D" type="Polygon2D" parent="Menu_Bar/HBC/Sort"]
-position = Vector2(-1303.14, -18.8581)
-color = Color(0.054902, 0.639216, 1, 1)
-antialiased = true
-polygon = PackedVector2Array(1349, 43, 1318, 152, 1443, 152, 1473, 43)
-vertex_colors = PackedColorArray(0.054902, 0.639216, 1, 1, 0.054902, 0.639216, 1, 1, 0.101962, 0.350213, 1, 1, 0.273133, 0.431107, 1, 1)
-
-[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/Sort"]
-layout_mode = 2
-theme_override_constants/margin_top = 30
-
-[node name="TextureButton" type="TextureButton" parent="Menu_Bar/HBC/Sort/MarginContainer"]
-layout_mode = 2
-size_flags_horizontal = 4
-shortcut_feedback = false
-shortcut_in_tooltip = false
-texture_normal = ExtResource("12_40n85")
-
-[node name="TextureRect" type="TextureRect" parent="Menu_Bar/HBC/Sort/MarginContainer"]
-visible = false
-layout_mode = 2
-texture = ExtResource("18_3ccbu")
-stretch_mode = 2
-
-[node name="SongList" type="PanelContainer" parent="Menu_Bar/HBC"]
-self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(180, 150)
-layout_mode = 2
-
-[node name="Line2D" type="Line2D" parent="Menu_Bar/HBC/SongList"]
-position = Vector2(-1076.14, -12.8581)
-scale = Vector2(0.835749, 0.825806)
-points = PackedVector2Array(1342, 44, 1305, 179, 1457, 179, 1492, 44)
-closed = true
-width = 3.0
-joint_mode = 2
-
-[node name="Polygon2D" type="Polygon2D" parent="Menu_Bar/HBC/SongList"]
-position = Vector2(-1303.14, -18.8581)
-color = Color(0.054902, 0.639216, 1, 1)
-antialiased = true
-polygon = PackedVector2Array(1349, 43, 1318, 152, 1443, 152, 1473, 43)
-vertex_colors = PackedColorArray(0.054902, 0.639216, 1, 1, 0.054902, 0.639216, 1, 1, 0.101962, 0.350213, 1, 1, 0.273133, 0.431107, 1, 1)
-
-[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/SongList"]
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 30
-
-[node name="TextureButton" type="TextureButton" parent="Menu_Bar/HBC/SongList/MarginContainer"]
-layout_mode = 2
-size_flags_horizontal = 4
-texture_normal = ExtResource("19_ny7u2")
-
-[node name="TextureRect" type="TextureRect" parent="Menu_Bar/HBC/SongList/MarginContainer"]
-visible = false
-layout_mode = 2
-texture = ExtResource("19_ny7u2")
-stretch_mode = 2
-
-[node name="Search" type="PanelContainer" parent="Menu_Bar/HBC"]
-visible = false
-self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(150, 150)
-layout_mode = 2
-metadata/_edit_lock_ = true
-
-[node name="Line2D" type="Line2D" parent="Menu_Bar/HBC/Search"]
-position = Vector2(-1076.14, -12.8581)
-scale = Vector2(0.835749, 0.825806)
-points = PackedVector2Array(1342, 44, 1305, 179, 1457, 179, 1492, 44)
-closed = true
-width = 3.0
-joint_mode = 2
-
-[node name="Polygon2D" type="Polygon2D" parent="Menu_Bar/HBC/Search"]
-position = Vector2(-1303.14, -18.8581)
-color = Color(0.054902, 0.639216, 1, 1)
-antialiased = true
-polygon = PackedVector2Array(1349, 43, 1318, 152, 1443, 152, 1473, 43)
-vertex_colors = PackedColorArray(0.054902, 0.639216, 1, 1, 0.054902, 0.639216, 1, 1, 0.101962, 0.350213, 1, 1, 0.273133, 0.431107, 1, 1)
-
-[node name="MarginContainer" type="MarginContainer" parent="Menu_Bar/HBC/Search"]
-layout_mode = 2
-theme_override_constants/margin_left = 40
-theme_override_constants/margin_top = 30
-
-[node name="TextureRect" type="TextureRect" parent="Menu_Bar/HBC/Search/MarginContainer"]
-layout_mode = 2
-texture = ExtResource("12_40n85")
-stretch_mode = 2
-
-[node name="SortedMidi" type="Polygon2D" parent="."]
-position = Vector2(-1500, 0)
-skew = 0.261799
-
-[node name="SortedMidisList" type="ScrollContainer" parent="SortedMidi"]
-physics_interpolation_mode = 1
-custom_minimum_size = Vector2(1020, 1120)
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_left = 281.0
-offset_top = -1.035
-offset_right = 1301.0
-offset_bottom = 1118.96
-grow_vertical = 2
-size_flags_horizontal = 0
-focus_mode = 2
-theme = SubResource("Theme_devvj")
-follow_focus = true
-horizontal_scroll_mode = 0
-script = ExtResource("26_5mvff")
-container_path = NodePath("VBox")
-list_item_class = "res://UI/Views/SortedMidiView/sortedMidiNode.tscn"
-
-[node name="VBox" type="VBoxContainer" parent="SortedMidi/SortedMidisList"]
-custom_minimum_size = Vector2(630, 0)
-layout_mode = 2
-size_flags_horizontal = 2
-mouse_filter = 2
-theme_override_constants/separation = 29
-
 [node name="TestNode" type="Node2D" parent="."]
 visible = false
 
 [connection signal="pressed" from="RB_Btn/Button" to="RB_Btn" method="_on_button_pressed"]
-[connection signal="pressed" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Status" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_status_pressed"]
-[connection signal="toggled" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Data" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_data_toggled"]
-[connection signal="toggled" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Time" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_time_toggled"]
-[connection signal="pressed" from="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton/Ordering" to="Menu_Bar/HBC/Sub_Menu/Page/SortPage/SortButton" method="_on_ordering_pressed"]
-[connection signal="pressed" from="Menu_Bar/HBC/Sort/MarginContainer/TextureButton" to="Menu_Bar/HBC/Sub_Menu" method="_sort_button_pressed"]
-[connection signal="pressed" from="Menu_Bar/HBC/SongList/MarginContainer/TextureButton" to="Menu_Bar/HBC/Sub_Menu" method="_SongList_button_pressed"]
+[connection signal="pressed" from="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SortButton/Status" to="ShortCutMenu/skew/VBoxC" method="_on_status_pressed"]
+[connection signal="toggled" from="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SortButton/Data" to="ShortCutMenu/skew/VBoxC" method="_on_data_toggled"]
+[connection signal="pressed" from="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SortButton/Ordering" to="ShortCutMenu/skew/VBoxC" method="_on_ordering_pressed"]

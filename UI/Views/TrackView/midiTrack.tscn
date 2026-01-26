@@ -1,10 +1,30 @@
-[gd_scene load_steps=14 format=3 uid="uid://ttmjc3cbi1bi"]
+[gd_scene load_steps=17 format=3 uid="uid://ttmjc3cbi1bi"]
 
 [ext_resource type="Script" uid="uid://bh655hfw6k0q2" path="res://UI/Views/TrackView/midiTrack.gd" id="1_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://balwiilkbpuhy" path="res://Resources/icon/TrackView/note.png" id="1_ni118"]
 [ext_resource type="Script" uid="uid://bnt65j78d2po7" path="res://UI/Views/TrackView/noteDisplayer.gd" id="2_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://bvpw7fu0xco14" path="res://Resources/icon/TrackView/volume.png" id="2_phpps"]
 [ext_resource type="Texture2D" uid="uid://df7u4t3bhlafy" path="res://Resources/icon/TrackView/microphone.png" id="3_7rc5s"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kpleu"]
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ewgot"]
+bg_color = Color(0.9832937, 0.8700297, 0.68702245, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+
+[sub_resource type="Theme" id="Theme_7rc5s"]
+HSlider/styles/grabber_area = SubResource("StyleBoxFlat_kpleu")
+HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_ewgot")
+HSlider/styles/slider = null
+PopupMenu/font_sizes/font_size = 32
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_31lmn"]
 bg_color = Color(0.23490001, 0.50328004, 0.81, 1)
@@ -106,6 +126,7 @@ thickness = 4
 custom_minimum_size = Vector2(1600, 250)
 size_flags_horizontal = 4
 mouse_filter = 1
+theme = SubResource("Theme_7rc5s")
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
 script = ExtResource("1_7rc5s")
 
@@ -142,9 +163,25 @@ r
 a
 c
 k
-1"
+
+"
 flat = true
 icon_alignment = 1
+
+[node name="TrackNum" type="Label" parent="HBoxC/Panel"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -19.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 32
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="MC" type="MarginContainer" parent="HBoxC"]
 layout_mode = 2
@@ -269,6 +306,7 @@ columns = 2
 [node name="MuteBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
+toggle_mode = true
 texture_normal = ExtResource("2_phpps")
 ignore_texture_size = true
 stretch_mode = 5
@@ -292,6 +330,7 @@ horizontal_alignment = 2
 [node name="SoloBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
+toggle_mode = true
 texture_normal = ExtResource("3_7rc5s")
 ignore_texture_size = true
 stretch_mode = 5
