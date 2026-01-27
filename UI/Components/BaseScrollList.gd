@@ -58,6 +58,7 @@ var scroll_state_reset_timer: Timer
 
 ## 动态布局相关
 var is_skew: bool = false
+var need_h_expand: bool = false
 
 func _ready() -> void:
 	if container == null:
@@ -323,4 +324,9 @@ func process_item_cover_move() -> void:
 ## 响应式布局
 func _on_window_size_changed():
 	# 根据实际像素布局
-	size.y = get_viewport().get_visible_rect().size.y+40 - ( 450 if work_state == UIStateManager.UIState.SONG_VIEW else 0)
+	var glb_rect: Rect2 = get_viewport().get_visible_rect()
+	var new_size: Vector2 = size
+	new_size.y = glb_rect.size.y + 40 - ( 450 if work_state == UIStateManager.UIState.SONG_VIEW else 0)
+	new_size.x = new_size.x if not need_h_expand else glb_rect.size.x - 350
+	
+	size = new_size

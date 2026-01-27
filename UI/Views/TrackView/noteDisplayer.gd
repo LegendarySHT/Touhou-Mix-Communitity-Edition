@@ -2,7 +2,7 @@ extends HBoxContainer
 
 class_name NoteDisplayer
 
-@onready var flow_area: Polygon2D = $noteFlowArea/canvas
+@onready var flow_area: Panel = $noteFlowArea/canvas
 @onready var note_count_passed: Label = $noteTotal/VBoxC/passedNote
 @onready var note_count_total: Label = $noteTotal/VBoxC/totalNote
 
@@ -107,7 +107,8 @@ func _on_note_mouse_exited(note_rect: ColorRect):
 func _process(delta):
 	# 临时存储需要移除的音符
 	var notes_to_remove = []
-	
+	var flow_rect = flow_area.get_rect()
+
 	for i in range(active_notes.size() - 1, -1, -1):
 		var note = active_notes[i]
 		
@@ -118,11 +119,12 @@ func _process(delta):
 			note.position.x += speed * delta
 			
 			# 如果音符完全移出屏幕，标记为待移除
-			if note.position.x + note.size.x > flow_area_width and not note.get_meta("is_passed"):
-					note.set_meta("is_passed", true)
-					note_count_passed.text = str(int(note_count_passed.text) + 1)
-			if note.position.x > flow_area_width:
-				notes_to_remove.append(note)
+			if note.position.x > flow_rect.position.x:	
+				if not flow_rect.encloses(note.get_rect()) and not note.get_meta("is_passed"):
+						note.set_meta("is_passed", true)
+						note_count_passed.text = str(int(note_count_passed.text) + 1)
+				if not flow_rect.intersects(note.get_rect()):
+					notes_to_remove.append(note)
 				
 	# 清理移出屏幕的音符
 	for note in notes_to_remove:

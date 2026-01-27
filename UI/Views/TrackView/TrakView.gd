@@ -2,24 +2,25 @@ extends BaseScrollList
 
 class_name TrackView
 
-@onready var total_note: NoteDisplayer = $VBox/TotalView/VBoxC/flowArea
-@onready var current_time: Label = $VBox/TotalView/VBoxC/playArea/currentTime
-@onready var progress_bar: HSlider = $VBox/TotalView/VBoxC/playArea/progressBar
-@onready var total_time: Label = $VBox/TotalView/VBoxC/playArea/totalTime
+@onready var total_note: NoteDisplayer = $VBox/TotalView/MC/VBoxC/flowArea
+@onready var current_time: Label = $VBox/TotalView/MC/VBoxC/playArea/currentTime
+@onready var progress_bar: HSlider = $VBox/TotalView/MC/VBoxC/playArea/progressBar
+@onready var total_time: Label = $VBox/TotalView/MC/VBoxC/playArea/totalTime
 
 # 导入人声按钮，存在人声时变为切换启用状态？
 @onready var vocal_btn: TextureButton = $VBox/VolumeView/HBoxC/VBoxC2/VocalBtn
 @onready var latency_edit: LineEdit = $VBox/VolumeView/HBoxC/VBoxC2/HBoxContainer/Latency
 @onready var midi_vol_btn: TextureButton = $VBox/VolumeView/HBoxC/GridC/midiVolIcon
 @onready var midi_vol_slider: HSlider = $VBox/VolumeView/HBoxC/GridC/midiVolSlider
-@onready var midi_vol_label: Label = $VBox/VolumeView/HBoxC/GridC/midiVolLabel
-@onready var volcal_vol_btn: TextureButton = $VBox/VolumeView/HBoxC/GridC/vocalVolIcon
+@onready var vocal_vol_btn: TextureButton = $VBox/VolumeView/HBoxC/GridC/vocalVolIcon
 @onready var vocal_vol_slider: HSlider = $VBox/VolumeView/HBoxC/GridC/vocalVolSlider
+
+@onready var midi_vol_label: Label = $VBox/VolumeView/HBoxC/GridC/midiVolLabel
 @onready var vocal_vol_label: Label = $VBox/VolumeView/HBoxC/GridC/vocalVolLabel
 
 # MIDI播放相关 下面两个没有（
 @onready var soundfont_selector: OptionButton = $VBox/VolumeView/HBoxC/VBoxC2/SoundfontSelector
-@onready var preview_button: Button = $VBox/TotalView/VBoxC/playArea/PreviewButton
+@onready var preview_button: Button = $VBox/TotalView/MC/VBoxC/playArea/PreviewButton
 
 # 底部填充，增加新项时需要把这个移到底部
 @onready var bottom: MarginContainer = $VBox/PaddingBottom
@@ -35,17 +36,26 @@ var current_midi_data: MidiData = null
 var midi_playback_manager: MidiPlaybackManager
 var is_previewing: bool = false
 
+var vocal_file_path: String = "111"
+
 func _ready() -> void:
 	work_state = UIStateManager.UIState.TRACK_VIEW
+	need_h_expand = true
 
 	# 获取管理器引用（使用单例模式）
 	midi_playback_manager = MidiPlaybackManager.instance
 	if midi_playback_manager == null:
 		push_error("MidiPlaybackManager not initialized in Main! MIDI features will not work.")
 		return
-	
-	# 初始化MIDI配置UI
-	_initialize_midi_config_ui()
+
+	# 如果有人声的话在这里加载
+
+	_init_vocal_btn_display()
+
+	# 初始化UI
+	_populate_soundfont_selector()
+	midi_vol_slider.value = db_to_linear(midi_playback_manager.midi_player_config["volume_db"]) * 100
+	_set_display_midi_volume(midi_vol_slider.value)
 	
 	# 连接信号
 	EventBus.instance.enter_track_view_with.connect(_load_midi)
@@ -54,25 +64,17 @@ func _ready() -> void:
 	midi_playback_manager.midi_stopped.connect(_on_midi_stopped)
 	midi_playback_manager.midi_finished.connect(_on_midi_finished)
 	
-	super._ready()
+	# 音量
+	midi_vol_btn.toggled.connect(_on_volume_btn_toggled.bind(midi_vol_btn))
+	vocal_vol_btn.toggled.connect(_on_volume_btn_toggled.bind(vocal_vol_btn))
+	midi_vol_slider.value_changed.connect(_on_midi_volume_changed)
+	vocal_vol_slider.value_changed.connect(_on_vocal_volume_changed)
 
-# 初始化MIDI配置UI组件
-func _initialize_midi_config_ui() -> void:
-	# 连接音源选择器
-	if soundfont_selector:
-		soundfont_selector.item_selected.connect(_on_soundfont_selected)
-		_populate_soundfont_selector()
-	
-	# 连接音量滑块
-	if midi_vol_slider:
-		# 设置初始值（假设100%对应0dB）
-		midi_vol_slider.value = db_to_linear(midi_playback_manager.midi_player_config["volume_db"]) * 100
-		midi_vol_slider.value_changed.connect(_on_midi_volume_changed)
-		_update_midi_volume_label(midi_vol_slider.value)
-	
-	# 连接预览按钮
-	if preview_button:
-		preview_button.pressed.connect(_on_preview_button_pressed)
+	soundfont_selector.item_selected.connect(_on_soundfont_selected)
+	progress_bar.value_changed.connect(_on_progress_bar_changed)
+
+	preview_button.pressed.connect(_on_preview_button_pressed)
+	super._ready()
 
 # 加载并播放midi
 func _load_midi(midi: MidiData) -> void:
@@ -157,7 +159,11 @@ func _select_soundfont(soundfont_name: String) -> void:
 			soundfont_selector.select(i)
 			return
 
-# --- 信号回调函数 ---
+# ============= 信号回调函数 ===============
+
+# 拖动进度条事件
+func _on_progress_bar_changed(progress: float) -> void:
+	print("Progress changed to: %f" % progress)
 
 # 音源选择回调
 func _on_soundfont_selected(index: int) -> void:
@@ -174,6 +180,15 @@ func _on_soundfont_selected(index: int) -> void:
 		if is_previewing:
 			_update_preview()
 
+# 音量按钮回调
+func _on_volume_btn_toggled(toggle_on: bool, btn: TextureButton) -> void:
+	if btn == midi_vol_btn:
+		midi_vol_slider.editable = not toggle_on
+	elif btn == vocal_vol_btn:
+		vocal_vol_slider.editable = not toggle_on
+
+	btn.modulate = Color(1, 0.5, 0.5, 1) if toggle_on else Color(1, 1, 1, 1)
+
 # MIDI音量改变回调
 func _on_midi_volume_changed(value: float) -> void:
 	if midi_playback_manager == null:
@@ -184,12 +199,17 @@ func _on_midi_volume_changed(value: float) -> void:
 	midi_playback_manager.set_volume_db(volume_db)
 	
 	# 更新标签
-	_update_midi_volume_label(value)
+	_set_display_midi_volume(value)
 
-# 更新MIDI音量标签
-func _update_midi_volume_label(value: float) -> void:
-	if midi_vol_label:
-		midi_vol_label.text = "%d%%" % value
+func _on_vocal_volume_changed(value: float) -> void:
+	if midi_playback_manager == null:
+		return
+
+	# 转换为dB (-80 ~ 0)
+	var volume_db = linear_to_db(value / 100.0)
+	midi_playback_manager.set_vocal_volume_db(volume_db)
+	# 更新标签
+	_set_display_vocal_volume(value)
 
 # 预览按钮回调
 func _on_preview_button_pressed() -> void:
@@ -212,6 +232,8 @@ func _on_preview_button_pressed() -> void:
 				preview_button.text = "停止预览"
 		else:
 			push_error("Failed to load MIDI for preview")
+
+# ============= 音轨信号回调 =======================
 
 # 轨道启用状态切换
 func _on_track_enable_toggled(is_checked: bool, track_index: int) -> void:
@@ -313,14 +335,13 @@ func _update_preview() -> void:
 	midi_playback_manager.load_midi(current_midi_data)
 	midi_playback_manager.seek(current_pos)
 
-# --- MIDI播放器信号回调 ---
+# =============== MIDI播放器信号回调 ====================
 
 func _on_midi_loaded(midi_data: MidiData) -> void:
 	print("MIDI loaded: " + midi_data.id)
 	# 更新进度条最大范围
 	if midi_data.duration_ms > 0:
-		progress_bar.max_value = midi_data.duration_ms
-		total_time.text = _format_time(midi_data.duration_ms)
+		_set_display_total_time(midi_data.duration_ms)
 
 func _on_midi_started() -> void:
 	print("MIDI playback started")
@@ -339,18 +360,63 @@ func _on_midi_finished() -> void:
 	if preview_button:
 		preview_button.text = "播放预览"
 
+# ============== UI 显示函数 ========================
+
+func _init_vocal_btn_display() -> void:
+	if not vocal_file_path:
+		pass
+	else:
+		pass
+# 更新MIDI音量标签
+func _set_display_midi_volume(value: float) -> void:
+	# 设置初始值（假设100%对应0dB）
+	midi_vol_slider.set_block_signals(true)
+	midi_vol_slider.value = db_to_linear(value) * 100
+	midi_vol_slider.set_block_signals(false)
+
+	midi_vol_label.text = "%d%%" % value
+
+func _set_display_vocal_volume(value: float) -> void:
+	vocal_vol_slider.set_block_signals(true)
+	vocal_vol_slider.value = db_to_linear(value) * 100
+	vocal_vol_slider.set_block_signals(false)
+	
+	vocal_vol_label.text = "%d%%" % value
+
+# 格式化时间（毫秒到 HH:MM:SS）
+func _format_time(ms: float) -> String:
+	var total_seconds: int = int(ms / 1000)
+	@warning_ignore("integer_division")
+	var minutes: int = total_seconds / 60
+	var seconds: int = total_seconds % 60
+	@warning_ignore("integer_division")
+	var hours: int = minutes / 60
+	if hours:
+		return "%02d:%02d:%02d" % [hours, minutes, seconds]
+	else:
+		return "%02d:%02d" % [minutes, seconds]
+
+# 设置总时间
+func _set_display_total_time(total_ms: float) -> void:
+	progress_bar.set_block_signals(true)
+	progress_bar.max_value = total_ms
+	progress_bar.set_block_signals(false)
+	
+	total_time.text = _format_time(total_ms)
+
+func _set_display_current_time(current_ms: float) -> void:
+	progress_bar.set_block_signals(true)
+	progress_bar.value = current_ms
+	progress_bar.set_block_signals(false)
+
+	current_time.text = _format_time(current_ms)
+
 func _process(delta: float) -> void:
 	if is_previewing and midi_playback_manager:
 		# 更新当前时间
-		progress_bar.value = midi_playback_manager.position_ms
-		current_time.text = _format_time(midi_playback_manager.position_ms)
+		_set_display_current_time(midi_playback_manager.position_ms)
 
-# 格式化时间（毫秒到 MM:SS）
-func _format_time(ms: float) -> String:
-	var total_seconds = int(ms / 1000)
-	var minutes = total_seconds / 60
-	var seconds = total_seconds % 60
-	return "%02d:%02d" % [minutes, seconds]
+	super._process(delta)
 
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)

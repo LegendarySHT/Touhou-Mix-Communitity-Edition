@@ -22,7 +22,11 @@ var track_index: int = -1
 var is_enabled: bool = true
 var is_muted: bool = false
 var is_solo: bool = false
+var current_volume: float = 1.0
+var current_instrument: String = ""
+
 var instrument_options: Array = []
+
 
 # 父节点
 var parent_node: Node = null
@@ -54,6 +58,11 @@ func _connect_signals():
 	volume_slider.value_changed.connect(
 		func(value):
 			volume_label.text = "%.2fdB" % linear_to_db(value)
+			current_volume = value
+	)
+	instruments_option_btn.item_selected.connect(
+		func(index):
+			current_instrument = instrument_options[index]
 	)
 
 	if not parent_node:

@@ -20,6 +20,10 @@ bg_color = Color(0, 0, 0, 0)
 border_width_left = 3
 border_width_top = 3
 border_width_bottom = 3
+expand_margin_left = 3.0
+expand_margin_top = 3.0
+expand_margin_right = 3.0
+expand_margin_bottom = 3.0
 shadow_color = Color(0, 0, 0, 0.3019608)
 shadow_size = 10
 
@@ -69,11 +73,13 @@ scroll_deadzone = 1000
 script = ExtResource("1_7vp1s")
 container_path = NodePath("VBox")
 list_item_class = "res://UI/Views/TrackView/midiTrack.tscn"
+item_height = null
+item_spacing = null
 
 [node name="VBox" type="VBoxContainer" parent="Track/TrackList"]
 custom_minimum_size = Vector2(1631, 0)
 layout_mode = 2
-size_flags_horizontal = 2
+size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/separation = 29
 
@@ -84,46 +90,54 @@ theme_override_constants/margin_top = 300
 [node name="TotalView" type="Panel" parent="Track/TrackList/VBox"]
 custom_minimum_size = Vector2(1600, 350)
 layout_mode = 2
-size_flags_horizontal = 4
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
 
-[node name="VBoxC" type="VBoxContainer" parent="Track/TrackList/VBox/TotalView"]
+[node name="MC" type="MarginContainer" parent="Track/TrackList/VBox/TotalView"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/margin_left = 60
+theme_override_constants/margin_right = 60
+
+[node name="VBoxC" type="VBoxContainer" parent="Track/TrackList/VBox/TotalView/MC"]
+layout_mode = 2
 theme_override_constants/separation = 13
 alignment = 1
 
-[node name="flowArea" type="HBoxContainer" parent="Track/TrackList/VBox/TotalView/VBoxC"]
+[node name="flowArea" type="HBoxContainer" parent="Track/TrackList/VBox/TotalView/MC/VBoxC"]
 custom_minimum_size = Vector2(0, 270)
 layout_mode = 2
-size_flags_horizontal = 4
 theme_override_constants/separation = 0
 script = ExtResource("2_8bk0u")
 
-[node name="noteFlowArea" type="Panel" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea"]
+[node name="noteFlowArea" type="Panel" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/flowArea"]
 custom_minimum_size = Vector2(1250, 270)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_stretch_ratio = 10.08
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_3id1m")
 
-[node name="canvas" type="Polygon2D" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea/noteFlowArea"]
+[node name="canvas" type="Panel" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea"]
 clip_children = 1
-polygon = PackedVector2Array(3, 3, 3, 267, 1247, 267, 1250, 3)
-uv = PackedVector2Array(-305, -59, -313, 67, 96, 51, 94, -60)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="noteTotal" type="Panel" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea"]
+[node name="noteTotal" type="Panel" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/flowArea"]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_xcqgn")
 
-[node name="VBoxC" type="VBoxContainer" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea/noteTotal"]
+[node name="VBoxC" type="VBoxContainer" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/flowArea/noteTotal"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -138,7 +152,7 @@ grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
 
-[node name="passedNote" type="Label" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea/noteTotal/VBoxC"]
+[node name="passedNote" type="Label" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -146,11 +160,11 @@ theme_override_font_sizes/font_size = 48
 text = "999"
 vertical_alignment = 1
 
-[node name="Control" type="Control" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea/noteTotal/VBoxC"]
+[node name="Control" type="Control" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC"]
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 
-[node name="HSeparator" type="HSeparator" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea/noteTotal/VBoxC/Control"]
+[node name="HSeparator" type="HSeparator" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC/Control"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -164,7 +178,7 @@ grow_vertical = 2
 rotation = -0.34906584
 theme_override_styles/separator = SubResource("StyleBoxLine_7vp1s")
 
-[node name="totalNote" type="Label" parent="Track/TrackList/VBox/TotalView/VBoxC/flowArea/noteTotal/VBoxC"]
+[node name="totalNote" type="Label" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 8
@@ -172,14 +186,13 @@ theme_override_font_sizes/font_size = 48
 text = "9999"
 vertical_alignment = 1
 
-[node name="playArea" type="HBoxContainer" parent="Track/TrackList/VBox/TotalView/VBoxC"]
+[node name="playArea" type="HBoxContainer" parent="Track/TrackList/VBox/TotalView/MC/VBoxC"]
 custom_minimum_size = Vector2(1500, 40)
 layout_mode = 2
-size_flags_horizontal = 4
 theme_override_constants/separation = 15
 alignment = 1
 
-[node name="currentTime" type="Label" parent="Track/TrackList/VBox/TotalView/VBoxC/playArea"]
+[node name="currentTime" type="Label" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/playArea"]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
@@ -187,13 +200,13 @@ text = "00:00:00"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="progressBar" type="HSlider" parent="Track/TrackList/VBox/TotalView/VBoxC/playArea"]
+[node name="progressBar" type="HSlider" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/playArea"]
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 
-[node name="totalTime" type="Label" parent="Track/TrackList/VBox/TotalView/VBoxC/playArea"]
+[node name="totalTime" type="Label" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/playArea"]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
@@ -201,7 +214,7 @@ text = "99:60:60"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="PreviewButton" type="Button" parent="Track/TrackList/VBox/TotalView/VBoxC/playArea"]
+[node name="PreviewButton" type="Button" parent="Track/TrackList/VBox/TotalView/MC/VBoxC/playArea"]
 custom_minimum_size = Vector2(120, 40)
 layout_mode = 2
 text = "播放预览"
@@ -209,7 +222,6 @@ text = "播放预览"
 [node name="VolumeView" type="Panel" parent="Track/TrackList/VBox"]
 custom_minimum_size = Vector2(1600, 200)
 layout_mode = 2
-size_flags_horizontal = 4
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
 
@@ -220,8 +232,11 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 50
 alignment = 1
+
+[node name="MCL" type="MarginContainer" parent="Track/TrackList/VBox/VolumeView/HBoxC"]
+layout_mode = 2
+theme_override_constants/margin_left = 60
 
 [node name="VBoxC2" type="VBoxContainer" parent="Track/TrackList/VBox/VolumeView/HBoxC"]
 layout_mode = 2
@@ -260,6 +275,7 @@ text = "ms"
 [node name="GridC" type="GridContainer" parent="Track/TrackList/VBox/VolumeView/HBoxC"]
 custom_minimum_size = Vector2(1300, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_constants/h_separation = 20
 theme_override_constants/v_separation = 15
@@ -268,13 +284,15 @@ columns = 3
 [node name="midiVolIcon" type="TextureButton" parent="Track/TrackList/VBox/VolumeView/HBoxC/GridC"]
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
+toggle_mode = true
 texture_normal = ExtResource("2_xcqgn")
 ignore_texture_size = true
 stretch_mode = 5
 
 [node name="midiVolSlider" type="HSlider" parent="Track/TrackList/VBox/VolumeView/HBoxC/GridC"]
-custom_minimum_size = Vector2(1000, 0)
+custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 4
 
 [node name="midiVolLabel" type="Label" parent="Track/TrackList/VBox/VolumeView/HBoxC/GridC"]
@@ -287,13 +305,15 @@ vertical_alignment = 1
 [node name="vocalVolIcon" type="TextureButton" parent="Track/TrackList/VBox/VolumeView/HBoxC/GridC"]
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
+toggle_mode = true
 texture_normal = ExtResource("3_7vp1s")
 ignore_texture_size = true
 stretch_mode = 5
 
 [node name="vocalVolSlider" type="HSlider" parent="Track/TrackList/VBox/VolumeView/HBoxC/GridC"]
-custom_minimum_size = Vector2(1000, 0)
+custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 4
 
 [node name="vocalVolLabel" type="Label" parent="Track/TrackList/VBox/VolumeView/HBoxC/GridC"]
@@ -302,6 +322,10 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 30
 text = "-1.99 dB"
 vertical_alignment = 1
+
+[node name="MC" type="MarginContainer" parent="Track/TrackList/VBox/VolumeView/HBoxC"]
+layout_mode = 2
+theme_override_constants/margin_right = 60
 
 [node name="PaddingBottom" type="MarginContainer" parent="Track/TrackList/VBox"]
 layout_mode = 2

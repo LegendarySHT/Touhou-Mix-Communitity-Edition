@@ -124,7 +124,13 @@ thickness = 4
 
 [node name="MidiTrack" type="Panel"]
 custom_minimum_size = Vector2(1600, 250)
-size_flags_horizontal = 4
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -830.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
 mouse_filter = 1
 theme = SubResource("Theme_7rc5s")
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
@@ -185,8 +191,10 @@ vertical_alignment = 1
 
 [node name="MC" type="MarginContainer" parent="HBoxC"]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/margin_left = 30
 theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 50
 theme_override_constants/margin_bottom = 20
 
 [node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC"]
@@ -209,6 +217,7 @@ icon = ExtResource("1_ni118")
 
 [node name="MC" type="MarginContainer" parent="HBoxC/MC/HBoxC"]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/margin_top = 25
 theme_override_constants/margin_bottom = 25
 
@@ -220,12 +229,17 @@ script = ExtResource("2_7rc5s")
 [node name="noteFlowArea" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea"]
 custom_minimum_size = Vector2(940, 160)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 1
 
-[node name="canvas" type="Polygon2D" parent="HBoxC/MC/HBoxC/MC/flowArea/noteFlowArea"]
+[node name="canvas" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea/noteFlowArea"]
 clip_children = 1
-polygon = PackedVector2Array(0, 0, 0, 160, 940, 160, 940, 0)
-uv = PackedVector2Array(-305, -59, -313, 67, 96, 51, 94, -60)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="noteTotal" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea"]
 custom_minimum_size = Vector2(200, 0)
@@ -253,7 +267,7 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 44
-text = "999"
+text = "0"
 vertical_alignment = 1
 
 [node name="Control" type="Control" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC"]

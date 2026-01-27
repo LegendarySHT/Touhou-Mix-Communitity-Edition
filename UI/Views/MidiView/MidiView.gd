@@ -56,7 +56,7 @@ func _ready() -> void:
 
 func _on_window_size_changed() -> void:
 	var left_area = get_parent().get_parent().get_parent()
-	left_area.get_parent().size = get_viewport().get_visible_rect().size
+	left_area.get_parent().set_deferred("size", get_viewport().get_visible_rect().size)
 
 func _load_midi(_midi_id: String, midi:MidiData) -> void:
 	if not data_manager:
