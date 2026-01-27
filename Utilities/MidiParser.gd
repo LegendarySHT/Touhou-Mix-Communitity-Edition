@@ -6,21 +6,21 @@ class_name MidiParser
 class NoteEvent:
 	var pitch: int              # MIDI音符号 (0-127)
 	var velocity: int           # 速度/力度 (1-127)
-	var start_time_ms: float    # 开始时间（毫秒）
-	var duration_ms: float      # 持续时间（毫秒）
+	var start_time: float       # 开始时间（MIDI Tick单位，不是毫秒）
+	var duration: float         # 持续时间（MIDI Tick单位，不是毫秒）
 	var track_index: int        # 所在轨道索引
 	var channel: int            # MIDI通道号 (0-15)
 	
 	func _init(p: int, v: int, start: float, dur: float, track: int, ch: int) -> void:
 		pitch = p
 		velocity = v
-		start_time_ms = start
-		duration_ms = dur
+		start_time = start
+		duration = dur
 		track_index = track
 		channel = ch
 	
 	func _to_string() -> String:
-		return "NoteEvent(pitch=%d, vel=%d, start=%.0f, dur=%.0f)" % [pitch, velocity, start_time_ms, duration_ms]
+		return "NoteEvent(pitch=%d, vel=%d, start=%.0f, dur=%.0f)" % [pitch, velocity, start_time, duration]
 
 ## Note 基类 - 包含生命周期管理（noteOn/noteOff）和状态查询（isOn/isOff）
 class Note:
@@ -165,7 +165,8 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 		var track_info = TrackInfo.new(track_idx)
 		
 		for event_chunk in track.events:
-			var time_ms = _convert_time_to_ms(event_chunk.time, smf_data.timebase)
+			# 保持为 tick 单位，不转换为毫秒
+			var current_tick = event_chunk.time
 			var event = event_chunk.event
 			var channel = event_chunk.channel_number
 			
@@ -184,20 +185,19 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 						
 						# 添加到BPM时间线
 						bpm_timeline.append({
-							"tick": event_chunk.time,
-							"bpm": new_bpm,
-							"time_ms": time_ms  # 这是基于旧BPM的估算，稍后会精确计算
+							"tick": current_tick,
+							"bpm": new_bpm
 						})
 			
 			# 处理音符开始事件
 			elif event.type == SMF.MIDIEventType.note_on:
 				if event.velocity > 0:
 					# 创建唯一键来追踪NoteOn/Off对
-					var key = "%d_%d_%d" % [channel, event.note, time_ms]
+					var key = "%d_%d_%d" % [channel, event.note, current_tick]
 					note_on_map[key] = {
 						"pitch": event.note,
 						"velocity": event.velocity,
-						"start_time": time_ms,
+						"start_tick": current_tick,
 						"track_index": track_idx,
 						"channel": channel
 					}
@@ -211,20 +211,20 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 							break
 					if not found_key.is_empty():
 						var note_data = note_on_map[found_key]
-						var duration = time_ms - note_data["start_time"]
+						var duration = current_tick - note_data["start_tick"]
 						var note_event = NoteEvent.new(
 							note_data["pitch"],
 							note_data["velocity"],
-							note_data["start_time"],
+							note_data["start_tick"],
 							duration,
 							note_data["track_index"],
 							note_data["channel"]
 						)
 						notes.append(note_event)
 						track_info.note_count += 1
-					if event_chunk.time > max_end_tick:
-						max_end_tick = event_chunk.time
 						note_on_map.erase(found_key)
+					if current_tick > max_end_tick:
+						max_end_tick = current_tick
 			
 			# 处理音符结束事件
 			elif event.type == SMF.MIDIEventType.note_off:
@@ -238,23 +238,24 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 				
 				if found_key != "":
 					var note_data = note_on_map[found_key]
-					var duration = time_ms - note_data["start_time"]
+					var duration = current_tick - note_data["start_tick"]
 					
 					# 创建NoteEvent对象
 					var note_event = NoteEvent.new(
 						note_data["pitch"],
 						note_data["velocity"],
-						note_data["start_time"],
+						note_data["start_tick"],
 						duration,
 						note_data["track_index"],
 						note_data["channel"]
 					)
 					notes.append(note_event)
 					track_info.note_count += 1
+					note_on_map.erase(found_key)
 					
 				# 更新最大tick
-				if event_chunk.time > max_end_tick:
-					max_end_tick = event_chunk.time
+				if current_tick > max_end_tick:
+					max_end_tick = current_tick
 		
 		track_infos.append(track_info)
 	

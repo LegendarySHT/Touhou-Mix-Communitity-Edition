@@ -58,11 +58,11 @@ func _on_flow_area_resized():
 
 
 func _process(_delta):
-	if master_node == null or not current_notes:
+	if master_node == null or current_notes.is_empty():
 		return
 	# 获取当前tick
 	var ct = master_node.current_tick
-
+	#print("Current Tick: %d" % ct)
 	# 提前计算视野边界
 	var view_right_bound = ct + area_width / scale_factor
 
@@ -127,7 +127,7 @@ func _redirect_index(ct, view_right_bound):
 
 func _create_note(note: NoteEvent):
 	var note_rect: ColorRect = ColorRect.new()
-	var lane_index: int = note.track_index % lane_count
+	var lane_index: int = note.pitch % lane_count
 	var note_width = note.duration * scale_factor
 	var note_height = lane_height * 0.8
 	var start_y = (lane_height * lane_index) + (lane_height - note_height) / 2.0
@@ -148,6 +148,10 @@ func _create_note(note: NoteEvent):
 	active_notes.append(note_rect)
 
 func init_displayer(mn: Node, notes: Array[NoteEvent]):
+
+	# debug
+	print("音符可视化初始化，音符总数：%d" % notes.size())
+
 	for note in active_notes:
 		note.queue_free()
 
@@ -159,6 +163,9 @@ func init_displayer(mn: Node, notes: Array[NoteEvent]):
 
 	current_notes = notes
 	current_idx = 0
+
+	# 启用处理循环以驱动可视化
+	set_process(not current_notes.is_empty())
 
 # 根据音高获取颜色
 func _get_color_by_pitch(pitch: int) -> Color:

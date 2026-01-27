@@ -346,6 +346,13 @@ func set_track_volume_db(track_index: int, volume_db: float) -> void:
 	# 当前版本记录日志供调试
 	print("[MidiPlaybackManager] Set track %d volume to %.2f dB" % [track_index, volume_db])
 
+## 设置人声音量（占位符 - 待后续实现AudioManager集成）
+func set_vocal_volume_db(volume_db: float) -> void:
+	# 注：此方法为占位符
+	# 人声播放应该由AudioManager处理，而不是MidiPlaybackManager
+	# 这里记录日志供调试
+	print("[MidiPlaybackManager] Set vocal volume to %.2f dB (not implemented)" % volume_db)
+
 ## 获取已选中轨道对应的Note
 func get_selected_track_notes() -> Array:
 	if current_midi_data == null or current_notes.is_empty():
