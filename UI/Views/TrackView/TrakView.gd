@@ -2,28 +2,28 @@ extends BaseScrollList
 
 class_name TrackView
 
-@onready var total_note: NoteDisplayer = $VBox/TotalView/MC/VBoxC/flowArea
-@onready var current_time: Label = $VBox/TotalView/MC/VBoxC/playArea/currentTime
-@onready var progress_bar: HSlider = $VBox/TotalView/MC/VBoxC/playArea/progressBar
-@onready var total_time: Label = $VBox/TotalView/MC/VBoxC/playArea/totalTime
+@onready var master_note_displayer: NoteDisplayer = $MC/VBox/TotalView/MC/VBoxC/flowArea
+@onready var current_time: Label = $MC/VBox/TotalView/MC/VBoxC/playArea/currentTime
+@onready var progress_bar: HSlider = $MC/VBox/TotalView/MC/VBoxC/playArea/progressBar
+@onready var total_time: Label = $MC/VBox/TotalView/MC/VBoxC/playArea/totalTime
 
 # 导入人声按钮，存在人声时变为切换启用状态？
-@onready var vocal_btn: TextureButton = $VBox/VolumeView/HBoxC/VBoxC2/VocalBtn
-@onready var latency_edit: LineEdit = $VBox/VolumeView/HBoxC/VBoxC2/HBoxContainer/Latency
-@onready var midi_vol_btn: TextureButton = $VBox/VolumeView/HBoxC/GridC/midiVolIcon
-@onready var midi_vol_slider: HSlider = $VBox/VolumeView/HBoxC/GridC/midiVolSlider
-@onready var vocal_vol_btn: TextureButton = $VBox/VolumeView/HBoxC/GridC/vocalVolIcon
-@onready var vocal_vol_slider: HSlider = $VBox/VolumeView/HBoxC/GridC/vocalVolSlider
+@onready var vocal_btn: TextureButton = $MC/VBox/VolumeView/HBoxC/VBoxC2/VocalBtn
+@onready var latency_edit: LineEdit = $MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxContainer/Latency
+@onready var midi_vol_btn: TextureButton = $MC/VBox/VolumeView/HBoxC/GridC/midiVolIcon
+@onready var midi_vol_slider: HSlider = $MC/VBox/VolumeView/HBoxC/GridC/midiVolSlider
+@onready var vocal_vol_btn: TextureButton = $MC/VBox/VolumeView/HBoxC/GridC/vocalVolIcon
+@onready var vocal_vol_slider: HSlider = $MC/VBox/VolumeView/HBoxC/GridC/vocalVolSlider
 
-@onready var midi_vol_label: Label = $VBox/VolumeView/HBoxC/GridC/midiVolLabel
-@onready var vocal_vol_label: Label = $VBox/VolumeView/HBoxC/GridC/vocalVolLabel
+@onready var midi_vol_label: Label = $MC/VBox/VolumeView/HBoxC/GridC/midiVolLabel
+@onready var vocal_vol_label: Label = $MC/VBox/VolumeView/HBoxC/GridC/vocalVolLabel
 
 # MIDI播放相关 下面两个没有（
-@onready var soundfont_selector: OptionButton = $VBox/VolumeView/HBoxC/VBoxC2/SoundfontSelector
-@onready var preview_button: Button = $VBox/TotalView/MC/VBoxC/playArea/PreviewButton
+@onready var soundfont_selector: OptionButton = $MC/VBox/VolumeView/HBoxC/VBoxC2/SoundfontSelector
+@onready var preview_button: Button = $MC/VBox/TotalView/MC/VBoxC/playArea/PreviewButton
 
 # 底部填充，增加新项时需要把这个移到底部
-@onready var bottom: MarginContainer = $VBox/PaddingBottom
+@onready var bottom: MarginContainer = $MC/VBox/PaddingBottom
 
 # 给midi轨道访问的默认值
 var instrument_options: Array = ["钢琴", "吉他", "贝斯", "鼓", "弦乐"]
@@ -37,6 +37,8 @@ var midi_playback_manager: MidiPlaybackManager
 var is_previewing: bool = false
 
 var vocal_file_path: String = "111"
+
+var current_tick: int = 0
 
 func _ready() -> void:
 	work_state = UIStateManager.UIState.TRACK_VIEW
@@ -87,8 +89,6 @@ func _load_midi(midi: MidiData) -> void:
 	if midi_playback_manager.load_midi(midi):
 		# 创建轨道UI
 		_create_track_views()
-		# 更新总音符显示
-		_update_total_note_display()
 	else:
 		push_error("Failed to load MIDI: " + midi.id)
 
@@ -129,14 +129,6 @@ func _create_track_views() -> void:
 	# 更新音源选择
 	if soundfont_selector and current_midi_data.use_soundfont:
 		_select_soundfont(current_midi_data.use_soundfont)
-
-# 更新总音符显示
-func _update_total_note_display() -> void:
-	if not current_midi_data or current_midi_data.parsed_notes.is_empty():
-		return
-	
-	var total_notes = current_midi_data.parsed_notes.size()
-	total_note.init_display(total_notes)
 
 # 填充音源选择器
 func _populate_soundfont_selector() -> void:

@@ -50,6 +50,8 @@ func _ready():
 	if is_enabled:
 		enable_btn.button_pressed = true
 
+	#note_display.setup_displayer(parent_node)
+
 func _connect_signals():
 	enable_btn.toggled.connect(_on_enable_toggled)
 	mute_btn.toggled.connect(_on_mute_toggled)
