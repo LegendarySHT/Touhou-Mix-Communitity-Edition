@@ -2,7 +2,7 @@
 ## 提供MIDI文件的加载、解析和Note事件提取功能
 class_name MidiParser
 
-## MIDI Note事件数据结构
+## MIDI Note事件数据结构（内部使用，保留以向后兼容）
 class NoteEvent:
 	var pitch: int              # MIDI音符号 (0-127)
 	var velocity: int           # 速度/力度 (1-127)
@@ -22,6 +22,71 @@ class NoteEvent:
 	func _to_string() -> String:
 		return "NoteEvent(pitch=%d, vel=%d, start=%.0f, dur=%.0f)" % [pitch, velocity, start_time_ms, duration_ms]
 
+## Note 基类 - 包含生命周期管理（noteOn/noteOff）和状态查询（isOn/isOff）
+class Note:
+	## 原始Note事件数据
+	var event: NoteEvent
+	
+	## noteOn事件（不是实际的SMF事件对象，而是Note对象触发的标记）
+	var is_on: bool = false
+	## noteOff事件（不是实际的SMF事件对象，而是Note对象触发的标记）
+	var is_off: bool = false
+	
+	## Note在所有notes数组中的原始索引
+	var note_index: int = -1
+	
+	func _init(note_evt: NoteEvent, idx: int = -1) -> void:
+		event = note_evt
+		note_index = idx
+	
+	## 查询Note是否已发送noteOn
+	func is_playing() -> bool:
+		return is_on and not is_off
+	
+	## 查询Note是否已发送noteOff
+	func has_finished() -> bool:
+		return is_off
+	
+	func _to_string() -> String:
+		var status = "stopped"
+		if is_on and not is_off:
+			status = "playing"
+		elif is_off:
+			status = "finished"
+		return "Note(pitch=%d, start=%.0f, dur=%.0f, status=%s)" % [event.pitch, event.start_time_ms, event.duration_ms, status]
+
+## AutoPlayNote - 由MIDI播放器内部自动控制播放的Note
+class AutoPlayNote extends Note:
+	func _init(note_evt: NoteEvent, idx: int = -1) -> void:
+		super._init(note_evt, idx)
+
+## ManualControlNote - 由游戏逻辑手动调用start()/stop()方法的Note
+## 需要在MIDI播放器中标记以跳过其播放，由游戏通过trigger_note_on/off控制
+class ManualControlNote extends Note:
+	## MIDI播放器引用（用于手动触发noteOn/off）
+	var midi_player: Node = null
+	
+	func _init(note_evt: NoteEvent, idx: int = -1) -> void:
+		super._init(note_evt, idx)
+	
+	## 手动触发noteOn - 直接调用MidiPlayer的接口以最小化延迟
+	func start() -> void:
+		if midi_player == null or not midi_player.has_method("trigger_note_on"):
+			push_warning("ManualControlNote: MidiPlayer not available or missing trigger_note_on method")
+			return
+		
+		is_on = true
+		midi_player.trigger_note_on(event.pitch, event.velocity, event.channel)
+	
+	## 手动触发noteOff
+	func stop() -> void:
+		if midi_player == null or not midi_player.has_method("trigger_note_off"):
+			push_warning("ManualControlNote: MidiPlayer not available or missing trigger_note_off method")
+			return
+		
+		is_off = true
+		midi_player.trigger_note_off(event.pitch, event.velocity, event.channel)
+
 ## MIDI轨道信息
 class TrackInfo:
 	var index: int              # 轨道索引
@@ -36,12 +101,16 @@ class TrackInfo:
 		events = []
 
 ## 加载并解析MIDI文件
-## 返回: {success: bool, notes: Array[NoteEvent], bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary]}
-## bpm_timeline 格式: [{tick: int, bpm: float, time_ms: float}, ...]
+## 返回: {success: bool, notes: Array[Note], bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary], note_events: Array[NoteEvent]}
+## 说明:
+##   - notes: 包含Note对象（Note/AutoPlayNote/ManualControlNote）的数组，用于游戏逻辑
+##   - note_events: 包含原始NoteEvent的数组，用于向后兼容或调试
+##   - bpm_timeline 格式: [{tick: int, bpm: float, time_ms: float}, ...]
 static func load_and_parse_midi(file_path: String) -> Dictionary:
 	var result = {
 		"success": false,
-		"notes": [],
+		"notes": [],                  # Array[Note]
+		"note_events": [],            # Array[NoteEvent] - 向后兼容
 		"bpm": 120.0,
 		"duration": 0.0,
 		"track_infos": [],
@@ -212,7 +281,15 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 	# 使用BPM时间线精确计算总时长
 	var actual_duration: float = _calculate_duration_with_bpm_timeline(max_end_tick, bpm_timeline, smf_data.timebase)
 	
-	result["notes"] = notes
+	# 将NoteEvent转换为Note对象（默认都是AutoPlayNote，游戏通过classify_notes分类）
+	var note_objects: Array[Note] = []
+	for idx in range(notes.size()):
+		var note_evt = notes[idx]
+		var note_obj = AutoPlayNote.new(note_evt, idx)
+		note_objects.append(note_obj)
+	
+	result["notes"] = note_objects
+	result["note_events"] = notes  # 保留原始NoteEvent用于向后兼容
 	result["duration"] = actual_duration
 	result["track_infos"] = track_infos
 	result["bpm_timeline"] = bpm_timeline

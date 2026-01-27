@@ -22,7 +22,13 @@ var bpm_timeline: Array = []
 ## MIDI播放状态
 var is_playing: bool = false
 
-## 当前播放位置（毫秒）
+## 当前播放位置（MIDI tick单位，NOT毫秒！）
+## 注意：MidiPlayer.position使用tick单位。此属性直接来自MidiPlayer.position
+## 要获取毫秒值，请使用 get_position_ms()
+var position: float = 0.0
+
+## 当前播放位置（毫秒，用于向后兼容 - 不推荐使用）
+## ⚠️ 已弃用：使用 position 获取tick，或使用 get_position_ms() 获取毫秒值
 var position_ms: float = 0.0
 
 ## 总时长（毫秒）
@@ -85,9 +91,12 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if is_playing and midi_player != null:
-		# 使用BPM时间线来计算准确的播放时间
+		# 直接从MidiPlayer读取position（tick单位）
+		position = midi_player.position
+		
+		# 同时更新position_ms用于向后兼容
 		if midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
-			position_ms = _calculate_position_with_bpm_timeline(midi_player.position, midi_player.smf_data.timebase)
+			position_ms = _calculate_position_with_bpm_timeline(position, midi_player.smf_data.timebase)
 
 ## 初始化MIDI播放器
 func _initialize_midi_player() -> void:
@@ -427,3 +436,87 @@ func get_track_infos() -> Array:
 		return parse_result["track_infos"]
 	
 	return []
+
+## ========== Note分类接口 ==========
+## 将解析的note分为两类：自动播放和手动控制
+## 该方法当前仅为占位，待后续将Touhou Mix原有生成逻辑移植过来
+## @param	all_notes				所有已解析的note列表
+## @param	manual_track_indices	需要手动控制的轨道索引数组
+## @return 返回 {auto_play_notes: Array[Note], manual_control_notes: Array[Note]}
+func classify_notes(all_notes: Array, manual_track_indices: Array[int] = []) -> Dictionary:
+	var result = {
+		"auto_play_notes": [],
+		"manual_control_notes": []
+	}
+	
+	if all_notes.is_empty():
+		return result
+	
+	# 创建manual轨道集合便于快速查询
+	var manual_tracks_set = {}
+	for track_idx in manual_track_indices:
+		manual_tracks_set[track_idx] = true
+	
+	# ========== 预留分类逻辑 ==========
+	# 此处将在后续实现具体的分类算法
+	# 目前暂时将所有note划为自动播放，待游戏逻辑完成后填充
+	#
+	# 当前暂时实现方案：
+	for note in all_notes:
+		if note is MidiParser.Note:
+			# 检查note的轨道是否在手动控制列表中
+			if note.event.track_index in manual_tracks_set:
+				# 转换为ManualControlNote
+				var manual_note = MidiParser.ManualControlNote.new(note.event, note.note_index)
+				manual_note.midi_player = midi_player
+				result["manual_control_notes"].append(manual_note)
+			else:
+				# 保持为AutoPlayNote
+				result["auto_play_notes"].append(note)
+		else:
+			# 非Note类型，默认为自动播放
+			result["auto_play_notes"].append(note)
+	
+	print("[MidiPlaybackManager] Classified notes: %d auto-play, %d manual-control" % 
+		[result["auto_play_notes"].size(), result["manual_control_notes"].size()])
+	
+	return result
+
+## 设置MidiPlayer的手动控制note标记
+## 游戏完成分类后，应调用此方法通知MidiPlayer哪些note需要手动控制
+## @param	manual_control_notes	ManualControlNote数组
+func set_manual_control_notes(manual_control_notes: Array) -> void:
+	if midi_player == null:
+		push_warning("[MidiPlaybackManager] MidiPlayer not initialized")
+		return
+	
+	# 构建手动控制note的字典 {channel: {pitch: true}}
+	var manually_controlled: Dictionary = {}
+	
+	for note in manual_control_notes:
+		if note is MidiParser.ManualControlNote:
+			var channel = note.event.channel
+			var pitch = note.event.pitch
+			
+			if not manually_controlled.has(channel):
+				manually_controlled[channel] = {}
+			
+			manually_controlled[channel][pitch] = true
+	
+	# 传递给MidiPlayer
+	midi_player.set_manually_controlled_notes(manually_controlled)
+
+## ========== 位置单位转换工具 ==========
+## 将tick位置转换为毫秒（使用BPM时间线）
+func tick_to_ms(tick: float) -> float:
+	return _calculate_position_with_bpm_timeline(tick, midi_player.smf_data.timebase)
+
+## 获取当前播放位置（毫秒）
+## 这是对position_ms的替代方法，更明确地表示返回值的单位
+func get_position_ms() -> float:
+	return position_ms
+
+## 获取当前播放位置（tick）
+## 这是对position的替代方法，更明确地表示返回值的单位
+func get_position_tick() -> float:
+	return position

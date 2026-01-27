@@ -256,6 +256,18 @@ var channel_status:Array[GodotMIDIPlayerChannelStatus]
 var bank:Bank = null
 ## 再生用AudioStreamPlayerリスト
 var audio_stream_players:Array[AudioStreamPlayerADSR] = []
+
+## ========== 手動控制Note支持 ==========
+## 手动控制的note列表 - 记录哪些note应该由游戏手动触发，跳过自动播放
+## 格式: {channel: {pitch: is_manual_controlled}}
+var manually_controlled_notes:Dictionary = {} : set = set_manually_controlled_notes
+
+## 设置手动控制的note集合
+func set_manually_controlled_notes(notes_dict: Dictionary) -> void:
+	manually_controlled_notes = notes_dict
+	# 调试输出
+	#print("[MidiPlayer] Set manually controlled notes: %s" % manually_controlled_notes)
+
 ## ドラムトラック用アサイングループ
 var drum_assign_groups:Dictionary = {
 	# Hi-Hats
@@ -636,8 +648,32 @@ func set_smf_data( sd:SMF.SMFData ) -> void:
 func set_tempo( bpm:float ) -> void:
 	tempo = bpm
 	self.seconds_to_timebase = tempo / 60.0
-	self.timebase_to_seconds = 60.0 / tempo
-	self.emit_signal( "changed_tempo", bpm )
+
+## ========== 手动note触发接口 ==========
+## 手动触发noteOn事件 - 用于手动控制的note，直接播放指定音符
+## @param	pitch			MIDI音符号 (0-127)
+## @param	velocity		力度 (1-127)
+## @param	channel_number	MIDI通道号 (0-15，默认通道0)
+func trigger_note_on(pitch: int, velocity: int, channel_number: int = 0) -> void:
+	if channel_number < 0 or channel_number >= self.channel_status.size():
+		push_warning("[MidiPlayer] Invalid channel number: %d" % channel_number)
+		return
+	
+	var channel = self.channel_status[channel_number]
+	# 调用内部的note_on处理，但此时不会再次检查manually_controlled_notes（因为已跳过自动处理）
+	self._process_track_event_note_on(channel, pitch, velocity)
+
+## 手动触发noteOff事件 - 停止指定音符的播放
+## @param	pitch			MIDI音符号 (0-127)
+## @param	velocity		力度 (1-127，通常忽略)
+## @param	channel_number	MIDI通道号 (0-15，默认通道0)
+func trigger_note_off(pitch: int, velocity: int, channel_number: int = 0) -> void:
+	if channel_number < 0 or channel_number >= self.channel_status.size():
+		push_warning("[MidiPlayer] Invalid channel number: %d" % channel_number)
+		return
+	
+	var channel = self.channel_status[channel_number]
+	self._process_track_event_note_off(channel, pitch)
 
 ## 音量設定
 ## @param	vdb	音量
@@ -788,6 +824,14 @@ func _process_track_event_note_off( channel:GodotMIDIPlayerChannelStatus, note:i
 func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:int, velocity:int ) -> void:
 	if channel.mute: return
 	if self.bank == null: return
+	
+	# ========== 手动控制note检查 ==========
+	# 如果该note被标记为手动控制，则跳过内部播放逻辑
+	if manually_controlled_notes.has(channel.number):
+		if manually_controlled_notes[channel.number].has(note):
+			if manually_controlled_notes[channel.number][note] == true:
+				#print("[MidiPlayer] Skipping auto-play for manually controlled note: ch=%d, pitch=%d, vel=%d" % [channel.number, note, velocity])
+				return  # 跳过内部播放，等待游戏通过trigger_note_on手动触发
 
 	var track_key_shift:int = self.key_shift if not channel.drum_track else 0
 	var key_number:int = note + track_key_shift

@@ -142,7 +142,7 @@ func _load_midi_thread(midi: MidiData) -> void:
 		push_error("Failed to load MIDI: %s" % midi.name)
 		return
 	
-	# 获取加载后的MIDI数据
+	# 获取加载后的MIDI数据（已为Note对象）
 	var parsed_notes = midi_playback_manager.current_notes
 	var track_infos = midi_playback_manager.get_track_infos()
 	
@@ -153,15 +153,23 @@ func _load_midi_thread(midi: MidiData) -> void:
 	# 2. 更新游戏时长
 	total_duration = midi_playback_manager.duration_ms / 1000.0
 	
-	# 3. 分类Note为gameSequences和backgroundSequences
+	# 3. 调用MidiPlaybackManager的分类接口
+	# 获取选中轨道作为手动控制轨道（示例，实际可从MidiData配置中读取）
+	var manual_track_indices = midi.selected_track_indices if midi.selected_track_indices.size() > 0 else []
+	var classified_notes = midi_playback_manager.classify_notes(parsed_notes, manual_track_indices)
+	
+	var auto_play_notes = classified_notes["auto_play_notes"]
+	var manual_control_notes = classified_notes["manual_control_notes"]
+	
+	# 4. 通知MidiPlayer哪些note需要手动控制
+	midi_playback_manager.set_manual_control_notes(manual_control_notes)
+	
+	# 5. KeySequenceManager处理（使用手动控制的note生成游戏键）
 	if key_sequence_manager != null:
 		key_sequence_manager.classify_sequences(midi, parsed_notes)
 		
-		# 获取选中轨道的Note用于游戏
-		var selected_track_notes = midi_playback_manager.get_selected_track_notes()
-		
-		# 为选中的Note生成键
-		key_sequence_manager.generate_keys(selected_track_notes)
+		# 使用手动控制的note生成键
+		key_sequence_manager.generate_keys(manual_control_notes)
 		
 		# 应用配置文件中的优化设置（可选）
 		if ConfigLoader.new().load_config("res://Resources/Config/config.ini").has("Gameplay"):
@@ -172,8 +180,8 @@ func _load_midi_thread(midi: MidiData) -> void:
 		# 执行键优化（框架）
 		key_sequence_manager.optimize_keys()
 	
-	print("[GameplayManager] MIDI loaded: %s, Total duration: %.2f seconds, Notes: %d" %
-		[midi.name, total_duration, parsed_notes.size()])
+	print("[GameplayManager] MIDI loaded: %s, Total duration: %.2f seconds, Total Notes: %d (Auto: %d, Manual: %d)" %
+		[midi.name, total_duration, parsed_notes.size(), auto_play_notes.size(), manual_control_notes.size()])
 
 ## 暂停游戏
 func pause_game() -> void:
@@ -234,8 +242,8 @@ func _sync_playback_position() -> void:
 	if midi_playback_manager == null:
 		return
 	
-	# 从MidiPlaybackManager获取当前播放位置
-	var midi_position_ms = midi_playback_manager.position_ms
+	# 从MidiPlaybackManager获取当前播放位置（使用get_position_ms()方法）
+	var midi_position_ms = midi_playback_manager.get_position_ms()
 	game_time = midi_position_ms / 1000.0
 	
 	# 启动MIDI播放（第一次调用时）
