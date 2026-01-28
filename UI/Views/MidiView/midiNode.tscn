@@ -10,6 +10,7 @@
 
 [node name="MidiNode" type="Panel"]
 clip_children = 2
+clip_contents = true
 custom_minimum_size = Vector2(750, 150)
 anchors_preset = -1
 anchor_right = 0.9479167

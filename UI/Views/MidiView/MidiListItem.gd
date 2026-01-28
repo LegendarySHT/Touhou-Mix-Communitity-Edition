@@ -54,8 +54,8 @@ func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg:ButtonGrou
 	)
 	btn_confirmed.connect(parent._show_midi_list)
 
-	if index == 0:
-		button.button_pressed = true
+	# if index == 0:
+	# 	button.button_pressed = true
 
 ## 加载封面图片
 func _load_cover_image() -> void:

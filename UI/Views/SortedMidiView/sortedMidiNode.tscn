@@ -1,19 +1,43 @@
-[gd_scene load_steps=4 format=3 uid="uid://ddhnyragi1haf"]
+[gd_scene load_steps=9 format=3 uid="uid://ddhnyragi1haf"]
 
 [ext_resource type="Script" uid="uid://c4gjvjg4gl57p" path="res://UI/Views/SortedMidiView/SortedMidiListItem.gd" id="1_sx7kd"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_aaj07"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_ex0j5"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sx7kd"]
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.41568628, 0.59607846, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_aaj07"]
+draw_center = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ex0j5"]
+bg_color = Color(0.18098986, 0.36878055, 0.8004749, 0.24705882)
+draw_center = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_www55"]
+bg_color = Color(0.28210002, 0.4809351, 0.91, 0.14509805)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7gp3l"]
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.97, 0.97, 0.97, 0.6392157)
+
 [node name="MidiNode" type="MarginContainer"]
-clip_children = 2
 clip_contents = true
 custom_minimum_size = Vector2(900, 150)
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -381.5
 offset_right = -1020.0
-offset_bottom = -1271.5
+offset_bottom = -890.0
 grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 0
@@ -22,18 +46,17 @@ script = ExtResource("1_sx7kd")
 metadata/index = 0
 metadata/_edit_use_anchors_ = true
 
-[node name="Polygon2D" type="Polygon2D" parent="."]
-position = Vector2(0, 0.5)
-scale = Vector2(0.867977, 0.838323)
-internal_vertex_count = 2
+[node name="Panel" type="Panel" parent="."]
+clip_contents = true
+custom_minimum_size = Vector2(900, 150)
+layout_mode = 2
 
-[node name="cover" type="TextureRect" parent="Polygon2D"]
-custom_minimum_size = Vector2(700, 200)
-offset_right = 900.0
-offset_bottom = 900.00006
+[node name="cover" type="TextureRect" parent="Panel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 900.0
 grow_horizontal = 2
-grow_vertical = 0
-scale = Vector2(1.15, 1.15)
 pivot_offset = Vector2(0, 350)
 size_flags_vertical = 0
 mouse_filter = 2
@@ -42,14 +65,12 @@ expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true
 
-[node name="MC" type="MarginContainer" parent="."]
-layout_mode = 2
-theme_override_constants/margin_left = 50
-theme_override_constants/margin_top = 5
-theme_override_constants/margin_bottom = 10
-
-[node name="Data" type="Label" parent="MC"]
-layout_mode = 2
+[node name="Data" type="Label" parent="Panel"]
+layout_mode = 0
+offset_left = 50.0
+offset_top = 5.0
+offset_right = 369.0
+offset_bottom = 39.0
 size_flags_horizontal = 0
 size_flags_vertical = 0
 theme_override_colors/font_outline_color = Color(0.49803922, 0, 0.91764706, 1)
@@ -57,15 +78,19 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 30
 text = "Download Trail Up Love"
 
-[node name="VBox" type="VBoxContainer" parent="MC"]
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
-theme_override_constants/separation = 0
-
-[node name="MidiName" type="Label" parent="MC/VBox"]
-custom_minimum_size = Vector2(850, 0)
-layout_mode = 2
+[node name="MidiName" type="Label" parent="Panel"]
+custom_minimum_size = Vector2(840, 0)
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 50.0
+offset_top = -25.0
+offset_right = -10.0
+offset_bottom = 9.0
+grow_horizontal = 2
+grow_vertical = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
@@ -75,8 +100,25 @@ theme_override_font_sizes/font_size = 30
 text = "Midi Name"
 clip_text = true
 
-[node name="Author" type="Label" parent="MC/VBox"]
+[node name="HBoxC" type="HBoxContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 50.0
+offset_top = -75.0
+offset_right = -50.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_horizontal = 0
+size_flags_vertical = 8
+theme_override_constants/separation = 10
+
+[node name="Author" type="Label" parent="Panel/HBoxC"]
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 8
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
@@ -86,16 +128,12 @@ theme_override_font_sizes/font_size = 30
 text = "Midi Author"
 vertical_alignment = 2
 
-[node name="Line2D" type="Line2D" parent="MC/VBox"]
-position = Vector2(-135, -10)
+[node name="Line2D" type="Line2D" parent="Panel/HBoxC"]
+position = Vector2(-135, -15)
 points = PackedVector2Array(120, 45, 945, 45)
-width = 4.0
+width = 8.0
 
-[node name="MC" type="MarginContainer" parent="MC"]
-layout_mode = 2
-theme_override_constants/margin_right = 100
-
-[node name="status" type="Label" parent="MC/MC"]
+[node name="status" type="Label" parent="Panel/HBoxC"]
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
@@ -104,17 +142,35 @@ theme_override_constants/shadow_outline_size = 5
 theme_override_font_sizes/font_size = 30
 text = "Pending"
 
-[node name="Button" type="Button" parent="."]
-self_modulate = Color(1, 1, 1, 0)
-layout_mode = 2
+[node name="Border" type="PanelContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_sx7kd")
+
+[node name="Button" type="Button" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+focus_next = NodePath("/root/Main/ShortCutMenu/skew/VBoxC/Btns/Search")
 mouse_filter = 1
+theme_override_styles/normal = SubResource("StyleBoxFlat_aaj07")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ex0j5")
+theme_override_styles/hover = SubResource("StyleBoxFlat_www55")
+theme_override_styles/focus = SubResource("StyleBoxFlat_7gp3l")
 toggle_mode = true
+metadata/_edit_use_anchors_ = true
 metadata/index = 0
 
-[node name="Line2D" type="Line2D" parent="."]
-points = PackedVector2Array(0, 0, 0, 150, 900, 150, 900, 0)
-closed = true
-width = 5.0
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
+[node name="VE" type="VisibleOnScreenEnabler2D" parent="."]
+position = Vector2(-5, -410.5)
+rect = Rect2(0, 186, 905, 602)

@@ -53,8 +53,6 @@ func _process(delta):
 	# 处理分帧加载
 	_process_loading()
 
-	process_item_cover_move()
-
 func _gui_input(event):
 	super._gui_input(event)
 
@@ -119,7 +117,7 @@ func _load_sorted_midis() -> void:
 	
 	current_midis = sorting_engine.get_midis()
 	# 清空现有列表（这会立即移除所有子节点）
-	_clear_list()
+	clear_items()
 	
 	# 检查是否已经有加载任务在进行
 	if _is_loading:
@@ -138,21 +136,11 @@ func _load_sorted_midis() -> void:
 		node.setup_with_midi(_midis_to_load[0], 0, item_bg)
 		_current_load_index = 1
 		
+		node.button.button_pressed = true
+		
 		# 如果只有一个节点，直接完成
 		if _midis_to_load.size() == 1:
 			_finish_loading()
-
-## 清空列表
-func _clear_list() -> void:
-	if container == null:
-		return
-	
-	# 使用批量移除以提高性能
-	var children = container.get_children()
-	for i in range(children.size() - 1, -1, -1):
-		children[i].queue_free()
-	
-	list_items.clear()
 
 ## 刷新显示（使用分帧加载）
 func _refresh_display() -> void:

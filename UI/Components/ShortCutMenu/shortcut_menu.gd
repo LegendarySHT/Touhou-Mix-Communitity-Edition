@@ -1,10 +1,9 @@
 extends VBoxContainer
-var view = 0 #为1或2时表示切换到对应页
 
 @onready var UI: UIStateManager = UIStateManager.instance
 
 @onready var sort_button = $Btns/Search
-@onready var favor_list_button = $Btns/FavorList
+@onready var favor_button = $Btns/FavorList
 
 @onready var page_container = $Panel
 @onready var page = $Panel/Page
@@ -12,11 +11,49 @@ var view = 0 #为1或2时表示切换到对应页
 func _ready() -> void:
 	# 连接按钮点击事件
 	sort_button.toggled.connect(_on_menu_tab_btn_toggled.bind(sort_button))
-	favor_list_button.toggled.connect(_on_menu_tab_btn_toggled.bind(favor_list_button))
+	favor_button.toggled.connect(_on_menu_tab_btn_toggled.bind(favor_button))
 
 	_on_menu_tab_btn_toggled(false, sort_button)
 
+	# 按键退出事件
+	UI.state_changed.connect(_on_state_changed)
+
+	# 按钮聚焦事件
+	sort_button.focus_entered.connect(_on_focus_enter.bind(sort_button))
+	favor_button.focus_entered.connect(_on_focus_enter.bind(favor_button))
+
+	sort_button.focus_exited.connect(_on_focus_exit.bind(sort_button))
+	favor_button.focus_exited.connect(_on_focus_exit.bind(favor_button))
+
+func _on_focus_enter(btn: Button):
+	if not get_viewport().get_visible_rect().has_point(get_global_rect().position):
+		return
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		return
+	await get_tree().create_timer(0.1).timeout
+	if not btn.button_pressed:
+		btn.button_pressed = true
+
+func _on_focus_exit(btn: Button):
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		return
+	if UI.current_state == UIStateManager.UIState.SORTED_VIEW:
+		return
+	await get_tree().create_timer(0.1).timeout
+	var fn = get_viewport().gui_get_focus_owner()
+	var node = get_node("Panel/Page")
+
+	if (btn == sort_button and node.get_node("SortPage").is_ancestor_of(fn)) or (btn == favor_button and node.get_node("FavorPage").is_ancestor_of(fn)):
+		return
+	btn.button_pressed = false
+
+func _on_state_changed(old_state: UIStateManager.UIState, _new_state: UIStateManager.UIState) -> void:
+	if old_state == UIStateManager.UIState.SORTED_VIEW:
+		sort_button.button_pressed = false
+		favor_button.button_pressed = false
+
 func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
+	# print("按钮切换：%s %s" % [btn.name, toggled_on])
 	var expa = 1 if toggled_on else 0
 	
 	var tween = create_tween()
@@ -44,7 +81,7 @@ func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
 			tween.tween_property(page, "position", Vector2(-565, 50), 0.5)
 
 func _is_all_off() -> bool:
-	if sort_button.button_pressed or favor_list_button.button_pressed:
+	if sort_button.button_pressed or favor_button.button_pressed:
 		return false
 	else:
 		return true

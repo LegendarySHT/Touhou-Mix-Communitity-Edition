@@ -17,7 +17,7 @@ func _ready() -> void:
 		return
 	
 	work_state = UIStateManager.UIState.ALBUM_VIEW
-	item_height = 173 # 间距29 项高144
+	item_height = 179 # 间距29 项高150
 	item_spacing = 29
 	snap_offset_y = 0
 
@@ -34,10 +34,14 @@ func _load_albums() -> void:
 	current_albums = data_manager.get_all_albums()
 	_refresh_display()
 
+	_connect_head_and_tail()
+
+	container.custom_minimum_size.y = (item_height + item_spacing) * current_albums.size() - 200
+
 ## 刷新显示
 func _refresh_display() -> void:
 	# 清空现有项
-	_clear_list()
+	clear_items()
 	
 	# 添加新项
 	var counter = 0
@@ -47,17 +51,6 @@ func _refresh_display() -> void:
 		item.setup_with_album(self, album, counter, bg)
 
 		counter += 1
-
-## 清空列表
-func _clear_list() -> void:
-	if container == null:
-		return
-	
-	for item in container.get_children():
-		item.queue_free()
-	
-	list_items.clear()
-
 
 func _process(delta):
 	super._process(delta)
@@ -69,14 +62,18 @@ func _process(delta):
 			elif not container.get_child(selected_item).is_selected:
 				selected_item = -1
 				need_snap = true
-				
+
 	else:
 		need_snap = false
 		if selected_item!= -1 and not is_dragging_list:
 			reset_selection()
 
-	# 图片移动
-	process_item_cover_move()
+func _gui_input(event: InputEvent) -> void:
+	super._gui_input(event)
+
+func _unhandled_input(event):
+	# print("Unhandled input event: %s" % event)
+	super._gui_input(event)
 
 func reset_selection():
 	if selected_item!= -1:

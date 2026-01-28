@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://dvvggbuqsfxbw"]
+[gd_scene load_steps=18 format=3 uid="uid://dvvggbuqsfxbw"]
 
 [ext_resource type="Script" uid="uid://dbgwcersgki3c" path="res://UI/Views/StorePage/StoreView.gd" id="1_77ghf"]
 [ext_resource type="Texture2D" uid="uid://7e7lff81aa7n" path="res://Resources/Gradient/gradient2.png" id="1_aexbj"]
@@ -7,6 +7,15 @@
 [ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="4_6ial6"]
 [ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="5_uoxjv"]
 [ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="6_f6x17"]
+
+[sub_resource type="Gradient" id="Gradient_2hjjb"]
+colors = PackedColorArray(0.047058824, 0.5568628, 0.88235295, 1, 0.20784314, 0.3764706, 0.88235295, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_aexbj"]
+gradient = SubResource("Gradient_2hjjb")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_77ghf"]
+texture = SubResource("GradientTexture2D_aexbj")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_aexbj"]
 bg_color = Color(0.07058824, 0.49411765, 1, 1)
@@ -84,6 +93,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+size_flags_horizontal = 4
 
 [node name="Background" type="TextureRect" parent="."]
 custom_minimum_size = Vector2(1921, 1080)
@@ -96,7 +106,6 @@ grow_vertical = 2
 texture = ExtResource("1_aexbj")
 
 [node name="StoreMidiList" type="ScrollContainer" parent="."]
-custom_minimum_size = Vector2(1700, 936)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -111,6 +120,7 @@ list_item_class = "res://UI/Views/StorePage/storeMidiNode.tscn"
 
 [node name="MC" type="MarginContainer" parent="StoreMidiList"]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/margin_left = 100
 theme_override_constants/margin_top = 180
 theme_override_constants/margin_right = 80
@@ -119,28 +129,30 @@ theme_override_constants/margin_bottom = 100
 [node name="HFlowBox" type="HFlowContainer" parent="StoreMidiList/MC"]
 custom_minimum_size = Vector2(1790, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/h_separation = 65
 theme_override_constants/v_separation = 40
+alignment = 1
 
-[node name="TopBar" type="HBoxContainer" parent="."]
+[node name="TopBar" type="Panel" parent="."]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 108.0
 grow_horizontal = 2
-alignment = 1
-
-[node name="Base" type="Polygon2D" parent="TopBar"]
-self_modulate = Color(0.882813, 0.882813, 0.882813, 1)
-color = Color(0.184314, 0.423529, 1, 1)
-polygon = PackedVector2Array(0, 0, 0, 120, 1920, 120, 1920, 0)
-vertex_colors = PackedColorArray(0.054902, 0.631373, 1, 1, 0.054902, 0.635294, 1, 1, 0.0980392, 0.360784, 1, 1, 0.258824, 0.431373, 1, 1)
+theme_override_styles/panel = SubResource("StyleBoxTexture_77ghf")
 
 [node name="Left" type="HBoxContainer" parent="TopBar"]
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 30
 
 [node name="FilterBtn" type="OptionButton" parent="TopBar/Left"]
 layout_mode = 2
@@ -157,33 +169,32 @@ popup/item_1/text = "歌曲时长"
 popup/item_1/icon = ExtResource("4_6ial6")
 popup/item_1/id = 1
 
-[node name="Search" type="MarginContainer" parent="TopBar"]
+[node name="Search" type="MarginContainer" parent="TopBar/Left"]
+custom_minimum_size = Vector2(800, 0)
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.5
 theme_override_constants/margin_left = 60
 theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 60
 
-[node name="Base" type="Polygon2D" parent="TopBar/Search"]
+[node name="Base" type="Polygon2D" parent="TopBar/Left/Search"]
 position = Vector2(-578, 22)
 offset = Vector2(0, -30)
 polygon = PackedVector2Array(515, 0, 555, 150, 1350, 150, 1390, 0)
 vertex_colors = PackedColorArray(0.101961, 0.576471, 1, 1, 0.0666667, 0.556863, 1, 1, 0.0862745, 0.439216, 1, 1, 0.180392, 0.454902, 0.952941, 1)
 
-[node name="HBoxC" type="HBoxContainer" parent="TopBar/Search"]
+[node name="HBoxC" type="HBoxContainer" parent="TopBar/Left/Search"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
 theme_override_constants/separation = 30
 alignment = 1
 
-[node name="LineEdit" type="LineEdit" parent="TopBar/Search/HBoxC"]
+[node name="LineEdit" type="LineEdit" parent="TopBar/Left/Search/HBoxC"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 8.0
 
-[node name="Btn" type="TextureButton" parent="TopBar/Search/HBoxC"]
+[node name="Btn" type="TextureButton" parent="TopBar/Left/Search/HBoxC"]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -191,11 +202,11 @@ texture_normal = ExtResource("2_e4ark")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="HBoxC" type="HBoxContainer" parent="TopBar"]
+[node name="HBoxC" type="HBoxContainer" parent="TopBar/Left"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="OrderBtn" type="TextureButton" parent="TopBar/HBoxC"]
+[node name="OrderBtn" type="TextureButton" parent="TopBar/Left/HBoxC"]
 self_modulate = Color(1, 1, 1, 0.768627)
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2

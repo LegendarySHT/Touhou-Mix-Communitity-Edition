@@ -22,9 +22,6 @@ class_name TrackView
 @onready var soundfont_selector: OptionButton = $MC/VBox/VolumeView/HBoxC/VBoxC2/SoundfontSelector
 @onready var preview_button: Button = $MC/VBox/TotalView/MC/VBoxC/playArea/PreviewButton
 
-# 底部填充，增加新项时需要把这个移到底部
-@onready var bottom: MarginContainer = $MC/VBox/PaddingBottom
-
 # 给midi轨道访问的默认值
 var instrument_options: Array = ["钢琴", "吉他", "贝斯", "鼓", "弦乐"]
 
@@ -128,13 +125,15 @@ func _create_track_views() -> void:
 		track_scene.setup_track(self , track_info.index, track_info.name, instrument_options)
 
 		container.add_child(track_scene)
-		container.move_child(bottom, container.get_child_count() - 1)
 		
 		# 为该轨道初始化音符显示
 		_init_track_note_displayer(track_scene, track_info.index)
 		
 		midi_tracks.append(track_scene)
 	
+	# 增加上下边距
+	container.custom_minimum_size.y = container.size.y + 800
+
 	# 更新音源选择
 	if soundfont_selector and current_midi_data.use_soundfont:
 		_select_soundfont(current_midi_data.use_soundfont)

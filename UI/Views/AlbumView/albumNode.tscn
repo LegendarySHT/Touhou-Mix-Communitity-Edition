@@ -1,45 +1,74 @@
-[gd_scene load_steps=6 format=3 uid="uid://cmg2kkhga3yj5"]
+[gd_scene load_steps=10 format=3 uid="uid://cmg2kkhga3yj5"]
 
 [ext_resource type="Script" uid="uid://dye4gnjw1k7du" path="res://UI/Views/AlbumView/AlbumListItem.gd" id="1_pxpjj"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_fljdd"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_j1pth"]
 [ext_resource type="Texture2D" uid="uid://co2vcj4yav5cd" path="res://Resources/icon/Count_Base.png" id="4_4cpa4"]
 
-[sub_resource type="Gradient" id="Gradient_uj0r1"]
-interpolation_mode = 2
-offsets = PackedFloat32Array(0, 0.24, 0.493333, 0.713333)
-colors = PackedColorArray(0.0431373, 0.419608, 1, 1, 0.573372, 0.67577, 0.995313, 1, 0.476841, 0.644696, 1, 1, 0.185497, 0.416209, 1, 1)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pxpjj"]
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.41568628, 0.59607846, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fljdd"]
+draw_center = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j1pth"]
+bg_color = Color(0.18098986, 0.36878055, 0.8004749, 0.24705882)
+draw_center = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4cpa4"]
+bg_color = Color(0.28210002, 0.4809351, 0.91, 0.14509805)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xpu1h"]
+draw_center = false
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_color = Color(0.97, 0.97, 0.97, 0.6392157)
+expand_margin_left = 3.0
+expand_margin_top = 3.0
+expand_margin_right = 3.0
+expand_margin_bottom = 3.0
+shadow_color = Color(0.31, 0.7354999, 1, 0.6)
+shadow_size = 10
 
 [node name="AlbumNode" type="MarginContainer"]
-clip_contents = true
-custom_minimum_size = Vector2(615, 144)
-offset_right = 615.0
-offset_bottom = 144.0
+custom_minimum_size = Vector2(600, 150)
+offset_right = 600.0
+offset_bottom = 150.0
 size_flags_horizontal = 0
 size_flags_vertical = 0
 theme_override_constants/margin_left = 0
 script = ExtResource("1_pxpjj")
 metadata/index = 0
 
-[node name="PC" type="PanelContainer" parent="."]
+[node name="PN" type="Panel" parent="."]
+custom_minimum_size = Vector2(600, 150)
 layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
 mouse_filter = 1
 
-[node name="Polygon2D" type="Polygon2D" parent="PC"]
-scale = Vector2(0.867977, 0.838323)
-internal_vertex_count = 2
-
-[node name="cover" type="TextureRect" parent="PC/Polygon2D"]
-custom_minimum_size = Vector2(700, 200)
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
+[node name="PN" type="Panel" parent="PN"]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = 700.0
-offset_bottom = 700.0
 grow_horizontal = 2
-grow_vertical = 0
+grow_vertical = 2
+
+[node name="cover" type="TextureRect" parent="PN/PN"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 600.0
+grow_horizontal = 2
 pivot_offset = Vector2(0, 350)
 size_flags_vertical = 0
 mouse_filter = 2
@@ -48,15 +77,54 @@ expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true
 
-[node name="AlbumName" type="Label" parent="PC/Polygon2D"]
+[node name="DecoratedLine" type="Line2D" parent="PN/PN"]
+position = Vector2(121.516785, -335.3292)
+scale = Vector2(0.867977, 0.838323)
+points = PackedVector2Array(-81.799, 777, 777, 777)
+joint_mode = 1
+
+[node name="CountBase" type="TextureRect" parent="PN"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -145.0
+offset_top = 5.0
+offset_right = -5.0
+offset_bottom = 145.0
+grow_horizontal = 0
+texture = ExtResource("4_4cpa4")
+metadata/_edit_use_anchors_ = true
+
+[node name="SongCount" type="Label" parent="PN/CountBase"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -16.5
+offset_top = -34.0
+offset_right = 16.5
+offset_bottom = 34.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(20, 42)
+theme_override_font_sizes/font_size = 60
+text = "9"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="AlbumName" type="Label" parent="PN"]
 custom_minimum_size = Vector2(660, 40)
+layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = 115.0
-offset_right = 680.0
-offset_bottom = 155.0
+offset_left = 17.35954
+offset_top = -53.592857
+offset_right = 677.35956
+offset_bottom = -13.592865
 grow_vertical = 0
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
@@ -67,67 +135,35 @@ vertical_alignment = 2
 clip_text = true
 metadata/_edit_use_anchors_ = true
 
-[node name="DecoratedLine" type="Line2D" parent="PC/Polygon2D"]
-position = Vector2(140, -400)
-points = PackedVector2Array(-81.799, 777, 777, 777)
-joint_mode = 1
+[node name="VE" type="VisibleOnScreenEnabler2D" parent="PN"]
+position = Vector2(-100, -411)
+rect = Rect2(100, 91, 600, 806)
+enable_node_path = NodePath("../..")
 
-[node name="CountBase" type="TextureRect" parent="PC/Polygon2D"]
-offset_left = 550.0
-offset_top = 20.0
-offset_right = 690.0
-offset_bottom = 160.0
-texture = ExtResource("4_4cpa4")
-metadata/_edit_use_anchors_ = true
-
-[node name="SongCount" type="Label" parent="PC/Polygon2D/CountBase"]
+[node name="Border" type="PanelContainer" parent="PN"]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -41.5002
-offset_right = 20.0
-offset_bottom = 41.5002
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(20, 42)
-theme_override_font_sizes/font_size = 60
-text = "9"
-horizontal_alignment = 1
-metadata/_edit_use_anchors_ = true
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_pxpjj")
 
-[node name="AlbumButton" type="Button" parent="PC/Polygon2D"]
-self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(710, 170)
-offset_left = 29.955
-offset_top = 40.043
-offset_right = 739.9553
-offset_bottom = 210.043
+[node name="AlbumButton" type="Button" parent="PN"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
+focus_next = NodePath("/root/Main/ShortCutMenu/skew/VBoxC/Btns/Search")
 mouse_filter = 1
+theme_override_styles/normal = SubResource("StyleBoxFlat_fljdd")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_j1pth")
+theme_override_styles/hover = SubResource("StyleBoxFlat_4cpa4")
+theme_override_styles/focus = SubResource("StyleBoxFlat_xpu1h")
 toggle_mode = true
-metadata/_edit_use_anchors_ = true
 metadata/index = 0
-
-[node name="line" type="Line2D" parent="PC"]
-position = Vector2(-111, -10)
-points = PackedVector2Array(114, 12, 114, 153, 722, 153, 722, 12)
-closed = true
-width = 4.0
-default_color = Color(0, 0, 0, 1)
-gradient = SubResource("Gradient_uj0r1")
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
-round_precision = 10
-metadata/_edit_lock_ = true
-
-[node name="VE" type="VisibleOnScreenEnabler2D" parent="PC"]
-position = Vector2(-100, -411)
-rect = Rect2(0, 0, 700, 1000)
-enable_node_path = NodePath("")
-metadata/_edit_lock_ = true

@@ -86,10 +86,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/separation = 29
-
-[node name="PaddingTop" type="MarginContainer" parent="Track/TrackList/MC/VBox"]
-layout_mode = 2
-theme_override_constants/margin_top = 300
+alignment = 1
 
 [node name="TotalView" type="Panel" parent="Track/TrackList/MC/VBox"]
 custom_minimum_size = Vector2(1600, 350)
@@ -331,7 +328,3 @@ vertical_alignment = 1
 [node name="MC" type="MarginContainer" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC"]
 layout_mode = 2
 theme_override_constants/margin_right = 60
-
-[node name="PaddingBottom" type="MarginContainer" parent="Track/TrackList/MC/VBox"]
-layout_mode = 2
-theme_override_constants/margin_bottom = 500

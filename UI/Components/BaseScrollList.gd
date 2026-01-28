@@ -106,16 +106,24 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	var enable:bool = state == work_state
 	set_process(enable)
 	set_process_input(enable)
-	if enable:
-		print("Node: %s , ProcessMode: %s" % [self.name, enable])
-		# 更新列表高度
-
+	
+	# 更新列表高度
 	if is_skew:
 		_on_window_size_changed()
 
 	# 重置值
 	is_dragging_list = false
 	_is_dragging_list = false
+
+	# 聚焦列表项
+	if enable and work_state not in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
+		print("Node: %s , ProcessMode: %s" % [self.name, enable])
+
+		await get_tree().create_timer(0.5).timeout
+		if selected_item == -1:
+			select_item(0)
+		print(selected_item)
+		get_selected_node().button.grab_focus()
 
 func _process(delta: float) -> void:
 	if container == null:
@@ -165,8 +173,10 @@ func _on_v_scrollbar_gui_input(event):
 				scroll_velocity = 0.0
 
 func _gui_input(event: InputEvent) -> void:
-	# 鼠标按钮事件
+	if work_state != UIStateManager.instance.current_state:
+		return
 
+	# 鼠标按钮事件
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_is_dragging_list = event.pressed
@@ -206,24 +216,27 @@ func _gui_input(event: InputEvent) -> void:
 				scroll_velocity += wheel_velocity * sig
 			
 			accept_event()
-
+	
 	elif event is InputEventKey and event.pressed:
-		if event.keycode in [KEY_UP, KEY_W, KEY_DOWN, KEY_S]:
-			var direction = -1
-			match event.keycode:
-				KEY_DOWN, KEY_S:
-					direction = 1
-
-			# 防止使用键盘移动时超出区域
-			if work_state in [UIStateManager.UIState.SONG_VIEW]:
-				var idx = select_item(selected_item + direction)
-				selected_item = idx
-				var y_pos = get_snap_node().global_position.y
-				snap_offset_y = -800 if y_pos >= 1080 else -350
-				if y_pos > 1080 or y_pos < 400:
-					need_snap = true
+	
+		if event.keycode in [KEY_W, KEY_S]:
+			var evt = InputEventKey.new()
+			if event.keycode == KEY_W:
+				evt.keycode = KEY_UP
+			elif event.keycode == KEY_S:
+				evt.keycode = KEY_DOWN
+				
+			evt.pressed = true
+			evt.echo = false
+			
+			# 发送到输入系统
+			Input.parse_input_event(evt)
 			accept_event()
 
+		elif event.keycode in [KEY_TAB]:
+			get_node("/root/Main/ShortCutMenu/skew/VBoxC/Btns/Search").grab_focus()
+			accept_event()
+	
 	# 鼠标移动事件
 	elif event is InputEventMouseMotion:
 		if _is_dragging_list and not is_dragging_bar:
@@ -239,16 +252,16 @@ func _gui_input(event: InputEvent) -> void:
 				scroll_velocity = - event.velocity.y
 			if _mouse_delta != 0:
 				scroll_vertical = clamp(int(-_mouse_delta + _list_start_pos), 0, get_v_scroll_bar().max_value)
-		
-func select_item(index: int) -> int:
-	if index == selected_item:
-		return index
 
+func select_item(index: int) -> int:
+	if index == selected_item or not list_items:
+		return index
+	
 	index = (index + list_items.size()) % list_items.size()
 	container.get_child(index).button.button_pressed = true
 	return index
 
-func get_snap_node() -> Node2D:
+func get_selected_node() -> Node2D:
 	return container.get_child(selected_item)
 
 ## 添加列表项
@@ -279,54 +292,41 @@ func clear_items() -> void:
 		return
 	
 	for item in list_items:
-		item.queue_free()
+		if item:
+			item.queue_free()
 	
 	list_items.clear()
+
+	# 重置值
+	selected_item = -1
+	scroll_velocity = 0.0
+	_is_dragging_list = false
+	is_dragging_list = false
+	is_dragging_bar = false
 
 ## 获取所有列表项
 func get_all_items() -> Array[ListItemBase]:
 	return list_items
 
-## 获取焦点项（可见范围内的中心项）
-func get_focused_item() -> ListItemBase:
-	if list_items.is_empty():
-		return null
+## 将头尾连接 用于focus循环
+func _connect_head_and_tail() -> void:
+	if container == null:
+		return
 	
-	var scroll_pos = get_v_scroll_bar().value
-	var view_height = get_v_scroll_bar().page
-	var center_pos = scroll_pos + view_height / 2.0
-	
-	var closest_item: ListItemBase = list_items[0]
-	var closest_distance: float = INF
-	
-	for item in list_items:
-		var item_center = item.get_global_rect().get_center().y
-		var distance = abs(item_center - center_pos)
-		
-		if distance < closest_distance:
-			closest_distance = distance
-			closest_item = item
-	
-	return closest_item
+	var node_h: Control = container.get_child(0).button
+	var node_t: Control = container.get_child(-1).button
 
-## 列表项图片位移
-func process_item_cover_move() -> void:
-	var window_height = get_viewport_rect().size.y
-	var idx:int = floori(scroll_vertical / item_height) - 3
-	idx = idx if idx >= 0 else 0
-	var midx = clampi(0,list_items.size(),idx + 10 + window_height/item_height)
-	
-	# 调用这个方法需要在item中添加cover_texture对象
-	for i in range(idx, midx):
-		var tex_r:TextureRect = container.get_child(i).cover_texture
-		tex_r.position = Vector2(0 , - tex_r.global_position.y / window_height * tex_r.size.y)
+	node_h.focus_neighbor_top = node_t.get_path()
+	node_h.focus_neighbor_left = node_t.get_path()
+	node_t.focus_neighbor_bottom = node_h.get_path()
+	node_t.focus_neighbor_right = node_h.get_path()
 
 ## 响应式布局
 func _on_window_size_changed():
 	# 根据实际像素布局
 	var glb_rect: Rect2 = get_viewport().get_visible_rect()
 	var new_size: Vector2 = size
-	new_size.y = glb_rect.size.y + 40 - ( 450 if work_state == UIStateManager.UIState.SONG_VIEW else 0)
+	new_size.y = glb_rect.size.y + 40 - ( 400 if work_state == UIStateManager.UIState.SONG_VIEW else 0)
 	new_size.x = new_size.x if not need_h_expand else glb_rect.size.x - 350
 	
 	size = new_size

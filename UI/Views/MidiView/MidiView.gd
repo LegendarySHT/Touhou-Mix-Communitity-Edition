@@ -74,6 +74,25 @@ func _load_midis(song_id: String) -> void:
 	if current_midis:
 		_refresh_display()
 
+	_connect_head_to_tail()
+
+func _connect_head_to_tail():
+	if container == null:
+		return
+	var ln = container.get_child(0).button
+	var hd = ln
+	var cn
+	for i in container.get_children():
+		if i == ln:
+			continue
+		cn = i.button
+		ln.focus_neighbor_bottom = cn.get_path()
+		cn.focus_neighbor_top = ln.get_path()
+		ln = cn
+	if not cn == hd:
+		cn.focus_neighbor_bottom = hd.get_path()
+		hd.focus_neighbor_top = cn.get_path()		
+
 ## 刷新显示
 func _refresh_display() -> void:
 	# 清空现有项
@@ -83,10 +102,8 @@ func _refresh_display() -> void:
 	var counter = 0
 	var bg = ButtonGroup.new()
 
-	print("[MidiView] Refreshing display with %d midis" % current_midis.size())
 	for midi in current_midis:
 		var item = create_and_add_item(midi.id, "midi")
-		print("[MidiView] Created item: %s, type: %s" % [item, item.get_class() if item else "null"])
 		if item:
 			# 添加指示器点
 			var point = ColorRect.new()
@@ -99,7 +116,6 @@ func _refresh_display() -> void:
 			var indicator = get_node(INDICATOR)
 			indicator.add_child(point)
 
-			print("[MidiView] Calling setup_with_midi for: %s" % midi.name)
 			if item.has_method("setup_with_midi"):
 				item.setup_with_midi(self, midi, counter, bg)
 			else:
@@ -134,18 +150,16 @@ func _on_click_track_btn():
 	EventBus.instance.enter_track_view_with.emit(midi)
 	UIStateManager.instance.change_state(UIStateManager.UIState.TRACK_VIEW)
 
-func _on_button_toggled(_toggled_on: bool, _index):
-	pass
-
 ## 清空列表
 func _clear_list() -> void:
 	if container == null:
 		return
 	
-	for item in container.get_children():
-		item.queue_free()
+	# for item in container.get_children():
+	# 	item.queue_free()
 	
-	list_items.clear()
+	# list_items.clear()
+	clear_items()
 	
 	# 清空指示器
 	var indicator = get_node(INDICATOR)
@@ -165,9 +179,6 @@ func _on_item_selected(item_id: String) -> void:
 				break
 
 func _gui_input(event):
-	if event is InputEventKey and event.pressed and get_snap_node().is_selected:
-		if event.keycode in [KEY_UP, KEY_W, KEY_DOWN, KEY_S]:
-			accept_event()
 	super._gui_input(event)
 
 var waiting: bool = false
@@ -176,7 +187,7 @@ func _process(_delta):
 	super._process(_delta)
 
 	# 吸附	
-	if not (is_dragging_list or need_snap or selected_item == -1) and abs(scroll_vertical - get_snap_node().position.y - item_height + snap_offset_y) > 7:
+	if not (is_dragging_list or need_snap or selected_item == -1) and abs(scroll_vertical - get_selected_node().position.y - item_height + snap_offset_y) > 7:
 		need_snap = true
 	
 	if abs(_mouse_delta) > 50 and is_dragging_list and not waiting and selected_item != -1:
@@ -198,12 +209,12 @@ func _show_midi_list(_index: int = 0) -> void:
 		return
 
 	if selected_item != -1:
-		get_snap_node().button.button_pressed = false
+		get_selected_node().button.button_pressed = false
 		last_selection = selected_item
 		selected_item = -1
 	else:
 		selected_item = last_selection
-		get_snap_node().button.button_pressed = true
+		get_selected_node().button.button_pressed = true
 		last_selection = -1
 
 func _previous() -> void:

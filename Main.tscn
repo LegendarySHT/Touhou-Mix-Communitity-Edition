@@ -1,4 +1,4 @@
-[gd_scene load_steps=42 format=3 uid="uid://jvmwtrulpf5g"]
+[gd_scene load_steps=48 format=3 uid="uid://jvmwtrulpf5g"]
 
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_devvj"]
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
@@ -54,13 +54,32 @@ bg_color = Color(0.4392157, 0.7294118, 0.98039216, 1)
 border_width_left = 5
 border_color = Color(1, 1, 1, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3rk5"]
+bg_color = Color(0.4392157, 0.7294118, 0.98039216, 1)
+
+[sub_resource type="InputEventKey" id="InputEventKey_3b0ty"]
+device = -1
+pressed = true
+keycode = 79
+unicode = 111
+
+[sub_resource type="Shortcut" id="Shortcut_bg4s2"]
+events = [SubResource("InputEventKey_3b0ty"), null]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mxvw5"]
-bg_color = Color(0.28665888, 0.46829945, 0.90240985, 1)
+bg_color = Color(0.050980393, 0.5294118, 1, 1)
 border_width_right = 8
 border_color = Color(1, 1, 1, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xrxkg"]
 bg_color = Color(0, 0, 0, 0.18431373)
+
+[sub_resource type="InputEventKey" id="InputEventKey_devvj"]
+pressed = true
+keycode = 85
+
+[sub_resource type="Shortcut" id="Shortcut_3b0ty"]
+events = [SubResource("InputEventKey_devvj")]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1vlqv"]
 content_margin_left = 4.0
@@ -147,6 +166,14 @@ Button/styles/hover = SubResource("StyleBoxFlat_vye1d")
 Button/styles/normal = SubResource("StyleBoxTexture_xrxkg")
 Button/styles/pressed = SubResource("StyleBoxTexture_bg4s2")
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5mvff"]
+draw_center = false
+border_width_left = 5
+border_width_top = 8
+border_width_right = 5
+border_width_bottom = 8
+border_color = Color(1, 1, 1, 1)
+
 [sub_resource type="ButtonGroup" id="ButtonGroup_3b0ty"]
 allow_unpress = true
 
@@ -156,7 +183,6 @@ border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
-border_color = Color(1, 1, 1, 1)
 shadow_color = Color(0, 0, 0, 0.19900002)
 shadow_size = 15
 
@@ -341,7 +367,6 @@ offset_right = 1300.0
 offset_bottom = 1120.0
 grow_vertical = 2
 size_flags_horizontal = 0
-focus_mode = 2
 theme = SubResource("Theme_devvj")
 follow_focus = true
 horizontal_scroll_mode = 0
@@ -355,6 +380,7 @@ layout_mode = 2
 size_flags_horizontal = 2
 mouse_filter = 2
 theme_override_constants/separation = 29
+alignment = 1
 
 [node name="SongList" type="ScrollContainer" parent="skew"]
 physics_interpolation_mode = 1
@@ -370,7 +396,6 @@ offset_bottom = -295.0
 grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
-focus_mode = 2
 follow_focus = true
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
@@ -382,6 +407,7 @@ list_item_class = "res://UI/Views/SongView/songNode.tscn"
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 29
+alignment = 1
 
 [node name="SortedMidisList" type="ScrollContainer" parent="skew"]
 physics_interpolation_mode = 1
@@ -395,7 +421,6 @@ offset_right = -199.0
 offset_bottom = 1118.9625
 grow_vertical = 2
 size_flags_horizontal = 0
-focus_mode = 2
 theme = SubResource("Theme_devvj")
 follow_focus = true
 horizontal_scroll_mode = 0
@@ -431,20 +456,19 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_3b0ty")
 script = ExtResource("7_sqvbp")
 
 [node name="Button" type="Button" parent="RB_Btn"]
-modulate = Color(1, 1, 1, 0)
-self_modulate = Color(1, 1, 1, 0)
-show_behind_parent = true
-z_index = 4
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 6.0
+offset_right = -1.0
 grow_horizontal = 2
 grow_vertical = 2
-action_mode = 0
-flat = true
+focus_mode = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_w3rk5")
+shortcut = SubResource("Shortcut_bg4s2")
+shortcut_in_tooltip = false
 icon_alignment = 1
-expand_icon = true
 
 [node name="Store" type="TextureRect" parent="RB_Btn"]
 layout_mode = 0
@@ -485,7 +509,10 @@ offset_right = -7.9132843
 offset_bottom = -0.70928955
 grow_horizontal = 2
 grow_vertical = 2
+focus_mode = 0
 theme_override_styles/normal = SubResource("StyleBoxFlat_xrxkg")
+shortcut = SubResource("Shortcut_3b0ty")
+shortcut_in_tooltip = false
 
 [node name="Setting" type="TextureRect" parent="LT_Btn"]
 custom_minimum_size = Vector2(140, 140)
@@ -545,11 +572,14 @@ alignment = 1
 [node name="Search" type="Button" parent="ShortCutMenu/skew/VBoxC/Btns"]
 custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
+focus_neighbor_right = NodePath("../FavorList")
+focus_next = NodePath("../FavorList")
+theme_override_styles/focus = SubResource("StyleBoxFlat_5mvff")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_3b0ty")
 icon_alignment = 1
 
-[node name="Control" type="PanelContainer" parent="ShortCutMenu/skew/VBoxC/Btns/Search"]
+[node name="Border" type="PanelContainer" parent="ShortCutMenu/skew/VBoxC/Btns/Search"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -576,12 +606,15 @@ stretch_mode = 5
 [node name="FavorList" type="Button" parent="ShortCutMenu/skew/VBoxC/Btns"]
 custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
+focus_neighbor_left = NodePath("../Search")
+focus_next = NodePath("../Search")
+theme_override_styles/focus = SubResource("StyleBoxFlat_5mvff")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_3b0ty")
 icon_alignment = 1
 expand_icon = true
 
-[node name="Control" type="PanelContainer" parent="ShortCutMenu/skew/VBoxC/Btns/FavorList"]
+[node name="Border" type="PanelContainer" parent="ShortCutMenu/skew/VBoxC/Btns/FavorList"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -634,6 +667,7 @@ layout_mode = 2
 [node name="TextEdit" type="LineEdit" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SearchBox"]
 custom_minimum_size = Vector2(440, 100)
 layout_mode = 2
+focus_next = NodePath("../../../../../Btns/FavorList")
 theme_override_font_sizes/font_size = 35
 theme_override_styles/normal = SubResource("StyleBoxFlat_devvj")
 placeholder_text = "please enter..."
@@ -643,6 +677,7 @@ caret_blink = true
 [node name="SearchBtn" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SearchBox"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
+focus_next = NodePath("../../../../../Btns/FavorList")
 texture_normal = ExtResource("12_40n85")
 ignore_texture_size = true
 stretch_mode = 5
@@ -661,6 +696,7 @@ theme_override_constants/separation = 40
 [node name="Status" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SortButton"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
+focus_next = NodePath("../../../../../Btns/FavorList")
 texture_normal = ExtResource("14_3b0ty")
 ignore_texture_size = true
 stretch_mode = 5
@@ -668,6 +704,7 @@ stretch_mode = 5
 [node name="Data" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SortButton"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
+focus_next = NodePath("../../../../../Btns/FavorList")
 toggle_mode = true
 button_group = ExtResource("15_bg4s2")
 texture_normal = ExtResource("14_sph85")
@@ -677,6 +714,7 @@ stretch_mode = 5
 [node name="Ordering" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SortPage/SortButton"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
+focus_next = NodePath("../../../../../Btns/FavorList")
 texture_normal = ExtResource("16_vi5kq")
 ignore_texture_size = true
 stretch_mode = 5
@@ -685,26 +723,26 @@ stretch_mode = 5
 layout_mode = 2
 theme_override_constants/margin_right = 20
 
-[node name="SongListPage" type="VBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page"]
+[node name="FavorPage" type="VBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 60
 
-[node name="FavorList" type="ScrollContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SongListPage"]
+[node name="FavorList" type="ScrollContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/FavorPage"]
 custom_minimum_size = Vector2(500, 530)
 layout_mode = 2
 
-[node name="VBoxC" type="VBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SongListPage/FavorList"]
+[node name="VBoxC" type="VBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/FavorPage/FavorList"]
 layout_mode = 2
 
-[node name="FavorListItem" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SongListPage/FavorList/VBoxC" instance=ExtResource("20_devvj")]
+[node name="FavorListItem" parent="ShortCutMenu/skew/VBoxC/Panel/Page/FavorPage/FavorList/VBoxC" instance=ExtResource("20_devvj")]
 layout_mode = 2
 
-[node name="CreateList" type="HBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SongListPage"]
+[node name="CreateList" type="HBoxContainer" parent="ShortCutMenu/skew/VBoxC/Panel/Page/FavorPage"]
 layout_mode = 2
 alignment = 1
 
-[node name="AddBtn" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/SongListPage/CreateList"]
+[node name="AddBtn" type="TextureButton" parent="ShortCutMenu/skew/VBoxC/Panel/Page/FavorPage/CreateList"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 8

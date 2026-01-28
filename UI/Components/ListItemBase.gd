@@ -54,6 +54,15 @@ func init_btn(btn: Button, parent) -> void:
 	if has_method("_on_button_toggled"):
 		btn_toggled.connect(self._on_button_toggled)
 
+	# 自动选择聚焦的项
+	button.focus_entered.connect(_on_focus_entered)
+
+func _on_focus_entered():
+	await get_tree().process_frame
+	# 方向键聚焦时需要触发按钮
+	if not button.button_pressed and _mouse_press_pos == Vector2.ZERO:
+		button.button_pressed = true
+
 func _on_button_down():
 	_mouse_press_pos = get_global_mouse_position()
 	_mouse_press = true
@@ -96,6 +105,8 @@ func _on_toggled(toggled_on: bool):
 
 	var temp = is_selected
 	is_selected = final
+	if is_selected:
+		button.grab_focus()
 	_mouse_press_pos = Vector2.ZERO
 	_mouse_press = false
 
@@ -126,7 +137,15 @@ func _pulse_animation(enable: bool):
 	else:
 		create_tween().tween_property(self, "scale", Vector2.ONE, 0.2).set_ease(Tween.EASE_IN_OUT)
 
-# ## 虚函数：初始化列表项
+# 虚函数：初始化列表项
 func initialize(id: String, type: String) -> void:
 	item_id = id
 	item_type = type
+
+# 封面移动动画
+func process_item_cover_move() -> void:
+	var max_y = self.cover_texture.size.y - size.y
+	var window_height = get_viewport().get_visible_rect().size.y
+	var pos_y = - global_position.y / window_height * max_y
+	
+	self.cover_texture.position.y = pos_y

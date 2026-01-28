@@ -316,17 +316,18 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 				var sItem = album_list.container.get_child(sIndex)
 				var copy=sItem.duplicate(true)
 				copy.name="SS"
-				skew.add_child(copy)
 
 				copy.position = skew.to_local(sItem.global_position)
 
 				# 设置节点
-				var button=copy.get_node("PC/Polygon2D/AlbumButton")
+				var button=copy.get_node("PN/AlbumButton")
 				button.button_group=null
 				button.toggle_mode=false
 
 				tindex = sIndex
 				sItem.modulate.a = 0.0
+				
+				skew.add_child(copy)
 
 			tween = animate_list_item_horizontal(album_list, sIndex, tindex, -1200, tween_id)
 			out_item_idx = sIndex
@@ -450,17 +451,17 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 				i.queue_free()
 		"Song_List":
 			if old_state == UIStateManager.UIState.ALBUM_VIEW:
-				animate_position(SS, skew.to_local(Vector2(250, 10)), 0.15, "SSPosition")
+				animate_position(SS, skew.to_local(Vector2(280, 10)), 0.15, "SSPosition")
 			elif SS:
 				animate_fade_in(SS, 0.15, "SSPosition")
 
 			song_list.visible=true
-			song_list.position=Vector2(285,-679)
-			animate_position(song_list, Vector2(song_list.position.x, 440), 0.15, tween_id)
+			song_list.position=Vector2(310,-750)
+			animate_position(song_list, Vector2(song_list.position.x, 400), 0.15, tween_id)
 			tween = animate_fade_in(song_list, 0.4, "SongListFadeIn")
 
 			# 不要问为什么在播放动画的地方做初始化
-			var button=SS.get_node("PC/Polygon2D/AlbumButton")
+			var button=SS.get_node("PN/AlbumButton")
 			var ui: UIStateManager = UiStatMGR.instance
 			button.pressed.connect(func() -> void:
 				ui.change_state(ui.UIState.ALBUM_VIEW))

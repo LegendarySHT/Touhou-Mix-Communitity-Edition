@@ -27,12 +27,6 @@ func _ready() -> void:
 
 	super._ready()
 
-# func _process(delta: float):
-# 	super._process(delta)
-
-# func _input(event):
-# 	super._input(event)
-
 ## 加载指定专辑的歌曲
 func _load_songs(album_id: String) -> void:
 	if not data_manager:
@@ -41,10 +35,15 @@ func _load_songs(album_id: String) -> void:
 	current_songs = data_manager.get_songs_by_album(album_id)
 	_refresh_display()
 
+	_connect_head_and_tail()
+
+	# 加长
+	container.custom_minimum_size.y = (item_height + item_spacing) * (current_songs.size() + 1)
+
 ## 刷新显示
 func _refresh_display() -> void:
 	# 清空现有项
-	_clear_list()
+	clear_items()
 	
 	var counter:int = 0
 	var bg = ButtonGroup.new()
@@ -54,24 +53,9 @@ func _refresh_display() -> void:
 		if item:
 			item.setup_with_song(self, song, counter, bg)
 			counter += 1
-	
-	
-	# 设置图片位置
-	for i in range(counter):
-		var cover = get_child(0).get_child(i).get_node("PC/Shader/cover")
-		if cover:
-			var y_pos = -(floori(item_height * i ) % int(cover.size.y-item_height))
-			cover.position.y = y_pos
 
-## 清空列表
-func _clear_list() -> void:
-	if container == null:
-		return
-	
-	for item in container.get_children():
-		item.queue_free()
-	
-	list_items.clear()
+func _gui_input(event: InputEvent) -> void:
+	super._gui_input(event)
 
 func _on_button_toggled(toggled_on: bool, index: int):
 	if toggled_on:

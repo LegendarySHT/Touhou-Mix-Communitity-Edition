@@ -120,6 +120,10 @@ content_margin_right = 4.0
 content_margin_bottom = 4.0
 bg_color = Color(1, 1, 1, 0.75)
 draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -271,12 +275,15 @@ alignment = 1
 [node name="ShortCut" type="VBoxContainer" parent="Node2D/HBoxC"]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
+focus_mode = 1
 theme = SubResource("Theme_07r5k")
 alignment = 1
 
 [node name="Btn1" type="Button" parent="Node2D/HBoxC/ShortCut"]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
+focus_neighbor_right = NodePath("../../SettingList/GridC")
+focus_previous = NodePath("../Btn6")
 theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
@@ -285,6 +292,7 @@ text = "常规"
 [node name="Btn2" type="Button" parent="Node2D/HBoxC/ShortCut"]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
+focus_neighbor_right = NodePath("../../SettingList/GridC")
 theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
@@ -293,6 +301,7 @@ text = "播放"
 [node name="Btn3" type="Button" parent="Node2D/HBoxC/ShortCut"]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
+focus_neighbor_right = NodePath("../../SettingList/GridC")
 theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
@@ -301,6 +310,7 @@ text = "轨道"
 [node name="Btn4" type="Button" parent="Node2D/HBoxC/ShortCut"]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
+focus_neighbor_right = NodePath("../../SettingList/GridC")
 theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
@@ -309,6 +319,7 @@ text = "判定"
 [node name="Btn5" type="Button" parent="Node2D/HBoxC/ShortCut"]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
+focus_neighbor_right = NodePath("../../SettingList/GridC")
 theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
@@ -317,6 +328,8 @@ text = "生成"
 [node name="Btn6" type="Button" parent="Node2D/HBoxC/ShortCut"]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
+focus_neighbor_right = NodePath("../../SettingList/GridC")
+focus_next = NodePath("../Btn1")
 theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")

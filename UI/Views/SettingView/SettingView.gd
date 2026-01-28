@@ -4,6 +4,7 @@ extends Control
 
 ## ConfigLoader 引用
 var config_loader: ConfigLoader = null
+@onready var UI: UIStateManager = UIStateManager.instance
 
 ## 配置文件路径
 const CONFIG_PATH = "user://files/settings.ini"
@@ -21,14 +22,35 @@ func _ready() -> void:
 	if setting_btn:
 		setting_btn.pressed.connect(
 			func():
-				if UIStateManager.instance.current_state != UIStateManager.UIState.SETTINGS_VIEW:
-					UIStateManager.instance.change_state(UIStateManager.UIState.SETTINGS_VIEW)
+				if UI.current_state != UIStateManager.UIState.SETTINGS_VIEW:
+					UI.change_state(UIStateManager.UIState.SETTINGS_VIEW)
 				else:
-					UIStateManager.instance.go_back()
+					UI.go_back()
 		)
+	# 焦点信号
+	var btns = get_node("Node2D/HBoxC/ShortCut")
+	btns.focus_entered.connect(func():
+		print("focus_entered")
+		var is_focus: bool = false
+		for i in btns.get_children():
+			if i is Button and i.button_pressed:
+				i.grab_focus()
+				is_focus = true
+				break
+		if not is_focus:
+			btns.get_child(0).grab_focus()
+	)
 
 	# 从 ConfigLoader 加载配置
 	_load_config_from_file()
+
+	# 设置焦点
+	UI.state_changed.connect(func(_old_state: UIStateManager.UIState, state: UIStateManager.UIState):
+		if state == UIStateManager.UIState.SETTINGS_VIEW:
+			# 确保按钮组有焦点
+			await get_tree().create_timer(0.5).timeout
+			short_cut_btn.grab_focus()
+	)
 
 ## 从文件加载配置
 func _load_config_from_file() -> void:
