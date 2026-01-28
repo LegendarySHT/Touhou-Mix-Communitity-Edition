@@ -376,6 +376,8 @@ func _update_master_note_displayer() -> void:
 	var selected_tracks = current_midi_data.selected_track_indices
 	if selected_tracks.is_empty():
 		push_warning("No tracks selected")
+		# 清空显示器中的所有音符
+		master_note_displayer.init_displayer(self, [])
 		return
 	
 	# 获取所有音符
