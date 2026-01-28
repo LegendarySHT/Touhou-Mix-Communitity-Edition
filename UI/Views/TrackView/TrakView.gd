@@ -430,6 +430,15 @@ func _init_master_note_displayer() -> void:
 	if master_note_displayer == null or midi_playback_manager == null:
 		return
 	
+	if current_midi_data == null:
+		push_warning("No MIDI data loaded")
+		return
+	
+	var selected_tracks = current_midi_data.selected_track_indices
+	if selected_tracks.is_empty():
+		push_warning("No tracks selected")
+		return
+	
 	# 获取所有音符
 	var all_notes = midi_playback_manager.current_notes
 	print("[TrackView] Got %d notes from MidiPlaybackManager" % all_notes.size())
@@ -438,30 +447,42 @@ func _init_master_note_displayer() -> void:
 		push_warning("No notes found in MIDI")
 		return
 	
-	# 过滤出已选中音轨的音符
-	var selected_notes = _filter_notes_by_selected_tracks(all_notes)
+	# 在一次遍历中过滤并转换为显示格式（notes已按时间顺序）
+	var display_notes: Array[NoteDisplayer.NoteEvent] = []
+	for note in all_notes:
+		if note is MidiParser.Note and note.event != null:
+			var evt = note.event
+			if evt.track_index in selected_tracks:
+				var display_note = NoteDisplayer.NoteEvent.new(
+					evt.pitch,
+					evt.velocity,
+					int(evt.start_time),
+					int(evt.duration),
+					evt.track_index,
+					evt.channel
+				)
+				display_notes.append(display_note)
 	
-	if selected_notes.is_empty():
+	if display_notes.is_empty():
 		push_warning("No notes found in selected tracks")
 		return
 	
-	print("[TrackView] Filtered to %d notes from selected tracks" % selected_notes.size())
+	print("[TrackView] Filtered to %d notes from selected tracks" % display_notes.size())
 	
-	# 转换为 NoteDisplayer 格式
-	var display_notes = _convert_notes_to_display_format(selected_notes)
-	
-	# 初始化显示器
+	# 初始化显示器（notes已按时间顺序排列）
 	master_note_displayer.init_displayer(self, display_notes)
 
 func _init_track_note_displayer(track_scene: MidiTrack, track_index: int) -> void:
 	if track_scene.note_display == null or midi_playback_manager == null:
 		return
 	
-	# 获取该轨道的音符
 	var all_notes = midi_playback_manager.current_notes
-	var track_notes: Array[NoteDisplayer.NoteEvent] = []
+	if all_notes.is_empty():
+		push_warning("No notes available for track %d" % track_index)
+		return
 	
-	# 筛选属于该轨道的音符
+	# 在一次遍历中筛选并转换该轨道的音符（notes已按时间顺序）
+	var track_notes: Array[NoteDisplayer.NoteEvent] = []
 	for note in all_notes:
 		if note is MidiParser.Note and note.event != null:
 			var evt = note.event
@@ -476,50 +497,15 @@ func _init_track_note_displayer(track_scene: MidiTrack, track_index: int) -> voi
 				)
 				track_notes.append(display_note)
 	
-	# 初始化该轨道的音符显示器
+	if track_notes.is_empty():
+		push_warning("No notes found for track %d" % track_index)
+		return
+	
+	print("[TrackView] Track %d: %d notes (time-sorted)" % [track_index, track_notes.size()])
+	# 初始化该轨道的音符显示器（notes已按时间顺序排列）
 	track_scene.note_display.init_displayer(self, track_notes)
 
-# 根据已选中的音轨过滤音符
-func _filter_notes_by_selected_tracks(all_notes: Array) -> Array:
-	if current_midi_data == null:
-		return all_notes
-	
-	var selected_tracks = current_midi_data.selected_track_indices
-	if selected_tracks.is_empty():
-		# 如果没有选中任何音轨，返回空数组
-		return []
-	
-	var filtered_notes: Array = []
-	
-	for note in all_notes:
-		if note is MidiParser.Note and note.event != null:
-			var evt = note.event
-			# 检查该音符所属的音轨是否被选中
-			if evt.track_index in selected_tracks:
-				filtered_notes.append(note)
-	
-	return filtered_notes
 
-# 转换 MidiParser.NoteEvent 到 NoteDisplayer.NoteEvent
-func _convert_notes_to_display_format(midi_notes: Array) -> Array[NoteDisplayer.NoteEvent]:
-	var result: Array[NoteDisplayer.NoteEvent] = []
-	
-	for note in midi_notes:
-		if note is MidiParser.Note and note.event != null:
-			var evt = note.event
-			# start_time 和 duration 现在已经是 tick 单位（在 MidiParser 中直接保存）
-			var display_note = NoteDisplayer.NoteEvent.new(
-				evt.pitch,
-				evt.velocity,
-				int(evt.start_time),  # 已经是 tick，直接转 int
-				int(evt.duration),    # 已经是 tick，直接转 int
-				evt.track_index,
-				evt.channel
-			)
-			result.append(display_note)
-	
-	print("[TrackView] Converted %d notes to display format (tick-based)" % result.size())
-	return result
 
 # 清理资源
 func _exit_tree() -> void:

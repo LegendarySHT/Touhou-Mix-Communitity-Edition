@@ -149,6 +149,14 @@ func load_midi(midi_data: MidiData) -> bool:
 	# 保存解析结果
 	current_notes = parse_result["notes"]
 	bpm_timeline = parse_result.get("bpm_timeline", [])  # 获取BPM时间线
+	
+	# 对notes按start_time排序（确保时间递增）
+	current_notes.sort_custom(func(a, b) -> bool:
+		var a_time = a.event.start_time if a is MidiParser.Note and a.event else 0
+		var b_time = b.event.start_time if b is MidiParser.Note and b.event else 0
+		return a_time < b_time
+	)
+	
 	current_midi_data.parsed_notes = current_notes
 	current_midi_data.track_count = parse_result["track_infos"].size()
 	current_midi_data.bpm = parse_result["bpm"]

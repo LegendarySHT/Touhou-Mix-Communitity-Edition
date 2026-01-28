@@ -164,8 +164,33 @@ func init_displayer(mn: Node, notes: Array[NoteEvent]):
 	current_notes = notes
 	current_idx = 0
 
+	# 临时测试：检查note是否按start_tick从小到大排列
+	_verify_notes_sorted(notes)
+
 	# 启用处理循环以驱动可视化
 	set_process(not current_notes.is_empty())
+
+# 临时测试函数：验证notes是否按start_tick从小到大排列
+func _verify_notes_sorted(notes: Array[NoteEvent]) -> void:
+	if notes.is_empty():
+		print("[NoteDisplayer] Notes array is empty")
+		return
+	
+	var is_sorted = true
+	var unsorted_count = 0
+	
+	for i in range(1, notes.size()):
+		if notes[i].start_tick < notes[i-1].start_tick:
+			is_sorted = false
+			unsorted_count += 1
+			if unsorted_count <= 3:  # 只打印前3个不排序的情况
+				print("[NoteDisplayer] ⚠️  Notes NOT sorted! Index %d: start_tick=%d < Index %d: start_tick=%d" % 
+					[i, notes[i].start_tick, i-1, notes[i-1].start_tick])
+	
+	if is_sorted:
+		print("[NoteDisplayer] ✓ All %d notes are properly sorted by start_tick (ascending order)" % notes.size())
+	else:
+		print("[NoteDisplayer] ⚠️  Found %d unsorted pairs in %d notes" % [unsorted_count, notes.size()])
 
 # 根据音高获取颜色
 func _get_color_by_pitch(pitch: int) -> Color:
