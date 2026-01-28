@@ -177,6 +177,9 @@ func _connect_signals() -> void:
 	
 	# 错误处理
 	event_bus.error_occurred.connect(_on_error_occurred)
+	
+	# 设置变化信号
+	event_bus.settings_changed.connect(_on_settings_changed)
 
 ## 加载配置文件
 func _load_configuration() -> void:
@@ -232,5 +235,78 @@ func _on_state_changed(old_state: int, new_state: int) -> void:
 ## 错误处理回调
 func _on_error_occurred(error_code: int, error_message: String) -> void:
 	logger.error("Error %d: %s" % [error_code, error_message], "Main")
+
+## 设置变化回调
+func _on_settings_changed(setting_name: String, value: Variant) -> void:
+	# 通配符 "*" 表示批量设置变更，重新加载所有配置
+	if setting_name == "*":
+		logger.info("Settings changed, reloading all configurations", "Main")
+		_reload_all_settings()
+		return
+	
+	# 处理单个设置项变更
+	logger.debug("Setting changed: %s = %s" % [setting_name, value], "Main")
+	_apply_single_setting(setting_name, value)
+
+## 重新加载所有设置
+func _reload_all_settings() -> void:
+	# 从用户配置文件重新加载
+	var user_config_path = "user://files/settings.ini"
+	if not FileAccess.file_exists(user_config_path):
+		logger.warning("User settings file not found, using defaults", "Main")
+		return
+	
+	var config = config_loader.load_config(user_config_path)
+	if config.is_empty():
+		logger.warning("Failed to load user settings", "Main")
+		return
+	
+	# 应用音频设置
+	if config.has("Audio"):
+		var audio_section = config["Audio"]
+		if audio_manager:
+			audio_manager.set_master_volume(int(audio_section.get("master_volume", 80)))
+			audio_manager.set_music_volume(int(audio_section.get("music_volume", 80)))
+			audio_manager.set_sfx_volume(int(audio_section.get("effects_volume", 80)))
+	
+	# 应用显示设置
+	if config.has("Display"):
+		var display_section = config["Display"]
+		var fullscreen = display_section.get("fullscreen", "true").to_lower() in ["true", "1", "yes"]
+		var vsync = display_section.get("vsync_enabled", "true").to_lower() in ["true", "1", "yes"]
+		
+		if fullscreen:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		else:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
+	
+	logger.info("All settings reloaded and applied", "Main")
+
+## 应用单个设置项
+func _apply_single_setting(setting_name: String, value: Variant) -> void:
+	# 音频相关设置
+	if setting_name in ["master_volume", "music_volume", "effects_volume"]:
+		if audio_manager:
+			match setting_name:
+				"master_volume":
+					audio_manager.set_master_volume(int(value))
+				"music_volume":
+					audio_manager.set_music_volume(int(value))
+				"effects_volume":
+					audio_manager.set_sfx_volume(int(value))
+	
+	# 显示相关设置
+	elif setting_name == "fullscreen":
+		var is_fullscreen = value in ["1", "true", "True", "yes", "Yes"]
+		if is_fullscreen:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		else:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	
+	elif setting_name == "vsync_enabled":
+		var is_vsync = value in ["1", "true", "True", "yes", "Yes"]
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if is_vsync else DisplayServer.VSYNC_DISABLED)
 
 # 在 AspectRatioContainer 的父节点添加脚本

@@ -3,6 +3,9 @@
 class_name ConfigLoader
 extends Node
 
+## 配置版本号
+const CONFIG_VERSION = "1.0.0"
+
 ## 配置缓存
 var configs: Dictionary[String, Dictionary] = {}
 
@@ -82,3 +85,88 @@ func get_bool(config: Dictionary, section: String, key: String, default: bool = 
 ## 清空缓存
 func clear_cache() -> void:
 	configs.clear()
+
+## 保存配置到INI文件
+func save_config(file_path: String, config: Dictionary) -> bool:
+	var content = _serialize_ini(config)
+	
+	var file = FileAccess.open(file_path, FileAccess.WRITE)
+	if file == null:
+		push_error("Failed to save config: %s (Error: %d)" % [file_path, FileAccess.get_open_error()])
+		return false
+	
+	file.store_string(content)
+	file.close()
+	
+	# 更新缓存
+	configs[file_path] = config
+	
+	return true
+
+## 序列化配置字典为INI格式
+func _serialize_ini(config: Dictionary) -> String:
+	var result = ""
+	
+	for section in config.keys():
+		result += "[%s]\n" % section
+		
+		var section_data = config[section]
+		if section_data is Dictionary:
+			for key in section_data.keys():
+				var value = section_data[key]
+				
+				# 处理需要引号的值
+				if value is String and (" " in value or value.is_empty()):
+					result += "%s = \"%s\"\n" % [key, value]
+				else:
+					result += "%s = %s\n" % [key, str(value)]
+		
+		result += "\n"
+	
+	return result
+
+## 设置单个配置值
+func set_value(config: Dictionary, section: String, key: String, value: Variant) -> void:
+	if not config.has(section):
+		config[section] = {}
+	config[section][key] = value
+
+## 合并配置与默认值（用于兼容性）
+func merge_with_defaults(user_config: Dictionary, default_config: Dictionary) -> Dictionary:
+	var merged = default_config.duplicate(true)
+	
+	for section in user_config.keys():
+		if not merged.has(section):
+			merged[section] = {}
+		
+		var user_section = user_config[section]
+		if user_section is Dictionary:
+			for key in user_section.keys():
+				merged[section][key] = user_section[key]
+	
+	return merged
+
+## 检查并迁移配置版本
+func check_and_migrate(config: Dictionary, file_path: String) -> Dictionary:
+	var version = get_value(config, "Game", "config_version", "0.0.0")
+	
+	if version == CONFIG_VERSION:
+		return config
+	
+	# 版本不匹配，进行迁移
+	print("[ConfigLoader] Migrating config from version %s to %s" % [version, CONFIG_VERSION])
+	
+	# 加载默认配置
+	var default_path = "res://Resources/Config/config.ini"
+	var default_config = load_config(default_path) if file_path != default_path else {}
+	
+	# 合并配置（保留用户设置，添加新的默认值）
+	var migrated = merge_with_defaults(config, default_config)
+	
+	# 更新版本号
+	set_value(migrated, "Game", "config_version", CONFIG_VERSION)
+	
+	# 保存迁移后的配置
+	save_config(file_path, migrated)
+	
+	return migrated

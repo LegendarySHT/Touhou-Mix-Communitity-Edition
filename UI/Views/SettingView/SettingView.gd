@@ -2,6 +2,13 @@ extends Control
 @onready var setting_list: SettingList = $Node2D/HBoxC/SettingList
 @onready var short_cut_btn = $Node2D/HBoxC/ShortCut
 
+## ConfigLoader 引用
+var config_loader: ConfigLoader = null
+
+## 配置文件路径
+const CONFIG_PATH = "user://files/settings.ini"
+const DEFAULT_CONFIG_PATH = "res://Resources/Config/config.ini"
+
 
 func _ready() -> void:
 	var idx: int = 0
@@ -20,13 +27,60 @@ func _ready() -> void:
 					UIStateManager.instance.go_back()
 		)
 
-	# 样例
-	# 这个配置应该从配置管理器获取，此处是个示例
-	var settingData = {
-	 "performing_mode": "0", "play_ready_animation": "0", "playback_speed_scaling": "1.5", "vibrate_on_touch": "0", "vibration_duration": "50", "use_system_stopwatch": "0", "lane_count": "12", "keyboard_mode": "0", "keyboard_mode_keys": "A,S,D,F,J,K,L,;", "flash_alpha": "0.8", "perfect_spark_preset": "0", "perfect_spark_scaling": "1.0", "great_spark_preset": "0", "great_spark_scaling": "1.0", "good_spark_preset": "0", "good_spark_scaling": "1.0", "bad_spark_preset": "0", "bad_spark_scaling": "1.0", "touch_judging_criteria": "3", "check_instant_blocks_when_finger_up": "1", "only_perfect_instant_blocks_before_judge": "0", "judge_line_position": "200", "block_judging_width": "100", "min_block_spacing": "50", "canvas_horizontal_padding": "100", "judge_time_offset": "0", "perfect_time": "0.05", "great_time": "0.1", "good_time": "0.15", "bad_time": "0.2", "instant_block_max_time": "0.5", "short_block_max_time": "1.0", "max_simultaneous_blocks": "3", "min_tap_interval": "0.2", "min_touch_cooldown_time": "0.2", "max_touch_move_speed": "500", "max_block_coalesce_time": "0.5", "randomize_block_color": "0", "sync_color_across_block_type": "0", "instant_block_color": "ff6b6bff", "short_block_color": "4ecdc4ff", "long_block_color": "45b7d1ff", "custom_block_skin_texture_filter_mode": "0", "block_skin_preset": "0", "cache_time": "2.0", "cache_easing_type": "0", "grace_time": "0.5", "grace_easing_type": "2", "custom_background_image_size_mode": "0", "block_size": "150", "background_image_preset": "0", "background_image_color": "ffffffff", "background_image_flash_color": "ffffff00", "background_dim_alpha": "0.5", "judge_line_thickness": "2", "generate_short_connect": "0", "generate_instant_connect": "0", "instant_connect_max_time": "0.5"
-	}
-	setting_list.load_settings(settingData)
-	# print(_get_config())
+	# 从 ConfigLoader 加载配置
+	_load_config_from_file()
+
+## 从文件加载配置
+func _load_config_from_file() -> void:
+	# 创建 ConfigLoader 实例
+	config_loader = ConfigLoader.new()
+	
+	# 优先从用户配置文件加载，如果不存在则使用默认配置
+	var config_path = CONFIG_PATH if FileAccess.file_exists(CONFIG_PATH) else DEFAULT_CONFIG_PATH
+	var ini_config = config_loader.load_config(config_path)
+	
+	if ini_config.is_empty():
+		push_error("[SettingView] Failed to load config from: %s" % config_path)
+		# 使用空字典，让 SettingList 使用默认值
+		setting_list.load_settings({})
+		return
+	
+	# 检查并迁移配置版本
+	ini_config = config_loader.check_and_migrate(ini_config, config_path)
+	
+	# 转换 INI 格式为 SettingList 格式
+	var settings_dict = SettingsMapper.ini_to_settings(ini_config)
+	
+	# 加载到 SettingList
+	setting_list.load_settings(settings_dict)
+	
+	print("[SettingView] Loaded %d settings from: %s" % [settings_dict.size(), config_path])
+
+## 保存配置到文件（由 AnimationManager 在退出时调用）
+func save_config_to_file() -> bool:
+	if config_loader == null:
+		config_loader = ConfigLoader.new()
+	
+	# 获取当前 UI 中的配置
+	var settings_dict = setting_list.get_all_settings_as_json()
+	
+	# 转换为 INI 格式
+	var ini_config = SettingsMapper.settings_to_ini(settings_dict)
+	
+	# 确保有 Game 节（包含版本号）
+	if not ini_config.has("Game"):
+		ini_config["Game"] = {}
+	ini_config["Game"]["config_version"] = ConfigLoader.CONFIG_VERSION
+	
+	# 保存到用户配置文件
+	var success = config_loader.save_config(CONFIG_PATH, ini_config)
+	
+	if success:
+		print("[SettingView] Saved %d settings to: %s" % [settings_dict.size(), CONFIG_PATH])
+	else:
+		push_error("[SettingView] Failed to save config to: %s" % CONFIG_PATH)
+	
+	return success
 
 # 左侧快速跳转按钮的事件
 func _on_button_pressed(idx: int):

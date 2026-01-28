@@ -391,6 +391,10 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			tween = animate_fade_out(play_view, 0.45, tween_id)
 		"Setting_View":
 			var setting_view = get_node("/root/Main/SettingView")
+			
+			# 在退出动画开始前保存配置
+			_save_settings_on_exit(setting_view)
+			
 			tween = animate_fade_out(setting_view, 0.35, tween_id)
 
 	# 发射结束信号
@@ -398,6 +402,23 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 		tween.finished.connect(func() -> void:
 			_scene_transition_enter(old_state, new_state)
 		)
+
+## 保存设置配置（在 SettingView 退出时调用）
+func _save_settings_on_exit(setting_view: Control) -> void:
+	if not setting_view or not setting_view.has_method("save_config_to_file"):
+		return
+	
+	# 调用 SettingView 的保存方法
+	var success = setting_view.save_config_to_file()
+	
+	if success:
+		print("[AnimationManager] Settings saved successfully")
+		
+		# 发出通配符信号，通知所有监听者配置已变化
+		if EventBus.instance:
+			EventBus.instance.settings_changed.emit("*", null)
+	else:
+		push_warning("[AnimationManager] Failed to save settings")
 
 func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 	print("组件进入动画: %s" % ui_name)
