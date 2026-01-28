@@ -97,7 +97,9 @@ func _process(_delta):
 		i.position = Vector2(x, i.position.y)
 		
 		# 标记已通过的音符
-		if not i.get_meta("is_passed") and ct >= start_tick:
+		# 使用 ct > start_tick 而不是 ct >= start_tick
+		# 这样能避免 start_tick=0 的音符在播放开始时被错误计入
+		if not i.get_meta("is_passed") and ct > start_tick:
 			i.set_meta("is_passed", true)
 			note_count_passed.text = str(int(note_count_passed.text) + 1)
 
@@ -158,17 +160,75 @@ func init_displayer(mn: Node, notes: Array[NoteEvent]):
 	master_node = mn
 
 	active_notes.clear()
-	note_count_passed.text = "0"
-	note_count_total.text = str(notes.size())
-
 	current_notes = notes
 	current_idx = 0
+	
+	# 计算当前已播放的音符数（如果master_node存在）
+	var passed_count = 0
+	if master_node != null:
+		var ct = master_node.current_tick
+		# 计算所有已播放的音符（start_tick < ct的音符）
+		for note in notes:
+			if note.start_tick < ct:
+				passed_count += 1
+			else:
+				# 由于notes已排序，可以提前break
+				break
+	
+	note_count_passed.text = str(passed_count)
+	note_count_total.text = str(notes.size())
 
 	# 临时测试：检查note是否按start_tick从小到大排列
 	_verify_notes_sorted(notes)
 
-	# 启用处理循环以驱动可视化
-	set_process(not current_notes.is_empty())
+	# 启用处理循环以驱动可视化（即使notes为空也能正常运行）
+	set_process(true)
+
+# 重置播放头位置 - 用于进度条跳转
+func reset_playhead_position(target_ms: float) -> void:
+	if current_notes.is_empty() or master_node == null:
+		return
+	
+	# 获取MidiPlaybackManager以计算tick
+	var midi_playback_mgr = MidiPlaybackManager.instance
+	if midi_playback_mgr == null or midi_playback_mgr.midi_player == null:
+		return
+	
+	# 计算目标tick（根据BPM时间线或默认120 BPM）
+	var target_tick = midi_playback_mgr._calculate_tick_from_position_with_bpm_timeline(
+		target_ms, 
+		midi_playback_mgr.midi_player.smf_data.timebase if midi_playback_mgr.midi_player.smf_data else 480
+	)
+	
+	print("[NoteDisplayer] Reset to position: %.1f ms (tick: %.0f)" % [target_ms, target_tick])
+	
+	# 更新current_idx - 找到第一个start_tick >= target_tick的note
+	var new_idx = 0
+	for i in range(current_notes.size()):
+		if current_notes[i].start_tick >= target_tick:
+			new_idx = i
+			break
+		new_idx = i + 1  # 如果都小于target，则new_idx为notes.size()
+	
+	# 清空所有活动的note
+	for note_rect in active_notes:
+		note_rect.queue_free()
+	active_notes.clear()
+	
+	# 重置索引和计数
+	current_idx = new_idx
+	
+	# 重新计算已通过的音符数
+	var passed_count = 0
+	for note in current_notes:
+		if note.start_tick < target_tick:
+			passed_count += 1
+		else:
+			break
+	
+	note_count_passed.text = str(passed_count)
+	
+	print("[NoteDisplayer] Reset complete: current_idx=%d, passed=%s" % [current_idx, note_count_passed.text])
 
 # 临时测试函数：验证notes是否按start_tick从小到大排列
 func _verify_notes_sorted(notes: Array[NoteEvent]) -> void:

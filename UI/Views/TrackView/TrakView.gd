@@ -32,9 +32,11 @@ var instrument_options: Array = ["钢琴", "吉他", "贝斯", "鼓", "弦乐"]
 const MIDI_TRACK_SCENE = preload("res://UI/Views/TrackView/midiTrack.tscn")
 
 var midi_tracks: Array[MidiTrack] = []
+
 var current_midi_data: MidiData = null
 var midi_playback_manager: MidiPlaybackManager
 var is_previewing: bool = false
+var is_progress_dragging: bool = false
 
 var vocal_file_path: String = "111"
 
@@ -73,7 +75,9 @@ func _ready() -> void:
 	vocal_vol_slider.value_changed.connect(_on_vocal_volume_changed)
 
 	soundfont_selector.item_selected.connect(_on_soundfont_selected)
-	progress_bar.value_changed.connect(_on_progress_bar_changed)
+	progress_bar.drag_started.connect(_on_progress_bar_drag_started)
+	progress_bar.drag_ended.connect(_on_progress_bar_drag_ended)
+	progress_bar.value_changed.connect(_on_progress_bar_value_changed)
 
 	preview_button.pressed.connect(_on_preview_button_pressed)
 	super._ready()
@@ -158,9 +162,39 @@ func _select_soundfont(soundfont_name: String) -> void:
 
 # ============= 信号回调函数 ===============
 
-# 拖动进度条事件
-func _on_progress_bar_changed(progress: float) -> void:
-	print("Progress changed to: %f" % progress)
+# 进度条拖拽开始
+func _on_progress_bar_drag_started() -> void:
+	# 拖拽开始时停止自动更新进度条
+	is_progress_dragging = true
+	print("Progress bar drag started")
+
+# 进度条拖拽结束 - 执行跳转
+func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
+	is_progress_dragging = false
+	
+	if midi_playback_manager == null:
+		return
+	
+	var target_ms = progress_bar.value
+	print("Progress bar seek to: %.1f ms" % target_ms)
+	
+	# 执行跳转
+	midi_playback_manager.seek(target_ms)
+	
+	# 重置noteDisplayer状态
+	if master_note_displayer:
+		master_note_displayer.reset_playhead_position(target_ms)
+	
+	# 重置所有轨道的noteDisplayer
+	for track in midi_tracks:
+		if track.note_display:
+			track.note_display.reset_playhead_position(target_ms)
+
+# 进度条值改变 - 预览时间
+func _on_progress_bar_value_changed(value: float) -> void:
+	# 只在拖拽时预览时间
+	if is_progress_dragging:
+		current_time.text = _format_time(value)
 
 # 音源选择回调
 func _on_soundfont_selected(index: int) -> void:
@@ -255,19 +289,18 @@ func _on_track_enable_toggled(is_checked: bool, track_index: int) -> void:
 	
 	# 更新MIDI数据
 	current_midi_data.set_selected_tracks(selected_tracks)
-	midi_playback_manager.set_selected_tracks(selected_tracks)
 	
-	# 如果正在预览，立即重新加载预览
-	if is_previewing:
-		_update_preview()
+	# 更新主音符显示器以反映选中轨道的变化
+	_update_master_note_displayer()
 
 # 轨道静音切换
 func _on_track_mute_toggled(is_muted: bool, track_index: int) -> void:
 	print("Track %d mute: %s" % [track_index, is_muted])
-	if midi_playback_manager == null:
+	if current_midi_data == null:
 		return
+	
 	# 获取当前选中的轨道列表
-	var selected_tracks = current_midi_data.selected_track_indices.duplicate() if current_midi_data else []
+	var selected_tracks = current_midi_data.selected_track_indices.duplicate()
 	
 	if is_muted:
 		# 静音：移除该轨道
@@ -279,13 +312,10 @@ func _on_track_mute_toggled(is_muted: bool, track_index: int) -> void:
 			selected_tracks.append(track_index)
 	
 	# 更新选中轨道列表
-	if current_midi_data:
-		current_midi_data.set_selected_tracks(selected_tracks)
-	midi_playback_manager.set_selected_tracks(selected_tracks)
+	current_midi_data.set_selected_tracks(selected_tracks)
 	
-	# 如果正在预览，立即更新
-	if is_previewing:
-		_update_preview()
+	# 更新主音符显示器以反映选中轨道的变化
+	_update_master_note_displayer()
 
 # 轨道独奏切换
 func _on_track_solo_toggled(is_solo: bool, track_index: int) -> void:
@@ -336,6 +366,48 @@ func _update_preview() -> void:
 	var current_pos = midi_playback_manager.position_ms
 	midi_playback_manager.load_midi(current_midi_data)
 	midi_playback_manager.seek(current_pos)
+	midi_playback_manager.play()
+
+# 更新主音符显示器（当选中轨道改变时）
+func _update_master_note_displayer() -> void:
+	if master_note_displayer == null or midi_playback_manager == null or current_midi_data == null:
+		return
+	
+	var selected_tracks = current_midi_data.selected_track_indices
+	if selected_tracks.is_empty():
+		push_warning("No tracks selected")
+		return
+	
+	# 获取所有音符
+	var all_notes = midi_playback_manager.current_notes
+	if all_notes.is_empty():
+		push_warning("No notes found in MIDI")
+		return
+	
+	# 在一次遍历中过滤并转换为显示格式（notes已按时间顺序）
+	var display_notes: Array[NoteDisplayer.NoteEvent] = []
+	for note in all_notes:
+		if note is MidiParser.Note and note.event != null:
+			var evt = note.event
+			if evt.track_index in selected_tracks:
+				var display_note = NoteDisplayer.NoteEvent.new(
+					evt.pitch,
+					evt.velocity,
+					int(evt.start_time),
+					int(evt.duration),
+					evt.track_index,
+					evt.channel
+				)
+				display_notes.append(display_note)
+	
+	if display_notes.is_empty():
+		push_warning("No notes found in selected tracks")
+		return
+	
+	print("[TrackView] Updated master note displayer with %d notes from selected tracks" % display_notes.size())
+	
+	# 更新显示器的current_note数据
+	master_note_displayer.init_displayer(self, display_notes)
 
 # =============== MIDI播放器信号回调 ====================
 
@@ -371,19 +443,19 @@ func _init_vocal_btn_display() -> void:
 		pass
 # 更新MIDI音量标签
 func _set_display_midi_volume(value: float) -> void:
-	# 设置初始值（假设100%对应0dB）
+	# value 已经是 0-100 的百分比
 	midi_vol_slider.set_block_signals(true)
-	midi_vol_slider.value = db_to_linear(value) * 100
+	midi_vol_slider.value = value
 	midi_vol_slider.set_block_signals(false)
 
-	midi_vol_label.text = "%d%%" % value
+	midi_vol_label.text = "%d%%" % int(value)
 
 func _set_display_vocal_volume(value: float) -> void:
 	vocal_vol_slider.set_block_signals(true)
-	vocal_vol_slider.value = db_to_linear(value) * 100
+	vocal_vol_slider.value = value
 	vocal_vol_slider.set_block_signals(false)
 	
-	vocal_vol_label.text = "%d%%" % value
+	vocal_vol_label.text = "%d%%" % int(value)
 
 # 格式化时间（毫秒到 HH:MM:SS）
 func _format_time(ms: float) -> String:
@@ -407,11 +479,13 @@ func _set_display_total_time(total_ms: float) -> void:
 	total_time.text = _format_time(total_ms)
 
 func _set_display_current_time(current_ms: float) -> void:
-	progress_bar.set_block_signals(true)
-	progress_bar.value = current_ms
-	progress_bar.set_block_signals(false)
-
-	current_time.text = _format_time(current_ms)
+	# 只在不拖拽时更新进度条位置和时间文本
+	if not is_progress_dragging:
+		progress_bar.set_block_signals(true)
+		progress_bar.value = current_ms
+		progress_bar.set_block_signals(false)
+		
+		current_time.text = _format_time(current_ms)
 
 func _process(delta: float) -> void:
 	if is_previewing and midi_playback_manager:
