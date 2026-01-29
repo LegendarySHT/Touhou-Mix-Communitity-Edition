@@ -120,7 +120,7 @@ func _create_note(note: NoteEvent):
 	# 设置基本属性
 	note_rect.size = Vector2(note_width, note_height)
 	note_rect.position = Vector2(-note_width, start_y)
-	note_rect.color = _get_color_by_pitch(note.pitch)
+	note_rect.color = _get_color_by_track_idx(note.track_index)
 	if is_master and note.track_index not in enable_tracks:
 		note_rect.self_modulate.a = 0
 
@@ -210,14 +210,26 @@ func reset_playhead_position(target_ms: float) -> void:
 	
 	print("[NoteDisplayer] Reset complete: current_idx=%d, passed=%s" % [current_idx, note_count_passed.text])
 
+var predefined_colors = [
+	Color.RED,
+	Color.ORANGE,
+	Color.GOLD,
+	Color.YELLOW_GREEN,
+	Color.GREEN,
+	Color.CYAN,
+	Color.BLUE,
+	Color.SKY_BLUE,
+	Color.VIOLET,
+	Color.MAGENTA
+]
+
 # 根据音高获取颜色
-func _get_color_by_pitch(pitch: int) -> Color:
+func _get_color_by_track_idx(track_idx: int) -> Color:
 	if note_color:
 		return note_color
 
-	# 将MIDI音高（0-127）映射到色相（0-360度）
-	var hue = float(pitch % 12) / 12.0  # 八度内音高循环
-	return Color.from_hsv(hue, 0.7, 0.9, 0.8)
+	var hue = predefined_colors[track_idx % predefined_colors.size()].h
+	return Color.from_hsv(hue, 1, 0.9, 0.8)
 
 # 批量生成示例音符（测试用）
 func _generate_test_notes():
