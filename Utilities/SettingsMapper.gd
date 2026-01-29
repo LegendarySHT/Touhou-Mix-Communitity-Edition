@@ -19,7 +19,8 @@ static var mappings: Dictionary = {
 	"vibration_duration": {"section": "Playback", "key": "vibration_duration", "value_type": "int"},
 	"use_system_stopwatch": {"section": "Playback", "key": "use_system_stopwatch", "value_type": "int"},
 	
-	# ========== 轨道设置 ==========
+	# ========== 音源设置 ==========
+	"soundfont_select": {"section": "Gameplay", "key": "soundfont_file", "value_type": "string"},
 	"lane_count": {"section": "Lane", "key": "lane_count", "value_type": "int"},
 	"keyboard_mode": {"section": "Lane", "key": "keyboard_mode", "value_type": "int"},
 	"keyboard_mode_keys": {"section": "Lane", "key": "keyboard_mode_keys", "value_type": "string"},

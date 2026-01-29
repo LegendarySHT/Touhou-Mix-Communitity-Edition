@@ -18,8 +18,7 @@ class_name TrackView
 @onready var midi_vol_label: Label = $MC/VBox/VolumeView/HBoxC/GridC/midiVolLabel
 @onready var vocal_vol_label: Label = $MC/VBox/VolumeView/HBoxC/GridC/vocalVolLabel
 
-# MIDI播放相关 下面两个没有（
-@onready var soundfont_selector: OptionButton = $MC/VBox/VolumeView/HBoxC/VBoxC2/SoundfontSelector
+# MIDI播放相关 下面两个没有（SoundFont选择功能已迁移至SettingView）
 @onready var preview_button: Button = $MC/VBox/TotalView/MC/VBoxC/playArea/PreviewButton
 
 @onready var midi_playback_manager: MidiPlaybackManager = MidiPlaybackManager.instance
@@ -49,7 +48,7 @@ func _ready() -> void:
 		return
 
 	# 初始化UI
-	_populate_soundfont_selector()
+
 	midi_vol_slider.value = db_to_linear(midi_playback_manager.midi_player_config["volume_db"]) * 100
 	_set_display_midi_volume(midi_vol_slider.value)
 	
@@ -67,7 +66,7 @@ func _ready() -> void:
 	midi_vol_slider.value_changed.connect(_on_midi_volume_changed)
 	vocal_vol_slider.value_changed.connect(_on_vocal_volume_changed)
 
-	soundfont_selector.item_selected.connect(_on_soundfont_selected)
+
 	progress_bar.drag_started.connect(_on_progress_bar_drag_started)
 	progress_bar.drag_ended.connect(_on_progress_bar_drag_ended)
 	progress_bar.value_changed.connect(_on_progress_bar_value_changed)
@@ -158,30 +157,8 @@ func _create_track_views() -> void:
 	# 增加上下边距
 	container.custom_minimum_size.y = container.size.y + 800
 
-	# 更新音源选择
-	if soundfont_selector and current_midi_data.use_soundfont:
-		_select_soundfont(current_midi_data.use_soundfont)
+	
 
-# 填充音源选择器
-func _populate_soundfont_selector() -> void:
-	if soundfont_selector == null or midi_playback_manager == null:
-		return
-	
-	soundfont_selector.clear()
-	
-	var soundfonts = midi_playback_manager.get_available_soundfonts()
-	for soundfont_name in soundfonts:
-		soundfont_selector.add_item(soundfont_name)
-
-# 选择指定的音源
-func _select_soundfont(soundfont_name: String) -> void:
-	if soundfont_selector == null:
-		return
-	
-	for i in range(soundfont_selector.item_count):
-		if soundfont_selector.get_item_text(i) == soundfont_name:
-			soundfont_selector.select(i)
-			return
 
 # ============= 信号回调函数 ===============
 
@@ -219,20 +196,6 @@ func _on_progress_bar_value_changed(value: float) -> void:
 	if is_progress_dragging:
 		current_time.text = _format_time(value)
 
-# 音源选择回调
-func _on_soundfont_selected(index: int) -> void:
-	if soundfont_selector == null or midi_playback_manager == null:
-		return
-	
-	var soundfont_name = soundfont_selector.get_item_text(index)
-	var success = midi_playback_manager.set_soundfont(soundfont_name)
-	
-	if success and current_midi_data:
-		current_midi_data.set_soundfont(soundfont_name)
-		
-		# 如果正在预览，立即更新
-		if is_previewing:
-			_update_preview()
 
 # 音量按钮回调
 func _on_volume_btn_toggled(toggle_on: bool, btn: TextureButton) -> void:

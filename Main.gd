@@ -272,6 +272,13 @@ func _reload_all_settings() -> void:
 			audio_manager.set_music_volume(int(audio_section.get("music_volume", 80)))
 			audio_manager.set_sfx_volume(int(audio_section.get("effects_volume", 80)))
 	
+	# 应用Gameplay设置（包括SoundFont）
+	if config.has("Gameplay"):
+		var gameplay_section = config["Gameplay"]
+		if audio_manager and gameplay_section.has("soundfont_file"):
+			var soundfont_name = gameplay_section.get("soundfont_file", "GeneralUser-GS.sf2")
+			midi_playback_manager.set_soundfont(soundfont_name)
+	
 	# 应用显示设置
 	if config.has("Display"):
 		var display_section = config["Display"]
@@ -299,6 +306,12 @@ func _apply_single_setting(setting_name: String, value: Variant) -> void:
 					audio_manager.set_music_volume(int(value))
 				"effects_volume":
 					audio_manager.set_sfx_volume(int(value))
+	
+	# SoundFont相关设置
+	elif setting_name == "soundfont_select":
+		if midi_playback_manager:
+			var soundfont_name = str(value)
+			midi_playback_manager.set_soundfont(soundfont_name)
 	
 	# 显示相关设置
 	elif setting_name == "fullscreen":

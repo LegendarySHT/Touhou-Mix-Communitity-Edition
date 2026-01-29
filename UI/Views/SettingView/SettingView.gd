@@ -77,6 +77,9 @@ func _load_config_from_file() -> void:
 	setting_list.load_settings(settings_dict)
 	
 	print("[SettingView] Loaded %d settings from: %s" % [settings_dict.size(), config_path])
+	
+	# 初始化SoundFont列表
+	_initialize_soundfont_options(settings_dict)
 
 ## 保存配置到文件（由 AnimationManager 在退出时调用）
 func save_config_to_file() -> bool:
@@ -85,6 +88,20 @@ func save_config_to_file() -> bool:
 	
 	# 获取当前 UI 中的配置
 	var settings_dict = setting_list.get_all_settings_as_json()
+	
+	# 特殊处理soundfont_select：转换为实际文件名
+	if settings_dict.has("soundfont_select"):
+		var display_name = settings_dict["soundfont_select"]
+		# 去掉 [内置] 标签，获取实际文件名
+		var actual_name = display_name.split(" [")[0] if " [" in display_name else display_name
+		settings_dict["soundfont_select"] = actual_name
+	
+	# 验证soundfont文件存在性，若不存在则回退
+	if settings_dict.has("soundfont_select"):
+		var soundfont_name = settings_dict["soundfont_select"]
+		if not _verify_soundfont_exists(soundfont_name):
+			print("[SettingView] Soundfont '%s' not found, falling back to default" % soundfont_name)
+			settings_dict["soundfont_select"] = "GeneralUser-GS.sf2"
 	
 	# 转换为 INI 格式
 	var ini_config = SettingsMapper.settings_to_ini(settings_dict)
@@ -122,3 +139,141 @@ func _on_button_pressed(idx: int):
 func _get_config():
 	var config = setting_list.get_all_settings_as_json()
 	return config
+
+## ========== SoundFont 相关方法 ==========
+
+## 初始化SoundFont选项（在load_settings后调用）
+func _initialize_soundfont_options(loaded_settings: Dictionary) -> void:
+	"""
+	扫描并初始化SoundFont选项
+	
+	Args:
+		loaded_settings: 从配置文件加载的设置字典
+	"""
+	var soundfont_list = _scan_all_soundfonts()
+	
+	if soundfont_list.is_empty():
+		print("[SettingView] No soundfonts found, using default")
+		soundfont_list = ["GeneralUser-GS [内置]"]
+	
+	# 获取当前应该选中的soundfont
+	var current_selection = loaded_settings.get("soundfont_select", "GeneralUser-GS.sf2")
+	
+	# 更新SettingList中的选项
+	setting_list.update_soundfont_options(soundfont_list, current_selection)
+	
+	print("[SettingView] Initialized %d soundfont options" % soundfont_list.size())
+
+## 扫描所有SoundFont文件（user优先）
+func _scan_all_soundfonts() -> Array[String]:
+	"""
+	聚合扫描结果：user://files/Soundfont/ 和 res://Resources/Soundfont/
+	user目录中的文件会覆盖res中的同名文件
+	
+	Returns:
+		Array[String]: 格式为 ["GeneralUser-GS", "CustomFont [内置]", ...]
+	"""
+	var soundfonts: Dictionary = {}  # {filename_without_ext: {display_name, path}}
+	
+	# 第一步：扫描user://files/Soundfont/ （user优先）
+	var user_dir = "user://files/Soundfont/"
+	if DirAccess.open(user_dir) != null:
+		var dir = DirAccess.open(user_dir)
+		if dir:
+			dir.list_dir_begin()
+			var file_name = dir.get_next()
+			
+			while file_name != "":
+				if file_name.ends_with(".sf2"):
+					var font_name = file_name.get_basename()
+					soundfonts[font_name] = {
+						"display_name": font_name,
+						"path": user_dir.path_join(file_name),
+						"is_builtin": false
+					}
+				file_name = dir.get_next()
+			dir.list_dir_end()
+	
+	# 第二步：扫描res://Resources/Soundfont/ （仅添加user中没有的）
+	var res_dir = "res://Resources/Soundfont/"
+	if DirAccess.open(res_dir) != null:
+		var dir = DirAccess.open(res_dir)
+		if dir:
+			dir.list_dir_begin()
+			var file_name = dir.get_next()
+			
+			while file_name != "":
+				if file_name.ends_with(".sf2"):
+					var font_name = file_name.get_basename()
+					
+					# 仅在user中不存在时添加，并标记为[内置]
+					if not soundfonts.has(font_name):
+						soundfonts[font_name] = {
+							"display_name": font_name + " [内置]",
+							"path": res_dir.path_join(file_name),
+							"is_builtin": true
+						}
+				file_name = dir.get_next()
+			dir.list_dir_end()
+	
+	# 第三步：整理返回列表
+	var result: Array[String] = []
+	for font_name in soundfonts.keys():
+		result.append(soundfonts[font_name]["display_name"])
+	
+	# 排序：用户文件优先，内置文件在后
+	result.sort_custom(func(a: String, b: String) -> bool:
+		var a_is_builtin = " [内置]" in a
+		var b_is_builtin = " [内置]" in b
+		if a_is_builtin != b_is_builtin:
+			return a_is_builtin  # 内置的排在后面
+		return a < b  # 同类型按名称排序
+	)
+	
+	return result
+
+## 验证SoundFont文件是否存在
+func _verify_soundfont_exists(soundfont_name: String) -> bool:
+	"""
+	检查soundfont文件是否存在（user优先）
+	
+	Args:
+		soundfont_name: 文件名，不带.sf2扩展名和[内置]标签
+	
+	Returns:
+		bool: 文件是否存在
+	"""
+	# 第一步：检查user://
+	var user_path = ("user://files/Soundfont/").path_join(soundfont_name + ".sf2")
+	if FileAccess.file_exists(user_path):
+		return true
+	
+	# 第二步：检查res://
+	var res_path = ("res://Resources/Soundfont/").path_join(soundfont_name + ".sf2")
+	if ResourceLoader.exists(res_path):
+		return true
+	
+	return false
+
+## 获取SoundFont的实际路径
+func _get_soundfont_path(soundfont_name: String) -> String:
+	"""
+	获取soundfont文件的完整路径（user优先）
+	
+	Args:
+		soundfont_name: 文件名，不带.sf2扩展名
+	
+	Returns:
+		String: 完整文件路径，若不存在返回空字符串
+	"""
+	# 第一步：检查user://
+	var user_path = ("user://files/Soundfont/").path_join(soundfont_name + ".sf2")
+	if FileAccess.file_exists(user_path):
+		return user_path
+	
+	# 第二步：检查res://
+	var res_path = ("res://Resources/Soundfont/").path_join(soundfont_name + ".sf2")
+	if ResourceLoader.exists(res_path):
+		return res_path
+	
+	return ""

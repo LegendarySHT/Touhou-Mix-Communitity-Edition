@@ -318,22 +318,69 @@ func set_selected_tracks(track_indices: Array[int]) -> void:
 
 ## 设置音源文件
 func set_soundfont(soundfont_name: String) -> bool:
-	# 检查文件是否存在
-	var soundfont_path = "res://Resources/Soundfont/%s" % soundfont_name
-	if not ResourceLoader.exists(soundfont_path):
-		push_warning("Soundfont file not found: %s" % soundfont_path)
-		return false
+	"""
+	设置MIDI播放使用的音源文件
+	
+	优先级：
+	1. user://files/Soundfont/{soundfont_name}.sf2
+	2. res://Resources/Soundfont/{soundfont_name}.sf2
+	3. 回退到内置默认 GeneralUser-GS.sf2
+	
+	Args:
+		soundfont_name: 音源文件名（不含.sf2扩展名和[内置]标签）
+	
+	Returns:
+		bool: 是否设置成功
+	"""
+	# 验证和定位soundfont文件
+	var soundfont_path = _locate_soundfont(soundfont_name)
+	
+	if soundfont_path.is_empty():
+		# 文件不存在，尝试回退到默认
+		print("[MidiPlaybackManager] Soundfont '%s' not found, falling back to default" % soundfont_name)
+		soundfont_path = _locate_soundfont("GeneralUser-GS")
+		
+		if soundfont_path.is_empty():
+			# 默认文件也不存在，作为最后的回退
+			soundfont_path = default_soundfont_path
+			push_warning("[MidiPlaybackManager] Default soundfont also not found, using fallback: %s" % soundfont_path)
 	
 	current_soundfont_path = soundfont_path
 	if current_midi_data != null:
-		current_midi_data.set_soundfont(soundfont_name)
+		# 提取文件名用于存储（不带路径和扩展名）
+		var file_name = soundfont_path.get_file().get_basename()
+		current_midi_data.set_soundfont(file_name)
 	
 	# 如果正在播放，立即切换音源
 	if is_playing and midi_player != null:
 		midi_player.soundfont = soundfont_path
 	
 	soundfont_changed.emit(soundfont_path)
+	print("[MidiPlaybackManager] Soundfont set to: %s" % soundfont_path)
 	return true
+
+## 辅助函数：定位soundfont文件（user优先）
+func _locate_soundfont(soundfont_name: String) -> String:
+	"""
+	定位soundfont文件，user://优先于res://
+	
+	Args:
+		soundfont_name: 文件名不含.sf2扩展名
+	
+	Returns:
+		String: 完整文件路径，若不存在返回空字符串
+	"""
+	# 第一步：检查user://files/Soundfont/
+	var user_path = "user://files/Soundfont/".path_join(soundfont_name + ".sf2")
+	if FileAccess.file_exists(user_path):
+		return user_path
+	
+	# 第二步：检查res://Resources/Soundfont/
+	var res_path = "res://Resources/Soundfont/".path_join(soundfont_name + ".sf2")
+	if ResourceLoader.exists(res_path):
+		return res_path
+	
+	return ""
 
 ## 设置音量
 func set_volume_db(volume: float) -> void:

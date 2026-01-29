@@ -123,6 +123,16 @@ var setting_groups = [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
 				]
+			},
+			{
+				"id": "soundfont_select",
+				"name_en": "Sound Font",
+				"name_zh": "音源选择",
+				"description": "选择MIDI播放时使用的音源文件。user://files/Soundfont/中的音源会覆盖内置版本",
+				"type": "TYPE_OPTION",
+				"default_value": "GeneralUser-GS.sf2",
+				"options": [],
+				"dynamic_options": true
 			}
 		]
 	},
@@ -733,14 +743,27 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 	match value_type:
 		SettingItem.ValueType.TYPE_OPTION:
 			var option_texts = []
-			for option in setting_data.options:
-				var option_text = option["text_%s" % language] if language in ["en", "zh"] else option.text_en
-				option_texts.append(option_text)
+			
+			# 检查是否为动态options（由SettingView在runtime填充）
+			if setting_data.get("dynamic_options", false) and setting_data.options.is_empty():
+				# 动态options为空，先设置空列表，等SettingView调用update_soundfont_options()更新
+				option_texts = ["Loading..."]
+			else:
+				# 静态options，正常处理
+				for option in setting_data.options:
+					var option_text = option["text_%s" % language] if language in ["en", "zh"] else option.text_en
+					option_texts.append(option_text)
 			
 			# 设置选项，并选中初始值对应的索引
 			var default_index = 0
 			if initial_value is String and initial_value.is_valid_int():
 				default_index = int(initial_value)
+			elif initial_value is String and not option_texts.has(initial_value):
+				# 初始值不在选项列表中，使用第一个选项
+				default_index = 0
+			elif initial_value is String:
+				# 初始值在选项列表中，查找其索引
+				default_index = option_texts.find(initial_value)
 			
 			setting_item.set_options(option_texts, default_index)
 	
@@ -815,3 +838,39 @@ func reset_to_defaults():
 
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)
+
+## 更新soundfont_select的选项（由SettingView调用）
+func update_soundfont_options(soundfont_list: Array[String], current_selection: String = "") -> void:
+	"""
+	更新soundfont_select的选项列表
+	
+	Args:
+		soundfont_list: 格式为 ["GeneralUser-GS [内置]", "CustomFont", ...]
+		current_selection: 当前应该选中的soundfont名称（不带标签）
+	"""
+	if not setting_items.has("soundfont_select"):
+		push_warning("[SettingList] soundfont_select setting item not found")
+		return
+	
+	var setting_item = setting_items["soundfont_select"]
+	if setting_item == null:
+		push_warning("[SettingList] soundfont_select setting item is null")
+		return
+	
+	# 更新options
+	if soundfont_list.is_empty():
+		setting_item.set_options(["No Sound Fonts Available"], 0)
+		return
+	
+	setting_item.set_options(soundfont_list, 0)
+	
+	# 尝试选中current_selection
+	if not current_selection.is_empty():
+		for i in range(soundfont_list.size()):
+			# 处理带标签的情况（e.g., "GeneralUser-GS [内置]"）
+			var display_name = soundfont_list[i]
+			var font_name = display_name.split(" [")[0]  # 移除 [内置] 标签
+			
+			if font_name == current_selection or display_name == current_selection:
+				setting_item.set_value(i)
+				break
