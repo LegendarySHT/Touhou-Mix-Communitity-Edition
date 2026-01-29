@@ -55,7 +55,6 @@ func _ready() -> void:
 	
 	# 连接信号
 	EventBus.instance.enter_track_view_with.connect(_load_midi)
-	ui_stat_mgr.state_changed.connect(_on_state_changed)
 
 	midi_playback_manager.midi_loaded.connect(_on_midi_loaded)
 	midi_playback_manager.midi_started.connect(_on_midi_started)
@@ -135,14 +134,26 @@ func _create_track_views() -> void:
 		push_warning("No track info available")
 		return
 	
-	# 为每个轨道创建UI
+	# 为每个轨道创建UI（仅当轨道有音符时）
 	for track_info in track_infos:
+		# 先检查该轨道是否有音符
+		var track_notes: Array[NoteDisplayer.NoteEvent] = All_Notes.filter(
+			func (note):
+				return note.track_index == track_info.index
+		)
+		
+		# 如果轨道没有音符，跳过创建UI
+		if track_notes.is_empty():
+			push_warning("Track %d (%s) has no notes, skipping UI creation" % [track_info.index, track_info.name])
+			continue
+		
+		# 创建轨道UI
 		var track_scene = create_and_add_item(track_info.name, "MidiTrack") as MidiTrack
 		
 		track_scene.setup_track(self , track_info.index, track_info.name, instrument_options)
 
-		# 为该轨道初始化音符显示
-		_init_track_note_displayer(track_scene, track_info.index)
+		# 为该轨道初始化音符显示（传入已过滤的音符）
+		_init_track_note_displayer(track_scene, track_info.index, track_notes)
 		
 	# 增加上下边距
 	container.custom_minimum_size.y = container.size.y + 800
@@ -528,20 +539,13 @@ func _init_master_note_displayer() -> void:
 	# 初始化显示器（notes已按时间顺序排列）
 	master_note_displayer.init_displayer(self, All_Notes)
 
-func _init_track_note_displayer(track_scene: MidiTrack, track_index: int) -> void:
+func _init_track_note_displayer(track_scene: MidiTrack, track_index: int, track_notes: Array[NoteDisplayer.NoteEvent]) -> void:
 	if track_scene.note_display == null:
 		return
 	
-	# 过滤当前轨道的音符
-	var track_notes: Array[NoteDisplayer.NoteEvent] = All_Notes.filter(
-		func (note):
-			return note.track_index == track_index
-	)
-
+	# track_notes 已经由 _create_track_views() 过滤好了，直接使用
 	if track_notes.is_empty():
 		push_warning("No notes found for track %d" % track_index)
-		track_scene.queue_free()
-		list_items.erase(track_scene)
 		return
 	
 	print("[TrackView] Track %d: %d notes (time-sorted)" % [track_index, track_notes.size()])

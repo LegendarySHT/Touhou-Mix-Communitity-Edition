@@ -549,6 +549,15 @@ func get_cover_by_midiData(midi: MidiData) -> ImageTexture:
 		if chart_id == midi.file_hash or metadata.get("data", {}).get("_id", "") == midi.id:
 			var path: String = metadata.get("cover_path", "")
 			if not path.is_empty() and FileAccess.file_exists(path):
-				return load(path)
+				# 区分 res:// 和 user:// 路径
+				if path.begins_with("res://"):
+					return load(path)
+				else:
+					# user:// 路径需要动态加载
+					var image = Image.load_from_file(path)
+					if image:
+						return ImageTexture.create_from_image(image)
+					else:
+						GameLogger.instance.warning("Failed to load cover image: %s" % path, "FileSystemMGR")
 
 	return load(DEFAULT_COVER_PATH)
