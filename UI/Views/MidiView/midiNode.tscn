@@ -38,7 +38,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = ExtResource("2_jdrqc")
-expand_mode = 3
+expand_mode = 5
 stretch_mode = 6
 
 [node name="VBoxC" type="VBoxContainer" parent="."]
@@ -63,6 +63,7 @@ theme_override_constants/outline_size = 5
 theme_override_fonts/font = ExtResource("3_jdrqc")
 theme_override_font_sizes/font_size = 30
 text = "Midi Name"
+clip_text = true
 
 [node name="Line2D" type="Line2D" parent="VBoxC"]
 position = Vector2(-50, 12)
@@ -86,6 +87,7 @@ theme_override_fonts/font = ExtResource("3_jdrqc")
 theme_override_font_sizes/font_size = 30
 text = "Midi Author"
 vertical_alignment = 2
+clip_text = true
 
 [node name="status" type="Label" parent="VBoxC/HBoxC"]
 layout_mode = 2

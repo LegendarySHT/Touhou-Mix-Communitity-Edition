@@ -10,6 +10,8 @@ class_name MidiTrack
 @onready var track_num: Label = $HBoxC/Panel/TrackNum
 # 切换轨道启用状态的按钮
 @onready var enable_btn: Button = $HBoxC/MC/HBoxC/enableBtn
+@onready var enable_btn_text: Label = $HBoxC/MC/HBoxC/enableBtn/HBoxC/Text
+@onready var enable_btn_icon: TextureRect = $HBoxC/MC/HBoxC/enableBtn/HBoxC/Icon #这个可能需要根据乐器类型去修改
 
 @onready var mute_btn: TextureButton = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/MuteBtn
 @onready var solo_btn: TextureButton = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/SoloBtn
@@ -17,8 +19,13 @@ class_name MidiTrack
 @onready var volume_label: Label = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/Volume/Label
 @onready var instruments_option_btn: OptionButton = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/InstrumentBtn
 
+# 初始化时需要调节颜色的节点 除下面的之外还有self和enable_btn
+@onready var left_panel: Panel = $HBoxC/Panel
+@onready var note_panel: Panel = $HBoxC/MC/HBoxC/MC/flowArea/noteTotal
+
+
 # 轨道属性
-var track_index: int = -1
+var track_index: int = 2
 var is_enabled: bool = true
 var is_muted: bool = false
 var is_solo: bool = false
@@ -34,6 +41,7 @@ var parent_node: Node = null
 func _ready():
 	# 连接按钮信号
 	_connect_signals()
+	_init_track_color()
 
 	track_num.text = str(track_index)
 	if not instrument_options:
@@ -49,8 +57,36 @@ func _ready():
 
 	if is_enabled:
 		enable_btn.button_pressed = true
+	
+var predefined_colors = [
+	Color.RED,
+	Color.ORANGE,
+	Color.GOLD,
+	Color.YELLOW_GREEN,
+	Color.GREEN,
+	Color.CYAN,
+	Color.BLUE,
+	Color.SKY_BLUE,
+	Color.VIOLET,
+	Color.MAGENTA
+]
 
-	#note_display.setup_displayer(parent_node)
+var color_light: Color
+var color_normal: Color
+var color_dark: Color
+
+func _init_track_color():
+	var h = predefined_colors[track_index % predefined_colors.size()].h
+	color_light = Color.from_hsv(h, 0.3, 0.95, 1)
+	color_normal = Color.from_hsv(h, 0.9, 0.85, 1)
+	color_dark = Color.from_hsv(h, 0.8, 0.5, 1)
+
+	left_panel.self_modulate = color_dark
+	note_panel.self_modulate = color_light
+	self_modulate = color_light
+	enable_btn.self_modulate = color_normal
+
+	note_display.note_color = color_normal
 
 func _connect_signals():
 	enable_btn.toggled.connect(_on_enable_toggled)
@@ -99,4 +135,7 @@ func _on_solo_toggled(is_pressed: bool):
 
 func _on_enable_toggled(toggle_on: bool):
 	is_enabled = toggle_on
-	enable_btn.text = "已启用" if toggle_on else "已禁用"
+	enable_btn_text.text = "已启用" if toggle_on else "已禁用"
+
+	note_display.note_color = color_normal if toggle_on else color_dark
+	note_display.update_color()

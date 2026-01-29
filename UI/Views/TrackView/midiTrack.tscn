@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://ttmjc3cbi1bi"]
+[gd_scene load_steps=21 format=3 uid="uid://ttmjc3cbi1bi"]
 
 [ext_resource type="Script" uid="uid://bh655hfw6k0q2" path="res://UI/Views/TrackView/midiTrack.gd" id="1_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://balwiilkbpuhy" path="res://Resources/icon/TrackView/note.png" id="1_ni118"]
@@ -27,14 +27,14 @@ HSlider/styles/slider = null
 PopupMenu/font_sizes/font_size = 32
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_31lmn"]
-bg_color = Color(0.23490001, 0.50328004, 0.81, 1)
+bg_color = Color(0.59, 0.59, 0.59, 0.54509807)
 corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7vp1s"]
-bg_color = Color(0.23947008, 0.16940002, 0.77, 1)
+bg_color = Color(1, 1, 1, 1)
 shadow_color = Color(0, 0, 0, 0.21176471)
 shadow_size = 5
 shadow_offset = Vector2(5, 0)
@@ -42,16 +42,16 @@ shadow_offset = Vector2(5, 0)
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7rc5s"]
 content_margin_left = 15.0
 content_margin_right = 15.0
-bg_color = Color(6.873071e-05, 0.56106555, 0.99716574, 1)
+bg_color = Color(0.33333334, 0.33333334, 0.33333334, 1)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
-border_color = Color(0.8776157, 0.8776158, 0.87761563, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+border_color = Color(0.4198131, 0.4198132, 0.4198128, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
 shadow_color = Color(0, 0, 0, 0.1882353)
 shadow_size = 5
 shadow_offset = Vector2(-3, 0)
@@ -59,16 +59,16 @@ shadow_offset = Vector2(-3, 0)
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8bk0u"]
 content_margin_left = 15.0
 content_margin_right = 15.0
-bg_color = Color(0.8729327, 0.31490424, 0.6921681, 1)
+bg_color = Color(1, 1, 1, 1)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
 border_color = Color(0.8776157, 0.8776158, 0.87761563, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
 shadow_color = Color(0, 0, 0, 0.1882353)
 shadow_size = 5
 shadow_offset = Vector2(-3, 0)
@@ -76,16 +76,16 @@ shadow_offset = Vector2(-3, 0)
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_r0ui6"]
 content_margin_left = 15.0
 content_margin_right = 15.0
-bg_color = Color(0, 0.33546427, 0.611987, 1)
+bg_color = Color(0.33333334, 0.33333334, 0.33333334, 0.6)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
 border_color = Color(0.8776157, 0.8776158, 0.87761563, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
 shadow_color = Color(0, 0, 0, 0.1882353)
 shadow_size = 5
 shadow_offset = Vector2(-3, 0)
@@ -93,27 +93,36 @@ shadow_offset = Vector2(-3, 0)
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kgiiq"]
 content_margin_left = 15.0
 content_margin_right = 15.0
-bg_color = Color(0.63501924, 0.13555911, 0.48970884, 1)
+bg_color = Color(1, 1, 1, 0.6)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
 border_color = Color(0.8776157, 0.8776158, 0.87761563, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
 shadow_color = Color(0, 0, 0, 0.1882353)
 shadow_size = 5
 shadow_offset = Vector2(-3, 0)
 
+[sub_resource type="Gradient" id="Gradient_7rc5s"]
+colors = PackedColorArray(0, 0, 0, 0.41568628, 0, 0, 0, 0.16470589)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_r0ui6"]
+gradient = SubResource("Gradient_7rc5s")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_kgiiq"]
+texture = SubResource("GradientTexture2D_r0ui6")
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xcqgn"]
-bg_color = Color(0.31686592, 0.6146278, 0.93180776, 1)
+bg_color = Color(0.5689727, 0.56897277, 0.5689727, 0.88235295)
 border_width_left = 4
 border_width_top = 4
 border_width_right = 4
 border_width_bottom = 4
-border_color = Color(1, 1, 1, 1)
+border_color = Color(0.57, 0.57, 0.57, 1)
 shadow_color = Color(0, 0, 0, 0.24313726)
 shadow_size = 10
 shadow_offset = Vector2(5, 0)
@@ -122,8 +131,11 @@ shadow_offset = Vector2(5, 0)
 color = Color(1, 1, 1, 1)
 thickness = 4
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3ket"]
+draw_center = false
+
 [node name="MidiTrack" type="Panel"]
-custom_minimum_size = Vector2(1600, 250)
+custom_minimum_size = Vector2(1600, 220)
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -160,8 +172,9 @@ offset_right = -0.14700317
 offset_bottom = -0.36956787
 grow_horizontal = 2
 grow_vertical = 2
+focus_mode = 0
 mouse_filter = 1
-theme_override_constants/line_spacing = 0
+theme_override_constants/line_spacing = -5
 theme_override_font_sizes/font_size = 32
 toggle_mode = true
 text = "T
@@ -187,7 +200,6 @@ grow_vertical = 0
 theme_override_font_sizes/font_size = 32
 text = "1"
 horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="MC" type="MarginContainer" parent="HBoxC"]
 layout_mode = 2
@@ -200,11 +212,14 @@ theme_override_constants/margin_bottom = 20
 [node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC"]
 custom_minimum_size = Vector2(1080, 0)
 layout_mode = 2
-theme_override_constants/separation = 0
+theme_override_constants/separation = -4
 
 [node name="enableBtn" type="Button" parent="HBoxC/MC/HBoxC"]
-custom_minimum_size = Vector2(300, 0)
+z_index = 1
+custom_minimum_size = Vector2(280, 180)
 layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
 mouse_filter = 1
 theme_override_font_sizes/font_size = 48
 theme_override_styles/normal = SubResource("StyleBoxFlat_7rc5s")
@@ -212,8 +227,30 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_8bk0u")
 theme_override_styles/hover = SubResource("StyleBoxFlat_r0ui6")
 theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_kgiiq")
 toggle_mode = true
+
+[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC/HBoxC/enableBtn"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="HBoxC/MC/HBoxC/enableBtn/HBoxC"]
+layout_mode = 2
+texture = ExtResource("1_ni118")
+expand_mode = 3
+
+[node name="Text" type="Label" parent="HBoxC/MC/HBoxC/enableBtn/HBoxC"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
 text = "已启用"
-icon = ExtResource("1_ni118")
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="MC" type="MarginContainer" parent="HBoxC/MC/HBoxC"]
 layout_mode = 2
@@ -231,6 +268,7 @@ custom_minimum_size = Vector2(940, 160)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBoxTexture_kgiiq")
 
 [node name="canvas" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea/noteFlowArea"]
 clip_children = 1
@@ -301,6 +339,7 @@ custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBoxFlat_c3ket")
 
 [node name="GridC" type="GridContainer" parent="HBoxC/MC/HBoxC/MC/ControlPanel"]
 layout_mode = 1
@@ -320,6 +359,7 @@ columns = 2
 [node name="MuteBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
+focus_mode = 0
 toggle_mode = true
 texture_normal = ExtResource("2_phpps")
 ignore_texture_size = true
@@ -344,6 +384,7 @@ horizontal_alignment = 2
 [node name="SoloBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
+focus_mode = 0
 toggle_mode = true
 texture_normal = ExtResource("3_7rc5s")
 ignore_texture_size = true
@@ -352,6 +393,7 @@ stretch_mode = 5
 [node name="InstrumentBtn" type="OptionButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
+focus_mode = 0
 theme_override_font_sizes/font_size = 28
 theme_override_constants/arrow_margin = 10
 alignment = 1

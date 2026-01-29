@@ -363,7 +363,13 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 		"Right_Part":
 			var pi = get_node("/root/Main/PlayerInfo")
 			var chara = get_node("/root/Main/PlayerInfo/Chara")
-			animate_position(get_node("/root/Main/ShortCutMenu"), Vector2(1920+500*tan15, 75-500), 0.25, "MenuBarPosition")
+			
+			var shortcut_menu = get_node("/root/Main/ShortCutMenu")
+			var t = animate_position(shortcut_menu, Vector2(1920+500*tan15, 75-500), 0.25, "MenuBarPosition")
+			t.finished.connect(func() -> void:
+				shortcut_menu.visible = false
+			)
+			
 			animate_position(chara, Vector2(chara.position.x, chara.position.y + chara.size.y), 0.35, "CharactorPosition")
 			animate_position(pi, Vector2(pi.position.x + 900, pi.position.y + 200), 0.55, "PlayerInfoPosition")
 		
@@ -483,7 +489,10 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 		"Right_Part":
 			var pi = get_node("/root/Main/PlayerInfo")
 			var chara = get_node("/root/Main/PlayerInfo/Chara")
-			animate_position(get_node("/root/Main/ShortCutMenu"), Vector2(1920, 75), 0.25, "MenuBarPosition")
+			
+			var shortcut_menu = get_node("/root/Main/ShortCutMenu")
+			shortcut_menu.visible = true
+			animate_position(shortcut_menu, Vector2(1920, 75), 0.25, "MenuBarPosition")
 			animate_position(pi, Vector2(pi.position.x - 900, pi.position.y - 200), 0.35, "PlayerInfoPosition")
 			animate_position(chara, Vector2(chara.position.x, chara.position.y - chara.size.y), 0.55, "CharactorPosition")
 		"RB_Btn":

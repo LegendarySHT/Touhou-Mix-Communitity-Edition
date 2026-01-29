@@ -24,6 +24,12 @@ var current_idx: int = 0
 # track view节点
 var master_node: Node = null
 
+# 是否是主显示器
+var is_master: bool = false
+var enable_tracks: Array[int] = []
+
+var note_color: Color
+
 class NoteEvent:
 	var pitch: int			  # MIDI音符号 (0-127)
 	var velocity: int		   # 速度/力度 (1-127)
@@ -45,7 +51,7 @@ func _ready():
 	_on_flow_area_resized()	
 
 	flow_area.resized.connect(_on_flow_area_resized)
-	# _generate_test_notes()
+	
 
 func _on_flow_area_resized():
 	if size.y > 250:
@@ -55,7 +61,9 @@ func _on_flow_area_resized():
 	area_width = flow_area.get_rect().size.x
 	lane_height = area_height / lane_count
 	
-
+func update_color():
+	for i in active_notes:
+		i.color = note_color
 
 func _process(_delta):
 	if master_node == null or current_notes.is_empty():
@@ -74,7 +82,6 @@ func _process(_delta):
 	# 移动和更新音符
 	var to_remove: Array[ColorRect] = []
 	
-	var need_redirect = false
 	for i in active_notes:
 		var start_tick = i.get_meta("start_tick")
 		var duration = i.get_meta("duration")
@@ -86,11 +93,6 @@ func _process(_delta):
 		# 判断是否完全离开视野
 		if end_tick < ct:  # 音符已经完全播放完毕
 			to_remove.append(i)
-			continue
-			
-		if start_tick > view_right_bound:  # 音符还没进入视野
-			to_remove.append(i)
-			need_redirect = true	
 			continue
 			
 		# 更新位置
@@ -106,26 +108,7 @@ func _process(_delta):
 	# 移除音符
 	for i in to_remove:
 		i.queue_free()
-		active_notes.erase(i)
-
-	# 如果回退进度，需要重新定位并生成音符
-	if need_redirect:
-		_redirect_index(ct , view_right_bound)
-
-func _redirect_index(ct, view_right_bound):
-	for i in current_notes:
-		if i.start_tick > view_right_bound:
-			current_idx = current_notes.find(i)
-			print("current_idx: %d ct: %d nst: %d" % [current_idx, ct, i.start_tick])
-			break
-
-	# 重新生成正在场上的音符
-	var recreate_ctn = 0
-	for i in range(0, current_idx):
-		if current_notes[i].start_tick < view_right_bound:
-			_create_note(current_notes[i])
-			recreate_ctn += 1
-	note_count_passed.text = str(current_idx - recreate_ctn)
+	active_notes =  active_notes.filter(func(element): return not (element in to_remove))
 
 func _create_note(note: NoteEvent):
 	var note_rect: ColorRect = ColorRect.new()
@@ -138,9 +121,12 @@ func _create_note(note: NoteEvent):
 	note_rect.size = Vector2(note_width, note_height)
 	note_rect.position = Vector2(-note_width, start_y)
 	note_rect.color = _get_color_by_pitch(note.pitch)
+	if is_master and note.track_index not in enable_tracks:
+		note_rect.self_modulate.a = 0
 
 	# 设置自定义属性
 	note_rect.set_meta("lane_index", lane_index)
+	note_rect.set_meta("track_index", note.track_index)
 	note_rect.set_meta("start_tick", note.start_tick)
 	note_rect.set_meta("duration", note.duration)
 	note_rect.set_meta("is_passed", false)
@@ -178,14 +164,15 @@ func init_displayer(mn: Node, notes: Array[NoteEvent]):
 	note_count_passed.text = str(passed_count)
 	note_count_total.text = str(notes.size())
 
-	# 临时测试：检查note是否按start_tick从小到大排列
-	_verify_notes_sorted(notes)
-
-	# 启用处理循环以驱动可视化（即使notes为空也能正常运行）
-	set_process(true)
+	# 如果是主显示器，初始化所有轨道的启用状态
+	if is_master:
+		for i in notes:
+			if i.track_index not in enable_tracks:
+				enable_tracks.append(i.track_index)
 
 # 重置播放头位置 - 用于进度条跳转
 func reset_playhead_position(target_ms: float) -> void:
+	# return
 	if current_notes.is_empty() or master_node == null:
 		return
 	
@@ -219,41 +206,15 @@ func reset_playhead_position(target_ms: float) -> void:
 	current_idx = new_idx
 	
 	# 重新计算已通过的音符数
-	var passed_count = 0
-	for note in current_notes:
-		if note.start_tick < target_tick:
-			passed_count += 1
-		else:
-			break
-	
-	note_count_passed.text = str(passed_count)
+	note_count_passed.text = str(new_idx - active_notes.size())
 	
 	print("[NoteDisplayer] Reset complete: current_idx=%d, passed=%s" % [current_idx, note_count_passed.text])
 
-# 临时测试函数：验证notes是否按start_tick从小到大排列
-func _verify_notes_sorted(notes: Array[NoteEvent]) -> void:
-	if notes.is_empty():
-		print("[NoteDisplayer] Notes array is empty")
-		return
-	
-	var is_sorted = true
-	var unsorted_count = 0
-	
-	for i in range(1, notes.size()):
-		if notes[i].start_tick < notes[i-1].start_tick:
-			is_sorted = false
-			unsorted_count += 1
-			if unsorted_count <= 3:  # 只打印前3个不排序的情况
-				print("[NoteDisplayer] ⚠️  Notes NOT sorted! Index %d: start_tick=%d < Index %d: start_tick=%d" % 
-					[i, notes[i].start_tick, i-1, notes[i-1].start_tick])
-	
-	if is_sorted:
-		print("[NoteDisplayer] ✓ All %d notes are properly sorted by start_tick (ascending order)" % notes.size())
-	else:
-		print("[NoteDisplayer] ⚠️  Found %d unsorted pairs in %d notes" % [unsorted_count, notes.size()])
-
 # 根据音高获取颜色
 func _get_color_by_pitch(pitch: int) -> Color:
+	if note_color:
+		return note_color
+
 	# 将MIDI音高（0-127）映射到色相（0-360度）
 	var hue = float(pitch % 12) / 12.0  # 八度内音高循环
 	return Color.from_hsv(hue, 0.7, 0.9, 0.8)
@@ -265,3 +226,13 @@ func _generate_test_notes():
 		notes.append(NoteEvent.new(5, 60, i * 200, 50, i, 0))
 
 	init_displayer(self, notes)
+
+func toggle_track(toggled_on: bool, track_index: int):
+	if toggled_on:
+		enable_tracks.append(track_index)
+	else:
+		enable_tracks.erase(track_index)
+
+	for i in active_notes:
+		if i.get_meta("track_index") == track_index:
+			i.self_modulate.a = 1 if toggled_on else 0

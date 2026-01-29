@@ -26,8 +26,6 @@ func _ready() -> void:
 	favor_button.focus_exited.connect(_on_focus_exit.bind(favor_button))
 
 func _on_focus_enter(btn: Button):
-	if not get_viewport().get_visible_rect().has_point(get_global_rect().position):
-		return
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		return
 	await get_tree().create_timer(0.1).timeout

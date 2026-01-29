@@ -83,13 +83,18 @@ func _ready() -> void:
 func _load_midi(midi: MidiData) -> void:
 	current_midi_data = midi
 	
+	container.custom_minimum_size.y = 0
+	container.size.y = 0
+
 	# 清空现有的轨道
 	_clear_tracks()
+
 	
 	# 加载MIDI到播放管理器
 	if midi_playback_manager.load_midi(midi):
 		# 初始化总览的音符显示器
 		_init_master_note_displayer()
+		master_note_displayer.is_master = true
 		# 创建轨道UI
 		_create_track_views()
 	else:
@@ -110,7 +115,7 @@ func _clear_tracks() -> void:
 func _create_track_views() -> void:
 	if not current_midi_data:
 		return
-	
+
 	# 获取轨道信息
 	var track_infos = midi_playback_manager.get_track_infos()
 	
@@ -290,7 +295,7 @@ func _on_track_enable_toggled(is_checked: bool, track_index: int) -> void:
 	current_midi_data.set_selected_tracks(selected_tracks)
 	
 	# 更新主音符显示器以反映选中轨道的变化
-	_update_master_note_displayer()
+	master_note_displayer.toggle_track(is_checked, track_index)
 
 # 轨道静音切换
 func _on_track_mute_toggled(is_muted: bool, track_index: int) -> void:
