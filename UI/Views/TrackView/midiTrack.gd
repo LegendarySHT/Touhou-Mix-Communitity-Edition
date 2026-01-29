@@ -1,4 +1,4 @@
-extends Panel
+extends ListItemBase
 
 class_name MidiTrack
 
@@ -34,11 +34,14 @@ var current_instrument: String = ""
 
 var instrument_options: Array = []
 
-
 # 父节点
 var parent_node: Node = null
 
+signal _init_fin
+
 func _ready():
+	await _init_fin
+	
 	# 连接按钮信号
 	_connect_signals()
 	_init_track_color()
@@ -124,6 +127,8 @@ func setup_track(parent: Node, index: int, track_name: String, instruments: Arra
 	track_index = index
 	name = track_name
 	instrument_options = instruments
+
+	_init_fin.emit()
 
 func _on_mute_toggled(is_pressed: bool):
 	is_muted = is_pressed

@@ -93,6 +93,7 @@ func _ready() -> void:
 	# 监听窗口大小变化
 	if is_skew:
 		get_window().size_changed.connect(_on_window_size_changed)
+		_on_window_size_changed()
 
 func _on_v_scrollbar_changed(_value: float):
 	if scroll_state_reset_timer.is_stopped():

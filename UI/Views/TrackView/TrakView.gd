@@ -22,36 +22,31 @@ class_name TrackView
 @onready var soundfont_selector: OptionButton = $MC/VBox/VolumeView/HBoxC/VBoxC2/SoundfontSelector
 @onready var preview_button: Button = $MC/VBox/TotalView/MC/VBoxC/playArea/PreviewButton
 
-# 给midi轨道访问的默认值
-var instrument_options: Array = ["钢琴", "吉他", "贝斯", "鼓", "弦乐"]
-
-# MIDI轨道预制场景
-const MIDI_TRACK_SCENE = preload("res://UI/Views/TrackView/midiTrack.tscn")
-
-var midi_tracks: Array[MidiTrack] = []
+@onready var midi_playback_manager: MidiPlaybackManager = MidiPlaybackManager.instance
+@onready var ui_stat_mgr: UIStateManager = UIStateManager.instance
 
 var current_midi_data: MidiData = null
-var midi_playback_manager: MidiPlaybackManager
 var is_previewing: bool = false
 var is_progress_dragging: bool = false
 
+var current_tick: int = 0
+
+# 给midi轨道访问的默认值
+var instrument_options: Array = ["钢琴", "吉他", "贝斯", "鼓", "弦乐"]
 var vocal_file_path: String = "111"
 
-var current_tick: int = 0
+
+# 用于存储所有音符的列表
+var All_Notes: Array[NoteDisplayer.NoteEvent] = []
 
 func _ready() -> void:
 	work_state = UIStateManager.UIState.TRACK_VIEW
 	need_h_expand = true
 
-	# 获取管理器引用（使用单例模式）
-	midi_playback_manager = MidiPlaybackManager.instance
+	# 检查管理器引用
 	if midi_playback_manager == null:
 		push_error("MidiPlaybackManager not initialized in Main! MIDI features will not work.")
 		return
-
-	# 如果有人声的话在这里加载
-
-	_init_vocal_btn_display()
 
 	# 初始化UI
 	_populate_soundfont_selector()
@@ -60,6 +55,8 @@ func _ready() -> void:
 	
 	# 连接信号
 	EventBus.instance.enter_track_view_with.connect(_load_midi)
+	ui_stat_mgr.state_changed.connect(_on_state_changed)
+
 	midi_playback_manager.midi_loaded.connect(_on_midi_loaded)
 	midi_playback_manager.midi_started.connect(_on_midi_started)
 	midi_playback_manager.midi_stopped.connect(_on_midi_stopped)
@@ -83,33 +80,48 @@ func _ready() -> void:
 func _load_midi(midi: MidiData) -> void:
 	current_midi_data = midi
 	
+	# 清空现有的轨道
+	clear_items()
+
+	# 重置列表高度
+	await get_tree().process_frame
 	container.custom_minimum_size.y = 0
 	container.size.y = 0
-
-	# 清空现有的轨道
-	_clear_tracks()
-
 	
 	# 加载MIDI到播放管理器
-	if midi_playback_manager.load_midi(midi):
-		# 初始化总览的音符显示器
-		_init_master_note_displayer()
-		master_note_displayer.is_master = true
-		# 创建轨道UI
-		_create_track_views()
-	else:
+	if not midi_playback_manager.load_midi(midi):
 		push_error("Failed to load MIDI: " + midi.id)
 
-# 清空所有轨道
-func _clear_tracks() -> void:
-	for track in midi_tracks:
-		track.queue_free()
-	midi_tracks.clear()
+	# 加载音符
+	var all_notes = midi_playback_manager.current_notes
+	if all_notes.is_empty():
+		push_warning("No notes found in MIDI")
+		return
 	
-	# 从container中移除所有子节点
-	for child in container.get_children():
-		if child is MidiTrack:
-			child.queue_free()
+	# 在一次遍历中过滤并转换为显示格式（notes已按时间顺序）
+	All_Notes.clear()
+	for note in all_notes:
+		if note is MidiParser.Note and note.event != null:
+			var evt = note.event
+			var display_note = NoteDisplayer.NoteEvent.new(
+				evt.pitch,
+				evt.velocity,
+				int(evt.start_time),
+				int(evt.duration),
+				evt.track_index,
+				evt.channel
+			)
+			All_Notes.append(display_note)
+
+	# 初始化总览的音符显示器
+	_init_master_note_displayer()
+	master_note_displayer.is_master = true
+
+	# 创建轨道UI
+	_create_track_views()
+
+	# 初始化人声按钮显示
+	_init_vocal_btn_display()
 
 # 创建轨道视图
 func _create_track_views() -> void:
@@ -125,17 +137,13 @@ func _create_track_views() -> void:
 	
 	# 为每个轨道创建UI
 	for track_info in track_infos:
-		var track_scene = MIDI_TRACK_SCENE.instantiate()
+		var track_scene = create_and_add_item(track_info.name, "MidiTrack") as MidiTrack
 		
 		track_scene.setup_track(self , track_info.index, track_info.name, instrument_options)
 
-		container.add_child(track_scene)
-		
 		# 为该轨道初始化音符显示
 		_init_track_note_displayer(track_scene, track_info.index)
 		
-		midi_tracks.append(track_scene)
-	
 	# 增加上下边距
 	container.custom_minimum_size.y = container.size.y + 800
 
@@ -190,7 +198,7 @@ func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
 		master_note_displayer.reset_playhead_position(target_ms)
 	
 	# 重置所有轨道的noteDisplayer
-	for track in midi_tracks:
+	for track in list_items:
 		if track.note_display:
 			track.note_display.reset_playhead_position(target_ms)
 
@@ -259,19 +267,12 @@ func _on_preview_button_pressed() -> void:
 			preview_button.text = "播放预览"
 	else:
 		# 开始预览
-		var load_success = midi_playback_manager.load_midi(current_midi_data)
-		if load_success:
-			# 重新初始化显示器，确保note数据正确加载
-			_init_master_note_displayer()
-			for track in midi_tracks:
-				_init_track_note_displayer(track, track.track_index)
-			
-			midi_playback_manager.play()
-			is_previewing = true
-			if preview_button:
-				preview_button.text = "停止预览"
-		else:
-			push_error("Failed to load MIDI for preview")
+		_reset_player()
+
+		midi_playback_manager.play()
+		is_previewing = true
+		if preview_button:
+			preview_button.text = "停止预览"
 
 # ============= 音轨信号回调 =======================
 
@@ -333,7 +334,7 @@ func _on_track_volume_changed(value: float, track_index: int) -> void:
 	
 	# 获取对应的轨道UI
 	var track_ui: MidiTrack = null
-	for track in midi_tracks:
+	for track in list_items:
 		if track.track_index == track_index:
 			track_ui = track
 			break
@@ -351,10 +352,10 @@ func _on_track_volume_changed(value: float, track_index: int) -> void:
 	
 # 乐器选择
 func _on_track_instrument_changed(index: int, track_index: int) -> void:
-	if track_index >= midi_tracks.size():
+	if track_index >= list_items.size():
 		return
 	
-	var instrument_name = midi_tracks[track_index].instruments_option_btn.get_item_text(index)
+	var instrument_name = list_items[track_index].instruments_option_btn.get_item_text(index)
 	
 	# 注：乐器切换通过MIDI的Program Change消息实现
 	# 当前版本记录选择，具体实现需要通过MidiPlayer的乐器配置
@@ -447,6 +448,7 @@ func _init_vocal_btn_display() -> void:
 		pass
 	else:
 		pass
+
 # 更新MIDI音量标签
 func _set_display_midi_volume(value: float) -> void:
 	# value 已经是 0-100 的百分比
@@ -507,91 +509,62 @@ func _gui_input(event: InputEvent) -> void:
 
 # 初始化主音符显示器（显示已开启音轨中的所有音符）
 func _init_master_note_displayer() -> void:
-	if master_note_displayer == null or midi_playback_manager == null:
+	if master_note_displayer == null:
 		return
 	
 	if current_midi_data == null:
 		push_warning("No MIDI data loaded")
 		return
 	
-	var selected_tracks = current_midi_data.selected_track_indices
-	if selected_tracks.is_empty():
-		push_warning("No tracks selected")
-		return
-	
-	# 获取所有音符
-	var all_notes = midi_playback_manager.current_notes
-	print("[TrackView] Got %d notes from MidiPlaybackManager" % all_notes.size())
-	
-	if all_notes.is_empty():
-		push_warning("No notes found in MIDI")
-		return
-	
-	# 在一次遍历中过滤并转换为显示格式（notes已按时间顺序）
-	var display_notes: Array[NoteDisplayer.NoteEvent] = []
-	for note in all_notes:
-		if note is MidiParser.Note and note.event != null:
-			var evt = note.event
-			if evt.track_index in selected_tracks:
-				var display_note = NoteDisplayer.NoteEvent.new(
-					evt.pitch,
-					evt.velocity,
-					int(evt.start_time),
-					int(evt.duration),
-					evt.track_index,
-					evt.channel
-				)
-				display_notes.append(display_note)
-	
-	if display_notes.is_empty():
+	_reset_player()
+
+	# 获取所有音符	
+	if All_Notes.is_empty():
 		push_warning("No notes found in selected tracks")
 		return
 	
-	print("[TrackView] Filtered to %d notes from selected tracks" % display_notes.size())
+	print("[TrackView] Filtered to %d notes from selected tracks" % All_Notes.size())
 	
 	# 初始化显示器（notes已按时间顺序排列）
-	master_note_displayer.init_displayer(self, display_notes)
+	master_note_displayer.init_displayer(self, All_Notes)
 
 func _init_track_note_displayer(track_scene: MidiTrack, track_index: int) -> void:
-	if track_scene.note_display == null or midi_playback_manager == null:
+	if track_scene.note_display == null:
 		return
 	
-	var all_notes = midi_playback_manager.current_notes
-	if all_notes.is_empty():
-		push_warning("No notes available for track %d" % track_index)
-		return
-	
-	# 在一次遍历中筛选并转换该轨道的音符（notes已按时间顺序）
-	var track_notes: Array[NoteDisplayer.NoteEvent] = []
-	for note in all_notes:
-		if note is MidiParser.Note and note.event != null:
-			var evt = note.event
-			if evt.track_index == track_index:
-				var display_note = NoteDisplayer.NoteEvent.new(
-					evt.pitch,
-					evt.velocity,
-					int(evt.start_time),
-					int(evt.duration),
-					evt.track_index,
-					evt.channel
-				)
-				track_notes.append(display_note)
-	
+	# 过滤当前轨道的音符
+	var track_notes: Array[NoteDisplayer.NoteEvent] = All_Notes.filter(
+		func (note):
+			return note.track_index == track_index
+	)
+
 	if track_notes.is_empty():
 		push_warning("No notes found for track %d" % track_index)
+		track_scene.queue_free()
+		list_items.erase(track_scene)
 		return
 	
 	print("[TrackView] Track %d: %d notes (time-sorted)" % [track_index, track_notes.size()])
 	# 初始化该轨道的音符显示器（notes已按时间顺序排列）
 	track_scene.note_display.init_displayer(self, track_notes)
 
+# 重置音符显示器索引
+func _reset_player() -> void:	
+	current_tick = 0
+	_set_display_current_time(0)
 
+	# 重置音符显示器位置
+	master_note_displayer.reset_playhead_position(0)
+	for track in list_items:
+		if track.note_display:
+			track.note_display.reset_playhead_position(0)
 
-# 清理资源
-func _exit_tree() -> void:
-	# 停止预览
-	if is_previewing and midi_playback_manager:
-		midi_playback_manager.stop()
-	
-	# 清空轨道列表
-	midi_tracks.clear()
+# 页面状态回调
+func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
+	if old_state == work_state and new_state == ui_stat_mgr.UIState.MIDI_VIEW:
+		# 停止预览
+		if is_previewing and midi_playback_manager:
+			midi_playback_manager.stop()
+		
+		# 清空轨道列表
+		clear_items()	
