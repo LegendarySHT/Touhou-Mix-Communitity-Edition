@@ -4,10 +4,12 @@ class_name MidiTrack
 
 @onready var note_display: NoteDisplayer = $HBoxC/MC/HBoxC/MC/flowArea
 
-# 写着"Track"的按钮（我也没想到有什么用）
-@onready var track_btn: Button = $HBoxC/Panel/TrackBtn
-# 轨道编号
-@onready var track_num: Label = $HBoxC/Panel/TrackNum
+# 写着"Track"的按钮
+@onready var track_btn: Button = $HBoxC/TR/TrackBtn
+@onready var track_num: Label = $HBoxC/TR/TrackNum
+
+@onready var channel_btn: Button = $HBoxC/CH/ChannelBtn
+@onready var channel_num: Label = $HBoxC/CH/ChannelNum
 # 切换轨道启用状态的按钮
 @onready var enable_btn: Button = $HBoxC/MC/HBoxC/enableBtn
 @onready var enable_btn_text: Label = $HBoxC/MC/HBoxC/enableBtn/HBoxC/Text
@@ -20,7 +22,8 @@ class_name MidiTrack
 @onready var instruments_option_btn: OptionButton = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/InstrumentBtn
 
 # 初始化时需要调节颜色的节点 除下面的之外还有self和enable_btn
-@onready var left_panel: Panel = $HBoxC/Panel
+@onready var track_panel: Panel = $HBoxC/TR
+@onready var channel_panel: Panel = $HBoxC/CH
 @onready var note_panel: Panel = $HBoxC/MC/HBoxC/MC/flowArea/noteTotal
 
 
@@ -48,6 +51,8 @@ func _ready():
 	_init_track_color()
 
 	track_num.text = str(track_index)
+	channel_num.text = str(track_channel)
+
 	if not instrument_options:
 		if not parent_node:
 			push_error("轨道 %d 初始化失败: 无父节点" % track_index)
@@ -64,17 +69,20 @@ func _ready():
 		var is_enabled = midi_data.is_track_channel_selected(track_index, track_channel)
 		enable_btn.button_pressed = is_enabled
 	
-var predefined_colors = [
+const colors_set = [
 	Color.RED,
-	Color.ORANGE,
+	Color.DEEP_PINK,
+	Color.BROWN,
+	Color.BISQUE,
 	Color.GOLD,
 	Color.YELLOW_GREEN,
-	Color.GREEN,
+	Color.LIME,
 	Color.CYAN,
-	Color.BLUE,
 	Color.SKY_BLUE,
+	Color.AQUAMARINE,
+	Color.BLUE,
+	Color.BLUE_VIOLET,
 	Color.VIOLET,
-	Color.MAGENTA
 ]
 
 var color_light: Color
@@ -82,12 +90,14 @@ var color_normal: Color
 var color_dark: Color
 
 func _init_track_color():
-	var h = predefined_colors[track_index % predefined_colors.size()].h
+	var h = colors_set[track_index % colors_set.size()].h
 	color_light = Color.from_hsv(h, 0.3, 0.95, 1)
 	color_normal = Color.from_hsv(h, 0.9, 0.85, 1)
 	color_dark = Color.from_hsv(h, 0.8, 0.5, 1)
 
-	left_panel.self_modulate = color_dark
+	channel_panel.self_modulate = Color.from_hsv(colors_set[(-track_channel) % colors_set.size()].h, 0.8, 0.5, 1)
+	track_panel.self_modulate = color_dark
+
 	note_panel.self_modulate = color_light
 	self_modulate = color_light
 	enable_btn.self_modulate = color_normal
@@ -135,12 +145,6 @@ func setup_track(parent: Node, index: int, track_name: String, instruments: Arra
 	instrument_options = instruments
 
 	_init_fin.emit()
-
-## 预留接口：设置通道标签（后续UI完善时使用）
-func set_channel_label(channel_num: int) -> void:
-	# TODO: 后续在UI中显示channel信息
-	# 示例: track_num.text = "T%d-Ch%d" % [track_index, channel_num]
-	pass
 
 func _on_mute_toggled(is_pressed: bool):
 	if midi_data:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3 uid="uid://ttmjc3cbi1bi"]
+[gd_scene load_steps=22 format=3 uid="uid://ttmjc3cbi1bi"]
 
 [ext_resource type="Script" uid="uid://bh655hfw6k0q2" path="res://UI/Views/TrackView/midiTrack.gd" id="1_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://balwiilkbpuhy" path="res://Resources/icon/TrackView/note.png" id="1_ni118"]
@@ -33,8 +33,22 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_83r2u"]
+bg_color = Color(0.75398386, 0.75398386, 0.75398374, 1)
+border_width_right = 2
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 25
+corner_radius_bottom_left = 25
+corner_detail = 1
+shadow_color = Color(0, 0, 0, 0.21176471)
+shadow_size = 5
+shadow_offset = Vector2(5, 0)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7vp1s"]
 bg_color = Color(1, 1, 1, 1)
+border_width_left = 20
+border_color = Color(0.5569528, 0.55695313, 0.55695283, 1)
+border_blend = true
 shadow_color = Color(0, 0, 0, 0.21176471)
 shadow_size = 5
 shadow_offset = Vector2(5, 0)
@@ -155,51 +169,88 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 0
 
-[node name="Panel" type="Panel" parent="HBoxC"]
-custom_minimum_size = Vector2(80, 0)
+[node name="CH" type="Panel" parent="HBoxC"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBoxFlat_83r2u")
+
+[node name="ChannelBtn" type="Button" parent="HBoxC/CH"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -34.83368
+offset_right = 163.03627
+offset_bottom = 25.16632
+grow_vertical = 0
+rotation = -1.5707964
+focus_mode = 0
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+toggle_mode = true
+text = "Channel"
+flat = true
+alignment = 0
+icon_alignment = 1
+
+[node name="ChannelNum" type="Label" parent="HBoxC/CH"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 60.0
+offset_bottom = 119.99999
+grow_horizontal = 2
+rotation = -1.5707964
+theme_override_font_sizes/font_size = 32
+text = "18"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TR" type="Panel" parent="HBoxC"]
+custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_7vp1s")
 
-[node name="TrackBtn" type="Button" parent="HBoxC/Panel"]
+[node name="TrackBtn" type="Button" parent="HBoxC/TR"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = -0.14700317
-offset_bottom = -0.36956787
+offset_top = 215.16632
+offset_right = 103.03627
+offset_bottom = 25.16632
 grow_horizontal = 2
 grow_vertical = 2
+rotation = -1.5707964
 focus_mode = 0
 mouse_filter = 1
-theme_override_constants/line_spacing = -5
 theme_override_font_sizes/font_size = 32
 toggle_mode = true
-text = "T
-r
-a
-c
-k
-
-"
+text = "Track"
 flat = true
+alignment = 0
 icon_alignment = 1
 
-[node name="TrackNum" type="Label" parent="HBoxC/Panel"]
+[node name="TrackNum" type="Label" parent="HBoxC/TR"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
+anchors_preset = 10
 anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -19.0
+offset_top = 60.0
+offset_bottom = 120.0
 grow_horizontal = 2
-grow_vertical = 0
+rotation = -1.5707964
 theme_override_font_sizes/font_size = 32
 text = "1"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="MC" type="MarginContainer" parent="HBoxC"]
 layout_mode = 2

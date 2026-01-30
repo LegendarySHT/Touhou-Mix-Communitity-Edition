@@ -210,25 +210,12 @@ func reset_playhead_position(target_ms: float) -> void:
 	
 	print("[NoteDisplayer] Reset complete: current_idx=%d, passed=%s" % [current_idx, note_count_passed.text])
 
-var predefined_colors = [
-	Color.RED,
-	Color.ORANGE,
-	Color.GOLD,
-	Color.YELLOW_GREEN,
-	Color.GREEN,
-	Color.CYAN,
-	Color.BLUE,
-	Color.SKY_BLUE,
-	Color.VIOLET,
-	Color.MAGENTA
-]
-
 # 根据音高获取颜色
 func _get_color_by_track_idx(track_idx: int) -> Color:
 	if note_color:
 		return note_color
 
-	var hue = predefined_colors[track_idx % predefined_colors.size()].h
+	var hue = MidiTrack.colors_set[track_idx % MidiTrack.colors_set.size()].h
 	return Color.from_hsv(hue, 1, 0.9, 0.8)
 
 # 批量生成示例音符（测试用）

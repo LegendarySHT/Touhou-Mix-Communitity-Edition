@@ -1,140 +1,66 @@
-## MIDI视图
-## 显示选中歌曲下的所有MIDI谱面列表
-extends BaseScrollList
+extends Control
 
-class_name MidiView
+# 主要节点
+@onready var midi_list: MidiView = $LeftArea/InfoWindow/HBoxC/MidiList
+@onready var option_list: VBoxContainer = $RightArea/OptionPanel/VBoxC
 
-## 当前显示的MIDI列表
-var current_midis: Array[MidiData] = []
+# 下面的三个主要按钮
+@onready var track_view_btn: Button = $LeftArea/MainBtn/TrackViewBtn
+@onready var play_btn: Button = $LeftArea/MainBtn/PlayBtn
+@onready var favor_list_btn: Button = $LeftArea/MainBtn/FavorListBtn
 
-var last_selection:int = -1 # 上一次选中的节点
+# midi信息框左边的三个按钮
+@onready var left_btns: Array[Button] = [$LeftArea/InfoWindow/HBoxC/Left/PreviBtn, $LeftArea/InfoWindow/HBoxC/Left/Fold/Btn, $LeftArea/InfoWindow/HBoxC/Left/NextBtn]
 
-var track_view_btn: Button
-var play_btn: Button
-var favor_list_btn: Button
+# midi信息框右边的两个按钮
+@onready var info_btn: Button = $LeftArea/InfoWindow/HBoxC/Right/InfoBtn
+@onready var delete_btn: Button = $LeftArea/InfoWindow/HBoxC/Right/DelBtn
 
-## 管理器引用
+# 管理器
 @onready var data_manager: DataManager = DataManager.instance
 @onready var event_bus: EventBus = EventBus.instance
-@onready var state_manager = UIStateManager.instance
 
-# 路径
-var INDICATOR = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
-
-func _init_btn():
-	var main_btn_area = get_parent().get_parent().get_parent().get_node("MainBtn")
-	track_view_btn = main_btn_area.get_node("TrackViewBtn")
-	favor_list_btn = main_btn_area.get_node("FavorListBtn")
-	play_btn = main_btn_area.get_node("PlayBtn")
-
+func _ready() -> void:
 	if not (track_view_btn and favor_list_btn and play_btn):
-		print("Failed to find main btn")
+		push_error("[MidiViewInit] Failed to find main btn")
 		return
 
-	play_btn.pressed.connect(_on_click_start_btn)
-	track_view_btn.pressed.connect(_on_click_track_btn)
-
-func _ready() -> void:	
-	# 获取管理器引用
-	if not data_manager or not event_bus:
-		push_error("MidiView: Missing manager instances")
-		return
-	_init_btn()
-
-	work_state = UIStateManager.UIState.MIDI_VIEW
-	item_height = 150
-	item_spacing = 4
-	snap_offset_y = 150
+	# 窗口事件
+	get_window().size_changed.connect(_on_window_size_changed)
+	_on_window_size_changed()
 
 	# 连接事件
-	event_bus.song_selected.connect(_load_midis)
-	event_bus.midi_selected.connect(_load_midi)
+	event_bus.song_selected.connect(func (song_id: String):
+		midi_list.load_midi(data_manager.get_midis_by_song(song_id))
+	)
+	event_bus.midi_selected.connect(func (_midi_id: String, midi:MidiData):
+		midi_list.load_midi([midi])
+	)
 
-	get_window().size_changed.connect(_on_window_size_changed)
+	# 连接主要按钮事件
+	play_btn.pressed.connect(_on_click_start_btn)
+	track_view_btn.pressed.connect(_on_click_track_btn)
+	favor_list_btn.pressed.connect(_on_click_favor_list_btn)
 
-	super._ready()
+	# 按钮的焦点逻辑
+	for i in left_btns:
+		i.focus_entered.connect(func():
+			i.focus_neighbor_right = midi_list.get_focus_node_path()
+		)
+	play_btn.focus_entered.connect(func():
+		play_btn.focus_neighbor_top = midi_list.get_focus_node_path()
+	)
+
+	# 连接右侧按钮事件
+	info_btn.pressed.connect(_on_info_btn_pressed)
+	delete_btn.pressed.connect(_on_del_btn_pressed)
 
 func _on_window_size_changed() -> void:
-	var left_area = get_parent().get_parent().get_parent()
-	left_area.get_parent().set_deferred("size", get_viewport().get_visible_rect().size)
-
-func _load_midi(_midi_id: String, midi:MidiData) -> void:
-	if not data_manager:
-		return
-
-	current_midis = [midi]
-	_refresh_display()
-
-## 加载指定歌曲的MIDI谱面
-func _load_midis(song_id: String) -> void:
-	if not data_manager:
-		return
-
-	current_midis = data_manager.get_midis_by_song(song_id)
-	if current_midis:
-		_refresh_display()
-
-	_connect_head_to_tail()
-
-func _connect_head_to_tail():
-	if container == null:
-		return
-	var ln = container.get_child(0).button
-	var hd = ln
-	var cn
-	for i in container.get_children():
-		if i == ln:
-			continue
-		cn = i.button
-		ln.focus_neighbor_bottom = cn.get_path()
-		cn.focus_neighbor_top = ln.get_path()
-		ln = cn
-	if not cn == hd:
-		cn.focus_neighbor_bottom = hd.get_path()
-		hd.focus_neighbor_top = cn.get_path()		
-
-## 刷新显示
-func _refresh_display() -> void:
-	# 清空现有项
-	_clear_list()
-	
-	# 添加新项
-	var counter = 0
-	var bg = ButtonGroup.new()
-
-	for midi in current_midis:
-		var item = create_and_add_item(midi.id, "midi")
-		if item:
-			# 添加指示器点
-			var point = ColorRect.new()
-			point.name = "Indicator"
-			point.custom_minimum_size = Vector2(20, 20)
-			point.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			point.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			point.color = Color.WHITE
-
-			var indicator = get_node(INDICATOR)
-			indicator.add_child(point)
-
-			if item.has_method("setup_with_midi"):
-				item.setup_with_midi(self, midi, counter, bg)
-			else:
-				print("[MidiView] ERROR: Item does not have setup_with_midi method!")
-			counter += 1
-
-
-	print("加载了%d个MIDI谱面" % counter)
-
-func _get_selection() -> MidiData:
-	if selected_item == -1:
-		print("未选择Midi")
-		return null
-	
-	return current_midis[selected_item]
+	set_deferred("size", get_viewport().get_visible_rect().size)
 
 # 点击开始游戏的事件
 func _on_click_start_btn() -> void:
-	var midi:MidiData = _get_selection()
+	var midi:MidiData = midi_list.get_selection()
 	if not midi:
 		return
 	print("选择歌曲： %d" % midi.name)
@@ -143,88 +69,20 @@ func _on_click_start_btn() -> void:
 	UIStateManager.instance.change_state(UIStateManager.UIState.PLAY_VIEW)
 
 func _on_click_track_btn():
-	var midi:MidiData = _get_selection()
+	var midi:MidiData = midi_list.get_selection()
 	if not midi:
 		return
 	
 	EventBus.instance.enter_track_view_with.emit(midi)
 	UIStateManager.instance.change_state(UIStateManager.UIState.TRACK_VIEW)
 
-## 清空列表
-func _clear_list() -> void:
-	if container == null:
-		return
-	
-	# for item in container.get_children():
-	# 	item.queue_free()
-	
-	# list_items.clear()
-	clear_items()
-	
-	# 清空指示器
-	var indicator = get_node(INDICATOR)
-	if indicator:
-		for child in indicator.get_children():
-			child.free() # 因为初始化指示器时根据索引位置来设置颜色的，所以得立即清除
-	
-	selected_item = -1
+# 跳转到收藏夹
+func _on_click_favor_list_btn():
+	pass
 
-## 列表项选中回调
-func _on_item_selected(item_id: String) -> void:
-	if event_bus:
-		# 查找对应的MIDI
-		for midi in current_midis:
-			if midi.id == item_id:
-				event_bus.emit_midi_selected(item_id, midi)
-				break
+# 显示简介什么的
+func _on_info_btn_pressed():
+	print("click info btn")
 
-func _gui_input(event):
-	super._gui_input(event)
-
-var waiting: bool = false
-
-func _process(_delta):
-	super._process(_delta)
-
-	# 吸附	
-	if not (is_dragging_list or need_snap or selected_item == -1) and abs(scroll_vertical - get_selected_node().position.y - item_height + snap_offset_y) > 7:
-		need_snap = true
-	
-	if abs(_mouse_delta) > 50 and is_dragging_list and not waiting and selected_item != -1:
-		waiting = true
-		await wait_dragging()
-		var direction:int = 1 if _mouse_delta < 0.0 else -1
-		scroll_velocity = 0.0
-		need_snap = true
-		select_item(selected_item + direction)		
-
-func wait_dragging():
-	while Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		await get_tree().create_timer(0.2).timeout
-	waiting = false
-	return true
-
-func _show_midi_list(_index: int = 0) -> void:
-	if current_midis.size() == 1:
-		return
-
-	if selected_item != -1:
-		get_selected_node().button.button_pressed = false
-		last_selection = selected_item
-		selected_item = -1
-	else:
-		selected_item = last_selection
-		get_selected_node().button.button_pressed = true
-		last_selection = -1
-
-func _previous() -> void:
-	if current_midis.size() == 1:
-		return
-
-	select_item(selected_item - 1)
-
-func _next() -> void:
-	if current_midis.size() == 1:
-		return
-
-	select_item(selected_item + 1)
+func _on_del_btn_pressed():
+	print("click del btn")

@@ -1,10 +1,11 @@
-[gd_scene load_steps=69 format=3 uid="uid://bylmyli6spbd6"]
+[gd_scene load_steps=73 format=3 uid="uid://bylmyli6spbd6"]
 
 [ext_resource type="Texture2D" uid="uid://b2x5d0kfa0myq" path="res://Resources/icon/midiInfoPage/Arrow.png" id="1_036i2"]
-[ext_resource type="Script" uid="uid://ddhvc24jriuwq" path="res://UI/Views/MidiView/MidiView.gd" id="1_mxrx3"]
+[ext_resource type="Script" uid="uid://sw6xgm4gxonh" path="res://UI/Views/MidiView/MidiView.gd" id="1_mxrx3"]
 [ext_resource type="Texture2D" uid="uid://c21yw02ftmlwr" path="res://Resources/icon/sort.png" id="2_nagrd"]
 [ext_resource type="Texture2D" uid="uid://dtolw6736k65h" path="res://Resources/icon/midiInfoPage/info.png" id="3_ua7bn"]
 [ext_resource type="Texture2D" uid="uid://bqehp2aavod7n" path="res://Resources/icon/midiInfoPage/delete.png" id="4_f44vb"]
+[ext_resource type="Script" uid="uid://ddhvc24jriuwq" path="res://UI/Views/MidiView/MidiList.gd" id="5_u7brx"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="6_btcpj"]
 [ext_resource type="Texture2D" uid="uid://dd1y1og0c6v5f" path="res://Resources/icon/midiInfoPage/track.png" id="7_cve6f"]
 [ext_resource type="Texture2D" uid="uid://d4fwv0fvdi4xy" path="res://Resources/icon/midiInfoPage/addToList.png" id="8_pgjff"]
@@ -52,6 +53,12 @@ content_margin_right = 4.0
 content_margin_bottom = 4.0
 bg_color = Color(1, 1, 1, 0.75)
 draw_center = false
+border_width_left = 8
+border_width_top = 8
+border_width_right = 12
+border_width_bottom = 8
+border_color = Color(1, 1, 1, 1)
+border_blend = true
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -271,6 +278,15 @@ shadow_size = 20
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5h6qm"]
 bg_color = Color(0.18431373, 0.58431375, 1, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2bu1o"]
+draw_center = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_f13vx"]
+bg_color = Color(0, 0.46849638, 0.86440593, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u7brx"]
+bg_color = Color(0, 0, 0, 0.13725491)
+
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_btcpj"]
 color = Color(1, 1, 1, 1)
 grow_begin = 10.0
@@ -348,6 +364,7 @@ offset_bottom = 1120.1688
 grow_horizontal = 2
 grow_vertical = 2
 theme = SubResource("Theme_5hcss")
+script = ExtResource("1_mxrx3")
 
 [node name="LeftArea" type="VBoxContainer" parent="Base"]
 custom_minimum_size = Vector2(1200, 0)
@@ -382,6 +399,11 @@ alignment = 1
 [node name="PreviBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Left"]
 layout_mode = 2
 size_flags_vertical = 3
+focus_neighbor_left = NodePath("../../Right/InfoBtn")
+focus_neighbor_top = NodePath("../NextBtn/TextureRect")
+focus_neighbor_bottom = NodePath("../Fold/Btn")
+focus_next = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
+focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
 
 [node name="TextureRect" type="TextureRect" parent="Base/LeftArea/InfoWindow/HBoxC/Left/PreviBtn"]
 layout_mode = 1
@@ -400,24 +422,23 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 3.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_5h6qm")
 
-[node name="Btn" type="TextureButton" parent="Base/LeftArea/InfoWindow/HBoxC/Left/Fold"]
+[node name="Btn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Left/Fold"]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -50.0
-offset_top = -50.0
-offset_right = 50.0
-offset_bottom = 50.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-texture_normal = ExtResource("2_nagrd")
+theme_override_styles/normal = SubResource("StyleBoxFlat_2bu1o")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_f13vx")
+theme_override_styles/hover = SubResource("StyleBoxFlat_u7brx")
+icon = ExtResource("2_nagrd")
 
 [node name="NextBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Left"]
 layout_mode = 2
 size_flags_vertical = 3
+focus_neighbor_bottom = NodePath("../../../../MainBtn/TrackViewBtn")
+focus_next = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
 
 [node name="TextureRect" type="TextureRect" parent="Base/LeftArea/InfoWindow/HBoxC/Left/NextBtn"]
 layout_mode = 1
@@ -426,6 +447,11 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+focus_neighbor_left = NodePath("../../../Right/DelBtn")
+focus_neighbor_top = NodePath("../../Fold/Btn")
+focus_neighbor_bottom = NodePath("../../../../../MainBtn/TrackViewBtn")
+focus_next = NodePath("../../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
+focus_previous = NodePath("../../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
 texture = ExtResource("1_036i2")
 stretch_mode = 5
 
@@ -435,7 +461,7 @@ size_flags_horizontal = 3
 size_flags_stretch_ratio = 7.0
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 3
-script = ExtResource("1_mxrx3")
+script = ExtResource("5_u7brx")
 container_path = NodePath("VBOX")
 list_item_class = "res://UI/Views/MidiView/midiNode.tscn"
 metadata/_edit_lock_ = true
@@ -453,6 +479,11 @@ alignment = 1
 [node name="InfoBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Right"]
 layout_mode = 2
 size_flags_vertical = 3
+focus_neighbor_top = NodePath("../DelBtn")
+focus_neighbor_right = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
+focus_neighbor_bottom = NodePath("../DelBtn")
+focus_next = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
+focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
 icon = ExtResource("3_ua7bn")
 icon_alignment = 1
 
@@ -481,6 +512,11 @@ metadata/_edit_use_anchors_ = true
 [node name="DelBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Right"]
 layout_mode = 2
 size_flags_vertical = 3
+focus_neighbor_top = NodePath("../InfoBtn")
+focus_neighbor_right = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
+focus_neighbor_bottom = NodePath("../../../../MainBtn/FavorListBtn")
+focus_next = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
+focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
 icon = ExtResource("4_f44vb")
 icon_alignment = 1
 
@@ -680,6 +716,10 @@ z_index = 1
 custom_minimum_size = Vector2(250, 150)
 layout_mode = 2
 size_flags_vertical = 4
+focus_neighbor_left = NodePath("../FavorListBtn")
+focus_neighbor_top = NodePath("../../InfoWindow/HBoxC/Left/NextBtn")
+focus_next = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
+focus_previous = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
 icon = ExtResource("7_cve6f")
 icon_alignment = 1
 expand_icon = true
@@ -688,6 +728,8 @@ expand_icon = true
 custom_minimum_size = Vector2(300, 200)
 layout_mode = 2
 size_flags_horizontal = 3
+focus_next = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
+focus_previous = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
 theme_override_styles/normal = SubResource("StyleBoxFlat_btcpj")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_5hcss")
 theme_override_styles/hover = SubResource("StyleBoxFlat_wasq5")
@@ -700,11 +742,16 @@ custom_minimum_size = Vector2(250, 150)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+focus_neighbor_top = NodePath("../../InfoWindow/HBoxC/Right/DelBtn")
+focus_neighbor_right = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
+focus_next = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
+focus_previous = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
 icon = ExtResource("8_pgjff")
 icon_alignment = 1
 expand_icon = true
 
 [node name="Control" type="Control" parent="Base/LeftArea"]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
 

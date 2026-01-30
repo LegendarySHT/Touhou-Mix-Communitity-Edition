@@ -5,6 +5,10 @@ func _ready():
 	for i in get_node("TabBtn").get_children():
 		if i is Button:
 			i.toggled.connect(_on_button_toggled.bind(i))
+			i.focus_entered.connect(func ():
+				if not i.button_pressed:
+					i.button_pressed = true
+			)
 	
 ## 选项卡切换回调
 func _on_button_toggled(toggle_on, button):
