@@ -824,6 +824,20 @@ func set_setting_value(setting_id: String, value: Variant) -> bool:
 		return true
 	return false
 
+# 获取指定选项型设置的显示文本
+func get_option_text(setting_id: String, index: int) -> String:
+	if not setting_items.has(setting_id):
+		return ""
+	var setting_item = setting_items[setting_id]
+	if setting_item == null:
+		return ""
+	if not setting_item.value_node or not (setting_item.value_node is OptionButton):
+		return ""
+	var option_btn: OptionButton = setting_item.value_node
+	if index < 0 or index >= option_btn.item_count:
+		return ""
+	return option_btn.get_item_text(index)
+
 # 重置所有设置为默认值
 func reset_to_defaults():
 	for setting_id in setting_items:

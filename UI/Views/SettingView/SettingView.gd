@@ -146,9 +146,17 @@ func save_config_to_file() -> bool:
 	
 	# 特殊处理soundfont_select：转换为实际文件名
 	if settings_dict.has("soundfont_select"):
-		var display_name = settings_dict["soundfont_select"]
+		var raw_value = settings_dict["soundfont_select"]
+		var display_name = ""
+		if raw_value is int or (raw_value is String and raw_value.is_valid_int()):
+			var index = int(raw_value)
+			display_name = setting_list.get_option_text("soundfont_select", index)
+		else:
+			display_name = str(raw_value)
 		# 去掉 [内置] 标签，获取实际文件名
 		var actual_name = display_name.split(" [")[0] if " [" in display_name else display_name
+		if actual_name.ends_with(".sf2"):
+			actual_name = actual_name.get_basename()
 		settings_dict["soundfont_select"] = actual_name
 	
 	# 验证soundfont文件存在性，若不存在则回退
@@ -213,6 +221,8 @@ func _initialize_soundfont_options(loaded_settings: Dictionary) -> void:
 	
 	# 获取当前应该选中的soundfont
 	var current_selection = loaded_settings.get("soundfont_select", "GeneralUser-GS.sf2")
+	if current_selection is String and current_selection.ends_with(".sf2"):
+		current_selection = current_selection.get_basename()
 	
 	# 更新SettingList中的选项
 	setting_list.update_soundfont_options(soundfont_list, current_selection)

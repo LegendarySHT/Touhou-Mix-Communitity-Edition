@@ -1,8 +1,9 @@
 # Touhou Mix 社区版 - AI 编程助手指南
 
 **项目**: Godot 4.5 节奏游戏（GDScript）  
-**状态**: 核心架构完成；UI/MIDI 系统已集成  
-**更新**: 2026-01-26
+**状态**: 核心架构完成；UI/MIDI/GameplayManager 系统全部集成  
+**更新**: 2026-01-30  
+**核心完成度**: 80% - 框架完成，个别功能待完善
 
 ## ⚡ 5 分钟快速概览
 
@@ -29,7 +30,11 @@ var manager = get_node("/root/Main/DataManager")
 - `DataManager.instance` - 访问专辑/歌曲/MIDI 树（albums/songs/midis 字典）
 - `EventBus.instance` - 发送/监听全局信号
 - `FileSystemManager.instance` - 谱面索引与资源扫描
-- `MidiPlaybackManager.instance` - MIDI 文件加载与音符解析
+- `MidiPlaybackManager.instance` - MIDI 文件加载与轨道选择
+- `KeySequenceManager.instance` - Note 分类与键位生成
+- `GameplayManager.instance` - 游戏状态与流程控制
+- `NotesRenderer.instance` - 键位判定与渲染框架
+- `ScoreCalculator.instance` - 分数计算与等级评定
 - `UIStateManager.instance` - UI 状态机与导航历史
 - `AnimationManager.instance` - 所有 Tween 管理
 
@@ -63,6 +68,39 @@ midi_tree: Dictionary                        # AlbumID → SongID → [MidiID]
 var album = DataManager.instance.get_album_by_id(album_id)
 var songs = DataManager.instance.get_songs_by_album(album_id)
 var midis = DataManager.instance.get_midis_by_song(song_id)
+```
+
+### 游戏流程与 MIDI 整合（关键：GameplayManager → KeySequenceManager）
+```gdscript
+# 完整流程：用户选择 MIDI → 游戏加载 → Note 分类 → 键位生成 → 游戏进行
+1. 用户选择 MIDI，MidiView 发出信号
+2. EventBus.start_game_with.emit(midi_data)
+3. GameplayManager.start_game(midi_data)
+   ├─ 设置 LOADING 状态
+   ├─ MidiPlaybackManager.load_midi(midi) - 加载 MIDI 文件
+   │  ├─ FileSystemManager 定位 MIDI 文件路径
+   │  ├─ MidiParser.load_and_parse_midi() 解析音符
+   │  └─ 返回 parsed_notes 列表
+   ├─ KeySequenceManager.classify_sequences() - 分类 Note
+   │  ├─ 从选中轨道提取 GameSequences（玩家操作）
+   │  └─ 剩余轨道作为 BackgroundSequences（伴奏）
+   ├─ KeySequenceManager.generate_keys() - 生成键位
+   │  ├─ 根据 MIDI pitch 计算屏幕 X 位置
+   │  └─ 分配每个 GameSequence 唯一的 key_id
+   └─ 设置 PLAYING 状态，开始游戏
+```
+
+### 关键游戏 Manager（新增）
+```gdscript
+# GameplayManager - 游戏流程控制
+var state = GameplayManager.instance.current_state  # 获取游戏状态
+GameplayManager.instance.start_game(midi_data)      # 启动游戏
+GameplayManager.instance.game_time_updated.connect(fn) # 监听时间更新
+
+# KeySequenceManager - Note 分类与键位映射
+var game_keys = KeySequenceManager.instance.game_sequences    # 玩家需操作的键
+var bg_notes = KeySequenceManager.instance.background_sequences  # 背景伴奏
+var judge_result = NotesRenderer.instance.judge_note_at_key(key_id, hit_time_ms)
 ```
 
 ## 🔄 常见工作流
@@ -121,6 +159,29 @@ func _on_data_ready() -> void:
         create_and_add_item(item.id, "type_name")
 ```
 
+### 流程 4: 游戏启动与 Note 判定（新）
+```gdscript
+# 用户点击"开始游戏"
+func _on_start_game_btn_pressed() -> void:
+    var midi = current_midi_selection
+    EventBus.instance.start_game_with.emit(midi)
+    UIStateManager.instance.change_state(UIStateManager.UIState.PLAY_VIEW)
+
+# GameplayManager 自动处理整个流程
+func _on_start_game(midi: MidiData) -> void:
+    GameplayManager.instance.start_game(midi)  # 加载→分类→生成→开始
+
+# 在 GameplayView 中处理判定
+func _process(_delta) -> void:
+    var position_ms = GameplayManager.instance.game_time * 1000
+    NotesRenderer.instance.update_position(position_ms)
+    
+    # 用户击键时
+    if Input.is_action_pressed("key_1"):
+        var result = NotesRenderer.instance.judge_note_at_key(key_id, position_ms)
+        ScoreCalculator.instance.record_judge(result)
+```
+
 ## ⚠️ 常见陷阱与修复
 
 | 问题 | 原因 | 解决方案 |
@@ -139,10 +200,14 @@ func _on_data_ready() -> void:
 | 全局事件 | [Core/EventBus.gd](../Core/EventBus.gd) | 20+ signals |
 | 数据查询 | [Core/DataManager.gd](../Core/DataManager.gd) | get_all_albums(), get_midis_by_song() |
 | 文件索引 | [Core/FileSystemManager.gd](../Core/FileSystemManager.gd) | charts_index, get_charts_index() |
-| MIDI 播放 | [Game/MidiPlaybackManager.gd](../Game/MidiPlaybackManager.gd) | load_midi(), get_track_infos() |
 | 排序搜索 | [Core/SortingEngine.gd](../Core/SortingEngine.gd) | get_sorted_midis(), search_midis() |
+| MIDI 播放 | [Game/MidiPlaybackManager.gd](../Game/MidiPlaybackManager.gd) | load_midi(), set_soundfont() |
+| Note 分类 | [Game/KeySequenceManager.gd](../Game/KeySequenceManager.gd) | classify_sequences(), generate_keys() |
+| 游戏管理 | [Game/GameplayManager.gd](../Game/GameplayManager.gd) | start_game(), current_state |
+| 分数计算 | [Game/ScoreCalculator.gd](../Game/ScoreCalculator.gd) | record_judge(), get_final_score() |
 | 标准 View | [UI/Views/MidiView/MidiView.gd](../UI/Views/MidiView/MidiView.gd) | BaseScrollList 继承示例 |
 | 动画库 | [UI/Animations/AnimationManager.gd](../UI/Animations/AnimationManager.gd) | 15+ 预设动画 |
+| MIDI 解析 | [Utilities/MidiParser.gd](../Utilities/MidiParser.gd) | load_and_parse_midi() |
 
 ## 🛠️ 实用代码片段
 
@@ -206,5 +271,5 @@ GameLogger.instance.error("File access denied", "FileSystemManager")
 
 ---
 
-**最后更新**: 2026-01-26  
+**最后更新**: 2026-01-30  
 **Godot 版本**: 4.5 | **主要语言**: GDScript

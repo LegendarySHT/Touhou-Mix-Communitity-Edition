@@ -133,10 +133,9 @@ func _copy_default_resources_thread() -> void:
 		GameLogger.instance.info("Skins directory is empty, copying default skins...", "FileSystemMGR")
 		_copy_directory_recursive(DEFAULT_SKINS_SRC, SKINS_DIR)
 	
-	# 检查是否需要复制音源
-	if _is_directory_empty(SOUNDFONT_DIR):
-		GameLogger.instance.info("Soundfont directory is empty, copying default soundfonts...", "FileSystemMGR")
-		_copy_directory_contents(DEFAULT_SOUNDFONT_SRC, SOUNDFONT_DIR, "sf2")
+	# 音源目录：仅创建目录，不复制默认资源
+	_ensure_directory_exists(SOUNDFONT_DIR)
+	GameLogger.instance.info("Soundfont directory ready (no default resources copied)", "FileSystemMGR")
 	
 	# 检查是否需要复制背景图
 	if _is_directory_empty(BACKGROUND_DIR):
