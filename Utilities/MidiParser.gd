@@ -266,7 +266,7 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 		var note_event = NoteEvent.new(
 			note_data["pitch"],
 			note_data["velocity"],
-			note_data["start_time"],
+			note_data["start_tick"],
 			100.0,
 			note_data["track_index"],
 			note_data["channel"]
