@@ -306,13 +306,36 @@ func _calculate_tick_from_position_with_bpm_timeline(target_time_ms: float, time
 	# 不应该到达这里，返回最后的tick
 	return bpm_timeline[-1]["tick"]
 
-## 设置选中的轨道
-func set_selected_tracks(track_indices: Array[int]) -> void:
+## 设置选中的轨道和通道（支持新格式）
+## 接受 Array[Dictionary] 格式: [{"track": int, "channel": int}, ...]
+## 或兼容旧 Array[int] 格式（仅按track选中所有channel）
+func set_selected_tracks(tracks_data) -> void:
 	if current_midi_data == null:
 		return
 	
-	current_midi_data.set_selected_tracks(track_indices)
-	tracks_changed.emit(track_indices)
+	# 兼容旧格式 Array[int]
+	if tracks_data is Array:
+		if tracks_data.is_empty():
+			current_midi_data.selected_track_configs.clear()
+			return
+		
+		# 检查是否为新格式 Array[Dictionary]
+		if tracks_data[0] is Dictionary:
+			# 新格式：[{"track": int, "channel": int}, ...]
+			current_midi_data.selected_track_configs.clear()
+			for item in tracks_data:
+				var track_idx = item.get("track", -1)
+				var channel = item.get("channel", -1)
+				if track_idx >= 0 and channel >= 0:
+					current_midi_data.set_track_channel_enabled(track_idx, channel, true)
+		else:
+			# 旧格式：Array[int] - 为了兼容，将其转换为配置格式
+			# 注：旧格式仅保留track信息，channel信息会丢失
+			# 仅用于向后兼容，不推荐使用
+			var track_indices = tracks_data as Array[int]
+			current_midi_data.selected_track_indices = track_indices
+	
+	tracks_changed.emit(tracks_data)
 
 ## 设置音源文件
 func set_soundfont(soundfont_name: String) -> bool:

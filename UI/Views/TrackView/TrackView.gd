@@ -143,26 +143,63 @@ func _create_track_views() -> void:
 		push_warning("No track info available")
 		return
 	
-	# 为每个轨道创建UI（仅当轨道有音符时）
-	for track_info in track_infos:
-		# 先检查该轨道是否有音符
-		var track_notes: Array[NoteDisplayer.NoteEvent] = All_Notes.filter(
-			func (note):
-				return note.track_index == track_info.index
-		)
+	# 第1步：聚合每个track中包含的所有unique channels
+	var track_channel_groups: Dictionary = {}  # {track_idx: [ch0, ch1, ...]}
+	for note in All_Notes:
+		if not track_channel_groups.has(note.track_index):
+			track_channel_groups[note.track_index] = []
+		if note.channel not in track_channel_groups[note.track_index]:
+			track_channel_groups[note.track_index].append(note.channel)
+	
+	# 第2步：按channel升序、track升序排序，构建(track, channel)列表
+	var track_channel_pairs: Array = []  # [{track: int, channel: int, notes: Array}, ...]
+	
+	for track_idx in track_channel_groups.keys():
+		var channels = track_channel_groups[track_idx]
+		channels.sort()  # channel升序
 		
-		# 如果轨道没有音符，跳过创建UI
-		if track_notes.is_empty():
-			push_warning("Track %d (%s) has no notes, skipping UI creation" % [track_info.index, track_info.name])
+		for ch in channels:
+			# 过滤该(track, channel)的所有notes
+			var pair_notes: Array[NoteDisplayer.NoteEvent] = All_Notes.filter(
+				func(note):
+					return note.track_index == track_idx and note.channel == ch
+			)
+			
+			track_channel_pairs.append({
+				"track": track_idx,
+				"channel": ch,
+				"notes": pair_notes
+			})
+	
+	# 按(channel asc, track asc)排序
+	track_channel_pairs.sort_custom(func(a, b):
+		if a["channel"] != b["channel"]:
+			return a["channel"] < b["channel"]
+		return a["track"] < b["track"]
+	)
+	
+	# 第3步：为每个(track, channel)对创建MidiTrack UI项
+	var track_name_map = {}  # 缓存track名称
+	for track_info in track_infos:
+		track_name_map[track_info.index] = track_info.name
+	
+	for pair in track_channel_pairs:
+		var track_idx = pair["track"]
+		var channel = pair["channel"]
+		var pair_notes = pair["notes"]
+		
+		if pair_notes.is_empty():
 			continue
 		
-		# 创建轨道UI
-		var track_scene = create_and_add_item(track_info.name, "MidiTrack") as MidiTrack
+		# 获取track名称
+		var track_name = track_name_map.get(track_idx, "Track %d" % track_idx)
 		
-		track_scene.setup_track(self , track_info.index, track_info.name, instrument_options)
-
-		# 为该轨道初始化音符显示（传入已过滤的音符）
-		_init_track_note_displayer(track_scene, track_info.index, track_notes)
+		# 创建MidiTrack UI项
+		var track_scene = create_and_add_item(track_name, "MidiTrack") as MidiTrack
+		track_scene.setup_track(self, track_idx, track_name, instrument_options, channel, current_midi_data)
+		
+		# 初始化该(track, channel)对的音符显示
+		_init_track_note_displayer(track_scene, track_idx, channel, pair_notes)
 
 	
 
@@ -280,22 +317,15 @@ func _on_track_enable_toggled(is_checked: bool, track_index: int) -> void:
 	if current_midi_data == null:
 		return
 	
-	var selected_tracks = current_midi_data.selected_track_indices.duplicate()
-	
-	if is_checked:
-		# 添加轨道
-		if track_index not in selected_tracks:
-			selected_tracks.append(track_index)
-	else:
-		# 移除轨道
-		if track_index in selected_tracks:
-			selected_tracks.erase(track_index)
-	
-	# 更新MIDI数据
-	current_midi_data.set_selected_tracks(selected_tracks)
+	# 查找该track_index的所有MidiTrack UI项，获取其channel
+	for track_ui in list_items:
+		if track_ui.track_index == track_index:
+			var channel = track_ui.track_channel
+			current_midi_data.set_track_channel_enabled(track_index, channel, is_checked)
+			break
 	
 	# 更新主音符显示器以反映选中轨道的变化
-	master_note_displayer.toggle_track(is_checked, track_index)
+	master_note_displayer.sync_from_midi_data(current_midi_data)
 
 # 轨道静音切换
 func _on_track_mute_toggled(is_muted: bool, track_index: int) -> void:
@@ -303,20 +333,13 @@ func _on_track_mute_toggled(is_muted: bool, track_index: int) -> void:
 	if current_midi_data == null:
 		return
 	
-	# 获取当前选中的轨道列表
-	var selected_tracks = current_midi_data.selected_track_indices.duplicate()
-	
-	if is_muted:
-		# 静音：移除该轨道
-		if track_index in selected_tracks:
-			selected_tracks.erase(track_index)
-	else:
-		# 取消静音：添加该轨道
-		if track_index not in selected_tracks:
-			selected_tracks.append(track_index)
-	
-	# 更新选中轨道列表
-	current_midi_data.set_selected_tracks(selected_tracks)
+	# 查找该track_index的所有MidiTrack UI项，获取其channel
+	for track_ui in list_items:
+		if track_ui.track_index == track_index:
+			var channel = track_ui.track_channel
+			# 静音：禁用该(track, channel)；取消静音：启用该(track, channel)
+			current_midi_data.set_track_channel_enabled(track_index, channel, not is_muted)
+			break
 	
 	# 更新主音符显示器以反映选中轨道的变化
 	_update_master_note_displayer()
@@ -372,14 +395,14 @@ func _update_preview() -> void:
 	midi_playback_manager.seek(current_pos)
 	midi_playback_manager.play()
 
-# 更新主音符显示器（当选中轨道改变时）
+## 更新主音符显示器（从MidiData同步启用的(track, channel)列表）
 func _update_master_note_displayer() -> void:
 	if master_note_displayer == null or midi_playback_manager == null or current_midi_data == null:
 		return
 	
-	var selected_tracks = current_midi_data.selected_track_indices
-	if selected_tracks.is_empty():
-		push_warning("No tracks selected")
+	var selected_configs = current_midi_data.selected_track_configs
+	if selected_configs.is_empty():
+		push_warning("No (track, channel) selected")
 		# 清空显示器中的所有音符
 		master_note_displayer.init_displayer(self, [])
 		return
@@ -390,27 +413,17 @@ func _update_master_note_displayer() -> void:
 		push_warning("No notes found in MIDI")
 		return
 	
-	# 在一次遍历中过滤并转换为显示格式（notes已按时间顺序）
+	# 过滤出启用的(track, channel)对应的音符
 	var display_notes: Array[NoteDisplayer.NoteEvent] = []
-	for note in all_notes:
-		if note is MidiParser.Note and note.event != null:
-			var evt = note.event
-			if evt.track_index in selected_tracks:
-				var display_note = NoteDisplayer.NoteEvent.new(
-					evt.pitch,
-					evt.velocity,
-					int(evt.start_time),
-					int(evt.duration),
-					evt.track_index,
-					evt.channel
-				)
-				display_notes.append(display_note)
+	for note in All_Notes:
+		if selected_configs.has(note.track_index) and note.channel in selected_configs[note.track_index]:
+			display_notes.append(note)
 	
 	if display_notes.is_empty():
-		push_warning("No notes found in selected tracks")
+		push_warning("No notes found in selected (track, channel) pairs")
 		return
 	
-	print("[TrackView] Updated master note displayer with %d notes from selected tracks" % display_notes.size())
+	print("[TrackView] Updated master note displayer with %d notes from selected (track, channel) pairs" % display_notes.size())
 	
 	# 更新显示器的current_note数据
 	master_note_displayer.init_displayer(self, display_notes)
@@ -531,22 +544,27 @@ func _init_master_note_displayer() -> void:
 		push_warning("No notes found in selected tracks")
 		return
 	
-	print("[TrackView] Filtered to %d notes from selected tracks" % All_Notes.size())
+	# 初始化selected_track_configs - 默认将所有(track, channel)对设为启用
+	current_midi_data.selected_track_configs.clear()
+	for note in All_Notes:
+		current_midi_data.set_track_channel_enabled(note.track_index, note.channel, true)
+	
+	print("[TrackView] Initialized %d notes from all (track, channel) pairs" % All_Notes.size())
 	
 	# 初始化显示器（notes已按时间顺序排列）
 	master_note_displayer.init_displayer(self, All_Notes)
 
-func _init_track_note_displayer(track_scene: MidiTrack, track_index: int, track_notes: Array[NoteDisplayer.NoteEvent]) -> void:
+func _init_track_note_displayer(track_scene: MidiTrack, track_index: int, channel: int, track_notes: Array[NoteDisplayer.NoteEvent]) -> void:
 	if track_scene.note_display == null:
 		return
 	
 	# track_notes 已经由 _create_track_views() 过滤好了，直接使用
 	if track_notes.is_empty():
-		push_warning("No notes found for track %d" % track_index)
+		push_warning("No notes found for track %d channel %d" % [track_index, channel])
 		return
 	
-	print("[TrackView] Track %d: %d notes (time-sorted)" % [track_index, track_notes.size()])
-	# 初始化该轨道的音符显示器（notes已按时间顺序排列）
+	print("[TrackView] Track %d Channel %d: %d notes (time-sorted)" % [track_index, channel, track_notes.size()])
+	# 初始化该(track, channel)的音符显示器（notes已按时间顺序排列）
 	track_scene.note_display.init_displayer(self, track_notes)
 
 # 重置音符显示器索引

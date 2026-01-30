@@ -78,6 +78,9 @@ var track_count: int = 1
 ## 已选中的轨道索引列表（支持多轨选择）
 var selected_track_indices: Array[int] = []
 
+## 已选中的轨道和通道配置 (格式: {track_idx: [ch0, ch1, ...], ...})
+var selected_track_configs: Dictionary = {}
+
 ## 已选中的音源文件名（默认为空表示使用系统默认）
 var use_soundfont: String = ""
 
@@ -155,6 +158,26 @@ func to_dict() -> Dictionary:
 ## 设置选中的轨道
 func set_selected_tracks(track_indices: Array[int]) -> void:
 	selected_track_indices = track_indices
+
+## 检查指定的(track, channel)是否被选中
+func is_track_channel_selected(track_idx: int, channel: int) -> bool:
+	if not selected_track_configs.has(track_idx):
+		return false
+	return channel in selected_track_configs[track_idx]
+
+## 设置指定(track, channel)的启用状态
+func set_track_channel_enabled(track_idx: int, channel: int, enabled: bool) -> void:
+	if enabled:
+		if not selected_track_configs.has(track_idx):
+			selected_track_configs[track_idx] = []
+		if channel not in selected_track_configs[track_idx]:
+			selected_track_configs[track_idx].append(channel)
+	else:
+		if selected_track_configs.has(track_idx):
+			selected_track_configs[track_idx].erase(channel)
+			# 如果该轨道已无通道被选中，删除该轨道的条目
+			if selected_track_configs[track_idx].is_empty():
+				selected_track_configs.erase(track_idx)
 
 ## 设置音源
 func set_soundfont(soundfont_name: String) -> void:

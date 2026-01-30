@@ -26,11 +26,12 @@ class_name MidiTrack
 
 # 轨道属性
 var track_index: int = 2
-var is_enabled: bool = true
-var is_muted: bool = false
-var is_solo: bool = false
+var track_channel: int = 0
 var current_volume: float = 1.0
 var current_instrument: String = ""
+
+# 引用到MidiData以获取状态
+var midi_data: MidiData = null
 
 var instrument_options: Array = []
 
@@ -58,8 +59,10 @@ func _ready():
 	for i in instrument_options:
 		instruments_option_btn.add_item(i)
 
-	if is_enabled:
-		enable_btn.button_pressed = true
+	# 从MidiData读取启用状态
+	if midi_data:
+		var is_enabled = midi_data.is_track_channel_selected(track_index, track_channel)
+		enable_btn.button_pressed = is_enabled
 	
 var predefined_colors = [
 	Color.RED,
@@ -122,24 +125,34 @@ func _connect_signals():
 		instruments_option_btn.item_selected.connect(parent_node._on_track_instrument_changed.bind(track_index))
 
 # 提供父节点及轨道信息，自动连接信号 乐器选项不提供时从传入的父节点获取
-func setup_track(parent: Node, index: int, track_name: String, instruments: Array = []):
+# channel 参数用于区分同一轨道的不同MIDI通道，后续UI完善时使用set_channel_label()显示
+func setup_track(parent: Node, index: int, track_name: String, instruments: Array = [], channel: int = 0, midi_data_ref: MidiData = null):
 	parent_node = parent
 	track_index = index
+	track_channel = channel
+	midi_data = midi_data_ref
 	name = track_name
 	instrument_options = instruments
 
 	_init_fin.emit()
 
+## 预留接口：设置通道标签（后续UI完善时使用）
+func set_channel_label(channel_num: int) -> void:
+	# TODO: 后续在UI中显示channel信息
+	# 示例: track_num.text = "T%d-Ch%d" % [track_index, channel_num]
+	pass
+
 func _on_mute_toggled(is_pressed: bool):
-	is_muted = is_pressed
-	mute_btn.modulate = Color(1, 0.5, 0.5, 1) if is_muted else Color(1, 1, 1, 1)
+	if midi_data:
+		midi_data.set_track_channel_enabled(track_index, track_channel, not is_pressed)
+	mute_btn.modulate = Color(1, 0.5, 0.5, 1) if is_pressed else Color(1, 1, 1, 1)
 
 func _on_solo_toggled(is_pressed: bool):
-	is_solo = is_pressed
-	solo_btn.modulate = Color(1, 1, 0.5, 1) if is_solo else Color(1, 1, 1, 1)
+	solo_btn.modulate = Color(1, 1, 0.5, 1) if is_pressed else Color(1, 1, 1, 1)
 
 func _on_enable_toggled(toggle_on: bool):
-	is_enabled = toggle_on
+	if midi_data:
+		midi_data.set_track_channel_enabled(track_index, track_channel, toggle_on)
 	enable_btn_text.text = "已启用" if toggle_on else "已禁用"
 
 	note_display.note_color = color_normal if toggle_on else color_dark

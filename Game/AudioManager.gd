@@ -225,11 +225,12 @@ func get_midi_duration() -> float:
 		return midi_mgr.duration_ms
 	return 0.0
 
-## 设置MIDI的选中轨道
-func set_midi_tracks(track_indices: Array[int]) -> void:
+## 设置MIDI的选中轨道和通道（支持新格式）
+## 接受 Array[Dictionary] 格式或 Array[int] 格式（向后兼容）
+func set_midi_tracks(tracks_data) -> void:
 	var midi_mgr = get_midi_playback_manager()
 	if midi_mgr != null:
-		midi_mgr.set_selected_tracks(track_indices)
+		midi_mgr.set_selected_tracks(tracks_data)
 
 ## 获取MIDI轨道信息
 func get_midi_track_infos() -> Array:

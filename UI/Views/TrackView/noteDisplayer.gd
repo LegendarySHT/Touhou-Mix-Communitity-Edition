@@ -126,6 +126,7 @@ func _create_note(note: NoteEvent):
 	# 设置自定义属性
 	note_rect.set_meta("pitch", note.pitch)
 	note_rect.set_meta("track_index", note.track_index)
+	note_rect.set_meta("channel", note.channel)
 	note_rect.set_meta("start_tick", note.start_tick)
 	note_rect.set_meta("duration", note.duration)
 	note_rect.set_meta("is_passed", false)
@@ -163,7 +164,7 @@ func init_displayer(mn: Node, notes: Array[NoteEvent]):
 	note_count_passed.text = str(passed_count)
 	note_count_total.text = str(notes.size())
 
-	# 如果是主显示器，初始化所有轨道的启用状态
+	# 如果是主显示器，初始化所有轨道通道的启用状态
 	if is_master:
 		for i in notes:
 			if i.track_index not in enable_tracks:
@@ -257,3 +258,22 @@ func toggle_track(toggled_on: bool, track_index: int):
 	for i in active_notes:
 		if i.get_meta("track_index") == track_index:
 			i.self_modulate.a = 1 if toggled_on else 0
+
+## 从MidiData同步启用的(track, channel)配置
+func sync_from_midi_data(midi_data: MidiData) -> void:
+	if midi_data == null:
+		return
+	
+	# 重建enable_tracks列表（保留向后兼容的track级别过滤）
+	enable_tracks.clear()
+	for track_idx in midi_data.selected_track_configs.keys():
+		enable_tracks.append(track_idx)
+	
+	# 更新所有活动的音符的显示状态
+	for note_rect in active_notes:
+		var track_idx = note_rect.get_meta("track_index")
+		var channel = note_rect.get_meta("channel")
+		
+		# 检查该(track, channel)是否启用
+		var is_enabled = midi_data.is_track_channel_selected(track_idx, channel)
+		note_rect.self_modulate.a = 1.0 if is_enabled else 0.0
