@@ -48,15 +48,14 @@ class NoteEvent:
 
 func _ready():
 	
+	if size.y > 250:
+		lane_count = 24
 	_on_flow_area_resized()	
 
 	flow_area.resized.connect(_on_flow_area_resized)
 	
 
 func _on_flow_area_resized():
-	if size.y > 250:
-		lane_count = 24
-
 	area_height = flow_area.get_rect().size.y
 	area_width = flow_area.get_rect().size.x
 	lane_height = area_height / lane_count
@@ -112,7 +111,7 @@ func _process(_delta):
 
 func _create_note(note: NoteEvent):
 	var note_rect: ColorRect = ColorRect.new()
-	var lane_index: int = note.pitch % lane_count
+	var lane_index: int = (note.pitch - 21) % lane_count
 	var note_width = note.duration * scale_factor
 	var note_height = lane_height * 0.8
 	var start_y = (lane_height * lane_index) + (lane_height - note_height) / 2.0
@@ -125,7 +124,7 @@ func _create_note(note: NoteEvent):
 		note_rect.self_modulate.a = 0
 
 	# 设置自定义属性
-	note_rect.set_meta("lane_index", lane_index)
+	note_rect.set_meta("pitch", note.pitch)
 	note_rect.set_meta("track_index", note.track_index)
 	note_rect.set_meta("start_tick", note.start_tick)
 	note_rect.set_meta("duration", note.duration)
@@ -238,6 +237,16 @@ func _generate_test_notes():
 		notes.append(NoteEvent.new(5, 60, i * 200, 50, i, 0))
 
 	init_displayer(self, notes)
+
+# 刷新音符位置
+func refresh_notes_lane(lane_ctn: int):
+	lane_count = lane_ctn
+	await flow_area.resized
+
+	for i in active_notes:
+		var lane_index = (i.get_meta("pitch") - 21) % lane_count
+		var start_y = (lane_height * lane_index) + (lane_height - i.size.y) / 2.0
+		i.position = Vector2(i.position.x, start_y)
 
 func toggle_track(toggled_on: bool, track_index: int):
 	if toggled_on:

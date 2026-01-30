@@ -93,7 +93,6 @@ func _ready() -> void:
 	# 监听窗口大小变化
 	if is_skew:
 		get_window().size_changed.connect(_on_window_size_changed)
-		_on_window_size_changed()
 
 func _on_v_scrollbar_changed(_value: float):
 	if scroll_state_reset_timer.is_stopped():
@@ -112,10 +111,6 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	if is_skew:
 		_on_window_size_changed()
 
-	# 重置值
-	is_dragging_list = false
-	_is_dragging_list = false
-
 	# 聚焦列表项
 	if enable and work_state not in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
@@ -123,7 +118,6 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 		await get_tree().create_timer(0.5).timeout
 		if selected_item == -1:
 			select_item(0)
-		print(selected_item)
 		get_selected_node().button.grab_focus()
 
 func _process(delta: float) -> void:
@@ -146,6 +140,9 @@ func _process(delta: float) -> void:
 		# 当速度很小时停止
 		if abs(scroll_velocity) < 30.0:
 			scroll_velocity = 0.0
+	elif not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_is_dragging_list = false
+		is_dragging_list = false
 
 	if need_snap and not (is_dragging_list):
 		var snap_index = selected_item if selected_item != -1 else round((scroll_vertical + item_height) / (item_height))
@@ -181,7 +178,7 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_is_dragging_list = event.pressed
-			if event.pressed and get_global_rect().has_point(get_global_mouse_position()):
+			if event.pressed:
 				scroll_velocity = 0
 				_list_start_pos = scroll_vertical
 				_mouse_start_pos = event.global_position.y

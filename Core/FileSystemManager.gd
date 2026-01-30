@@ -23,6 +23,7 @@ const DEFAULT_SKINS_SRC = "res://Resources/Skins/"
 const DEFAULT_SOUNDFONT_SRC = "res://Resources/Soundfont/"
 const DEFAULT_BACKGROUND_SRC = "res://Resources/BackgroundImage/"
 
+@warning_ignore_start("unused_signal")
 ## ========== 资源索引 ==========
 ## 谱面索引 {chart_id: ChartMetadata}
 var charts_index: Dictionary = {}
@@ -48,6 +49,8 @@ signal chart_added(chart_id: String, metadata: Dictionary)
 signal skin_installed(skin_name: String)
 signal resource_scan_completed(resource_type: String, count: int)
 signal resource_error(error_message: String)
+
+@warning_ignore_restore("unused_signal")
 
 func _ready() -> void:
 	if instance == null:
@@ -321,7 +324,6 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 			break
 	
 	# 查找封面图（可选）- 搜索所有可能的封面文件
-	var cover_found = false
 	var dir = DirAccess.open(chart_path)
 	if dir:
 		dir.list_dir_begin()
@@ -334,7 +336,6 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 				   (lower_name.ends_with(".jpg") or lower_name.ends_with(".jpeg") or \
 					lower_name.ends_with(".png") or lower_name.ends_with(".webp")):
 					metadata["cover_path"] = chart_path.path_join(file_name)
-					cover_found = true
 					break
 			file_name = dir.get_next()
 		dir.list_dir_end()

@@ -14,7 +14,7 @@ const DEFAULT_CONFIG_PATH = "res://Resources/Config/config.ini"
 func _ready() -> void:
 	var idx: int = 0
 	for btn:Button in short_cut_btn.get_children():
-		btn.pressed.connect(_on_button_pressed.bind(idx))
+		btn.toggled.connect(_on_button_toggled.bind(idx))
 		idx += 1
 
 	# 设置按钮信号链接
@@ -27,19 +27,21 @@ func _ready() -> void:
 				else:
 					UI.go_back()
 		)
-	# 焦点信号
+
+	# 焦点信号到导航按钮
 	var btns = get_node("Node2D/HBoxC/ShortCut")
 	btns.focus_entered.connect(func():
-		print("focus_entered")
-		var is_focus: bool = false
 		for i in btns.get_children():
 			if i is Button and i.button_pressed:
 				i.grab_focus()
-				is_focus = true
 				break
-		if not is_focus:
-			btns.get_child(0).grab_focus()
+			elif i == btns.get_child(-1):
+				btns.get_child(0).grab_focus()
 	)
+
+	for btn in btns.get_children():
+		if btn is Button:
+			btn.focus_entered.connect(_btn_focus_entered.bind(btn))
 
 	# 从 ConfigLoader 加载配置
 	_load_config_from_file()
@@ -51,6 +53,59 @@ func _ready() -> void:
 			await get_tree().create_timer(0.5).timeout
 			short_cut_btn.grab_focus()
 	)
+
+func get_all_child_nodes(c: Container):
+	var node_array = []
+	for i in c.get_children():
+		node_array.append(i)
+		if i.get_children():
+			node_array += get_all_child_nodes(i)
+	return node_array
+
+func get_nearest_focusable_node(pos_y) -> Control:
+	var nearest_node: Control = null
+	var min_distance = INF
+	
+	# 获取GridContainer的全局位置
+	var c: Container = setting_list.container
+	
+	
+	# 遍历GridContainer的所有子节点
+	var na = get_all_child_nodes(c)
+	if not na:
+		return null
+
+	for child in na:
+		# 确保节点是Control类型且可以聚焦
+		if child.focus_mode != Control.FOCUS_NONE and child.global_position.y > 0 and child.global_position.y < c.get_global_rect().size.y:
+			# 计算节点的中心点全局坐标
+			var node_y = child.get_global_rect().position.y
+			
+			# 计算距离
+			var distance = abs(node_y - pos_y)
+			
+			# 更新最近节点
+			if distance < min_distance:
+				min_distance = distance
+				nearest_node = child
+
+	return nearest_node
+
+func _btn_focus_entered(btn: Button):
+	if not btn.button_pressed:
+		btn.button_pressed = true
+	
+	for i in btn.get_parent().get_children():
+		if i is Button and i != btn:
+			i.z_index = 0
+		else:
+			i.z_index = 1
+	
+	await get_tree().create_timer(0.15).timeout
+	var node = get_nearest_focusable_node(btn.get_global_position().y)
+	if node:
+		print("Focused on: %s" % node.get_path())
+		btn.focus_neighbor_right = node.get_path()
 
 ## 从文件加载配置
 func _load_config_from_file() -> void:
@@ -122,7 +177,7 @@ func save_config_to_file() -> bool:
 	return success
 
 # 左侧快速跳转按钮的事件
-func _on_button_pressed(idx: int):
+func _on_button_toggled(_toggled_on: bool, idx: int):
 	var target_idx = idx*2
 	var c_idx = 0
 

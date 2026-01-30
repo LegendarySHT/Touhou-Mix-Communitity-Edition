@@ -41,8 +41,10 @@ func setup_item(ID: String, content: String, desc: String, valueType: ValueType,
 			v_node = load(item_value_option).instantiate()
 			var option_btn: OptionButton = v_node
 			option_btn.connect("item_selected", Callable(self, "_on_option_selected"))
+
 			var popup_menu: PopupMenu = option_btn.get_popup()
-			popup_menu.add_theme_font_size_override("font_size", 32)
+			popup_menu.about_to_popup.connect(_on_popup_menu_popup.bind(popup_menu))
+	
 		ValueType.TYPE_COLOR:
 			v_node = load(item_value_color).instantiate()
 			var btn: ColorPickerButton = v_node.get_node("ColorPickerButton")
@@ -74,6 +76,13 @@ func setup_item(ID: String, content: String, desc: String, valueType: ValueType,
 		set_value(initial_value)
 	
 	return v_node
+
+# 更新弹出菜单样式
+func _on_popup_menu_popup(popup_menu: PopupMenu) -> void:
+	print("restyle")
+	await get_tree().process_frame
+	popup_menu.position.y += 20
+	popup_menu.position.x -= 20
 
 # 获取当前值
 func get_value() -> Variant:

@@ -7,9 +7,12 @@ class_name TrackView
 @onready var progress_bar: HSlider = $MC/VBox/TotalView/MC/VBoxC/playArea/progressBar
 @onready var total_time: Label = $MC/VBox/TotalView/MC/VBoxC/playArea/totalTime
 
-# 导入人声按钮，存在人声时变为切换启用状态？
-@onready var vocal_btn: TextureButton = $MC/VBox/VolumeView/HBoxC/VBoxC2/VocalBtn
-@onready var latency_edit: LineEdit = $MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxContainer/Latency
+# 导入人声按钮
+@onready var vocal_import_btn: TextureButton = $MC/VBox/VolumeView/HBoxC/VBoxC2/VocalImportBtn
+# 切换人声启用状态按钮
+@onready var vocal_enable_btn: Button = $MC/VBox/VolumeView/HBoxC/VBoxC2/VocalEnableBtn
+
+@onready var latency_edit: LineEdit = $MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC/Latency
 @onready var midi_vol_btn: TextureButton = $MC/VBox/VolumeView/HBoxC/GridC/midiVolIcon
 @onready var midi_vol_slider: HSlider = $MC/VBox/VolumeView/HBoxC/GridC/midiVolSlider
 @onready var vocal_vol_btn: TextureButton = $MC/VBox/VolumeView/HBoxC/GridC/vocalVolIcon
@@ -32,7 +35,8 @@ var current_tick: int = 0
 
 # 给midi轨道访问的默认值
 var instrument_options: Array = ["钢琴", "吉他", "贝斯", "鼓", "弦乐"]
-var vocal_file_path: String = "111"
+# 人声音频路径存在时相关组件会显示
+var vocal_file_path: String = ""
 
 
 # 用于存储所有音符的列表
@@ -54,6 +58,8 @@ func _ready() -> void:
 	
 	# 连接信号
 	EventBus.instance.enter_track_view_with.connect(_load_midi)
+	# 退出信号
+	ui_stat_mgr.state_changed.connect(_on_ui_state_changed)
 
 	midi_playback_manager.midi_loaded.connect(_on_midi_loaded)
 	midi_playback_manager.midi_started.connect(_on_midi_started)
@@ -121,6 +127,10 @@ func _load_midi(midi: MidiData) -> void:
 	# 初始化人声按钮显示
 	_init_vocal_btn_display()
 
+	# 等容器尺寸更新，再增加上下边距
+	await container.resized
+	container.custom_minimum_size.y = container.size.y + 300
+
 # 创建轨道视图
 func _create_track_views() -> void:
 	if not current_midi_data:
@@ -153,9 +163,6 @@ func _create_track_views() -> void:
 
 		# 为该轨道初始化音符显示（传入已过滤的音符）
 		_init_track_note_displayer(track_scene, track_info.index, track_notes)
-		
-	# 增加上下边距
-	container.custom_minimum_size.y = container.size.y + 800
 
 	
 
@@ -248,6 +255,24 @@ func _on_preview_button_pressed() -> void:
 		if preview_button:
 			preview_button.text = "停止预览"
 
+func _on_expand_master_area_btn_toggled(is_expanded: bool) -> void:
+	var node: Panel = $MC/VBox/TotalView
+	var expd_y:int = int(get_viewport().get_visible_rect().size.y) - 50
+	node.custom_minimum_size.y = expd_y if is_expanded else 350
+	container.custom_minimum_size.y += expd_y if is_expanded else -expd_y
+
+	# 更新音符显示
+	master_note_displayer.refresh_notes_lane(88 if is_expanded else 24)
+
+# 按钮按下是关闭（
+func _on_vocal_enable_btn_toggled(toggle_on: bool):
+	vocal_enable_btn.text = "人声已启用" if not toggle_on else "人声已关闭"
+
+# 在这里打开文件管理器导入文件
+func _on_vocal_import_btn_pressed():
+	pass
+
+	_init_vocal_btn_display()
 # ============= 音轨信号回调 =======================
 
 # 轨道启用状态切换
@@ -417,11 +442,20 @@ func _on_midi_finished() -> void:
 
 # ============== UI 显示函数 ========================
 
+# 在这个函数执行前需要先检查有无人声音频
 func _init_vocal_btn_display() -> void:
-	if not vocal_file_path:
-		pass
-	else:
-		pass
+	var latency_container = $MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC
+	var enable: bool = vocal_file_path != ""
+	
+	# 设置组件可见性
+	vocal_import_btn.visible = not enable
+	
+	latency_container.visible = enable
+	vocal_enable_btn.visible = enable
+
+	vocal_vol_btn.visible = enable
+	vocal_vol_slider.visible = enable
+	vocal_vol_label.visible = enable
 
 # 更新MIDI音量标签
 func _set_display_midi_volume(value: float) -> void:
@@ -527,11 +561,14 @@ func _reset_player() -> void:
 			track.note_display.reset_playhead_position(0)
 
 # 页面状态回调
-func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
+func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	if old_state == work_state and new_state == ui_stat_mgr.UIState.MIDI_VIEW:
 		# 停止预览
 		if is_previewing and midi_playback_manager:
 			midi_playback_manager.stop()
 		
+		# 收起主面板的展开状态
+		get_node("MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button").button_pressed = false
+
 		# 清空轨道列表
 		clear_items()	

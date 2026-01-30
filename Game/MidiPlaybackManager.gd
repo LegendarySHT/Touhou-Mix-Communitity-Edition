@@ -225,14 +225,14 @@ func resume() -> void:
 
 ## 跳转到指定位置
 ## position: 位置（毫秒）
-func seek(position: float) -> void:
+func seek(pos: float) -> void:
 	if midi_player == null:
 		return
 	
-	position_ms = position
+	position_ms = pos
 	# 使用BPM时间线来计算精确的tick位置
 	if midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
-		var target_tick = _calculate_tick_from_position_with_bpm_timeline(position, midi_player.smf_data.timebase)
+		var target_tick = _calculate_tick_from_position_with_bpm_timeline(pos, midi_player.smf_data.timebase)
 		midi_player.seek(target_tick)
 
 ## 辅助函数：根据BPM时间线计算当前的实际播放时间（毫秒）
@@ -282,8 +282,6 @@ func _calculate_tick_from_position_with_bpm_timeline(target_time_ms: float, time
 		# 如果没有BPM时间线，使用默认计算方式
 		var seconds_per_tick: float = 60.0 / (120.0 * timebase)  # 默认120 BPM
 		return target_time_ms / 1000.0 / seconds_per_tick
-	
-	var cumulative_time_ms: float = 0.0
 	
 	# 遍历BPM时间线找到目标时间所在的段
 	for i in range(bpm_timeline.size()):

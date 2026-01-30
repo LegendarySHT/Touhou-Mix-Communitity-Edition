@@ -421,6 +421,7 @@ static func _convert_time_to_ms(time: int, timebase: int) -> float:
 ## 计算Note的八度和相对音高（用于键盘映射）
 static func get_note_octave_and_relative_pitch(midi_note: int) -> Dictionary:
 	# C0=0, C1=12, C2=24, ...
+	@warning_ignore("integer_division")
 	var octave = (midi_note / 12) - 1
 	var relative_pitch = midi_note % 12  # 0=C, 1=C#, ..., 11=B
 	

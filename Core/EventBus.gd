@@ -7,6 +7,7 @@ class_name EventBus
 ## 单例实例
 static var instance: EventBus
 
+@warning_ignore_start("unused_signal")
 ## ========== 数据事件 ==========
 # signal data_ready(data_manager: DataManager)
 signal data_loaded_complete
@@ -57,6 +58,8 @@ signal resource_validation_failed(resource_id: String, reason: String)
 ## ========== 错误和警告事件 ==========
 signal error_occurred(error_code: int, error_message: String)
 signal warning_occurred(warning_message: String)
+
+@warning_ignore_restore("unused_signal")
 
 func _ready() -> void:
 	if instance == null:

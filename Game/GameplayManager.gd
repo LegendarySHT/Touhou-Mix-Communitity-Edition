@@ -122,7 +122,7 @@ func start_game(midi: MidiData) -> void:
 ## 加载并初始化MIDI（异步）
 func _load_and_initialize_midi_async(midi: MidiData) -> void:
 	var thread = Thread.new()
-	var result = thread.start(_load_midi_thread.bind(midi))
+	thread.start(_load_midi_thread.bind(midi))
 	thread.wait_to_finish()
 	
 	# 初始化完成，进入播放状态
@@ -144,7 +144,6 @@ func _load_midi_thread(midi: MidiData) -> void:
 	
 	# 获取加载后的MIDI数据（已为Note对象）
 	var parsed_notes = midi_playback_manager.current_notes
-	var track_infos = midi_playback_manager.get_track_infos()
 	
 	if parsed_notes.is_empty():
 		push_error("No notes found in MIDI: %s" % midi.name)

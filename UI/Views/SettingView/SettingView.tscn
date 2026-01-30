@@ -27,6 +27,7 @@ border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
+border_blend = true
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -36,6 +37,8 @@ expand_margin_left = 2.0
 expand_margin_top = 2.0
 expand_margin_right = 2.0
 expand_margin_bottom = 2.0
+shadow_color = Color(0.92535293, 0.9253528, 0.9253529, 0.6)
+shadow_size = 15
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s2knr"]
 content_margin_left = 4.0
@@ -120,10 +123,11 @@ content_margin_right = 4.0
 content_margin_bottom = 4.0
 bg_color = Color(1, 1, 1, 0.75)
 draw_center = false
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_blend = true
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -175,7 +179,7 @@ content_margin_left = 4.0
 content_margin_top = 4.0
 content_margin_right = 4.0
 content_margin_bottom = 4.0
-bg_color = Color(0.14509805, 0.16862746, 0.20392157, 1)
+bg_color = Color(0.1512, 0.17471999, 0.21, 0.6784314)
 border_width_bottom = 3
 border_color = Color(0.9691369, 0.9691369, 0.9691368, 0.6)
 border_blend = true
@@ -208,12 +212,14 @@ corner_radius_bottom_left = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nilp6"]
 content_margin_left = 20.0
+content_margin_top = 15.0
 content_margin_right = 20.0
-bg_color = Color(0.10289913, 0.43322372, 0.7266376, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+content_margin_bottom = 15.0
+bg_color = Color(0.119, 0.13939999, 0.17, 0.69803923)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
 [sub_resource type="Theme" id="Theme_ys6ou"]
 Button/colors/font_color = Color(0.875, 0.875, 0.875, 1)
@@ -249,7 +255,7 @@ LineEdit/styles/read_only = SubResource("StyleBoxFlat_l717p")
 OptionButton/font_sizes/font_size = 32
 PopupMenu/constants/item_end_padding = 10
 PopupMenu/constants/item_start_padding = 10
-PopupMenu/font_sizes/font_size = 32
+PopupMenu/font_sizes/font_size = 48
 PopupMenu/styles/hover = SubResource("StyleBoxFlat_dy1ft")
 PopupMenu/styles/panel = SubResource("StyleBoxFlat_nilp6")
 
