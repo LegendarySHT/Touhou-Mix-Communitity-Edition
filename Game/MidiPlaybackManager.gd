@@ -86,8 +86,8 @@ func _ready() -> void:
 	# 扫描可用的SoundFont
 	_scan_soundfonts()
 	
-	# 设置默认音源
-	current_soundfont_path = default_soundfont_path
+	# 从配置文件加载音源设置
+	_load_soundfont_from_config()
 
 func _process(_delta: float) -> void:
 	if is_playing and midi_player != null:
@@ -603,3 +603,37 @@ func get_position_ms() -> float:
 ## 这是对position的替代方法，更明确地表示返回值的单位
 func get_position_tick() -> float:
 	return position
+
+## 从配置文件加载音源设置
+## 优先级：user://files/settings.ini > res://Resources/Config/config.ini > 默认值
+func _load_soundfont_from_config() -> void:
+	var config_loader = ConfigLoader.new()
+	
+	# 1. 尝试加载用户配置（优先）
+	var user_config_path = "user://files/settings.ini"
+	if FileAccess.file_exists(user_config_path):
+		var user_config = config_loader.load_config(user_config_path)
+		if not user_config.is_empty():
+			var soundfont_name = config_loader.get_value(user_config, "Gameplay", "soundfont_file", "")
+			if not soundfont_name.is_empty():
+				# 去掉 .sf2 扩展名和 [内置] 标签（如果有）
+				soundfont_name = soundfont_name.replace(".sf2", "").replace("[内置]", "").strip_edges()
+				print("[MidiPlaybackManager] Loading soundfont from user config: %s" % soundfont_name)
+				if set_soundfont(soundfont_name):
+					return
+	
+	# 2. 尝试加载默认配置
+	var default_config_path = "res://Resources/Config/config.ini"
+	var default_config = config_loader.load_config(default_config_path)
+	if not default_config.is_empty():
+		var soundfont_name = config_loader.get_value(default_config, "Gameplay", "soundfont_file", "GeneralUser-GS.sf2")
+		# 去掉 .sf2 扩展名
+		soundfont_name = soundfont_name.replace(".sf2", "").strip_edges()
+		print("[MidiPlaybackManager] Loading soundfont from default config: %s" % soundfont_name)
+		if set_soundfont(soundfont_name):
+			return
+	
+	# 3. 使用硬编码的默认值
+	print("[MidiPlaybackManager] Using hardcoded default soundfont")
+	current_soundfont_path = default_soundfont_path
+	soundfont_changed.emit(current_soundfont_path)
