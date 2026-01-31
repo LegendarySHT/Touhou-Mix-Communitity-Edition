@@ -19,7 +19,7 @@ func _ready() -> void:
 	work_state = UIStateManager.UIState.ALBUM_VIEW
 	item_height = 179 # 间距29 项高150
 	item_spacing = 29
-	snap_offset_y = 0
+	snap_offset_y = -250
 
 	# 连接事件
 	data_manager.data_loaded.connect(_load_albums)
@@ -54,19 +54,12 @@ func _refresh_display() -> void:
 
 func _process(delta):
 	super._process(delta)
-	
-	if scroll_velocity == 0 and not (is_dragging_bar or is_dragging_list):
-		if not need_snap:
-			if selected_item == -1:
-				need_snap = true
-			elif not container.get_child(selected_item).is_selected:
-				selected_item = -1
-				need_snap = true
 
-	else:
-		need_snap = false
-		if selected_item!= -1 and not is_dragging_list:
-			reset_selection()
+	if selected_item == -1 and not (is_dragging_list or is_dragging_bar or snap_tween or scroll_velocity != 0):
+		need_snap = true
+		print("need snap")
+
+
 
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)
@@ -76,11 +69,11 @@ func _unhandled_input(event):
 	super._gui_input(event)
 
 func reset_selection():
-	if selected_item!= -1:
-		var temp = get_child(0).get_child(selected_item)
-		temp.button.button_pressed = false
+	if selected_item == -1:
+		return
+	get_selected_node().button.button_pressed = false
 
-		selected_item= -1
+	selected_item= -1
 
 func _on_button_confirmed(index: int):
 	var album_id = current_albums[index].id

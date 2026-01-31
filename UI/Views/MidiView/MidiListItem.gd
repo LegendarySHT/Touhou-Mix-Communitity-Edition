@@ -99,9 +99,10 @@ func _on_button_toggled(toggled_on: bool):
 
 ## 更新信息面板
 func _update_data_display() -> void:
-	var info_node = get_node_or_null("/root/Main/InfoUI/Base/LeftArea/DetailData")
-	if not info_node:
-		print("Info node not found!")
+	var info_node: GridContainer = get_node_or_null("/root/Main/InfoUI/Base/LeftArea/DetailData")
+	var description: RichTextLabel = get_node_or_null("/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Description")
+	if not (info_node and description):
+		push_error("[MidiNode] Info Set Failed")
 		return
 	
 	# info_node.get_node("Time/Label")
@@ -113,3 +114,5 @@ func _update_data_display() -> void:
 	info_node.get_node("UpCount/Label").text = "%d" % midi_data.up_count
 	info_node.get_node("AvgAcc/Label").text = "%.2f" % midi_data.avg_accuracy
 	# info_node.get_node("AvgPP/Label") 这个没用上
+
+	description.text = midi_data.description

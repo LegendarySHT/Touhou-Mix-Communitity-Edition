@@ -368,7 +368,6 @@ offset_bottom = 1120.0
 grow_vertical = 2
 size_flags_horizontal = 0
 theme = SubResource("Theme_devvj")
-follow_focus = true
 horizontal_scroll_mode = 0
 script = ExtResource("7_w3rk5")
 container_path = NodePath("VBox")

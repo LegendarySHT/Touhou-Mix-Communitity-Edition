@@ -24,7 +24,6 @@ var work_state: UIStateManager.UIState = UIStateManager.UIState.NONE
 var scroll_velocity: float = 0.0
 
 ## 上一帧的滚动位置
-var last_scroll_position: int = 0
 var last_bar_position: int = 0
 
 ## 是否正在滚动
@@ -50,10 +49,10 @@ var selected_item: int = -1 # 选中的项，或者snap的目标项
 ## snap相关
 var need_snap: bool = false # 吸附完成后为false
 var snap_offset_y: int = 500 # 吸附偏移量
-var snap_distant: int = 0 # 距离吸附目标位置的距离
+var snap_tween: Tween
+var _wheel_up: bool = false
 
 ## 计时器
-var wheel_scroll_cooldown_timer: Timer
 var scroll_state_reset_timer: Timer
 
 ## 动态布局相关
@@ -70,18 +69,10 @@ func _ready() -> void:
 			is_skew = true
 
 	# 创建计时器
-	wheel_scroll_cooldown_timer = Timer.new()
-	wheel_scroll_cooldown_timer.wait_time = 0.3
-	wheel_scroll_cooldown_timer.one_shot = true  # 单次触发
-	wheel_scroll_cooldown_timer.timeout.connect(func() -> void:
-		is_wheel_scrolling = false)
-	add_child(wheel_scroll_cooldown_timer)
-
 	scroll_state_reset_timer = Timer.new()
 	scroll_state_reset_timer.wait_time = 0.3
 	scroll_state_reset_timer.one_shot = true  # 单次触发
-	scroll_state_reset_timer.timeout.connect(func()->void:
-		scroll_velocity = 0.0)
+	scroll_state_reset_timer.timeout.connect(_stop_scroll)
 	add_child(scroll_state_reset_timer)
 
 	UIStateManager.instance.state_changed.connect(_on_state_changed)
@@ -94,13 +85,24 @@ func _ready() -> void:
 	if is_skew:
 		get_window().size_changed.connect(_on_window_size_changed)
 
+func _stop_scroll():
+	scroll_velocity = 0.0
+
+# 停止滚动时重置速度
 func _on_v_scrollbar_changed(_value: float):
 	if scroll_state_reset_timer.is_stopped():
 		scroll_state_reset_timer.start()
-	elif abs(last_bar_position - scroll_vertical) > 10:
+	else:
 		scroll_state_reset_timer.stop()
 		scroll_state_reset_timer.start()
-	last_bar_position = scroll_vertical
+
+	if work_state in [UIStateManager.UIState.ALBUM_VIEW] and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		call_deferred("reset_selection")
+
+	# 到达上下边界就停止
+	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and scroll_velocity!= 0 and (scroll_vertical < 10 or (get_v_scroll_bar().max_value - scroll_vertical < 10)):
+		print("reach border")
+		scroll_velocity = 0
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == work_state
@@ -118,50 +120,49 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 		await get_tree().create_timer(0.5).timeout
 		if selected_item == -1:
 			select_item(0)
-		get_selected_node().button.grab_focus()
 
 func _process(delta: float) -> void:
 	if container == null:
 		return
 
-	if not _is_dragging_list:
-		# 动态计算最大滚动值
+	if not _is_dragging_list and scroll_velocity != 0:
+		# 减速
 		if abs(scroll_velocity) > max_velocity:
 			scroll_velocity = max_velocity * sign(scroll_velocity)
 		scroll_velocity *= deceleration_rate
 		
 		scroll_vertical += int(scroll_velocity * delta)
 
-		# 动不了就停止
-		if last_scroll_position == scroll_vertical:
-			scroll_velocity = 0.0
-		last_scroll_position = scroll_vertical
+	# 吸附
+	if need_snap and not (is_dragging_list or scroll_velocity!=0):
+		var snap_index = selected_item if selected_item != -1 else round((scroll_vertical) / (item_height))
 		
-		# 当速度很小时停止
-		if abs(scroll_velocity) < 30.0:
-			scroll_velocity = 0.0
-	elif not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		_is_dragging_list = false
-		is_dragging_list = false
-
-	if need_snap and not (is_dragging_list):
-		var snap_index = selected_item if selected_item != -1 else round((scroll_vertical + item_height) / (item_height))
-		snap_index = clampi(snap_index, 0, list_items.size() - 1)
+		snap_index = select_item(snap_index)
 		var snap_node = container.get_child(snap_index)
-		if snap_node is ListItemBase and not snap_node.is_selected:
-			snap_node.button.button_pressed = true
+
+		# 计算吸附位置
+		var snap_distant: int = snap_node.position.y + snap_offset_y
+		if work_state in [UIStateManager.UIState.ALBUM_VIEW]:
+			snap_distant = snap_node.global_position.y + snap_offset_y + scroll_vertical
 		
-		# midi view的吸附距离用相对位置算，不然窗口尺寸变化时有偏移
-		if work_state in [UIStateManager.UIState.MIDI_VIEW]:
-			snap_distant = -(scroll_vertical - snap_node.position.y - item_height + snap_offset_y)
-		else:
-			snap_distant = snap_node.global_position.y - item_height + snap_offset_y
-		var temp = scroll_vertical
-		scroll_vertical += int(snap_distant * 0.3)
-		if abs(snap_distant) < 2:
-			need_snap = false
-		elif temp == scroll_vertical: # 动不了就停止
-			need_snap = false
+		need_snap=false
+		if abs(snap_distant-scroll_vertical)<10:
+			return
+		# 补间动画
+		if snap_tween:
+			# return
+			snap_tween.kill()
+		snap_tween = AnimationManager.instance._create_tween("snap_target")
+
+		if not _wheel_up:
+			snap_distant -= 220
+		snap_tween.set_ease(Tween.EASE_IN)
+		snap_tween.tween_property(self, "scroll_vertical", snap_distant, 0.2)
+
+		snap_tween.finished.connect(func ():
+			snap_tween.kill()
+			snap_tween = null
+		)
 
 func _on_v_scrollbar_gui_input(event):
 	if event is InputEventMouseButton:
@@ -187,30 +188,17 @@ func _gui_input(event: InputEvent) -> void:
 		
 		# 鼠标滚轮事件
 		if event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_UP]:
-			var sig = 1.0 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1.0
+			var sig = 1 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1
+			_wheel_up = event.button_index == MOUSE_BUTTON_WHEEL_UP
+
 			if scroll_velocity * sig < 0.0: # 方向相反时重置
 				scroll_velocity = 0
 
-			if work_state in [UIStateManager.UIState.ALBUM_VIEW, UIStateManager.UIState.MIDI_VIEW]:
-				if get_global_rect().has_point(get_global_mouse_position()):
-					if not is_wheel_scrolling and selected_item != -1:
-						var tIndex = (selected_item + int(sig)) % list_items.size()
-
-						is_wheel_scrolling = true
-						wheel_scroll_cooldown_timer.start()
-						
-						container.get_child(tIndex).button.button_pressed = true
-					else:
-						scroll_velocity += wheel_velocity * sig
-						
-						if has_method("reset_selection"): # AlbumView的
-							call("reset_selection")
-						
-						wheel_scroll_cooldown_timer.stop()
-						wheel_scroll_cooldown_timer.start()
-			
-			# 一般逻辑
-			elif not is_wheel_scrolling:
+			var ui = UIStateManager.UIState
+			# 部分页面是直接选择项，其余是滚动列表
+			if work_state in [ui.ALBUM_VIEW, ui.MIDI_VIEW, ui.SONG_VIEW] and get_global_rect().has_point(get_global_mouse_position()) and selected_item != -1:
+				select_item(selected_item + sig)
+			else:
 				scroll_velocity += wheel_velocity * sig
 			
 			accept_event()
@@ -237,8 +225,15 @@ func _gui_input(event: InputEvent) -> void:
 	
 	# 鼠标移动事件
 	elif event is InputEventMouseMotion:
+		if (_is_dragging_list or is_dragging_list) and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			_is_dragging_list = false
+			is_dragging_list = false
+
 		if _is_dragging_list and not is_dragging_bar:
 			is_dragging_list = true
+			if work_state in [UIStateManager.UIState.ALBUM_VIEW]:
+				call_deferred("reset_selection")
+
 			_mouse_delta = (event.global_position.y - _mouse_start_pos) * drag_sensitivity
 			
 			# 限制滚动范围
@@ -257,6 +252,10 @@ func select_item(index: int) -> int:
 	
 	index = (index + list_items.size()) % list_items.size()
 	container.get_child(index).button.button_pressed = true
+	
+	# if work_state == UIStateManager.UIState.ALBUM_VIEW:
+	# 	selected_item = index
+	
 	return index
 
 func get_selected_node() -> Node2D:
@@ -300,13 +299,7 @@ func clear_items() -> void:
 	# 重置值
 	selected_item = -1
 	scroll_velocity = 0.0
-	_is_dragging_list = false
-	is_dragging_list = false
 	is_dragging_bar = false
-
-## 获取所有列表项
-func get_all_items() -> Array[ListItemBase]:
-	return list_items
 
 ## 将头尾连接 用于focus循环
 func _connect_head_and_tail() -> void:

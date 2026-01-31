@@ -9,20 +9,12 @@ var current_midis: Array[MidiData] = []
 
 var last_selection:int = -1 # 上一次选中的节点
 
-## 管理器引用
-@onready var event_bus: EventBus = EventBus.instance
-
 # 路径
 const INDICATOR = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
 const PREVI_BTN = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Left/PreviBtn"
 const INFO_BTN = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Right/InfoBtn"
 
 func _ready() -> void:
-	# 获取管理器引用
-	if not event_bus:
-		push_error("[MidiViewInit] Missing manager instances")
-		return
-
 	work_state = UIStateManager.UIState.MIDI_VIEW
 	item_height = 150
 	item_spacing = 4

@@ -1,0 +1,233 @@
+[gd_scene load_steps=9 format=3 uid="uid://bp8bri6wqdv2r"]
+
+[ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_7sie2"]
+[ext_resource type="Script" uid="uid://b5vntbnq4wmg6" path="res://UI/Views/MidiView/ScoreListItem.gd" id="1_uq81t"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qg2wq"]
+bg_color = Color(0, 0, 0, 0.40392157)
+corner_radius_top_left = 6
+corner_radius_top_right = 24
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 24
+corner_detail = 1
+expand_margin_left = 10.0
+expand_margin_right = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dnql7"]
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 1)
+border_blend = true
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_uq81t"]
+draw_center = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m4qc3"]
+draw_center = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4qljk"]
+draw_center = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gm3kn"]
+draw_center = false
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 12
+border_color = Color(1, 1, 1, 0.25882354)
+border_blend = true
+corner_radius_top_left = 6
+corner_radius_top_right = 24
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 24
+corner_detail = 1
+expand_margin_left = 10.0
+expand_margin_right = 10.0
+
+[node name="scoreNode" type="Panel"]
+custom_minimum_size = Vector2(540, 115)
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_qg2wq")
+script = ExtResource("1_uq81t")
+
+[node name="Rank" type="Label" parent="."]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 10.0
+offset_right = 72.0
+offset_bottom = 73.0
+theme_override_font_sizes/font_size = 30
+text = "9999"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Avator" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 0
+offset_left = 80.0
+offset_top = 18.0
+offset_right = 160.0
+offset_bottom = 98.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_dnql7")
+
+[node name="img" type="TextureRect" parent="Avator"]
+layout_mode = 2
+texture = ExtResource("1_7sie2")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Name" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 170.0
+offset_top = -37.5
+offset_right = -170.0
+offset_bottom = -8.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 25
+text = "Anonymous"
+
+[node name="Count" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 170.0
+offset_top = 12.5
+offset_right = -110.0
+offset_bottom = 31.5
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="perfect" type="Label" parent="Count"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(1, 0, 1, 1)
+theme_override_constants/outline_size = 2
+text = "1234"
+
+[node name="great" type="Label" parent="Count"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(1, 0.4627451, 0, 1)
+theme_override_constants/outline_size = 2
+text = "5678"
+
+[node name="good" type="Label" parent="Count"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.10980392, 0.6901961, 1, 1)
+theme_override_constants/outline_size = 2
+text = "9101"
+
+[node name="bad" type="Label" parent="Count"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.4, 1, 0.3647059, 1)
+theme_override_constants/outline_size = 2
+text = "1121"
+
+[node name="miss" type="Label" parent="Count"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(1, 0, 0, 1)
+theme_override_constants/outline_size = 2
+text = "3141"
+
+[node name="ScoreRank" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -100.0
+offset_top = 25.0
+offset_bottom = 97.000015
+grow_horizontal = 0
+theme_override_font_sizes/font_size = 50
+text = "SSS"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Acc" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -60.0
+offset_top = -35.0
+offset_right = -5.0
+offset_bottom = -12.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "99.99%"
+horizontal_alignment = 2
+
+[node name="Score" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -278.0
+offset_top = 5.0
+offset_right = -15.1484375
+offset_bottom = 28.000029
+grow_horizontal = 0
+theme_override_font_sizes/font_size = 24
+text = "1,000,000,000"
+horizontal_alignment = 2
+
+[node name="PP" type="Label" parent="."]
+layout_mode = 0
+offset_left = 11.0
+offset_top = 55.0
+offset_right = 72.0
+offset_bottom = 103.99999
+theme_override_constants/line_spacing = -7
+theme_override_font_sizes/font_size = 18
+text = "99.99"
+horizontal_alignment = 1
+
+[node name="PP_unit" type="Label" parent="."]
+layout_mode = 0
+offset_left = 11.0
+offset_top = 55.0
+offset_right = 72.0
+offset_bottom = 103.99999
+theme_override_constants/line_spacing = -7
+theme_override_font_sizes/font_size = 18
+text = "
+pp"
+horizontal_alignment = 1
+
+[node name="Button" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_uq81t")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_m4qc3")
+theme_override_styles/hover = SubResource("StyleBoxFlat_4qljk")
+theme_override_styles/focus = SubResource("StyleBoxFlat_gm3kn")

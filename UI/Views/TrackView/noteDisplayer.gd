@@ -59,6 +59,9 @@ func _on_flow_area_resized():
 	area_height = flow_area.get_rect().size.y
 	area_width = flow_area.get_rect().size.x
 	lane_height = area_height / lane_count
+
+	if is_master:
+		refresh_notes_lane(int(lane_count))
 	
 func update_color():
 	for i in active_notes:
@@ -229,11 +232,11 @@ func _generate_test_notes():
 # 刷新音符位置
 func refresh_notes_lane(lane_ctn: int):
 	lane_count = lane_ctn
-	await flow_area.resized
 
 	for i in active_notes:
 		var lane_index = (i.get_meta("pitch") - 21) % lane_count
 		var start_y = (lane_height * lane_index) + (lane_height - i.size.y) / 2.0
+		i.size.y = lane_height * 0.8
 		i.position = Vector2(i.position.x, start_y)
 
 func toggle_track(toggled_on: bool, track_index: int):

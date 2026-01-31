@@ -295,10 +295,20 @@ func _on_preview_button_pressed() -> void:
 func _on_expand_master_area_btn_toggled(is_expanded: bool) -> void:
 	var node: Panel = $MC/VBox/TotalView
 	var expd_y:int = int(get_viewport().get_visible_rect().size.y) - 50
-	node.custom_minimum_size.y = expd_y if is_expanded else 350
+	
+	var tween: Tween = create_tween()
+	# node.custom_minimum_size.y = expd_y if is_expanded else 350
+	var finl_size = Vector2(node.custom_minimum_size.x, expd_y if is_expanded else 350)
+	tween.set_parallel(true)
+	tween.tween_property(node, "custom_minimum_size", finl_size, 0.25)
+	
 	container.custom_minimum_size.y += expd_y if is_expanded else -expd_y
+	await container.resized
+	tween.tween_property(self, "scroll_vertical", node.position.y + (150 if is_expanded else -200), 0.2)
 
 	# 更新音符显示
+	await tween.finished
+	# await master_note_displayer.flow_area.resized
 	master_note_displayer.refresh_notes_lane(88 if is_expanded else 24)
 
 # 按钮按下是关闭（

@@ -1,4 +1,4 @@
-[gd_scene load_steps=73 format=3 uid="uid://bylmyli6spbd6"]
+[gd_scene load_steps=87 format=3 uid="uid://bylmyli6spbd6"]
 
 [ext_resource type="Texture2D" uid="uid://b2x5d0kfa0myq" path="res://Resources/icon/midiInfoPage/Arrow.png" id="1_036i2"]
 [ext_resource type="Script" uid="uid://sw6xgm4gxonh" path="res://UI/Views/MidiView/MidiView.gd" id="1_mxrx3"]
@@ -21,13 +21,13 @@
 [ext_resource type="ButtonGroup" uid="uid://b6ls2gympic81" path="res://Resources/ButtonGroup/MidiInfoMenu.tres" id="18_1rn3q"]
 [ext_resource type="Script" uid="uid://du6e1o3nahcc1" path="res://UI/Views/MidiView/option_ui.gd" id="18_2bu1o"]
 [ext_resource type="Texture2D" uid="uid://cn6jximeoko1h" path="res://Resources/icon/midiInfoPage/rank.png" id="19_fx5ny"]
-[ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="19_qoscg"]
 [ext_resource type="Texture2D" uid="uid://mg7stpbld131" path="res://Resources/icon/midiInfoPage/option.png" id="20_2bu1o"]
 [ext_resource type="Texture2D" uid="uid://bs53ytf8e8r42" path="res://Resources/icon/midiInfoPage/RightWindow/Norm.png" id="20_fx5ny"]
 [ext_resource type="Texture2D" uid="uid://c0n6n42u3liyt" path="res://Resources/icon/midiInfoPage/RightWindow/Auto.png" id="21_2bu1o"]
-[ext_resource type="Texture2D" uid="uid://dj5o6emlgvdmo" path="res://Resources/icon/setting.png" id="21_u7brx"]
 [ext_resource type="Texture2D" uid="uid://c0dy510alwr6b" path="res://Resources/icon/midiInfoPage/RightWindow/None.png" id="22_u7brx"]
 [ext_resource type="Texture2D" uid="uid://dl0xmd5o5p0bc" path="res://Resources/icon/midiInfoPage/RightWindow/FC.png" id="23_f13vx"]
+[ext_resource type="Texture2D" uid="uid://djgl4aj3u5cty" path="res://Resources/icon/midiInfoPage/comments.png" id="23_u7brx"]
+[ext_resource type="Script" uid="uid://be3a1dinys4ne" path="res://UI/Views/MidiView/ScoreList.gd" id="24_f13vx"]
 [ext_resource type="Texture2D" uid="uid://btlqly2gxykd3" path="res://Resources/icon/midiInfoPage/RightWindow/AP.png" id="24_qg2wq"]
 [ext_resource type="Texture2D" uid="uid://7j1xi27sa57q" path="res://Resources/icon/midiInfoPage/RightWindow/One.png" id="25_dnql7"]
 [ext_resource type="Texture2D" uid="uid://dkawdaqn2h0i4" path="res://Resources/icon/midiInfoPage/RightWindow/Inf.png" id="26_8q3pc"]
@@ -104,6 +104,169 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 corner_detail = 5
+
+[sub_resource type="DPITexture" id="DPITexture_u7brx"]
+_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"12\"><path fill=\"none\" stroke=\"#b2b2b2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-opacity=\".85\" stroke-width=\"2\" d=\"m2 4 4 4 4-4\"/></svg>
+"
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qg2wq"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.1, 0.1, 0.3)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dnql7"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.1, 0.1, 0.3)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8q3pc"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.18431373, 0.58431375, 1, 1)
+draw_center = false
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1, 1, 1, 0.69803923)
+border_blend = true
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+corner_detail = 5
+expand_margin_left = 20.0
+expand_margin_right = 20.0
+shadow_color = Color(1, 1, 1, 0.6)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mo7xw"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.35999182, 0.65886706, 1, 1)
+border_width_left = 12
+border_width_top = 12
+border_width_right = 12
+border_width_bottom = 12
+border_color = Color(1, 1, 1, 0.69803923)
+border_blend = true
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+corner_detail = 5
+expand_margin_left = 20.0
+expand_margin_right = 20.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_y3sh5"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.225, 0.225, 0.225, 0.6)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gjqh3"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.18431373, 0.58431375, 1, 1)
+border_width_left = 4
+border_width_top = 6
+border_width_right = 4
+border_width_bottom = 6
+border_color = Color(1, 1, 1, 0.69803923)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+corner_detail = 5
+expand_margin_left = 20.0
+expand_margin_right = 20.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s4c5m"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.1, 0.1, 0.6)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pj210"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0, 0.48798394, 0.8986316, 1)
+border_width_left = 4
+border_width_top = 6
+border_width_right = 4
+border_width_bottom = 6
+border_color = Color(1, 1, 1, 0.69803923)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+corner_detail = 5
+expand_margin_left = 20.0
+expand_margin_right = 20.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c8ugg"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0, 0, 0, 0.6)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0wvp2"]
+bg_color = Color(0.18039216, 0.5803922, 0.91764706, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yqcah"]
+content_margin_left = 15.0
+content_margin_top = 15.0
+content_margin_right = 15.0
+content_margin_bottom = 15.0
+bg_color = Color(0, 0, 0, 0.44313726)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
 
 [sub_resource type="DPITexture" id="DPITexture_gjqh3"]
 _source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><circle cx=\"8\" cy=\"8\" r=\"6\" fill=\"#fefffe\" fill-opacity=\".75\"/><path fill=\"none\" stroke=\"#1a1a1a\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-opacity=\".65\" stroke-width=\"2\" d=\"m9 5-3 3 3 3\"/></svg>
@@ -234,6 +397,31 @@ Button/styles/focus = SubResource("StyleBoxFlat_h2hjl")
 Button/styles/hover = SubResource("StyleBoxFlat_vye1d")
 Button/styles/normal = SubResource("StyleBoxFlat_xvgkm")
 Button/styles/pressed = SubResource("StyleBoxFlat_2xuw2")
+OptionButton/colors/font_color = Color(0.875, 0.875, 0.875, 1)
+OptionButton/colors/font_disabled_color = Color(0.875, 0.875, 0.875, 0.5)
+OptionButton/colors/font_focus_color = Color(0.95, 0.95, 0.95, 1)
+OptionButton/colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
+OptionButton/colors/font_hover_pressed_color = Color(1, 1, 1, 1)
+OptionButton/colors/font_outline_color = Color(0, 0, 0, 1)
+OptionButton/colors/font_pressed_color = Color(1, 1, 1, 1)
+OptionButton/constants/arrow_margin = 4
+OptionButton/constants/h_separation = 4
+OptionButton/constants/modulate_arrow = 0
+OptionButton/constants/outline_size = 0
+OptionButton/font_sizes/font_size = 16
+OptionButton/fonts/font = ExtResource("6_btcpj")
+OptionButton/icons/arrow = SubResource("DPITexture_u7brx")
+OptionButton/styles/disabled = SubResource("StyleBoxFlat_qg2wq")
+OptionButton/styles/disabled_mirrored = SubResource("StyleBoxFlat_dnql7")
+OptionButton/styles/focus = SubResource("StyleBoxFlat_8q3pc")
+OptionButton/styles/hover = SubResource("StyleBoxFlat_mo7xw")
+OptionButton/styles/hover_mirrored = SubResource("StyleBoxFlat_y3sh5")
+OptionButton/styles/normal = SubResource("StyleBoxFlat_gjqh3")
+OptionButton/styles/normal_mirrored = SubResource("StyleBoxFlat_s4c5m")
+OptionButton/styles/pressed = SubResource("StyleBoxFlat_pj210")
+OptionButton/styles/pressed_mirrored = SubResource("StyleBoxFlat_c8ugg")
+PopupMenu/styles/hover = SubResource("StyleBoxFlat_0wvp2")
+PopupMenu/styles/panel = SubResource("StyleBoxFlat_yqcah")
 TabContainer/colors/drop_mark_color = Color(1, 1, 1, 1)
 TabContainer/colors/font_disabled_color = Color(0.875, 0.875, 0.875, 0.5)
 TabContainer/colors/font_hovered_color = Color(0.95, 0.95, 0.95, 1)
@@ -287,11 +475,64 @@ bg_color = Color(0, 0.46849638, 0.86440593, 1)
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u7brx"]
 bg_color = Color(0, 0, 0, 0.13725491)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_81q6d"]
+bg_color = Color(0.12941177, 0.4117647, 0.7058824, 0.49411765)
+border_width_left = 6
+border_width_top = 24
+border_width_right = 6
+border_width_bottom = 24
+border_color = Color(0.003921569, 0.14509805, 0.7647059, 0.36862746)
+border_blend = true
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lxuff"]
+bg_color = Color(1, 1, 1, 0.7294118)
+draw_center = false
+border_width_left = 6
+border_width_top = 20
+border_width_right = 6
+border_width_bottom = 20
+border_color = Color(1, 1, 1, 1)
+border_blend = true
+
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_btcpj"]
 color = Color(1, 1, 1, 1)
 grow_begin = 10.0
 grow_end = 10.0
 thickness = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_n3ivs"]
+bg_color = Color(0.18431373, 0.58431375, 1, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_goplo"]
+bg_color = Color(0, 0.4298774, 0.79658014, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_340v8"]
+bg_color = Color(0, 0.47627723, 0.87807125, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dnsld"]
+draw_center = false
+border_width_left = 12
+border_width_top = 12
+border_width_right = 12
+border_width_bottom = 12
+border_color = Color(1, 1, 1, 1)
+border_blend = true
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btcpj"]
 bg_color = Color(0.18431373, 0.58431375, 1, 1)
@@ -329,26 +570,10 @@ Button/styles/hover = SubResource("StyleBoxFlat_bhpxs")
 Button/styles/normal = SubResource("StyleBoxFlat_x2nnl")
 Button/styles/pressed = SubResource("StyleBoxFlat_qmqib")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_goplo"]
-bg_color = Color(0.184314, 0.584314, 1, 1)
-border_width_left = 6
-border_width_top = 6
-border_width_right = 6
-border_width_bottom = 6
-border_color = Color(1, 1, 1, 1)
-border_blend = true
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_340v8"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dnsld"]
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_h1etv"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_282jk"]
+content_margin_left = 25.0
+content_margin_right = 25.0
+draw_center = false
 
 [node name="InfoUI" type="Node2D"]
 skew = 0.2617994
@@ -391,19 +616,19 @@ alignment = 1
 metadata/_edit_lock_ = true
 
 [node name="Left" type="VBoxContainer" parent="Base/LeftArea/InfoWindow/HBoxC"]
+custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
-size_flags_horizontal = 3
 theme_override_constants/separation = 0
 alignment = 1
 
 [node name="PreviBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Left"]
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-size_flags_vertical = 3
 focus_neighbor_left = NodePath("../../Right/InfoBtn")
 focus_neighbor_top = NodePath("../NextBtn/TextureRect")
 focus_neighbor_bottom = NodePath("../Fold/Btn")
 focus_next = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
-focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
+focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Comment")
 
 [node name="TextureRect" type="TextureRect" parent="Base/LeftArea/InfoWindow/HBoxC/Left/PreviBtn"]
 layout_mode = 1
@@ -419,7 +644,6 @@ flip_v = true
 [node name="Fold" type="Panel" parent="Base/LeftArea/InfoWindow/HBoxC/Left"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 3.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_5h6qm")
 
 [node name="Btn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Left/Fold"]
@@ -435,8 +659,8 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_u7brx")
 icon = ExtResource("2_nagrd")
 
 [node name="NextBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Left"]
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-size_flags_vertical = 3
 focus_neighbor_bottom = NodePath("../../../../MainBtn/TrackViewBtn")
 focus_next = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
 
@@ -451,14 +675,28 @@ focus_neighbor_left = NodePath("../../../Right/DelBtn")
 focus_neighbor_top = NodePath("../../Fold/Btn")
 focus_neighbor_bottom = NodePath("../../../../../MainBtn/TrackViewBtn")
 focus_next = NodePath("../../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
-focus_previous = NodePath("../../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
+focus_previous = NodePath("../../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Comment")
 texture = ExtResource("1_036i2")
 stretch_mode = 5
+
+[node name="Description" type="RichTextLabel" parent="Base/LeftArea/InfoWindow/HBoxC"]
+visible = false
+custom_minimum_size = Vector2(750, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+focus_mode = 2
+theme_override_font_sizes/normal_font_size = 24
+theme_override_font_sizes/bold_font_size = 24
+theme_override_font_sizes/bold_italics_font_size = 24
+theme_override_font_sizes/italics_font_size = 24
+theme_override_font_sizes/mono_font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_81q6d")
+theme_override_styles/focus = SubResource("StyleBoxFlat_lxuff")
 
 [node name="MidiList" type="ScrollContainer" parent="Base/LeftArea/InfoWindow/HBoxC"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 7.0
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 3
 script = ExtResource("5_u7brx")
@@ -471,19 +709,19 @@ layout_mode = 2
 size_flags_vertical = 2
 
 [node name="Right" type="VBoxContainer" parent="Base/LeftArea/InfoWindow/HBoxC"]
+custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
-size_flags_horizontal = 3
 theme_override_constants/separation = 0
 alignment = 1
 
 [node name="InfoBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Right"]
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-size_flags_vertical = 3
 focus_neighbor_top = NodePath("../DelBtn")
 focus_neighbor_right = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
 focus_neighbor_bottom = NodePath("../DelBtn")
 focus_next = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
-focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
+focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Comment")
 icon = ExtResource("3_ua7bn")
 icon_alignment = 1
 
@@ -491,7 +729,6 @@ icon_alignment = 1
 clip_contents = true
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 3.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_5h6qm")
 
 [node name="Indicator" type="VBoxContainer" parent="Base/LeftArea/InfoWindow/HBoxC/Right/Center"]
@@ -510,18 +747,17 @@ theme_override_constants/separation = 9
 metadata/_edit_use_anchors_ = true
 
 [node name="DelBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Right"]
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-size_flags_vertical = 3
 focus_neighbor_top = NodePath("../InfoBtn")
 focus_neighbor_right = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
 focus_neighbor_bottom = NodePath("../../../../MainBtn/FavorListBtn")
 focus_next = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
-focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
+focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Comment")
 icon = ExtResource("4_f44vb")
 icon_alignment = 1
 
 [node name="DetailData" type="GridContainer" parent="Base/LeftArea"]
-custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 3
@@ -705,6 +941,23 @@ theme_override_font_sizes/font_size = 40
 text = "9"
 vertical_alignment = 2
 
+[node name="RedirectButtons" type="HFlowContainer" parent="Base/LeftArea"]
+visible = false
+custom_minimum_size = Vector2(850, 120)
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="Button" type="Button" parent="Base/LeftArea/RedirectButtons"]
+custom_minimum_size = Vector2(400, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = SubResource("StyleBoxFlat_n3ivs")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_goplo")
+theme_override_styles/hover = SubResource("StyleBoxFlat_340v8")
+theme_override_styles/focus = SubResource("StyleBoxFlat_dnsld")
+text = "跳转至浏览器"
+
 [node name="MainBtn" type="HBoxContainer" parent="Base/LeftArea"]
 layout_mode = 2
 size_flags_horizontal = 4
@@ -719,7 +972,7 @@ size_flags_vertical = 4
 focus_neighbor_left = NodePath("../FavorListBtn")
 focus_neighbor_top = NodePath("../../InfoWindow/HBoxC/Left/NextBtn")
 focus_next = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
-focus_previous = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
+focus_previous = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Comment")
 icon = ExtResource("7_cve6f")
 icon_alignment = 1
 expand_icon = true
@@ -729,7 +982,7 @@ custom_minimum_size = Vector2(300, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 focus_next = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
-focus_previous = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
+focus_previous = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Comment")
 theme_override_styles/normal = SubResource("StyleBoxFlat_btcpj")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_5hcss")
 theme_override_styles/hover = SubResource("StyleBoxFlat_wasq5")
@@ -745,7 +998,7 @@ size_flags_vertical = 4
 focus_neighbor_top = NodePath("../../InfoWindow/HBoxC/Right/DelBtn")
 focus_neighbor_right = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
 focus_next = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
-focus_previous = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Option")
+focus_previous = NodePath("../../../RightArea/OptionPanel/VBoxC/TabBtn/Comment")
 icon = ExtResource("8_pgjff")
 icon_alignment = 1
 expand_icon = true
@@ -758,14 +1011,14 @@ size_flags_vertical = 3
 [node name="RightArea" type="MarginContainer" parent="Base"]
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 1
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
+anchors_preset = 13
+anchor_left = 0.5
+anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -828.0
-offset_right = -220.0
-offset_bottom = -120.16882
-grow_horizontal = 0
+offset_left = 132.0
+offset_right = 740.0
+offset_bottom = -183.16882
+grow_horizontal = 2
 grow_vertical = 2
 
 [node name="OptionPanel" type="PanelContainer" parent="Base/RightArea"]
@@ -782,7 +1035,6 @@ script = ExtResource("18_2bu1o")
 [node name="TabBtn" type="HBoxContainer" parent="Base/RightArea/OptionPanel/VBoxC"]
 custom_minimum_size = Vector2(600, 120)
 layout_mode = 2
-size_flags_horizontal = 0
 theme = SubResource("Theme_n3ivs")
 theme_override_constants/separation = 0
 alignment = 1
@@ -808,12 +1060,12 @@ icon_alignment = 1
 expand_icon = true
 metadata/id = 2
 
-[node name="Option" type="Button" parent="Base/RightArea/OptionPanel/VBoxC/TabBtn"]
+[node name="Comment" type="Button" parent="Base/RightArea/OptionPanel/VBoxC/TabBtn"]
 layout_mode = 2
 size_flags_horizontal = 7
 toggle_mode = true
 button_group = ExtResource("18_1rn3q")
-icon = ExtResource("21_u7brx")
+icon = ExtResource("23_u7brx")
 icon_alignment = 1
 expand_icon = true
 metadata/id = 3
@@ -824,7 +1076,6 @@ theme_override_constants/margin_top = 40
 
 [node name="TabC" type="TabContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView"]
 layout_mode = 2
-size_flags_horizontal = 0
 size_flags_vertical = 3
 current_tab = 0
 tabs_visible = false
@@ -839,94 +1090,17 @@ metadata/_tab_index = 0
 [node name="ScoreList" type="ScrollContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank"]
 layout_mode = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_h1etv")
+script = ExtResource("24_f13vx")
+container_path = NodePath("VBox")
+list_item_class = "res://UI/Views/MidiView/scoreNode.tscn"
 
 [node name="VBox" type="VBoxContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList"]
-custom_minimum_size = Vector2(560, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 2
-
-[node name="scoreNode" type="MarginContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/margin_left = 30
-
-[node name="PC" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox/scoreNode"]
-custom_minimum_size = Vector2(540, 115)
-layout_mode = 2
-mouse_filter = 2
-
-[node name="Poly" type="Polygon2D" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox/scoreNode/PC"]
-position = Vector2(-16.3628, 7.69171)
-
-[node name="Rank" type="Label" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox/scoreNode/PC/Poly"]
-offset_left = 21.0
-offset_right = 72.0
-offset_bottom = 63.0
-theme_override_font_sizes/font_size = 30
-text = "9999"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Avator" type="TextureRect" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox/scoreNode/PC/Poly"]
-offset_left = 97.0
-offset_right = 178.0
-offset_bottom = 98.0
-texture = ExtResource("19_qoscg")
-expand_mode = 1
-stretch_mode = 5
-
-[node name="Name" type="Label" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox/scoreNode/PC/Poly"]
-offset_left = 183.751
-offset_top = 14.4939
-offset_right = 438.751
-offset_bottom = 69.4939
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 25
-text = "Yang_1145141919810"
-
-[node name="Count" type="Label" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox/scoreNode/PC/Poly"]
-offset_left = 183.613
-offset_top = 64.1871
-offset_right = 395.613
-offset_bottom = 87.1871
-text = "9999 9999 9999 9999 9999 "
-
-[node name="Rank2" type="Label" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox/scoreNode/PC/Poly"]
-offset_left = 455.34
-offset_top = 5.17638
-offset_right = 541.34
-offset_bottom = 77.1764
-theme_override_font_sizes/font_size = 50
-text = "SSS"
-horizontal_alignment = 2
-vertical_alignment = 1
-
-[node name="Acc" type="Label" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox/scoreNode/PC/Poly"]
-offset_left = 486.417
-offset_top = 67.2929
-offset_right = 541.417
-offset_bottom = 90.2929
-text = "99.99%"
-horizontal_alignment = 2
-
-[node name="Score" type="Label" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox/scoreNode/PC/Poly"]
-offset_left = 432.196
-offset_top = -3.10583
-offset_right = 537.196
-offset_bottom = 19.8942
-text = "1,000,000,000"
-horizontal_alignment = 2
-
-[node name="PP" type="Label" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList/VBox/scoreNode/PC/Poly"]
-offset_left = 27.7897
-offset_top = 45.5522
-offset_right = 88.7897
-offset_bottom = 94.5522
-theme_override_constants/line_spacing = -7
-theme_override_font_sizes/font_size = 18
-text = "99.99
-pp"
-horizontal_alignment = 1
+theme_override_constants/separation = 15
+alignment = 1
 
 [node name="Mode" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC"]
 visible = false
@@ -943,19 +1117,14 @@ theme_override_constants/h_separation = 80
 theme_override_constants/v_separation = 20
 columns = 2
 
-[node name="Mode" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
+[node name="Mode" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_goplo")
-
-[node name="OB" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC/Mode"]
-layout_mode = 2
+focus_neighbor_right = NodePath("../Limit")
+focus_neighbor_bottom = NodePath("../Repeat")
 theme_override_font_sizes/font_size = 23
-theme_override_styles/normal = SubResource("StyleBoxFlat_340v8")
-flat = true
 alignment = 2
 autowrap_mode = 2
-expand_icon = true
 selected = 0
 item_count = 2
 popup/item_0/text = "Norm Mode"
@@ -965,19 +1134,14 @@ popup/item_1/text = "Auto Mode"
 popup/item_1/icon = ExtResource("21_2bu1o")
 popup/item_1/id = 1
 
-[node name="Limit" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
+[node name="Limit" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_goplo")
-
-[node name="OB" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC/Limit"]
-layout_mode = 2
+focus_neighbor_left = NodePath("../Mode")
+focus_neighbor_bottom = NodePath("../GameMode")
 theme_override_font_sizes/font_size = 23
-theme_override_styles/normal = SubResource("StyleBoxFlat_dnsld")
-flat = true
 alignment = 2
 autowrap_mode = 2
-expand_icon = true
 selected = 0
 item_count = 3
 popup/item_0/text = "No Limit"
@@ -990,19 +1154,14 @@ popup/item_2/text = "All Perfect"
 popup/item_2/icon = ExtResource("24_qg2wq")
 popup/item_2/id = 2
 
-[node name="Repeat" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
+[node name="Repeat" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_goplo")
-
-[node name="OB" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC/Repeat"]
-layout_mode = 2
+focus_neighbor_top = NodePath("../Mode")
+focus_neighbor_right = NodePath("../GameMode")
 theme_override_font_sizes/font_size = 23
-theme_override_styles/normal = SubResource("StyleBoxFlat_h1etv")
-flat = true
 alignment = 2
 autowrap_mode = 2
-expand_icon = true
 selected = 0
 item_count = 2
 popup/item_0/text = "One Time"
@@ -1012,19 +1171,14 @@ popup/item_1/text = "Repeat Infinity"
 popup/item_1/icon = ExtResource("26_8q3pc")
 popup/item_1/id = 1
 
-[node name="GameMode" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
+[node name="GameMode" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_goplo")
-
-[node name="OB" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC/GameMode"]
-layout_mode = 2
+focus_neighbor_left = NodePath("../Repeat")
+focus_neighbor_top = NodePath("../Limit")
 theme_override_font_sizes/font_size = 23
-theme_override_styles/normal = SubResource("StyleBoxFlat_282jk")
-flat = true
 alignment = 2
 autowrap_mode = 2
-expand_icon = true
 selected = 0
 item_count = 2
 popup/item_0/text = "Only One"
@@ -1034,7 +1188,7 @@ popup/item_1/text = "Scan Line"
 popup/item_1/icon = ExtResource("28_y3sh5")
 popup/item_1/id = 1
 
-[node name="Option" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC"]
+[node name="Comment" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC"]
 visible = false
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(600, 770)

@@ -3,6 +3,7 @@ extends Control
 # 主要节点
 @onready var midi_list: MidiView = $LeftArea/InfoWindow/HBoxC/MidiList
 @onready var option_list: VBoxContainer = $RightArea/OptionPanel/VBoxC
+@onready var description: RichTextLabel = $LeftArea/InfoWindow/HBoxC/Description
 
 # 下面的三个主要按钮
 @onready var track_view_btn: Button = $LeftArea/MainBtn/TrackViewBtn
@@ -16,9 +17,16 @@ extends Control
 @onready var info_btn: Button = $LeftArea/InfoWindow/HBoxC/Right/InfoBtn
 @onready var delete_btn: Button = $LeftArea/InfoWindow/HBoxC/Right/DelBtn
 
+# 显示midi的各种数值的地方，但是更新不在这个脚本进行
+@onready var detail_data_area: GridContainer = $LeftArea/DetailData
+# 点击info按钮后显示以下按钮组，用于跳转到浏览器
+@onready var redirect_btns: FlowContainer = $LeftArea/RedirectButtons
+
 # 管理器
 @onready var data_manager: DataManager = DataManager.instance
 @onready var event_bus: EventBus = EventBus.instance
+
+var _show_info: bool = false
 
 func _ready() -> void:
 	if not (track_view_btn and favor_list_btn and play_btn):
@@ -27,6 +35,10 @@ func _ready() -> void:
 
 	# 窗口事件
 	get_window().size_changed.connect(_on_window_size_changed)
+	self.resized.connect(func():
+		if size.x/2 - 960 >0:
+			get_node("RightArea").custom_minimum_size.x = size.x/2 - 360
+	)
 	_on_window_size_changed()
 
 	# 连接事件
@@ -83,6 +95,15 @@ func _on_click_favor_list_btn():
 # 显示简介什么的
 func _on_info_btn_pressed():
 	print("click info btn")
+	_show_info = not _show_info
+	# 窗口部分
+	description.visible = _show_info
+	midi_list.visible = not _show_info
+	midi_list.get_parent().get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL if _show_info else SIZE_FILL
+
+	# 数据区
+	detail_data_area.visible = not _show_info
+	redirect_btns.visible = _show_info
 
 func _on_del_btn_pressed():
 	print("click del btn")

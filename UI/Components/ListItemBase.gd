@@ -28,6 +28,8 @@ var press_tween: Tween
 var _mouse_press: bool = false
 var _mouse_press_pos:Vector2 = Vector2.ZERO
 
+var _pass_focus: bool = false
+
 signal btn_toggled(toggled_on: bool)
 signal btn_confirmed(index: int)
 
@@ -58,7 +60,10 @@ func init_btn(btn: Button, parent) -> void:
 	button.focus_entered.connect(_on_focus_entered)
 
 func _on_focus_entered():
-	await get_tree().process_frame
+	if _pass_focus:
+		_pass_focus = false
+		return
+
 	# 方向键聚焦时需要触发按钮
 	if not button.button_pressed and _mouse_press_pos == Vector2.ZERO:
 		button.button_pressed = true
@@ -105,7 +110,9 @@ func _on_toggled(toggled_on: bool):
 
 	var temp = is_selected
 	is_selected = final
-	if is_selected:
+	_pass_focus = final
+	await get_tree().process_frame
+	if is_selected and self != get_viewport().gui_get_focus_owner():
 		button.grab_focus()
 	_mouse_press_pos = Vector2.ZERO
 	_mouse_press = false
