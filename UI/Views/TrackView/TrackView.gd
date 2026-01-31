@@ -305,11 +305,10 @@ func _on_expand_master_area_btn_toggled(is_expanded: bool) -> void:
 	container.custom_minimum_size.y += expd_y if is_expanded else -expd_y
 	await container.resized
 	tween.tween_property(self, "scroll_vertical", node.position.y + (150 if is_expanded else -200), 0.2)
-
+	tween.tween_property(master_note_displayer, "lane_count", 88 if is_expanded else 24, 0.2)
 	# 更新音符显示
 	await tween.finished
-	# await master_note_displayer.flow_area.resized
-	master_note_displayer.refresh_notes_lane(88 if is_expanded else 24)
+	master_note_displayer.refresh_notes_lane(master_note_displayer.lane_count)
 
 # 按钮按下是关闭（
 func _on_vocal_enable_btn_toggled(toggle_on: bool):

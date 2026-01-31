@@ -101,7 +101,6 @@ func _on_v_scrollbar_changed(_value: float):
 
 	# 到达上下边界就停止
 	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and scroll_velocity!= 0 and (scroll_vertical < 10 or (get_v_scroll_bar().max_value - scroll_vertical < 10)):
-		print("reach border")
 		scroll_velocity = 0
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
