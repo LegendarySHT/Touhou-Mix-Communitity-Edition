@@ -305,11 +305,6 @@ text = "99:60:60"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="PreviewButton" type="Button" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/playArea"]
-custom_minimum_size = Vector2(120, 40)
-layout_mode = 2
-text = "播放预览"
-
 [node name="VolumeView" type="Panel" parent="Track/TrackList/MC/VBox"]
 custom_minimum_size = Vector2(1600, 200)
 layout_mode = 2

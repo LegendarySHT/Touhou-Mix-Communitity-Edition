@@ -21,17 +21,17 @@ class_name TrackView
 @onready var midi_vol_label: Label = $MC/VBox/VolumeView/HBoxC/GridC/midiVolLabel
 @onready var vocal_vol_label: Label = $MC/VBox/VolumeView/HBoxC/GridC/vocalVolLabel
 
-# MIDI播放相关 下面两个没有（SoundFont选择功能已迁移至SettingView）
-@onready var preview_button: Button = $MC/VBox/TotalView/MC/VBoxC/playArea/PreviewButton
+# MIDI播放相关（SoundFont选择功能已迁移至SettingView）
 
 @onready var midi_playback_manager: MidiPlaybackManager = MidiPlaybackManager.instance
 @onready var ui_stat_mgr: UIStateManager = UIStateManager.instance
 
 var current_midi_data: MidiData = null
-var is_previewing: bool = false
+var is_auto_playing: bool = false
 var is_progress_dragging: bool = false
 
 var current_tick: int = 0
+var last_position_ms: float = 0.0  # 用于检测循环播放重置
 
 # 给midi轨道访问的默认值
 var instrument_options: Array = ["钢琴", "吉他", "贝斯", "鼓", "弦乐"]
@@ -77,7 +77,6 @@ func _ready() -> void:
 	progress_bar.drag_ended.connect(_on_progress_bar_drag_ended)
 	progress_bar.value_changed.connect(_on_progress_bar_value_changed)
 
-	preview_button.pressed.connect(_on_preview_button_pressed)
 	super._ready()
 
 # 加载并播放midi
@@ -272,26 +271,6 @@ func _on_vocal_volume_changed(value: float) -> void:
 	# 更新标签
 	_set_display_vocal_volume(value)
 
-# 预览按钮回调
-func _on_preview_button_pressed() -> void:
-	if midi_playback_manager == null or current_midi_data == null:
-		return
-	
-	if is_previewing:
-		# 停止预览
-		midi_playback_manager.stop()
-		is_previewing = false
-		if preview_button:
-			preview_button.text = "播放预览"
-	else:
-		# 开始预览
-		_reset_player()
-
-		midi_playback_manager.play()
-		is_previewing = true
-		if preview_button:
-			preview_button.text = "停止预览"
-
 func _on_expand_master_area_btn_toggled(is_expanded: bool) -> void:
 	var node: Panel = $MC/VBox/TotalView
 	var expd_y:int = int(get_viewport().get_visible_rect().size.y) - 50
@@ -396,7 +375,7 @@ func _on_track_instrument_changed(index: int, track_index: int) -> void:
 
 # 更新预览（当轨道或音源改变时）
 func _update_preview() -> void:
-	if not is_previewing:
+	if not is_auto_playing:
 		return
 	
 	var current_pos = midi_playback_manager.position_ms
@@ -444,6 +423,11 @@ func _on_midi_loaded(midi_data: MidiData) -> void:
 	# 更新进度条最大范围
 	if midi_data.duration_ms > 0:
 		_set_display_total_time(midi_data.duration_ms)
+	
+	# 启用循环播放并自动开始播放
+	midi_playback_manager.midi_player.loop = true
+	midi_playback_manager.play()
+	is_auto_playing = true
 
 func _on_midi_started() -> void:
 	print("MIDI playback started")
@@ -458,9 +442,7 @@ func _on_midi_stopped() -> void:
 
 func _on_midi_finished() -> void:
 	print("MIDI playback finished")
-	is_previewing = false
-	if preview_button:
-		preview_button.text = "播放预览"
+	is_auto_playing = false
 
 # ============== UI 显示函数 ========================
 
@@ -526,11 +508,20 @@ func _set_display_current_time(current_ms: float) -> void:
 		current_time.text = _format_time(current_ms)
 
 func _process(delta: float) -> void:
-	if is_previewing and midi_playback_manager:
+	if is_auto_playing and midi_playback_manager:
+		var current_position = midi_playback_manager.position_ms
+		
+		# 检测循环播放重置（位置从大跳到小，说明循环了）
+		if current_position < last_position_ms - 100:  # 100ms容差，避免误判seek操作
+			print("[TrackView] Loop detected: %.1f -> %.1f ms, resetting noteDisplayers" % [last_position_ms, current_position])
+			_reset_player()
+		
 		# 更新当前时间
-		_set_display_current_time(midi_playback_manager.position_ms)
+		_set_display_current_time(current_position)
 		# 更新当前 tick（从 position 获取）
 		current_tick = int(midi_playback_manager.position)
+		# 记录本帧位置
+		last_position_ms = current_position
 
 	super._process(delta)
 
@@ -579,6 +570,7 @@ func _init_track_note_displayer(track_scene: MidiTrack, track_index: int, channe
 # 重置音符显示器索引
 func _reset_player() -> void:	
 	current_tick = 0
+	last_position_ms = 0.0
 	_set_display_current_time(0)
 
 	# 重置音符显示器位置
@@ -590,9 +582,13 @@ func _reset_player() -> void:
 # 页面状态回调
 func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	if old_state == work_state and new_state == ui_stat_mgr.UIState.MIDI_VIEW:
-		# 停止预览
-		if is_previewing and midi_playback_manager:
+		# 停止自动播放
+		if is_auto_playing and midi_playback_manager:
 			midi_playback_manager.stop()
+			# 禁用循环播放
+			midi_playback_manager.midi_player.loop = false
+			is_auto_playing = false
+			last_position_ms = 0.0
 		
 		# 收起主面板的展开状态
 		get_node("MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button").button_pressed = false
