@@ -114,7 +114,8 @@ func _process(_delta):
 
 func _create_note(note: NoteEvent):
 	var note_rect: ColorRect = ColorRect.new()
-	var lane_index: int = (note.pitch - 21) % lane_count
+	# 反转lane_index，使高音在上（Y值小），低音在下（Y值大）
+	var lane_index: int = lane_count - 1 - ((note.pitch - 21) % lane_count)
 	var note_width = note.duration * scale_factor
 	var note_height = lane_height * 0.8
 	var start_y = (lane_height * lane_index) + (lane_height - note_height) / 2.0
@@ -234,7 +235,8 @@ func refresh_notes_lane(lane_ctn: int):
 	lane_count = lane_ctn
 
 	for i in active_notes:
-		var lane_index = (i.get_meta("pitch") - 21) % lane_count
+		# 反转lane_index，使高音在上（Y值小），低音在下（Y值大）
+		var lane_index = lane_count - 1 - ((i.get_meta("pitch") - 21) % lane_count)
 		var start_y = (lane_height * lane_index) + (lane_height - i.size.y) / 2.0
 		i.size.y = lane_height * 0.8
 		i.position = Vector2(i.position.x, start_y)
