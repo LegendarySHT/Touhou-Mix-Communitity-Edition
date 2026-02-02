@@ -81,6 +81,9 @@ var selected_track_indices: Array[int] = []
 ## 已选中的轨道和通道配置 (格式: {track_idx: [ch0, ch1, ...], ...})
 var selected_track_configs: Dictionary = {}
 
+## (track, channel) 对的 mute 状态映射 (格式: {track_idx: {channel: bool}})
+var track_channel_mute_state: Dictionary = {}
+
 ## 已选中的音源文件名（默认为空表示使用系统默认）
 var use_soundfont: String = ""
 
@@ -186,3 +189,23 @@ func set_soundfont(soundfont_name: String) -> void:
 ## 清空已解析的音符列表
 func clear_parsed_notes() -> void:
 	parsed_notes.clear()
+
+## ========== (Track, Channel) 静音接口 ==========
+
+## 设置 (track, channel) 对的 mute 状态
+func set_track_channel_mute(track_index: int, channel: int, muted: bool) -> void:
+	if not track_channel_mute_state.has(track_index):
+		track_channel_mute_state[track_index] = {}
+	track_channel_mute_state[track_index][channel] = muted
+	print("[MidiData] Track %d Channel %d: %s" % [track_index, channel, "muted" if muted else "unmuted"])
+
+## 查询 (track, channel) 对是否被静音
+func get_track_channel_mute(track_index: int, channel: int) -> bool:
+	if track_channel_mute_state.has(track_index):
+		if track_channel_mute_state[track_index].has(channel):
+			return track_channel_mute_state[track_index][channel]
+	return false
+
+## 清除所有 mute 状态
+func clear_all_mutes() -> void:
+	track_channel_mute_state.clear()

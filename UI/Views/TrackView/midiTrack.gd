@@ -124,11 +124,11 @@ func _connect_signals():
 		return
 
 	if parent_node.has_method("_on_track_enable_toggled"):
-		enable_btn.toggled.connect(parent_node._on_track_enable_toggled.bind(track_index))
+		enable_btn.toggled.connect(parent_node._on_track_enable_toggled.bind(track_index, track_channel))
 	if parent_node.has_method("_on_track_mute_toggled"):
-		mute_btn.toggled.connect(parent_node._on_track_mute_toggled.bind(track_index))
+		mute_btn.toggled.connect(parent_node._on_track_mute_toggled.bind(track_index, track_channel))
 	if parent_node.has_method("_on_track_solo_toggled"):
-		solo_btn.toggled.connect(parent_node._on_track_solo_toggled.bind(track_index))
+		solo_btn.toggled.connect(parent_node._on_track_solo_toggled.bind(track_index, track_channel))
 	if parent_node.has_method("_on_track_volume_changed"):
 		volume_slider.value_changed.connect(parent_node._on_track_volume_changed.bind(track_index))
 	if parent_node.has_method("_on_track_instrument_changed"):

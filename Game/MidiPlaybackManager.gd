@@ -71,6 +71,9 @@ signal tracks_changed(selected_indices: Array[int])
 ## 信号：音源改变
 signal soundfont_changed(soundfont_path: String)
 
+## 信号：(track, channel) 的静音状态改变
+signal channel_mute_state_changed(track_index: int, channel: int, muted: bool)
+
 func _ready() -> void:
 	if instance == null:
 		instance = self
@@ -428,6 +431,67 @@ func set_vocal_volume_db(volume_db: float) -> void:
 	# 人声播放应该由AudioManager处理，而不是MidiPlaybackManager
 	# 这里记录日志供调试
 	print("[MidiPlaybackManager] Set vocal volume to %.2f dB (not implemented)" % volume_db)
+
+## ========== (Track, Channel) 静音接口 ==========
+
+## 设置 (track, channel) 对的静音状态（立即生效）
+## 参数: track_index (0+), channel (0-15), muted (true=静音, false=取消静音)
+func set_track_channel_mute(track_index: int, channel: int, muted: bool) -> void:
+	if current_midi_data == null or midi_player == null:
+		push_error("[MidiPlaybackManager] Cannot mute: no MIDI data or player")
+		return
+	
+	if channel < 0 or channel > 15:
+		push_error("[MidiPlaybackManager] Invalid channel: %d (should be 0-15)" % channel)
+		return
+	
+	# 1. 检查状态是否改变（优化：避免重复操作）
+	var previous_state = current_midi_data.get_track_channel_mute(track_index, channel)
+	if previous_state == muted:
+		print("[MidiPlaybackManager] Channel %d already %s, skipping" % [channel, "muted" if muted else "unmuted"])
+		return
+	
+	# 2. 更新 MidiData 中的状态
+	current_midi_data.set_track_channel_mute(track_index, channel, muted)
+	
+	# 3. 如果是 mute，立即停止该 channel 所有正在播放的音符
+	if muted:
+		_stop_channel_notes(channel)
+		print("[MidiPlaybackManager] Stopped all notes on channel %d" % channel)
+	
+	# 4. 发射信号
+	channel_mute_state_changed.emit(track_index, channel, muted)
+
+## 查询 (track, channel) 对的静音状态
+func is_track_channel_muted(track_index: int, channel: int) -> bool:
+	if current_midi_data == null:
+		return false
+	return current_midi_data.get_track_channel_mute(track_index, channel)
+
+## 停止指定 channel 的所有正在播放的音符（立即）
+## 这是实时生效的关键
+func _stop_channel_notes(channel: int) -> void:
+	if midi_player == null:
+		return
+	
+	# 遍历所有正在播放的 AudioStreamPlayer
+	var stopped_count = 0
+	for asp in midi_player.audio_stream_players:
+		if asp.channel_number == channel and asp.playing:
+			# 触发 release 阶段（而不是直接 stop）
+			# 这样会让音符自然地进入 ADSR release 阶段，更平滑
+			asp.start_release()
+			stopped_count += 1
+	
+	print("[MidiPlaybackManager] Channel %d: stopped %d notes" % [channel, stopped_count])
+
+## 取消所有 (track, channel) 的静音
+func unmute_all_channels() -> void:
+	if current_midi_data == null:
+		return
+	
+	current_midi_data.clear_all_mutes()
+	print("[MidiPlaybackManager] All channels unmuted")
 
 ## 获取已选中轨道对应的Note
 func get_selected_track_notes() -> Array:

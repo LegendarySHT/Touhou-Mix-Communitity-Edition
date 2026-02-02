@@ -460,6 +460,9 @@ func _init_track( ) -> void:
 	var track_status_events:Array[SMF.MIDIEventChunk] = []
 
 	if len( self.smf_data.tracks ) == 1:
+		# 単軌：すべてのイベントの track_index を 0 に標記
+		for event_chunk in self.smf_data.tracks[0].events:
+			event_chunk.track_index = 0
 		track_status_events = self.smf_data.tracks[0].events
 	else:
 		# Mix multiple tracks to single track
@@ -483,6 +486,8 @@ func _init_track( ) -> void:
 				var e:SMF.MIDIEventChunk = track.events[p]
 				var e_time:int = e.time
 				if e_time == time:
+					# ===== イベントの track_index を標記 =====
+					e.track_index = track["track_id"]
 					track_status_events.append( e )
 					track.pointer += 1
 					next_time = e_time
@@ -744,7 +749,8 @@ func _process_track( ) -> int:
 				self._process_track_event_note_off( channel, ( event as SMF.MIDIEventNoteOff ).note )
 			SMF.MIDIEventType.note_on:
 				var event_note_on:SMF.MIDIEventNoteOn = event as SMF.MIDIEventNoteOn
-				self._process_track_event_note_on( channel, event_note_on.note, event_note_on.velocity )
+				# ===== track_index を note_on ハンドラに渡す =====
+				self._process_track_event_note_on( channel, event_note_on.note, event_note_on.velocity, event_chunk.track_index )
 			SMF.MIDIEventType.program_change:
 				channel.program = ( event as SMF.MIDIEventProgramChange ).number
 			SMF.MIDIEventType.control_change:
@@ -769,7 +775,8 @@ func receive_raw_midi_message( input_event:InputEventMIDI ) -> void:
 		MIDI_MESSAGE_NOTE_OFF:
 			self._process_track_event_note_off( channel, input_event.pitch )
 		MIDI_MESSAGE_NOTE_ON:
-			self._process_track_event_note_on( channel, input_event.pitch, input_event.velocity )
+			# 外部入力の場合、track_index = 0（単軌）と仮定
+			self._process_track_event_note_on( channel, input_event.pitch, input_event.velocity, 0 )
 		MIDI_MESSAGE_AFTERTOUCH:
 			# polyphonic key pressure プレイヤー自体が未実装
 			pass
@@ -821,9 +828,14 @@ func _process_track_event_note_off( channel:GodotMIDIPlayerChannelStatus, note:i
 ## @param	channel				チャンネルステータス
 ## @param	note				ノート番号
 ## @param	velocity			ベロシティ
-func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:int, velocity:int ) -> void:
+## @param	track_index			トラックインデックス
+func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:int, velocity:int, track_index:int = 0 ) -> void:
 	if channel.mute: return
 	if self.bank == null: return
+	
+	# ===== track_channel_mute 状態を確認（個別 track の channel 静音対応）=====
+	if _should_mute_track_channel(channel.number, note, track_index):
+		return
 	
 	# ========== 手动控制note检查 ==========
 	# 如果该note被标记为手动控制，则跳过内部播放逻辑
@@ -964,6 +976,17 @@ func update_channel_status( channel:GodotMIDIPlayerChannelStatus ) -> void:
 ## @param	channel	チャンネルステータス
 func _apply_channel_volume( channel:GodotMIDIPlayerChannelStatus ) -> void:
 	AudioServer.set_bus_volume_db( AudioServer.get_bus_index( self.midi_channel_bus_name % channel.number ), linear_to_db( channel.volume * channel.expression ) )
+
+## 检查该 (track, channel) 是否应该被静音
+func _should_mute_track_channel(channel: int, pitch: int, track_index: int = 0) -> bool:
+	# 获取 MidiPlaybackManager 的引用
+	var midi_mgr = MidiPlaybackManager.instance
+	if midi_mgr == null or midi_mgr.current_midi_data == null:
+		return false
+	
+	# 查询特定 track 的该 channel 是否被静音
+	# 现在我们有 track_index，可以精确检查 (track, channel) 对
+	return midi_mgr.is_track_channel_muted(track_index, channel)
 
 ## チャンネルにピッチベンド適用
 ## @param	channel	チャンネルステータス

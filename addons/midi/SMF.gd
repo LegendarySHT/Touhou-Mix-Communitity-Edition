@@ -218,6 +218,8 @@ class MIDIEventChunk:
 	var channel_number:int
 	## イベント
 	var event:MIDIEvent
+	## トラックインデックス（複数トラック識別用）
+	var track_index:int = 0
 
 	## コンストラクタ
 	## @param	_time			絶対時間 (タイムベース)

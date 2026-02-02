@@ -42,6 +42,10 @@ var vocal_file_path: String = ""
 # 用于存储所有音符的列表
 var All_Notes: Array[NoteDisplayer.NoteEvent] = []
 
+# Additive Solo 状态
+var solo_pairs: Dictionary = {}  # {"track:channel": true}
+var solo_mute_snapshot: Dictionary = {}  # {"track:channel": bool}
+
 func _ready() -> void:
 	work_state = UIStateManager.UIState.TRACK_VIEW
 	need_h_expand = true
@@ -82,6 +86,9 @@ func _ready() -> void:
 # 加载并播放midi
 func _load_midi(midi: MidiData) -> void:
 	current_midi_data = midi
+	# 清空独奏状态
+	solo_pairs.clear()
+	solo_mute_snapshot.clear()
 	
 	# 清空现有的轨道
 	clear_items()
@@ -301,41 +308,52 @@ func _on_vocal_import_btn_pressed():
 # ============= 音轨信号回调 =======================
 
 # 轨道启用状态切换
-func _on_track_enable_toggled(is_checked: bool, track_index: int) -> void:
+func _on_track_enable_toggled(is_checked: bool, track_index: int, channel: int) -> void:
 	if current_midi_data == null:
 		return
-	
-	# 查找该track_index的所有MidiTrack UI项，获取其channel
-	for track_ui in list_items:
-		if track_ui.track_index == track_index:
-			var channel = track_ui.track_channel
-			current_midi_data.set_track_channel_enabled(track_index, channel, is_checked)
-			break
-	
-	# 更新主音符显示器以反映选中轨道的变化
-	master_note_displayer.sync_from_midi_data(current_midi_data)
 
-# 轨道静音切换
-func _on_track_mute_toggled(is_muted: bool, track_index: int) -> void:
-	print("Track %d mute: %s" % [track_index, is_muted])
-	if current_midi_data == null:
-		return
-	
-	# 查找该track_index的所有MidiTrack UI项，获取其channel
-	for track_ui in list_items:
-		if track_ui.track_index == track_index:
-			var channel = track_ui.track_channel
-			# 静音：禁用该(track, channel)；取消静音：启用该(track, channel)
-			current_midi_data.set_track_channel_enabled(track_index, channel, not is_muted)
-			break
-	
-	# 更新主音符显示器以反映选中轨道的变化
+	# 更新指定(track, channel)启用状态
+	current_midi_data.set_track_channel_enabled(track_index, channel, is_checked)
+
+	# 更新主音符显示器（独奏优先）
 	_update_master_note_displayer()
 
+# 轨道静音切换
+func _on_track_mute_toggled(is_muted: bool, track_index: int, channel: int) -> void:
+	print("Track %d Channel %d mute: %s" % [track_index, channel, is_muted])
+	if midi_playback_manager == null:
+		return
+
+	# 调用MidiPlaybackManager的实时mute接口（立即生效）
+	midi_playback_manager.set_track_channel_mute(track_index, channel, is_muted)
+
 # 轨道独奏切换
-func _on_track_solo_toggled(is_solo: bool, track_index: int) -> void:
-	print("Track %d solo: %s" % [track_index, is_solo])
-	# TODO: 实现轨道独奏逻辑
+func _on_track_solo_toggled(is_solo: bool, track_index: int, channel: int) -> void:
+	print("Track %d Channel %d solo: %s" % [track_index, channel, is_solo])
+	if midi_playback_manager == null:
+		return
+
+	var key = _make_pair_key(track_index, channel)
+
+	# 第一次进入独奏时，记录当前mute状态
+	if is_solo and solo_pairs.is_empty():
+		_capture_solo_snapshot()
+
+	if is_solo:
+		solo_pairs[key] = true
+	else:
+		solo_pairs.erase(key)
+
+	# 更新MIDI播放的mute状态（根据独奏状态调整）
+	if solo_pairs.is_empty():
+		_restore_solo_snapshot()
+	else:
+		for track_ui in list_items:
+			var tc_key = _make_pair_key(track_ui.track_index, track_ui.track_channel)
+			var should_solo = solo_pairs.has(tc_key)
+			var is_muted_in_snapshot = solo_mute_snapshot.get(tc_key, false)
+			var target_muted = true if not should_solo else is_muted_in_snapshot
+			midi_playback_manager.set_track_channel_mute(track_ui.track_index, track_ui.track_channel, target_muted)
 
 # 轨道音量改变
 func _on_track_volume_changed(value: float, track_index: int) -> void:
@@ -385,24 +403,22 @@ func _update_preview() -> void:
 
 ## 更新主音符显示器（从MidiData同步启用的(track, channel)列表）
 func _update_master_note_displayer() -> void:
-	if master_note_displayer == null or midi_playback_manager == null or current_midi_data == null:
+	if master_note_displayer == null or current_midi_data == null:
 		return
-	
+
+	if All_Notes.is_empty():
+		push_warning("No notes found in MIDI")
+		return
+
 	var selected_configs = current_midi_data.selected_track_configs
 	if selected_configs.is_empty():
 		push_warning("No (track, channel) selected")
 		# 清空显示器中的所有音符
 		master_note_displayer.init_displayer(self, [])
 		return
-	
-	# 获取所有音符
-	var all_notes = midi_playback_manager.current_notes
-	if all_notes.is_empty():
-		push_warning("No notes found in MIDI")
-		return
-	
-	# 过滤出启用的(track, channel)对应的音符
+
 	var display_notes: Array[NoteDisplayer.NoteEvent] = []
+	# 过滤出启用的(track, channel)对应的音符
 	for note in All_Notes:
 		if selected_configs.has(note.track_index) and note.channel in selected_configs[note.track_index]:
 			display_notes.append(note)
@@ -415,6 +431,42 @@ func _update_master_note_displayer() -> void:
 	
 	# 更新显示器的current_note数据
 	master_note_displayer.init_displayer(self, display_notes)
+
+func _make_pair_key(track_index: int, channel: int) -> String:
+	return "%d:%d" % [track_index, channel]
+
+func _capture_solo_snapshot() -> void:
+	solo_mute_snapshot.clear()
+	if current_midi_data == null:
+		return
+	for track_ui in list_items:
+		var key = _make_pair_key(track_ui.track_index, track_ui.track_channel)
+		solo_mute_snapshot[key] = current_midi_data.get_track_channel_mute(track_ui.track_index, track_ui.track_channel)
+
+func _restore_solo_snapshot() -> void:
+	if midi_playback_manager == null or current_midi_data == null:
+		solo_mute_snapshot.clear()
+		return
+	for track_ui in list_items:
+		var key = _make_pair_key(track_ui.track_index, track_ui.track_channel)
+		if solo_mute_snapshot.has(key):
+			var muted = solo_mute_snapshot[key]
+			midi_playback_manager.set_track_channel_mute(track_ui.track_index, track_ui.track_channel, muted)
+	solo_mute_snapshot.clear()
+
+func _apply_solo_state() -> void:
+	if midi_playback_manager == null:
+		return
+	if solo_pairs.is_empty():
+		_restore_solo_snapshot()
+		return
+
+	for track_ui in list_items:
+		var key = _make_pair_key(track_ui.track_index, track_ui.track_channel)
+		var should_solo = solo_pairs.has(key)
+		var is_muted_in_snapshot = solo_mute_snapshot.get(key, false)
+		var target_muted = true if not should_solo else is_muted_in_snapshot
+		midi_playback_manager.set_track_channel_mute(track_ui.track_index, track_ui.track_channel, target_muted)
 
 # =============== MIDI播放器信号回调 ====================
 
