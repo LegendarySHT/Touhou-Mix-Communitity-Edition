@@ -56,6 +56,15 @@ func _ready() -> void:
 		return
 
 	# 初始化UI
+	# 确保音量滑块的范围正确（0-100）
+	if midi_vol_slider:
+		midi_vol_slider.min_value = 0
+		midi_vol_slider.max_value = 100
+		midi_vol_slider.step = 1
+	if vocal_vol_slider:
+		vocal_vol_slider.min_value = 0
+		vocal_vol_slider.max_value = 100
+		vocal_vol_slider.step = 1
 
 	midi_vol_slider.value = db_to_linear(midi_playback_manager.midi_player_config["volume_db"]) * 100
 	_set_display_midi_volume(midi_vol_slider.value)
@@ -102,6 +111,9 @@ func _load_midi(midi: MidiData) -> void:
 	if not midi_playback_manager.load_midi(midi):
 		push_error("Failed to load MIDI: " + midi.id)
 
+	# 恢复用户配置的数据部分（音量值、进度条、独奏状态）
+	_restore_midi_data_config()
+
 	# 加载音符
 	var all_notes = midi_playback_manager.current_notes
 	if all_notes.is_empty():
@@ -129,6 +141,9 @@ func _load_midi(midi: MidiData) -> void:
 
 	# 创建轨道UI
 	_create_track_views()
+
+	# 恢复用户配置的UI部分（按钮状态、文本标签等）
+	_restore_midi_ui_config()
 
 	# 初始化人声按钮显示
 	_init_vocal_btn_display()
@@ -596,14 +611,42 @@ func _init_master_note_displayer() -> void:
 		push_warning("No notes found in selected tracks")
 		return
 	
-	# 初始化selected_track_configs - 默认将所有(track, channel)对设为启用
-	current_midi_data.selected_track_configs.clear()
-	for note in All_Notes:
-		current_midi_data.set_track_channel_enabled(note.track_index, note.channel, true)
+	# 初始化selected_track_configs - 如果是新MIDI（当前为空），则默认将所有(track, channel)对设为启用
+	# 这是新MIDI的首次初始化，将完成enable按钮的最终状态设置
+	if current_midi_data.selected_track_configs.is_empty():
+		for note in All_Notes:
+			current_midi_data.set_track_channel_enabled(note.track_index, note.channel, true)
+		print("[TrackView] Initialized %d notes from all (track, channel) pairs as ENABLED" % All_Notes.size())
+		
+		# 同时更新UI显示（更新enable按钮和文本）
+		for track_item in list_items:
+			if track_item is MidiTrack:
+				var track_idx = track_item.track_index
+				var channel = track_item.track_channel
+				
+				# 检查该(track, channel)是否有Note
+				var has_note = false
+				for note in All_Notes:
+					if note.track_index == track_idx and note.channel == channel:
+						has_note = true
+						break
+				
+				if has_note and track_item.enable_btn:
+					track_item.enable_btn.set_block_signals(true)
+					track_item.enable_btn.button_pressed = true
+					track_item.enable_btn.set_block_signals(false)
+					if track_item.enable_btn_text:
+						track_item.enable_btn_text.text = "已启用"
+					if track_item.note_display:
+						track_item.note_display.note_color = track_item.color_normal
+						track_item.note_display.update_color()
+	else:
+		# 旧MIDI：selected_track_configs已从JSON恢复，只需要记录日志
+		print("[TrackView] Existing MIDI: selected_track_configs already initialized with %d tracks" % 
+			current_midi_data.selected_track_configs.size())
 	
-	print("[TrackView] Initialized %d notes from all (track, channel) pairs" % All_Notes.size())
-	
-	# 初始化显示器（notes已按时间顺序排列）
+	print("[TrackView] Master note displayer: %d total notes (time-sorted)" % All_Notes.size())
+	# 初始化主音符显示器（notes已按时间顺序排列）
 	master_note_displayer.init_displayer(self, All_Notes)
 
 func _init_track_note_displayer(track_scene: MidiTrack, track_index: int, channel: int, track_notes: Array[NoteDisplayer.NoteEvent]) -> void:
@@ -634,6 +677,10 @@ func _reset_player() -> void:
 # 页面状态回调
 func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	if old_state == work_state and new_state == ui_stat_mgr.UIState.MIDI_VIEW:
+		# 保存当前MIDI配置到JSON文件
+		if current_midi_data != null:
+			_save_midi_config()
+		
 		# 停止自动播放
 		if is_auto_playing and midi_playback_manager:
 			midi_playback_manager.stop()
@@ -646,4 +693,161 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 		get_node("MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button").button_pressed = false
 
 		# 清空轨道列表
-		clear_items()	
+		clear_items()
+
+## =============== 持久化配置保存与恢复 ====================
+
+## 保存当前MIDI配置到JSON文件
+func _save_midi_config() -> void:
+	if current_midi_data == null:
+		push_warning("[TrackView] No MIDI data to save")
+		return
+	
+	# 更新MidiData中的音量值
+	current_midi_data.midi_volume = int(midi_vol_slider.value)
+	current_midi_data.vocal_volume = int(vocal_vol_slider.value)
+	
+	# 更新独奏状态
+	current_midi_data.solo_pairs = solo_pairs.duplicate()
+	
+	# 更新音轨启用状态（从所有轨道UI控件收集）
+	# selected_track_configs 由各个 MidiTrack 项通过 _on_track_enable_toggled 更新
+	# 这里只需确保 current_midi_data.selected_track_configs 已是最新状态
+	# 导出运行时配置
+	var runtime_config = current_midi_data.export_runtime_config()
+	
+	# 获取JSON文件路径（优先使用file_hash，如果为空则使用id）
+	var chart_id = current_midi_data.file_hash if not current_midi_data.file_hash.is_empty() else current_midi_data.id
+	var json_path = FileSystemManager.instance.get_chart_json_path(chart_id)
+	if json_path.is_empty():
+		push_warning("[TrackView] Failed to get JSON path for MIDI: %s (id=%s, file_hash=%s)" % 
+			[chart_id, current_midi_data.id, current_midi_data.file_hash])
+		return
+	
+	# 准备要保存的数据（只包含_runtime字段，通过合并保留其他字段）
+	var data_to_save = {
+		"_runtime": runtime_config
+	}
+	
+	# 使用ConfigLoader保存JSON（启用合并模式，保留原有字段）
+	var config_loader = ConfigLoader.new()
+	if config_loader.save_json_file(json_path, data_to_save, true):
+		print("[TrackView] Successfully saved MIDI config to: %s (volume: %d/%d, solo: %d, track_enabled: %s)" % 
+			[json_path, current_midi_data.midi_volume, current_midi_data.vocal_volume, solo_pairs.size(), current_midi_data.selected_track_configs])
+	else:
+		push_error("[TrackView] Failed to save MIDI config to: %s" % json_path)
+
+## 恢复MIDI配置的数据部分（音量、进度条、独奏状态）
+## 在_load_midi中早期调用，此时list_items还未创建
+func _restore_midi_data_config() -> void:
+	if current_midi_data == null:
+		return
+	
+	midi_vol_slider.set_block_signals(true)
+	vocal_vol_slider.set_block_signals(true)
+	
+	# 获取音量值，如果是默认值50则从全局设置中读取
+	var midi_vol = current_midi_data.midi_volume
+	var vocal_vol = current_midi_data.vocal_volume
+	
+	if midi_vol == 50:  # 默认值
+		var setting_view = get_node_or_null("/root/Main/SettingView")
+		if setting_view and setting_view.has_method("get_setting_value"):
+			var global_midi_vol = setting_view.get_setting_value("default_midi_volume")
+			if global_midi_vol != null:
+				midi_vol = int(global_midi_vol)
+	
+	if vocal_vol == 50:  # 默认值
+		var setting_view = get_node_or_null("/root/Main/SettingView")
+		if setting_view and setting_view.has_method("get_setting_value"):
+			var global_vocal_vol = setting_view.get_setting_value("default_vocal_volume")
+			if global_vocal_vol != null:
+				vocal_vol = int(global_vocal_vol)
+	
+	midi_vol_slider.value = midi_vol
+	vocal_vol_slider.value = vocal_vol
+	
+	_set_display_midi_volume(midi_vol_slider.value)
+	_set_display_vocal_volume(vocal_vol_slider.value)
+	
+	midi_vol_slider.set_block_signals(false)
+	vocal_vol_slider.set_block_signals(false)
+	
+	# 恢复进度条位置和最大值（初始化为0）
+	progress_bar.set_block_signals(true)
+	progress_bar.value = 0.0
+	progress_bar.max_value = current_midi_data.duration_ms
+	progress_bar.set_block_signals(false)
+	current_time.text = _format_time(0.0)
+	
+	# 恢复独奏状态（到内存，后续UI恢复会用到）
+	solo_pairs = current_midi_data.solo_pairs.duplicate()
+	
+	# 初始化音轨启用状态：如果是新MIDI（selected_track_configs为空），则默认全部启用
+	# 这很重要，因为_restore_midi_ui_config()会检查这个值来显示enable按钮状态
+	if current_midi_data.selected_track_configs.is_empty():
+		# 新MIDI：等待All_Notes加载后进行初始化（在_init_master_note_displayer中）
+		# 但这里需要先设置一个占位符，否则_restore_midi_ui_config会显示"禁用"
+		print("[TrackView] New MIDI detected (empty selected_track_configs), will initialize in _init_master_note_displayer")
+	else:
+		# 旧MIDI：selected_track_configs已从JSON恢复，将在_restore_midi_ui_config中应用
+		print("[TrackView] Existing MIDI config restored: %d tracks have enabled channels" % 
+			current_midi_data.selected_track_configs.size())
+	
+	print("[TrackView] Restored MIDI data config: midi_volume=%d, vocal_volume=%d, solo_count=%d" % 
+		[midi_vol, vocal_vol, solo_pairs.size()])
+
+## 恢复MIDI配置的UI部分（按钮状态）
+## 在_create_track_views之后调用，此时list_items已有内容
+func _restore_midi_ui_config() -> void:
+	if current_midi_data == null:
+		return
+	
+	# 更新所有轨道按钮的UI状态（启用按钮、静音按钮、独奏按钮）
+	for track_item in list_items:
+		if track_item is MidiTrack:
+			var track_idx = track_item.track_index
+			var channel = track_item.track_channel
+			
+			# 更新启用按钮状态
+			# 新MIDI时，selected_track_configs为空，应该默认显示"启用"
+			var is_enabled = current_midi_data.is_track_channel_selected(track_idx, channel)
+			if current_midi_data.selected_track_configs.is_empty():
+				# 新MIDI的情况：默认认为所有轨道启用（待_init_master_note_displayer正式初始化）
+				is_enabled = true
+			
+			if track_item.enable_btn:
+				track_item.enable_btn.set_block_signals(true)
+				track_item.enable_btn.button_pressed = is_enabled
+				track_item.enable_btn.set_block_signals(false)
+				# 更新UI显示
+				if track_item.enable_btn_text:
+					track_item.enable_btn_text.text = "已启用" if is_enabled else "已禁用"
+				if track_item.note_display:
+					track_item.note_display.note_color = track_item.color_normal if is_enabled else track_item.color_dark
+					track_item.note_display.update_color()
+			
+			# 更新静音按钮状态
+			var is_muted = current_midi_data.get_track_channel_mute(track_idx, channel)
+			if track_item.mute_btn:
+				track_item.mute_btn.set_block_signals(true)
+				track_item.mute_btn.button_pressed = is_muted
+				track_item.mute_btn.set_block_signals(false)
+				track_item.mute_btn.modulate = Color(1, 0.5, 0.5, 1) if is_muted else Color(1, 1, 1, 1)
+			
+			# 更新独奏按钮状态
+			var is_soloed = solo_pairs.has("%d:%d" % [track_idx, channel])
+			if track_item.solo_btn:
+				track_item.solo_btn.set_block_signals(true)
+				track_item.solo_btn.button_pressed = is_soloed
+				track_item.solo_btn.set_block_signals(false)
+				track_item.solo_btn.modulate = Color(1, 1, 0.5, 1) if is_soloed else Color(1, 1, 1, 1)
+	
+	if not solo_pairs.is_empty():
+		print("[TrackView] Restored solo pairs: %d channels are soloed" % solo_pairs.size())
+	
+	if not current_midi_data.selected_track_configs.is_empty():
+		print("[TrackView] Restored enable states: %d tracks with specific enabled channels" % current_midi_data.selected_track_configs.size())
+	else:
+		print("[TrackView] New MIDI: All tracks shown as enabled, will be finalized in _init_master_note_displayer")
+	

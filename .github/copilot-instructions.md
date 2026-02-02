@@ -2,8 +2,8 @@
 
 **项目**: Godot 4.5 节奏游戏（GDScript）  
 **状态**: 核心架构完成；UI/MIDI/GameplayManager 系统全部集成  
-**更新**: 2026-01-30  
-**核心完成度**: 80% - 框架完成，个别功能待完善
+**更新**: 2026-02-02  
+**核心完成度**: 80% - 框架完成，UI 界面 & 游戏逻辑待完善
 
 ## ⚡ 5 分钟快速概览
 
@@ -92,15 +92,24 @@ var midis = DataManager.instance.get_midis_by_song(song_id)
 
 ### 关键游戏 Manager（新增）
 ```gdscript
-# GameplayManager - 游戏流程控制
+# GameplayManager - 游戏流程控制（单例）
 var state = GameplayManager.instance.current_state  # 获取游戏状态
-GameplayManager.instance.start_game(midi_data)      # 启动游戏
+GameplayManager.instance.start_game(midi_data)      # 启动游戏（自动触发加载→分类→生成→播放）
 GameplayManager.instance.game_time_updated.connect(fn) # 监听时间更新
+GameplayManager.instance.set_game_state(GameState.PAUSED)  # 暂停游戏
 
-# KeySequenceManager - Note 分类与键位映射
-var game_keys = KeySequenceManager.instance.game_sequences    # 玩家需操作的键
-var bg_notes = KeySequenceManager.instance.background_sequences  # 背景伴奏
-var judge_result = NotesRenderer.instance.judge_note_at_key(key_id, hit_time_ms)
+# KeySequenceManager - Note 分类与键位映射（单例）
+var game_keys = KeySequenceManager.instance.game_sequences    # 玩家需操作的键列表
+var bg_notes = KeySequenceManager.instance.background_sequences  # 背景伴奏列表
+KeySequenceManager.instance.judge_key(key_id, hit_time_ms, judge_windows)  # 判定键位
+
+# NotesRenderer - 谱面渲染与显示（单例）
+NotesRenderer.instance.update_position(current_time_ms)  # 更新当前播放位置
+var visible_keys = NotesRenderer.instance.get_visible_keys()  # 获取当前应显示的键
+
+# ScoreCalculator - 分数计算（单例）
+ScoreCalculator.instance.record_judge(JudgeGrade.PERFECT)  # 记录判定结果
+var score_data = ScoreCalculator.instance.get_score_data()  # 获取最终分数数据
 ```
 
 ## 🔄 常见工作流
@@ -191,23 +200,30 @@ func _process(_delta) -> void:
 | 状态混乱 | 多处直接修改 UI 可见性 | 统一用 UIStateManager.change_state() |
 | Tween 卡顿 | 直接创建 Tween 未管理 | 使用 AnimationManager.animate_*() |
 | MIDI 未找到 | FileSystemManager 扫描失败 | 检查 user://files/Charts/ 目录权限 |
+| 动画闪烁 | 页面切换时 UI 元素未同步 | AnimationManager 内部自动处理退场→进场，不要手动控制 |
+| Note 时间错误 | 混淆 tick 和毫秒单位 | 使用 MidiPlaybackManager.get_position_ms() 统一获取毫秒 |
+| 判定窗口漂移 | BPM 时间线计算错误 | MidiParser 已自动处理 BPM 变化，无需手工调整 |
 
 ## 📁 文件导航速查
 
 | 任务 | 查看文件 | 关键方法 |
 |------|---------|---------|
-| 初始化流程 | [Main.gd](../Main.gd) | _initialize_core_systems() |
-| 全局事件 | [Core/EventBus.gd](../Core/EventBus.gd) | 20+ signals |
-| 数据查询 | [Core/DataManager.gd](../Core/DataManager.gd) | get_all_albums(), get_midis_by_song() |
-| 文件索引 | [Core/FileSystemManager.gd](../Core/FileSystemManager.gd) | charts_index, get_charts_index() |
-| 排序搜索 | [Core/SortingEngine.gd](../Core/SortingEngine.gd) | get_sorted_midis(), search_midis() |
-| MIDI 播放 | [Game/MidiPlaybackManager.gd](../Game/MidiPlaybackManager.gd) | load_midi(), set_soundfont() |
-| Note 分类 | [Game/KeySequenceManager.gd](../Game/KeySequenceManager.gd) | classify_sequences(), generate_keys() |
-| 游戏管理 | [Game/GameplayManager.gd](../Game/GameplayManager.gd) | start_game(), current_state |
-| 分数计算 | [Game/ScoreCalculator.gd](../Game/ScoreCalculator.gd) | record_judge(), get_final_score() |
-| 标准 View | [UI/Views/MidiView/MidiView.gd](../UI/Views/MidiView/MidiView.gd) | BaseScrollList 继承示例 |
-| 动画库 | [UI/Animations/AnimationManager.gd](../UI/Animations/AnimationManager.gd) | 15+ 预设动画 |
-| MIDI 解析 | [Utilities/MidiParser.gd](../Utilities/MidiParser.gd) | load_and_parse_midi() |
+| 初始化流程 | [Main.gd](../Main.gd) | _initialize_core_systems() - 13步初始化顺序 |
+| 全局事件 | [Core/EventBus.gd](../Core/EventBus.gd) | 20+ 信号，emit_*() 便利函数 |
+| 数据查询 | [Core/DataManager.gd](../Core/DataManager.gd) | get_all_albums(), get_midis_by_song(), load_all_midis_async() |
+| 文件索引 | [Core/FileSystemManager.gd](../Core/FileSystemManager.gd) | charts_index, get_charts_index(), initialize_directory_structure() |
+| UI状态 | [Core/UIStateManager.gd](../Core/UIStateManager.gd) | change_state(), UIState 枚举，state_changed 信号 |
+| 排序搜索 | [Core/SortingEngine.gd](../Core/SortingEngine.gd) | get_sorted_midis(), search_midis(), 线程安全排序 |
+| MIDI 播放 | [Game/MidiPlaybackManager.gd](../Game/MidiPlaybackManager.gd) | load_midi(), play(), set_soundfont(), classify_notes() |
+| 键位管理 | [Game/KeySequenceManager.gd](../Game/KeySequenceManager.gd) | classify_sequences(), generate_keys(), GameSequence/BackgroundSequence |
+| 游戏管理 | [Game/GameplayManager.gd](../Game/GameplayManager.gd) | start_game(), pause_game(), resume_game(), GameState 枚举 |
+| 分数计算 | [Game/ScoreCalculator.gd](../Game/ScoreCalculator.gd) | record_judge(), calculate_grade(), get_score_data() |
+| 谱面渲染 | [Game/NotesRenderer.gd](../Game/NotesRenderer.gd) | update_position(), get_visible_keys(), judge_windows 配置 |
+| 标准 View | [UI/Views/MidiView/MidiView.gd](../UI/Views/MidiView/MidiView.gd) | BaseScrollList 继承示例，数据加载模式 |
+| 动画库 | [UI/Animations/AnimationManager.gd](../UI/Animations/AnimationManager.gd) | animate_*() 系列（15+预设），_create_tween() 管理 |
+| MIDI 解析 | [Utilities/MidiParser.gd](../Utilities/MidiParser.gd) | load_and_parse_midi(), Note/AutoPlayNote/ManualControlNote 类 |
+| 配置加载 | [Utilities/ConfigLoader.gd](../Utilities/ConfigLoader.gd) | load_config(), get_value()，支持 ini 格式 |
+| 日志系统 | [Utilities/Logger.gd](../Utilities/Logger.gd) | GameLogger.instance.info/warning/error()，标签式日志 |
 
 ## 🛠️ 实用代码片段
 
@@ -245,6 +261,36 @@ GameLogger.instance.warning("MIDI not found", "DataManager")
 GameLogger.instance.error("File access denied", "FileSystemManager")
 ```
 
+### 动画最佳实践（AnimationManager）
+```gdscript
+# ✅ 正确：使用 AnimationManager 管理所有动画
+AnimationManager.instance.animate_position(node, target_pos, 0.3, "node_move")
+AnimationManager.instance.animate_fade_in(node, 0.5, "node_fade")
+
+# ❌ 错误：直接创建 Tween 会导致无法管理
+var tween = create_tween()  # 无法统一管理！
+
+# 序列动画
+var seq = AnimationManager.instance.create_sequence("combo")
+seq.tween_property(node1, "modulate:a", 0.0, 0.2)
+seq.tween_property(node2, "position", Vector2(0, 100), 0.3)
+```
+
+### MIDI 时间单位转换
+```gdscript
+# MidiPlaybackManager 中的时间单位需要注意：
+# - position: tick 单位（MIDI tick，NOT 毫秒）
+# - position_ms: 毫秒（使用 BPM 时间线计算）
+# - get_position_ms(): 推荐方法，获取毫秒值
+
+var midi_mgr = MidiPlaybackManager.instance
+var ms_pos = midi_mgr.get_position_ms()  # 毫秒
+var tick_pos = midi_mgr.position  # tick单位
+
+# 寻找位置时使用毫秒
+midi_mgr.seek(1000.0)  # 参数为毫秒
+```
+
 ## 🎯 最佳实践
 
 ✅ **DO**:
@@ -271,5 +317,5 @@ GameLogger.instance.error("File access denied", "FileSystemManager")
 
 ---
 
-**最后更新**: 2026-01-30  
+**最后更新**: 2026-02-02  
 **Godot 版本**: 4.5 | **主要语言**: GDScript

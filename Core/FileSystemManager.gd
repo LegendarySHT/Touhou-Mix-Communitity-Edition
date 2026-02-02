@@ -561,3 +561,41 @@ func get_cover_by_midiData(midi: MidiData) -> ImageTexture:
 						GameLogger.instance.warning("Failed to load cover image: %s" % path, "FileSystemMGR")
 
 	return load(DEFAULT_COVER_PATH)
+
+## 获取指定chart ID对应的JSON文件完整路径
+## 参数: chart_id - MidiData中的id字段或file_hash字段
+## 返回: user://files/Charts/[folder_name]/[chart_id].json
+func get_chart_json_path(chart_id: String) -> String:
+	# 在charts_index中查找该chart_id对应的folder_name
+	for folder_name in charts_index.keys():
+		var metadata = charts_index[folder_name]
+		var metadata_id = metadata.get("id", "")
+		
+		# 匹配方式1：通过metadata中的id字段匹配
+		if metadata_id == chart_id:
+			# 优先使用已缓存的json_path
+			var cached_json_path = metadata.get("json_path", "")
+			if not cached_json_path.is_empty():
+				return cached_json_path
+			
+			# 备选方案：从路径重新构造（如果缓存不存在）
+			var chart_path = metadata.get("path", "")
+			if not chart_path.is_empty():
+				return chart_path.path_join(metadata_id + ".json")
+		
+		# 匹配方式2：通过JSON数据中的file_hash字段匹配（MidiData中保存的file_hash）
+		var json_data = metadata.get("data", {})
+		if json_data is Dictionary and json_data.has("file_hash"):
+			if json_data.get("file_hash", "") == chart_id:
+				# 找到了对应的谱面
+				var cached_json_path = metadata.get("json_path", "")
+				if not cached_json_path.is_empty():
+					return cached_json_path
+				
+				var chart_path = metadata.get("path", "")
+				if not chart_path.is_empty():
+					return chart_path.path_join(metadata_id + ".json")
+	
+	# 如果未找到，打印调试信息并返回空字符串
+	GameLogger.instance.warning("Chart JSON path not found for ID: %s (charts_index has %d entries)" % [chart_id, charts_index.size()], "FileSystemMGR")
+	return ""

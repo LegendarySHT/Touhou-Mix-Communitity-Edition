@@ -64,7 +64,7 @@ var rank_distribution: Dictionary = {
 	"F": 0
 }
 
-## 文件哈希
+## MIDI文件哈希（MD5）
 var file_hash: String = ""
 
 ## ========== MIDI播放相关字段 ==========
@@ -95,6 +95,17 @@ var bpm: float = 120.0
 
 ## MIDI总时长（毫秒）
 var duration_ms: float = 0.0
+
+## ========== 用户配置字段（运行时可修改，需持久化）==========
+
+## MIDI播放音量（0-100）
+var midi_volume: int = 50
+
+## 人声音量（0-100）
+var vocal_volume: int = 50
+
+## 独奏状态 (track:channel -> true)
+var solo_pairs: Dictionary = {}
 
 ## 从JSON数据构造MIDI数据
 func from_json(json_data: Dictionary) -> void:
@@ -129,6 +140,37 @@ func from_json(json_data: Dictionary) -> void:
 	rank_distribution["C"] = json_data.get("cCount", 0)
 	rank_distribution["D"] = json_data.get("dCount", 0)
 	rank_distribution["F"] = json_data.get("fCount", 0)
+	
+	# 读取用户运行时配置（从 _runtime 对象）
+	var runtime_config = json_data.get("_runtime", {})
+	if runtime_config is Dictionary:
+		midi_volume = runtime_config.get("midi_volume", 50)
+		vocal_volume = runtime_config.get("vocal_volume", 50)
+		
+		# 恢复轨道选择配置
+		var saved_track_indices = runtime_config.get("selected_track_indices", [])
+		if saved_track_indices is Array and not saved_track_indices.is_empty():
+			selected_track_indices.clear()
+			for idx in saved_track_indices:
+				selected_track_indices.append(int(idx))
+		
+		var saved_mute_state = runtime_config.get("track_channel_mute_state", {})
+		if saved_mute_state is Dictionary:
+			track_channel_mute_state = saved_mute_state.duplicate()
+		
+		var saved_soundfont = runtime_config.get("use_soundfont", "")
+		if saved_soundfont is String:
+			use_soundfont = saved_soundfont
+		
+		# 恢复独奏状态
+		var saved_solo_pairs = runtime_config.get("solo_pairs", {})
+		if saved_solo_pairs is Dictionary:
+			solo_pairs = saved_solo_pairs.duplicate()
+		
+		# 恢复音轨启用状态
+		var saved_track_configs = runtime_config.get("selected_track_configs", {})
+		if saved_track_configs is Dictionary:
+			selected_track_configs = saved_track_configs.duplicate()
 
 ## 转换为字典格式（用于导出或缓存）
 func to_dict() -> Dictionary:
@@ -209,3 +251,16 @@ func get_track_channel_mute(track_index: int, channel: int) -> bool:
 ## 清除所有 mute 状态
 func clear_all_mutes() -> void:
 	track_channel_mute_state.clear()
+
+## 导出用户运行时配置为字典
+func export_runtime_config() -> Dictionary:
+	return {
+		"midi_volume": midi_volume,
+		"vocal_volume": vocal_volume,
+		"selected_track_indices": selected_track_indices.duplicate(),
+		"selected_track_configs": selected_track_configs.duplicate(),
+		"track_channel_mute_state": track_channel_mute_state.duplicate(),
+		"solo_pairs": solo_pairs.duplicate(),
+		"use_soundfont": use_soundfont,
+		"saved_at": Time.get_ticks_msec()
+	}

@@ -170,3 +170,50 @@ func check_and_migrate(config: Dictionary, file_path: String) -> Dictionary:
 	save_config(file_path, migrated)
 	
 	return migrated
+
+## ========== JSON 文件操作方法 ==========
+
+## 加载JSON文件
+func load_json_file(file_path: String) -> Dictionary:
+	if not FileAccess.file_exists(file_path):
+		return {}
+	
+	var file = FileAccess.open(file_path, FileAccess.READ)
+	if file == null:
+		push_warning("Failed to open JSON file: %s" % file_path)
+		return {}
+	
+	var content = file.get_as_text()
+	var json = JSON.parse_string(content)
+	
+	if json == null:
+		push_warning("Failed to parse JSON file: %s" % file_path)
+		return {}
+	
+	return json if json is Dictionary else {}
+
+## 保存JSON文件（合并模式：保留原有字段，补充新字段）
+func save_json_file(file_path: String, data: Dictionary, merge_existing: bool = true) -> bool:
+	var final_data = data
+	
+	# 如果启用合并模式且文件存在，先读取现有内容
+	if merge_existing and FileAccess.file_exists(file_path):
+		var existing = load_json_file(file_path)
+		if not existing.is_empty():
+			# 深度合并：保留所有原有字段，覆盖或添加新字段
+			for key in data.keys():
+				existing[key] = data[key]
+			final_data = existing
+	
+	# 序列化为JSON字符串
+	var json_str = JSON.stringify(final_data)
+	
+	var file = FileAccess.open(file_path, FileAccess.WRITE)
+	if file == null:
+		push_error("Failed to save JSON file: %s (Error: %d)" % [file_path, FileAccess.get_open_error()])
+		return false
+	
+	file.store_string(json_str)
+	file.close()
+	
+	return true

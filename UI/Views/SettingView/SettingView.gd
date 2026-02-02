@@ -342,3 +342,34 @@ func _get_soundfont_path(soundfont_name: String) -> String:
 		return res_path
 	
 	return ""
+
+## 获取特定设置的值
+## 此方法由其他模块（如TrackView）调用，用于查询当前设置值
+func get_setting_value(setting_id: String) -> Variant:
+	if setting_list == null:
+		push_warning("[SettingView] SettingList not initialized when querying: %s" % setting_id)
+		return null
+	
+	# 从SettingList的设置项字典中查询
+	if setting_list.setting_items.has(setting_id):
+		var setting_item = setting_list.setting_items[setting_id]
+		if setting_item and setting_item.has_method("get_value"):
+			return setting_item.get_value()
+	
+	# 如果找不到，尝试从配置加载器的缓存中读取
+	if config_loader != null:
+		var config_path = CONFIG_PATH if FileAccess.file_exists(CONFIG_PATH) else DEFAULT_CONFIG_PATH
+		var ini_config = config_loader.load_config(config_path)
+		if not ini_config.is_empty():
+			var settings_dict = SettingsMapper.ini_to_settings(ini_config)
+			if settings_dict.has(setting_id):
+				var value_str = settings_dict[setting_id]
+				# 根据类型转换值
+				match setting_id:
+					"default_midi_volume", "default_vocal_volume":
+						if value_str.is_valid_int():
+							return int(value_str)
+				return value_str
+	
+	print("[SettingView] Setting not found: %s" % setting_id)
+	return null

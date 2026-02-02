@@ -125,10 +125,28 @@ var setting_groups = [
 				]
 			},
 			{
+				"id": "default_midi_volume",
+				"name_en": "Default MIDI Volume",
+				"name_zh": "默认MIDI音量",
+				"description": "设置加载新MIDI时的默认MIDI音量，范围0-100",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "50",
+				"unit": "%"
+			},
+			{
+				"id": "default_vocal_volume",
+				"name_en": "Default Vocal Volume",
+				"name_zh": "默认人声音量",
+				"description": "设置加载新MIDI时的默认人声音量，范围0-100",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "50",
+				"unit": "%"
+			},
+			{
 				"id": "soundfont_select",
 				"name_en": "Sound Font",
 				"name_zh": "音源选择",
-				"description": "选择MIDI播放时使用的音源文件。user://files/Soundfont/中的音源会覆盖内置版本",
+				"description": "选择MIDI播放时使用的SoundFont音源文件。",
 				"type": "TYPE_OPTION",
 				"default_value": "GeneralUser-GS.sf2",
 				"options": [],
