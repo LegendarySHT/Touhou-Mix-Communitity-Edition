@@ -191,7 +191,7 @@ func play() -> void:
 		return
 	
 	# 设置音源
-	if not current_soundfont_path.is_empty():
+	if not current_soundfont_path.is_empty() and midi_player.soundfont != current_soundfont_path:
 		midi_player.soundfont = current_soundfont_path
 	
 	midi_player.play()

@@ -75,7 +75,7 @@ func _on_click_start_btn() -> void:
 	var midi:MidiData = midi_list.get_selection()
 	if not midi:
 		return
-	print("选择歌曲： %d" % midi.name)
+	print("选择歌曲： %s" % midi.name)
 
 	EventBus.instance.start_game_with.emit(midi)
 	UIStateManager.instance.change_state(UIStateManager.UIState.PLAY_VIEW)

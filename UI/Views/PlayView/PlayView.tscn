@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3 uid="uid://dufml4k4gftxf"]
+[gd_scene load_steps=15 format=3 uid="uid://dufml4k4gftxf"]
 
 [ext_resource type="Texture2D" uid="uid://baootjbuf8yhl" path="res://Resources/icon/pause.png" id="1_8cbrq"]
 [ext_resource type="Script" uid="uid://biwqlg4kwm815" path="res://UI/Views/PlayView/PlayView.gd" id="1_uj6qe"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_7ak4s"]
+[ext_resource type="Script" uid="uid://d1iexilqlavwd" path="res://UI/Views/PlayView/FlowArea.gd" id="2_jlvmc"]
 
 [sub_resource type="Gradient" id="Gradient_7ak4s"]
 colors = PackedColorArray(0.3882353, 0.20392157, 0.654902, 1, 0.71, 0.355, 0.71, 1)
@@ -11,16 +12,48 @@ colors = PackedColorArray(0.3882353, 0.20392157, 0.654902, 1, 0.71, 0.355, 0.71,
 gradient = SubResource("Gradient_7ak4s")
 fill_to = Vector2(1, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_uj6qe"]
-bg_color = Color(0, 0.6260657, 0.9940639, 1)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_50kwk"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_uj6qe"]
+color = Color(1, 1, 1, 1)
+thickness = 10
+
+[sub_resource type="Environment" id="Environment_jlvmc"]
+background_mode = 3
+background_color = Color(1, 1, 1, 1)
+background_canvas_max_layer = 1
+glow_enabled = true
+glow_normalized = true
+glow_strength = 1.59
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kvdpo"]
+bg_color = Color(0.25336733, 0.36870298, 0.8464057, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+shadow_color = Color(0.8776157, 0.8776158, 0.8776157, 0.38039216)
+shadow_size = 15
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j150t"]
+bg_color = Color(0.20784314, 0.30980393, 0.77254903, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_v16c5"]
+bg_color = Color(0.20784314, 0.30980393, 0.77254903, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="Theme" id="Theme_flcya"]
+Button/styles/hover = SubResource("StyleBoxFlat_kvdpo")
+Button/styles/normal = SubResource("StyleBoxFlat_j150t")
+Button/styles/pressed = SubResource("StyleBoxFlat_v16c5")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jlvmc"]
 bg_color = Color(0, 0, 0, 0)
@@ -54,11 +87,41 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("GradientTexture2D_uj6qe")
 
-[node name="Line2D" type="Line2D" parent="."]
-position = Vector2(0, -200)
-points = PackedVector2Array(0, 1080, 1920, 1080)
-width = 8.0
-joint_mode = 2
+[node name="FlowArea" type="Panel" parent="."]
+clip_children = 1
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_50kwk")
+script = ExtResource("2_jlvmc")
+
+[node name="JudgeLine" type="HSeparator" parent="FlowArea"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -4.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/separator = SubResource("StyleBoxLine_uj6qe")
+
+[node name="SVP" type="CanvasLayer" parent="FlowArea"]
+layer = 0
+
+[node name="Panel" type="Panel" parent="FlowArea/SVP"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="FlowArea/SVP"]
+environment = SubResource("Environment_jlvmc")
 
 [node name="BackBtn" type="TextureButton" parent="."]
 layout_mode = 0
@@ -70,86 +133,43 @@ texture_normal = ExtResource("1_8cbrq")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="CenterData" type="HBoxContainer" parent="."]
-modulate = Color(1, 1, 1, 0.8117647)
-custom_minimum_size = Vector2(1500, 500)
+[node name="Center" type="VBoxContainer" parent="."]
+custom_minimum_size = Vector2(450, 300)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -750.0
-offset_top = -300.0
-offset_right = 750.0
-offset_bottom = 200.0
+offset_left = -225.0
+offset_top = -150.0
+offset_right = 225.0
+offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(750, 260)
-theme_override_constants/separation = 60
+pivot_offset = Vector2(225, 150)
 alignment = 1
 
-[node name="Combo" type="VBoxContainer" parent="CenterData"]
-custom_minimum_size = Vector2(450, 0)
-layout_mode = 2
-alignment = 1
-
-[node name="type" type="Label" parent="CenterData/Combo"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "COMBO"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="count" type="Label" parent="CenterData/Combo"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 72
-text = "99,999"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Center" type="VBoxContainer" parent="CenterData"]
-custom_minimum_size = Vector2(450, 0)
-layout_mode = 2
-alignment = 1
-
-[node name="up" type="Label" parent="CenterData/Center"]
+[node name="up" type="Label" parent="Center"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "0 ms early"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="type" type="Label" parent="CenterData/Center"]
+[node name="type" type="Label" parent="Center"]
 layout_mode = 2
+theme_override_colors/font_outline_color = Color(1, 1, 1, 1)
+theme_override_constants/outline_size = 10
 theme_override_font_sizes/font_size = 72
 text = "PERFECT"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="down" type="Label" parent="CenterData/Center"]
+[node name="down" type="Label" parent="Center"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "0 ms late"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Score" type="VBoxContainer" parent="CenterData"]
-custom_minimum_size = Vector2(450, 0)
-layout_mode = 2
-alignment = 1
-
-[node name="type" type="Label" parent="CenterData/Score"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "SCORE"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="count" type="Label" parent="CenterData/Score"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 72
-text = "99,999"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -196,6 +216,69 @@ text = "99.61%"
 horizontal_alignment = 2
 vertical_alignment = 2
 
+[node name="Score" type="VBoxContainer" parent="."]
+custom_minimum_size = Vector2(450, 0)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -470.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 160.0
+grow_horizontal = 0
+pivot_offset = Vector2(450, 70)
+alignment = 1
+
+[node name="type" type="Label" parent="Score"]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "SCORE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="count" type="Label" parent="Score"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 72
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="add" type="Label" parent="Score"]
+layout_mode = 2
+size_flags_horizontal = 8
+theme_override_font_sizes/font_size = 48
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Combo" type="VBoxContainer" parent="."]
+custom_minimum_size = Vector2(450, 0)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -225.0
+offset_right = 225.0
+offset_bottom = 200.0
+grow_horizontal = 2
+alignment = 1
+
+[node name="count" type="Label" parent="Combo"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="type" type="Label" parent="Combo"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+text = "COMBO"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="CenterBackGround" type="ColorRect" parent="."]
 visible = false
 layout_mode = 1
@@ -223,6 +306,7 @@ offset_bottom = 200.0
 grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(750, 260)
+theme = SubResource("Theme_flcya")
 theme_override_constants/separation = 60
 alignment = 1
 
@@ -230,27 +314,28 @@ alignment = 1
 custom_minimum_size = Vector2(250, 250)
 layout_mode = 2
 size_flags_vertical = 4
+focus_mode = 0
 theme_override_font_sizes/font_size = 72
-theme_override_styles/normal = SubResource("StyleBoxFlat_uj6qe")
 text = "重试"
 
 [node name="continue" type="Button" parent="CenterBackGround/Menu"]
 custom_minimum_size = Vector2(250, 250)
 layout_mode = 2
 size_flags_vertical = 4
+focus_mode = 0
 theme_override_font_sizes/font_size = 72
-theme_override_styles/normal = SubResource("StyleBoxFlat_uj6qe")
 text = "继续"
 
 [node name="quit" type="Button" parent="CenterBackGround/Menu"]
 custom_minimum_size = Vector2(250, 250)
 layout_mode = 2
 size_flags_vertical = 4
+focus_mode = 0
 theme_override_font_sizes/font_size = 72
-theme_override_styles/normal = SubResource("StyleBoxFlat_uj6qe")
 text = "退出"
 
 [node name="SongInfo" type="HBoxContainer" parent="CenterBackGround"]
+visible = false
 custom_minimum_size = Vector2(1000, 600)
 layout_mode = 1
 anchors_preset = 8
@@ -276,7 +361,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_jlvmc")
 custom_minimum_size = Vector2(400, 400)
 layout_mode = 2
 texture = ExtResource("2_7ak4s")
-expand_mode = 3
+expand_mode = 5
 stretch_mode = 5
 
 [node name="GridContainer" type="GridContainer" parent="CenterBackGround/SongInfo"]

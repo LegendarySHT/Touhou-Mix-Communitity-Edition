@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3 uid="uid://b3wpw7ylic5wl"]
+
+[ext_resource type="Texture2D" uid="uid://l8ea12v6pxcj" path="res://Resources/Skins/旧版2/instant.png" id="1_nq3nk"]
+
+[node name="note" type="TextureRect"]
+custom_minimum_size = Vector2(150, 0)
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+texture = ExtResource("1_nq3nk")
+expand_mode = 4
+stretch_mode = 5

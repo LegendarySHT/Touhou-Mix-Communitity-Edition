@@ -273,7 +273,7 @@ var ui_part = {
 	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View", "RB_Btn", "LT_Btn"],
 	UIStateManager.UIState.STORE_VIEW: ["Store_View", "RB_Btn"],
 	UIStateManager.UIState.TRACK_VIEW: ["Track_List", "RB_Btn", "LT_Btn"],
-	UIStateManager.UIState.PLAY_VIEW: ["Play_View", "Store_View", "RB_Btn", "LT_Btn"],
+	UIStateManager.UIState.PLAY_VIEW: ["Play_View"],
 	UIStateManager.UIState.SETTINGS_VIEW: ["Setting_View", "RB_Btn", "LT_Btn"],
 }
 

@@ -148,12 +148,6 @@ func _init_ui() -> void:
 	track_list.position = Vector2(track_list.position.x-1080*tan(deg_to_rad(15)), 1080)
 	Main.add_child(track_list)
 	
-	# 播放界面
-	var play_page = load(play_view_path).instantiate()
-	play_page.visible = false
-	play_page.z_index = 21
-	Main.add_child(play_page)
-
 	# 设置界面
 	var setting_page = load(setting_view_path).instantiate()
 	setting_page.visible = false
@@ -169,6 +163,12 @@ func _init_ui() -> void:
 	var left_top = get_node("LT_Btn")
 	move_child(left_top ,-1)
 	left_top.z_index = 20
+	
+	# 播放界面
+	var play_page = load(play_view_path).instantiate()
+	play_page.visible = false
+	play_page.z_index = 21
+	Main.add_child(play_page)
 
 ## 连接核心系统信号
 func _connect_signals() -> void:
