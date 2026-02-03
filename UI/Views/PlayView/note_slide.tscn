@@ -2,7 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://l8ea12v6pxcj" path="res://Resources/Skins/旧版2/instant.png" id="1_nq3nk"]
 
-[node name="note" type="TextureRect"]
+[node name="slide" type="TextureRect"]
 custom_minimum_size = Vector2(150, 0)
 offset_right = 40.0
 offset_bottom = 40.0

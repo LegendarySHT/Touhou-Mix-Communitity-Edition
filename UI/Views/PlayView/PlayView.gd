@@ -125,36 +125,25 @@ func _show_or_hide_menu():
 func _prepare_game(midi:MidiData) -> void:
 	current_midi = midi
 
-	menu.visible = false
-	song_info.visible = true
-	center_bg.visible = true
-	
+	flow_area.clear_flow_area()
+
 	# 获取封面
 	var cover_texture = FileSystemManager.instance.get_cover_by_midiData(midi)
 	if cover_texture:
 		cover.texture = cover_texture
 	
-	# 设置歌曲信息
-	album.text = midi.artist_name
-	song.text = midi.song_data.name
-	# artist.text = midi.song_data.artist_name # 没找着歌手在哪
-	midi_name.text = midi.name
-	midi_author.text = midi.artist_name
-	
-	# 重置版面
-	flow_area.clear_flow_area()
-
-	# 初始化数据
-	_init_data_display()
-	
 	# 加载MIDI并转换为FlowArea音符
 	_load_and_convert_midi_notes(midi)
 	playback_mgr.pause()
 	
+	# 初始化数据
+	_init_display()
+
 	# 等待3秒显示准备界面
 	await get_tree().create_timer(3).timeout
 	await AnimationManager.instance.animate_fade_out(center_bg, 1).finished
 	
+	is_pause = false
 	# 开始播放MIDI
 	playback_mgr.resume()
 	# _start_midi_playback()
@@ -291,17 +280,6 @@ func _on_game_finished() -> void:
 
 ## 重试游戏
 func _on_retry_pressed() -> void:
-	# _show_or_hide_menu()  # 关闭菜单
-	
-	# # 重置游戏状态
-	# _init_data_display()
-	# current_time = 0
-	# progress_bar.value = 0
-	# flow_area.note_idx = 0
-	
-	# # 重新开始MIDI播放
-	# if current_midi:
-	# 	_start_midi_playback()
 	_prepare_game(current_midi)
 
 ## 退出游戏
@@ -310,18 +288,36 @@ func _on_quit_pressed() -> void:
 	if is_midi_playing and playback_mgr:
 		playback_mgr.stop()
 		is_midi_playing = false
-	_init_data_display()
-	flow_area.clear_flow_area()
+	# _init_display()
+	# flow_area.clear_flow_area()
 	
 	# 返回主菜单或上一级界面
-	UIStateManager.instance.change_state(UIStateManager.UIState.MIDI_VIEW)
+	UIStateManager.instance.go_back()
 
 # 初始化分数等内容的显示
-func _init_data_display():
+func _init_display():
 	score.text = "0"
 	combo.text = "0"
 	score_wait_to_add = 0
 	score_add.text = "+0"
+
+	# 设置歌曲信息
+	album.text = current_midi.artist_name
+	song.text = current_midi.song_data.name
+	# artist.text = current_midi.song_data.artist_name # 没找着歌手在哪
+	midi_name.text = current_midi.name
+	midi_author.text = current_midi.artist_name
+	
+	menu.visible = false
+	song_info.visible = true
+	center_bg.visible = true
+	is_pause = true
+
+	# current_time = 0.0
+	# 重置进度条
+	current_rect = null
+	for i in progress_bar.get_children():
+		i.queue_free()
 
 const color_map = {
 	"Perfect": Color.PURPLE,

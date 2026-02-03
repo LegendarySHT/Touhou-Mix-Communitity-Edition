@@ -24,8 +24,11 @@ background_mode = 3
 background_color = Color(1, 1, 1, 1)
 background_canvas_max_layer = 1
 glow_enabled = true
-glow_normalized = true
-glow_strength = 1.59
+glow_intensity = 0.84
+glow_strength = 1.32
+glow_blend_mode = 1
+glow_hdr_threshold = 1.2
+glow_hdr_scale = 1.72
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kvdpo"]
 bg_color = Color(0.25336733, 0.36870298, 0.8464057, 1)
@@ -112,6 +115,9 @@ theme_override_styles/separator = SubResource("StyleBoxLine_uj6qe")
 [node name="SVP" type="CanvasLayer" parent="FlowArea"]
 layer = 0
 
+[node name="WorldEnvironment" type="WorldEnvironment" parent="FlowArea/SVP"]
+environment = SubResource("Environment_jlvmc")
+
 [node name="Panel" type="Panel" parent="FlowArea/SVP"]
 anchors_preset = 15
 anchor_right = 1.0
@@ -119,9 +125,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="FlowArea/SVP"]
-environment = SubResource("Environment_jlvmc")
 
 [node name="BackBtn" type="TextureButton" parent="."]
 layout_mode = 0
