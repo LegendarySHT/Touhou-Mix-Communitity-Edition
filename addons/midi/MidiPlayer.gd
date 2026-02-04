@@ -299,6 +299,8 @@ var pan_power:float = 1.0
 var reverb_power:float = 0.5
 ## コーラスの強さを定義
 var chorus_power:float = 0.7
+## 轨道级音量配置 {track_index: {channel: float}}
+var track_channel_volumes: Dictionary = {}
 ## 再生準備ができているか？
 var prepared_to_play:bool = false
 ## AudioServerを初期化しているか？
@@ -872,6 +874,8 @@ func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:in
 			var note_player:AudioStreamPlayerADSR = self._get_idle_player( )
 			if note_player != null:
 				note_player.channel_number = channel.number
+				note_player.track_index = track_index  # 记录轨道索引用于音量控制
+				note_player.track_volume_multiplier = get_track_channel_volume(track_index, channel.number)  # 立即设置轨道级音量
 				note_player.key_number = key_number
 				note_player.bus = self.midi_channel_bus_name % channel.number
 				note_player.velocity = velocity
@@ -972,10 +976,38 @@ func update_channel_status( channel:GodotMIDIPlayerChannelStatus ) -> void:
 	self._apply_channel_chorus( channel )
 	self._apply_channel_pan( channel )
 
+## 设置特定(track, channel)对的音量倍数（0.0-1.0)
+## 会立即更新所有该(track, channel)的正在播放的notes的track_volume_multiplier
+## ADSR的_update_volume会在下一帧自动应用这个倍数
+func set_track_channel_volume(track_index: int, channel: int, volume_linear: float) -> void:
+	var clamped_volume = clamp(volume_linear, 0.0, 1.0)
+	
+	# 存储到字典以供新note使用
+	if not track_channel_volumes.has(track_index):
+		track_channel_volumes[track_index] = {}
+	track_channel_volumes[track_index][channel] = clamped_volume
+	
+	# 立即更新所有该(track, channel)的正在播放的notes的track_volume_multiplier
+	# ADSR的_update_volume会在下一帧自动重新计算volume_db（包含track_volume_multiplier）
+	for asp in self.audio_stream_players:
+		if asp.track_index == track_index and asp.channel_number == channel and asp.playing:
+			asp.track_volume_multiplier = clamped_volume
+			# 不再手动设置volume_db，让ADSR的_update_volume在下一帧自动应用
+
+## 获取特定(track, channel)对的音量倍数，默认1.0（正常音量）
+func get_track_channel_volume(track_index: int, channel: int) -> float:
+	if track_channel_volumes.has(track_index):
+		if track_channel_volumes[track_index].has(channel):
+			return track_channel_volumes[track_index][channel]
+	return 1.0
+
 ## チャンネルにボリューム適用
 ## @param	channel	チャンネルステータス
 func _apply_channel_volume( channel:GodotMIDIPlayerChannelStatus ) -> void:
-	AudioServer.set_bus_volume_db( AudioServer.get_bus_index( self.midi_channel_bus_name % channel.number ), linear_to_db( channel.volume * channel.expression ) )
+	var base_volume_db = linear_to_db( channel.volume * channel.expression )
+	AudioServer.set_bus_volume_db( AudioServer.get_bus_index( self.midi_channel_bus_name % channel.number ), base_volume_db )
+	# 注意：轨道级音量衰减现在由ADSR的_update_volume处理，
+	# 不再在这里额外应用。这确保每个note的音量由ADSR信封正确控制
 
 ## 检查该 (track, channel) 是否应该被静音
 func _should_mute_track_channel(channel: int, pitch: int, track_index: int = 0) -> bool:

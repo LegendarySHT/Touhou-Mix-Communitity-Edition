@@ -142,6 +142,9 @@ func _load_midi(midi: MidiData) -> void:
 	# 创建轨道UI
 	_create_track_views()
 
+	# 初始化新MIDI的轨道音量为50%（如果没有保存过配置）
+	_initialize_track_volumes_for_new_midi()
+
 	# 恢复用户配置的UI部分（按钮状态、文本标签等）
 	_restore_midi_ui_config()
 
@@ -371,7 +374,7 @@ func _on_track_solo_toggled(is_solo: bool, track_index: int, channel: int) -> vo
 			midi_playback_manager.set_track_channel_mute(track_ui.track_index, track_ui.track_channel, target_muted)
 
 # 轨道音量改变
-func _on_track_volume_changed(value: float, track_index: int) -> void:
+func _on_track_volume_changed(value: float, track_index: int, channel: int ) -> void:
 	if midi_playback_manager == null:
 		return
 	
@@ -385,13 +388,17 @@ func _on_track_volume_changed(value: float, track_index: int) -> void:
 	if track_ui == null:
 		return
 	
-	# 转换为dB (-80 ~ 0)
-	var volume_db = linear_to_db(value / 100.0)
+	# 转换百分比到线性值 (0-100 → 0.0-1.0)
+	var volume_linear = value / 100.0
 	
-	# 调用MidiPlaybackManager设置轨道音量
-	# 注：这里假设MidiPlaybackManager支持按轨道设置音量
-	# 如果不支持，需要扩展MidiPlaybackManager的功能
-	midi_playback_manager.set_track_volume_db(track_index, volume_db)
+	# 调用MidiPlaybackManager设置轨道音量（立即生效）
+	midi_playback_manager.set_track_channel_volume(track_index, channel, volume_linear)
+	
+	# 同时保存到MidiData以支持持久化
+	if current_midi_data != null:
+		current_midi_data.set_track_channel_volume(track_index, channel, volume_linear)
+	
+	print("[TrackView] Track %d Channel %d volume changed: %.1f%%" % [track_index, channel, value])
 	
 # 乐器选择
 func _on_track_instrument_changed(index: int, track_index: int) -> void:
@@ -674,6 +681,32 @@ func _reset_player() -> void:
 		if track.note_display:
 			track.note_display.reset_playhead_position(0)
 
+## 初始化新MIDI的轨道音量为50%
+## 只在首次加载MIDI时调用（如果没有保存过音量配置）
+func _initialize_track_volumes_for_new_midi() -> void:
+	if current_midi_data == null or midi_playback_manager == null:
+		return
+	
+	# 检查是否已有音量配置（旧MIDI或已保存过）
+	if not current_midi_data.track_channel_volume_config.is_empty():
+		# 已有配置，跳过初始化
+		return
+	
+	# 新MIDI：为所有已创建的轨道初始化音量为50%（0.5线性值）
+	var initialized_count = 0
+	for track_item in list_items:
+		if track_item is MidiTrack:
+			var track_idx = track_item.track_index
+			var channel = track_item.track_channel
+			
+			# 设置默认音量为50%（0.5）
+			var default_volume = 0.5
+			midi_playback_manager.set_track_channel_volume(track_idx, channel, default_volume)
+			current_midi_data.set_track_channel_volume(track_idx, channel, default_volume)
+			initialized_count += 1
+	
+	print("[TrackView] Initialized %d tracks with default volume 50%%" % initialized_count)
+
 # 页面状态回调
 func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	if old_state == work_state and new_state == ui_stat_mgr.UIState.MIDI_VIEW:
@@ -694,8 +727,6 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 
 		# 清空轨道列表
 		clear_items()
-
-## =============== 持久化配置保存与恢复 ====================
 
 ## 保存当前MIDI配置到JSON文件
 func _save_midi_config() -> void:
@@ -796,14 +827,24 @@ func _restore_midi_data_config() -> void:
 	
 	print("[TrackView] Restored MIDI data config: midi_volume=%d, vocal_volume=%d, solo_count=%d" % 
 		[midi_vol, vocal_vol, solo_pairs.size()])
+	
+	# 恢复轨道级音量配置（从保存的配置）
+	if not current_midi_data.track_channel_volume_config.is_empty():
+		for track_index in current_midi_data.track_channel_volume_config.keys():
+			var channels = current_midi_data.track_channel_volume_config[track_index]
+			for channel in channels.keys():
+				var volume = channels[channel]
+				# 立即应用到播放器（转换track_index和channel为int）
+				midi_playback_manager.set_track_channel_volume(int(track_index), int(channel), volume)
+		print("[TrackView] Restored track volumes: %d tracks" % current_midi_data.track_channel_volume_config.size())
 
-## 恢复MIDI配置的UI部分（按钮状态）
+## 恢复MIDI配置的UI部分（按钮状态、音量值）
 ## 在_create_track_views之后调用，此时list_items已有内容
 func _restore_midi_ui_config() -> void:
 	if current_midi_data == null:
 		return
 	
-	# 更新所有轨道按钮的UI状态（启用按钮、静音按钮、独奏按钮）
+	# 更新所有轨道按钮的UI状态（启用按钮、静音按钮、独奏按钮、音量滑块）
 	for track_item in list_items:
 		if track_item is MidiTrack:
 			var track_idx = track_item.track_index
@@ -842,6 +883,20 @@ func _restore_midi_ui_config() -> void:
 				track_item.solo_btn.button_pressed = is_soloed
 				track_item.solo_btn.set_block_signals(false)
 				track_item.solo_btn.modulate = Color(1, 1, 0.5, 1) if is_soloed else Color(1, 1, 1, 1)
+			
+			# 更新音量滑块和标签
+			if track_item.volume_slider:
+				# 从saved配置中获取音量值，如果没有保存过则使用默认值1.0（100%）
+				var saved_volume = current_midi_data.get_track_channel_volume(track_idx, channel)
+				var slider_value = saved_volume * 100.0  # 转换为0-100的百分比
+				
+				track_item.volume_slider.set_block_signals(true)
+				track_item.volume_slider.value = slider_value
+				track_item.volume_slider.set_block_signals(false)
+				
+				# 更新音量标签显示
+				if track_item.volume_label:
+					track_item.volume_label.text = "%.2fdB" % linear_to_db(saved_volume)
 	
 	if not solo_pairs.is_empty():
 		print("[TrackView] Restored solo pairs: %d channels are soloed" % solo_pairs.size())

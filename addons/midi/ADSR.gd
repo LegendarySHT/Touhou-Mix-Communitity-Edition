@@ -19,6 +19,10 @@ const stereo_bus_name_right:String = "arlez80_GMP_CHANNEL_BUS%d_R"
 var channel_number:int = -1
 ## 発音キーナンバー
 var key_number:int = -1
+## 發音軌道インデックス（轨道级音量控制用）
+var track_index:int = 0
+## 轨道级音量倍数（由MidiPlayer在Note On时设置，保证后续不会被覆盖）
+var track_volume_multiplier:float = 1.0
 ## Hold 1
 var hold:bool = false
 ## リリース中？
@@ -205,6 +209,9 @@ func _update_adsr( delta:float ) -> void:
 ## 音量を更新
 func _update_volume( ) -> void:
 	var v:float = self.current_volume_db + linear_to_db( float( self.velocity ) / 127.0 )# + self.instrument.volume_db
+	
+	# 应用轨道级音量衰减（由MidiPlayer设置的track_volume_multiplier）
+	v = v + linear_to_db(self.track_volume_multiplier)
 
 	if self.is_check_using_linked:
 		v = maxf( -80.0, linear_to_db( db_to_linear( v ) / self.polyphony_count / 2.0 ) )

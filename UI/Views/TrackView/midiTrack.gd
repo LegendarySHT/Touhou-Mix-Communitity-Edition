@@ -130,7 +130,7 @@ func _connect_signals():
 	if parent_node.has_method("_on_track_solo_toggled"):
 		solo_btn.toggled.connect(parent_node._on_track_solo_toggled.bind(track_index, track_channel))
 	if parent_node.has_method("_on_track_volume_changed"):
-		volume_slider.value_changed.connect(parent_node._on_track_volume_changed.bind(track_index))
+		volume_slider.value_changed.connect(parent_node._on_track_volume_changed.bind(track_index, track_channel))
 	if parent_node.has_method("_on_track_instrument_changed"):
 		instruments_option_btn.item_selected.connect(parent_node._on_track_instrument_changed.bind(track_index))
 

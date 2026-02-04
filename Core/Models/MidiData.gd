@@ -104,6 +104,9 @@ var midi_volume: int = 50
 ## 人声音量（0-100）
 var vocal_volume: int = 50
 
+## 轨道-通道音量配置 {track_idx: {ch_idx: float(0.0-1.0)}}
+var track_channel_volume_config: Dictionary = {}
+
 ## 独奏状态 (track:channel -> true)
 var solo_pairs: Dictionary = {}
 
@@ -157,6 +160,11 @@ func from_json(json_data: Dictionary) -> void:
 		var saved_mute_state = runtime_config.get("track_channel_mute_state", {})
 		if saved_mute_state is Dictionary:
 			track_channel_mute_state = saved_mute_state.duplicate()
+		
+		# 恢复轨道音量配置
+		var saved_track_volumes = runtime_config.get("track_channel_volume_config", {})
+		if saved_track_volumes is Dictionary:
+			track_channel_volume_config = saved_track_volumes.duplicate()
 		
 		var saved_soundfont = runtime_config.get("use_soundfont", "")
 		if saved_soundfont is String:
@@ -252,6 +260,18 @@ func get_track_channel_mute(track_index: int, channel: int) -> bool:
 func clear_all_mutes() -> void:
 	track_channel_mute_state.clear()
 
+## 设置特定(track, channel)对的音量
+func set_track_channel_volume(track_index: int, channel: int, volume: float) -> void:
+	if not track_channel_volume_config.has(track_index):
+		track_channel_volume_config[track_index] = {}
+	track_channel_volume_config[track_index][channel] = clamp(volume, 0.0, 1.0)
+
+## 获取特定(track, channel)对的音量
+func get_track_channel_volume(track_index: int, channel: int) -> float:
+	if track_channel_volume_config.has(track_index):
+		return track_channel_volume_config[track_index].get(channel, 1.0)
+	return 1.0
+
 ## 导出用户运行时配置为字典
 func export_runtime_config() -> Dictionary:
 	return {
@@ -260,6 +280,7 @@ func export_runtime_config() -> Dictionary:
 		"selected_track_indices": selected_track_indices.duplicate(),
 		"selected_track_configs": selected_track_configs.duplicate(),
 		"track_channel_mute_state": track_channel_mute_state.duplicate(),
+		"track_channel_volume_config": track_channel_volume_config.duplicate(),
 		"solo_pairs": solo_pairs.duplicate(),
 		"use_soundfont": use_soundfont,
 		"saved_at": Time.get_ticks_msec()

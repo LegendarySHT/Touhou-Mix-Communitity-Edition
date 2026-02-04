@@ -414,16 +414,38 @@ func set_volume_db(volume: float) -> void:
 	midi_player.volume_db = volume
 	midi_player_config["volume_db"] = volume
 
+## 设置特定(track, channel)对的音量（线性值0.0-1.0）
+## 立即生效到正在播放的Note
+func set_track_channel_volume(track_index: int, channel: int, volume_linear: float) -> void:
+	if midi_player == null:
+		return
+	
+	# 转换线性值到dB并调用MidiPlayer的方法
+	midi_player.set_track_channel_volume(track_index, channel, clamp(volume_linear, 0.0, 1.0))
+	
+	# 立即应用到channel总线（重新计算音量）
+	if midi_player.channel_status.size() > channel:
+		var ch_status = midi_player.channel_status[channel]
+		midi_player._apply_channel_volume(ch_status)
+	
+	print("[MidiPlaybackManager] Track %d Channel %d volume set to: %.1f%%" % 
+		[track_index, channel, volume_linear * 100.0])
+
+## 获取特定(track, channel)对的音量
+func get_track_channel_volume(track_index: int, channel: int) -> float:
+	if midi_player == null:
+		return 1.0
+	return midi_player.get_track_channel_volume(track_index, channel)
+
 ## 设置特定轨道的音量（相对于主音量）
+## @deprecated 使用 set_track_channel_volume 替代
 func set_track_volume_db(track_index: int, volume_db: float) -> void:
 	if midi_player == null or current_midi_data == null:
 		return
 	
-	# 注：此方法为框架实现
-	# MidiPlayer插件可能不直接支持轨道级音量控制
-	# 实际实现可能需要在MidiPlayer或自定义播放器中扩展
-	# 当前版本记录日志供调试
-	print("[MidiPlaybackManager] Set track %d volume to %.2f dB" % [track_index, volume_db])
+	# 注：此方法已升级，现在通过set_track_channel_volume实现
+	# 为保持兼容性，这里仅记录日志
+	print("[MidiPlaybackManager] Set track %d volume to %.2f dB (deprecated, use set_track_channel_volume)" % [track_index, volume_db])
 
 ## 设置人声音量（占位符 - 待后续实现AudioManager集成）
 func set_vocal_volume_db(volume_db: float) -> void:
