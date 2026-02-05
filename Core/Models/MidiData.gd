@@ -104,6 +104,9 @@ var midi_volume: int = 50
 ## 人声音量（0-100）
 var vocal_volume: int = 50
 
+## 人声文件路径（完整路径或相对路径）
+var vocal_file_path: String = ""
+
 ## 轨道-通道音量配置 {track_idx: {ch_idx: float(0.0-1.0)}}
 var track_channel_volume_config: Dictionary = {}
 
@@ -157,14 +160,31 @@ func from_json(json_data: Dictionary) -> void:
 			for idx in saved_track_indices:
 				selected_track_indices.append(int(idx))
 		
+		# 恢复轨道静音状态（处理JSON中的字符串键）
 		var saved_mute_state = runtime_config.get("track_channel_mute_state", {})
 		if saved_mute_state is Dictionary:
-			track_channel_mute_state = saved_mute_state.duplicate()
+			track_channel_mute_state.clear()
+			for track_key in saved_mute_state.keys():
+				var track_idx = int(track_key)  # JSON中的整数键被转换为字符串
+				var channels = saved_mute_state[track_key]
+				if channels is Dictionary:
+					track_channel_mute_state[track_idx] = {}
+					for ch_key in channels.keys():
+						var channel = int(ch_key)
+						track_channel_mute_state[track_idx][channel] = channels[ch_key]
 		
-		# 恢复轨道音量配置
+		# 恢复轨道音量配置（处理JSON中的字符串键）
 		var saved_track_volumes = runtime_config.get("track_channel_volume_config", {})
 		if saved_track_volumes is Dictionary:
-			track_channel_volume_config = saved_track_volumes.duplicate()
+			track_channel_volume_config.clear()
+			for track_key in saved_track_volumes.keys():
+				var track_idx = int(track_key)  # JSON中的整数键被转换为字符串
+				var channels = saved_track_volumes[track_key]
+				if channels is Dictionary:
+					track_channel_volume_config[track_idx] = {}
+					for ch_key in channels.keys():
+						var channel = int(ch_key)
+						track_channel_volume_config[track_idx][channel] = float(channels[ch_key])
 		
 		var saved_soundfont = runtime_config.get("use_soundfont", "")
 		if saved_soundfont is String:
@@ -175,10 +195,23 @@ func from_json(json_data: Dictionary) -> void:
 		if saved_solo_pairs is Dictionary:
 			solo_pairs = saved_solo_pairs.duplicate()
 		
-		# 恢复音轨启用状态
+		# 恢复音轨启用状态（处理JSON中的字符串键）
 		var saved_track_configs = runtime_config.get("selected_track_configs", {})
 		if saved_track_configs is Dictionary:
-			selected_track_configs = saved_track_configs.duplicate()
+			selected_track_configs.clear()
+			for track_key in saved_track_configs.keys():
+				var track_idx = int(track_key)  # JSON中的整数键被转换为字符串
+				var channels = saved_track_configs[track_key]
+				if channels is Array:
+					# 将数组中的元素转换为整数（通道编号）
+					selected_track_configs[track_idx] = []
+					for ch in channels:
+						selected_track_configs[track_idx].append(int(ch))
+		
+		# 恢复人声文件路径
+		var saved_vocal_path = runtime_config.get("vocal_file_path", "")
+		if saved_vocal_path is String:
+			vocal_file_path = saved_vocal_path
 
 ## 转换为字典格式（用于导出或缓存）
 func to_dict() -> Dictionary:
@@ -277,6 +310,7 @@ func export_runtime_config() -> Dictionary:
 	return {
 		"midi_volume": midi_volume,
 		"vocal_volume": vocal_volume,
+		"vocal_file_path": vocal_file_path,
 		"selected_track_indices": selected_track_indices.duplicate(),
 		"selected_track_configs": selected_track_configs.duplicate(),
 		"track_channel_mute_state": track_channel_mute_state.duplicate(),

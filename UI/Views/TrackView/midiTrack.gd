@@ -148,7 +148,7 @@ func setup_track(parent: Node, index: int, track_name: String, instruments: Arra
 
 func _on_mute_toggled(is_pressed: bool):
 	if midi_data:
-		midi_data.set_track_channel_enabled(track_index, track_channel, not is_pressed)
+		midi_data.set_track_channel_mute(track_index, track_channel, is_pressed)
 	mute_btn.modulate = Color(1, 0.5, 0.5, 1) if is_pressed else Color(1, 1, 1, 1)
 
 func _on_solo_toggled(is_pressed: bool):

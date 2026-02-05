@@ -313,7 +313,7 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 		return metadata
 	
 	# 音频文件不是必需的，但会查找
-	var audio_extensions = ["ogg", "mp3", "wav"]
+	var audio_extensions = ["ogg", "mp3", "wav", "flac"]
 	var has_audio = false
 	for ext in audio_extensions:
 		var audio_path = chart_path.path_join(chart_id + "." + ext)
@@ -505,6 +505,64 @@ func get_logs_directory() -> String:
 ## 获取设置目录路径
 func get_settings_directory() -> String:
 	return SETTINGS_DIR
+
+## 从 chart_id 反向查询对应的曲包文件夹路径
+## 参数: chart_id - MidiData 中的 id 字段或 file_hash 字段
+## 返回: user://files/Charts/[folder_name]/ 或空字符串（未找到）
+func get_chart_folder_path(chart_id: String) -> String:
+	# 事先检查 charts_index 是否已初始化
+	if charts_index.is_empty():
+		GameLogger.instance.warning("charts_index is empty, cannot locate chart folder", "FileSystemMGR")
+		return ""
+	
+	# 遍历 charts_index 查找匹配的 chart_id
+	for folder_name in charts_index.keys():
+		var metadata = charts_index[folder_name]
+		var metadata_id = metadata.get("id", "")
+		
+		# 匹配方式1：通过 metadata 中的 id 字段匹配
+		if metadata_id == chart_id:
+			var folder_path = metadata.get("path", "")
+			if not folder_path.is_empty():
+				return folder_path
+		
+		# 匹配方式2：通过 JSON 数据中的 hash 字段匹配
+		var json_data = metadata.get("data", {})
+		if json_data is Dictionary and json_data.has("hash"):
+			if json_data.get("hash", "") == chart_id:
+				var folder_path = metadata.get("path", "")
+				if not folder_path.is_empty():
+					return folder_path
+	
+	# 未找到，打印调试信息并返回空字符串
+	GameLogger.instance.warning("Chart folder path not found for ID: %s" % chart_id, "FileSystemMGR")
+	return ""
+
+## 验证文件是否为有效的音频文件
+## 参数: file_path - 文件路径
+## 返回: bool - 是否是有效的音频文件
+func is_valid_audio_file(file_path: String) -> bool:
+	# 检查文件是否存在
+	if not FileAccess.file_exists(file_path):
+		return false
+	
+	# 检查文件是否不是空文件
+	var file = FileAccess.open(file_path, FileAccess.READ)
+	if file == null:
+		GameLogger.instance.warning("Cannot access audio file: %s" % file_path, "FileSystemMGR")
+		return false
+	
+	var file_size = file.get_length()
+	file.close()
+	
+	# 检查文件大小（小于1KB的文件不是有效的音频）
+	if file_size < 1024:
+		return false
+	
+	# 检查文件扩展名
+	var valid_extensions = ["ogg", "mp3", "wav", "flac"]
+	var file_ext = file_path.get_extension().to_lower()
+	return valid_extensions.has(file_ext)
 
 ## 重新扫描资源（热重载）
 func rescan_resources() -> void:
