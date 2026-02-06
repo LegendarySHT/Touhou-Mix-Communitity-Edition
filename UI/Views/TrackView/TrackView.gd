@@ -1018,12 +1018,19 @@ func _restore_midi_data_config() -> void:
 	
 	midi_vol_slider.value = midi_vol
 	vocal_vol_slider.value = vocal_vol
-	
+
 	_set_display_midi_volume(midi_vol_slider.value)
 	_set_display_vocal_volume(vocal_vol_slider.value)
-	
+
 	midi_vol_slider.set_block_signals(false)
 	vocal_vol_slider.set_block_signals(false)
+
+	# 应用实际的播放音量，不只是更新UI
+	var midi_volume_db = linear_to_db(midi_vol / 100.0)
+	midi_playback_manager.set_volume_db(midi_volume_db)
+
+	var vocal_volume_db = linear_to_db(vocal_vol / 100.0)
+	midi_playback_manager.set_vocal_volume_db(vocal_volume_db)
 	
 	# 恢复进度条位置和最大值（初始化为0）
 	progress_bar.set_block_signals(true)
