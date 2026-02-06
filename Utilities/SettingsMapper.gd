@@ -23,6 +23,7 @@ static var mappings: Dictionary = {
 	"soundfont_select": {"section": "Gameplay", "key": "soundfont_file", "value_type": "string"},
 	"default_midi_volume": {"section": "Gameplay", "key": "default_midi_volume", "value_type": "int"},
 	"default_vocal_volume": {"section": "Gameplay", "key": "default_vocal_volume", "value_type": "int"},
+	"audio_sync_threshold": {"section": "Gameplay", "key": "audio_sync_threshold", "value_type": "int"},
 	"lane_count": {"section": "Lane", "key": "lane_count", "value_type": "int"},
 	"keyboard_mode": {"section": "Lane", "key": "keyboard_mode", "value_type": "int"},
 	"keyboard_mode_keys": {"section": "Lane", "key": "keyboard_mode_keys", "value_type": "string"},
@@ -183,6 +184,8 @@ static func validate_value(setting_id: String, value: Variant) -> bool:
 	match setting_id:
 		"lane_count":
 			return int(value) > 0 and int(value) <= 24
+		"audio_sync_threshold":
+			return int(value) >= 1 and int(value) <= 1000
 		"playback_speed_scaling":
 			return float(value) > 0.0 and float(value) <= 3.0
 		"flash_alpha":

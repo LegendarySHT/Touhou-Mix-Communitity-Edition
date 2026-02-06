@@ -153,6 +153,13 @@ func _prepare_game(midi:MidiData) -> void:
 	playback_mgr.seek(0)
 	playback_mgr.pause()
 	
+	# 读取并设置音频同步阈值
+	var setting_view = get_node_or_null("/root/Main/SettingView")
+	if setting_view and setting_view.has_method("get_setting_value"):
+		var sync_threshold = setting_view.get_setting_value("audio_sync_threshold")
+		if sync_threshold != null:
+			playback_mgr.set_sync_threshold(float(sync_threshold))
+			print("[PlayView] Audio sync threshold set to %.0f ms" % float(sync_threshold))
 	# 初始化数据
 	_init_display()
 

@@ -142,17 +142,26 @@ var setting_groups = [
 				"default_value": "50",
 				"unit": "%"
 			},
-			{
-				"id": "soundfont_select",
-				"name_en": "Sound Font",
-				"name_zh": "音源选择",
-				"description": "选择MIDI播放时使用的SoundFont音源文件。",
-				"type": "TYPE_OPTION",
-				"default_value": "GeneralUser-GS.sf2",
-				"options": [],
-				"dynamic_options": true
-			}
-		]
+		{
+			"id": "audio_sync_threshold",
+			"name_en": "Audio Sync Threshold",
+			"name_zh": "音频不同步阈值",
+			"description": "MIDI与人声进度差值超过此阈值时自动对齐，范围50-500毫秒",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "200",
+			"unit": "ms"
+		},
+		{
+			"id": "soundfont_select",
+			"name_en": "Sound Font",
+			"name_zh": "音源选择",
+			"description": "选择MIDI播放时使用的SoundFont音源文件。",
+			"type": "TYPE_OPTION",
+			"default_value": "GeneralUser-GS.sf2",
+			"options": [],
+			"dynamic_options": true
+		}
+	]
 	},
 	{
 		"name": "轨道设置",

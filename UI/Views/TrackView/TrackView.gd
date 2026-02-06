@@ -136,6 +136,11 @@ func _ready() -> void:
 		if not file_dialog.is_connected("file_selected", Callable(self, "_on_vocal_file_selected")):
 			file_dialog.file_selected.connect(_on_vocal_file_selected)
 
+	# 连接Latency输入框信号（检查防止重复连接）
+	if latency_edit:
+		if not latency_edit.is_connected("text_changed", Callable(self, "_on_latency_changed")):
+			latency_edit.text_changed.connect(_on_latency_changed)
+
 	super._ready()
 
 # 加载并播放midi
@@ -153,9 +158,11 @@ func _load_midi(midi: MidiData) -> void:
 	container.custom_minimum_size.y = 0
 	container.size.y = 0
 	
+# 【关键】在加载MIDI之前先检测人声文件，确保vocal_file_path已设置
+	_detect_vocal_file(current_midi_data)
 	# 加载MIDI到播放管理器
 	if not midi_playback_manager.load_midi(midi):
-		push_error("Failed to load MIDI: " + midi.id)
+		push_error("Failed to load MIDI: " + midi.name)
 
 	# 恢复用户配置的数据部分（音量值、进度条、独奏状态）
 	_restore_midi_data_config()
@@ -195,8 +202,10 @@ func _load_midi(midi: MidiData) -> void:
 	_restore_midi_ui_config()
 
 	# 检测并初始化人声文件
-	_detect_vocal_file(current_midi_data)
 	_init_vocal_btn_display()
+
+	# 初始化Latency输入框
+	_init_latency_edit()
 
 	# 等容器尺寸更新，再增加上下边距
 	await container.resized
@@ -340,6 +349,11 @@ func _on_vocal_volume_changed(value: float) -> void:
 	# 转换为dB (-80 ~ 0)
 	var volume_db = linear_to_db(value / 100.0)
 	midi_playback_manager.set_vocal_volume_db(volume_db)
+
+	# 更新MidiData中的音量值，用于持久化
+	if current_midi_data != null:
+		current_midi_data.vocal_volume = int(value)
+
 	# 更新标签
 	_set_display_vocal_volume(value)
 
@@ -752,7 +766,7 @@ func _set_display_vocal_volume(value: float) -> void:
 	vocal_vol_slider.set_block_signals(true)
 	vocal_vol_slider.value = value
 	vocal_vol_slider.set_block_signals(false)
-	
+
 	vocal_vol_label.text = "%d%%" % int(value)
 
 # 格式化时间（毫秒到 HH:MM:SS）
@@ -1112,4 +1126,47 @@ func _restore_midi_ui_config() -> void:
 		print("[TrackView] Restored enable states: %d tracks with specific enabled channels" % current_midi_data.selected_track_configs.size())
 	else:
 		print("[TrackView] New MIDI: All tracks shown as enabled, will be finalized in _init_master_note_displayer")
+
+## 初始化Latency输入框（从MidiData读取偏移值）
+func _init_latency_edit() -> void:
+	if latency_edit == null or current_midi_data == null:
+		return
+
+	# 从MidiData读取人声偏移量并显示
+	latency_edit.set_block_signals(true)
+	latency_edit.text = str(int(current_midi_data.vocal_offset_ms))
+	latency_edit.set_block_signals(false)
+
+	# 将偏移值应用到MidiPlaybackManager
+	midi_playback_manager.set_vocal_offset_ms(current_midi_data.vocal_offset_ms)
+
+## 处理Latency输入框文本变化
+func _on_latency_changed(new_text: String) -> void:
+	if current_midi_data == null or midi_playback_manager == null or latency_edit == null:
+		return
+
+	# 验证输入（确保是有效的整数）
+	var offset_ms: int = 0
+	if not new_text.is_empty():
+		if new_text.is_valid_int():
+			offset_ms = int(new_text)
+		else:
+			# 如果输入无效，恢复为之前的值
+			latency_edit.set_block_signals(true)
+			latency_edit.text = str(int(current_midi_data.vocal_offset_ms))
+			latency_edit.set_block_signals(false)
+			return
+
+	# 更新MidiData中的偏移值
+	current_midi_data.vocal_offset_ms = offset_ms
+
+	# 应用到MidiPlaybackManager
+	midi_playback_manager.set_vocal_offset_ms(offset_ms)
+
+	# 如果人声正在播放，立即应用偏移
+	if midi_playback_manager.is_playing:
+		midi_playback_manager.apply_vocal_offset()
+
+	print("[TrackView] Latency offset changed to %d ms" % offset_ms)
+
 	

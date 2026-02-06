@@ -10,11 +10,20 @@ static var instance: AudioManager
 ## 背景音乐播放器
 @onready var bgm_player: AudioStreamPlayer = AudioStreamPlayer.new()
 
+## 人声播放器
+var vocal_player: AudioStreamPlayer
+
 ## 音效播放器池
 var sfx_players: Array[AudioStreamPlayer] = []
 
 ## MIDI播放管理器引用
 var midi_playback_manager: MidiPlaybackManager
+
+## 人声初始偏移量（毫秒）
+var vocal_offset_ms: float = 0.0
+
+## 人声播放状态标志
+var vocal_is_playing: bool = false
 
 ## 是否启用音频
 var audio_enabled: bool = true
@@ -37,11 +46,16 @@ func _ready() -> void:
 	else:
 		queue_free()
 	add_to_group("singleton")
-	
+
 	# 初始化背景音乐播放器
 	add_child(bgm_player)
 	bgm_player.bus = "Music"
-	
+
+	# 初始化人声播放器
+	vocal_player = AudioStreamPlayer.new()
+	vocal_player.bus = "Music"
+	add_child(vocal_player)
+
 	# 初始化音效播放器池（预创建10个）
 	for i in range(10):
 		var player = AudioStreamPlayer.new()
@@ -251,3 +265,48 @@ func set_midi_volume(volume_db: float) -> void:
 	var midi_mgr = get_midi_playback_manager()
 	if midi_mgr != null:
 		midi_mgr.set_volume_db(volume_db)
+
+## ========== 人声相关方法 ==========
+
+## 播放人声音频，支持毫秒偏移
+func play_vocal(audio_stream: AudioStream, offset_ms: float = 0.0) -> void:
+	if not audio_enabled or audio_stream == null or vocal_player == null:
+		return
+
+	vocal_offset_ms = offset_ms
+	vocal_player.stream = audio_stream
+	vocal_player.play(offset_ms / 1000.0)  # 转换为秒
+	vocal_is_playing = true
+
+## 停止人声播放
+func stop_vocal() -> void:
+	if vocal_player != null:
+		vocal_player.stop()
+		vocal_is_playing = false
+
+## 通过设置stream_paused来暂停/恢复人声
+func set_vocal_playing(is_playing: bool) -> void:
+	if vocal_player != null:
+		vocal_player.stream_paused = not is_playing
+		vocal_is_playing = is_playing
+
+## 获取人声播放进度（毫秒）
+func get_vocal_position() -> float:
+	if vocal_player != null and vocal_player.playing:
+		return vocal_player.get_playback_position() * 1000.0  # 转换为毫秒
+	return 0.0
+
+## 跳转人声播放进度（毫秒）
+func seek_vocal(position_ms: float) -> void:
+	if vocal_player != null and vocal_player.stream != null:
+		var position_sec = clamp(position_ms / 1000.0, 0.0, vocal_player.stream.get_length())
+		vocal_player.seek(position_sec)
+
+## 设置人声音量（dB）
+func set_vocal_volume_db(volume_db: float) -> void:
+	if vocal_player != null:
+		vocal_player.volume_db = volume_db
+
+## 检查人声是否正在播放
+func is_vocal_playing() -> bool:
+	return vocal_is_playing and vocal_player != null and vocal_player.playing
