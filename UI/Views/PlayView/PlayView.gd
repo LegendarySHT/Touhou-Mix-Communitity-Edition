@@ -4,43 +4,47 @@ extends Control
 @onready var flow_area: Panel = $FlowArea
 
 @onready var background: TextureRect = $Background
-@onready var menu_btn: TextureButton = $BackBtn
-@onready var progress_bar: ProgressBar = $TopProgressBar
+@onready var menu_btn: TextureButton = $Layer/BackBtn
+@onready var progress_bar: ProgressBar = $Layer/TopProgressBar
 
 # 中间
-@onready var combo: Label = $Combo/count
-@onready var score: Label = $Score/count
-@onready var score_add: Label = $Score/add
+@onready var combo: Label = $Layer/Combo/count
+@onready var score: Label = $Layer/Score/count
+@onready var score_add: Label = $Layer/Score/add
 # 显示perfect的那个部分
-@onready var center: VBoxContainer = $Center
-@onready var center_text: Label = $Center/type
-@onready var early_text: Label = $Center/up
-@onready var late_text: Label = $Center/down
+@onready var center: VBoxContainer = $Layer/Center
+@onready var center_text: Label = $Layer/Center/type
+@onready var early_text: Label = $Layer/Center/up
+@onready var late_text: Label = $Layer/Center/down
 
 # 底部
-@onready var pp_text: Label = $LeftBottom
-@onready var accuracy_text: Label = $RightBottom
+@onready var pp_text: Label = $Layer/LeftBottom
+@onready var accuracy_text: Label = $Layer/RightBottom
 
 # 菜单及歌曲信息的背景遮罩
-@onready var center_bg:ColorRect = $CenterBackGround
+@onready var center_bg:ColorRect = $Layer/CenterBackGround
 # 菜单
-@onready var menu: Control = $CenterBackGround/Menu
-@onready var retry_btn: Button = $CenterBackGround/Menu/retry
-@onready var continue_btn: Button = $CenterBackGround/Menu/continue
-@onready var quit_btn: Button = $CenterBackGround/Menu/quit
+@onready var menu: Control = $Layer/CenterBackGround/Menu
+@onready var retry_btn: Button = $Layer/CenterBackGround/Menu/retry
+@onready var continue_btn: Button = $Layer/CenterBackGround/Menu/continue
+@onready var quit_btn: Button = $Layer/CenterBackGround/Menu/quit
 # 歌曲信息
-@onready var song_info: Control = $CenterBackGround/SongInfo
-@onready var cover: TextureRect = $CenterBackGround/SongInfo/PanelContainer/TextureRect
+@onready var song_info: Control = $Layer/CenterBackGround/SongInfo
+@onready var cover: TextureRect = $Layer/CenterBackGround/SongInfo/PanelContainer/TextureRect
 # 原曲
-@onready var album: Label = $CenterBackGround/SongInfo/GridContainer/album
-@onready var song: Label = $CenterBackGround/SongInfo/GridContainer/song
-@onready var artist: Label = $CenterBackGround/SongInfo/GridContainer/artist
+@onready var album: Label = $Layer/CenterBackGround/SongInfo/GridContainer/album
+@onready var song: Label = $Layer/CenterBackGround/SongInfo/GridContainer/song
+@onready var artist: Label = $Layer/CenterBackGround/SongInfo/GridContainer/artist
 # midi
-@onready var midi_name: Label = $CenterBackGround/SongInfo/GridContainer/midiName
-@onready var midi_author: Label = $CenterBackGround/SongInfo/GridContainer/midiAuthor
-@onready var midi_duration: Label = $CenterBackGround/SongInfo/GridContainer/midiDuration
+@onready var midi_name: Label = $Layer/CenterBackGround/SongInfo/GridContainer/midiName
+@onready var midi_author: Label = $Layer/CenterBackGround/SongInfo/GridContainer/midiAuthor
+@onready var midi_duration: Label = $Layer/CenterBackGround/SongInfo/GridContainer/midiDuration
 # 难度
-@onready var difficulty: Label = $CenterBackGround/SongInfo/GridContainer/difficulty
+@onready var difficulty: Label = $Layer/CenterBackGround/SongInfo/GridContainer/difficulty
+
+# 环境
+@onready var env: WorldEnvironment = $FlowArea/SVP/WorldEnvironment
+var glow: Environment = null
 
 var current_midi: MidiData = null
 
@@ -54,6 +58,7 @@ func _ready() -> void:
 
 	EventBus.instance.start_game_with.connect(_prepare_game)
 	UIStateManager.instance.state_changed.connect(_on_state_changed)
+	_on_state_changed(UIStateManager.instance.UIState.NONE, UIStateManager.instance.current_state)
 
 	progress_bar.value_changed.connect(_on_top_progress_bar_value_changed)
 
@@ -75,6 +80,9 @@ func _ready() -> void:
 	playback_mgr.midi_stopped.connect(_on_midi_stopped)
 	playback_mgr.midi_finished.connect(_on_midi_finished)
 
+	glow = env.environment
+	env.environment = null
+
 var current_time: float = 0
 var max_time: float = 20
 
@@ -87,12 +95,20 @@ func _process(_delta: float) -> void:
 	if not is_pause:
 		# 如果正在播放MIDI，使用MIDI播放管理器的时间
 		current_time = playback_mgr.get_position_ms()
+		
 		progress_bar.value = current_time
+	
+		if not env.environment:
+			env.environment = glow
+	else:
+		if env.environment != null:
+			env.environment = null
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
 	set_process(enable)
 	set_process_input(enable)
+	get_node("Layer").visible = enable
 	
 	# 离开播放视图时停止MIDI播放
 	if _oldState == UIStateManager.UIState.PLAY_VIEW and state != UIStateManager.UIState.PLAY_VIEW:
@@ -131,19 +147,24 @@ func _prepare_game(midi:MidiData) -> void:
 	var cover_texture = FileSystemManager.instance.get_cover_by_midiData(midi)
 	if cover_texture:
 		cover.texture = cover_texture
-	
+
 	# 加载MIDI并转换为FlowArea音符
 	_load_and_convert_midi_notes(midi)
+	playback_mgr.seek(0)
 	playback_mgr.pause()
 	
 	# 初始化数据
 	_init_display()
 
+	# 设置进度条最大值
+	max_time = midi.duration_ms
+	progress_bar.max_value = max_time
+
 	# 等待3秒显示准备界面
 	await get_tree().create_timer(3).timeout
+	is_pause = false # 结束暂停会启用辉光
 	await AnimationManager.instance.animate_fade_out(center_bg, 1).finished
 	
-	is_pause = false
 	# 开始播放MIDI
 	playback_mgr.resume()
 	# _start_midi_playback()
@@ -170,10 +191,6 @@ func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
 		push_warning("No manual control notes found. Using all notes instead.")
 		manual_notes = midi_data.parsed_notes
 
-	# 设置进度条最大值
-	max_time = midi_data.duration_ms
-	progress_bar.max_value = max_time
-	
 	# 转换音符格式
 	flow_area.notes_list = _convert_midi_to_notes(manual_notes, midi_data)
 	flow_area.note_idx = 0  # 重置音符索引
@@ -196,15 +213,11 @@ func _convert_midi_to_notes(midi_notes: Array, _midi_data: MidiData) -> Array[Fl
 			var start_ms = playback_mgr.tick_to_ms(start_tick)
 			var duration_ms = playback_mgr.tick_to_ms(start_tick + duration_tick) - start_ms
 			
-			# 计算到达时间（音符前端到达判定线的时间）
-			# 这里可以根据游戏难度调整提前量，这里使用200ms提前量
-			var arrival_time = start_ms + 200  # 音符在start_time + 200ms时到达判定线
-			
 			# 确定车道（lane） - 将MIDI音高映射到12个车道
 			var lane = evt.pitch % flow_area.lane_count
 
 			var block_type = FlowArea.NoteType.Block
-			if duration_ms < 50:
+			if duration_ms < 100:
 				block_type = FlowArea.NoteType.Slide
 			if duration_ms > 1000:
 				block_type = FlowArea.NoteType.Long
@@ -213,7 +226,6 @@ func _convert_midi_to_notes(midi_notes: Array, _midi_data: MidiData) -> Array[Fl
 			var flow_note = FlowArea.Note.new(
 				block_type,
 				start_ms,          # 开始时间
-				arrival_time,      # 到达时间
 				duration_ms,       # 持续时间
 				lane               # 车道
 			)
@@ -288,8 +300,8 @@ func _on_quit_pressed() -> void:
 	if is_midi_playing and playback_mgr:
 		playback_mgr.stop()
 		is_midi_playing = false
-	# _init_display()
-	# flow_area.clear_flow_area()
+	_init_display()
+	flow_area.clear_flow_area()
 	
 	# 返回主菜单或上一级界面
 	UIStateManager.instance.go_back()
@@ -392,29 +404,31 @@ func _set_score_add_amount(amount: int):
 # 进度条颜色填充回调
 var current_color: Color = color_map["Miss"]
 var current_rect: ColorRect = null
+var last_rect: ColorRect = null
 func _on_top_progress_bar_value_changed(value: float):
-	var window_rect: Rect2 = get_viewport().get_visible_rect()
-	var pos_r: int = int(window_rect.position.x + window_rect.size.x)
-	pos_r *= value / progress_bar.max_value
+	var anchor_l = 0.0 if not last_rect else last_rect.anchor_right
+	var percent_r: float = value / progress_bar.max_value
 	if current_rect:
-		current_rect.size.x = pos_r - current_rect.global_position.x
+		current_rect.anchor_right = percent_r
 	else:
 		current_rect = ColorRect.new()
-		current_rect.color = current_color
-		current_rect.size = progress_bar.size
-		current_rect.size.x = pos_r
-		var pos = Vector2.ZERO
-		if progress_bar.get_child_count() > 0:
-			pos = Vector2(pos_r, 0)
-		current_rect.global_position = pos
 
+		current_rect.anchor_left = anchor_l if anchor_l < 0.002 else anchor_l - 0.001
+		current_rect.anchor_right = percent_r
+		current_rect.color = current_color
+		current_rect.size.y = progress_bar.size.y
+
+		last_rect = current_rect
 		progress_bar.add_child(current_rect)
 
 func _set_progress_bar_color(cl: Color):
 	if cl == current_color:
 		return
-	if current_rect and current_rect.size.x < 10:
-		current_rect.color = cl
-	else:
-		current_rect = null
 	current_color = cl
+	if not current_rect or current_rect.size.x > 20:
+		current_rect = null
+		print("create new")
+		_on_top_progress_bar_value_changed(progress_bar.value)
+		return
+
+	current_rect.color = cl

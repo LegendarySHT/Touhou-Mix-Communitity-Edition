@@ -28,8 +28,8 @@ var judge_windows: Dictionary = {
 	"good": 100       # 一般判定窗口
 }
 
-# 音符生成提前量（毫秒） - 确保音符在到达判定线前有足够时间显示
-var note_generation_lead_time: float = 1000.0
+# 音符生成提前量（毫秒） - 确保音符在到达判定线前有足够时间显示 - 调下落速度也是用它（
+var note_generation_lead_time: float = 900.0
 
 ###################################
 
@@ -63,7 +63,7 @@ enum NoteType {
 class Note:
 	var rect: Node
 	var start_time: float    	# 生成note时的时间
-	var arrival_time: float  	# 音符前端到达判定线的时间
+	# var arrival_time: float  	# 音符前端到达判定线的时间
 	var duration: float
 	var type: NoteType
 	var lane: int            	# 轨道索引
@@ -72,9 +72,8 @@ class Note:
 	var panel_size_y: float = 0.0    # VBoxC的偏移量（用于长条音符）
 	var held_by_touch_id: int = -1  # 按住该音符的触摸点ID
 	
-	func _init(tp: NoteType, st: float, at: float, dur: float, l: int):
+	func _init(tp: NoteType, st: float, dur: float, l: int):
 		start_time = st
-		arrival_time = at
 		duration = dur
 		type = tp
 		lane = l
@@ -124,26 +123,33 @@ func _spawn_note(note_index: int) -> void:
 	var rect = _create_note(nt.type, note_width, start_x)
 	nt.set_rect(rect)
 
-	# 计算下落时间（从生成到到达判定线的时间）
-	var current_time = parent_node.current_time if parent_node else 0
-	var fall_time = (nt.arrival_time - current_time) / 1000.0  # 转换为秒
+	# print("ct: %f st: %f" % [parent_node.current_time, nt.start_time])
+	var speed = jl.position.y / note_generation_lead_time
 
+	# 计算下落位置
 	var note_c = rect.size.y/2
 	if nt.type == NoteType.Long:
-		var head = nt.rect.get_node("VBoxC/head")
+		var box = nt.rect.get_node("VBoxC")
+		box.get_node("body").custom_minimum_size.y = speed * nt.duration
+
 		await get_tree().process_frame
-		note_c = nt.rect.size.y - head.size.y/2
-		print("long %d" % note_c)
+		nt.rect.size.y = box.size.y
+		nt.rect.position.y = - box.size.y
+		
+		note_c = box.get_node("tail").size.y/2
 	
-	var fall_finl_pos = jl.position.y + nt.rect.position.y # + note_c   # 从顶部到判定线的距离
+	var fall_finl_pos = jl.position.y - note_c   # 从顶部到判定线的距离
 	
+	var long_note_offset = ((nt.rect.size.y + note_c) / speed) if nt.type == NoteType.Long else 0
+	var fall_time = (note_generation_lead_time + long_note_offset) / 1000.0
+
 	# 使用Tween创建下落动画
 	var tween = create_tween()
 	tween.tween_property(rect, "position:y", fall_finl_pos, fall_time).set_trans(trans_before_line).set_ease(ease_before_line)
 	
 	# 判定线后动画
 	var window_y = get_viewport().get_visible_rect().size.y
-	var after_line_time = max(nt.duration / 1000.0, 0.5)  # 至少0.5秒的后续动画
+	var after_line_time = (judge_line_offset_y / speed) / 1000.0
 	tween.tween_property(rect, "position:y", window_y, after_line_time).set_trans(trans_after_line).set_ease(ease_after_line)
 
 	# 创建Note对象并添加到活跃列表
@@ -164,7 +170,7 @@ func _spawn_note(note_index: int) -> void:
 	)
 
 # 因为在for循环遍历时erase会导致漏元素，所以推迟元素的移除
-func _delay_free(list: Array, item_to_free):
+func _delay_free(list, item_to_free):
 	list.erase(item_to_free)
 
 func remove_note(note: Note) -> void:
@@ -178,6 +184,9 @@ func remove_note(note: Note) -> void:
 		call_deferred("_delay_free", active_holds, note.held_by_touch_id)
 
 func clear_flow_area():
+	if not notes_list:
+		return
+
 	print("clear notes %d" % active_notes.size())
 	notes_list.clear()
 	for i in active_notes:
@@ -280,7 +289,7 @@ func _hold_long_note(touch_id: int, note: Note) -> void:
 	
 	# 立即判定为Perfect（开始长按）
 	var current_time = parent_node.current_time if parent_node else 0
-	var time_diff = current_time - note.arrival_time
+	var time_diff = current_time - note.start_time
 	note_judged.emit("Perfect", "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff])
 
 # 更新长条音符显示
@@ -348,8 +357,7 @@ func _check_slide_notes_in_touch_range(touch_id: int, pos: Vector2) -> void:
 
 # 在指定位置判定音符
 func _judge_note_at_position(note: Note) -> void:
-	var current_time = parent_node.current_time if parent_node else 0
-	var time_diff = current_time - note.arrival_time
+	var time_diff = parent_node.current_time - note.start_time
 	
 	var result: String = "Bad"
 	if abs(time_diff) <= judge_windows["perfect"]:
@@ -406,7 +414,7 @@ func _generate_particle(type: String, pos: Vector2):
 
 func _judge_note(judge_note: Note):
 	var current_time = parent_node.current_time if parent_node else 0
-	var time_diff = current_time - judge_note.arrival_time
+	var time_diff = current_time - judge_note.start_time
 	var result: String = "Bad"
 
 	if abs(time_diff) <= judge_windows["perfect"]:
