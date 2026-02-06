@@ -359,8 +359,9 @@ alignment = 1
 [node name="Latency" type="LineEdit" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC"]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
-focus_mode = 0
 alignment = 1
+keep_editing_on_text_submit = true
+emoji_menu_enabled = false
 
 [node name="Label" type="Label" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC"]
 layout_mode = 2

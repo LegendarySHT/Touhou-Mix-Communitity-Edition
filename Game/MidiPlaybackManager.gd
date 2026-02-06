@@ -43,6 +43,15 @@ var default_soundfont_path: String = "res://Resources/Soundfont/GeneralUser-GS.s
 ## 当前使用的SoundFont路径
 var current_soundfont_path: String = ""
 
+## 人声偏移量（毫秒）
+var vocal_offset_ms: float = 0.0
+
+## 音频不同步阈值（毫秒）
+var sync_threshold_ms: float = 200.0
+
+## 上次同步检查时的MIDI位置（毫秒）
+var last_sync_check_pos_ms: float = 0.0
+
 ## MIDI播放器配置
 var midi_player_config: Dictionary = {
 	"max_polyphony": 96,
@@ -96,10 +105,13 @@ func _process(_delta: float) -> void:
 	if is_playing and midi_player != null:
 		# 直接从MidiPlayer读取position（tick单位）
 		position = midi_player.position
-		
+
 		# 同时更新position_ms用于向后兼容
 		if midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
 			position_ms = _calculate_position_with_bpm_timeline(position, midi_player.smf_data.timebase)
+
+		# 调用自动同步逻辑
+		_sync_vocal_with_midi()
 
 ## 初始化MIDI播放器
 func _initialize_midi_player() -> void:
@@ -193,9 +205,20 @@ func play() -> void:
 	# 设置音源
 	if not current_soundfont_path.is_empty() and midi_player.soundfont != current_soundfont_path:
 		midi_player.soundfont = current_soundfont_path
-	
+
+	# 重置同步状态
+	reset_sync_state()
+
 	midi_player.play()
 	is_playing = true
+
+	# 启动人声播放（如果有人声文件）
+	if not current_midi_data.vocal_file_path.is_empty():
+		start_vocal_playback()
+		print("[MidiPlaybackManager] Started vocal playback: %s (offset: %d ms)" % [current_midi_data.vocal_file_path, vocal_offset_ms])
+	else:
+		print("[MidiPlaybackManager] No vocal file configured (path: '%s')" % current_midi_data.vocal_file_path)
+
 	midi_started.emit()
 
 ## 停止播放
@@ -206,6 +229,10 @@ func stop() -> void:
 	midi_player.stop()
 	is_playing = false
 	position_ms = 0.0
+
+	# 停止人声播放
+	stop_vocal_playback()
+
 	midi_stopped.emit()
 
 ## 暂停播放
@@ -215,6 +242,12 @@ func pause() -> void:
 	
 	midi_player.playing = false
 	is_playing = false
+
+	# 暂停人声播放
+	var audio_manager = AudioManager.instance
+	if audio_manager != null:
+		audio_manager.set_vocal_playing(false)
+
 	midi_paused.emit()
 
 ## 继续播放
@@ -224,6 +257,12 @@ func resume() -> void:
 	
 	midi_player.playing = true
 	is_playing = true
+
+	# 恢复人声播放
+	var audio_manager = AudioManager.instance
+	if audio_manager != null and not current_midi_data.vocal_file_path.is_empty():
+		audio_manager.set_vocal_playing(true)
+
 	midi_started.emit()
 
 ## 跳转到指定位置
@@ -447,12 +486,14 @@ func set_track_volume_db(track_index: int, volume_db: float) -> void:
 	# 为保持兼容性，这里仅记录日志
 	print("[MidiPlaybackManager] Set track %d volume to %.2f dB (deprecated, use set_track_channel_volume)" % [track_index, volume_db])
 
-## 设置人声音量（占位符 - 待后续实现AudioManager集成）
+## 设置人声音量
 func set_vocal_volume_db(volume_db: float) -> void:
-	# 注：此方法为占位符
-	# 人声播放应该由AudioManager处理，而不是MidiPlaybackManager
-	# 这里记录日志供调试
-	print("[MidiPlaybackManager] Set vocal volume to %.2f dB (not implemented)" % volume_db)
+	var audio_manager = AudioManager.instance
+	if audio_manager != null:
+		audio_manager.set_vocal_volume_db(volume_db)
+		print("[MidiPlaybackManager] Set vocal volume to %.2f dB" % volume_db)
+	else:
+		push_error("[MidiPlaybackManager] AudioManager not available")
 
 ## ========== (Track, Channel) 静音接口 ==========
 
@@ -723,3 +764,112 @@ func _load_soundfont_from_config() -> void:
 	print("[MidiPlaybackManager] Using hardcoded default soundfont")
 	current_soundfont_path = default_soundfont_path
 	soundfont_changed.emit(current_soundfont_path)
+
+## ========== 人声同步相关方法 ==========
+
+## 设置人声偏移量（毫秒）
+func set_vocal_offset_ms(offset_ms: float) -> void:
+	vocal_offset_ms = offset_ms
+
+## 应用人声偏移（重新调整人声播放位置）
+func apply_vocal_offset() -> void:
+	var audio_manager = AudioManager.instance
+	if audio_manager == null:
+		return
+
+	# 计算新的人声播放位置：MIDI当前位置 - 偏移量
+	var new_position_ms = position_ms - vocal_offset_ms
+	# 确保不是负数
+	new_position_ms = max(0.0, new_position_ms)
+	audio_manager.seek_vocal(new_position_ms)
+
+## 启动人声播放并同步
+func start_vocal_playback() -> void:
+	if current_midi_data == null or current_midi_data.vocal_file_path.is_empty():
+		return
+
+	var audio_manager = AudioManager.instance
+	if audio_manager == null:
+		return
+
+	# 加载人声音频文件
+	var vocal_file_path = current_midi_data.vocal_file_path
+	var vocal_stream: AudioStream = null
+
+	# 首先检查文件是否存在（使用FileAccess，支持user://目录）
+	if not FileAccess.file_exists(vocal_file_path):
+		push_error("Vocal file does not exist: %s" % vocal_file_path)
+		return
+
+	# 根据文件扩展名加载对应的AudioStream类型
+	var file_ext = vocal_file_path.get_extension().to_lower()
+
+	match file_ext:
+		"ogg":
+			vocal_stream = AudioStreamOggVorbis.load_from_file(vocal_file_path)
+			print("[MidiPlaybackManager] Loading OGG vocal file: %s" % vocal_file_path)
+		"mp3":
+			vocal_stream = AudioStreamMP3.load_from_file(vocal_file_path)
+			print("[MidiPlaybackManager] Loading MP3 vocal file: %s" % vocal_file_path)
+		"wav":
+			vocal_stream = AudioStreamWAV.load_from_file(vocal_file_path)
+			print("[MidiPlaybackManager] Loading WAV vocal file: %s" % vocal_file_path)
+		_:
+			push_error("Unsupported audio format: %s (file: %s)" % [file_ext, vocal_file_path])
+			return
+
+	# 检查加载结果
+	if vocal_stream == null:
+		push_error("Failed to load vocal file: %s" % vocal_file_path)
+		return
+
+	print("[MidiPlaybackManager] Successfully loaded vocal file: %s" % vocal_file_path)
+
+	# 播放人声，使用当前的MIDI位置作为起始位置
+	var start_position_ms = position_ms - vocal_offset_ms
+	start_position_ms = max(0.0, start_position_ms)
+
+	# 设置人声声音
+	audio_manager.set_vocal_volume_db(linear_to_db(current_midi_data.vocal_volume / 100.0))
+	audio_manager.play_vocal(vocal_stream, start_position_ms)
+
+## 停止人声播放
+func stop_vocal_playback() -> void:
+	var audio_manager = AudioManager.instance
+	if audio_manager != null:
+		audio_manager.stop_vocal()
+
+## 自动同步人声与MIDI（在_process中每帧调用）
+func _sync_vocal_with_midi() -> void:
+	var audio_manager = AudioManager.instance
+	if audio_manager == null or not audio_manager.is_vocal_playing():
+		return
+
+	# 检查是否需要同步（时间间隔 > 100ms）
+	if abs(position_ms - last_sync_check_pos_ms) < 100.0:
+		return
+
+	# 获取MIDI和人声的当前播放进度
+	var midi_position = position_ms
+	var vocal_position = audio_manager.get_vocal_position()
+
+	# 计算差值：考虑偏移量
+	var expected_vocal_position = midi_position - vocal_offset_ms
+	var diff = abs(vocal_position - expected_vocal_position)
+
+	# 如果差值超过阈值，进行同步调整
+	if diff > sync_threshold_ms:
+		var target_position = max(0.0, expected_vocal_position)
+		audio_manager.seek_vocal(target_position)
+		print("[MidiPlaybackManager] Vocal sync adjusted: diff=%.0f ms, target=%.0f ms" % [diff, target_position])
+
+	# 更新上次同步检查的位置
+	last_sync_check_pos_ms = position_ms
+
+## 设置音频同步阈值（毫秒）
+func set_sync_threshold(threshold_ms: float) -> void:
+	sync_threshold_ms = clamp(threshold_ms, 50.0, 500.0)
+
+## 重置同步检查位置（在开始新播放时调用）
+func reset_sync_state() -> void:
+	last_sync_check_pos_ms = 0.0

@@ -366,7 +366,7 @@ func get_setting_value(setting_id: String) -> Variant:
 				var value_str = settings_dict[setting_id]
 				# 根据类型转换值
 				match setting_id:
-					"default_midi_volume", "default_vocal_volume":
+					"default_midi_volume", "default_vocal_volume", "audio_sync_threshold":
 						if value_str.is_valid_int():
 							return int(value_str)
 				return value_str

@@ -107,6 +107,9 @@ var vocal_volume: int = 50
 ## 人声文件路径（完整路径或相对路径）
 var vocal_file_path: String = ""
 
+## 人声音频偏移量（毫秒）
+var vocal_offset_ms: int = 0
+
 ## 轨道-通道音量配置 {track_idx: {ch_idx: float(0.0-1.0)}}
 var track_channel_volume_config: Dictionary = {}
 
@@ -213,6 +216,13 @@ func from_json(json_data: Dictionary) -> void:
 		if saved_vocal_path is String:
 			vocal_file_path = saved_vocal_path
 
+		# 恢复人声偏移量
+		var saved_vocal_offset = runtime_config.get("vocal_offset_ms", 0)
+		if saved_vocal_offset is int:
+			vocal_offset_ms = saved_vocal_offset
+		elif saved_vocal_offset is float:
+			vocal_offset_ms = int(saved_vocal_offset)
+
 ## 转换为字典格式（用于导出或缓存）
 func to_dict() -> Dictionary:
 	return {
@@ -311,6 +321,7 @@ func export_runtime_config() -> Dictionary:
 		"midi_volume": midi_volume,
 		"vocal_volume": vocal_volume,
 		"vocal_file_path": vocal_file_path,
+		"vocal_offset_ms": vocal_offset_ms,
 		"selected_track_indices": selected_track_indices.duplicate(),
 		"selected_track_configs": selected_track_configs.duplicate(),
 		"track_channel_mute_state": track_channel_mute_state.duplicate(),
