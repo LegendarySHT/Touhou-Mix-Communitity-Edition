@@ -27,6 +27,7 @@ fill_to = Vector2(0, 0)
 texture = SubResource("GradientTexture2D_peama")
 
 [node name="Beam" type="Panel"]
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxTexture_ly4cg")
 
 [node name="Center" type="Panel" parent="."]
@@ -38,4 +39,5 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(624, 766)
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxTexture_xuuv2")

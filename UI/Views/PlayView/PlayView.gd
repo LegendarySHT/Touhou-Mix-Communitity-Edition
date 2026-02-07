@@ -60,6 +60,7 @@ var midi_start_time: float = 0.0
 
 ########## 配置参数 #############
 var lane_count: int = 12
+var keyboard_mode: bool = true
 var key_map: Array[Key] = [KEY_Q, KEY_W, KEY_D, KEY_J, KEY_I, KEY_O]
 
 var judge_line_offset_y: int = 250
@@ -78,8 +79,8 @@ func _ready() -> void:
 	progress_bar.value_changed.connect(_on_top_progress_bar_value_changed)
 
 	flow_area.note_judged.connect(_on_note_judged)
-	menu_btn.pressed.connect(_show_or_hide_menu)
-	continue_btn.pressed.connect(_show_or_hide_menu)
+	menu_btn.pressed.connect(show_or_hide_menu)
+	continue_btn.pressed.connect(show_or_hide_menu)
 	retry_btn.pressed.connect(func ():
 		_prepare_game(current_midi)
 	)
@@ -122,7 +123,7 @@ func _process(_delta: float) -> void:
 			env.environment = null
 
 func get_lane_count() -> int:
-	return lane_count if not key_map else key_map.size()
+	return lane_count if not keyboard_mode else key_map.size()
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
@@ -140,7 +141,7 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
 
 var is_pause: bool = false
-func _show_or_hide_menu():
+func show_or_hide_menu():
 	song_info.visible = false
 	is_pause = not is_pause
 	
@@ -184,6 +185,8 @@ func _prepare_game(midi:MidiData) -> void:
 	
 	lane_area.init_beam(get_lane_count(), flow_area.note_visual_width, judge_line_offset_y)
 	lane_area.set_beam_alpha(beam_alpha)
+	if keyboard_mode:
+		lane_area.init_key_display(key_map)
 	
 	# 设置进度条最大值
 	max_time = midi.duration_ms
@@ -245,7 +248,7 @@ func _convert_midi_to_notes(midi_notes: Array, _midi_data: MidiData) -> Array[Fl
 			var lane = evt.pitch % lc
 
 			var block_type = FlowArea.NoteType.Block
-			if duration_ms < 100:
+			if duration_ms < 500:
 				block_type = FlowArea.NoteType.Slide
 			if duration_ms > 1000:
 				block_type = FlowArea.NoteType.Long

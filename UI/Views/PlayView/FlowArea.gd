@@ -65,7 +65,8 @@ var note_idx: int = 0
 # 多点触控支持
 var touch_positions: Dictionary = {}  # 存储每个触摸点的位置
 var active_holds: Dictionary = {}     # 存储正在按住长条音符的触摸点ID和对应的音符
-var slide_notes_near_line: Dictionary = {}  # 存储接近判定线的slide音符
+
+var pressed_keys: Dictionary = {}
 
 enum NoteType {
 	Block = 0,
@@ -80,7 +81,12 @@ class Note:
 	var type: NoteType
 	var lane: int            	# 轨道索引
 	var tween: Tween
-	var is_held: bool = false    # 是否被按住（用于长条音符）
+
+	# 用于滑键
+	var can_judge: bool = false
+
+	# 用于长条
+	var is_held: bool = false    # 是否被按住
 	var held_by_touch_id: int = -1  # 按住该音符的触摸点ID
 	
 	func _init(tp: NoteType, st: float, dur: float, l: int):
@@ -165,7 +171,6 @@ func clear_flow_area():
 		_remove_note(i)
 	note_idx = 0
 	active_holds.clear()
-	slide_notes_near_line.clear()
 
 func _create_note(tp: NoteType, x: float) -> Node:
 	var note_rect: Node = null
@@ -221,22 +226,28 @@ func _spawn_note(note_index: int) -> void:
 	var tween = create_tween()
 	
 	tween.tween_property(rect, "position:y", target_pos_y, fall_time).set_trans(trans_before_line).set_ease(ease_before_line)
-	
-	# 判定线后动画
-	var after_line_time = (parent_node.judge_line_offset_y / speed) / 1000.0
-	var window_y = get_viewport().get_visible_rect().size.y
-	tween.tween_property(rect, "position:y", window_y , after_line_time).set_trans(trans_after_line).set_ease(ease_after_line)
-
-	# 创建Note对象并添加到活跃列表
 	active_notes.append(nt)
 	nt.tween = tween
 
-	# 动画结束后回收音符
 	tween.finished.connect(func():
-		if nt.rect:
+		if nt.type == NoteType.Slide:
+			_check_slide_stat(nt)
+
+		var t = create_tween()
+		# 判定线后动画
+		var after_line_time = (parent_node.judge_line_offset_y / speed) / 1000.0
+		var window_y = get_viewport().get_visible_rect().size.y
+		t.tween_property(rect, "position:y", window_y , after_line_time).set_trans(trans_after_line).set_ease(ease_after_line)
+
+		# 创建Note对象并添加到活跃列表	
+		nt.tween = t
+
+		# 动画结束后回收音符
+		t.finished.connect(func():
 			_remove_note(nt)
 			# 只有在音符播放完毕但未被击打时才判定为Miss
 			note_judged.emit("Miss", "")
+		)
 	)
 
 # 因为在for循环遍历时erase会导致漏元素，所以推迟元素的移除
@@ -248,6 +259,9 @@ func _remove_note(note: Note) -> void:
 		note.rect.visible = false
 		note.rect.queue_free()
 		call_deferred("_delay_free", active_notes, note)
+	
+	if note.tween:
+		note.tween.kill()
 	
 	# 如果是被按住的长条音符，清理触摸点
 	if note.is_held and note.held_by_touch_id in active_holds:
@@ -270,11 +284,19 @@ func _gui_input(event: InputEvent) -> void:
 		touch_positions[event.index] = event.position
 		_handle_touch_drag(event.index, event.position)
 
+	if (event is InputEventScreenTouch or event is InputEventScreenDrag) and event.index in touch_positions:
+		_check_slides_at_touch_pos(event.index, touch_positions[event.index])
+
 func _input(event: InputEvent) -> void:
-	if ui.current_state == ui.UIState.PLAY_VIEW and event is InputEventKey and not event.echo:
+	if ui.current_state == ui.UIState.PLAY_VIEW and event is InputEventKey:
+		accept_event()
+		if event.is_echo():
+			return
+
 		if parent_node.key_map and event.keycode in parent_node.key_map:
 			if event.pressed:
 				var idx = parent_node.key_map.find(event.keycode)
+				pressed_keys[event.keycode] = idx
 				# 使用统一的判定函数，支持所有音符类型
 				var bn = judge_note_at_lane(idx, idx)
 				if bn:
@@ -283,9 +305,10 @@ func _input(event: InputEvent) -> void:
 				else:
 					parent_node.lane_area.light_lane(idx, Color.AQUA)
 			else:
+				pressed_keys.erase(event.keycode)
 				_handle_release(event.keycode)
-			print(event)
-		accept_event()
+		elif event.keycode == KEY_ESCAPE and event.pressed:
+			parent_node.show_or_hide_menu()
 
 # 处理触摸按下
 func _handle_press(touch_id: int, pos: Vector2) -> void:
@@ -295,7 +318,7 @@ func _handle_press(touch_id: int, pos: Vector2) -> void:
 	@warning_ignore("integer_division")
 	var click_lane_r: int = clampi(int((pos.x+judge_area_width/2) / lane_width), 0, parent_node.get_lane_count() - 1)
 	var node = judge_note_at_lane(click_lane_l, click_lane_r)
-	if node.type == NoteType.Long:
+	if node and node.type == NoteType.Long:
 		_hold_long_note(touch_id, node)
 
 # 处理触摸松开 释放长条音符
@@ -317,9 +340,15 @@ func _handle_release(touch_id: int) -> void:
 
 # 处理触摸拖动
 func _handle_touch_drag(touch_id: int, pos: Vector2) -> void:
-	if touch_id in active_holds:
-		var note = active_holds[touch_id]
-		_update_hold_note_position(touch_id, note, pos)
+	if touch_id not in active_holds:
+		return
+
+	var note = active_holds[touch_id]
+	if not note.is_held or note.held_by_touch_id != touch_id:
+		return
+
+	# 只更新x位置，y位置保持与判定线对齐
+	note.rect.position.x = clamp(pos.x - note.rect.size.x / 2, 0, size.x - note.rect.size.x)
 
 # 按住长条音符
 func _hold_long_note(touch_id: int, note: Note) -> void:
@@ -329,42 +358,37 @@ func _hold_long_note(touch_id: int, note: Note) -> void:
 	
 	_judge_note(note)
 
-# 更新按住的长条音符位置
-func _update_hold_note_position(touch_id: int, note: Note, pos: Vector2) -> void:
-	if not note.is_held or note.held_by_touch_id != touch_id:
-		return
-	
-	var rect = note.rect as Control
-	if rect:
-		# 只更新x位置，y位置保持与判定线对齐
-		rect.position.x = pos.x - rect.size.x / 2
-		
-		# 限制在屏幕范围内
-		rect.position.x = clamp(rect.position.x, 0, size.x - rect.size.x)
-
 # 检查slide音符是否在手指范围内（用于自动判定接近判定线的slide）
-func _check_slide_notes_in_touch_range(touch_id: int, pos: Vector2) -> void:
-	if touch_id not in touch_positions:
-		return
-	
+func _check_slides_at_touch_pos(touch_id: int, pos: Vector2) -> void:
 	for note in active_notes.filter(func (n):
 			if n.type == NoteType.Slide:
 				return true
 			return false
 			):
 		var rect = note.rect as Control
-		if not rect:
-			continue
-		
-		# 如果slide音符接近判定线且在触摸点范围内
-		if abs(parent_node.current_time - note.start_time) < 25:
-			var note_x = rect.position.x + rect.size.x / 2
-			var distance_to_touch = abs(pos.x - note_x)
-			
-			if distance_to_touch < judge_area_width:
-				# 自动判定slide音符
+
+		# 如果slide音符在触摸点范围内
+		var note_x = rect.position.x + rect.size.x / 2
+		var distance_to_touch = abs(pos.x - note_x)
+
+		if note.can_judge and note.held_by_touch_id == touch_id and distance_to_touch > judge_area_width:
+			if abs(parent_node.current_time - note.start_time) < 100:
 				_judge_note(note)
-				return
+			else:
+				note.can_judge = false
+
+		if distance_to_touch < judge_area_width and not note.can_judge:
+			note.can_judge = true
+			note.held_by_touch_id = touch_id
+			# return
+
+func _check_slide_stat(note: Note):
+	if note.lane in pressed_keys.values():
+		_judge_note(note)
+		return
+
+	if note.can_judge:
+		_judge_note(note)
 
 func judge_note_at_lane(lane_l: int, lane_r: int) -> Note:
 	# 查找范围内最合适的音符
@@ -470,7 +494,3 @@ func _process(_delta: float) -> void:
 				note_judged.emit("Perfect", "完成")
 				_remove_note(note)
 				active_holds.erase(touch_id)
-	
-	# 检查接近判定线的slide音符是否在手指范围内
-	for touch_id in touch_positions:
-		_check_slide_notes_in_touch_range(touch_id, touch_positions[touch_id])
