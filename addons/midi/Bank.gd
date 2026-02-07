@@ -532,3 +532,58 @@ func _notification( what:int ):
 			var preset:Preset = self.presets[i]
 			preset.instruments = []
 			preset.bags = []
+
+## 获取所有预设列表
+## 返回数组：[{name: String, program: int, bank: int, code: int}, ...]
+## 去除重复的预设（按预设名称去重 - 保留第一个出现的）
+func get_presets_list() -> Array:
+	var presets_list = []
+	var seen_names = {}  # {normalized_preset_name: preset_name} - 用于去重
+	var duplicate_count = 0  # 统计被跳过的重复项
+
+	# 先排序所有的preset_code，确保按code顺序处理
+	var sorted_codes = self.presets.keys()
+	sorted_codes.sort()
+
+	for preset_code in sorted_codes:
+		var preset = self.presets[preset_code]
+		var preset_name = preset.name.strip_edges()
+
+		# 如果名称为空，使用编号作为名称
+		if preset_name.is_empty():
+			preset_name = "#%d" % (preset_code & 0x7F)
+
+		# 规范化名称用于去重（统一大小写、移除多余空格等）
+		var normalized_name = preset_name.strip_edges().to_lower()
+		# 移除多余空格保留单个空格分隔
+		normalized_name = " ".join(normalized_name.split(" "))
+
+		# 跳过已经见过的预设名称（避免同名重复）
+		if seen_names.has(normalized_name):
+			duplicate_count += 1
+			print("[Bank] Duplicate preset skipped: '%s' (code: %d, normalized: '%s')" % [preset_name, preset_code, normalized_name])
+			continue
+		seen_names[normalized_name] = preset_name
+
+		var program = preset_code & 0x7F
+		var bank = preset_code >> 7
+		presets_list.append({
+			"name": preset_name,
+			"program": program,
+			"bank": bank,
+			"code": preset_code
+		})
+
+	if duplicate_count > 0:
+		print("[Bank] Total duplicates removed: %d from %d total presets" % [duplicate_count, sorted_codes.size()])
+
+	return presets_list
+
+## 获取特定 program/bank 的预设名称
+## 当预设不存在时返回 "Unknown (#program)"
+func get_preset_name(program: int, bank: int = 0) -> String:
+	var pc = program | (bank << 7)
+	if self.presets.has(pc):
+		var name = self.presets[pc].name.strip_edges()
+		return name if not name.is_empty() else "#%d" % program
+	return "Unknown (#%d)" % program

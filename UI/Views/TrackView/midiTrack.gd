@@ -61,8 +61,14 @@ func _ready():
 	if not instrument_options:
 		push_error("轨道 %d 初始化失败: 无可用乐器选项" % track_index)
 		return
+
+	# 在添加选项之前清空（防止重复）
+	instruments_option_btn.clear()
+
 	for i in instrument_options:
 		instruments_option_btn.add_item(i)
+
+	print("[MidiTrack] Track %d initialized with %d instrument options" % [track_index, instruments_option_btn.item_count])
 
 	# 从MidiData读取启用状态
 	if midi_data:

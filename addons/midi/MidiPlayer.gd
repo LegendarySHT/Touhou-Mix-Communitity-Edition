@@ -297,6 +297,13 @@ var channel_audio_effects:Array[GodotMIDIPlayerChannelAudioEffect] = []
 var pan_power:float = 1.0
 ## リバーブの強さを定義
 var reverb_power:float = 0.5
+
+## ========== SF2预设缓存 ==========
+## 缓存的 SF2 预设列表 - 在 soundfont 加载后设置
+var _cached_presets_list: Array = []
+var _cached_bank: Bank = null
+## 轨道-通道的乐器映射（用于MIDI中program change事件的提取）
+var _track_channel_instruments: Dictionary = {}
 ## コーラスの強さを定義
 var chorus_power:float = 0.7
 ## 轨道级音量配置 {track_index: {channel: float}}
@@ -339,6 +346,8 @@ signal midi_event( channel, event )
 signal looped
 ## 終了
 signal finished
+## SoundFont变更时发出
+signal soundfont_changed(soundfont_path: String)
 
 ## 準備
 func _ready( ):
@@ -511,6 +520,7 @@ func _analyse_smf( ) -> void:
 
 	for event_chunk in self.track_status.events:
 		var channel_number:int = event_chunk.channel_number
+		var track_idx:int = event_chunk.track_index
 		var channel = channels[channel_number]
 		var event = event_chunk.event
 
@@ -521,6 +531,15 @@ func _analyse_smf( ) -> void:
 					self._used_program_numbers.append( event.number )
 				if not( program_number in self._used_program_numbers ):
 					self._used_program_numbers.append( program_number )
+
+				# 新增：记录该 (track, channel) 的乐器信息（仅记录第一个）
+				if not self._track_channel_instruments.has(track_idx):
+					self._track_channel_instruments[track_idx] = {}
+				if not self._track_channel_instruments[track_idx].has(channel_number):
+					self._track_channel_instruments[track_idx][channel_number] = {
+						"bank": channel.bank,
+						"program": event.number
+					}
 			SMF.MIDIEventType.control_change:
 				match event.number:
 					SMF.control_number_bank_select_msb:
@@ -632,6 +651,7 @@ func set_soundfont( path:String ) -> void:
 
 	if path == null or path == "":
 		self.bank = null
+		soundfont_changed.emit(path)
 		return
 
 	var sf_reader: = SoundFont.new( )
@@ -643,6 +663,12 @@ func set_soundfont( path:String ) -> void:
 			self.bank.read_soundfont( result.data )
 		else:
 			self.bank.read_soundfont( result.data, self._used_program_numbers )
+
+		# 新增：更新缓存的预设列表
+		self._update_presets_cache()
+
+		# 发出SoundFont变更信号
+		soundfont_changed.emit(path)
 
 ## SMFデータ更新
 ## @param	sd	SMFデータ
@@ -1226,5 +1252,35 @@ func load_from_bytes( byte_array: PackedByteArray ) -> bool:
 
 	if not self.load_all_voices_from_soundfont:
 		self.set_soundfont( self.soundfont )
-
 	return true
+
+## 更新预设缓存
+func _update_presets_cache() -> void:
+	if self.bank != null:
+		self._cached_presets_list = self.bank.get_presets_list()
+		self._cached_bank = self.bank
+	else:
+		self._cached_presets_list = []
+		self._cached_bank = null
+
+## 获取预设列表
+## 返回：Array[{name, program, bank, code}]
+## 注：每次调用都从Bank重新生成（确保去重逻辑生效），不使用缓存
+func get_presets_list() -> Array:
+	if self.bank != null:
+		return self.bank.get_presets_list()
+	return []
+
+## 获取特定 program/bank 的预设名称
+func get_preset_name(program: int, bank: int = 0) -> String:
+	if self.bank != null:
+		return self.bank.get_preset_name(program, bank)
+	return "Unknown"
+
+## 获取特定 (track, channel) 的乐器信息
+## 返回：{bank: int, program: int}，如果不存在则返回 {bank: 0, program: 0}
+func get_track_channel_instrument(track_idx: int, channel: int) -> Dictionary:
+	if self._track_channel_instruments.has(track_idx):
+		if self._track_channel_instruments[track_idx].has(channel):
+			return self._track_channel_instruments[track_idx][channel]
+	return {"bank": 0, "program": 0}

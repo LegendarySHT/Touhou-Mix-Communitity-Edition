@@ -100,7 +100,11 @@ func _ready() -> void:
 	
 	if not midi_playback_manager.is_connected("midi_finished", Callable(self, "_on_midi_finished")):
 		midi_playback_manager.midi_finished.connect(_on_midi_finished)
-	
+
+	# 监听SoundFont变更信号（用于实时更新乐器列表）
+	if midi_playback_manager.midi_player and not midi_playback_manager.midi_player.is_connected("soundfont_changed", Callable(self, "_on_soundfont_changed")):
+		midi_playback_manager.midi_player.soundfont_changed.connect(_on_soundfont_changed)
+
 	# 音量（检查防止重复连接）
 	if not midi_vol_btn.is_connected("toggled", Callable(self, "_on_volume_btn_toggled")):
 		midi_vol_btn.toggled.connect(_on_volume_btn_toggled.bind(midi_vol_btn))
@@ -163,6 +167,9 @@ func _load_midi(midi: MidiData) -> void:
 	# 加载MIDI到播放管理器
 	if not midi_playback_manager.load_midi(midi):
 		push_error("Failed to load MIDI: " + midi.name)
+
+	# 新增：从加载的 MIDI 和 SoundFont 提取可用乐器选项
+	_extract_instruments_from_midi()
 
 	# 恢复用户配置的数据部分（音量值、进度条、独奏状态）
 	_restore_midi_data_config()
@@ -277,7 +284,10 @@ func _create_track_views() -> void:
 		# 创建MidiTrack UI项
 		var track_scene = create_and_add_item(track_name, "MidiTrack") as MidiTrack
 		track_scene.setup_track(self, track_idx, track_name, instrument_options, channel, current_midi_data)
-		
+
+		# 新增：设置该 (track, channel) 的正确乐器
+		_set_track_instrument_from_midi_data(track_scene, track_idx, channel)
+
 		# 初始化该(track, channel)对的音符显示
 		_init_track_note_displayer(track_scene, track_idx, channel, pair_notes)
 
@@ -1176,4 +1186,97 @@ func _on_latency_changed(new_text: String) -> void:
 
 	print("[TrackView] Latency offset changed to %d ms" % offset_ms)
 
-	
+## 从当前加载的 MIDI 和 SoundFont 提取可用的乐器选项
+func _extract_instruments_from_midi() -> void:
+	if midi_playback_manager == null or midi_playback_manager.midi_player == null:
+		return
+
+	var midi_player = midi_playback_manager.midi_player
+	var presets_list = midi_player.get_presets_list()
+
+	if presets_list.is_empty():
+		GameLogger.instance.warning("No presets available from SoundFont", "TrackView")
+		return
+
+	# 构建乐器选项数组，并在此处进行去重（作为额外保险）
+	var new_instrument_options = []
+	var seen_options = {}  # 用于去重
+
+	for preset in presets_list:
+		var display_name = preset["name"].strip_edges()
+		if display_name.is_empty():
+			display_name = "#%d" % preset["program"]
+
+		# 再次去重（虽然 Bank.get_presets_list() 应该已经去重，但作为保险）
+		if seen_options.has(display_name):
+			print("[TrackView] Skipping duplicate instrument: %s" % display_name)
+			continue
+		seen_options[display_name] = true
+
+		new_instrument_options.append(display_name)
+
+	# 更新全局乐器选项
+	instrument_options = new_instrument_options
+	print("[TrackView] 已提取 %d 个乐器预设（去重后）" % new_instrument_options.size())
+
+## 根据 MIDI 数据设置轨道的正确乐器
+func _set_track_instrument_from_midi_data(track_scene: MidiTrack, track_idx: int, channel: int) -> void:
+	if current_midi_data == null or midi_playback_manager == null:
+		return
+
+	var midi_player = midi_playback_manager.midi_player
+
+	# 从MidiPlayer获取该(track, channel)的乐器信息
+	var instrument_info = midi_player.get_track_channel_instrument(track_idx, channel)
+	var program = instrument_info.get("program", 0)
+	var bank = instrument_info.get("bank", 0)
+
+	# 查找对应的预设名称
+	var preset_name = midi_player.get_preset_name(program, bank)
+
+	# 在乐器选项中查找匹配项
+	if instrument_options and track_scene.instruments_option_btn:
+		var selected_index = 0  # 默认选择第一个
+		for i in range(instrument_options.size()):
+			if track_scene.instruments_option_btn.get_item_text(i) == preset_name:
+				selected_index = i
+				break
+
+		# 设置下拉框选中项（阻止信号以避免不必要的回调）
+		track_scene.instruments_option_btn.set_block_signals(true)
+		track_scene.instruments_option_btn.select(selected_index)
+		track_scene.instruments_option_btn.set_block_signals(false)
+
+		print("[TrackView] 轨道 %d 通道 %d: 设置乐器为 '%s' (program: %d, bank: %d)" %
+			[track_idx, channel, preset_name, program, bank])
+
+## 当SoundFont变更时，重新提取乐器列表并更新UI
+func _on_soundfont_changed(soundfont_path: String) -> void:
+	print("[TrackView] SoundFont changed: %s" % soundfont_path)
+
+	# 重新提取乐器列表
+	_extract_instruments_from_midi()
+
+	# 更新所有现有的MidiTrack UI项的乐器选项
+	_refresh_all_track_instruments()
+
+## 当乐器列表变更时，快速更新所有MidiTrack的选项
+func _refresh_all_track_instruments() -> void:
+	print("[TrackView] Refreshing all track instrument options")
+
+	if current_midi_data == null or not has_meta("list_items"):
+		return
+
+	for item in list_items:
+		if item is MidiTrack and item.instruments_option_btn:
+			# 清空并重建选项列表
+			item.instruments_option_btn.clear()
+			for option_text in instrument_options:
+				item.instruments_option_btn.add_item(option_text)
+
+			# 重新设置默认选中项（使用MidiTrack的track_index和track_channel）
+			var track_idx = item.track_index
+			var channel = item.track_channel
+			_set_track_instrument_from_midi_data(item, track_idx, channel)
+
+			print("[TrackView] Updated instrument options for track %d channel %d" % [track_idx, channel])

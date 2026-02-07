@@ -116,6 +116,10 @@ var track_channel_volume_config: Dictionary = {}
 ## 独奏状态 (track:channel -> true)
 var solo_pairs: Dictionary = {}
 
+## 轨道-通道的乐器映射 {track_idx: {channel: {bank: int, program: int}}}
+## 在 MIDI 解析时填充，用于在 UI 中显示正确的乐器
+var track_channel_instruments: Dictionary = {}
+
 ## 从JSON数据构造MIDI数据
 func from_json(json_data: Dictionary) -> void:
 	id = json_data.get("_id", "")
@@ -330,3 +334,16 @@ func export_runtime_config() -> Dictionary:
 		"use_soundfont": use_soundfont,
 		"saved_at": Time.get_ticks_msec()
 	}
+
+## 获取轨道-通道的乐器 (bank, program)
+func get_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
+	if track_channel_instruments.has(track_index):
+		if track_channel_instruments[track_index].has(channel):
+			return track_channel_instruments[track_index][channel]
+	return {"bank": 0, "program": 0}
+
+## 设置轨道-通道的乐器
+func set_track_channel_instrument(track_index: int, channel: int, bank: int, program: int) -> void:
+	if not track_channel_instruments.has(track_index):
+		track_channel_instruments[track_index] = {}
+	track_channel_instruments[track_index][channel] = {"bank": bank, "program": program}
