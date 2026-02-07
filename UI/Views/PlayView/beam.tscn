@@ -1,0 +1,41 @@
+[gd_scene load_steps=7 format=3 uid="uid://b4u2yxq2ktd64"]
+
+[sub_resource type="Gradient" id="Gradient_uv8uk"]
+interpolation_mode = 2
+colors = PackedColorArray(1, 1, 1, 0.23529412, 0.7539839, 0.75398386, 0.75398386, 0.05490196)
+metadata/_snap_enabled = true
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_fs2nj"]
+gradient = SubResource("Gradient_uv8uk")
+fill_from = Vector2(0, 1)
+fill_to = Vector2(0, 0)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ly4cg"]
+texture = SubResource("GradientTexture2D_fs2nj")
+
+[sub_resource type="Gradient" id="Gradient_s53n3"]
+interpolation_mode = 2
+colors = PackedColorArray(1, 0, 0, 0.8, 1, 0, 0, 0.467)
+metadata/_snap_enabled = true
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_peama"]
+gradient = SubResource("Gradient_s53n3")
+fill_from = Vector2(0, 1)
+fill_to = Vector2(0, 0)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_xuuv2"]
+texture = SubResource("GradientTexture2D_peama")
+
+[node name="Beam" type="Panel"]
+theme_override_styles/panel = SubResource("StyleBoxTexture_ly4cg")
+
+[node name="Center" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 13
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(624, 766)
+theme_override_styles/panel = SubResource("StyleBoxTexture_xuuv2")

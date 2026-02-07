@@ -1,9 +1,10 @@
-[gd_scene load_steps=15 format=3 uid="uid://dufml4k4gftxf"]
+[gd_scene load_steps=16 format=3 uid="uid://dufml4k4gftxf"]
 
 [ext_resource type="Texture2D" uid="uid://baootjbuf8yhl" path="res://Resources/icon/pause.png" id="1_8cbrq"]
 [ext_resource type="Script" uid="uid://biwqlg4kwm815" path="res://UI/Views/PlayView/PlayView.gd" id="1_uj6qe"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_7ak4s"]
 [ext_resource type="Script" uid="uid://d1iexilqlavwd" path="res://UI/Views/PlayView/FlowArea.gd" id="2_jlvmc"]
+[ext_resource type="Script" uid="uid://da4iihe2e4ool" path="res://UI/Views/PlayView/LaneEffect.gd" id="3_kvdpo"]
 
 [sub_resource type="Gradient" id="Gradient_7ak4s"]
 colors = PackedColorArray(0.3882353, 0.20392157, 0.654902, 1, 0.71, 0.355, 0.71, 1)
@@ -92,6 +93,13 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("GradientTexture2D_uj6qe")
+
+[node name="Lane" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+pivot_offset = Vector2(78, 707)
+script = ExtResource("3_kvdpo")
 
 [node name="FlowArea" type="Panel" parent="."]
 clip_children = 1
@@ -274,6 +282,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="CenterBackGround" type="ColorRect" parent="Layer"]
+visible = false
 z_index = 2
 anchors_preset = 15
 anchor_right = 1.0

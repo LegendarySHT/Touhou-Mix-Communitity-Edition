@@ -44,6 +44,10 @@ extends Control
 
 # 环境
 @onready var env: WorldEnvironment = $FlowArea/SVP/WorldEnvironment
+
+# 轨道光效及键位显示
+@onready var lane_area: Control = $Lane
+
 var glow: Environment = null
 
 var current_midi: MidiData = null
@@ -65,7 +69,9 @@ func _ready() -> void:
 	flow_area.note_judged.connect(_on_note_judged)
 	menu_btn.pressed.connect(_show_or_hide_menu)
 	continue_btn.pressed.connect(_show_or_hide_menu)
-	retry_btn.pressed.connect(_on_retry_pressed)
+	retry_btn.pressed.connect(func ():
+		_prepare_game(current_midi)
+	)
 	quit_btn.pressed.connect(_on_quit_pressed)
 
 	flow_area.parent_node = self
@@ -141,8 +147,6 @@ func _show_or_hide_menu():
 func _prepare_game(midi:MidiData) -> void:
 	current_midi = midi
 
-	flow_area.clear_flow_area()
-
 	# 获取封面
 	var cover_texture = FileSystemManager.instance.get_cover_by_midiData(midi)
 	if cover_texture:
@@ -160,9 +164,12 @@ func _prepare_game(midi:MidiData) -> void:
 		if sync_threshold != null:
 			playback_mgr.set_sync_threshold(float(sync_threshold))
 			print("[PlayView] Audio sync threshold set to %.0f ms" % float(sync_threshold))
+	
 	# 初始化数据
 	_init_display()
-
+	
+	lane_area.init_beam(flow_area.lane_count, flow_area.note_visual_width, flow_area.judge_line_offset_y)
+	
 	# 设置进度条最大值
 	max_time = midi.duration_ms
 	progress_bar.max_value = max_time
@@ -174,7 +181,6 @@ func _prepare_game(midi:MidiData) -> void:
 	
 	# 开始播放MIDI
 	playback_mgr.resume()
-	# _start_midi_playback()
 
 ## 加载并转换MIDI音符为FlowArea格式
 func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
@@ -199,8 +205,7 @@ func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
 		manual_notes = midi_data.parsed_notes
 
 	# 转换音符格式
-	flow_area.notes_list = _convert_midi_to_notes(manual_notes, midi_data)
-	flow_area.note_idx = 0  # 重置音符索引
+	flow_area.init_flow_area(_convert_midi_to_notes(manual_notes, midi_data))
 	
 	print("[PlayView] Converted %d MIDI notes to FlowArea format" % flow_area.notes_list.size())
 
@@ -244,24 +249,6 @@ func _convert_midi_to_notes(midi_notes: Array, _midi_data: MidiData) -> Array[Fl
 	
 	return flow_notes
 
-## 开始MIDI播放
-func _start_midi_playback() -> void:
-	if playback_mgr == null:
-		push_error("Cannot start MIDI playback: manager not available")
-		return
-	
-	# 重置播放位置
-	current_time = 0
-	progress_bar.value = 0
-	flow_area.note_idx = 0
-	
-	# 开始播放
-	playback_mgr.play()
-	midi_start_time = Time.get_ticks_msec()
-	is_midi_playing = true
-	
-	print("[PlayView] Started MIDI playback")
-
 ## MIDI播放开始回调
 func _on_midi_started() -> void:
 	print("[PlayView] MIDI playback started")
@@ -297,10 +284,6 @@ func _on_game_finished() -> void:
 	# 可以在这里触发结算界面
 	# EventBus.instance.emit_signal("game_finished", score.text, accuracy, combo.text)
 
-## 重试游戏
-func _on_retry_pressed() -> void:
-	_prepare_game(current_midi)
-
 ## 退出游戏
 func _on_quit_pressed() -> void:
 	# 停止MIDI播放
@@ -332,9 +315,9 @@ func _init_display():
 	center_bg.visible = true
 	is_pause = true
 
-	# current_time = 0.0
 	# 重置进度条
-	current_rect = null
+	_current_rect = null
+	_last_rect = null
 	for i in progress_bar.get_children():
 		i.queue_free()
 
@@ -409,33 +392,29 @@ func _set_score_add_amount(amount: int):
 	ani.animate_pulse(score_add, 1, 1.1, 0.1, "score_pluse")
 
 # 进度条颜色填充回调
-var current_color: Color = color_map["Miss"]
-var current_rect: ColorRect = null
-var last_rect: ColorRect = null
+var _current_rect: ColorRect = null
+var _last_rect: ColorRect = null
 func _on_top_progress_bar_value_changed(value: float):
-	var anchor_l = 0.0 if not last_rect else last_rect.anchor_right
-	var percent_r: float = value / progress_bar.max_value
-	if current_rect:
-		current_rect.anchor_right = percent_r
-	else:
-		current_rect = ColorRect.new()
+	var anchor_l = 0.0 if not _last_rect else _last_rect.anchor_right
+	if not _current_rect:
+		_current_rect = ColorRect.new()
 
-		current_rect.anchor_left = anchor_l if anchor_l < 0.002 else anchor_l - 0.001
-		current_rect.anchor_right = percent_r
-		current_rect.color = current_color
-		current_rect.size.y = progress_bar.size.y
+		_current_rect.anchor_left = anchor_l if anchor_l < 0.002 else anchor_l - 0.001
+		_current_rect.color = color_map["Miss"] if not _last_rect else _last_rect.color
+		_current_rect.size.y = progress_bar.size.y
 
-		last_rect = current_rect
-		progress_bar.add_child(current_rect)
+		_last_rect = _current_rect
+		progress_bar.add_child(_current_rect)
+	
+	_current_rect.anchor_right = value / progress_bar.max_value
 
 func _set_progress_bar_color(cl: Color):
-	if cl == current_color:
+	if cl == _current_rect.color:
 		return
-	current_color = cl
-	if not current_rect or current_rect.size.x > 20:
-		current_rect = null
-		print("create new")
+
+	if not _current_rect or _current_rect.size.x > 20:
+		_current_rect = null
 		_on_top_progress_bar_value_changed(progress_bar.value)
 		return
 
-	current_rect.color = cl
+	_current_rect.color = cl

@@ -14,7 +14,9 @@ var judge_area_width: int = 150
 #判定模式 0 最佳时间 1 最佳距离 2 最下音符
 var judge_mode = 1
 
-var note_width: int = 120
+var note_judge_width: int = 120
+var note_visual_width: int = 200
+
 # 音符下落动画
 var trans_before_line = Tween.TRANS_LINEAR
 var ease_before_line = Tween.EASE_IN_OUT
@@ -31,6 +33,8 @@ var judge_windows: Dictionary = {
 # 音符生成提前量（毫秒） - 确保音符在到达判定线前有足够时间显示 - 调下落速度也是用它（
 var note_generation_lead_time: float = 900.0
 
+# 音符特效缩放
+var particle_scale: float = 0.8
 ###################################
 
 signal note_judged(result: String, offset: String)
@@ -84,12 +88,6 @@ class Note:
 		rect = rt
 
 func _ready() -> void:
-	# 初始化轨道宽度
-	lane_width = size.x / lane_count
-	
-	# 设置判定线位置
-	jl.position.y -= judge_line_offset_y
-	
 	# 启用多点触控
 	get_viewport().gui_embed_subwindows = false
 
@@ -102,10 +100,11 @@ func _create_note(tp: NoteType, width: float, x: float) -> Node:
 			note_rect = nt_s.instantiate()
 		NoteType.Long:
 			note_rect = nt_l.instantiate()
+			note_rect.get_node("VBoxC").size.x = width
 	
 	note_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	note_rect.size.x = width
-	note_rect.position = Vector2(x, -note_rect.size.y)
+	note_rect.position = Vector2(x + (lane_width - width)/2, -note_rect.size.y)
 	canvas.add_child(note_rect)
 
 	return note_rect
@@ -118,9 +117,9 @@ func _spawn_note(note_index: int) -> void:
 	var lane = nt.lane
 
 	# 计算音符位置
-	var start_x = lane * lane_width + 5  # 加5像素边距
+	var start_x = lane * lane_width  # 加5像素边距
 	
-	var rect = _create_note(nt.type, note_width, start_x)
+	var rect = _create_note(nt.type, note_visual_width, start_x)
 	nt.set_rect(rect)
 
 	# print("ct: %f st: %f" % [parent_node.current_time, nt.start_time])
@@ -164,7 +163,7 @@ func _spawn_note(note_index: int) -> void:
 				# 提前释放长条音符
 				_release_hold_note(nt.held_by_touch_id)
 			else:
-				remove_note(nt)
+				_remove_note(nt)
 				# 只有在音符播放完毕但未被击打时才判定为Miss
 				note_judged.emit("Miss", "")
 	)
@@ -173,7 +172,7 @@ func _spawn_note(note_index: int) -> void:
 func _delay_free(list, item_to_free):
 	list.erase(item_to_free)
 
-func remove_note(note: Note) -> void:
+func _remove_note(note: Note) -> void:
 	if note.rect:
 		note.rect.visible = false
 		note.rect.queue_free()
@@ -183,14 +182,25 @@ func remove_note(note: Note) -> void:
 	if note.is_held and note.held_by_touch_id in active_holds:
 		call_deferred("_delay_free", active_holds, note.held_by_touch_id)
 
+func init_flow_area(notes: Array[Note]):
+	clear_flow_area()
+	notes_list = notes
+	note_idx = 0
+
+	# 初始化轨道宽度
+	lane_width = size.x / lane_count
+	
+	# 设置判定线位置
+	jl.position.y = get_viewport().get_visible_rect().size.y - judge_line_offset_y
+
 func clear_flow_area():
 	if not notes_list:
 		return
-
+	
 	print("clear notes %d" % active_notes.size())
 	notes_list.clear()
 	for i in active_notes:
-		remove_note(i)
+		_remove_note(i)
 	note_idx = 0
 	active_holds.clear()
 	slide_notes_near_line.clear()
@@ -330,7 +340,7 @@ func _release_hold_note(touch_id: int) -> void:
 		note_judged.emit("Good", "提前释放")
 	
 	# 移除音符
-	remove_note(note)
+	_remove_note(note)
 	active_holds.erase(touch_id)
 
 # 检查slide音符是否在手指范围内
@@ -368,7 +378,7 @@ func _judge_note_at_position(note: Note) -> void:
 		result = "Good"
 	
 	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff])
-	remove_note(note)
+	_remove_note(note)
 
 func judge_note_at_lane(lane_l: int, lane_r: int) -> void:
 	# 查找该轨道上最接近判定线的音符
@@ -394,23 +404,31 @@ func judge_note_at_lane(lane_l: int, lane_r: int) -> void:
 					if note.arrival_time > best_diff:
 						best_diff = note.arrival_time
 						best_note = note
+
 	
 	if best_note:
+		get_parent().lane_area.light_lane(best_note.lane, Color.BLUE)
+		
 		# 根据时间差进行判定
 		_judge_note(best_note)
 		
-		remove_note(best_note)
+		_remove_note(best_note)
 
 var particle = load("res://UI/Views/PlayView/particleSquare.tscn")
-var _is_scale_set: bool =false
 func _generate_particle(type: String, pos: Vector2):
 	var ptc = particle.instantiate()
-	if not _is_scale_set:
-		ptc.set_particle_scale(0.5)
-		_is_scale_set = true
+	
+	set_particle_scale(particle_scale)
+	
 	canvas.add_child(ptc)
 	ptc.position = pos
 	ptc.play(type)
+
+# 修改特效大小
+func set_particle_scale(scl: float):
+	var ptc = particle.instantiate()
+	ptc.set_particle_scale(scl)
+	ptc.queue_free()
 
 func _judge_note(judge_note: Note):
 	var current_time = parent_node.current_time if parent_node else 0
@@ -465,12 +483,12 @@ func _process(_delta: float) -> void:
 			# 更新进度
 			var vbox = note.rect.get_node("VBoxC")
 			note.panel_size_y = jl.position.y - vbox.global_position.y
-			print(note.panel_size_y)
+
 			# 限制最大偏移
 			if note.rect.position.y >= jl.position.y - 50:
 				# 长条音符完成，判定为Perfect
 				note_judged.emit("Perfect", "完成")
-				remove_note(note)
+				_remove_note(note)
 				active_holds.erase(touch_id)
 			else:
 				# 更新显示

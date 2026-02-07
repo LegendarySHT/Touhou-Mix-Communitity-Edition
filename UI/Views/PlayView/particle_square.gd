@@ -26,15 +26,17 @@ func play(type: String):
 
 func set_particle_scale(scl: float):
 	scale *= scl
-	print(scale)
-	#get_node("Base").process_material.scale_min *= scl
-	#get_node("Base").process_material.scale_max *= scl
-	#
-	#get_node("Square").process_material.scale_min *= scl
-	#get_node("Square").process_material.scale_max *= scl
-#
-	#get_node("EmitSolid").process_material.scale_min *= scl
-	#get_node("EmitSolid").process_material.scale_max *= scl
-#
-	#get_node("EmitBorder").process_material.scale_min *= scl
-	#get_node("EmitBorder").process_material.scale_max *= scl
+
+	get_node("Base").process_material.scale_min = scl * 0.6
+	get_node("Base").process_material.scale_max = scl * 0.6
+	
+	get_node("Square").process_material.scale_min = scl * 1.2
+	get_node("Square").process_material.scale_max = scl * 1.2
+
+	get_node("EmitSolid").process_material.scale_min = scl * 0.12
+	get_node("EmitSolid").process_material.scale_max = scl * 0.3
+	get_node("EmitSolid").process_material.initial_velocity_max = scl * 350
+
+	get_node("EmitBorder").process_material.scale_min = scl * 0.12
+	get_node("EmitBorder").process_material.scale_max = scl * 0.3
+	get_node("EmitBorder").process_material.initial_velocity_max = scl * 350
