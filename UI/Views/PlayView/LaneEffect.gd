@@ -1,6 +1,6 @@
 extends Control
 
-@onready var beam: Resource = load("res://UI/Views/PlayView/beam.tscn")
+@onready var beam = load("res://UI/Views/PlayView/beam.tscn").instantiate()
 @onready var ani: AnimationManager = AnimationManager.instance
 
 func init_beam(lane_count: int, note_width: float, judge_line_offset_y: float):
@@ -9,21 +9,23 @@ func init_beam(lane_count: int, note_width: float, judge_line_offset_y: float):
 	
 	var window = get_viewport().get_visible_rect().size
 	var beam_h = window.y - judge_line_offset_y
+	var anchor_delta = 25 / (note_width + 20)
 	
-	print(beam_h)
+	beam.size = Vector2(note_width + 20, beam_h)
+	beam.get_node("Center").anchor_left = anchor_delta
+	beam.get_node("Center").anchor_right = 1 - anchor_delta
+	beam.visible = false
+
 	for i in range(lane_count):
-		var b = beam.instantiate()
+		var b = beam.duplicate()
 		add_child(b)
+
 		b.set_meta("index", i)
-		b.visible = false
-		
-		b.set_deferred("size", Vector2(note_width + 20, beam_h))
-		var anchor_delta = 25 / (note_width + 20)
-		b.get_node("Center").anchor_left = anchor_delta
-		b.get_node("Center").anchor_right = 1 - anchor_delta
+				
 		var lane_width = window.x / lane_count
 		b.set_deferred("position", Vector2(lane_width * i + (lane_width - note_width - 20)/2, 0))
 
+# 更改光柱不透明度
 func set_beam_alpha(alpha: float):
 	for node in get_children():
 		if not node.has_meta("index"):

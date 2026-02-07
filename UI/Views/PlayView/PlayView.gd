@@ -58,6 +58,17 @@ var current_midi: MidiData = null
 var is_midi_playing: bool = false
 var midi_start_time: float = 0.0
 
+########## 配置参数 #############
+var lane_count: int = 12
+var key_map: Array[Key] = [KEY_Q, KEY_W, KEY_D, KEY_J, KEY_I, KEY_O]
+
+var judge_line_offset_y: int = 250
+
+# 光柱特效不透明度
+var beam_alpha: float = 0.5
+
+#################################
+
 func _ready() -> void:
 
 	EventBus.instance.start_game_with.connect(_prepare_game)
@@ -109,6 +120,9 @@ func _process(_delta: float) -> void:
 	else:
 		if env.environment != null:
 			env.environment = null
+
+func get_lane_count() -> int:
+	return lane_count if not key_map else key_map.size()
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
@@ -168,7 +182,8 @@ func _prepare_game(midi:MidiData) -> void:
 	# 初始化数据
 	_init_display()
 	
-	lane_area.init_beam(flow_area.lane_count, flow_area.note_visual_width, flow_area.judge_line_offset_y)
+	lane_area.init_beam(get_lane_count(), flow_area.note_visual_width, judge_line_offset_y)
+	lane_area.set_beam_alpha(beam_alpha)
 	
 	# 设置进度条最大值
 	max_time = midi.duration_ms
@@ -212,6 +227,7 @@ func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
 ## 将MIDI音符转换为FlowArea需要的格式
 func _convert_midi_to_notes(midi_notes: Array, _midi_data: MidiData) -> Array[FlowArea.Note]:
 	var flow_notes: Array[FlowArea.Note]  = []
+	var lc = get_lane_count()
 
 	for note in midi_notes:
 		if note is MidiParser.Note and note.event != null:
@@ -226,7 +242,7 @@ func _convert_midi_to_notes(midi_notes: Array, _midi_data: MidiData) -> Array[Fl
 			var duration_ms = playback_mgr.tick_to_ms(start_tick + duration_tick) - start_ms
 			
 			# 确定车道（lane） - 将MIDI音高映射到12个车道
-			var lane = evt.pitch % flow_area.lane_count
+			var lane = evt.pitch % lc
 
 			var block_type = FlowArea.NoteType.Block
 			if duration_ms < 100:

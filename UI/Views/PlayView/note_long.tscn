@@ -1,8 +1,11 @@
-[gd_scene load_steps=5 format=3 uid="uid://dnnxx5it0pnum"]
+[gd_scene load_steps=8 format=3 uid="uid://dnnxx5it0pnum"]
 
 [ext_resource type="Texture2D" uid="uid://p8ay6vm1nqur" path="res://Resources/Skins/旧版2/long-t.png" id="1_xtbtg"]
 [ext_resource type="Texture2D" uid="uid://cajl5tclnp81v" path="res://Resources/Skins/旧版2/long-f.png" id="2_8rwew"]
+[ext_resource type="Texture2D" uid="uid://dq0wisp34wi7q" path="res://Resources/Skins/旧版2/long-t-core.png" id="2_fanli"]
 [ext_resource type="Texture2D" uid="uid://cmyfsfeqqdncw" path="res://Resources/Skins/旧版2/long-b.png" id="3_5p25v"]
+[ext_resource type="Texture2D" uid="uid://cvvug867frcsn" path="res://Resources/Skins/旧版2/long-f-core.png" id="4_4t1fv"]
+[ext_resource type="Texture2D" uid="uid://d1wixwjbj4pcj" path="res://Resources/Skins/旧版2/long-b-core.png" id="6_vlo64"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xtbtg"]
 bg_color = Color(1, 1, 1, 1)
@@ -12,6 +15,7 @@ clip_children = 1
 offset_right = 100.0
 offset_bottom = 250.0
 size_flags_horizontal = 4
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_xtbtg")
 
 [node name="VBoxC" type="VBoxContainer" parent="."]
@@ -31,12 +35,35 @@ texture = ExtResource("1_xtbtg")
 expand_mode = 5
 stretch_mode = 6
 
+[node name="core" type="TextureRect" parent="VBoxC/tail"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_fanli")
+expand_mode = 1
+stretch_mode = 5
+
 [node name="body" type="TextureRect" parent="VBoxC"]
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
 texture = ExtResource("2_8rwew")
 expand_mode = 5
+
+[node name="core" type="TextureRect" parent="VBoxC/body"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_4t1fv")
+expand_mode = 1
 
 [node name="head" type="TextureRect" parent="VBoxC"]
 layout_mode = 2
@@ -45,3 +72,15 @@ mouse_filter = 2
 texture = ExtResource("3_5p25v")
 expand_mode = 5
 stretch_mode = 6
+
+[node name="core" type="TextureRect" parent="VBoxC/head"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("6_vlo64")
+expand_mode = 3
+stretch_mode = 5

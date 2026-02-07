@@ -25,7 +25,7 @@ func play(type: String):
 	queue_free()
 
 func set_particle_scale(scl: float):
-	scale *= scl
+	scale = Vector2(scl, scl)
 
 	get_node("Base").process_material.scale_min = scl * 0.6
 	get_node("Base").process_material.scale_max = scl * 0.6
