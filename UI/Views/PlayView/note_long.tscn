@@ -7,16 +7,14 @@
 [ext_resource type="Texture2D" uid="uid://cvvug867frcsn" path="res://Resources/Skins/旧版2/long-f-core.png" id="4_4t1fv"]
 [ext_resource type="Texture2D" uid="uid://d1wixwjbj4pcj" path="res://Resources/Skins/旧版2/long-b-core.png" id="6_vlo64"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xtbtg"]
-bg_color = Color(1, 1, 1, 1)
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_fanli"]
 
 [node name="long" type="Panel"]
-clip_children = 1
 offset_right = 100.0
 offset_bottom = 250.0
 size_flags_horizontal = 4
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_xtbtg")
+theme_override_styles/panel = SubResource("StyleBoxEmpty_fanli")
 
 [node name="VBoxC" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -49,10 +47,9 @@ stretch_mode = 5
 
 [node name="body" type="TextureRect" parent="VBoxC"]
 layout_mode = 2
-size_flags_vertical = 3
 mouse_filter = 2
 texture = ExtResource("2_8rwew")
-expand_mode = 5
+expand_mode = 1
 
 [node name="core" type="TextureRect" parent="VBoxC/body"]
 layout_mode = 1
