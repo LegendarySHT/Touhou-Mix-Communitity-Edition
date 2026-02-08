@@ -141,6 +141,7 @@ class GodotMIDIPlayerChannelStatus:
 		self.bank = _bank
 		self.drum_track = _drum_track
 		self.rpn = GodotMIDIPlayerChannelStatusRPN.new( )
+		# 先设置 drum_track 标志，再调用 initialize()
 		self.initialize( )
 
 	## 通知（メモリ破棄用）
@@ -152,7 +153,11 @@ class GodotMIDIPlayerChannelStatus:
 	## チャンネル初期化
 	func initialize( ) -> void:
 		self.note_on = {}
-		self.program = 0
+		# 修复：鼓组通道保留原 program 值（默认 0 = Standard Kit）
+		# 非鼓组通道重置为 0 (Grand Piano)
+		if not self.drum_track:
+			self.program = 0
+		# bank 不重置，保留构造函数中设置的值
 
 		self.pitch_bend = 0.0
 		self.volume = 100.0 / 127.0
@@ -308,6 +313,9 @@ var _track_channel_instruments: Dictionary = {}
 var chorus_power:float = 0.7
 ## 轨道级音量配置 {track_index: {channel: float}}
 var track_channel_volumes: Dictionary = {}
+## 轨道-通道乐器覆盖字典 {track_index: {channel: {bank: int, program: int}}}
+## 用于运行时动态修改乐器，优先级高于 MIDI 文件中的 Program Change 事件
+var track_channel_instruments: Dictionary = {}
 ## 再生準備ができているか？
 var prepared_to_play:bool = false
 ## AudioServerを初期化しているか？
@@ -514,10 +522,17 @@ func _init_track( ) -> void:
 func _analyse_smf( ) -> void:
 	var channels:Array[Dictionary] = []
 	for i in range( max_channel ):
-		channels.append({ "number": i, "bank": 0, })
+		# 为鼓组通道（channel 9）设置正确的初始 bank
+		var initial_bank = Bank.drum_track_bank if i == drum_track_channel else 0
+		channels.append({ "number": i, "bank": initial_bank, })
 	self.loop_start = 0.0
 	self._used_program_numbers = [0, Bank.drum_track_bank << 7]	# GrandPiano and Standard Kit
 
+	# 收集每个 (track, channel) 对的乐器信息
+	# 格式：{track_idx: {channel: {"bank": int, "program": int}}}
+	var track_channel_program_changes: Dictionary = {}
+	
+	# 首先，收集所有 (track, channel) 对及其 program_change 事件
 	for event_chunk in self.track_status.events:
 		var channel_number:int = event_chunk.channel_number
 		var track_idx:int = event_chunk.track_index
@@ -532,14 +547,13 @@ func _analyse_smf( ) -> void:
 				if not( program_number in self._used_program_numbers ):
 					self._used_program_numbers.append( program_number )
 
-				# 新增：记录该 (track, channel) 的乐器信息（仅记录第一个）
-				if not self._track_channel_instruments.has(track_idx):
-					self._track_channel_instruments[track_idx] = {}
-				if not self._track_channel_instruments[track_idx].has(channel_number):
-					self._track_channel_instruments[track_idx][channel_number] = {
-						"bank": channel.bank,
-						"program": event.number
-					}
+				# 记录每个 (track, channel) 对的最新乐器配置
+				if not track_channel_program_changes.has(track_idx):
+					track_channel_program_changes[track_idx] = {}
+				track_channel_program_changes[track_idx][channel_number] = {
+					"bank": channel.bank,
+					"program": event.number
+				}
 			SMF.MIDIEventType.control_change:
 				match event.number:
 					SMF.control_number_bank_select_msb:
@@ -556,11 +570,46 @@ func _analyse_smf( ) -> void:
 						self.loop_start = float( event_chunk.time )
 			_:
 				pass
+	
+	# 收集所有 (track, channel) 对
+	var track_channels: Dictionary = {}  # {track_idx: [channels]}
+	for event_chunk in self.track_status.events:
+		var track_idx: int = event_chunk.track_index
+		var channel_number: int = event_chunk.channel_number
+		
+		if not track_channels.has(track_idx):
+			track_channels[track_idx] = []
+		if channel_number not in track_channels[track_idx]:
+			track_channels[track_idx].append(channel_number)
+	
+	# 为每个 (track, channel) 对设置默认乐器
+	self._track_channel_instruments.clear()
+	for track_idx in track_channels.keys():
+		self._track_channel_instruments[track_idx] = {}
+		for channel_number in track_channels[track_idx]:
+			# 优先使用该 track 中的 program_change
+			if track_channel_program_changes.has(track_idx) and track_channel_program_changes[track_idx].has(channel_number):
+				self._track_channel_instruments[track_idx][channel_number] = track_channel_program_changes[track_idx][channel_number].duplicate()
+			else:
+				# 如果该 track 没有为该 channel 设置 program_change，使用默认值
+				var default_bank = Bank.drum_track_bank if channel_number == drum_track_channel else 0
+				var default_program = 0  # Standard Kit for drums, Grand Piano for others
+				self._track_channel_instruments[track_idx][channel_number] = {
+					"bank": default_bank,
+					"program": default_program
+				}
+				# 调试日志
+				if channel_number == drum_track_channel:
+					print("[MidiPlayer] Track %d Channel %d (Drum): No program_change found, using default bank=%d program=%d" % [track_idx, channel_number, default_bank, default_program])
 
 ## チャンネル初期化
 func _init_channel( ) -> void:
 	for channel in self.channel_status:
 		channel.initialize( )
+	
+	# 注意：不再在这里应用 track_channel_instruments，
+	# 因为那是用户覆盖的配置，不应该修改全局的 channel_status
+	# 乐器配置现在在 _process_track_event_note_on 中根据 track_index 查找
 
 ## 再生
 ## @param	from_position	再生位置
@@ -875,7 +924,42 @@ func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:in
 
 	var track_key_shift:int = self.key_shift if not channel.drum_track else 0
 	var key_number:int = note + track_key_shift
-	var preset:Bank.Preset = self.bank.get_preset( channel.program, channel.bank )
+	
+	# ========== 确定使用哪个乐器配置 ==========
+	# 优先级：用户覆盖 > 原始 MIDI 配置 > channel 默认值
+	var bank_to_use: int = channel.bank
+	var program_to_use: int = channel.program
+	
+	# 1. 检查用户覆盖
+	if track_channel_instruments.has(track_index) and track_channel_instruments[track_index].has(channel.number):
+		var instr_override = track_channel_instruments[track_index][channel.number]
+		bank_to_use = instr_override["bank"]
+		program_to_use = instr_override["program"]
+	# 2. 否则使用原始 MIDI 配置（避免被其他 track 的 program_change 影响）
+	elif _track_channel_instruments.has(track_index) and _track_channel_instruments[track_index].has(channel.number):
+		var original_instr = _track_channel_instruments[track_index][channel.number]
+		bank_to_use = original_instr["bank"]
+		program_to_use = original_instr["program"]
+	# 3. 如果都没有，使用 channel 的当前值（可能被 program_change 修改过）
+	
+	# 修复：确保鼓组通道始终使用正确的 bank（必须放在所有分支之后）
+	if channel.drum_track:
+		bank_to_use = Bank.drum_track_bank
+	
+	var preset:Bank.Preset = self.bank.get_preset( program_to_use, bank_to_use )
+	
+	# 调试日志：鼓组音色选择验证
+	if channel.drum_track:
+		var pc = program_to_use | (bank_to_use << 7)
+		print("[Drum Debug] Note=%d, bank=%d, program=%d, pc=%d, preset_name='%s', preset_num=%d" % [
+			note, bank_to_use, program_to_use, pc, preset.name, preset.number
+		])
+		if preset.instruments[key_number] != null:
+			var inst = preset.instruments[key_number][0]
+			print("[Drum Debug]   -> instruments[%d] exists, base_pitch=%.3f" % [key_number, inst.array_base_pitch[0]])
+		else:
+			print("[Drum Debug]   -> instruments[%d] is NULL!" % key_number)
+	
 	if preset.instruments[key_number] == null:
 		return
 	var instruments:Array = preset.instruments[key_number] # Bank.Instrument
@@ -1026,6 +1110,26 @@ func get_track_channel_volume(track_index: int, channel: int) -> float:
 		if track_channel_volumes[track_index].has(channel):
 			return track_channel_volumes[track_index][channel]
 	return 1.0
+
+## 设置特定(track, channel)对的乐器
+## 会在下次播放时生效（影响后续音符，不影响已播放音符）
+## @param track_index 轨道索引
+## @param channel 通道号 (0-15)
+## @param bank Bank号（0为常规乐器，128为鼓组）
+## @param program Program号 (0-127)
+func set_track_channel_instrument(track_index: int, channel: int, bank: int, program: int) -> void:
+	if channel < 0 or channel >= max_channel:
+		push_warning("[MidiPlayer] Invalid channel number: %d" % channel)
+		return
+	
+	# 存储到字典（用于之后的音符播放时查找）
+	if not track_channel_instruments.has(track_index):
+		track_channel_instruments[track_index] = {}
+	track_channel_instruments[track_index][channel] = {"bank": bank, "program": program}
+	
+	# 注意：不再修改全局的 channel_status，因为那会影响所有 track
+	# 乐器配置现在在 _process_track_event_note_on 中根据 track_index 查找
+	print("[MidiPlayer] Set instrument override: Track %d Channel %d -> Bank %d Program %d" % [track_index, channel, bank, program])
 
 ## チャンネルにボリューム適用
 ## @param	channel	チャンネルステータス
@@ -1278,9 +1382,17 @@ func get_preset_name(program: int, bank: int = 0) -> String:
 	return "Unknown"
 
 ## 获取特定 (track, channel) 的乐器信息
+## 优先返回用户覆盖的乐器，如无覆盖则返回 MIDI 文件中的原始乐器
 ## 返回：{bank: int, program: int}，如果不存在则返回 {bank: 0, program: 0}
 func get_track_channel_instrument(track_idx: int, channel: int) -> Dictionary:
+	# 优先返回用户覆盖的乐器
+	if track_channel_instruments.has(track_idx):
+		if track_channel_instruments[track_idx].has(channel):
+			return track_channel_instruments[track_idx][channel]
+	
+	# 否则返回 MIDI 文件中解析的原始乐器
 	if self._track_channel_instruments.has(track_idx):
 		if self._track_channel_instruments[track_idx].has(channel):
 			return self._track_channel_instruments[track_idx][channel]
+	
 	return {"bank": 0, "program": 0}

@@ -119,7 +119,9 @@ var solo_pairs: Dictionary = {}
 ## 轨道-通道的乐器映射 {track_idx: {channel: {bank: int, program: int}}}
 ## 在 MIDI 解析时填充，用于在 UI 中显示正确的乐器
 var track_channel_instruments: Dictionary = {}
-
+## 用户自定义的轨道-通道音色覆盖 {track_idx: {channel: {bank: int, program: int, name: String}}}
+## 区别于 track_channel_instruments（MIDI解析的原始值），此字段专门存储用户覆盖配置
+var track_channel_instrument_overrides: Dictionary = {}
 ## 从JSON数据构造MIDI数据
 func from_json(json_data: Dictionary) -> void:
 	id = json_data.get("_id", "")
@@ -226,6 +228,25 @@ func from_json(json_data: Dictionary) -> void:
 			vocal_offset_ms = saved_vocal_offset
 		elif saved_vocal_offset is float:
 			vocal_offset_ms = int(saved_vocal_offset)
+		
+		# 恢夏用户自定义的乐器覆盖（处理 JSON 中的字符串键）
+		var saved_instrument_overrides = runtime_config.get("track_channel_instrument_overrides", {})
+		if saved_instrument_overrides is Dictionary:
+			track_channel_instrument_overrides.clear()
+			for track_key in saved_instrument_overrides.keys():
+				var track_idx = int(track_key)
+				var channels = saved_instrument_overrides[track_key]
+				if channels is Dictionary:
+					track_channel_instrument_overrides[track_idx] = {}
+					for ch_key in channels.keys():
+						var channel = int(ch_key)
+						var instr_data = channels[ch_key]
+						if instr_data is Dictionary:
+							track_channel_instrument_overrides[track_idx][channel] = {
+								"bank": instr_data.get("bank", 0),
+								"program": instr_data.get("program", 0),
+								"name": instr_data.get("name", "")
+							}
 
 ## 转换为字典格式（用于导出或缓存）
 func to_dict() -> Dictionary:
@@ -330,6 +351,7 @@ func export_runtime_config() -> Dictionary:
 		"selected_track_configs": selected_track_configs.duplicate(),
 		"track_channel_mute_state": track_channel_mute_state.duplicate(),
 		"track_channel_volume_config": track_channel_volume_config.duplicate(),
+		"track_channel_instrument_overrides": track_channel_instrument_overrides.duplicate(),
 		"solo_pairs": solo_pairs.duplicate(),
 		"use_soundfont": use_soundfont,
 		"saved_at": Time.get_ticks_msec()
@@ -347,3 +369,36 @@ func set_track_channel_instrument(track_index: int, channel: int, bank: int, pro
 	if not track_channel_instruments.has(track_index):
 		track_channel_instruments[track_index] = {}
 	track_channel_instruments[track_index][channel] = {"bank": bank, "program": program}
+
+## ========== 用户乐器覆盖接口 ==========
+
+## 设置用户自定义的轨道-通道乐器覆盖
+func set_track_channel_instrument_override(track_idx: int, channel: int, bank: int, program: int, name: String = "") -> void:
+	if not track_channel_instrument_overrides.has(track_idx):
+		track_channel_instrument_overrides[track_idx] = {}
+	track_channel_instrument_overrides[track_idx][channel] = {
+		"bank": bank,
+		"program": program,
+		"name": name
+	}
+	print("[MidiData] Track %d Channel %d: 覆盖乐器 %s (Bank %d Program %d)" % [track_idx, channel, name, bank, program])
+
+## 获取用户自定义的轨道-通道乐器覆盖
+func get_track_channel_instrument_override(track_idx: int, channel: int) -> Dictionary:
+	if track_channel_instrument_overrides.has(track_idx):
+		if track_channel_instrument_overrides[track_idx].has(channel):
+			return track_channel_instrument_overrides[track_idx][channel]
+	return {}
+
+## 清除特定轨道-通道的乐器覆盖
+func clear_track_channel_instrument_override(track_idx: int, channel: int) -> void:
+	if track_channel_instrument_overrides.has(track_idx):
+		track_channel_instrument_overrides[track_idx].erase(channel)
+		if track_channel_instrument_overrides[track_idx].is_empty():
+			track_channel_instrument_overrides.erase(track_idx)
+	print("[MidiData] Track %d Channel %d: 已清除乐器覆盖" % [track_idx, channel])
+
+## 清除所有乐器覆盖
+func clear_all_instrument_overrides() -> void:
+	track_channel_instrument_overrides.clear()
+	print("[MidiData] 已清除所有乐器覆盖")

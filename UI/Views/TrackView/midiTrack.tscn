@@ -1,10 +1,11 @@
-[gd_scene load_steps=22 format=3 uid="uid://ttmjc3cbi1bi"]
+[gd_scene load_steps=23 format=3 uid="uid://ttmjc3cbi1bi"]
 
 [ext_resource type="Script" uid="uid://bh655hfw6k0q2" path="res://UI/Views/TrackView/midiTrack.gd" id="1_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://balwiilkbpuhy" path="res://Resources/icon/TrackView/note.png" id="1_ni118"]
 [ext_resource type="Script" uid="uid://bnt65j78d2po7" path="res://UI/Views/TrackView/noteDisplayer.gd" id="2_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://bvpw7fu0xco14" path="res://Resources/icon/TrackView/volume.png" id="2_phpps"]
 [ext_resource type="Texture2D" uid="uid://df7u4t3bhlafy" path="res://Resources/icon/TrackView/microphone.png" id="3_7rc5s"]
+[ext_resource type="Texture2D" uid="uid://boaosvxm4ii76" path="res://Resources/icon/TrackView/reset.png" id="6_r0ui6"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kpleu"]
 bg_color = Color(1, 1, 1, 1)
@@ -388,7 +389,7 @@ text = "9999"
 vertical_alignment = 1
 
 [node name="ControlPanel" type="Panel" parent="HBoxC/MC/HBoxC/MC"]
-custom_minimum_size = Vector2(400, 0)
+custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 mouse_filter = 1
@@ -407,7 +408,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/h_separation = 40
 theme_override_constants/v_separation = 20
-columns = 2
+columns = 3
 
 [node name="MuteBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
 custom_minimum_size = Vector2(50, 50)
@@ -419,7 +420,7 @@ ignore_texture_size = true
 stretch_mode = 5
 
 [node name="Volume" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
-custom_minimum_size = Vector2(290, 0)
+custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 
 [node name="Slider" type="HSlider" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC/Volume"]
@@ -434,6 +435,11 @@ size_flags_horizontal = 3
 text = "-1.00dB"
 horizontal_alignment = 2
 
+[node name="PlaceHolderBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
+layout_mode = 2
+focus_mode = 0
+disabled = true
+
 [node name="SoloBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
@@ -444,13 +450,21 @@ ignore_texture_size = true
 stretch_mode = 5
 
 [node name="InstrumentBtn" type="OptionButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
-custom_minimum_size = Vector2(0, 50)
+custom_minimum_size = Vector2(250, 50)
 layout_mode = 2
 focus_mode = 0
 theme_override_font_sizes/font_size = 28
 theme_override_constants/arrow_margin = 10
 alignment = 1
 selected = 0
+fit_to_longest_item = false
 item_count = 1
 popup/item_0/text = "Grand Piano"
 popup/item_0/id = 0
+
+[node name="ResetBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+texture_normal = ExtResource("6_r0ui6")
+ignore_texture_size = true
+stretch_mode = 5

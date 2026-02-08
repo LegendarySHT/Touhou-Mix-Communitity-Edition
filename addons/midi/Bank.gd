@@ -185,6 +185,7 @@ func set_preset( program_number:int, preset:Preset ) -> void:
 ## @param	bank			バンク番号
 func get_preset( program_number:int, bank:int = 0 ) -> Preset:
 	var pc:int = program_number | ( bank << 7 )
+	var original_pc:int = pc
 
 	# 存在しない場合
 	if not self.presets.has( pc ):
@@ -199,6 +200,9 @@ func get_preset( program_number:int, bank:int = 0 ) -> Preset:
 			if self.presets.is_empty( ): push_error( "Bank is empty." )
 			# 一番最初のデフォルト音源を読む
 			pc = self.presets.keys( )[0]
+		# デバッグ: フォールバックが発生した場合
+		if bank == drum_track_bank:
+			print("[Bank Debug] Drum preset fallback: requested pc=%d (bank=%d, program=%d), actual pc=%d" % [original_pc, bank, program_number, pc])
 
 	return self.presets[pc]
 
@@ -261,6 +265,10 @@ func read_soundfont( sf:SoundFont.SoundFontData, need_program_numbers:Array = []
 		# 追加
 		self._read_soundfont_preset_compose_sample( sf, preset )
 		self.presets[program_number] = preset
+		
+		# デバッグ: ドラムトラックのプリセットをロードした場合
+		if phdr.bank == drum_track_bank or program_number >= (drum_track_bank << 7):
+			print("[Bank Debug] Loaded drum preset: name='%s', phdr.bank=%d, phdr.preset=%d, program_number=%d" % [phdr.name, phdr.bank, phdr.preset, program_number])
 
 		#times.append( Time.get_ticks_msec( ) )
 

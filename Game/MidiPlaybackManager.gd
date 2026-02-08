@@ -187,6 +187,26 @@ func load_midi(midi_data: MidiData) -> bool:
 	if midi_player != null:
 		midi_player.file = midi_file_path
 	
+	# 应用轨道-通道音量配置
+	if midi_data.track_channel_volume_config and not midi_data.track_channel_volume_config.is_empty():
+		for track_idx in midi_data.track_channel_volume_config.keys():
+			for ch in midi_data.track_channel_volume_config[track_idx].keys():
+				midi_player.set_track_channel_volume(track_idx, ch, midi_data.track_channel_volume_config[track_idx][ch])
+		print("[MidiPlaybackManager] Applied %d track volume configs" % midi_data.track_channel_volume_config.size())
+	
+	# 【Bug 1 修复】清理 MidiPlayer 中的旧乐器覆盖配置（避免延续到新 MIDI）
+	if midi_player != null:
+		midi_player.track_channel_instruments.clear()
+		print("[MidiPlaybackManager] Cleared old instrument overrides before loading new MIDI")
+	
+	# 应用轨道-通道乐器覆盖配置
+	if midi_data.track_channel_instrument_overrides and not midi_data.track_channel_instrument_overrides.is_empty():
+		for track_idx in midi_data.track_channel_instrument_overrides.keys():
+			for ch in midi_data.track_channel_instrument_overrides[track_idx].keys():
+				var instr = midi_data.track_channel_instrument_overrides[track_idx][ch]
+				midi_player.set_track_channel_instrument(track_idx, ch, instr["bank"], instr["program"])
+		print("[MidiPlaybackManager] Applied %d instrument overrides" % midi_data.track_channel_instrument_overrides.size())
+	
 	# 发出信号
 	midi_loaded.emit(current_midi_data)
 	

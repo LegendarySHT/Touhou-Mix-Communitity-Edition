@@ -37,7 +37,9 @@ var current_tick: int = 0
 var last_position_ms: float = 0.0  # 用于检测循环播放重置
 
 # 给midi轨道访问的默认值，临时占位用。
-var instrument_options: Array = ["钢琴", "吉他", "贝斯", "鼓", "弦乐"]
+var instrument_options: Array = [] # 全局乐器列表（会被 _extract_instruments_from_midi() 填充）
+var regular_instruments: Array = []  # 常规乐器 (Bank 0)
+var drum_instruments: Array = []     # 鼓组乐器 (Bank 128)
 # 人声音频路径存在时相关组件会显示
 var vocal_file_path: String = ""
 
@@ -599,10 +601,10 @@ func _on_track_volume_changed(value: float, track_index: int, channel: int ) -> 
 	if midi_playback_manager == null:
 		return
 	
-	# 获取对应的轨道UI
+	# 获取对应的轨道UI（需要同时匹配 track_index 和 channel）
 	var track_ui: MidiTrack = null
 	for track in list_items:
-		if track.track_index == track_index:
+		if track.track_index == track_index and track.track_channel == channel:
 			track_ui = track
 			break
 	
@@ -622,17 +624,89 @@ func _on_track_volume_changed(value: float, track_index: int, channel: int ) -> 
 	print("[TrackView] Track %d Channel %d volume changed: %.1f%%" % [track_index, channel, value])
 	
 # 乐器选择
-func _on_track_instrument_changed(index: int, track_index: int) -> void:
-	if track_index >= list_items.size():
+func _on_track_instrument_changed(index: int, track_index: int, channel: int) -> void:
+	# 获取对应的轨道UI（需要同时匹配 track_index 和 channel）
+	var track_item: MidiTrack = null
+	for track in list_items:
+		if track.track_index == track_index and track.track_channel == channel:
+			track_item = track
+			break
+	
+	if track_item == null:
 		return
 	
-	var instrument_name = list_items[track_index].instruments_option_btn.get_item_text(index)
+	var selected_text = track_item.instruments_option_btn.get_item_text(index)
 	
-	# 注：乐器切换通过MIDI的Program Change消息实现
-	# 当前版本记录选择，具体实现需要通过MidiPlayer的乐器配置
-	print("Track %d instrument changed to: %s" % [track_index, instrument_name])
+	# 解析 "乐器名 (BX:PY)" 格式
+	var instr_data = _parse_instrument_string(selected_text)
+	if instr_data.is_empty():
+		push_error("无法解析乐器格式: %s" % selected_text)
+		return
 	
-	# TODO: 后续可扩展支持通过MidiPlayer的API设置轨道乐器
+	# 1. 保存到 MidiData
+	current_midi_data.set_track_channel_instrument_override(
+		track_index,
+		channel,
+		instr_data["bank"],
+		instr_data["program"],
+		instr_data["name"]
+	)
+	
+	# 2. 立即应用到 MidiPlayer
+	if midi_playback_manager and midi_playback_manager.midi_player:
+		midi_playback_manager.midi_player.set_track_channel_instrument(
+			track_index,
+			channel,
+			instr_data["bank"],
+			instr_data["program"]
+		)
+	
+	print("[TrackView] Track %d Channel %d: 乐器设置为 %s (Bank %d Program %d)" %
+		[track_index, channel, instr_data["name"], instr_data["bank"], instr_data["program"]])
+
+# 解析乐器字符串 "乐器名 (BX:PY)" 返回 {name, bank, program}
+func _parse_instrument_string(instrument_str: String) -> Dictionary:
+	var regex = RegEx.new()
+	regex.compile(r"^(.+?)\s*\(B(\d+):P(\d+)\)$")
+	var result = regex.search(instrument_str)
+	
+	if result:
+		return {
+			"name": result.get_string(1).strip_edges(),
+			"bank": int(result.get_string(2)),
+			"program": int(result.get_string(3))
+		}
+	return {}
+
+# 重置轨道-通道的乐器到 MIDI 原始值
+func _on_track_instrument_reset(track_index: int, channel: int) -> void:
+	if not current_midi_data:
+		return
+	
+	# 清除用户覆盖
+	current_midi_data.clear_track_channel_instrument_override(track_index, channel)
+	
+	# 从 MIDI 原始数据恢复
+	if midi_playback_manager and midi_playback_manager.midi_player:
+		var original_instr = midi_playback_manager.midi_player._track_channel_instruments.get(track_index, {}).get(channel, {"bank": 0, "program": 0})
+		midi_playback_manager.midi_player.set_track_channel_instrument(
+			track_index,
+			channel,
+			original_instr["bank"],
+			original_instr["program"]
+		)
+		
+		# 更新 UI 下拉框（需要遍历查找匹配 track_index 和 channel 的UI项）
+		var track_ui: MidiTrack = null
+		for track in list_items:
+			if track.track_index == track_index and track.track_channel == channel:
+				track_ui = track
+				break
+		
+		if track_ui:
+			_set_track_instrument_from_midi_data(track_ui, track_index, channel)
+	
+	print("[TrackView] Track %d Channel %d: 已重置为原始乐器" % [track_index, channel])
 
 # 更新预览（当轨道或音源改变时）
 func _update_preview() -> void:
@@ -1075,6 +1149,22 @@ func _restore_midi_data_config() -> void:
 				# 立即应用到播放器（转换track_index和channel为int）
 				midi_playback_manager.set_track_channel_volume(int(track_index), int(channel), volume)
 		print("[TrackView] Restored track volumes: %d tracks" % current_midi_data.track_channel_volume_config.size())
+	
+	# 恢复轨道-通道乐器覆盖配置（从保存的配置）
+	if not current_midi_data.track_channel_instrument_overrides.is_empty():
+		for track_index in current_midi_data.track_channel_instrument_overrides.keys():
+			var channels = current_midi_data.track_channel_instrument_overrides[track_index]
+			for channel in channels.keys():
+				var instr = channels[channel]
+				# 立即应用到MidiPlayer
+				if midi_playback_manager.midi_player:
+					midi_playback_manager.midi_player.set_track_channel_instrument(
+						int(track_index),
+						int(channel),
+						instr.get("bank", 0),
+						instr.get("program", 0)
+					)
+		print("[TrackView] Restored instrument overrides: %d tracks" % current_midi_data.track_channel_instrument_overrides.size())
 
 ## 恢复MIDI配置的UI部分（按钮状态、音量值）
 ## 在_create_track_views之后调用，此时list_items已有内容
@@ -1198,26 +1288,42 @@ func _extract_instruments_from_midi() -> void:
 		GameLogger.instance.warning("No presets available from SoundFont", "TrackView")
 		return
 
-	# 构建乐器选项数组，并在此处进行去重（作为额外保险）
-	var new_instrument_options = []
+	# 清空之前的列表
+	instrument_options.clear()
+	regular_instruments.clear()
+	drum_instruments.clear()
+	
 	var seen_options = {}  # 用于去重
 
 	for preset in presets_list:
-		var display_name = preset["name"].strip_edges()
-		if display_name.is_empty():
-			display_name = "#%d" % preset["program"]
-
-		# 再次去重（虽然 Bank.get_presets_list() 应该已经去重，但作为保险）
+		var bank = preset["bank"]
+		var program = preset["program"]
+		var preset_name = preset["name"].strip_edges()
+		
+		if preset_name.is_empty():
+			preset_name = "#%d" % program
+		
+		# 构建显示名称："乐器名 (BX:PY)"
+		var display_name = "%s (B%d:P%d)" % [preset_name, bank, program]
+		
+		# 去重
 		if seen_options.has(display_name):
-			print("[TrackView] Skipping duplicate instrument: %s" % display_name)
 			continue
 		seen_options[display_name] = true
+		
+		# 根据 bank 分类
+		if bank == 128:
+			# 鼓组乐器
+			drum_instruments.append(display_name)
+		else:
+			# 常规乐器
+			regular_instruments.append(display_name)
+		
+		# 全局列表包含所有
+		instrument_options.append(display_name)
 
-		new_instrument_options.append(display_name)
-
-	# 更新全局乐器选项
-	instrument_options = new_instrument_options
-	print("[TrackView] 已提取 %d 个乐器预设（去重后）" % new_instrument_options.size())
+	print("[TrackView] 已提取 %d 个常规乐器, %d 个鼓组乐器" %
+		[regular_instruments.size(), drum_instruments.size()])
 
 ## 根据 MIDI 数据设置轨道的正确乐器
 func _set_track_instrument_from_midi_data(track_scene: MidiTrack, track_idx: int, channel: int) -> void:
@@ -1225,20 +1331,36 @@ func _set_track_instrument_from_midi_data(track_scene: MidiTrack, track_idx: int
 		return
 
 	var midi_player = midi_playback_manager.midi_player
+	if midi_player == null:
+		return
+	
+	# 首先检查是否有用户覆盖
+	var override_instr = current_midi_data.get_track_channel_instrument_override(track_idx, channel)
+	var bank: int
+	var program: int
+	var preset_name: String
+	
+	if not override_instr.is_empty():
+		# 使用用户覆盖的乐器
+		bank = override_instr.get("bank", 0)
+		program = override_instr.get("program", 0)
+		preset_name = override_instr.get("name", midi_player.get_preset_name(program, bank))
+		print("[TrackView] Track %d Channel %d: 使用用户覆盖乐器 %s" % [track_idx, channel, preset_name])
+	else:
+		# 使用 MIDI 文件中的原始乐器
+		var instrument_info = midi_player.get_track_channel_instrument(track_idx, channel)
+		bank = instrument_info.get("bank", 0)
+		program = instrument_info.get("program", 0)
+		preset_name = midi_player.get_preset_name(program, bank)
 
-	# 从MidiPlayer获取该(track, channel)的乐器信息
-	var instrument_info = midi_player.get_track_channel_instrument(track_idx, channel)
-	var program = instrument_info.get("program", 0)
-	var bank = instrument_info.get("bank", 0)
-
-	# 查找对应的预设名称
-	var preset_name = midi_player.get_preset_name(program, bank)
-
+	# 构建显示名称
+	var display_name = "%s (B%d:P%d)" % [preset_name, bank, program]
+	
 	# 在乐器选项中查找匹配项
-	if instrument_options and track_scene.instruments_option_btn:
+	if track_scene.instruments_option_btn:
 		var selected_index = 0  # 默认选择第一个
-		for i in range(instrument_options.size()):
-			if track_scene.instruments_option_btn.get_item_text(i) == preset_name:
+		for i in range(track_scene.instruments_option_btn.item_count):
+			if track_scene.instruments_option_btn.get_item_text(i) == display_name:
 				selected_index = i
 				break
 

@@ -17,6 +17,7 @@ class_name MidiTrack
 
 @onready var mute_btn: TextureButton = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/MuteBtn
 @onready var solo_btn: TextureButton = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/SoloBtn
+@onready var reset_btn: TextureButton = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/ResetBtn
 @onready var volume_slider: HSlider = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/Volume/Slider
 @onready var volume_label: Label = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/Volume/Label
 @onready var instruments_option_btn: OptionButton = $HBoxC/MC/HBoxC/MC/ControlPanel/GridC/InstrumentBtn
@@ -138,7 +139,9 @@ func _connect_signals():
 	if parent_node.has_method("_on_track_volume_changed"):
 		volume_slider.value_changed.connect(parent_node._on_track_volume_changed.bind(track_index, track_channel))
 	if parent_node.has_method("_on_track_instrument_changed"):
-		instruments_option_btn.item_selected.connect(parent_node._on_track_instrument_changed.bind(track_index))
+		instruments_option_btn.item_selected.connect(parent_node._on_track_instrument_changed.bind(track_index, track_channel))
+	if parent_node.has_method("_on_track_instrument_reset"):
+		reset_btn.pressed.connect(parent_node._on_track_instrument_reset.bind(track_index, track_channel))
 
 # 提供父节点及轨道信息，自动连接信号 乐器选项不提供时从传入的父节点获取
 # channel 参数用于区分同一轨道的不同MIDI通道，后续UI完善时使用set_channel_label()显示
@@ -148,7 +151,22 @@ func setup_track(parent: Node, index: int, track_name: String, instruments: Arra
 	track_channel = channel
 	midi_data = midi_data_ref
 	name = track_name
-	instrument_options = instruments
+	
+	# 根据 channel 类型过滤乐器选项
+	if channel == 9:
+		# Channel 9 是鼓轨道，只显示鼓组乐器
+		if "drum_instruments" in parent and not parent.drum_instruments.is_empty():
+			instrument_options = parent.drum_instruments.duplicate()
+			print("[MidiTrack] Track %d Channel %d: 使用鼓组乐器列表 (%d 个)" % [index, channel, instrument_options.size()])
+		else:
+			instrument_options = instruments.duplicate()  # fallback
+	else:
+		# 普通 channel，只显示常规乐器
+		if "regular_instruments" in parent and not parent.regular_instruments.is_empty():
+			instrument_options = parent.regular_instruments.duplicate()
+			print("[MidiTrack] Track %d Channel %d: 使用常规乐器列表 (%d 个)" % [index, channel, instrument_options.size()])
+		else:
+			instrument_options = instruments.duplicate()  # fallback
 
 	_init_fin.emit()
 
