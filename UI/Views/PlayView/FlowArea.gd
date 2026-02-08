@@ -46,6 +46,7 @@ var particle_scale: float = 0.8
 ###################################
 
 signal note_judged(result: String, offset: String)
+signal long_holding
 
 # 音符相关
 var lane_width: float = 0
@@ -76,18 +77,19 @@ enum NoteType {
 
 class Note:
 	var rect: Node
-	var start_time: float    	# 生成note时的时间
+	var start_time: float    		# 生成note时的时间
 	var duration: float
 	var type: NoteType
-	var lane: int            	# 轨道索引
+	var lane: int            		# 轨道索引
 	var tween: Tween
+	var held_by_touch_id: int = -1  # 按住该音符的触摸点ID
 
 	# 用于滑键
 	var can_judge: bool = false
 
 	# 用于长条
-	var is_held: bool = false    # 是否被按住
-	var held_by_touch_id: int = -1  # 按住该音符的触摸点ID
+	var is_held: bool = false    	# 是否被按住
+	var cooldown: float = 0      	# 长按时的触发计时器
 	
 	func _init(tp: NoteType, st: float, dur: float, l: int):
 		start_time = st
@@ -124,6 +126,10 @@ func init_flow_area(notes: Array[Note]):
 
 	set_note_width(note_visual_width)
 
+	# 预计算下落距离和速度
+	_note_fall_distance = jl.position.y + _note_max_size_y
+	_note_fall_speed = _note_fall_distance / note_generation_lead_time
+
 # 修改音符颜色
 func set_note_color(type: NoteType, cl: Color):
 	match type:
@@ -156,6 +162,10 @@ func set_note_width(wid: float):
 		nt.size.x = wid
 		if nt == nt_l:
 			nt.get_node("VBoxC").size.x = wid
+			var hd = nt.get_node("VBoxC/head")
+			_note_max_size_y = _note_max_size_y if _note_max_size_y > hd.size.y else hd.size.y
+		else:
+			_note_max_size_y = _note_max_size_y if _note_max_size_y > nt.size.y else nt.size.y
 
 # 修改特效大小
 func set_particle_scale(scl: float):
@@ -171,6 +181,11 @@ func clear_flow_area():
 		_remove_note(i)
 	note_idx = 0
 	active_holds.clear()
+
+
+var _note_max_size_y: float = 0
+var _note_fall_speed: float = 0
+var _note_fall_distance: float = 0
 
 func _create_note(tp: NoteType, x: float) -> Node:
 	var note_rect: Node = null
@@ -192,35 +207,30 @@ func _spawn_note(note_index: int) -> void:
 		return
 	
 	var nt = notes_list[note_index]
-	var lane = nt.lane
 
 	# 计算音符位置
-	var start_x = (lane + 0.5) * lane_width - float(note_visual_width)/2  # 加5像素边距
+	var start_x = parent_node.lane_area.get_lane_by_idx(nt.lane).position.x + 10
 	
 	var rect = _create_note(nt.type, start_x)
 	nt.set_rect(rect)
-	nt.rect.position.y = -nt.rect.size.y
 
 	# 计算下落位置
 	var note_half = rect.size.y/2
 	if nt.type == NoteType.Long:
 		await get_tree().process_frame
 		note_half = nt.rect.get_node("VBoxC/tail").size.y/2
-
-	var dist = jl.position.y + note_half
-	var speed = dist / note_generation_lead_time
+	
+	var target_pos_y = jl.position.y - note_half
+	nt.rect.position.y = target_pos_y - _note_fall_distance # 因为音符需要匀速所以动态起点
 
 	if nt.type == NoteType.Long:
 		var box = nt.rect.get_node("VBoxC")
-		var new_h = speed * nt.duration
+		var new_h = _note_fall_speed * nt.duration - 2 * note_half
 		box.get_node("body").custom_minimum_size.y = new_h
 
-		new_h += 4 * note_half
-		nt.rect.size.y = new_h
-		nt.rect.position.y = -new_h
+		nt.rect.position.y -= new_h
 
-	var target_pos_y = jl.position.y - note_half
-	var fall_time = (target_pos_y - nt.rect.position.y) / speed / 1000
+	var fall_time = (target_pos_y - nt.rect.position.y) / _note_fall_speed / 1000
 	
 	# 使用Tween创建下落动画
 	var tween = create_tween()
@@ -235,7 +245,7 @@ func _spawn_note(note_index: int) -> void:
 
 		var t = create_tween()
 		# 判定线后动画
-		var after_line_time = (parent_node.judge_line_offset_y / speed) / 1000.0
+		var after_line_time = (parent_node.judge_line_offset_y / _note_fall_speed) / 1000.0
 		var window_y = get_viewport().get_visible_rect().size.y
 		t.tween_property(rect, "position:y", window_y , after_line_time).set_trans(trans_after_line).set_ease(ease_after_line)
 
@@ -268,6 +278,10 @@ func _remove_note(note: Note) -> void:
 		call_deferred("_delay_free", active_holds, note.held_by_touch_id)
 
 func _gui_input(event: InputEvent) -> void:
+	if parent_node.is_pause:
+		accept_event()
+		return
+
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			# 手指按下
@@ -288,12 +302,17 @@ func _gui_input(event: InputEvent) -> void:
 		_check_slides_at_touch_pos(event.index, touch_positions[event.index])
 
 func _input(event: InputEvent) -> void:
+
 	if ui.current_state == ui.UIState.PLAY_VIEW and event is InputEventKey:
 		accept_event()
 		if event.is_echo():
 			return
 
 		if parent_node.key_map and event.keycode in parent_node.key_map:
+			if parent_node.is_pause:
+				accept_event()
+				return
+
 			if event.pressed:
 				var idx = parent_node.key_map.find(event.keycode)
 				pressed_keys[event.keycode] = idx
@@ -303,7 +322,7 @@ func _input(event: InputEvent) -> void:
 					if bn.type == NoteType.Long:
 						_hold_long_note(event.keycode, bn)
 				else:
-					parent_node.lane_area.light_lane(idx, Color.AQUA)
+					parent_node.lane_area.light_lane(idx)
 			else:
 				pressed_keys.erase(event.keycode)
 				_handle_release(event.keycode)
@@ -456,7 +475,7 @@ func _judge_note(judge_note: Note):
 		_generate_particle(result, judge_note.rect.position + judge_note.rect.size/2)
 
 var _is_pause: bool = false
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not parent_node:
 		return
 
@@ -486,11 +505,20 @@ func _process(_delta: float) -> void:
 		if note.is_held:
 			# 更新进度
 			var vbox = note.rect.get_node("VBoxC")
-			note.rect.size.y = jl.position.y - vbox.global_position.y - 5
-			
-			# 限制最大偏移
-			if note.rect.position.y >= jl.position.y - 50:
-				# 长条音符完成，判定为Perfect
-				note_judged.emit("Perfect", "完成")
+			var n_half = vbox.get_node("head").size.y / 2
+			var h = jl.position.y - vbox.global_position.y - n_half * 3 - 3
+			if h >= 0:
+				vbox.get_node("body").custom_minimum_size.y = h
+			else: # 提前判定掉防止错位
+				# note_judged.emit("Perfect", "完成") # 如果尾部算一个音符的话可以取消注释这个
+				_generate_particle("Perfect", vbox.get_node("head").global_position + Vector2(float(note_visual_width)/2, n_half))
 				_remove_note(note)
 				active_holds.erase(touch_id)
+				continue
+			
+			# 加分及加combo
+			if note.cooldown > 0.25: # 0.25是触发频率
+				note.cooldown = 0
+				long_holding.emit()
+			else:
+				note.cooldown += delta

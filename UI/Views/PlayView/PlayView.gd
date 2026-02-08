@@ -60,6 +60,7 @@ var midi_start_time: float = 0.0
 
 ########## 配置参数 #############
 var lane_count: int = 12
+var lane_padding: int = 200 # 左右填充安全区
 var keyboard_mode: bool = true
 var key_map: Array[Key] = [KEY_Q, KEY_W, KEY_D, KEY_J, KEY_I, KEY_O]
 
@@ -79,6 +80,9 @@ func _ready() -> void:
 	progress_bar.value_changed.connect(_on_top_progress_bar_value_changed)
 
 	flow_area.note_judged.connect(_on_note_judged)
+	flow_area.long_holding.connect(_holding_bonus)
+	flow_area.parent_node = self
+
 	menu_btn.pressed.connect(show_or_hide_menu)
 	continue_btn.pressed.connect(show_or_hide_menu)
 	retry_btn.pressed.connect(func ():
@@ -86,7 +90,6 @@ func _ready() -> void:
 	)
 	quit_btn.pressed.connect(_on_quit_pressed)
 
-	flow_area.parent_node = self
 	
 	# 初始化MIDI播放管理器
 	if playback_mgr == null:
@@ -106,7 +109,7 @@ var max_time: float = 20
 
 func _process(_delta: float) -> void:
 	if score_wait_to_add > 0:
-		var amount = 3 if score_wait_to_add > 3 else score_wait_to_add
+		var amount = int(sqrt(score_wait_to_add))
 		score.text = str(int(score.text) + amount)
 		score_wait_to_add -= amount
 
@@ -183,7 +186,7 @@ func _prepare_game(midi:MidiData) -> void:
 	# 初始化数据
 	_init_display()
 	
-	lane_area.init_beam(get_lane_count(), flow_area.note_visual_width, judge_line_offset_y)
+	lane_area.init_beam(get_lane_count(), flow_area.note_visual_width, judge_line_offset_y, lane_padding)
 	lane_area.set_beam_alpha(beam_alpha)
 	if keyboard_mode:
 		lane_area.init_key_display(key_map)
@@ -371,7 +374,7 @@ func _on_note_judged(result: String, offset: String):
 	_set_score_add_amount(score_add_amount)
 
 	# 设置进度条颜色
-	_set_progress_bar_color(color_map[result])
+	_set_progress_bar_color(cl)
 
 	# 显示偏移
 	early_text.self_modulate.a = 0
@@ -396,6 +399,17 @@ func _on_note_judged(result: String, offset: String):
 	center.modulate.a = 1
 	t.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	t.tween_property(center, "modulate:a", 0.0, 2)
+
+func _holding_bonus():
+	var cl = color_map["Perfect"]
+	center_text.add_theme_color_override("font_color", cl)
+	center_text.text = "Perfect"
+	combo.text = str(int(combo.text)+1)
+
+	_set_progress_bar_color(cl)
+
+	# 增加分数
+	_set_score_add_amount(50)
 
 var score_wait_to_add = 0
 func _set_score_add_amount(amount: int):
