@@ -48,6 +48,9 @@ extends Control
 # 轨道光效及键位显示
 @onready var lane_area: Control = $Lane
 
+# auto标识
+@onready var auto_label: Label = $AutoLabel
+
 var glow: Environment = null
 
 var current_midi: MidiData = null
@@ -98,8 +101,6 @@ func _ready() -> void:
 	
 	# 连接MIDI播放信号
 	playback_mgr.midi_started.connect(_on_midi_started)
-	playback_mgr.midi_stopped.connect(_on_midi_stopped)
-	playback_mgr.midi_finished.connect(_on_midi_finished)
 
 	glow = env.environment
 	env.environment = null
@@ -190,7 +191,9 @@ func _prepare_game(midi:MidiData) -> void:
 	lane_area.set_beam_alpha(beam_alpha)
 	if keyboard_mode:
 		lane_area.init_key_display(key_map)
-	
+	auto_label.visible = flow_area.auto_mode
+
+
 	# 设置进度条最大值
 	max_time = midi.duration_ms
 	progress_bar.max_value = max_time
@@ -276,19 +279,6 @@ func _on_midi_started() -> void:
 	print("[PlayView] MIDI playback started")
 	is_midi_playing = true
 
-## MIDI播放停止回调
-func _on_midi_stopped() -> void:
-	print("[PlayView] MIDI playback stopped")
-	is_midi_playing = false
-
-## MIDI播放完成回调
-func _on_midi_finished() -> void:
-	print("[PlayView] MIDI playback finished")
-	is_midi_playing = false
-	
-	# 游戏结束，可以在这里调用结束界面
-	_on_game_finished()
-
 ## 游戏结束回调（可以扩展为显示结算界面）
 func _on_game_finished() -> void:
 	print("[PlayView] Game finished!")
@@ -304,7 +294,9 @@ func _on_game_finished() -> void:
 	center.modulate.a = 1
 	
 	# 可以在这里触发结算界面
-	# EventBus.instance.emit_signal("game_finished", score.text, accuracy, combo.text)
+	is_pause = true
+	await get_tree().create_timer(1).timeout
+	UIStateManager.instance.change_state(UIStateManager.UIState.SCORE_VIEW, false)
 
 ## 退出游戏
 func _on_quit_pressed() -> void:
@@ -440,6 +432,10 @@ func _on_top_progress_bar_value_changed(value: float):
 		progress_bar.add_child(_current_rect)
 	
 	_current_rect.anchor_right = value / progress_bar.max_value
+
+	# 游戏结束
+	if value >= progress_bar.max_value:
+		_on_game_finished()
 
 func _set_progress_bar_color(cl: Color):
 	if cl == _current_rect.color:

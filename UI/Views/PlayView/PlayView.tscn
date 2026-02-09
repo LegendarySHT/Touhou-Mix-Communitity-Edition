@@ -101,6 +101,22 @@ offset_bottom = 40.0
 pivot_offset = Vector2(78, 707)
 script = ExtResource("3_kvdpo")
 
+[node name="AutoLabel" type="Label" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.5803922, 0, 0, 0.7294118)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.4)
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 250
+text = "AUTO"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="FlowArea" type="Panel" parent="."]
 clip_children = 1
 layout_mode = 1

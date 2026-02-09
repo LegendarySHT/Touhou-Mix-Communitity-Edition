@@ -218,9 +218,10 @@ grow_vertical = 2
 size_flags_horizontal = 4
 script = ExtResource("1_w3rk5")
 midi_view_path = "res://UI/Views/MidiView/MidiView.tscn"
-store_view_path = "res://UI/Views/StorePage/MidiStore.tscn"
+store_view_path = "res://UI/Views/StoreView/MidiStore.tscn"
 track_view_path = "res://UI/Views/TrackView/TrackView.tscn"
 play_view_path = "res://UI/Views/PlayView/PlayView.tscn"
+score_view_path = "res://UI/Views/ScoreView/ScoreView.tscn"
 setting_view_path = "res://UI/Views/SettingView/SettingView.tscn"
 
 [node name="PlayerInfo" type="Control" parent="."]

@@ -8,7 +8,7 @@ class_name FlowArea
 @onready var canvas: CanvasLayer = $SVP
 
 ########## 配置参数 #############
-
+var auto_mode: bool = true
 var judge_area_width: int = 150
 var judge_mode = JudgeMode.BestDist
 
@@ -254,11 +254,26 @@ func _spawn_note(note_index: int) -> void:
 
 		# 动画结束后回收音符
 		t.finished.connect(func():
-			_remove_note(nt)
-			# 只有在音符播放完毕但未被击打时才判定为Miss
-			note_judged.emit("Miss", "")
+			if nt.rect:
+				_remove_note(nt)
+				# 只有在音符播放完毕但未被击打时才判定为Miss
+				note_judged.emit("Miss", "")
 		)
 	)
+
+	if auto_mode:
+		await get_tree().create_timer(note_generation_lead_time/1000).timeout
+		_auto_click(nt)
+	
+
+var _auto_hold_idx: int = 0
+func _auto_click(note: Note):
+	if note.type == NoteType.Long:
+		note.is_held = true
+		active_holds["auto_hold_%d" % _auto_hold_idx] = note
+		_auto_hold_idx += 1
+	else:
+		_judge_note(note)
 
 # 因为在for循环遍历时erase会导致漏元素，所以推迟元素的移除
 func _delay_free(list, item_to_free):

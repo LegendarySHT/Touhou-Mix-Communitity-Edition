@@ -22,6 +22,7 @@ var filesystem_manager: FileSystemManager
 @export var store_view_path: String
 @export var track_view_path: String
 @export var play_view_path: String
+@export var score_view_path: String
 @export var setting_view_path: String
 
 func _ready():	
@@ -153,6 +154,12 @@ func _init_ui() -> void:
 	setting_page.visible = false
 	Main.add_child(setting_page)
 
+	# 播放界面
+	var score_page = load(score_view_path).instantiate()
+	score_page.visible = false
+	# score_page.z_index = 22
+	Main.add_child(score_page)
+	score_page.ani_out()
 
 	# 移动返回按钮到上层
 	var right_bottom = get_node("RB_Btn")

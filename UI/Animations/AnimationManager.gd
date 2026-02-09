@@ -263,6 +263,7 @@ var ui_exist = {
 	"Track_List": false, 		# 音轨界面的那个列表
 	"Play_View": false,
 	"Setting_View": false,
+	"Score_View": false,
 }
 
 ## 记录每个页面存在哪些组件
@@ -273,8 +274,9 @@ var ui_part = {
 	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View", "RB_Btn", "LT_Btn"],
 	UIStateManager.UIState.STORE_VIEW: ["Store_View", "RB_Btn"],
 	UIStateManager.UIState.TRACK_VIEW: ["Track_List", "RB_Btn", "LT_Btn"],
-	UIStateManager.UIState.PLAY_VIEW: ["Play_View"],
 	UIStateManager.UIState.SETTINGS_VIEW: ["Setting_View", "RB_Btn", "LT_Btn"],
+	UIStateManager.UIState.PLAY_VIEW: ["Play_View"],
+	UIStateManager.UIState.SCORE_VIEW: ["Score_View", "RB_Btn"],
 }
 
 var ALBUMLIST="/root/Main/skew/AlbumList"
@@ -403,6 +405,11 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			_save_settings_on_exit(setting_view)
 			
 			tween = animate_fade_out(setting_view, 0.35, tween_id)
+		"Score_View":
+			var score_view = get_node("/root/Main/ScoreView")
+			tween = animate_fade_out(score_view, 0.45, tween_id)
+			tween.finished.connect(func ():
+				score_view.ani_out())
 
 	# 发射结束信号
 	if tween:
@@ -522,6 +529,11 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 		"Setting_View":
 			var setting_view = get_node("/root/Main/SettingView")
 			tween = animate_fade_in(setting_view, 0.45, tween_id)
+		"Score_View":
+			var score_view = get_node("/root/Main/ScoreView")
+			tween = animate_fade_in(score_view, 0.45, tween_id)
+			tween.finished.connect(func ():
+				score_view.ani_in())
 
 	# 播放完毕
 	if tween:
