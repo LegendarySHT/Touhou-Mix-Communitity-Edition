@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://cwbhq2ov1nl3d"]
+[gd_scene format=3 uid="uid://cwbhq2ov1nl3d"]
 
 [ext_resource type="Texture2D" uid="uid://cpysvwdpdai33" path="res://Resources/Particle/perfect_sq.png" id="1_18q5v"]
 [ext_resource type="Script" uid="uid://cscqast7kth6s" path="res://UI/Views/PlayView/particle_square.gd" id="1_q5ucy"]
@@ -81,13 +81,14 @@ scale_curve = SubResource("CurveTexture_e2rhh")
 sub_emitter_mode = 4
 sub_emitter_amount_at_start = 1
 
-[node name="Panel" type="Node2D"]
+[node name="Panel" type="Node2D" unique_id=1282205430]
 light_mask = 2
 visibility_layer = 2
 rotation = 0.7853982
 script = ExtResource("1_q5ucy")
 
-[node name="Base" type="GPUParticles2D" parent="."]
+[node name="Base" type="GPUParticles2D" parent="." unique_id=576157871]
+modulate = Color(2, 2, 2, 1)
 self_modulate = Color(1, 1, 1, 0.6784314)
 light_mask = 2
 visibility_layer = 2
@@ -99,7 +100,8 @@ lifetime = 0.6
 one_shot = true
 process_material = SubResource("ParticleProcessMaterial_65g6j")
 
-[node name="Square" type="GPUParticles2D" parent="."]
+[node name="Square" type="GPUParticles2D" parent="." unique_id=1649463066]
+modulate = Color(2, 2, 2, 1)
 light_mask = 2
 visibility_layer = 2
 position = Vector2(50, 50)
@@ -110,7 +112,8 @@ lifetime = 0.5
 one_shot = true
 process_material = SubResource("ParticleProcessMaterial_q5ucy")
 
-[node name="EmitSolid" type="GPUParticles2D" parent="."]
+[node name="EmitSolid" type="GPUParticles2D" parent="." unique_id=1405708402]
+modulate = Color(2, 2, 2, 1)
 self_modulate = Color(0.99607843, 0.64705884, 0.7529412, 0.48235294)
 light_mask = 2
 visibility_layer = 2
@@ -127,7 +130,8 @@ use_fixed_seed = true
 seed = 1998769434
 process_material = SubResource("ParticleProcessMaterial_xqhi8")
 
-[node name="EmitBorder" type="GPUParticles2D" parent="."]
+[node name="EmitBorder" type="GPUParticles2D" parent="." unique_id=1994673978]
+modulate = Color(2, 2, 2, 1)
 self_modulate = Color(1, 1, 1, 0.6392157)
 light_mask = 2
 visibility_layer = 2

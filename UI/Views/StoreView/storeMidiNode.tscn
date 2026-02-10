@@ -1,6 +1,6 @@
 [gd_scene load_steps=6 format=3 uid="uid://sc0mnsr50ilm"]
 
-[ext_resource type="Script" uid="uid://ds2byracy7vto" path="res://UI/Views/StorePage/StoreMidiListItem.gd" id="1_j6ifx"]
+[ext_resource type="Script" uid="uid://ds2byracy7vto" path="res://UI/Views/StoreView/StoreMidiListItem.gd" id="1_j6ifx"]
 [ext_resource type="Texture2D" uid="uid://c1weed4a7xiuj" path="res://Resources/song_cover/2.jpg" id="2_jmah3"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jmah3"]

@@ -1,6 +1,6 @@
 [gd_scene load_steps=18 format=3 uid="uid://dvvggbuqsfxbw"]
 
-[ext_resource type="Script" uid="uid://dbgwcersgki3c" path="res://UI/Views/StorePage/StoreView.gd" id="1_77ghf"]
+[ext_resource type="Script" uid="uid://dbgwcersgki3c" path="res://UI/Views/StoreView/StoreView.gd" id="1_77ghf"]
 [ext_resource type="Texture2D" uid="uid://7e7lff81aa7n" path="res://Resources/Gradient/gradient2.png" id="1_aexbj"]
 [ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="2_e4ark"]
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="3_u7c36"]
@@ -116,7 +116,7 @@ horizontal_scroll_mode = 0
 vertical_scroll_mode = 3
 script = ExtResource("1_77ghf")
 container_path = NodePath("MC/HFlowBox")
-list_item_class = "res://UI/Views/StorePage/storeMidiNode.tscn"
+list_item_class = "res://UI/Views/StoreView/storeMidiNode.tscn"
 
 [node name="MC" type="MarginContainer" parent="StoreMidiList"]
 layout_mode = 2

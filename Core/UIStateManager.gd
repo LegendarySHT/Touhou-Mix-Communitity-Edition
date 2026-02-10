@@ -14,10 +14,11 @@ enum UIState {
 	SONG_VIEW = 1,       # 歌曲选择页面
 	MIDI_VIEW = 2,       # MIDI详细页面
 	TRACK_VIEW = 21, 	 # 音轨界面
-	PLAY_VIEW = 22,		 # 打歌界面
 	SORTED_VIEW = 3,     # 排序后的MIDI列表页面
 	STORE_VIEW = 4,      # Store页面
-	SETTINGS_VIEW = 5    # 设置页面
+	SETTINGS_VIEW = 5,   # 设置页面
+	PLAY_VIEW = 6,		 # 打歌界面
+	SCORE_VIEW = 61,	 # 结算界面
 }
 
 ## 当前UI状态
@@ -55,7 +56,7 @@ func _ready() -> void:
 # 			signal_conn = true
 
 ## 转换状态
-func change_state(new_state: UIState) -> void:
+func change_state(new_state: UIState, stash_state: bool = true) -> void:
 	if new_state == current_state:
 		print("can not change state")
 		return
@@ -65,9 +66,10 @@ func change_state(new_state: UIState) -> void:
 	# 发出状态退出信号)
 	# state_exiting.emit(old_state)
 	# 记录历史
-	if state_history.size() >= MAX_HISTORY_DEPTH:
-		state_history.pop_front()
-	state_history.append(old_state)
+	if stash_state:
+		if state_history.size() >= MAX_HISTORY_DEPTH:
+			state_history.pop_front()
+		state_history.append(old_state)
 	
 	# 更新状态
 	previous_state = old_state
@@ -121,6 +123,8 @@ func get_state_name(state: UIState) -> String:
 			return "TRACK_VIEW"
 		UIState.PLAY_VIEW:
 			return "PLAY_VIEW"
+		UIState.SCORE_VIEW:
+			return "SCORE_VIEW"
 		_:
 			return "UNKNOWN_STATE"
 
