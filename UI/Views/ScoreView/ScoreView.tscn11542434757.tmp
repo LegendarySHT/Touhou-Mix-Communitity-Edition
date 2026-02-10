@@ -719,4 +719,3 @@ stretch_mode = 5
 [connection signal="pressed" from="Btns/VBoxC/LikeBtn" to="." method="_on_like_btn_pressed"]
 [connection signal="pressed" from="Btns/VBoxC/DislikeBtn" to="." method="_on_dislike_btn_pressed"]
 [connection signal="pressed" from="Btns/VBoxC/LoveBtn" to="." method="_on_love_btn_pressed"]
-[connection signal="pressed" from="LT_Btn/Button" to="." method="_on_retry_btn_pressed"]

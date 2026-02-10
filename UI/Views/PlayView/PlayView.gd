@@ -54,6 +54,7 @@ extends Control
 var glow: Environment = null
 
 var current_midi: MidiData = null
+var play_result: ScoreView.ScoreData = null
 
 @onready var ani: AnimationManager = AnimationManager.instance
 @onready var playback_mgr: MidiPlaybackManager = MidiPlaybackManager.instance
@@ -165,6 +166,7 @@ func show_or_hide_menu():
 
 func _prepare_game(midi:MidiData) -> void:
 	current_midi = midi
+	play_result = ScoreView.ScoreData.new()
 
 	# 获取封面
 	var cover_texture = FileSystemManager.instance.get_cover_by_midiData(midi)
@@ -195,8 +197,9 @@ func _prepare_game(midi:MidiData) -> void:
 
 
 	# 设置进度条最大值
-	max_time = midi.duration_ms
-	progress_bar.max_value = max_time
+	progress_bar.set_block_signals(true)
+	progress_bar.max_value = midi.duration_ms
+	progress_bar.set_block_signals(false)
 
 	# 等待3秒显示准备界面
 	await get_tree().create_timer(3).timeout
@@ -229,7 +232,9 @@ func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
 		manual_notes = midi_data.parsed_notes
 
 	# 转换音符格式
-	flow_area.init_flow_area(_convert_midi_to_notes(manual_notes, midi_data))
+	var notes = _convert_midi_to_notes(manual_notes, midi_data)
+	flow_area.init_flow_area(notes)
+	play_result.total_notes = notes.size()
 	
 	print("[PlayView] Converted %d MIDI notes to FlowArea format" % flow_area.notes_list.size())
 
@@ -282,20 +287,13 @@ func _on_midi_started() -> void:
 ## 游戏结束回调（可以扩展为显示结算界面）
 func _on_game_finished() -> void:
 	print("[PlayView] Game finished!")
-	
-	# 计算分数和准确率
-	var total_notes = flow_area.notes_list.size()
-	var passed_notes = flow_area.note_idx
-	var accuracy = float(passed_notes) / total_notes * 100 if total_notes > 0 else 0
-	
-	# 显示结束信息（这里可以扩展为完整的结算界面）
-	center_text.text = "完成!"
-	center_text.add_theme_color_override("font_color", Color.GREEN)
-	center.modulate.a = 1
-	
+	play_result.max_combo = int(combo.text) if int(combo.text) > play_result.max_combo else play_result.max_combo
+
 	# 可以在这里触发结算界面
 	is_pause = true
+	_init_display()
 	await get_tree().create_timer(1).timeout
+	get_node("/root/Main/ScoreView").set_display(play_result)
 	UIStateManager.instance.change_state(UIStateManager.UIState.SCORE_VIEW, false)
 
 ## 退出游戏
@@ -317,6 +315,9 @@ func _init_display():
 	score_wait_to_add = 0
 	score_add.text = "+0"
 
+	pp_text.text = "0.00pp"
+	accuracy_text.text = "100.00%"
+
 	# 设置歌曲信息
 	album.text = current_midi.artist_name
 	song.text = current_midi.song_data.name
@@ -332,6 +333,10 @@ func _init_display():
 	# 重置进度条
 	_current_rect = null
 	_last_rect = null
+
+	progress_bar.set_block_signals(true)
+	progress_bar.value = 0
+	progress_bar.set_block_signals(false)
 	for i in progress_bar.get_children():
 		i.queue_free()
 
@@ -350,14 +355,29 @@ func _on_note_judged(result: String, offset: String):
 	match result:
 		"Perfect":
 			score_add_amount = 150
+			play_result.perfect_count += 1
 		"Great":
 			score_add_amount = 100
+			play_result.great_count += 1
 		"Good":
 			score_add_amount = 50
+			play_result.good_count += 1
+		"Bad":
+			play_result.bad_count += 1
+		"Miss":
+			play_result.miss_count += 1
+	match offset[0]:
+		"+":
+			play_result.early_count += 1
+		"-":
+			play_result.late_count += 1
+	if score_add_amount:
+		play_result.score += score_add_amount
 	center_text.add_theme_color_override("font_color", cl)
 
 	# combo显示
 	if result in ["Bad", "Miss"]:
+		play_result.max_combo = int(combo.text) if int(combo.text) > play_result.max_combo else play_result.max_combo
 		combo.text = "0"
 	else:
 		combo.text = str(int(combo.text)+1)
@@ -367,6 +387,10 @@ func _on_note_judged(result: String, offset: String):
 
 	# 设置进度条颜色
 	_set_progress_bar_color(cl)
+
+	# pp和准度
+	pp_text.text = play_result.get_pp()
+	accuracy_text.text = play_result.get_accuracy()
 
 	# 显示偏移
 	early_text.self_modulate.a = 0
@@ -402,6 +426,7 @@ func _holding_bonus():
 
 	# 增加分数
 	_set_score_add_amount(50)
+	play_result.score += 50
 
 var score_wait_to_add = 0
 func _set_score_add_amount(amount: int):
@@ -438,12 +463,11 @@ func _on_top_progress_bar_value_changed(value: float):
 		_on_game_finished()
 
 func _set_progress_bar_color(cl: Color):
-	if cl == _current_rect.color:
-		return
-
-	if not _current_rect or _current_rect.size.x > 20:
+	if not _current_rect:
 		_current_rect = null
 		_on_top_progress_bar_value_changed(progress_bar.value)
 		return
 
+	if cl == _current_rect.color:
+		return
 	_current_rect.color = cl

@@ -135,9 +135,12 @@ func set_note_color(type: NoteType, cl: Color):
 	match type:
 		NoteType.Block:
 			nt_b.get_node("core").modulate = cl
+			nt_b.self_modulate = Color(2,2,2)
 		NoteType.Slide:
 			nt_s.get_node("core").modulate = cl
+			nt_b.self_modulate = Color(2,2,2)
 		NoteType.Long:
+			nt_b.self_modulate = Color(2,2,2)
 			for i in nt_l.get_node("VBoxC").get_children():
 				i.get_node("core").modulate = cl
 
@@ -243,6 +246,9 @@ func _spawn_note(note_index: int) -> void:
 		if nt.type == NoteType.Slide:
 			_check_slide_stat(nt)
 
+		if auto_mode and nt.type != NoteType.Long:
+			_auto_click(nt)
+
 		var t = create_tween()
 		# 判定线后动画
 		var after_line_time = (parent_node.judge_line_offset_y / _note_fall_speed) / 1000.0
@@ -261,13 +267,10 @@ func _spawn_note(note_index: int) -> void:
 		)
 	)
 
-	if auto_mode:
-		await get_tree().create_timer(note_generation_lead_time/1000).timeout
-		_auto_click(nt)
-	
-
 var _auto_hold_idx: int = 0
 func _auto_click(note: Note):
+	if not note.rect:
+		return
 	if note.type == NoteType.Long:
 		note.is_held = true
 		active_holds["auto_hold_%d" % _auto_hold_idx] = note
@@ -483,7 +486,7 @@ func _judge_note(judge_note: Note):
 		_remove_note(judge_note)
 
 	# 特效
-	var light_color = judge_note.rect.get_node("core").modulate if judge_note.type != NoteType.Long else judge_note.rect.get_node("VBoxC/head/core").modulate
+	var light_color = note_color_short if judge_note.type == NoteType.Block else (note_color_slide if judge_note.type == NoteType.Slide else note_color_long)
 	get_parent().lane_area.light_lane(judge_note.lane, light_color)
 	
 	if judge_note.type != NoteType.Long:
@@ -514,6 +517,12 @@ func _process(delta: float) -> void:
 		_spawn_note(note_idx)
 		note_idx += 1
 	
+	# 自动按长条
+	if auto_mode:
+		for long in active_notes.filter(func(nt):
+			return nt.type == NoteType.Long and not nt.is_held and abs(nt.rect.get_node("VBoxC/head").global_position.y - jl.position.y)<25):
+			_auto_click(long)
+
 	# 更新长条音符的按住进度和显示
 	for touch_id in active_holds:
 		var note = active_holds[touch_id]

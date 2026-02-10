@@ -22,36 +22,73 @@ class_name ScoreView
 @onready var lvl_exp_progress: ProgressBar = $LevelingProgress/Data/ProgressBar
 
 class ScoreData:
-	var score: String = "0"
-	var accuracy: String = "00.00%"
-	var performance_point: String = "00.00pp"
-	var max_combo: String = "0"
-	var total_notes: String = "0"
+	var accuracy: float = 0
+	var performance_point: float = 0
+	var max_combo: int = 0
+	var total_notes: int = 0
 
-	var perfect_count: String = "0"
-	var great_count: String = "0"
-	var good_count: String = "0"
-	var bad_count: String = "0"
-	var miss_count: String = "0"
+	var score: int = 0:
+		set(v):
+			score = v
+			_update_result()
+	var perfect_count: int = 0:
+		set(v):
+			perfect_count = v
+			_update_result()	
+	var great_count: int = 0:
+		set(v):
+			great_count = v
+			_update_result()
+	var good_count: int = 0:
+		set(v):
+			good_count = v
+			_update_result()
+	var bad_count: int = 0:
+		set(v):
+			bad_count = v
+			_update_result()
+	var miss_count: int = 0:
+		set(v):
+			miss_count = v
+			_update_result()
 
-	var early_count: String = "0"
-	var late_count: String = "0"
+	var early_count: int = 0
+	var late_count: int = 0
 
-	func _init(Score, Accuracy, PerformancePoint, MaxCombo, TotalNotes, PerfectCtn, GreatCtn, GoodCtn, BadCtn, MissCtn, EarlyCtn, LateCtn) -> void:
-		score = str(Score)
-		accuracy = "%0.2f%" % Accuracy
-		performance_point = "%0.2fpp" % PerformancePoint
-		max_combo = str(MaxCombo)
-		total_notes = str(TotalNotes)
+	func _update_result():
+		accuracy = (perfect_count + (2.0/3) * great_count + (1.0/3) * good_count)/(perfect_count + great_count + good_count + bad_count + miss_count)
+		performance_point = log(1 + score) * pow(accuracy, 2)
 
-		perfect_count = str(PerfectCtn)
-		great_count = str(GreatCtn)
-		good_count = str(GoodCtn)
-		bad_count = str(BadCtn)
-		miss_count = str(MissCtn)
+	func get_rank() -> String:
+		if accuracy == 1:
+			return "Ω"
+		elif accuracy > 0.9999:
+			return "SSS"
+		elif accuracy > 0.999:
+			return "SS"
+		elif accuracy > 0.99:
+			return "S"
+		elif accuracy > 0.6:
+			var l:int = int(accuracy*100-60)
+			@warning_ignore("integer_division")
+			return char(ord("D") - l/10)+("+" if l%10>4 else "")
+		else:
+			return "F"
 
-		early_count = str(EarlyCtn)
-		late_count = str(LateCtn)
+	func get_formated_score() -> String:
+		var str_num = str(score)
+		var regex = RegEx.new()
+		regex.compile("(\\d)(?=(\\d{3})+(?!\\d))")
+		# 替换匹配的部分
+		var result = regex.sub(str_num, "$1,", true)
+		# 反转字符串，从后向前每三位加逗号
+		return result
+
+	func get_accuracy() -> String:
+		return "%0.2f%%" % (accuracy*100)
+	
+	func get_pp() -> String:
+		return "%0.2fpp" % performance_point
 
 func _ready() -> void:
 	get_window().size_changed.connect(func():
@@ -63,6 +100,22 @@ func _ready() -> void:
 	await get_tree().create_timer(3).timeout
 	ani_in()
 
+func set_display(result: ScoreData):
+	data_area.get_node("PerfectCtn").text = str(result.perfect_count)
+	data_area.get_node("GreatCtn").text = str(result.great_count)
+	data_area.get_node("GoodCtn").text = str(result.good_count)
+	data_area.get_node("BadCtn").text = str(result.bad_count)
+	data_area.get_node("MissCtn").text = str(result.miss_count)
+
+	data_area.get_node("EarlyCtn").text = str(result.early_count)
+	data_area.get_node("LateCtn").text = str(result.late_count)
+	data_area.get_node("MaxCombo").text = "%d/%d" % [result.max_combo, result.total_notes]
+
+	rank.text = result.get_rank()
+	accuracy.text = result.get_accuracy()
+	score.text = result.get_formated_score()
+	pp.text = result.get_pp()
+
 func _on_like_btn_pressed():
 	pass
 
@@ -72,6 +125,10 @@ func _on_dislike_btn_pressed():
 func _on_love_btn_pressed():
 	pass
 
+func _on_retry_btn_pressed():
+	UIStateManager.instance.change_state(UIStateManager.UIState.PLAY_VIEW, false)
+	await get_tree().create_timer(1).timeout
+	get_node("/root/Main/PlayView").retry_btn.pressed.emit()
 
 ############################# 动画 ###############################
 @onready var ani: AnimationManager = AnimationManager.instance

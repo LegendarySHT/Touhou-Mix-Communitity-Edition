@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://dufml4k4gftxf"]
+[gd_scene format=3 uid="uid://dufml4k4gftxf"]
 
 [ext_resource type="Texture2D" uid="uid://baootjbuf8yhl" path="res://Resources/icon/pause.png" id="1_8cbrq"]
 [ext_resource type="Script" uid="uid://biwqlg4kwm815" path="res://UI/Views/PlayView/PlayView.gd" id="1_uj6qe"]
@@ -17,7 +17,7 @@ fill_to = Vector2(1, 1)
 bg_color = Color(1, 1, 1, 1)
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_uj6qe"]
-color = Color(1, 1, 1, 1)
+color = Color(2, 2, 2, 1)
 thickness = 10
 
 [sub_resource type="Environment" id="Environment_jlvmc"]
@@ -25,14 +25,8 @@ background_mode = 3
 background_color = Color(1, 1, 1, 1)
 background_canvas_max_layer = 1
 glow_enabled = true
-glow_strength = 1.3
-glow_hdr_threshold = 1.34
-glow_hdr_scale = 1.33
-fog_mode = 1
-fog_sun_scatter = 0.19
-fog_density = 1.0
-adjustment_enabled = true
-adjustment_brightness = 0.9
+glow_strength = 1.07
+glow_blend_mode = 0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kvdpo"]
 bg_color = Color(0.25336733, 0.36870298, 0.8464057, 1)
@@ -76,7 +70,7 @@ corner_radius_bottom_left = 4
 shadow_color = Color(0, 0, 0, 0.21176471)
 shadow_size = 15
 
-[node name="PlayView" type="Control"]
+[node name="PlayView" type="Control" unique_id=1157893026]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -85,7 +79,8 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_uj6qe")
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="." unique_id=1298054889]
+modulate = Color(1.3, 1.3, 1.3, 1)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -94,14 +89,14 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("GradientTexture2D_uj6qe")
 
-[node name="Lane" type="Control" parent="."]
+[node name="Lane" type="Control" parent="." unique_id=2025598350]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 pivot_offset = Vector2(78, 707)
 script = ExtResource("3_kvdpo")
 
-[node name="AutoLabel" type="Label" parent="."]
+[node name="AutoLabel" type="Label" parent="." unique_id=1190176837]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -117,7 +112,7 @@ text = "AUTO"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="FlowArea" type="Panel" parent="."]
+[node name="FlowArea" type="Panel" parent="." unique_id=14663010]
 clip_children = 1
 layout_mode = 1
 anchors_preset = 15
@@ -128,7 +123,7 @@ grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_50kwk")
 script = ExtResource("2_jlvmc")
 
-[node name="JudgeLine" type="HSeparator" parent="FlowArea"]
+[node name="JudgeLine" type="HSeparator" parent="FlowArea" unique_id=1743550222]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -139,16 +134,16 @@ grow_horizontal = 2
 grow_vertical = 0
 theme_override_styles/separator = SubResource("StyleBoxLine_uj6qe")
 
-[node name="SVP" type="CanvasLayer" parent="FlowArea"]
+[node name="SVP" type="CanvasLayer" parent="FlowArea" unique_id=610203907]
 layer = 0
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="FlowArea/SVP"]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="FlowArea/SVP" unique_id=1988334537]
 environment = SubResource("Environment_jlvmc")
 
-[node name="Layer" type="CanvasLayer" parent="."]
+[node name="Layer" type="CanvasLayer" parent="." unique_id=1802311030]
 layer = 2
 
-[node name="BackBtn" type="TextureButton" parent="Layer"]
+[node name="BackBtn" type="TextureButton" parent="Layer" unique_id=150258102]
 offset_left = 30.0
 offset_top = 30.0
 offset_right = 90.0
@@ -157,7 +152,7 @@ texture_normal = ExtResource("1_8cbrq")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="Center" type="VBoxContainer" parent="Layer"]
+[node name="Center" type="VBoxContainer" parent="Layer" unique_id=823749499]
 custom_minimum_size = Vector2(450, 300)
 anchors_preset = 8
 anchor_left = 0.5
@@ -173,14 +168,14 @@ grow_vertical = 2
 pivot_offset = Vector2(225, 150)
 alignment = 1
 
-[node name="up" type="Label" parent="Layer/Center"]
+[node name="up" type="Label" parent="Layer/Center" unique_id=1270257322]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "0 ms early"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="type" type="Label" parent="Layer/Center"]
+[node name="type" type="Label" parent="Layer/Center" unique_id=264990940]
 layout_mode = 2
 theme_override_colors/font_outline_color = Color(1, 1, 1, 1)
 theme_override_constants/outline_size = 10
@@ -189,14 +184,14 @@ text = "PERFECT"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="down" type="Label" parent="Layer/Center"]
+[node name="down" type="Label" parent="Layer/Center" unique_id=1571845594]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "0 ms late"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="TopProgressBar" type="ProgressBar" parent="Layer"]
+[node name="TopProgressBar" type="ProgressBar" parent="Layer" unique_id=975580623]
 anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 8.0
@@ -204,7 +199,7 @@ grow_horizontal = 2
 value = 40.0
 show_percentage = false
 
-[node name="LeftBottom" type="Label" parent="Layer"]
+[node name="LeftBottom" type="Label" parent="Layer" unique_id=2067637448]
 custom_minimum_size = Vector2(250, 100)
 anchors_preset = 2
 anchor_top = 1.0
@@ -218,7 +213,7 @@ theme_override_font_sizes/font_size = 64
 text = "99.99 pp"
 vertical_alignment = 2
 
-[node name="RightBottom" type="Label" parent="Layer"]
+[node name="RightBottom" type="Label" parent="Layer" unique_id=157299669]
 custom_minimum_size = Vector2(250, 100)
 anchors_preset = 3
 anchor_left = 1.0
@@ -236,7 +231,7 @@ text = "99.61%"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="Score" type="VBoxContainer" parent="Layer"]
+[node name="Score" type="VBoxContainer" parent="Layer" unique_id=1590342882]
 custom_minimum_size = Vector2(450, 0)
 anchors_preset = 1
 anchor_left = 1.0
@@ -249,7 +244,7 @@ grow_horizontal = 0
 pivot_offset = Vector2(450, 70)
 alignment = 1
 
-[node name="type" type="Label" parent="Layer/Score"]
+[node name="type" type="Label" parent="Layer/Score" unique_id=1052822198]
 visible = false
 layout_mode = 2
 theme_override_font_sizes/font_size = 48
@@ -257,14 +252,14 @@ text = "SCORE"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="count" type="Label" parent="Layer/Score"]
+[node name="count" type="Label" parent="Layer/Score" unique_id=1452473314]
 layout_mode = 2
 theme_override_font_sizes/font_size = 72
 text = "0"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="add" type="Label" parent="Layer/Score"]
+[node name="add" type="Label" parent="Layer/Score" unique_id=624719103]
 layout_mode = 2
 size_flags_horizontal = 8
 theme_override_font_sizes/font_size = 48
@@ -272,7 +267,7 @@ text = "0"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="Combo" type="VBoxContainer" parent="Layer"]
+[node name="Combo" type="VBoxContainer" parent="Layer" unique_id=850182523]
 custom_minimum_size = Vector2(450, 0)
 anchors_preset = 5
 anchor_left = 0.5
@@ -283,21 +278,21 @@ offset_bottom = 200.0
 grow_horizontal = 2
 alignment = 1
 
-[node name="count" type="Label" parent="Layer/Combo"]
+[node name="count" type="Label" parent="Layer/Combo" unique_id=845915732]
 layout_mode = 2
 theme_override_font_sizes/font_size = 48
 text = "0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="type" type="Label" parent="Layer/Combo"]
+[node name="type" type="Label" parent="Layer/Combo" unique_id=1003307005]
 layout_mode = 2
 theme_override_font_sizes/font_size = 42
 text = "COMBO"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="CenterBackGround" type="ColorRect" parent="Layer"]
+[node name="CenterBackGround" type="ColorRect" parent="Layer" unique_id=1184293941]
 visible = false
 z_index = 2
 anchors_preset = 15
@@ -307,7 +302,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.75686276)
 
-[node name="Menu" type="HBoxContainer" parent="Layer/CenterBackGround"]
+[node name="Menu" type="HBoxContainer" parent="Layer/CenterBackGround" unique_id=920842605]
 visible = false
 modulate = Color(1, 1, 1, 0.8117647)
 custom_minimum_size = Vector2(1500, 500)
@@ -328,7 +323,7 @@ theme = SubResource("Theme_flcya")
 theme_override_constants/separation = 60
 alignment = 1
 
-[node name="retry" type="Button" parent="Layer/CenterBackGround/Menu"]
+[node name="retry" type="Button" parent="Layer/CenterBackGround/Menu" unique_id=1162302948]
 custom_minimum_size = Vector2(250, 250)
 layout_mode = 2
 size_flags_vertical = 4
@@ -336,7 +331,7 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 72
 text = "重试"
 
-[node name="continue" type="Button" parent="Layer/CenterBackGround/Menu"]
+[node name="continue" type="Button" parent="Layer/CenterBackGround/Menu" unique_id=1413325283]
 custom_minimum_size = Vector2(250, 250)
 layout_mode = 2
 size_flags_vertical = 4
@@ -344,7 +339,7 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 72
 text = "继续"
 
-[node name="quit" type="Button" parent="Layer/CenterBackGround/Menu"]
+[node name="quit" type="Button" parent="Layer/CenterBackGround/Menu" unique_id=1209230804]
 custom_minimum_size = Vector2(250, 250)
 layout_mode = 2
 size_flags_vertical = 4
@@ -352,7 +347,7 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 72
 text = "退出"
 
-[node name="SongInfo" type="HBoxContainer" parent="Layer/CenterBackGround"]
+[node name="SongInfo" type="HBoxContainer" parent="Layer/CenterBackGround" unique_id=1904785845]
 visible = false
 custom_minimum_size = Vector2(1000, 600)
 layout_mode = 1
@@ -369,32 +364,32 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 100
 
-[node name="PanelContainer" type="PanelContainer" parent="Layer/CenterBackGround/SongInfo"]
+[node name="PanelContainer" type="PanelContainer" parent="Layer/CenterBackGround/SongInfo" unique_id=1305550429]
 custom_minimum_size = Vector2(400, 400)
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_jlvmc")
 
-[node name="TextureRect" type="TextureRect" parent="Layer/CenterBackGround/SongInfo/PanelContainer"]
+[node name="TextureRect" type="TextureRect" parent="Layer/CenterBackGround/SongInfo/PanelContainer" unique_id=1401711672]
 custom_minimum_size = Vector2(400, 400)
 layout_mode = 2
 texture = ExtResource("2_7ak4s")
 expand_mode = 5
 stretch_mode = 5
 
-[node name="GridContainer" type="GridContainer" parent="Layer/CenterBackGround/SongInfo"]
+[node name="GridContainer" type="GridContainer" parent="Layer/CenterBackGround/SongInfo" unique_id=536004679]
 custom_minimum_size = Vector2(490, 0)
 layout_mode = 2
 size_flags_vertical = 4
 columns = 2
 
-[node name="Label1" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="Label1" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1262238620]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "专辑"
 vertical_alignment = 1
 
-[node name="album" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="album" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1982615706]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -403,13 +398,13 @@ text = "1111111"
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="Label2" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="Label2" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1638560578]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "歌名"
 vertical_alignment = 1
 
-[node name="song" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="song" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=862163164]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -418,13 +413,13 @@ text = "1111111"
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="Label3" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="Label3" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=377821397]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "作曲"
 vertical_alignment = 1
 
-[node name="artist" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="artist" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1333504800]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -433,22 +428,22 @@ text = "1111111"
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="HSeparator" type="HSeparator" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="HSeparator" type="HSeparator" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=2008031952]
 modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 
-[node name="HSeparator2" type="HSeparator" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="HSeparator2" type="HSeparator" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1466739661]
 modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 
-[node name="Label4" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="Label4" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1483964143]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "Midi名"
 vertical_alignment = 1
 
-[node name="midiName" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="midiName" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1098768823]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -457,13 +452,13 @@ text = "1111111"
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="Label5" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="Label5" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=272814813]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "Midi作者"
 vertical_alignment = 1
 
-[node name="midiAuthor" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="midiAuthor" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1088727112]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -472,13 +467,13 @@ text = "1111111"
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="Label6" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="Label6" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1558778960]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "时长"
 vertical_alignment = 1
 
-[node name="midiDuration" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="midiDuration" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1102601957]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -487,13 +482,13 @@ text = "99:61:000"
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="Label7" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="Label7" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=900148067]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "难度"
 vertical_alignment = 1
 
-[node name="difficulty" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer"]
+[node name="difficulty" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1021145344]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
