@@ -296,7 +296,7 @@ func _on_game_finished() -> void:
 	# 计算分数和准确率
 	var total_notes = flow_area.notes_list.size()
 	var passed_notes = flow_area.note_idx
-	var accuracy = float(passed_notes) / total_notes * 100 if total_notes > 0 else 0
+	var _accuracy = float(passed_notes) / total_notes * 100 if total_notes > 0 else 0  # 预留变量，用于未来的结算界面
 	
 	# 显示结束信息（这里可以扩展为完整的结算界面）
 	center_text.text = "完成!"

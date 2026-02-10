@@ -3,11 +3,13 @@
 ##
 ##	MIT License
 ##
+##	Extended to implement MidiPlaybackInterface for Touhou Mix integration
+##
 
 @icon("icon.png")
 class_name MidiPlayer
 
-extends Node
+extends MidiPlaybackInterface
 
 # -----------------------------------------------------------------------------
 # Import
@@ -352,10 +354,6 @@ signal appeared_xg_system_on
 signal midi_event( channel, event )
 ## ループ時
 signal looped
-## 終了
-signal finished
-## SoundFont变更时发出
-signal soundfont_changed(soundfont_path: String)
 
 ## 準備
 func _ready( ):
@@ -664,6 +662,14 @@ func stop( ) -> void:
 	self._stop_all_notes( )
 	self.playing = false
 
+## 暂停播放 (接口方法)
+func pause() -> void:
+	self.playing = false
+
+## 恢复播放 (接口方法)
+func resume() -> void:
+	self.playing = true
+
 ## リセット命令を強制的に発行する
 func send_reset( ) -> void:
 	self._process_track_sys_ex_reset_all_channels( )
@@ -674,6 +680,13 @@ func set_file( path:String ) -> void:
 	file = path
 	self.stop( )
 	self.smf_data = null
+
+## 加载MIDI文件 (接口方法 - 调用 set_file)
+## @param	file_path	MIDI文件路径
+## @return	加载成功返回 true
+func load_midi(file_path: String) -> bool:
+	set_file(file_path)
+	return file_path != "" and file != ""
 
 ## 同時発音数変更
 ## @param	mp	同時発音数
@@ -695,13 +708,14 @@ func set_max_polyphony( mp:int ) -> void:
 
 ## サウンドフォント変更
 ## @param	path	ファイルパス
-func set_soundfont( path:String ) -> void:
+## @return	加载成功返回 true
+func set_soundfont( path:String ) -> bool:
 	soundfont = path
 
 	if path == null or path == "":
 		self.bank = null
 		soundfont_changed.emit(path)
-		return
+		return false
 
 	var sf_reader: = SoundFont.new( )
 	var result: = sf_reader.read_file( soundfont )
@@ -718,6 +732,9 @@ func set_soundfont( path:String ) -> void:
 
 		# 发出SoundFont变更信号
 		soundfont_changed.emit(path)
+		return true
+	
+	return false
 
 ## SMFデータ更新
 ## @param	sd	SMFデータ
@@ -730,6 +747,54 @@ func set_smf_data( sd:SMF.SMFData ) -> void:
 func set_tempo( bpm:float ) -> void:
 	tempo = bpm
 	self.seconds_to_timebase = tempo / 60.0
+
+## ========== トラック・チャンネル静音接口（MidiPlaybackInterface実装）==========
+## 特定の (track, channel) 対のmute状態を設定
+## - muted=true: 該当チャンネルの再生中のnoteをすべて停止し、新しいnoteOnを検出時にスキップ
+## - muted=false: 静音を解除し、新しいnoteOnを許可
+## @param	track_index	トラックインデックス (0-)
+## @param	channel		MIDIチャンネル番号 (0-15)
+## @param	muted		静音状態 (true=muted, false=unmuted)
+func set_track_channel_mute(track_index: int, channel: int, muted: bool) -> void:
+	# ===== 状態変化チェック（最適化）=====
+	var previous_state = false
+	if muted:
+		# キャッシュされた乐器信息からこのチャンネルが実際に使用されているか確認
+		if track_channel_instruments.has(track_index):
+			if not track_channel_instruments[track_index].has(channel):
+				# 实际上没有该 (track, channel) 对，直接返回
+				return
+		elif _track_channel_instruments.has(track_index):
+			if not _track_channel_instruments[track_index].has(channel):
+				return
+		
+		# 既に静音状态をチェック
+		previous_state = (
+			_track_channel_instruments.has(track_index) and 
+			_track_channel_instruments[track_index].has(channel)
+		)
+	
+	# ===== 状態の変化なしでもスキップしない（新しい静音要求として処理） =====
+	# （MidiData側で状態管理しているため、必ず更新を進める）
+	
+	# ===== 再生中のnoteを停止 =====
+	if muted:
+		# 該当チャンネルの全audioStreamPlayerにstart_release()を呼び出す
+		for asp in self.audio_stream_players:
+			if asp.channel_number == channel and not asp.request_release:
+				asp.start_release()
+		
+		# デバッグログ
+		print("[MidiPlayer] Channel %d: Mute applied, stopping notes" % channel)
+	
+	# ===== MidiDataに状態を保存 =====
+	var midi_mgr = MidiPlaybackManager.instance
+	if midi_mgr != null and midi_mgr.current_midi_data != null:
+		midi_mgr.current_midi_data.set_track_channel_mute(track_index, channel, muted)
+		if muted:
+			print("[MidiPlayer] Track %d Channel %d: muted" % [track_index, channel])
+		else:
+			print("[MidiPlayer] Track %d Channel %d: unmuted" % [track_index, channel])
 
 ## ========== 手动note触发接口 ==========
 ## 手动触发noteOn事件 - 用于手动控制的note，直接播放指定音符
@@ -949,16 +1014,16 @@ func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:in
 	var preset:Bank.Preset = self.bank.get_preset( program_to_use, bank_to_use )
 	
 	# 调试日志：鼓组音色选择验证
-	if channel.drum_track:
-		var pc = program_to_use | (bank_to_use << 7)
-		print("[Drum Debug] Note=%d, bank=%d, program=%d, pc=%d, preset_name='%s', preset_num=%d" % [
-			note, bank_to_use, program_to_use, pc, preset.name, preset.number
-		])
-		if preset.instruments[key_number] != null:
-			var inst = preset.instruments[key_number][0]
-			print("[Drum Debug]   -> instruments[%d] exists, base_pitch=%.3f" % [key_number, inst.array_base_pitch[0]])
-		else:
-			print("[Drum Debug]   -> instruments[%d] is NULL!" % key_number)
+	#if channel.drum_track:
+	#	var pc = program_to_use | (bank_to_use << 7)
+	#	print("[Drum Debug] Note=%d, bank=%d, program=%d, pc=%d, preset_name='%s', preset_num=%d" % [
+	#		note, bank_to_use, program_to_use, pc, preset.name, preset.number
+	#	])
+	#	if preset.instruments[key_number] != null:
+	#		var inst = preset.instruments[key_number][0]
+	#		print("[Drum Debug]   -> instruments[%d] exists, base_pitch=%.3f" % [key_number, inst.array_base_pitch[0]])
+	#	else:
+	#		print("[Drum Debug]   -> instruments[%d] is NULL!" % key_number)
 	
 	if preset.instruments[key_number] == null:
 		return

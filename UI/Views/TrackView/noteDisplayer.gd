@@ -30,6 +30,10 @@ var enable_tracks: Array[int] = []
 
 var note_color: Color
 
+# 诊断计数（用于周期性输出日志）
+#var _diagnostic_frame_count: int = 0
+#var _last_logged_tick: float = 0.0
+
 class NoteEvent:
 	var pitch: int			  # MIDI音符号 (0-127)
 	var velocity: int		   # 速度/力度 (1-127)
@@ -70,9 +74,27 @@ func update_color():
 func _process(_delta):
 	if master_node == null or current_notes.is_empty():
 		return
-	# 获取当前tick
-	var ct = master_node.current_tick
-	#print("Current Tick: %d" % ct)
+	
+	# 【修复】直接从MidiPlaybackManager获取tick，确保与实际播放位置同步
+	var midi_mgr = MidiPlaybackManager.instance
+	var ct: float = 0.0
+	
+	if midi_mgr != null and midi_mgr.is_playing:
+		# 优先使用MidiPlaybackManager的position（已校准的tick值）
+		ct = midi_mgr.position
+	else:
+		# 回退到master_node的current_tick
+		ct = float(master_node.current_tick)
+	
+	# 【诊断日志】每60帧输出一次tick対比信息
+	#_diagnostic_frame_count += 1
+	#if _diagnostic_frame_count % 60 == 0:
+	#	if midi_mgr != null:
+	#		var master_tick = float(master_node.current_tick) if master_node else 0.0
+	#		print("[NoteDisplayer] Sync check - MidiPlaybackManager.position: %.1f | master_node.current_tick: %.1f | delta: %.1f" % 
+	#			[ct, master_tick, (ct - master_tick)])
+	#	_last_logged_tick = ct
+	
 	# 提前计算视野边界
 	var view_right_bound = ct + area_width / scale_factor
 
@@ -182,13 +204,19 @@ func reset_playhead_position(target_ms: float) -> void:
 	
 	# 获取MidiPlaybackManager以计算tick
 	var midi_playback_mgr = MidiPlaybackManager.instance
-	if midi_playback_mgr == null or midi_playback_mgr.midi_player == null:
+	if midi_playback_mgr == null:
 		return
 	
 	# 计算目标tick（根据BPM时间线或默认120 BPM）
+	var timebase = 480
+	if midi_playback_mgr.midi_player != null and midi_playback_mgr.midi_player.smf_data:
+		timebase = midi_playback_mgr.midi_player.smf_data.timebase
+	else:
+		timebase = midi_playback_mgr.midi_timebase
+
 	var target_tick = midi_playback_mgr._calculate_tick_from_position_with_bpm_timeline(
-		target_ms, 
-		midi_playback_mgr.midi_player.smf_data.timebase if midi_playback_mgr.midi_player.smf_data else 480
+		target_ms,
+		timebase
 	)
 	
 	print("[NoteDisplayer] Reset to position: %.1f ms (tick: %.0f)" % [target_ms, target_tick])

@@ -8,7 +8,10 @@ class_name MidiPlaybackManager
 static var instance: MidiPlaybackManager
 
 ## MIDI播放器引用
-var midi_player: Node
+var midi_player: MidiPlaybackInterface
+
+## MeltySynth C# 播放器引用（后端为meltysynth时使用）
+var meltysynth_player: MidiPlaybackInterface
 
 ## 当前加载的MIDI数据
 var current_midi_data: MidiData
@@ -19,8 +22,16 @@ var current_notes: Array = []
 ## MIDI的BPM变化时间线 (用于精确时间计算)
 var bpm_timeline: Array = []
 
+## 缓存的轨道-通道乐器映射 (从 MIDI 文件中提取)
+## 格式: {track_index: {channel: {bank: int, program: int}}}
+var cached_track_channel_instruments: Dictionary = {}
+
 ## MIDI播放状态
 var is_playing: bool = false
+
+## 后端切换锁（防止短时间内重复切换）
+## 当正在处理后端切换时，此标志为true，防止重复的set_backend()调用
+var backend_switching: bool = false
 
 ## 当前播放位置（MIDI tick单位，NOT毫秒！）
 ## 注意：MidiPlayer.position使用tick单位。此属性直接来自MidiPlayer.position
@@ -30,6 +41,12 @@ var position: float = 0.0
 ## 当前播放位置（毫秒，用于向后兼容 - 不推荐使用）
 ## ⚠️ 已弃用：使用 position 获取tick，或使用 get_position_ms() 获取毫秒值
 var position_ms: float = 0.0
+
+## MIDI时间基准 (ticks per beat)
+var midi_timebase: int = 480
+
+## 当前使用的MIDI后端 ("addons" / "meltysynth")
+var midi_backend: String = "addons"
 
 ## 总时长（毫秒）
 var duration_ms: float = 0.0
@@ -92,49 +109,107 @@ func _ready() -> void:
 	
 	add_to_group("singleton")
 	
+	# 从配置文件加载MIDI后端设置
+	_load_backend_from_config()
+	
 	# 初始化MIDI播放器
-	_initialize_midi_player()
+	_initialize_backend()
 	
 	# 扫描可用的SoundFont
 	_scan_soundfonts()
 	
 	# 从配置文件加载音源设置
 	_load_soundfont_from_config()
+	
+	# 监听设置改变信号（用于动态切换MIDI后端和音源）
+	if EventBus.instance:
+		EventBus.instance.settings_changed.connect(_on_settings_changed)
+
+## 处理设置改变信号回调（当退出SettingView时触发）
+## @param setting_name: 改变的设置名 ("*" 表示所有设置)
+## @param value: 设置的新值（此时未使用，因为我们直接从配置文件读取）
+func _on_settings_changed(setting_name: String, value: Variant) -> void:
+	print("[MidiPlaybackManager] Settings changed event: setting_name='%s', value=%s" % [setting_name, value])
+	
+	# 如果是泛指信号（所有设置改变）或具体是midi_backend改变
+	if setting_name == "*" or setting_name == "midi_backend":
+		# 重新读取MIDI后端配置
+		var old_backend = midi_backend
+		_load_backend_from_config()
+		
+		# 如果后端改变了，进行动态切换
+		if midi_backend != old_backend:
+			GameLogger.instance.info("MIDI backend changed from '%s' to '%s'" % [old_backend, midi_backend], "MidiPlaybackManager")
+			print("[MidiPlaybackManager] MIDI backend changed from '%s' to '%s' (triggered by settings)" % [old_backend, midi_backend])
+			
+			# 停止当前播放（如果有）
+			if is_playing:
+				print("[MidiPlaybackManager] Stopping playback before backend switch")
+				stop()
+			
+			# 清理旧后端（极其重要！）
+			print("[MidiPlaybackManager] Cleaning up old backend: %s" % old_backend)
+			_cleanup_old_backend(old_backend)
+			
+			# 重新初始化后端
+			print("[MidiPlaybackManager] Reinitializing backend: %s" % midi_backend)
+			var init_success = _initialize_backend()
+			if not init_success:
+				push_error("[MidiPlaybackManager] Backend initialization failed, attempting fallback to addon")
+				midi_backend = "addons"
+				_initialize_addon_backend()
+				print("[MidiPlaybackManager] Fallback to addon backend")
+			
+			# 如果原来有加载的MIDI，重新加载到新后端（但不自动播放）
+			if current_midi_data != null and not current_midi_data.midi_file_path.is_empty():
+				print("[MidiPlaybackManager] Reloading MIDI with new backend: %s" % current_midi_data.midi_file_path)
+				if load_midi(current_midi_data):
+					print("[MidiPlaybackManager] MIDI reloaded successfully")
+					# 重要：确保重新加载后不自动播放（防止从SettingView返回时错误播放）
+					stop()
+					print("[MidiPlaybackManager] Stopped playback after reload to prevent auto-play")
+				else:
+					push_error("[MidiPlaybackManager] Failed to reload MIDI with new backend")
+			else:
+				print("[MidiPlaybackManager] No MIDI loaded, skipping reload")
+		else:
+			print("[MidiPlaybackManager] Backend unchanged (still: %s)" % midi_backend)
+	
+	# 如果是泛指信号或音源改变
+	if setting_name == "*" or setting_name == "soundfont_select":
+		# 重新读取音源配置
+		print("[MidiPlaybackManager] Reloading soundfont from settings")
+		_load_soundfont_from_config()
+		print("[MidiPlaybackManager] Soundfont reloaded successfully")
 
 func _process(_delta: float) -> void:
-	if is_playing and midi_player != null:
-		# 直接从MidiPlayer读取position（tick单位）
+	var backend = _get_active_backend()
+	if not is_playing or backend == null:
+		return
+	
+	# 对于addon后端，直接读取position（tick）
+	if midi_backend == "addons" and midi_player != null:
 		position = midi_player.position
-
-		# 同时更新position_ms用于向后兼容
+		
+		# 更新position_ms，带BPM时间线支持
 		if midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
-			position_ms = _calculate_position_with_bpm_timeline(position, midi_player.smf_data.timebase)
-
-		# 调用自动同步逻辑
-		_sync_vocal_with_midi()
+			midi_timebase = midi_player.smf_data.timebase
+			position_ms = _calculate_position_with_bpm_timeline(position, midi_timebase)
+	
+	# 对于meltysynth后端，使用毫秒位置
+	elif midi_backend == "meltysynth" and meltysynth_player != null:
+		position_ms = meltysynth_player.get_position_ms()
+		# 将毫秒转为tick（使用BPM时间线）
+		if midi_timebase > 0:
+			position = _calculate_tick_from_position_with_bpm_timeline(position_ms, midi_timebase)
+	
+	# 调用自动同步逻辑
+	_sync_vocal_with_midi()
 
 ## 初始化MIDI播放器
 func _initialize_midi_player() -> void:
-	# 检查MidiPlayer插件是否存在
-	var midi_player_scene = load("res://addons/midi/MidiPlayer.tscn")
-	if midi_player_scene == null:
-		push_error("MidiPlayer addon not found!")
-		return
-	
-	midi_player = midi_player_scene.instantiate()
-	midi_player.name = "MidiPlayer"
-	add_child(midi_player)
-	
-	# 配置MidiPlayer
-	if midi_player.has_meta("script"):
-		midi_player.max_polyphony = midi_player_config["max_polyphony"]
-		midi_player.loop = midi_player_config["loop"]
-		midi_player.volume_db = midi_player_config["volume_db"]
-		midi_player.bus = "Master"
-	
-	# 连接信号
-	if midi_player.has_signal("finished"):
-		midi_player.finished.connect(_on_midi_finished)
+	# This method is kept for compatibility but now delegates to _initialize_backend
+	_initialize_backend()
 
 ## 加载MIDI文件
 ## 返回: success (bool)
@@ -164,6 +239,7 @@ func load_midi(midi_data: MidiData) -> bool:
 	# 保存解析结果
 	current_notes = parse_result["notes"]
 	bpm_timeline = parse_result.get("bpm_timeline", [])  # 获取BPM时间线
+	midi_timebase = parse_result.get("timebase", 480)  # 保存timebase
 	
 	# 对notes按start_time排序（确保时间递增）
 	current_notes.sort_custom(func(a, b) -> bool:
@@ -178,25 +254,35 @@ func load_midi(midi_data: MidiData) -> bool:
 	current_midi_data.duration_ms = parse_result["duration"]
 	duration_ms = parse_result["duration"]
 	
+	# 从 track_infos 中提取乐器信息（用于不维护此信息的后端，如 MeltySynth）
+	_extract_track_channel_instruments(parse_result["track_infos"])
+	
 	# 如果未选择轨道，则默认选择所有轨道
 	if current_midi_data.selected_track_indices.is_empty():
 		for i in range(current_midi_data.track_count):
 			current_midi_data.selected_track_indices.append(i)
 	
-	# 加载到MidiPlayer
-	if midi_player != null:
-		midi_player.file = midi_file_path
+	# 加载到活跃后端
+	var backend = _get_active_backend()
+	if backend != null:
+		if backend.has_method("load_midi"):
+			backend.load_midi(midi_file_path)
+		elif backend.has_method("set_file"):
+			backend.set_file(midi_file_path)
+		elif "file" in backend:
+			backend.file = midi_file_path
 	
 	# 应用轨道-通道音量配置
 	if midi_data.track_channel_volume_config and not midi_data.track_channel_volume_config.is_empty():
 		for track_idx in midi_data.track_channel_volume_config.keys():
 			for ch in midi_data.track_channel_volume_config[track_idx].keys():
-				midi_player.set_track_channel_volume(track_idx, ch, midi_data.track_channel_volume_config[track_idx][ch])
+				if backend != null and backend.has_method("set_track_channel_volume"):
+					backend.set_track_channel_volume(track_idx, ch, midi_data.track_channel_volume_config[track_idx][ch])
 		print("[MidiPlaybackManager] Applied %d track volume configs" % midi_data.track_channel_volume_config.size())
 	
-	# 【Bug 1 修复】清理 MidiPlayer 中的旧乐器覆盖配置（避免延续到新 MIDI）
-	if midi_player != null:
-		midi_player.track_channel_instruments.clear()
+	# 清理旧乐器覆盖配置
+	if backend != null and "track_channel_instruments" in backend:
+		backend.track_channel_instruments.clear()
 		print("[MidiPlaybackManager] Cleared old instrument overrides before loading new MIDI")
 	
 	# 应用轨道-通道乐器覆盖配置
@@ -204,8 +290,12 @@ func load_midi(midi_data: MidiData) -> bool:
 		for track_idx in midi_data.track_channel_instrument_overrides.keys():
 			for ch in midi_data.track_channel_instrument_overrides[track_idx].keys():
 				var instr = midi_data.track_channel_instrument_overrides[track_idx][ch]
-				midi_player.set_track_channel_instrument(track_idx, ch, instr["bank"], instr["program"])
+				if backend != null and backend.has_method("set_track_channel_instrument"):
+					backend.set_track_channel_instrument(track_idx, ch, instr["bank"], instr["program"])
 		print("[MidiPlaybackManager] Applied %d instrument overrides" % midi_data.track_channel_instrument_overrides.size())
+	
+	# 同步轨道-通道静音状态（清理旧MIDI的残留静音）
+	_apply_mute_state_to_backend(backend)
 	
 	# 发出信号
 	midi_loaded.emit(current_midi_data)
@@ -214,8 +304,9 @@ func load_midi(midi_data: MidiData) -> bool:
 
 ## 播放MIDI
 func play() -> void:
-	if midi_player == null:
-		push_error("MidiPlayer not initialized")
+	var backend = _get_active_backend()
+	if backend == null:
+		push_error("No MIDI backend initialized")
 		return
 	
 	if current_midi_data == null:
@@ -223,13 +314,13 @@ func play() -> void:
 		return
 	
 	# 设置音源
-	if not current_soundfont_path.is_empty() and midi_player.soundfont != current_soundfont_path:
-		midi_player.soundfont = current_soundfont_path
+	if not current_soundfont_path.is_empty() and backend.has_method("set_soundfont"):
+		backend.set_soundfont(current_soundfont_path)
 
 	# 重置同步状态
 	reset_sync_state()
 
-	midi_player.play()
+	backend.play()
 	is_playing = true
 
 	# 启动人声播放（如果有人声文件）
@@ -243,10 +334,11 @@ func play() -> void:
 
 ## 停止播放
 func stop() -> void:
-	if midi_player == null:
+	var backend = _get_active_backend()
+	if backend == null:
 		return
 	
-	midi_player.stop()
+	backend.stop()
 	is_playing = false
 	position_ms = 0.0
 
@@ -257,10 +349,11 @@ func stop() -> void:
 
 ## 暂停播放
 func pause() -> void:
-	if midi_player == null:
+	var backend = _get_active_backend()
+	if backend == null:
 		return
 	
-	midi_player.playing = false
+	backend.pause()
 	is_playing = false
 
 	# 暂停人声播放
@@ -272,10 +365,11 @@ func pause() -> void:
 
 ## 继续播放
 func resume() -> void:
-	if midi_player == null:
+	var backend = _get_active_backend()
+	if backend == null:
 		return
 	
-	midi_player.playing = true
+	backend.resume()
 	is_playing = true
 
 	# 恢复人声播放
@@ -285,17 +379,48 @@ func resume() -> void:
 
 	midi_started.emit()
 
+## 设置循环播放
+func set_loop(enabled: bool) -> void:
+	if midi_backend == "addons" and midi_player != null:
+		midi_player.loop = enabled
+	elif midi_backend == "meltysynth" and meltysynth_player != null:
+		# 直接调用 C# 方法
+		meltysynth_player.set_loop(enabled)
+	
+	# 同时更新配置
+	midi_player_config["loop"] = enabled
+	print("[MidiPlaybackManager] Loop set to: %s (backend: %s)" % [enabled, midi_backend])
+
+## 获取循环播放状态
+func get_loop() -> bool:
+	if midi_backend == "addons" and midi_player != null:
+		return midi_player.loop
+	elif midi_backend == "meltysynth" and meltysynth_player != null:
+		return meltysynth_player.get("loop")
+	return false
+
 ## 跳转到指定位置
 ## position: 位置（毫秒）
 func seek(pos: float) -> void:
-	if midi_player == null:
-		return
-	
 	position_ms = pos
-	# 使用BPM时间线来计算精确的tick位置
-	if midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
-		var target_tick = _calculate_tick_from_position_with_bpm_timeline(pos, midi_player.smf_data.timebase)
-		midi_player.seek(target_tick)
+	print("[MidiPlaybackManager] Seeking to %.1f ms (backend: %s)" % [pos, midi_backend])
+	
+	if midi_backend == "addons" and midi_player != null:
+		# 使用BPM时间线计算精确的tick位置
+		if midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
+			var target_tick = _calculate_tick_from_position_with_bpm_timeline(pos, midi_player.smf_data.timebase)
+			print("[MidiPlaybackManager] Seeking to tick %.1f (addons backend)" % target_tick)
+			midi_player.seek(target_tick)
+		elif midi_timebase > 0:
+			var target_tick = _calculate_tick_from_position_with_bpm_timeline(pos, midi_timebase)
+			print("[MidiPlaybackManager] Seeking to tick %.1f (addons backend, using cached timebase)" % target_tick)
+			midi_player.seek(target_tick)
+	elif midi_backend == "meltysynth" and meltysynth_player != null:
+		# 直接调用 C# 的 seek_ms 方法
+		print("[MidiPlaybackManager] Calling MeltySynth seek_ms(%.1f)" % pos)
+		meltysynth_player.seek_ms(pos)
+	else:
+		print("[MidiPlaybackManager] Seek failed: backend not available")
 
 ## 辅助函数：根据BPM时间线计算当前的实际播放时间（毫秒）
 func _calculate_position_with_bpm_timeline(current_tick: float, timebase: int) -> float:
@@ -442,6 +567,313 @@ func set_soundfont(soundfont_name: String) -> bool:
 	print("[MidiPlaybackManager] Soundfont set to: %s" % soundfont_path)
 	return true
 
+## 设置MIDI合成器后端
+func set_backend(backend_name: String) -> bool:
+	"""
+	动态切换MIDI后端，支持 "addons"（当前GDScript播放器）和 "meltysynth"（C#）
+	
+	Args:
+		backend_name: "addons" 或 "meltysynth"
+	
+	Returns:
+		bool: 是否设置成功
+	"""
+	backend_name = backend_name.to_lower().strip_edges()
+	
+	# 防止并发的后端切换（竞态条件）
+	if backend_switching:
+		print("[MidiPlaybackManager] Backend switch already in progress, ignoring redundant set_backend('%s') call" % backend_name)
+		return false
+	
+	# 如果后端相同，无需切换
+	if midi_backend == backend_name:
+		print("[MidiPlaybackManager] Backend already set to: %s" % backend_name)
+		return true
+	
+	# 标记正在切换
+	backend_switching = true
+	
+	# 记录旧后端
+	var old_backend = midi_backend
+	
+	if backend_name == "addons":
+		# 先清理MeltySynth（旧后端）
+		if old_backend == "meltysynth":
+			print("[MidiPlaybackManager] Cleaning up MeltySynth before switching to Addon")
+			_cleanup_old_backend("meltysynth")
+		
+		# 初始化Addon
+		if midi_player == null:
+			var init_success = _initialize_addon_backend()
+			if not init_success:
+				push_error("[MidiPlaybackManager] Failed to initialize addon backend")
+				backend_switching = false
+				return false
+		
+		if midi_player == null:
+			push_error("[MidiPlaybackManager] Addon backend is still null after initialization attempt")
+			backend_switching = false
+			return false
+		
+		midi_backend = "addons"
+		print("[MidiPlaybackManager] Switched to addon MIDI backend (GDScript)")
+		backend_switching = false
+		return true
+	
+	elif backend_name == "meltysynth":
+		if not _is_csharp_available():
+			push_warning("[MidiPlaybackManager] C# support not available, falling back to addon backend")
+			backend_switching = false
+			return set_backend("addons")
+		
+		# 先清理Addon（旧后端）
+		if old_backend == "addons":
+			print("[MidiPlaybackManager] Cleaning up Addon before switching to MeltySynth")
+			_cleanup_old_backend("addons")
+		
+		# 初始化MeltySynth
+		var init_success = false
+		if meltysynth_player == null:
+			init_success = _initialize_meltysynth_backend()
+		else:
+			init_success = true
+		
+		if not init_success or meltysynth_player == null:
+			push_error("[MidiPlaybackManager] Failed to initialize MeltySynth backend, falling back to addon")
+			# 确保midi_backend在回退前被重置
+			midi_backend = "addons"
+			backend_switching = false
+			return set_backend("addons")  # Fallback
+		
+		midi_backend = "meltysynth"
+		print("[MidiPlaybackManager] Switched to MeltySynth MIDI backend (C#)")
+		backend_switching = false
+		return true
+	
+	else:
+		push_error("[MidiPlaybackManager] Unknown backend: %s" % backend_name)
+		backend_switching = false
+		return false
+
+## 从配置文件加载MIDI后端设置
+func _load_backend_from_config() -> void:
+	var config_loader = ConfigLoader.new()
+	var user_config_path = "user://files/settings.ini"
+	
+	if FileAccess.file_exists(user_config_path):
+		var user_config = config_loader.load_config(user_config_path)
+		if not user_config.is_empty() and user_config.has("Gameplay"):
+			var backend = user_config["Gameplay"].get("midi_backend", "addons")
+			midi_backend = str(backend).to_lower().strip_edges()
+			return
+	
+	# 默认值
+	midi_backend = "addons"
+
+## 初始化指定后端
+func _initialize_backend() -> bool:
+	match midi_backend:
+		"addons":
+			return _initialize_addon_backend()
+		"meltysynth":
+			if _is_csharp_available():
+				return _initialize_meltysynth_backend()
+			else:
+				print("[MidiPlaybackManager] C# support not available, initializing addon backend instead")
+				return _initialize_addon_backend()
+		_:
+			print("[MidiPlaybackManager] Unknown backend '%s', initializing addon backend" % midi_backend)
+			return _initialize_addon_backend()
+
+## 初始化插件后端（GDScript MidiPlayer）
+## 返回: bool - 初始化是否成功
+func _initialize_addon_backend() -> bool:
+	if midi_player != null:
+		print("[MidiPlaybackManager] Addon backend already initialized, skipping")
+		return true  # 已经初始化
+	
+	print("[MidiPlaybackManager] Attempting to initialize addon MIDI backend")
+	
+	var midi_player_scene = load("res://addons/midi/MidiPlayer.tscn")
+	if midi_player_scene == null:
+		push_error("[MidiPlaybackManager] MidiPlayer addon not found!")
+		return false
+	
+	print("[MidiPlaybackManager] MidiPlayer scene loaded successfully")
+	
+	midi_player = midi_player_scene.instantiate() as MidiPlaybackInterface
+	if midi_player == null:
+		push_error("[MidiPlaybackManager] Failed to instantiate MidiPlayer as MidiPlaybackInterface")
+		return false
+	
+	print("[MidiPlaybackManager] MidiPlayer instantiated successfully")
+	
+	midi_player.name = "MidiPlayer"
+	add_child(midi_player as Node)
+	print("[MidiPlaybackManager] Added MidiPlayer as child node")
+	
+	# 配置MidiPlayer
+	if midi_player.has_meta("script"):
+		midi_player.max_polyphony = midi_player_config["max_polyphony"]
+		midi_player.loop = midi_player_config["loop"]
+		midi_player.volume_db = midi_player_config["volume_db"]
+		midi_player.bus = "Master"
+		print("[MidiPlaybackManager] Configured MidiPlayer parameters")
+	
+	# 连接信号
+	if midi_player.has_signal("finished"):
+		midi_player.finished.connect(_on_midi_finished)
+		print("[MidiPlaybackManager] Connected finished signal")
+	
+	GameLogger.instance.info("Addon MIDI backend initialized successfully", "MidiPlaybackManager")
+	print("[MidiPlaybackManager] Addon backend initialization complete")
+	
+	return true
+
+## 初始化MeltySynth后端（C#）
+## 返回: bool - 初始化是否成功
+func _initialize_meltysynth_backend() -> bool:
+	if meltysynth_player != null:
+		print("[MidiPlaybackManager] MeltySynth backend already initialized, skipping")
+		return true  # 已经初始化
+	
+	# 尝试加载预制场景
+	var scene_path = "res://CSharp/MeltySynthPlayer.tscn"
+	print("[MidiPlaybackManager] Attempting to load MeltySynth scene: %s" % scene_path)
+	
+	if not ResourceLoader.exists(scene_path):
+		push_error("[MidiPlaybackManager] MeltySynth scene path does not exist: %s" % scene_path)
+		return false
+	
+	var scene = load(scene_path) as PackedScene
+	if scene == null:
+		push_error("[MidiPlaybackManager] Failed to load MeltySynth PackedScene from: %s" % scene_path)
+		return false
+	
+	print("[MidiPlaybackManager] MeltySynth scene loaded successfully")
+	
+	var wrapper = scene.instantiate() as MidiPlaybackInterface
+	if wrapper == null:
+		push_error("[MidiPlaybackManager] Failed to instantiate MeltySynth wrapper as MidiPlaybackInterface")
+		return false
+	
+	print("[MidiPlaybackManager] MeltySynth wrapper instantiated successfully")
+	
+	# 获取 C# 后端子节点
+	var csharp_backend = wrapper.get_node_or_null("CSharpBackend")
+	if csharp_backend == null:
+		push_error("[MidiPlaybackManager] CSharpBackend child node not found in MeltySynth wrapper")
+		wrapper.queue_free()
+		return false
+	
+	print("[MidiPlaybackManager] CSharpBackend child node found")
+	
+	# 尝试设置属性
+	if not wrapper.has_meta("script"):
+		push_warning("[MidiPlaybackManager] MeltySynth wrapper does not have script meta")
+	
+	# 设置meltysynth_player属性
+	wrapper.set("meltysynth_player", csharp_backend)
+	print("[MidiPlaybackManager] Set meltysynth_player property on wrapper")
+	
+	# 添加为子节点
+	add_child(wrapper as Node)
+	print("[MidiPlaybackManager] Added wrapper as child node")
+	
+	# 配置播放器参数
+	wrapper.set("max_polyphony", midi_player_config["max_polyphony"])
+	wrapper.set("loop", midi_player_config["loop"])
+	print("[MidiPlaybackManager] Set playback parameters")
+	
+	if wrapper.has_method("set_volume_db"):
+		wrapper.call("set_volume_db", midi_player_config["volume_db"])
+		print("[MidiPlaybackManager] Called set_volume_db")
+	
+	if wrapper.has_method("set_bus"):
+		wrapper.call("set_bus", "Master")
+		print("[MidiPlaybackManager] Called set_bus")
+	
+	# 连接信号
+	if wrapper.has_signal("finished"):
+		wrapper.finished.connect(_on_midi_finished)
+		print("[MidiPlaybackManager] Connected finished signal")
+	
+	# 保存引用
+	meltysynth_player = wrapper
+	GameLogger.instance.info("MeltySynth C# backend initialized successfully", "MidiPlaybackManager")
+	print("[MidiPlaybackManager] MeltySynth backend initialization complete")
+	
+	return true
+
+## 检查C#支持
+func _is_csharp_available() -> bool:
+	return FileAccess.file_exists("res://Touhou Mix Comunitity Edition.csproj")
+
+## 清理旧后端（彻底销毁以避免同时运行多个后端）
+## 这是动态切换的关键步骤，防止旧后端继续在后台运行
+func _cleanup_old_backend(backend_type: String) -> void:
+	match backend_type:
+		"addons":
+			if midi_player != null:
+				print("[MidiPlaybackManager] Cleaning up Addon backend")
+				# 1. 停止播放器
+				if midi_player.has_method("stop"):
+					midi_player.stop()
+					print("[MidiPlaybackManager] Addon backend stopped")
+				
+				# 2. 断开所有信号
+				if midi_player.has_signal("finished"):
+					if midi_player.finished.is_connected(_on_midi_finished):
+						midi_player.finished.disconnect(_on_midi_finished)
+						print("[MidiPlaybackManager] Addon finished signal disconnected")
+				
+				# 3. 从场景树移除（立即删除，同步操作）
+				if midi_player.get_parent() != null:
+					if midi_player.get_parent() == self:
+						remove_child(midi_player)
+					midi_player.free()  # 使用free()而不是queue_free()以确保立即销毁
+					print("[MidiPlaybackManager] Addon backend freed immediately from scene")
+				
+				# 4. 清空引用
+				midi_player = null
+				print("[MidiPlaybackManager] Addon backend reference cleared")
+		
+		"meltysynth":
+			if meltysynth_player != null:
+				print("[MidiPlaybackManager] Cleaning up MeltySynth backend")
+				# 1. 停止播放器
+				if meltysynth_player.has_method("stop"):
+					meltysynth_player.stop()
+					print("[MidiPlaybackManager] MeltySynth backend stopped")
+				
+				# 2. 断开所有信号
+				if meltysynth_player.has_signal("finished"):
+					if meltysynth_player.finished.is_connected(_on_midi_finished):
+						meltysynth_player.finished.disconnect(_on_midi_finished)
+						print("[MidiPlaybackManager] MeltySynth finished signal disconnected")
+				
+				# 3. 从场景树移除（立即删除，同步操作）
+				if meltysynth_player.get_parent() != null:
+					if meltysynth_player.get_parent() == self:
+						remove_child(meltysynth_player)
+					meltysynth_player.free()  # 使用free()而不是queue_free()以确保立即销毁
+					print("[MidiPlaybackManager] MeltySynth backend freed immediately from scene")
+				
+				# 4. 清空引用
+				meltysynth_player = null
+				print("[MidiPlaybackManager] MeltySynth backend reference cleared")
+		
+		_:
+			print("[MidiPlaybackManager] Unknown backend type for cleanup: %s" % backend_type)
+
+## 获取活跃的MIDI播放器
+func _get_active_backend() -> MidiPlaybackInterface:
+	match midi_backend:
+		"meltysynth":
+			return meltysynth_player if meltysynth_player != null else midi_player
+		_:
+			return midi_player
+
 ## 辅助函数：定位soundfont文件（user优先）
 func _locate_soundfont(soundfont_name: String) -> String:
 	"""
@@ -465,36 +897,51 @@ func _locate_soundfont(soundfont_name: String) -> String:
 	
 	return ""
 
+
 ## 设置音量
 func set_volume_db(volume: float) -> void:
-	if midi_player == null:
+	var backend = _get_active_backend()
+	if backend == null:
 		return
 	
-	midi_player.volume_db = volume
+	# 应用到活跃后端
+	if backend.has_method("set_volume_db"):
+		backend.call("set_volume_db", volume)
+	elif midi_backend == "addons" and midi_player != null:
+		midi_player.volume_db = volume
+	
 	midi_player_config["volume_db"] = volume
 
 ## 设置特定(track, channel)对的音量（线性值0.0-1.0）
 ## 立即生效到正在播放的Note
 func set_track_channel_volume(track_index: int, channel: int, volume_linear: float) -> void:
-	if midi_player == null:
+	var backend = _get_active_backend()
+	if backend == null:
 		return
 	
-	# 转换线性值到dB并调用MidiPlayer的方法
-	midi_player.set_track_channel_volume(track_index, channel, clamp(volume_linear, 0.0, 1.0))
+	var clamped_volume = clamp(volume_linear, 0.0, 1.0)
 	
-	# 立即应用到channel总线（重新计算音量）
-	if midi_player.channel_status.size() > channel:
-		var ch_status = midi_player.channel_status[channel]
-		midi_player._apply_channel_volume(ch_status)
+	# 通过后端抽象调用
+	if backend.has_method("set_track_channel_volume"):
+		backend.set_track_channel_volume(track_index, channel, clamped_volume)
+		
+		# addons 后端特殊处理：立即应用到 channel 总线
+		if midi_backend == "addons" and backend == midi_player:
+			if midi_player.channel_status.size() > channel:
+				var ch_status = midi_player.channel_status[channel]
+				midi_player._apply_channel_volume(ch_status)
 	
 	print("[MidiPlaybackManager] Track %d Channel %d volume set to: %.1f%%" % 
-		[track_index, channel, volume_linear * 100.0])
+		[track_index, channel, clamped_volume * 100.0])
 
 ## 获取特定(track, channel)对的音量
 func get_track_channel_volume(track_index: int, channel: int) -> float:
-	if midi_player == null:
+	var backend = _get_active_backend()
+	if backend == null:
 		return 1.0
-	return midi_player.get_track_channel_volume(track_index, channel)
+	if backend.has_method("get_track_channel_volume"):
+		return backend.get_track_channel_volume(track_index, channel)
+	return 1.0
 
 ## 设置特定轨道的音量（相对于主音量）
 ## @deprecated 使用 set_track_channel_volume 替代
@@ -520,8 +967,8 @@ func set_vocal_volume_db(volume_db: float) -> void:
 ## 设置 (track, channel) 对的静音状态（立即生效）
 ## 参数: track_index (0+), channel (0-15), muted (true=静音, false=取消静音)
 func set_track_channel_mute(track_index: int, channel: int, muted: bool) -> void:
-	if current_midi_data == null or midi_player == null:
-		push_error("[MidiPlaybackManager] Cannot mute: no MIDI data or player")
+	if current_midi_data == null:
+		push_error("[MidiPlaybackManager] Cannot mute: no MIDI data")
 		return
 	
 	if channel < 0 or channel > 15:
@@ -539,10 +986,34 @@ func set_track_channel_mute(track_index: int, channel: int, muted: bool) -> void
 	
 	# 3. 如果是 mute，立即停止该 channel 所有正在播放的音符
 	if muted:
-		_stop_channel_notes(channel)
-		print("[MidiPlaybackManager] Stopped all notes on channel %d" % channel)
+		if midi_player != null:
+			_stop_channel_notes(channel)
+			print("[MidiPlaybackManager] Stopped all notes on channel %d" % channel)
+
+	# 3.5 通知后端（如支持）
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("set_track_channel_mute"):
+		backend.set_track_channel_mute(track_index, channel, muted)
 	
 	# 4. 发射信号
+	channel_mute_state_changed.emit(track_index, channel, muted)
+
+## 仅在运行时设置 (track, channel) 的静音状态（不写入MidiData）
+## 用于独奏或临时静音
+func set_track_channel_mute_runtime(track_index: int, channel: int, muted: bool) -> void:
+	if channel < 0 or channel > 15:
+		push_error("[MidiPlaybackManager] Invalid channel: %d (should be 0-15)" % channel)
+		return
+
+	if muted:
+		if midi_player != null:
+			_stop_channel_notes(channel)
+			print("[MidiPlaybackManager] Stopped all notes on channel %d (runtime mute)" % channel)
+
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("set_track_channel_mute"):
+		backend.set_track_channel_mute(track_index, channel, muted)
+
 	channel_mute_state_changed.emit(track_index, channel, muted)
 
 ## 查询 (track, channel) 对的静音状态
@@ -605,6 +1076,144 @@ func _scan_soundfonts() -> void:
 ## 获取可用的SoundFont列表
 func get_available_soundfonts() -> Array:
 	return available_soundfonts.duplicate()
+
+## 获取可用的乐器预设列表
+func get_presets_list() -> Array:
+	var backend = _get_active_backend()
+	if backend == null:
+		return []
+	if backend.has_method("get_presets_list"):
+		return backend.get_presets_list()
+	return []
+
+## 获取指定 bank/program 的乐器名称
+func get_preset_name(program: int, bank: int = 0) -> String:
+	var backend = _get_active_backend()
+	if backend == null:
+		return "Unknown"
+	if backend.has_method("get_preset_name"):
+		return backend.get_preset_name(program, bank)
+	return "Unknown"
+
+## 获取指定 (track, channel) 的乐器信息
+func get_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
+	var backend = _get_active_backend()
+	if backend == null:
+		return _get_instrument_from_cache(track_index, channel)
+	
+	# 优先使用后端维护的信息（如 Addon 后端）
+	if backend.has_method("get_track_channel_instrument"):
+		var result = backend.get_track_channel_instrument(track_index, channel)
+		# 如果后端返回空字典（如 MeltySynth），使用缓存
+		if not result.is_empty():
+			return result
+	
+	# 使用缓存的信息（从 MIDI 文件中提取）
+	return _get_instrument_from_cache(track_index, channel)
+
+## 从缓存中获取乐器信息
+func _get_instrument_from_cache(track_index: int, channel: int) -> Dictionary:
+	if cached_track_channel_instruments.has(track_index):
+		if cached_track_channel_instruments[track_index].has(channel):
+			return cached_track_channel_instruments[track_index][channel]
+	
+	# 返回默认值
+	return _get_default_instrument(channel)
+
+## 获取默认乐器配置（用于不维护乐器映射的后端）
+func _get_default_instrument(channel: int) -> Dictionary:
+	# Channel 9 (索引) 是鼓组，使用 Standard Drum Kit
+	if channel == 9:
+		return {"bank": 128, "program": 0}  # Bank 128 = 鼓组
+	else:
+		return {"bank": 0, "program": 0}    # Grand Piano
+
+## 同步轨道-通道静音状态到后端（清理旧MIDI残留）
+func _apply_mute_state_to_backend(backend: MidiPlaybackInterface) -> void:
+	if backend == null or not backend.has_method("set_track_channel_mute"):
+		return
+	
+	# 优先使用缓存的(track, channel)映射，确保覆盖所有实际通道
+	for track_idx in cached_track_channel_instruments.keys():
+		var channels = cached_track_channel_instruments[track_idx]
+		for channel in channels.keys():
+			var muted = current_midi_data.get_track_channel_mute(track_idx, channel)
+			backend.set_track_channel_mute(track_idx, channel, muted)
+	
+	print("[MidiPlaybackManager] Applied mute state for %d tracks" % cached_track_channel_instruments.size())
+
+## 从 track_infos 中提取 program_change 事件并缓存乐器信息
+func _extract_track_channel_instruments(track_infos: Array) -> void:
+	cached_track_channel_instruments.clear()
+	
+	# 用于跟踪每个通道的当前 bank 值
+	var channel_banks: Dictionary = {}  # {track_idx: {channel: bank}}
+	
+	# 初始化：Channel 9 默认为鼓组 bank
+	for track_idx in range(track_infos.size()):
+		channel_banks[track_idx] = {}
+		for ch in range(16):
+			if ch == 9:
+				channel_banks[track_idx][ch] = 128  # Drum bank
+			else:
+				channel_banks[track_idx][ch] = 0
+	
+	# 遍历每个轨道的事件
+	for track_idx in range(track_infos.size()):
+		var track_info = track_infos[track_idx]
+		if not track_info:
+			continue
+		
+		cached_track_channel_instruments[track_idx] = {}
+		
+		# 收集该轨道中出现的所有通道
+		var channels_in_track: Array = []
+		for event_chunk in track_info.events:
+			var channel = event_chunk.channel_number
+			if channel not in channels_in_track:
+				channels_in_track.append(channel)
+			
+			var event = event_chunk.event
+			
+			# 处理 Bank Select events (Control Change 0 和 32)
+			if event.type == SMF.MIDIEventType.control_change:
+				var cc_num = event.number
+				var cc_val = event.value
+				
+				if cc_num == 0:  # Bank Select MSB
+					if channel == 9:
+						channel_banks[track_idx][channel] = 128  # 鼓组始终 bank 128
+					else:
+						var current_bank = channel_banks[track_idx].get(channel, 0)
+						channel_banks[track_idx][channel] = (current_bank & 0x7F) | (cc_val << 7)
+				elif cc_num == 32:  # Bank Select LSB
+					if channel == 9:
+						channel_banks[track_idx][channel] = 128
+					else:
+						var current_bank = channel_banks[track_idx].get(channel, 0)
+						channel_banks[track_idx][channel] = (current_bank & 0x3F80) | (cc_val & 0x7F)
+			
+			# 处理 Program Change events
+			elif event.type == SMF.MIDIEventType.program_change:
+				var program = event.number
+				var bank = channel_banks[track_idx].get(channel, 0)
+				
+				# 存储该 (track, channel) 的乐器
+				cached_track_channel_instruments[track_idx][channel] = {
+					"bank": bank,
+					"program": program
+				}
+		
+		# 对于没有 program_change 的通道，使用默认值
+		for channel in channels_in_track:
+			if not cached_track_channel_instruments[track_idx].has(channel):
+				var bank = channel_banks[track_idx].get(channel, 0)
+				cached_track_channel_instruments[track_idx][channel] = {
+					"bank": bank,
+					"program": 0  # 默认 Grand Piano (或 Standard Drum Kit for channel 9)
+				}
+	
+	print("[MidiPlaybackManager] Extracted instruments for %d tracks from MIDI file" % cached_track_channel_instruments.size())
 
 ## 辅助函数：定位MIDI文件路径
 func _locate_midi_file(midi_data: MidiData) -> String:
@@ -739,7 +1348,7 @@ func set_manual_control_notes(manual_control_notes: Array) -> void:
 ## ========== 位置单位转换工具 ==========
 ## 将tick位置转换为毫秒（使用BPM时间线）
 func tick_to_ms(tick: float) -> float:
-	return _calculate_position_with_bpm_timeline(tick, midi_player.smf_data.timebase)
+	return _calculate_position_with_bpm_timeline(tick, midi_timebase)
 
 ## 获取当前播放位置（毫秒）
 ## 这是对position_ms的替代方法，更明确地表示返回值的单位

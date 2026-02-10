@@ -278,6 +278,15 @@ func _reload_all_settings() -> void:
 		if audio_manager and gameplay_section.has("soundfont_file"):
 			var soundfont_name = gameplay_section.get("soundfont_file", "GeneralUser-GS.sf2")
 			midi_playback_manager.set_soundfont(soundfont_name)
+		# NOTE: midi_backend 的处理由 MidiPlaybackManager._on_settings_changed() 专门负责
+		# 不要在这里重复处理，避免竞态条件导致后端切换失败
+		# if midi_playback_manager and gameplay_section.has("midi_backend"):
+		#     var backend_value = str(gameplay_section.get("midi_backend", "addons"))
+		#     if backend_value == "0":
+		#         backend_value = "addons"
+		#     elif backend_value == "1":
+		#         backend_value = "meltysynth"
+		#     midi_playback_manager.set_backend(backend_value)
 	
 	# 应用显示设置
 	if config.has("Display"):
@@ -312,6 +321,17 @@ func _apply_single_setting(setting_name: String, value: Variant) -> void:
 		if midi_playback_manager:
 			var soundfont_name = str(value)
 			midi_playback_manager.set_soundfont(soundfont_name)
+
+	# MIDI后端设置
+	elif setting_name == "midi_backend":
+		if midi_playback_manager:
+			var backend_value = str(value)
+			# 如果是选项索引，转换为对应的字符串值
+			if backend_value == "0":
+				backend_value = "addons"
+			elif backend_value == "1":
+				backend_value = "meltysynth"
+			midi_playback_manager.set_backend(backend_value)
 	
 	# 显示相关设置
 	elif setting_name == "fullscreen":

@@ -561,11 +561,7 @@ func _on_track_mute_toggled(is_muted: bool, track_index: int, channel: int) -> v
 	if midi_playback_manager == null:
 		return
 
-	# 更新MidiData中的静音状态（用于持久化）
-	if current_midi_data != null:
-		current_midi_data.set_track_channel_mute(track_index, channel, is_muted)
-
-	# 调用MidiPlaybackManager的实时mute接口（立即生效）
+	# 调用MidiPlaybackManager的实时mute接口（会同步MidiData）
 	midi_playback_manager.set_track_channel_mute(track_index, channel, is_muted)
 
 # 轨道独奏切换
@@ -594,7 +590,7 @@ func _on_track_solo_toggled(is_solo: bool, track_index: int, channel: int) -> vo
 			var should_solo = solo_pairs.has(tc_key)
 			var is_muted_in_snapshot = solo_mute_snapshot.get(tc_key, false)
 			var target_muted = true if not should_solo else is_muted_in_snapshot
-			midi_playback_manager.set_track_channel_mute(track_ui.track_index, track_ui.track_channel, target_muted)
+			midi_playback_manager.set_track_channel_mute_runtime(track_ui.track_index, track_ui.track_channel, target_muted)
 
 # 轨道音量改变
 func _on_track_volume_changed(value: float, track_index: int, channel: int ) -> void:
@@ -768,7 +764,7 @@ func _restore_solo_snapshot() -> void:
 		var key = _make_pair_key(track_ui.track_index, track_ui.track_channel)
 		if solo_mute_snapshot.has(key):
 			var muted = solo_mute_snapshot[key]
-			midi_playback_manager.set_track_channel_mute(track_ui.track_index, track_ui.track_channel, muted)
+			midi_playback_manager.set_track_channel_mute_runtime(track_ui.track_index, track_ui.track_channel, muted)
 	solo_mute_snapshot.clear()
 
 func _apply_solo_state() -> void:
@@ -783,7 +779,8 @@ func _apply_solo_state() -> void:
 		var should_solo = solo_pairs.has(key)
 		var is_muted_in_snapshot = solo_mute_snapshot.get(key, false)
 		var target_muted = true if not should_solo else is_muted_in_snapshot
-		midi_playback_manager.set_track_channel_mute(track_ui.track_index, track_ui.track_channel, target_muted)
+		# 使用runtime mute来应用临时的独奏状态（不持久化）
+		midi_playback_manager.set_track_channel_mute_runtime(track_ui.track_index, track_ui.track_channel, target_muted)
 
 # =============== MIDI播放器信号回调 ====================
 
@@ -794,7 +791,7 @@ func _on_midi_loaded(midi_data: MidiData) -> void:
 		_set_display_total_time(midi_data.duration_ms)
 	
 	# 启用循环播放并自动开始播放
-	midi_playback_manager.midi_player.loop = true
+	midi_playback_manager.set_loop(true)
 	midi_playback_manager.play()
 	is_auto_playing = true
 
@@ -1020,7 +1017,7 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 		if is_auto_playing and midi_playback_manager:
 			midi_playback_manager.stop()
 			# 禁用循环播放
-			midi_playback_manager.midi_player.loop = false
+			midi_playback_manager.set_loop(false)
 			is_auto_playing = false
 			last_position_ms = 0.0
 		
@@ -1228,6 +1225,9 @@ func _restore_midi_ui_config() -> void:
 	
 	if not solo_pairs.is_empty():
 		print("[TrackView] Restored solo pairs: %d channels are soloed" % solo_pairs.size())
+		# 【关键】恢复UI后，立即应用独奏状态到后端（包括mute状态和快照）
+		_capture_solo_snapshot()
+		_apply_solo_state()
 	
 	if not current_midi_data.selected_track_configs.is_empty():
 		print("[TrackView] Restored enable states: %d tracks with specific enabled channels" % current_midi_data.selected_track_configs.size())
@@ -1278,14 +1278,16 @@ func _on_latency_changed(new_text: String) -> void:
 
 ## 从当前加载的 MIDI 和 SoundFont 提取可用的乐器选项
 func _extract_instruments_from_midi() -> void:
-	if midi_playback_manager == null or midi_playback_manager.midi_player == null:
+	if midi_playback_manager == null:
 		return
 
-	var midi_player = midi_playback_manager.midi_player
-	var presets_list = midi_player.get_presets_list()
+	var presets_list = midi_playback_manager.get_presets_list()
 
 	if presets_list.is_empty():
 		GameLogger.instance.warning("No presets available from SoundFont", "TrackView")
+		instrument_options = ["Unknown (B0:P0)"]
+		regular_instruments = instrument_options.duplicate()
+		drum_instruments = []
 		return
 
 	# 清空之前的列表
@@ -1329,10 +1331,6 @@ func _extract_instruments_from_midi() -> void:
 func _set_track_instrument_from_midi_data(track_scene: MidiTrack, track_idx: int, channel: int) -> void:
 	if current_midi_data == null or midi_playback_manager == null:
 		return
-
-	var midi_player = midi_playback_manager.midi_player
-	if midi_player == null:
-		return
 	
 	# 首先检查是否有用户覆盖
 	var override_instr = current_midi_data.get_track_channel_instrument_override(track_idx, channel)
@@ -1344,14 +1342,14 @@ func _set_track_instrument_from_midi_data(track_scene: MidiTrack, track_idx: int
 		# 使用用户覆盖的乐器
 		bank = override_instr.get("bank", 0)
 		program = override_instr.get("program", 0)
-		preset_name = override_instr.get("name", midi_player.get_preset_name(program, bank))
+		preset_name = override_instr.get("name", midi_playback_manager.get_preset_name(program, bank))
 		print("[TrackView] Track %d Channel %d: 使用用户覆盖乐器 %s" % [track_idx, channel, preset_name])
 	else:
 		# 使用 MIDI 文件中的原始乐器
-		var instrument_info = midi_player.get_track_channel_instrument(track_idx, channel)
+		var instrument_info = midi_playback_manager.get_track_channel_instrument(track_idx, channel)
 		bank = instrument_info.get("bank", 0)
 		program = instrument_info.get("program", 0)
-		preset_name = midi_player.get_preset_name(program, bank)
+		preset_name = midi_playback_manager.get_preset_name(program, bank)
 
 	# 构建显示名称
 	var display_name = "%s (B%d:P%d)" % [preset_name, bank, program]

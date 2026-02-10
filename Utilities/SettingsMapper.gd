@@ -21,6 +21,7 @@ static var mappings: Dictionary = {
 	
 	# ========== 音源设置 ==========
 	"soundfont_select": {"section": "Gameplay", "key": "soundfont_file", "value_type": "string"},
+	"midi_backend": {"section": "Gameplay", "key": "midi_backend", "value_type": "string"},
 	"default_midi_volume": {"section": "Gameplay", "key": "default_midi_volume", "value_type": "int"},
 	"default_vocal_volume": {"section": "Gameplay", "key": "default_vocal_volume", "value_type": "int"},
 	"audio_sync_threshold": {"section": "Gameplay", "key": "audio_sync_threshold", "value_type": "int"},
@@ -122,6 +123,14 @@ static func ini_to_settings(config: Dictionary) -> Dictionary:
 						result[setting_id] = value.to_html()
 				"string":
 					result[setting_id] = str(value)
+	
+	# 特殊处理：midi_backend 从字符串值转换为选项索引
+	if result.has("midi_backend"):
+		var backend_value = result["midi_backend"]
+		if backend_value == "addons":
+			result["midi_backend"] = "0"
+		elif backend_value == "meltysynth":
+			result["midi_backend"] = "1"
 	
 	return result
 

@@ -1,0 +1,708 @@
+using Godot;
+using MeltySynth;
+using System;
+using System.Collections.Generic;
+using TouhouMix.Midi;
+
+/// <summary>
+/// Meltysynth MIDI 播放器后端
+/// 实现 IMidiPlaybackInterface 接口，提供与 GDScript 后端一致的 API
+/// </summary>
+public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
+{
+	[Signal]
+	public delegate void finishedEventHandler();
+
+	[Signal]
+	public delegate void soundfont_changedEventHandler(string soundfont_path);
+
+	public int max_polyphony = 96;
+	public bool loop = false;
+	private float _volume_db = -20.0f;
+	private string _soundfont = "";
+	private string _file = "";
+	public bool playing = false;
+	private StringName _bus = new StringName("Master");
+
+	public Godot.Collections.Dictionary track_channel_instruments = new Godot.Collections.Dictionary();
+	public Godot.Collections.Dictionary _track_channel_instruments = new Godot.Collections.Dictionary();
+
+	private AudioStreamPlayer _player;
+	private AudioStreamGenerator _generator;
+	private AudioStreamGeneratorPlayback _playback;
+
+	private Synthesizer _synth;
+	private MidiFileSequencer _sequencer;
+	private MidiFile _midiFile;
+	private SoundFont _soundFont;
+
+	private int _sampleRate;
+	private float _volumeLinear = 1.0f;
+	private bool _sequencerStarted = false;  // 追踪 sequencer 是否已启动
+	private double _pendingSeekMs = -1.0;  // 待处理的 seek 位置（-1 表示无待处理的 seek）
+
+	private readonly Dictionary<int, float> _virtualChannelVolumes = new Dictionary<int, float>();
+	private readonly Dictionary<int, (int bank, int program)> _virtualChannelInstruments = new Dictionary<int, (int bank, int program)>();
+	private readonly Dictionary<int, HashSet<int>> _manualNotes = new Dictionary<int, HashSet<int>>();
+	private readonly HashSet<int> _mutedVirtualChannels = new HashSet<int>();
+
+	private float[] _leftBuffer = Array.Empty<float>();
+	private float[] _rightBuffer = Array.Empty<float>();
+
+	private void EnsureAudioInitialized()
+	{
+		if (_player != null)
+		{
+			return;
+		}
+
+		_sampleRate = (int)AudioServer.GetMixRate();
+		_player = new AudioStreamPlayer();
+		_player.Bus = _bus;
+		AddChild(_player);
+
+		_generator = new AudioStreamGenerator
+		{
+			MixRate = _sampleRate,
+			BufferLength = 0.2f
+		};
+
+		_player.Stream = _generator;
+	}
+
+	public override void _Ready()
+	{
+		EnsureAudioInitialized();
+		SetProcess(true);
+	}
+
+	public override void _Process(double delta)
+	{
+		// 【关键】处理待处理的 seek 操作优先级最高，即使不在播放中也要处理
+		if (_pendingSeekMs >= 0.0)
+		{
+			GD.Print($"[MeltySynthPlayer] Processing seek to {_pendingSeekMs} ms (playing={playing})");
+			
+			if (_sequencer == null || _midiFile == null)
+			{
+				GD.PrintErr("[MeltySynthPlayer] Cannot seek: sequencer or midiFile is null");
+				_pendingSeekMs = -1.0;
+				return;
+			}
+
+			// 1. 如果正在播放，停止 AudioStreamPlayer 清空缓冲区
+			if (_player != null && _player.Playing)
+			{
+				_player.Stop();
+			}
+
+			var targetSeconds = Math.Max(0.0, _pendingSeekMs / 1000.0);
+			var targetFrames = (long)(_sampleRate * targetSeconds);
+
+			// 2. 重新启动 sequencer 并快进到目标位置
+			_sequencer.Play(_midiFile, loop);
+			_sequencerStarted = true;
+
+			var scratchLeft = new float[_synth.BlockSize];
+			var scratchRight = new float[_synth.BlockSize];
+			long remaining = targetFrames;
+
+			while (remaining > 0)
+			{
+				var block = (int)Math.Min(remaining, _synth.BlockSize);
+				_sequencer.Render(scratchLeft.AsSpan(0, block), scratchRight.AsSpan(0, block));
+				remaining -= block;
+			}
+
+			// 3. 如果之前在播放，重新启动 AudioStreamPlayer
+			if (playing && _player != null)
+			{
+				_player.Play();
+			}
+			
+			// 4. 重置 playback，下一帧会重新获取
+			_playback = null;
+			
+			// 5. 清除待处理标志
+			_pendingSeekMs = -1.0;
+			
+			GD.Print("[MeltySynthPlayer] Seek completed");
+			
+			// 【关键】返回，跳过本帧渲染，让缓冲区在下一帧重新开始
+			return;
+		}
+
+		// 正常播放检查
+		if (!playing || _sequencer == null || _player == null)
+		{
+			return;
+		}
+
+		// 【正常渲染流程】
+		if (!_player.Playing)
+		{
+			_player.Play();
+		}
+
+		_playback ??= _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
+		if (_playback == null)
+		{
+			return;
+		}
+
+		var framesAvailable = _playback.GetFramesAvailable();
+		if (framesAvailable <= 0)
+		{
+			return;
+		}
+
+		EnsureBuffers(framesAvailable);
+
+		_sequencer.Render(_leftBuffer.AsSpan(0, framesAvailable), _rightBuffer.AsSpan(0, framesAvailable));
+
+		var scale = _volumeLinear;
+		for (var i = 0; i < framesAvailable; i++)
+		{
+			var left = _leftBuffer[i] * scale;
+			var right = _rightBuffer[i] * scale;
+			_playback.PushFrame(new Vector2(left, right));
+		}
+
+		// 【修复循环】检查序列器是否已到达结束
+		if (_sequencer.EndOfSequence)
+		{
+			GD.Print($"[MeltySynthPlayer] EndOfSequence detected, loop={loop}");
+			if (loop)
+			{
+				// 循环播放：重新启动 sequencer
+				GD.Print("[MeltySynthPlayer] End of sequence, restarting for loop");
+				_sequencer.Play(_midiFile, loop);
+				_sequencerStarted = true;
+			}
+			else
+			{
+				// 无循环：停止播放
+				GD.Print("[MeltySynthPlayer] End of sequence, stopping playback (no loop)");
+				playing = false;
+				_player.Stop();
+				EmitSignal(SignalName.finished);
+			}
+		}
+	}
+
+	public void play()
+	{
+		EnsureAudioInitialized();
+		if (_sequencer == null)
+		{
+			GD.PrintErr("[MeltySynthPlayer] Cannot play: sequencer is null");
+			return;
+		}
+
+		GD.Print($"[MeltySynthPlayer] play() called - _midiFile: {_midiFile != null}, _sequencerStarted: {_sequencerStarted}, _player.Playing: {_player?.Playing}");
+		_playback = null; // reset playback so we can reacquire a fresh AudioStreamGeneratorPlayback
+
+		// 如果 MIDI 已加载但还未启动 sequencer，则启动它
+		if (_midiFile != null && !_sequencerStarted)
+		{
+			GD.Print($"[MeltySynthPlayer] Starting sequencer with MIDI file, loop={loop}");
+			_sequencer.Play(_midiFile, loop);
+			_sequencerStarted = true;
+		}
+		else if (_midiFile == null)
+		{
+			GD.PrintErr("[MeltySynthPlayer] Cannot play: no MIDI file loaded");
+			return;
+		}
+		else if (_sequencerStarted)
+		{
+			GD.Print("[MeltySynthPlayer] Sequencer already started, resuming playback");
+		}
+		
+		playing = true;
+		
+		if (_player != null)
+		{
+			if (!_player.Playing)
+			{
+				GD.Print("[MeltySynthPlayer] Starting AudioStreamPlayer");
+				_player.Play();
+				_playback = _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
+			}
+			else
+			{
+				GD.Print("[MeltySynthPlayer] AudioStreamPlayer already playing");
+			}
+		}
+		else
+		{
+			GD.PrintErr("[MeltySynthPlayer] _player is null!");
+		}
+	}
+
+	public void stop()
+	{
+		playing = false;
+		_player?.Stop();
+		_sequencer?.Stop();
+		_sequencerStarted = false;  // 重置标志，下次 play() 会重新启动
+		_playback = null; // ensure playback is reacquired on next play
+	}
+
+	public void seek_ms(double positionMs)
+	{
+		if (_midiFile == null || _sequencer == null)
+		{
+			return;
+		}
+
+		// 【修复】设置待处理的 seek 标志
+		// _Process 会在下一帧处理这个 seek，确保不会阻塞音频线程
+		_pendingSeekMs = positionMs;
+		GD.Print($"[MeltySynthPlayer] Queued seek to {positionMs} ms");
+	}
+
+	public void set_soundfont(string soundfontPath)
+	{
+		EnsureAudioInitialized();
+		_soundfont = soundfontPath;
+		LoadSoundfont(soundfontPath);
+		// 注意：LoadSoundfont 创建新的 _sequencer，需要重新加载 MIDI 文件
+		if (!string.IsNullOrEmpty(_file))
+		{
+			GD.Print($"[MeltySynthPlayer] Reloading MIDI after soundfont change: {_file}");
+			LoadMidiFile(_file);
+		}
+	}
+
+	public void set_file(string midiPath)
+	{
+		EnsureAudioInitialized();
+		_file = midiPath;
+		LoadMidiFile(midiPath);
+	}
+
+	public void set_volume_db(float volumeDb)
+	{
+		_volume_db = volumeDb;
+		_volumeLinear = Mathf.DbToLinear(volumeDb);
+	}
+
+	public void set_bus(StringName targetBus)
+	{
+		_bus = targetBus;
+		if (_player != null)
+		{
+			_player.Bus = targetBus;
+		}
+	}
+
+	public void set_loop(bool enabled)
+	{
+		loop = enabled;
+		GD.Print($"[MeltySynthPlayer] Loop set to: {enabled}");
+	}
+
+	public bool get_loop()
+	{
+		return loop;
+	}
+	
+	// Getter methods for compatibility
+	public string get_soundfont() => _soundfont;
+	public string get_file() => _file;
+	public float get_volume_db() => _volume_db;
+	public StringName get_bus() => _bus;
+
+	public double get_position_ms()
+	{
+		// 【修复】seek 待处理期间返回目标位置，避免 NoteDisplayer 看到不连贯的位置跳跃
+		if (_pendingSeekMs >= 0.0)
+		{
+			return _pendingSeekMs;
+		}
+
+		if (_sequencer == null) return 0.0;
+
+		var sequencerMs = _sequencer.Position.TotalMilliseconds;
+
+		// 补偿 AudioStreamGenerator 缓冲延迟
+		// Sequencer.Position 是"已生成到缓冲区的位置"，缓冲区中尚有未播放的数据
+		// 实际播放位置 = Sequencer位置 - 缓冲区中未播放的时长
+		if (_playback != null && _player != null && _player.Playing)
+		{
+			int totalBufferFrames = (int)(_generator.BufferLength * _sampleRate);
+			int framesAvailable = _playback.GetFramesAvailable();
+			int bufferedFrames = totalBufferFrames - framesAvailable;
+			double bufferLatencyMs = (double)bufferedFrames / _sampleRate * 1000.0;
+			var compensatedMs = Math.Max(0.0, sequencerMs - bufferLatencyMs);
+			
+			// 每 120 帧输出一次诊断日志
+			/*
+			if (Engine.GetProcessFrames() % 120 == 0)
+			{
+				GD.Print($"[MeltySynthPlayer] get_position_ms: sequencer={sequencerMs:F1}ms, latency={bufferLatencyMs:F1}ms, result={compensatedMs:F1}ms");
+			}
+			*/
+			
+			return compensatedMs;
+		}
+
+		return sequencerMs;
+	}
+
+	public void set_track_channel_volume(int trackIndex, int channel, float volumeLinear)
+	{
+		var virtualId = trackIndex * 16 + channel;
+		_virtualChannelVolumes[virtualId] = Mathf.Clamp(volumeLinear, 0.0f, 1.0f);
+	}
+
+	public float get_track_channel_volume(int trackIndex, int channel)
+	{
+		var virtualId = trackIndex * 16 + channel;
+		return _virtualChannelVolumes.TryGetValue(virtualId, out var volume) ? volume : 1.0f;
+	}
+
+	public void set_track_channel_instrument(int trackIndex, int channel, int bank, int program)
+	{
+		if (!track_channel_instruments.ContainsKey(trackIndex))
+		{
+			track_channel_instruments[trackIndex] = new Godot.Collections.Dictionary();
+		}
+
+		var trackDict = (Godot.Collections.Dictionary)track_channel_instruments[trackIndex];
+		trackDict[channel] = new Godot.Collections.Dictionary
+		{
+			{ "bank", bank },
+			{ "program", program }
+		};
+
+		var virtualId = trackIndex * 16 + channel;
+		_virtualChannelInstruments[virtualId] = (bank, program);
+
+		if (_synth != null)
+		{
+			_synth.ProcessMidiMessage(virtualId, 0xB0, 0x00, bank);
+			_synth.ProcessMidiMessage(virtualId, 0xC0, program, 0);
+		}
+	}
+
+	public Godot.Collections.Dictionary get_track_channel_instrument(int trackIndex, int channel)
+	{
+		if (track_channel_instruments.ContainsKey(trackIndex))
+		{
+			var trackDict = (Godot.Collections.Dictionary)track_channel_instruments[trackIndex];
+			if (trackDict.ContainsKey(channel))
+			{
+				return (Godot.Collections.Dictionary)trackDict[channel];
+			}
+		}
+
+		return new Godot.Collections.Dictionary
+		{
+			{ "bank", 0 },
+			{ "program", 0 }
+		};
+	}
+
+	public Godot.Collections.Array get_presets_list()
+	{
+		var presets = new Godot.Collections.Array();
+		if (_soundFont == null)
+		{
+			return presets;
+		}
+
+		foreach (var preset in _soundFont.PresetArray)
+		{
+			var entry = new Godot.Collections.Dictionary
+			{
+				{ "bank", preset.BankNumber },
+				{ "program", preset.PatchNumber },
+				{ "name", preset.Name }
+			};
+			presets.Add(entry);
+		}
+
+		return presets;
+	}
+
+	public string get_preset_name(int program, int bank = 0)
+	{
+		if (_soundFont == null)
+		{
+			return "";
+		}
+
+		foreach (var preset in _soundFont.PresetArray)
+		{
+			if (preset.BankNumber == bank && preset.PatchNumber == program)
+			{
+				return preset.Name;
+			}
+		}
+
+		return "";
+	}
+
+	public void set_manually_controlled_notes(Godot.Collections.Dictionary manuallyControlled)
+	{
+		_manualNotes.Clear();
+		foreach (var key in manuallyControlled.Keys)
+		{
+			var channel = (int)key;
+			var pitchesDict = (Godot.Collections.Dictionary)manuallyControlled[key];
+			var pitchSet = new HashSet<int>();
+			foreach (var pitchKey in pitchesDict.Keys)
+			{
+				pitchSet.Add((int)pitchKey);
+			}
+			_manualNotes[channel] = pitchSet;
+		}
+	}
+
+	public void trigger_note_on(int pitch, int velocity, int channel)
+	{
+		// Manual notes use track 0 by default
+		var virtualId = channel;  // track 0
+		_synth?.NoteOn(virtualId, pitch, velocity);
+	}
+
+	public void trigger_note_off(int pitch, int _velocity, int channel)
+	{
+		// Manual notes use track 0 by default
+		var virtualId = channel;  // track 0
+		_synth?.NoteOff(virtualId, pitch);
+	}
+
+	public void stop_channel_notes(int channel)
+	{
+		_synth?.ProcessMidiMessage(channel, 0xB0, 0x7B, 0);
+	}
+
+	// Note: set_track_channel_mute with three parameters
+	public void set_track_channel_mute(int trackIndex, int channel, bool muted)
+	{
+		var virtualId = trackIndex * 16 + channel;
+		if (muted)
+		{
+			_mutedVirtualChannels.Add(virtualId);
+			stop_channel_notes(virtualId);
+		}
+		else
+		{
+			_mutedVirtualChannels.Remove(virtualId);
+		}
+	}
+
+	// Legacy overload for backward compatibility (assumes track 0)
+	public void set_track_channel_mute(int channel, bool muted)
+	{
+		set_track_channel_mute(0, channel, muted);
+	}
+
+	// ===================== 接口实现：兼容性包装方法 =====================
+	
+	/// <summary>加载 MIDI 文件 (接口别名)</summary>
+	public bool load_midi(string filePath)
+	{
+		try
+		{
+			set_file(filePath);
+			return _midiFile != null;
+		}
+		catch (Exception ex)
+		{
+			GD.PrintErr($"[MeltySynthPlayer] Failed to load MIDI: {ex.Message}");
+			return false;
+		}
+	}
+
+	/// <summary>暂停播放 (接口方法)</summary>
+	public void pause()
+	{
+		playing = false;
+		// 保持 sequencer 状态，不重置位置
+	}
+
+	/// <summary>恢复播放 (接口方法)</summary>
+	public void resume()
+	{
+		if (_midiFile != null && _sequencer != null)
+		{
+			playing = true;
+			if (_player != null && !_player.Playing)
+			{
+				_player.Play();
+			}
+		}
+	}
+
+	/// <summary>跳转到指定位置 (接口别名)</summary>
+	public void seek(float positionMs)
+	{
+		seek_ms((double)positionMs);
+	}
+
+	/// <summary>设置 SoundFont (接口版本 - 返回 bool)</summary>
+	bool IMidiPlaybackInterface.set_soundfont(string soundfontPath)
+	{
+		try
+		{
+			set_soundfont(soundfontPath);
+			return _soundFont != null;
+		}
+		catch (Exception ex)
+		{
+			GD.PrintErr($"[MeltySynthPlayer] Failed to load SoundFont: {ex.Message}");
+			return false;
+		}
+	}
+
+	/// <summary>获取播放位置 (接口版本 - 返回 float)</summary>
+	float IMidiPlaybackInterface.get_position_ms()
+	{
+		return (float)get_position_ms();
+	}
+
+	/// <summary>获取播放位置 tick (接口方法)</summary>
+	public float get_position_tick()
+	{
+		// MeltySynth 使用 TimeSpan，无原生 tick 支持
+		// 返回近似值：假设 480 ticks/beat, 120 BPM
+		var ms = get_position_ms();
+		var seconds = ms / 1000.0;
+		var beats = seconds * 2.0; // 120 BPM = 2 beats/sec
+		return (float)(beats * 480.0); // 480 ticks/beat
+	}
+
+	/// <summary>获取总时长 (接口方法)</summary>
+	public float get_duration_ms()
+	{
+		if (_midiFile == null)
+		{
+			return 0.0f;
+		}
+		// MeltySynth 的 MidiFile.Length 是 TimeSpan 类型
+		return (float)(_midiFile.Length.TotalMilliseconds);
+	}
+
+	/// <summary>检查是否正在播放 (接口方法)</summary>
+	public bool is_playing()
+	{
+		return playing;
+	}
+
+	// ===================== 私有辅助方法 =====================
+
+	private void LoadSoundfont(string path)
+	{
+		if (string.IsNullOrEmpty(path))
+		{
+			return;
+		}
+
+		var globalPath = ProjectSettings.GlobalizePath(path);
+		_soundFont = new SoundFont(globalPath);
+		var settings = new SynthesizerSettings(_sampleRate)
+		{
+			MaximumPolyphony = max_polyphony
+		};
+
+		_synth = new Synthesizer(_soundFont, settings);
+		_sequencer = new MidiFileSequencer(_synth)
+		{
+			OnSendMessage = OnSendMessage
+		};
+
+		EmitSignal(SignalName.soundfont_changed, path);
+	}
+
+	private void LoadMidiFile(string path)
+	{
+		if (string.IsNullOrEmpty(path))
+		{
+			GD.PrintErr("[MeltySynthPlayer] LoadMidiFile: path is null or empty");
+			return;
+		}
+
+		GD.Print($"[MeltySynthPlayer] LoadMidiFile: {path}");
+
+		if (_synth == null)
+		{
+			// 如果没有设置 soundfont，使用默认的
+			if (string.IsNullOrEmpty(_soundfont))
+			{
+				_soundfont = "res://Resources/Soundfont/GeneralUser-GS.sf2";
+			}
+			LoadSoundfont(_soundfont);
+		}
+
+		// 再次检查，如果还是 null 说明 soundfont 加载失败
+		if (_sequencer == null)
+		{
+			GD.PushError($"[MeltySynthPlayer] Failed to initialize synthesizer with soundfont: {_soundfont}");
+			return;
+		}
+
+		var globalPath = ProjectSettings.GlobalizePath(path);
+		_midiFile = new MidiFile(globalPath);
+		_sequencerStarted = false;  // 重置标志，等待 play() 调用
+		GD.Print($"[MeltySynthPlayer] MIDI file loaded, _sequencerStarted reset to false");
+		// 注意：不在这里调用 Play()，而是等待明确的 play() 调用
+		// 这样可以与 MidiPlayer (Addon) 的行为保持一致
+		// _sequencer.Play(_midiFile, loop);  // 移除自动播放
+	}
+
+	private void EnsureBuffers(int length)
+	{
+		if (_leftBuffer.Length < length)
+		{
+			_leftBuffer = new float[length];
+			_rightBuffer = new float[length];
+		}
+	}
+
+	private void OnSendMessage(Synthesizer synthesizer, int virtualChannel, int command, int data1, int data2)
+	{
+		// Extract physical channel for manual notes check (manual notes use physical channels)
+		var physicalChannel = virtualChannel % 16;
+		
+		if (_manualNotes.TryGetValue(physicalChannel, out var pitches) && (command == 0x90 || command == 0x80))
+		{
+			if (pitches.Contains(data1))
+			{
+				return;
+			}
+		}
+
+		if (_mutedVirtualChannels.Contains(virtualChannel) && command == 0x90 && data2 > 0)
+		{
+			return;
+		}
+
+		if (_virtualChannelInstruments.TryGetValue(virtualChannel, out var instrument))
+		{
+			if (command == 0xB0 && data1 == 0x00)
+			{
+				data2 = instrument.bank;
+			}
+			else if (command == 0xC0)
+			{
+				data1 = instrument.program;
+			}
+		}
+
+		if (command == 0x90 && data2 > 0)
+		{
+			var volume = _virtualChannelVolumes.TryGetValue(virtualChannel, out var vol) ? vol : 1.0f;
+			data2 = Math.Clamp((int)Math.Round(data2 * volume), 0, 127);
+			if (data2 == 0)
+			{
+				return;
+			}
+		}
+
+		synthesizer.ProcessMidiMessage(virtualChannel, command, data1, data2);
+	}
+}

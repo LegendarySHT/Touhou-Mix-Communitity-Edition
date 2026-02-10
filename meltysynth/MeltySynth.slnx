@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MeltySynth/MeltySynth.csproj" />
+  <Project Path="MeltySynthTest/MeltySynthTest.csproj" />
+  <Project Path="Workspace/Workspace.csproj" />
+</Solution>

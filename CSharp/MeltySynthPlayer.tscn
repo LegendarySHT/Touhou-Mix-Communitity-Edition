@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://d3v8wq7x2y5m1"]
+
+[ext_resource type="Script" path="res://CSharp/MeltySynthPlayerWrapper.gd" id="1_wrapper"]
+[ext_resource type="Script" path="res://CSharp/MeltySynthPlayer.cs" id="1_csharp"]
+
+[node name="MeltySynthPlayer" type="Node"]
+script = ExtResource("1_wrapper")
+
+[node name="CSharpBackend" type="Node" parent="."]
+script = ExtResource("1_csharp")
