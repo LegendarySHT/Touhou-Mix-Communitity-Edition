@@ -133,12 +133,14 @@ func _process(delta: float) -> void:
 		scroll_vertical += int(scroll_velocity * delta)
 
 	# 吸附
-	if need_snap and not (is_dragging_list or scroll_velocity!=0):
+	if list_items and need_snap and not (is_dragging_list or scroll_velocity!=0):
 		var snap_index = selected_item if selected_item != -1 else round((scroll_vertical) / (item_height))
 		
 		snap_index = select_item(snap_index)
 		var snap_node = container.get_child(snap_index)
-
+		if not snap_node:
+			return
+		
 		# 计算吸附位置
 		var snap_distant: int = snap_node.position.y + snap_offset_y
 		if work_state in [UIStateManager.UIState.ALBUM_VIEW]:

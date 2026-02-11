@@ -154,12 +154,10 @@ func _init_ui() -> void:
 	setting_page.visible = false
 	Main.add_child(setting_page)
 
-	# 播放界面
+	# 结算界面
 	var score_page = load(score_view_path).instantiate()
 	score_page.visible = false
-	# score_page.z_index = 22
 	Main.add_child(score_page)
-	score_page.ani_out()
 
 	# 移动返回按钮到上层
 	var right_bottom = get_node("RB_Btn")

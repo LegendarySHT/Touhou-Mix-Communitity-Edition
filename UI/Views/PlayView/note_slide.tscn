@@ -1,9 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://b3wpw7ylic5wl"]
+[gd_scene format=3 uid="uid://b3wpw7ylic5wl"]
 
 [ext_resource type="Texture2D" uid="uid://l8ea12v6pxcj" path="res://Resources/Skins/旧版2/instant.png" id="1_nq3nk"]
 [ext_resource type="Texture2D" uid="uid://fabmpyvd83ml" path="res://Resources/Skins/旧版2/instant-core.png" id="2_4ggv0"]
 
-[node name="slide" type="TextureRect"]
+[node name="slide" type="TextureRect" unique_id=425160628]
 custom_minimum_size = Vector2(150, 0)
 offset_right = 40.0
 offset_bottom = 40.0
@@ -12,7 +12,8 @@ texture = ExtResource("1_nq3nk")
 expand_mode = 4
 stretch_mode = 5
 
-[node name="core" type="TextureRect" parent="."]
+[node name="core" type="TextureRect" parent="." unique_id=460432536]
+self_modulate = Color(2, 2, 2, 1)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

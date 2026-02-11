@@ -1,9 +1,18 @@
-[gd_scene load_steps=10 format=3 uid="uid://cmg2kkhga3yj5"]
+[gd_scene format=3 uid="uid://cmg2kkhga3yj5"]
 
 [ext_resource type="Script" uid="uid://dye4gnjw1k7du" path="res://UI/Views/AlbumView/AlbumListItem.gd" id="1_pxpjj"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_fljdd"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_j1pth"]
 [ext_resource type="Texture2D" uid="uid://co2vcj4yav5cd" path="res://Resources/icon/Count_Base.png" id="4_4cpa4"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_fljdd"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ohh21"]
+bg_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pxpjj"]
 draw_center = false
@@ -12,9 +21,14 @@ border_width_top = 5
 border_width_right = 5
 border_width_bottom = 5
 border_color = Color(0.41568628, 0.59607846, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.42352942, 0.72156864, 1, 0.5686275)
+shadow_offset = Vector2(5, 5)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fljdd"]
-draw_center = false
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_pxpjj"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j1pth"]
 bg_color = Color(0.18098986, 0.36878055, 0.8004749, 0.24705882)
@@ -30,6 +44,10 @@ border_width_top = 8
 border_width_right = 8
 border_width_bottom = 8
 border_color = Color(0.97, 0.97, 0.97, 0.6392157)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 expand_margin_left = 3.0
 expand_margin_top = 3.0
 expand_margin_right = 3.0
@@ -37,7 +55,7 @@ expand_margin_bottom = 3.0
 shadow_color = Color(0.31, 0.7354999, 1, 0.6)
 shadow_size = 10
 
-[node name="AlbumNode" type="MarginContainer"]
+[node name="AlbumNode" type="MarginContainer" unique_id=475192165]
 custom_minimum_size = Vector2(600, 150)
 offset_right = 600.0
 offset_bottom = 150.0
@@ -47,23 +65,25 @@ theme_override_constants/margin_left = 0
 script = ExtResource("1_pxpjj")
 metadata/index = 0
 
-[node name="PN" type="Panel" parent="."]
+[node name="PN" type="Panel" parent="." unique_id=1910460753]
 custom_minimum_size = Vector2(600, 150)
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
 mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBoxEmpty_fljdd")
 
-[node name="PN" type="Panel" parent="PN"]
-clip_contents = true
+[node name="PN" type="Panel" parent="PN" unique_id=1228453054]
+clip_children = 1
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ohh21")
 
-[node name="cover" type="TextureRect" parent="PN/PN"]
+[node name="cover" type="TextureRect" parent="PN/PN" unique_id=1027177707]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -77,13 +97,13 @@ expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true
 
-[node name="DecoratedLine" type="Line2D" parent="PN/PN"]
+[node name="DecoratedLine" type="Line2D" parent="PN/PN" unique_id=1372001257]
 position = Vector2(121.516785, -335.3292)
 scale = Vector2(0.867977, 0.838323)
 points = PackedVector2Array(-81.799, 777, 777, 777)
 joint_mode = 1
 
-[node name="CountBase" type="TextureRect" parent="PN"]
+[node name="CountBase" type="TextureRect" parent="PN" unique_id=465678710]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -96,7 +116,7 @@ grow_horizontal = 0
 texture = ExtResource("4_4cpa4")
 metadata/_edit_use_anchors_ = true
 
-[node name="SongCount" type="Label" parent="PN/CountBase"]
+[node name="SongCount" type="Label" parent="PN/CountBase" unique_id=1363493962]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -115,16 +135,17 @@ text = "9"
 horizontal_alignment = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="AlbumName" type="Label" parent="PN"]
-custom_minimum_size = Vector2(660, 40)
+[node name="AlbumName" type="Label" parent="PN" unique_id=1507697288]
 layout_mode = 1
-anchors_preset = 2
+anchors_preset = -1
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 17.35954
-offset_top = -53.592857
-offset_right = 677.35956
-offset_bottom = -13.592865
+offset_left = 20.0
+offset_top = -29.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
 grow_vertical = 0
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
@@ -135,12 +156,12 @@ vertical_alignment = 2
 clip_text = true
 metadata/_edit_use_anchors_ = true
 
-[node name="VE" type="VisibleOnScreenEnabler2D" parent="PN"]
+[node name="VE" type="VisibleOnScreenEnabler2D" parent="PN" unique_id=1859970557]
 position = Vector2(-100, -411)
 rect = Rect2(100, 91, 600, 806)
 enable_node_path = NodePath("../..")
 
-[node name="Border" type="PanelContainer" parent="PN"]
+[node name="Border" type="PanelContainer" parent="PN" unique_id=49684789]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -150,7 +171,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_pxpjj")
 
-[node name="AlbumButton" type="Button" parent="PN"]
+[node name="AlbumButton" type="Button" parent="PN" unique_id=1523238690]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -161,7 +182,7 @@ size_flags_horizontal = 0
 size_flags_vertical = 0
 focus_next = NodePath("/root/Main/ShortCutMenu/skew/VBoxC/Btns/Search")
 mouse_filter = 1
-theme_override_styles/normal = SubResource("StyleBoxFlat_fljdd")
+theme_override_styles/normal = SubResource("StyleBoxEmpty_pxpjj")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_j1pth")
 theme_override_styles/hover = SubResource("StyleBoxFlat_4cpa4")
 theme_override_styles/focus = SubResource("StyleBoxFlat_xpu1h")

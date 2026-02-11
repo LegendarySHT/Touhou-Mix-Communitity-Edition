@@ -328,7 +328,11 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 
 				tindex = sIndex
 				sItem.modulate.a = 0.0
+
+				var border:PanelContainer = copy.get_node("PN/Border")
+				border.add_theme_stylebox_override("panel",border.get_theme_stylebox("panel").duplicate())
 				
+				create_tween().tween_property(border.get_theme_stylebox("panel"), "shadow_size", 24, 0.25)
 				skew.add_child(copy)
 
 			tween = animate_list_item_horizontal(album_list, sIndex, tindex, -1200, tween_id)
@@ -407,9 +411,10 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			tween = animate_fade_out(setting_view, 0.35, tween_id)
 		"Score_View":
 			var score_view = get_node("/root/Main/ScoreView")
+			score_view.ani_out()
+			if new_state!= UIStateManager.UIState.PLAY_VIEW:
+				await get_tree().create_timer(0.8).timeout
 			tween = animate_fade_out(score_view, 0.45, tween_id)
-			tween.finished.connect(func ():
-				score_view.ani_out())
 
 	# 发射结束信号
 	if tween:
@@ -458,6 +463,8 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			
 			# 从Song_List回来时会触发下面的
 			if SS:
+				var border:PanelContainer = SS.get_node("PN/Border")				
+				await create_tween().tween_property(border.get_theme_stylebox("panel"), "shadow_size", 0, 0.2).finished
 				SS.queue_free()
 			
 			for i in song_list.get_child(0).get_children():

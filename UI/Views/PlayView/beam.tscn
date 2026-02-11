@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://b4u2yxq2ktd64"]
+[gd_scene format=3 uid="uid://b4u2yxq2ktd64"]
 
 [sub_resource type="Gradient" id="Gradient_uv8uk"]
 interpolation_mode = 2
@@ -33,15 +33,15 @@ corner_radius_top_left = 1
 corner_radius_top_right = 1
 corner_radius_bottom_right = 1
 corner_radius_bottom_left = 1
-corner_detail = 3
-shadow_color = Color(1, 1, 1, 0.41960785)
-shadow_size = 30
+corner_detail = 1
+shadow_color = Color(1.2, 1.2, 1.2, 0.42)
+shadow_size = 40
 
-[node name="Beam" type="Panel"]
+[node name="Beam" type="Panel" unique_id=1875885047]
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxTexture_ly4cg")
 
-[node name="Center" type="Panel" parent="."]
+[node name="Center" type="Panel" parent="." unique_id=1477788122]
 layout_mode = 1
 anchors_preset = -1
 anchor_right = 1.0
@@ -54,7 +54,7 @@ pivot_offset = Vector2(624, 766)
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxTexture_xuuv2")
 
-[node name="Light" type="Panel" parent="."]
+[node name="Light" type="Panel" parent="." unique_id=20748163]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0

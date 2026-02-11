@@ -1,9 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://3ofq4u0124qy"]
+[gd_scene format=3 uid="uid://3ofq4u0124qy"]
 
 [ext_resource type="Texture2D" uid="uid://dty1c7rmcvog8" path="res://Resources/Skins/旧版2/short.png" id="1_tlp8l"]
 [ext_resource type="Texture2D" uid="uid://7n85g6v6g6fb" path="res://Resources/Skins/旧版2/short-core.png" id="2_xkoos"]
 
-[node name="block" type="TextureRect"]
+[node name="block" type="TextureRect" unique_id=1716205642]
 custom_minimum_size = Vector2(150, 0)
 offset_right = 40.0
 offset_bottom = 40.0
@@ -12,7 +12,8 @@ texture = ExtResource("1_tlp8l")
 expand_mode = 4
 stretch_mode = 5
 
-[node name="core" type="TextureRect" parent="."]
+[node name="core" type="TextureRect" parent="." unique_id=1652068263]
+self_modulate = Color(2, 2, 2, 1)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

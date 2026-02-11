@@ -31,32 +31,23 @@ class ScoreData:
 		set(v):
 			score = v
 			_update_result()
-	var perfect_count: int = 0:
+	var count: Dictionary = {
+		"Perfect": 0,
+		"Great": 0,
+		"Good": 0,
+		"Bad": 0,
+		"Miss": 0
+	}:
 		set(v):
-			perfect_count = v
-			_update_result()	
-	var great_count: int = 0:
-		set(v):
-			great_count = v
-			_update_result()
-	var good_count: int = 0:
-		set(v):
-			good_count = v
-			_update_result()
-	var bad_count: int = 0:
-		set(v):
-			bad_count = v
-			_update_result()
-	var miss_count: int = 0:
-		set(v):
-			miss_count = v
+			count = v
 			_update_result()
 
 	var early_count: int = 0
 	var late_count: int = 0
 
 	func _update_result():
-		accuracy = (perfect_count + (2.0/3) * great_count + (1.0/3) * good_count)/(perfect_count + great_count + good_count + bad_count + miss_count)
+		# accuracy = (perfect_count + (2.0/3) * great_count + (1.0/3) * good_count)/(perfect_count + great_count + good_count + bad_count + miss_count)
+		accuracy = (count["Perfect"] + (2.0/3) * count["Great"] + (1.0/3) * count["Good"])/ count.values().reduce(func(acc, v): return acc + v, 0)
 		performance_point = log(1 + score) * pow(accuracy, 2)
 
 	func get_rank() -> String:
@@ -95,17 +86,14 @@ func _ready() -> void:
 		c.size.x = get_viewport().get_visible_rect().size.x
 	)
 
-	await get_tree().create_timer(2).timeout
 	ani_out()
-	await get_tree().create_timer(3).timeout
-	ani_in()
 
 func set_display(result: ScoreData):
-	data_area.get_node("PerfectCtn").text = str(result.perfect_count)
-	data_area.get_node("GreatCtn").text = str(result.great_count)
-	data_area.get_node("GoodCtn").text = str(result.good_count)
-	data_area.get_node("BadCtn").text = str(result.bad_count)
-	data_area.get_node("MissCtn").text = str(result.miss_count)
+	data_area.get_node("PerfectCtn").text = str(result.count.Perfect)
+	data_area.get_node("GreatCtn").text = str(result.count.Great)
+	data_area.get_node("GoodCtn").text = str(result.count.Good)
+	data_area.get_node("BadCtn").text = str(result.count.Bad)
+	data_area.get_node("MissCtn").text = str(result.count.Miss)
 
 	data_area.get_node("EarlyCtn").text = str(result.early_count)
 	data_area.get_node("LateCtn").text = str(result.late_count)
@@ -127,7 +115,7 @@ func _on_love_btn_pressed():
 
 func _on_retry_btn_pressed():
 	UIStateManager.instance.change_state(UIStateManager.UIState.PLAY_VIEW, false)
-	await get_tree().create_timer(1).timeout
+	await get_tree().create_timer(0.5).timeout
 	get_node("/root/Main/PlayView").retry_btn.pressed.emit()
 
 ############################# 动画 ###############################
@@ -139,7 +127,10 @@ func ani_out():
 	var wh = get_viewport().get_visible_rect().size.y
 	var ww = get_viewport().get_visible_rect().size.x
 
-	var nd = get_node("Btns")
+	var nd = get_node("BackGround")
+	ani.animate_scale(nd, Vector2.ZERO, 0.25, "sv_bg")
+
+	nd = get_node("Btns")
 	ani.animate_position(nd, Vector2(nd.position.x, wh), 0.5, "sv_btns")
 
 	nd = get_node("LevelingProgress")
@@ -180,34 +171,37 @@ func ani_in():
 	var charaNode = null
 	var rankNode = null
 
-	var nd = get_node("Btns")
-	ani.animate_position(nd, Vector2(nd.position.x, 0), 0.5, "sv_btns")
+	var nd = get_node("BackGround")
+	ani.animate_scale(nd, Vector2.ONE, 0.5, "sv_bg")
+
+	nd = get_node("Btns")
+	ani.animate_position(nd, Vector2(nd.position.x, 0), 0.8, "sv_btns")
 
 	nd = get_node("LevelingProgress")
-	ani.animate_position(nd, Vector2.ZERO, 0.25, "sv_info")
+	ani.animate_position(nd, Vector2.ZERO, 0.5, "sv_info")
 	
 	charaNode = get_node("Chara")
-	ani.animate_position(charaNode, Vector2(charaNode.position.x, 150), 0.5, "sv_chara")
+	ani.animate_position(charaNode, Vector2(charaNode.position.x, 150), 0.8, "sv_chara")
 
 	nd = get_node("Bottom")
-	ani.animate_position(nd, Vector2(nd.position.x, 680), 0.5, "sv_bottom")
+	ani.animate_position(nd, Vector2(nd.position.x, 680), 0.8, "sv_bottom")
 	
 	await get_tree().create_timer(0.05).timeout
 	rankNode = get_node("Rank")
-	ani.animate_position(rankNode, Vector2(rankNode.position.x, 400), 0.5, "sv_rank")
+	ani.animate_position(rankNode, Vector2(rankNode.position.x, 400), 0.8, "sv_rank")
 
 	nd = get_node("Score")
-	ani.animate_position(nd, Vector2(0, nd.position.y), 1, "sv_score")
+	ani.animate_position(nd, Vector2(0, nd.position.y), 1.25, "sv_score")
 	ani.animate_fade_in(nd, 1, "sv_score_fade")
 	
 	await get_tree().create_timer(0.05).timeout
 	nd = get_node("Accuracy")
-	ani.animate_position(nd, Vector2(nd.position.x, 427), 0.5, "sv_acc")
+	ani.animate_position(nd, Vector2(nd.position.x, 427), 0.8, "sv_acc")
 
 	nd = get_node("LT_Btn")
-	ani.animate_position(nd, Vector2(26, nd.position.y), 0.5, "sv_lt")
+	ani.animate_position(nd, Vector2(26, nd.position.y), 0.8, "sv_lt")
 
-	await get_tree().create_timer(0.6).timeout
+	await get_tree().create_timer(0.8).timeout
 	_kill_loop_ani()
 	
 	_loop_ani_chara = create_tween()

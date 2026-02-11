@@ -106,9 +106,8 @@ func _ready() -> void:
 	# 启用多点触控
 	get_viewport().gui_embed_subwindows = false
 
-func init_flow_area(notes: Array[Note]):
+func init_flow_area():
 	clear_flow_area()
-	notes_list = notes
 	note_idx = 0
 	
 	var lc = parent_node.get_lane_count()
@@ -135,12 +134,9 @@ func set_note_color(type: NoteType, cl: Color):
 	match type:
 		NoteType.Block:
 			nt_b.get_node("core").modulate = cl
-			nt_b.self_modulate = Color(2,2,2)
 		NoteType.Slide:
 			nt_s.get_node("core").modulate = cl
-			nt_b.self_modulate = Color(2,2,2)
 		NoteType.Long:
-			nt_b.self_modulate = Color(2,2,2)
 			for i in nt_l.get_node("VBoxC").get_children():
 				i.get_node("core").modulate = cl
 
@@ -178,7 +174,6 @@ func clear_flow_area():
 	if not notes_list:
 		return
 	
-	print("clear notes %d" % active_notes.size())
 	notes_list.clear()
 	for i in active_notes:
 		_remove_note(i)
@@ -231,7 +226,7 @@ func _spawn_note(note_index: int) -> void:
 		var new_h = _note_fall_speed * nt.duration - 2 * note_half
 		box.get_node("body").custom_minimum_size.y = new_h
 
-		nt.rect.position.y -= new_h
+		nt.rect.position.y -= (new_h + 2*note_half)
 
 	var fall_time = (target_pos_y - nt.rect.position.y) / _note_fall_speed / 1000
 	
@@ -272,8 +267,7 @@ func _auto_click(note: Note):
 	if not note.rect:
 		return
 	if note.type == NoteType.Long:
-		note.is_held = true
-		active_holds["auto_hold_%d" % _auto_hold_idx] = note
+		_hold_long_note(_auto_hold_idx + 666, note)
 		_auto_hold_idx += 1
 	else:
 		_judge_note(note)
@@ -367,9 +361,9 @@ func _handle_release(touch_id: int) -> void:
 	note.is_held = false
 	
 	# 如果VBoxC没有完全移动完毕，提前判定
-	if note.rect.size.y > note.rect.get_node("VBoxC").size.y * 0.2:
+	# if note.rect.size.y > note.rect.get_node("VBoxC").size.y * 0.2:
 		# 判定为Good（提前释放）
-		note_judged.emit("Good", "提前释放")
+		# note_judged.emit("Good", "提前释放")
 	
 	# 移除音符
 	_remove_note(note)
@@ -481,6 +475,7 @@ func _judge_note(judge_note: Note):
 		result = "Good"
 
 	# 发射判定结果
+	# print("%s diff %f st %f" % [result, time_diff, judge_note.start_time])
 	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff])
 	if judge_note.type != NoteType.Long:
 		_remove_note(judge_note)
@@ -520,7 +515,10 @@ func _process(delta: float) -> void:
 	# 自动按长条
 	if auto_mode:
 		for long in active_notes.filter(func(nt):
-			return nt.type == NoteType.Long and not nt.is_held and abs(nt.rect.get_node("VBoxC/head").global_position.y - jl.position.y)<25):
+			if nt.type == NoteType.Long and not nt.is_held:
+				var head = nt.rect.get_node("VBoxC/head")
+				return abs(head.global_position.y + head.size.y/2 - jl.position.y) < 12
+			return false):
 			_auto_click(long)
 
 	# 更新长条音符的按住进度和显示

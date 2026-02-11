@@ -25,8 +25,8 @@ background_mode = 3
 background_color = Color(1, 1, 1, 1)
 background_canvas_max_layer = 1
 glow_enabled = true
-glow_strength = 1.07
-glow_blend_mode = 0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_50kwk"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kvdpo"]
 bg_color = Color(0.25336733, 0.36870298, 0.8464057, 1)
@@ -104,7 +104,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0.5803922, 0, 0, 0.7294118)
+theme_override_colors/font_color = Color(2.58, 0, 0, 0.729)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.4)
 theme_override_constants/shadow_outline_size = 20
 theme_override_font_sizes/font_size = 250
@@ -135,7 +135,6 @@ grow_vertical = 0
 theme_override_styles/separator = SubResource("StyleBoxLine_uj6qe")
 
 [node name="SVP" type="CanvasLayer" parent="FlowArea" unique_id=610203907]
-layer = 0
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="FlowArea/SVP" unique_id=1988334537]
 environment = SubResource("Environment_jlvmc")
@@ -176,9 +175,11 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="type" type="Label" parent="Layer/Center" unique_id=264990940]
+modulate = Color(2, 2, 2, 1)
+self_modulate = Color(2, 2, 2, 1)
 layout_mode = 2
 theme_override_colors/font_outline_color = Color(1, 1, 1, 1)
-theme_override_constants/outline_size = 10
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 72
 text = "PERFECT"
 horizontal_alignment = 1
@@ -196,6 +197,7 @@ anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 8.0
 grow_horizontal = 2
+theme_override_styles/fill = SubResource("StyleBoxEmpty_50kwk")
 value = 40.0
 show_percentage = false
 
@@ -300,7 +302,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.75686276)
+color = Color(0, 0, 0, 0.8784314)
 
 [node name="Menu" type="HBoxContainer" parent="Layer/CenterBackGround" unique_id=920842605]
 visible = false

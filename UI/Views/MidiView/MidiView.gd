@@ -6,6 +6,7 @@ extends Control
 @onready var description: RichTextLabel = $LeftArea/InfoWindow/HBoxC/Description
 
 # 下面的三个主要按钮
+@onready var main_btns: HBoxContainer = $LeftArea/MainBtn
 @onready var track_view_btn: Button = $LeftArea/MainBtn/TrackViewBtn
 @onready var play_btn: Button = $LeftArea/MainBtn/PlayBtn
 @onready var favor_list_btn: Button = $LeftArea/MainBtn/FavorListBtn
@@ -62,6 +63,13 @@ func _ready() -> void:
 	play_btn.focus_entered.connect(func():
 		play_btn.focus_neighbor_top = midi_list.get_focus_node_path()
 	)
+
+	for btn in main_btns.get_children():
+		btn.focus_entered.connect((func (b):
+			for i in main_btns.get_children():
+				i.z_index = 0
+			b.z_index += 1).bind(btn)
+			)
 
 	# 连接右侧按钮事件
 	info_btn.pressed.connect(_on_info_btn_pressed)

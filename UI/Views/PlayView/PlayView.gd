@@ -42,16 +42,11 @@ extends Control
 # 难度
 @onready var difficulty: Label = $Layer/CenterBackGround/SongInfo/GridContainer/difficulty
 
-# 环境
-@onready var env: WorldEnvironment = $FlowArea/SVP/WorldEnvironment
-
 # 轨道光效及键位显示
 @onready var lane_area: Control = $Lane
 
 # auto标识
 @onready var auto_label: Label = $AutoLabel
-
-var glow: Environment = null
 
 var current_midi: MidiData = null
 var play_result: ScoreView.ScoreData = null
@@ -59,7 +54,6 @@ var play_result: ScoreView.ScoreData = null
 @onready var ani: AnimationManager = AnimationManager.instance
 @onready var playback_mgr: MidiPlaybackManager = MidiPlaybackManager.instance
 
-var is_midi_playing: bool = false
 var midi_start_time: float = 0.0
 
 ########## 配置参数 #############
@@ -90,7 +84,7 @@ func _ready() -> void:
 	menu_btn.pressed.connect(show_or_hide_menu)
 	continue_btn.pressed.connect(show_or_hide_menu)
 	retry_btn.pressed.connect(func ():
-		_prepare_game(current_midi)
+		_prepare_game()
 	)
 	quit_btn.pressed.connect(_on_quit_pressed)
 
@@ -99,12 +93,6 @@ func _ready() -> void:
 	if playback_mgr == null:
 		push_error("MidiPlaybackManager not initialized!")
 		return
-	
-	# 连接MIDI播放信号
-	playback_mgr.midi_started.connect(_on_midi_started)
-
-	glow = env.environment
-	env.environment = null
 
 var current_time: float = 0
 var max_time: float = 20
@@ -118,15 +106,8 @@ func _process(_delta: float) -> void:
 	if not is_pause:
 		# 如果正在播放MIDI，使用MIDI播放管理器的时间
 		current_time = playback_mgr.get_position_ms()
-		
 		progress_bar.value = current_time
 	
-		if not env.environment:
-			env.environment = glow
-	else:
-		if env.environment != null:
-			env.environment = null
-
 func get_lane_count() -> int:
 	return lane_count if not keyboard_mode else key_map.size()
 
@@ -138,24 +119,24 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	
 	# 离开播放视图时停止MIDI播放
 	if _oldState == UIStateManager.UIState.PLAY_VIEW and state != UIStateManager.UIState.PLAY_VIEW:
-		if is_midi_playing and playback_mgr:
+		if playback_mgr:
 			playback_mgr.stop()
-			is_midi_playing = false
 	
 	if enable:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
 
-var is_pause: bool = false
+var is_pause: bool = false:
+	set(v):
+		is_pause = v
+		if playback_mgr:
+			if is_pause:
+				playback_mgr.pause()
+			else:
+				playback_mgr.resume()
+
 func show_or_hide_menu():
 	song_info.visible = false
 	is_pause = not is_pause
-	
-	# 暂停时停止MIDI播放，继续时恢复
-	if is_midi_playing and playback_mgr:
-		if is_pause:
-			playback_mgr.pause()
-		else:
-			playback_mgr.resume()
 	
 	if is_pause:
 		ani.animate_fade_in(menu, 0.2, "_show_menu")
@@ -164,19 +145,18 @@ func show_or_hide_menu():
 		ani.animate_fade_out(menu, 0.2, "_show_menu")
 		ani.animate_fade_out(center_bg, 0.2, "_show_bg")
 
-func _prepare_game(midi:MidiData) -> void:
+func _prepare_game(midi:MidiData = current_midi) -> void:
 	current_midi = midi
 	play_result = ScoreView.ScoreData.new()
 
-	# 获取封面
-	var cover_texture = FileSystemManager.instance.get_cover_by_midiData(midi)
-	if cover_texture:
-		cover.texture = cover_texture
+	_init_display()
+	flow_area.init_flow_area()
+	await get_tree().create_timer(0.8).timeout
 
 	# 加载MIDI并转换为FlowArea音符
 	_load_and_convert_midi_notes(midi)
-	playback_mgr.seek(0)
-	playback_mgr.pause()
+	playback_mgr.seek(-1500)
+	is_pause = true
 	
 	# 读取并设置音频同步阈值
 	var setting_view = get_node_or_null("/root/Main/SettingView")
@@ -185,29 +165,16 @@ func _prepare_game(midi:MidiData) -> void:
 		if sync_threshold != null:
 			playback_mgr.set_sync_threshold(float(sync_threshold))
 			print("[PlayView] Audio sync threshold set to %.0f ms" % float(sync_threshold))
-	
-	# 初始化数据
-	_init_display()
-	
-	lane_area.init_beam(get_lane_count(), flow_area.note_visual_width, judge_line_offset_y, lane_padding)
-	lane_area.set_beam_alpha(beam_alpha)
-	if keyboard_mode:
-		lane_area.init_key_display(key_map)
-	auto_label.visible = flow_area.auto_mode
-
 
 	# 设置进度条最大值
-	progress_bar.set_block_signals(true)
-	progress_bar.max_value = midi.duration_ms
-	progress_bar.set_block_signals(false)
+	progress_bar.max_value = current_midi.duration_ms
 
 	# 等待3秒显示准备界面
-	await get_tree().create_timer(3).timeout
-	is_pause = false # 结束暂停会启用辉光
+	await get_tree().create_timer(1).timeout
 	await AnimationManager.instance.animate_fade_out(center_bg, 1).finished
 	
 	# 开始播放MIDI
-	playback_mgr.resume()
+	is_pause = false
 
 ## 加载并转换MIDI音符为FlowArea格式
 func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
@@ -216,9 +183,10 @@ func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
 		return
 
 	# 加载MIDI
-	if not playback_mgr.load_midi(midi_data):
-		push_error("Failed to load MIDI for gameplay")
-		return
+	if playback_mgr.current_midi_data != midi_data:
+		if not playback_mgr.load_midi(midi_data):
+			push_error("Failed to load MIDI for gameplay")
+			return
 
 	# 获取手动控制的音符（玩家需要演奏的部分）
 	var classification = playback_mgr.classify_notes(
@@ -233,7 +201,7 @@ func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
 
 	# 转换音符格式
 	var notes = _convert_midi_to_notes(manual_notes, midi_data)
-	flow_area.init_flow_area(notes)
+	flow_area.notes_list = notes
 	play_result.total_notes = notes.size()
 	
 	print("[PlayView] Converted %d MIDI notes to FlowArea format" % flow_area.notes_list.size())
@@ -279,36 +247,29 @@ func _convert_midi_to_notes(midi_notes: Array, _midi_data: MidiData) -> Array[Fl
 	
 	return flow_notes
 
-## MIDI播放开始回调
-func _on_midi_started() -> void:
-	print("[PlayView] MIDI playback started")
-	is_midi_playing = true
-
 ## 游戏结束回调（可以扩展为显示结算界面）
 func _on_game_finished() -> void:
 	print("[PlayView] Game finished!")
 	
 	# 更新最大Combo
 	play_result.max_combo = int(combo.text) if int(combo.text) > play_result.max_combo else play_result.max_combo
-	
-	# 显示结束信息（这里可以扩展为完整的结算界面）
-	center_text.text = "完成!"
-	center_text.add_theme_color_override("font_color", Color.GREEN)
-	center.modulate.a = 1
-	
-	# 可以在这里触发结算界面
 	is_pause = true
-	_init_display()
-	await get_tree().create_timer(1).timeout
+
+	# 结束后的等待（去掉也行
+	await get_tree().create_timer(2).timeout
+
+	# 可以在这里触发结算界面
 	get_node("/root/Main/ScoreView").set_display(play_result)
 	UIStateManager.instance.change_state(UIStateManager.UIState.SCORE_VIEW, false)
+	await get_tree().create_timer(0.8).timeout
+	is_pause = true
+	_init_display()
 
 ## 退出游戏
 func _on_quit_pressed() -> void:
 	# 停止MIDI播放
-	if is_midi_playing and playback_mgr:
+	if playback_mgr:
 		playback_mgr.stop()
-		is_midi_playing = false
 	_init_display()
 	flow_area.clear_flow_area()
 	
@@ -326,6 +287,12 @@ func _init_display():
 	accuracy_text.text = "100.00%"
 
 	# 设置歌曲信息
+	var cover_texture = FileSystemManager.instance.get_cover_by_midiData(current_midi)
+	if cover_texture:
+		cover.texture = cover_texture
+
+	ani.animate_fade_in(center_bg, 0.2, "_show_bg")
+
 	album.text = current_midi.artist_name
 	song.text = current_midi.song_data.name
 	# artist.text = current_midi.song_data.artist_name # 没找着歌手在哪
@@ -334,18 +301,21 @@ func _init_display():
 	
 	menu.visible = false
 	song_info.visible = true
-	center_bg.visible = true
-	is_pause = true
+	center.modulate.a = 0
 
 	# 重置进度条
 	_current_rect = null
 	_last_rect = null
 
-	progress_bar.set_block_signals(true)
 	progress_bar.value = 0
-	progress_bar.set_block_signals(false)
 	for i in progress_bar.get_children():
 		i.queue_free()
+	
+	lane_area.init_beam(get_lane_count(), flow_area.note_visual_width, judge_line_offset_y, lane_padding)
+	lane_area.set_beam_alpha(beam_alpha)
+	if keyboard_mode:
+		lane_area.init_key_display(key_map)
+	auto_label.visible = flow_area.auto_mode
 
 const color_map = {
 	"Perfect": Color.PURPLE,
@@ -362,22 +332,18 @@ func _on_note_judged(result: String, offset: String):
 	match result:
 		"Perfect":
 			score_add_amount = 150
-			play_result.perfect_count += 1
 		"Great":
 			score_add_amount = 100
-			play_result.great_count += 1
 		"Good":
 			score_add_amount = 50
-			play_result.good_count += 1
-		"Bad":
-			play_result.bad_count += 1
-		"Miss":
-			play_result.miss_count += 1
-	match offset[0]:
-		"+":
-			play_result.early_count += 1
-		"-":
-			play_result.late_count += 1
+	play_result.count[result] += 1
+	if offset:
+		match offset[0]:
+			"+":
+				play_result.early_count += 1
+			"-":
+				play_result.late_count += 1
+	
 	if score_add_amount:
 		play_result.score += score_add_amount
 	center_text.add_theme_color_override("font_color", cl)
@@ -452,6 +418,9 @@ func _set_score_add_amount(amount: int):
 var _current_rect: ColorRect = null
 var _last_rect: ColorRect = null
 func _on_top_progress_bar_value_changed(value: float):
+	if is_pause:
+		return
+
 	var anchor_l = 0.0 if not _last_rect else _last_rect.anchor_right
 	if not _current_rect:
 		_current_rect = ColorRect.new()
@@ -470,11 +439,9 @@ func _on_top_progress_bar_value_changed(value: float):
 		_on_game_finished()
 
 func _set_progress_bar_color(cl: Color):
-	if not _current_rect:
+	if not _current_rect or (_current_rect.size.x > 15 and cl != _current_rect.color):
 		_current_rect = null
 		_on_top_progress_bar_value_changed(progress_bar.value)
 		return
 
-	if cl == _current_rect.color:
-		return
 	_current_rect.color = cl
