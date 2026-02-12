@@ -13,9 +13,10 @@ var gameplay_manager: GameplayManager
 var audio_manager: AudioManager
 var midi_playback_manager: MidiPlaybackManager
 var key_sequence_manager: KeySequenceManager
-var config_loader: ConfigLoader
+var config_loader: ConfigManager
 var logger: GameLogger
 var filesystem_manager: FileSystemManager
+var _is_reloading_settings: bool = false
 
 # UI组件路径
 @export var midi_view_path: String
@@ -36,16 +37,22 @@ func _ready():
 func _initialize_core_systems() -> void:
 	print("=== Initializing Core Systems ===")
 
-
 	# 1. 初始化日志系统（单例，已自动管理）
 	logger = GameLogger.instance
 	if logger:
 		logger.info("Logger initialized", "Main")
 	
-	# 2. 初始化配置加载器
-	config_loader = ConfigLoader.new()
+	# 2. 初始化配置管理器（单例，已自动管理）
+	config_loader = ConfigManager.instance
 	if logger:
-		logger.info("ConfigLoader initialized", "Main")
+		logger.info("ConfigManager initialized", "Main")
+	
+	# 2.5. **关键**：立即加载并设置当前配置，以便后续 Manager 初始化时能读取配置
+	# 必须在其他 Manager 初始化之前调用
+	config_loader.clear_cache()
+	config_loader.load_and_set_current()
+	if logger:
+		logger.info("Configuration pre-loaded before Manager initialization", "Main")
 	
 	# 3. 初始化文件系统管理器（单例，已自动管理）
 	filesystem_manager = FileSystemManager.new()
@@ -188,25 +195,35 @@ func _connect_signals() -> void:
 	
 	# 设置变化信号
 	event_bus.settings_changed.connect(_on_settings_changed)
-
-## 加载配置文件
-func _load_configuration() -> void:
-	var config_path = "res://Resources/Config/config.ini"
-	var config = config_loader.load_config(config_path)
 	
-	if not config.is_empty():
-		logger.info("Configuration loaded successfully", "Main")
-		
-		# 应用音频设置
-		var master_vol = config_loader.get_int(config, "Audio", "master_volume", 80)
-		var music_vol = config_loader.get_int(config, "Audio", "music_volume", 80)
-		var sfx_vol = config_loader.get_int(config, "Audio", "effects_volume", 80)
-		
-		audio_manager.set_master_volume(master_vol)
-		audio_manager.set_music_volume(music_vol)
-		audio_manager.set_sfx_volume(sfx_vol)
-	else:
-		logger.warning("Failed to load configuration file", "Main")
+	# 配置变更信号（新增）
+	event_bus.config_changed.connect(_on_config_changed)
+
+## 加载配置文件（验证和应用）
+func _load_configuration() -> void:
+	# 配置已在 _initialize_core_systems() 中预加载
+	# 这里仅进行验证和应用
+	var config = config_loader.get_current_config()
+	
+	if config.is_empty():
+		logger.warning("Current configuration is empty", "Main")
+		return
+	
+	logger.info("Configuration loaded successfully, sections: %d" % config.size(), "Main")
+	
+	# 检查版本并迁移（如必要）
+	config_loader.check_and_migrate()
+	
+	# 应用音频设置
+	var master_vol = config_loader.get_int("Audio", "master_volume", 80)
+	var music_vol = config_loader.get_int("Audio", "music_volume", 80)
+	var sfx_vol = config_loader.get_int("Audio", "effects_volume", 80)
+	
+	logger.debug("Audio config: master=%d, music=%d, sfx=%d" % [master_vol, music_vol, sfx_vol], "Main")
+	
+	audio_manager.set_master_volume(master_vol)
+	audio_manager.set_music_volume(music_vol)
+	audio_manager.set_sfx_volume(sfx_vol)
 
 ## 加载MIDI数据
 func _load_midi_data() -> void:
@@ -258,55 +275,40 @@ func _on_settings_changed(setting_name: String, value: Variant) -> void:
 
 ## 重新加载所有设置
 func _reload_all_settings() -> void:
-	# 从用户配置文件重新加载
-	var user_config_path = "user://files/settings.ini"
-	if not FileAccess.file_exists(user_config_path):
-		logger.warning("User settings file not found, using defaults", "Main")
+	if _is_reloading_settings:
 		return
-	
-	var config = config_loader.load_config(user_config_path)
-	if config.is_empty():
-		logger.warning("Failed to load user settings", "Main")
-		return
+	_is_reloading_settings = true
+	# 重新加载配置
+	config_loader.reload_config()
 	
 	# 应用音频设置
-	if config.has("Audio"):
-		var audio_section = config["Audio"]
-		if audio_manager:
-			audio_manager.set_master_volume(int(audio_section.get("master_volume", 80)))
-			audio_manager.set_music_volume(int(audio_section.get("music_volume", 80)))
-			audio_manager.set_sfx_volume(int(audio_section.get("effects_volume", 80)))
+	if audio_manager:
+		var master_vol = config_loader.get_int("Audio", "master_volume", 80)
+		var music_vol = config_loader.get_int("Audio", "music_volume", 80)
+		var sfx_vol = config_loader.get_int("Audio", "effects_volume", 80)
+		
+		audio_manager.set_master_volume(master_vol)
+		audio_manager.set_music_volume(music_vol)
+		audio_manager.set_sfx_volume(sfx_vol)
 	
 	# 应用Gameplay设置（包括SoundFont）
-	if config.has("Gameplay"):
-		var gameplay_section = config["Gameplay"]
-		if audio_manager and gameplay_section.has("soundfont_file"):
-			var soundfont_name = gameplay_section.get("soundfont_file", "GeneralUser-GS.sf2")
-			midi_playback_manager.set_soundfont(soundfont_name)
-		# NOTE: midi_backend 的处理由 MidiPlaybackManager._on_settings_changed() 专门负责
-		# 不要在这里重复处理，避免竞态条件导致后端切换失败
-		# if midi_playback_manager and gameplay_section.has("midi_backend"):
-		#     var backend_value = str(gameplay_section.get("midi_backend", "addons"))
-		#     if backend_value == "0":
-		#         backend_value = "addons"
-		#     elif backend_value == "1":
-		#         backend_value = "meltysynth"
-		#     midi_playback_manager.set_backend(backend_value)
+	if midi_playback_manager:
+		var soundfont_name = config_loader.get_value("Gameplay", "soundfont_file", "GeneralUser-GS.sf2")
+		midi_playback_manager.set_soundfont(soundfont_name)
 	
 	# 应用显示设置
-	if config.has("Display"):
-		var display_section = config["Display"]
-		var fullscreen = display_section.get("fullscreen", "true").to_lower() in ["true", "1", "yes"]
-		var vsync = display_section.get("vsync_enabled", "true").to_lower() in ["true", "1", "yes"]
-		
-		if fullscreen:
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
-		else:
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-		
-		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
+	var fullscreen = config_loader.get_bool("Display", "fullscreen", true)
+	var vsync = config_loader.get_bool("Display", "vsync_enabled", true)
+	
+	if fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
 	
 	logger.info("All settings reloaded and applied", "Main")
+	_is_reloading_settings = false
 
 ## 应用单个设置项
 func _apply_single_setting(setting_name: String, value: Variant) -> void:
@@ -349,5 +351,49 @@ func _apply_single_setting(setting_name: String, value: Variant) -> void:
 	elif setting_name == "vsync_enabled":
 		var is_vsync = value in ["1", "true", "True", "yes", "Yes"]
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if is_vsync else DisplayServer.VSYNC_DISABLED)
+
+## 配置变更回调（新增）
+func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	if _is_reloading_settings:
+		return
+	# 通配符 "*" 和 "all" 表示全量配置重新加载
+	if key == "*" or section == "all":
+		logger.info("Configuration changed (batch), reloading all settings", "Main")
+		_reload_all_settings()
+		return
+	
+	# 处理单个配置项变更
+	logger.debug("Configuration changed: [%s] %s = %s" % [section, key, str(value)], "Main")
+	
+	# 根据 section 和 key 应用相应的配置
+	match section:
+		"Audio":
+			if key in ["master_volume", "music_volume", "effects_volume"] and audio_manager:
+				match key:
+					"master_volume":
+						audio_manager.set_master_volume(int(value))
+					"music_volume":
+						audio_manager.set_music_volume(int(value))
+					"effects_volume":
+						audio_manager.set_sfx_volume(int(value))
+		
+		"Gameplay":
+			# MIDI播放管理器监听这些配置
+			if key == "soundfont_file" and midi_playback_manager:
+				midi_playback_manager.set_soundfont(str(value))
+			elif key == "midi_backend" and midi_playback_manager:
+				midi_playback_manager.set_backend(str(value))
+		
+		"Display":
+			if key == "fullscreen":
+				var is_fullscreen = value in ["1", "true", "True", "yes", "Yes"]
+				if is_fullscreen:
+					DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+				else:
+					DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			elif key == "vsync_enabled":
+				var is_vsync = value in ["1", "true", "True", "yes", "Yes"]
+				DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if is_vsync else DisplayServer.VSYNC_DISABLED)
+
 
 # 在 AspectRatioContainer 的父节点添加脚本

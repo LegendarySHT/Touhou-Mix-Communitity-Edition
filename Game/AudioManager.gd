@@ -62,6 +62,10 @@ func _ready() -> void:
 		player.bus = "SFX"
 		add_child(player)
 		sfx_players.append(player)
+	
+	# 监听配置变更信号（新增）
+	if EventBus.instance:
+		EventBus.instance.config_changed.connect(_on_config_changed)
 
 ## 播放背景音乐
 func play_bgm(audio_stream: AudioStream, loop: bool = true) -> void:
@@ -306,6 +310,21 @@ func seek_vocal(position_ms: float) -> void:
 func set_vocal_volume_db(volume_db: float) -> void:
 	if vocal_player != null:
 		vocal_player.volume_db = volume_db
+
+## 配置变更回调（新增）
+func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	# 只处理音频相关的配置变更
+	if section != "Audio":
+		return
+	
+	# 处理音量变更
+	match key:
+		"master_volume":
+			set_master_volume(int(value))
+		"music_volume":
+			set_music_volume(int(value))
+		"effects_volume":
+			set_sfx_volume(int(value))
 
 ## 检查人声是否正在播放
 func is_vocal_playing() -> bool:

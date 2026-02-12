@@ -3,7 +3,7 @@ extends Control
 @onready var short_cut_btn = $Node2D/HBoxC/ShortCut
 
 ## ConfigLoader 引用
-var config_loader: ConfigLoader = null
+var config_loader: ConfigManager = null
 @onready var UI: UIStateManager = UIStateManager.instance
 
 ## 配置文件路径
@@ -109,12 +109,12 @@ func _btn_focus_entered(btn: Button):
 
 ## 从文件加载配置
 func _load_config_from_file() -> void:
-	# 创建 ConfigLoader 实例
-	config_loader = ConfigLoader.new()
+	# 使用 ConfigManager 单例
+	var config_manager = ConfigManager.instance
 	
 	# 优先从用户配置文件加载，如果不存在则使用默认配置
 	var config_path = CONFIG_PATH if FileAccess.file_exists(CONFIG_PATH) else DEFAULT_CONFIG_PATH
-	var ini_config = config_loader.load_config(config_path)
+	var ini_config = config_manager.load_config(config_path)
 	
 	if ini_config.is_empty():
 		push_error("[SettingView] Failed to load config from: %s" % config_path)
@@ -123,7 +123,7 @@ func _load_config_from_file() -> void:
 		return
 	
 	# 检查并迁移配置版本
-	ini_config = config_loader.check_and_migrate(ini_config, config_path)
+	ini_config = config_manager.check_and_migrate(ini_config, config_path)
 	
 	# 转换 INI 格式为 SettingList 格式
 	var settings_dict = SettingsMapper.ini_to_settings(ini_config)
@@ -138,8 +138,7 @@ func _load_config_from_file() -> void:
 
 ## 保存配置到文件（由 AnimationManager 在退出时调用）
 func save_config_to_file() -> bool:
-	if config_loader == null:
-		config_loader = ConfigLoader.new()
+	var config_manager = ConfigManager.instance
 	
 	# 获取当前 UI 中的配置
 	var settings_dict = setting_list.get_all_settings_as_json()
@@ -183,19 +182,18 @@ func save_config_to_file() -> bool:
 	# 确保有 Game 节（包含版本号）
 	if not ini_config.has("Game"):
 		ini_config["Game"] = {}
-	ini_config["Game"]["config_version"] = ConfigLoader.CONFIG_VERSION
+	ini_config["Game"]["config_version"] = ConfigManager.CONFIG_VERSION
 	
 	# 保存前打印信息
 	print("[SettingView] About to save config. Gameplay section: %s" % ini_config.get("Gameplay", {}))
 	
 	# 保存到用户配置文件
-	var success = config_loader.save_config(CONFIG_PATH, ini_config)
+	var success = config_manager.save_config(CONFIG_PATH, ini_config)
 	
 	if success:
 		print("[SettingView] Saved %d settings to: %s" % [settings_dict.size(), CONFIG_PATH])
-		# 保存后立即验证
-		var verify_loader = ConfigLoader.new()
-		var verify_config = verify_loader.load_config(CONFIG_PATH)
+		# 保存后立即验证（使用单例缓存）
+		var verify_config = config_manager.load_config(CONFIG_PATH)
 		if verify_config.has("Gameplay"):
 			print("[SettingView] Verification: midi_backend in saved file = '%s'" % verify_config["Gameplay"].get("midi_backend", "NOT_FOUND"))
 	else:

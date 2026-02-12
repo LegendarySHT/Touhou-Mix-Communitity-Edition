@@ -171,9 +171,10 @@ func _load_midi_thread(midi: MidiData) -> void:
 		key_sequence_manager.generate_keys(manual_control_notes)
 		
 		# 应用配置文件中的优化设置（可选）
-		if ConfigLoader.new().load_config("res://Resources/Config/config.ini").has("Gameplay"):
-			var config = ConfigLoader.new().load_config("res://Resources/Config/config.ini")
-			var min_spacing = config.get("Gameplay", {}).get("min_note_spacing_ms", 10.0)
+		var config_manager = ConfigManager.instance
+		var config = config_manager.load_config(ConfigManager.DEFAULT_CONFIG_PATH)
+		if config.has("Gameplay"):
+			var min_spacing = config["Gameplay"].get("min_note_spacing_ms", 10.0)
 			key_sequence_manager.apply_optimization_config({"min_note_spacing_ms": min_spacing})
 		
 		# 执行键优化（框架）

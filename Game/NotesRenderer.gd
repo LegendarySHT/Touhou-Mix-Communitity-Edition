@@ -51,6 +51,10 @@ func _ready() -> void:
 	# 获取管理器引用
 	midi_playback_manager = MidiPlaybackManager.instance
 	key_sequence_manager = KeySequenceManager.instance
+	
+	# 监听配置变更信号（新增）
+	if EventBus.instance:
+		EventBus.instance.config_changed.connect(_on_config_changed)
 
 ## 加载MIDI谱面
 ## 此方法由GameplayManager调用
@@ -193,15 +197,13 @@ func _check_missed_notes() -> void:
 
 ## 从配置文件加载判定窗口
 func _load_judge_windows() -> void:
-	var config_loader = ConfigLoader.new()
-	var config = config_loader.load_config("res://Resources/Config/config.ini")
+	var config_manager = ConfigManager.instance
 	
-	if config.has("Gameplay"):
-		var gameplay_config = config["Gameplay"]
-		judge_windows["perfect"] = gameplay_config.get("judge_window_perfect", 50)
-		judge_windows["good"] = gameplay_config.get("judge_window_good", 100)
-		judge_windows["ok"] = gameplay_config.get("judge_window_ok", 150)
-		judge_windows["miss"] = gameplay_config.get("judge_window_miss", 200)
+	# 使用简化API从_current_config读取
+	judge_windows["perfect"] = config_manager.get_int("Gameplay", "judge_window_perfect", 50)
+	judge_windows["good"] = config_manager.get_int("Gameplay", "judge_window_good", 100)
+	judge_windows["ok"] = config_manager.get_int("Gameplay", "judge_window_ok", 150)
+	judge_windows["miss"] = config_manager.get_int("Gameplay", "judge_window_miss", 200)
 
 ## 设置可视时间窗口大小
 func set_visible_time_range(range_ms: float) -> void:
@@ -220,3 +222,11 @@ func get_statistics() -> Dictionary:
 		"current_position": current_position,
 		"total_duration": total_duration
 	}
+
+## 配置变更回调（新增）
+func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	# 处理判定窗口配置变更
+	if section == "Gameplay" and key.begins_with("judge_window_"):
+		_load_judge_windows()
+		GameLogger.instance.info("Judge windows reloaded after config change", "NotesRenderer")
+

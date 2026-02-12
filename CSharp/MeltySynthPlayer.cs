@@ -49,6 +49,13 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private float[] _leftBuffer = Array.Empty<float>();
 	private float[] _rightBuffer = Array.Empty<float>();
 
+	// ============ 选项 A：独立合成器用于低延迟手动音符 ============
+	private Synthesizer _manualSynth;      // 专用于手动触发的音符
+	private Synthesizer _autoSynth;        // 原有：用于MIDI自动播放（就是 _synth）
+	private bool _useSeparateSynthForManual = true;  // 启用独立合成器
+	private const int MANUAL_CHANNEL_OFFSET = 16;   // 手动音符的虚拟通道偏移
+	private readonly Dictionary<int, float> _manualNoteVelocities = new Dictionary<int, float>();
+
 	private void EnsureAudioInitialized()
 	{
 		if (_player != null)
@@ -64,7 +71,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		_generator = new AudioStreamGenerator
 		{
 			MixRate = _sampleRate,
-			BufferLength = 0.2f
+			BufferLength = 0.1f
 		};
 
 		_player.Stream = _generator;
@@ -158,7 +165,41 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 		EnsureBuffers(framesAvailable);
 
-		_sequencer.Render(_leftBuffer.AsSpan(0, framesAvailable), _rightBuffer.AsSpan(0, framesAvailable));
+		// ========== 选项 A：混合两个合成器的输出 ==========
+		if (_useSeparateSynthForManual && _manualSynth != _autoSynth && _manualSynth != null)
+		{
+			// 创建临时缓冲区用于手动合成器的输出
+			var manualLeft = new float[framesAvailable];
+			var manualRight = new float[framesAvailable];
+
+			// 自动播放合成（MIDI 序列）
+			_sequencer.Render(_leftBuffer.AsSpan(0, framesAvailable), 
+							 _rightBuffer.AsSpan(0, framesAvailable));
+
+			// 手动合成（低延迟响应）
+			try
+			{
+				_manualSynth.Render(manualLeft.AsSpan(0, framesAvailable), 
+								   manualRight.AsSpan(0, framesAvailable));
+			}
+			catch (Exception ex)
+			{
+				GD.PrintErr($"[MeltySynthPlayer] Error processing manual synth: {ex.Message}");
+			}
+
+			// 混合输出：自动播放 + 手动音符（手动音降低 3dB 避免过载）
+			for (var i = 0; i < framesAvailable; i++)
+			{
+				_leftBuffer[i] = _leftBuffer[i] + manualLeft[i] * 0.5f;
+				_rightBuffer[i] = _rightBuffer[i] + manualRight[i] * 0.5f;
+			}
+		}
+		else
+		{
+			// 原有逻辑：仅使用自动合成器
+			_sequencer.Render(_leftBuffer.AsSpan(0, framesAvailable), 
+							 _rightBuffer.AsSpan(0, framesAvailable));
+		}
 
 		var scale = _volumeLinear;
 		for (var i = 0; i < framesAvailable; i++)
@@ -338,12 +379,12 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			var compensatedMs = Math.Max(0.0, sequencerMs - bufferLatencyMs);
 			
 			// 每 120 帧输出一次诊断日志
-			/*
+			
 			if (Engine.GetProcessFrames() % 120 == 0)
 			{
 				GD.Print($"[MeltySynthPlayer] get_position_ms: sequencer={sequencerMs:F1}ms, latency={bufferLatencyMs:F1}ms, result={compensatedMs:F1}ms");
 			}
-			*/
+			
 			
 			return compensatedMs;
 		}
@@ -463,16 +504,51 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	public void trigger_note_on(int pitch, int velocity, int channel)
 	{
-		// Manual notes use track 0 by default
-		var virtualId = channel;  // track 0
-		_synth?.NoteOn(virtualId, pitch, velocity);
+		// ========== 优化：直接调用手动合成器 ==========
+		if (!_useSeparateSynthForManual || _manualSynth == null)
+		{
+			// 回退：使用自动合成器
+			var virtualId = channel;
+			_synth?.NoteOn(virtualId, pitch, velocity);
+			return;
+		}
+
+		// 使用手动合成器（虚拟通道偏移以避免冲突）
+		var manualVirtualId = channel + MANUAL_CHANNEL_OFFSET;
+		
+		try
+		{
+			_manualSynth.NoteOn(manualVirtualId, pitch, velocity);
+			GD.Print($"[MeltySynthPlayer] Manual NoteOn: pitch={pitch}, velocity={velocity}, " +
+					$"channel={channel}, manualVirtualId={manualVirtualId}");
+		}
+		catch (Exception ex)
+		{
+			GD.PrintErr($"[MeltySynthPlayer] Error in trigger_note_on: {ex.Message}");
+		}
 	}
 
 	public void trigger_note_off(int pitch, int _velocity, int channel)
 	{
-		// Manual notes use track 0 by default
-		var virtualId = channel;  // track 0
-		_synth?.NoteOff(virtualId, pitch);
+		// ========== 优化：直接调用手动合成器 ==========
+		if (!_useSeparateSynthForManual || _manualSynth == null)
+		{
+			var virtualId = channel;
+			_synth?.NoteOff(virtualId, pitch);
+			return;
+		}
+
+		var manualVirtualId = channel + MANUAL_CHANNEL_OFFSET;
+		
+		try
+		{
+			_manualSynth.NoteOff(manualVirtualId, pitch);
+			GD.Print($"[MeltySynthPlayer] Manual NoteOff: pitch={pitch}, channel={channel}");
+		}
+		catch (Exception ex)
+		{
+			GD.PrintErr($"[MeltySynthPlayer] Error in trigger_note_off: {ex.Message}");
+		}
 	}
 
 	public void stop_channel_notes(int channel)
@@ -609,11 +685,33 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			MaximumPolyphony = max_polyphony
 		};
 
-		_synth = new Synthesizer(_soundFont, settings);
-		_sequencer = new MidiFileSequencer(_synth)
+		// ========== 创建两个独立的合成器 ==========
+		// 自动播放合成器（用于 MIDI 序列器）
+		_autoSynth = new Synthesizer(_soundFont, settings);
+		_synth = _autoSynth;  // 兼容性：保持 _synth 指向自动合成器
+		
+		_sequencer = new MidiFileSequencer(_autoSynth)
 		{
 			OnSendMessage = OnSendMessage
 		};
+
+		// 手动音符合成器（独立，用于低延迟响应）
+		if (_useSeparateSynthForManual)
+		{
+			// 手动音符合成器用较少的复音数（通常不需要太多并发音符）
+			var manualSettings = new SynthesizerSettings(_sampleRate)
+			{
+				MaximumPolyphony = Math.Max(16, max_polyphony / 4)  // 至少 16 个复音
+			};
+			_manualSynth = new Synthesizer(_soundFont, manualSettings);
+			GD.Print($"[MeltySynthPlayer] Created separate synthesizers: " +
+					$"auto={max_polyphony} voices, manual={manualSettings.MaximumPolyphony} voices");
+		}
+		else
+		{
+			_manualSynth = _autoSynth;  // 回退：使用同一个合成器
+			GD.Print("[MeltySynthPlayer] Using single synthesizer for both auto and manual notes");
+		}
 
 		EmitSignal(SignalName.soundfont_changed, path);
 	}

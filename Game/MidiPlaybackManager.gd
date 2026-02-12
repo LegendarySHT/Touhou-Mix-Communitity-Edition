@@ -124,6 +124,8 @@ func _ready() -> void:
 	# 监听设置改变信号（用于动态切换MIDI后端和音源）
 	if EventBus.instance:
 		EventBus.instance.settings_changed.connect(_on_settings_changed)
+		# 监听配置变更信号（新增，用于应对直接配置文件修改）
+		EventBus.instance.config_changed.connect(_on_config_changed)
 
 ## 处理设置改变信号回调（当退出SettingView时触发）
 ## @param setting_name: 改变的设置名 ("*" 表示所有设置)
@@ -657,18 +659,11 @@ func set_backend(backend_name: String) -> bool:
 
 ## 从配置文件加载MIDI后端设置
 func _load_backend_from_config() -> void:
-	var config_loader = ConfigLoader.new()
-	var user_config_path = "user://files/settings.ini"
+	var config_manager = ConfigManager.instance
 	
-	if FileAccess.file_exists(user_config_path):
-		var user_config = config_loader.load_config(user_config_path)
-		if not user_config.is_empty() and user_config.has("Gameplay"):
-			var backend = user_config["Gameplay"].get("midi_backend", "addons")
-			midi_backend = str(backend).to_lower().strip_edges()
-			return
-	
-	# 默认值
-	midi_backend = "addons"
+	# 优先从用户配置获取
+	var backend = config_manager.get_value("Gameplay", "midi_backend", "addons")
+	midi_backend = str(backend).to_lower().strip_edges()
 
 ## 初始化指定后端
 func _initialize_backend() -> bool:
@@ -1363,33 +1358,19 @@ func get_position_tick() -> float:
 ## 从配置文件加载音源设置
 ## 优先级：user://files/settings.ini > res://Resources/Config/config.ini > 默认值
 func _load_soundfont_from_config() -> void:
-	var config_loader = ConfigLoader.new()
+	var config_manager = ConfigManager.instance
 	
-	# 1. 尝试加载用户配置（优先）
-	var user_config_path = "user://files/settings.ini"
-	if FileAccess.file_exists(user_config_path):
-		var user_config = config_loader.load_config(user_config_path)
-		if not user_config.is_empty():
-			var soundfont_name = config_loader.get_value(user_config, "Gameplay", "soundfont_file", "")
-			if not soundfont_name.is_empty():
-				# 去掉 .sf2 扩展名和 [内置] 标签（如果有）
-				soundfont_name = soundfont_name.replace(".sf2", "").replace("[内置]", "").strip_edges()
-				print("[MidiPlaybackManager] Loading soundfont from user config: %s" % soundfont_name)
-				if set_soundfont(soundfont_name):
-					return
+	# 从当前活跃配置获取 soundfont（用户配置 > 默认配置）
+	var soundfont_name = config_manager.get_value("Gameplay", "soundfont_file", "GeneralUser-GS.sf2")
 	
-	# 2. 尝试加载默认配置
-	var default_config_path = "res://Resources/Config/config.ini"
-	var default_config = config_loader.load_config(default_config_path)
-	if not default_config.is_empty():
-		var soundfont_name = config_loader.get_value(default_config, "Gameplay", "soundfont_file", "GeneralUser-GS.sf2")
-		# 去掉 .sf2 扩展名
-		soundfont_name = soundfont_name.replace(".sf2", "").strip_edges()
-		print("[MidiPlaybackManager] Loading soundfont from default config: %s" % soundfont_name)
+	if not soundfont_name.is_empty():
+		# 去掉 .sf2 扩展名和 [内置] 标签（如果有）
+		soundfont_name = soundfont_name.replace(".sf2", "").replace("[内置]", "").strip_edges()
+		print("[MidiPlaybackManager] Loading soundfont from config: %s" % soundfont_name)
 		if set_soundfont(soundfont_name):
 			return
 	
-	# 3. 使用硬编码的默认值
+	# 使用硬编码的默认值（如果加载失败）
 	print("[MidiPlaybackManager] Using hardcoded default soundfont")
 	current_soundfont_path = default_soundfont_path
 	soundfont_changed.emit(current_soundfont_path)
@@ -1502,3 +1483,21 @@ func set_sync_threshold(threshold_ms: float) -> void:
 ## 重置同步检查位置（在开始新播放时调用）
 func reset_sync_state() -> void:
 	last_sync_check_pos_ms = 0.0
+
+## 配置变更回调（新增）
+func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	# 只处理 Gameplay 部分的配置变更
+	if section != "Gameplay":
+		return
+	
+	# 处理音源文件配置变更
+	if key == "soundfont_file":
+		var soundfont_name = str(value).replace(".sf2", "").strip_edges()
+		if not soundfont_name.is_empty():
+			set_soundfont(soundfont_name)
+	
+	# 处理 MIDI 后端配置变更
+	elif key == "midi_backend":
+		var backend = str(value).to_lower().strip_edges()
+		if backend != midi_backend and not backend_switching:
+			set_backend(backend)

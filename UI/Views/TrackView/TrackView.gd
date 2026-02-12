@@ -1062,9 +1062,9 @@ func _save_midi_config() -> void:
 		"_runtime": runtime_config
 	}
 	
-	# 使用ConfigLoader保存JSON（启用合并模式，保留原有字段）
-	var config_loader = ConfigLoader.new()
-	if config_loader.save_json_file(json_path, data_to_save, true):
+	# 使用ConfigManager保存JSON（启用合并模式，保留原有字段）
+	var config_manager = ConfigManager.instance
+	if config_manager.save_json_file(json_path, data_to_save, true):
 		print("[TrackView] Successfully saved MIDI config to: %s (volume: %d/%d, solo: %d, track_enabled: %s, vocal: %s)" % 
 			[json_path, current_midi_data.midi_volume, current_midi_data.vocal_volume, solo_pairs.size(), current_midi_data.selected_track_configs, vocal_file_path])
 	else:

@@ -45,6 +45,7 @@ signal search_query_changed(query: String)
 
 ## ========== 设置和配置事件 ==========
 signal settings_changed(setting_name: String, value: Variant)
+signal config_changed(key: String, section: String, value: Variant)
 signal theme_changed(theme_name: String)
 signal language_changed(language_code: String)
 
@@ -79,6 +80,10 @@ func emit_song_selected(song_id: String) -> void:
 ## 便利函数：发出MIDI选择事件
 func emit_midi_selected(midi_id: String, midi_data: MidiData) -> void:
 	midi_selected.emit(midi_id, midi_data)
+
+## 便利函数：发出配置变更事件
+func emit_config_changed(key: String, section: String, value: Variant = null) -> void:
+	config_changed.emit(key, section, value)
 
 ## 便利函数：发出错误事件
 func emit_error(error_code: int, error_message: String) -> void:

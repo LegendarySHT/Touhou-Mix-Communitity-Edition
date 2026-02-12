@@ -217,6 +217,11 @@ func from_json(json_data: Dictionary) -> void:
 					for ch in channels:
 						selected_track_configs[track_idx].append(int(ch))
 		
+		# 如果没有保存的轨道配置，默认启用轨道0的通道0
+		if selected_track_configs.is_empty():
+			selected_track_configs[0] = [0]
+			GameLogger.instance.info("No track config found, using default: track 0, channel 0", "MidiData")
+		
 		# 恢复人声文件路径
 		var saved_vocal_path = runtime_config.get("vocal_file_path", "")
 		if saved_vocal_path is String:

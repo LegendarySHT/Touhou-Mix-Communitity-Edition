@@ -107,7 +107,10 @@ func _ready() -> void:
 	get_viewport().gui_embed_subwindows = false
 
 func init_flow_area():
+	# 保存 notes_list，因为 clear_flow_area() 会清空它
+	var saved_notes = notes_list.duplicate()
 	clear_flow_area()
+	notes_list = saved_notes
 	note_idx = 0
 	
 	var lc = parent_node.get_lane_count()

@@ -2,8 +2,8 @@
 
 **项目**: Godot 4.5 节奏游戏（GDScript）  
 **状态**: 核心架构完成；UI/MIDI/GameplayManager 系统全部集成  
-**更新**: 2026-02-10  
-**核心完成度**: 85% - 框架完成，TrackView 编辑系统集成，游戏逻辑优化中
+**更新**: 2026-02-12 (v2)  
+**核心完成度**: 85% - 框架完成，TrackView 编辑系统集成，配置管理系统完全重构（用户配置优先）
 
 ## ⚡ 5 分钟快速概览
 
@@ -29,6 +29,7 @@ var manager = get_node("/root/Main/DataManager")
 **关键 Manager**:
 - `DataManager.instance` - 访问专辑/歌曲/MIDI 树（albums/songs/midis 字典）
 - `EventBus.instance` - 发送/监听全局信号
+- `ConfigManager.instance` - 统一配置管理（单例，已单例化）✨
 - `FileSystemManager.instance` - 谱面索引与资源扫描
 - `MidiPlaybackManager.instance` - MIDI 文件加载与轨道选择
 - `KeySequenceManager.instance` - Note 分类与键位生成
@@ -42,7 +43,7 @@ var manager = get_node("/root/Main/DataManager")
 ```gdscript
 # Main._ready() 的初始化顺序（13步）
 1. GameLogger.instance - 日志系统
-2. ConfigLoader - 配置加载
+2. ConfigManager.instance - 配置管理（新增：已单例化）
 3. FileSystemManager - 文件系统初始化
    ├─ initialize_directory_structure() - 后台线程创建 user:// 目录
    └─ 并行复制默认谱面到 user://files/Charts/
@@ -221,12 +222,25 @@ class_name SomeView
 
 @onready var data_manager = DataManager.instance
 @onready var event_bus = EventBus.instance
+@onready var config_manager = ConfigManager.instance
 
 func _ready() -> void:
     # 1. 等待数据加载完成
     event_bus.data_loaded_complete.connect(_on_data_ready)
     
     # 2. 连接选择事件（信号驱动）
+    event_bus.midi_selected.connect(_on_midi_selected)
+    
+    # 3. 监听配置变更（新增）
+    event_bus.config_changed.connect(_on_config_changed)
+    
+    # 4. 初始化 UI
+
+func _on_config_changed(key: String, section: String, value: Variant) -> void:
+    # 处理配置变更，例如：
+    if section == "Audio" and key == "master_volume":
+        _update_volume_ui(int(value))
+```
     event_bus.midi_selected.connect(_on_midi_selected)
     
     # 3. 初始化 UI
@@ -264,6 +278,8 @@ KeySequenceManager.instance.judge_note_at_key(key_id, position_ms)  # 毫秒
 | Tween 卡顿 | 直接创建 Tween 未管理生命周期 | 使用 AnimationManager.animate_*() |
 | 静音无效 | 混淆轨道静音与通道静音（MIDI 中 16 通道/轨道） | MidiPlaybackManager.set_track_mute() vs set_channel_mute() |
 | 音源切换失败 | 后端切换时 SoundFont 参数未同步 | 检查 MidiPlaybackManager.backend_switching 锁 |
+| 配置读取重复 | 每次都创建 ConfigLoader.new() 实例 | 使用 ConfigManager.instance 单例，自动缓存 |
+| 配置变更无效 | 其他 Manager 不知道配置已修改 | 监听 EventBus.config_changed 信号并热重载配置 |
 
 ### 单例初始化顺序的关键
 - **错误**: Manager 在其依赖还未初始化时被访问（.instance 返回 null）
@@ -289,7 +305,8 @@ KeySequenceManager.instance.judge_note_at_key(key_id, position_ms)  # 毫秒
 | UI组件基类 | [UI/Components/BaseScrollList.gd](../UI/Components/BaseScrollList.gd) | 继承此类用于列表 UI，load_*() 加载数据 |
 | 动画库 | [UI/Animations/AnimationManager.gd](../UI/Animations/AnimationManager.gd) | animate_*() 系列（15+预设），_create_tween() 管理 |
 | MIDI 解析 | [Utilities/MidiParser.gd](../Utilities/MidiParser.gd) | load_and_parse_midi(), Note/AutoPlayNote/ManualControlNote 类 |
-| 配置加载 | [Utilities/ConfigLoader.gd](../Utilities/ConfigLoader.gd) | load_config(), get_value()，支持 ini 格式 |
+| 配置加载 | [Utilities/ConfigManager.gd](../Utilities/ConfigManager.gd) | load_config(), save_config(), set_value_and_notify()，单例管理 ✨ |
+| 配置加载（弃用） | [Utilities/ConfigLoader.gd](../Utilities/ConfigLoader.gd) | 已弃用，为向后兼容的代理，请使用 ConfigManager |
 | 日志系统 | [Utilities/Logger.gd](../Utilities/Logger.gd) | GameLogger.instance.info/warning/error()，标签式日志 |
 | TrackView 编辑 | [UI/Views/TrackView/TrackView.gd](../UI/Views/TrackView/TrackView.gd) | 专用 MIDI 编辑、轨道导入、持久化 |
 
@@ -327,6 +344,43 @@ func _exit_tree() -> void:
 GameLogger.instance.info("User selected MIDI: %s" % midi.id, "MidiView")
 GameLogger.instance.warning("MIDI not found", "DataManager")
 GameLogger.instance.error("File access denied", "FileSystemManager")
+```
+
+### 配置管理（新增 - ConfigManager 单例，用户配置优先）
+```gdscript
+# ✅ 正确：使用 ConfigManager.instance 访问
+var config_manager = ConfigManager.instance
+
+# 初始化时加载（优先用户配置，默认配置补充缺失部分）
+config_manager.load_and_set_current()
+
+# 简化用法：读取当前活跃配置（无需传入config参数）
+var lane_count = config_manager.get_int("Lane", "lane_count", 12)
+var is_fullscreen = config_manager.get_bool("Display", "fullscreen", true)
+
+# 保存配置并触发通知
+config_manager.set_value_and_notify("Lane", "lane_count", 16)
+
+# 重新加载配置（用户配置优先，默认配置补充）
+config_manager.reload_config()
+
+# 检查并迁移配置版本（新增部分从默认配置中恢复）
+config_manager.check_and_migrate()
+
+# 监听配置变更
+if EventBus.instance:
+    EventBus.instance.config_changed.connect(func(key, section, value):
+        print("配置变更: [%s] %s = %s" % [section, key, value])
+    )
+
+# ❌ 错误：不要重复创建实例
+var loader1 = ConfigLoader.new()  # 每次创建都会重新解析文件
+var loader2 = ConfigLoader.new()
+
+# ⚠️ 配置策略说明
+# - USER_CONFIG_PATH (user://files/settings.ini) - 用户和游戏内修改的配置，优先加载
+# - DEFAULT_CONFIG_PATH (res://Resources/Config/config.ini) - 默认配置，用于补充缺失部分和版本迁移
+# - 游戏内所有配置读取都基于合并后的_current_config
 ```
 
 ### 动画最佳实践（AnimationManager）

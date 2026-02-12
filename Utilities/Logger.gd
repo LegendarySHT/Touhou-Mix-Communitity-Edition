@@ -20,6 +20,9 @@ var current_level: LogLevel = LogLevel.DEBUG
 ## 是否输出到文件
 var log_to_file: bool = true
 
+## 是否输出到控制台
+var log_to_console: bool = true
+
 ## 日志文件路径（会在 _ready 中初始化）
 var log_file_path: String = ""
 
@@ -121,7 +124,8 @@ func _log(level: LogLevel, message: String, context: String = "") -> void:
 	var full_message = "%s %s [%s] %s" % [timestamp, level_prefix, context, message]
 	
 	# 控制台输出
-	print(full_message)
+	if log_to_console:
+		print(full_message)
 	
 	# 文件输出
 	if log_to_file:

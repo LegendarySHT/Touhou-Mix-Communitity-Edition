@@ -2,3 +2,6 @@
 .godot/
 /android/
 .vscode/
+
+#用于参考实现
+/Touhou Mix/

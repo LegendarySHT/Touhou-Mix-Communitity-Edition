@@ -53,8 +53,18 @@ var play_result: ScoreView.ScoreData = null
 
 @onready var ani: AnimationManager = AnimationManager.instance
 @onready var playback_mgr: MidiPlaybackManager = MidiPlaybackManager.instance
+@onready var key_sequence_mgr: KeySequenceManager = KeySequenceManager.instance
 
 var midi_start_time: float = 0.0
+
+## 演奏模式标志：true = 演奏模式（响应键盘触发音符），false = 听奏模式（MIDI只在背景播放）
+var play_mode: bool = true
+
+## 生成的游戏键序列（演奏模式使用）
+var game_sequences: Array[KeySequenceManager.GameSequence] = []
+
+## MIDI播放中标志
+var is_midi_playing: bool = false
 
 ########## 配置参数 #############
 var lane_count: int = 12
@@ -87,12 +97,17 @@ func _ready() -> void:
 		_prepare_game()
 	)
 	quit_btn.pressed.connect(_on_quit_pressed)
-
 	
 	# 初始化MIDI播放管理器
 	if playback_mgr == null:
 		push_error("MidiPlaybackManager not initialized!")
 		return
+	
+	# 连接MIDI播放信号
+	playback_mgr.midi_started.connect(_on_midi_started)
+	
+	# 从配置加载演奏模式设置
+	_load_play_mode_setting()
 
 var current_time: float = 0
 var max_time: float = 20
@@ -150,7 +165,6 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	play_result = ScoreView.ScoreData.new()
 
 	_init_display()
-	flow_area.init_flow_area()
 	await get_tree().create_timer(0.8).timeout
 
 	# 加载MIDI并转换为FlowArea音符
@@ -165,7 +179,18 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 		if sync_threshold != null:
 			playback_mgr.set_sync_threshold(float(sync_threshold))
 			print("[PlayView] Audio sync threshold set to %.0f ms" % float(sync_threshold))
-
+	
+	# 生成游戏键序列（无论演奏模式开启或关闭都生成，只是演奏模式决定是否响应键盘输入）
+	_generate_game_sequences(midi)
+	print("[PlayView] After _generate_game_sequences, game_sequences.size() = %d" % game_sequences.size())
+	
+	# 将生成的游戏序列转换为FlowArea所需的音符格式
+	var flow_notes = _convert_game_sequences_to_flow_notes(game_sequences)
+	print("[PlayView] After _convert_game_sequences_to_flow_notes, flow_notes.size() = %d" % flow_notes.size())
+	flow_area.notes_list = flow_notes
+	flow_area.init_flow_area()
+	play_result.total_notes = flow_notes.size()
+	print("[PlayView] FlowArea initialized with %d game sequences" % flow_notes.size())
 	# 设置进度条最大值
 	progress_bar.max_value = current_midi.duration_ms
 
@@ -176,76 +201,278 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 开始播放MIDI
 	is_pause = false
 
-## 加载并转换MIDI音符为FlowArea格式
+## 加载MIDI（不再处理FlowArea初始化，该部分由KeySequenceManager处理）
 func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
 	if playback_mgr == null:
 		push_error("MidiPlaybackManager not available!")
 		return
 
 	# 加载MIDI
-	if playback_mgr.current_midi_data != midi_data:
-		if not playback_mgr.load_midi(midi_data):
-			push_error("Failed to load MIDI for gameplay")
-			return
-
-	# 获取手动控制的音符（玩家需要演奏的部分）
-	var classification = playback_mgr.classify_notes(
-		midi_data.parsed_notes, 
-		[0, 1, 2]  # 假设前3个轨道是手动控制的，可以根据需要调整
-	)
-
-	var manual_notes = classification["manual_control_notes"]
-	if manual_notes.is_empty():
-		push_warning("No manual control notes found. Using all notes instead.")
-		manual_notes = midi_data.parsed_notes
-
-	# 转换音符格式
-	var notes = _convert_midi_to_notes(manual_notes, midi_data)
-	flow_area.notes_list = notes
-	play_result.total_notes = notes.size()
+	if not playback_mgr.load_midi(midi_data):
+		push_error("Failed to load MIDI for gameplay")
+		return
 	
-	print("[PlayView] Converted %d MIDI notes to FlowArea format" % flow_area.notes_list.size())
+	# 应用TrackView中保存的MIDI配置（音量、静音、独奏等）
+	_apply_midi_runtime_config(midi_data)
+	
+	print("[PlayView] MIDI loaded and runtime config applied")
 
-## 将MIDI音符转换为FlowArea需要的格式
-func _convert_midi_to_notes(midi_notes: Array, _midi_data: MidiData) -> Array[FlowArea.Note]:
-	var flow_notes: Array[FlowArea.Note]  = []
+## 将KeySequenceManager生成的游戏序列转换为FlowArea所需的格式
+func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowArea.Note]:
+	print("[PlayView] _convert_game_sequences_to_flow_notes called with %d sequences" % sequences.size())
+	var flow_notes: Array[FlowArea.Note] = []
 	var lc = get_lane_count()
+	print("[PlayView] Lane count: %d" % lc)
 
-	for note in midi_notes:
-		if note is MidiParser.Note and note.event != null:
-			var evt = note.event
-			
-			# 将tick转换为毫秒
-			var start_tick = evt.start_time
-			var duration_tick = evt.duration
-			
-			# 使用MidiPlaybackManager的tick_to_ms方法进行精确转换
-			var start_ms = playback_mgr.tick_to_ms(start_tick)
-			var duration_ms = playback_mgr.tick_to_ms(start_tick + duration_tick) - start_ms
-			
-			# 确定车道（lane） - 将MIDI音高映射到12个车道
-			var lane = evt.pitch % lc
-
-			var block_type = FlowArea.NoteType.Block
-			if duration_ms < 500:
-				block_type = FlowArea.NoteType.Slide
-			if duration_ms > 1000:
-				block_type = FlowArea.NoteType.Long
-			
-			# 创建FlowArea的Note对象
-			var flow_note = FlowArea.Note.new(
-				block_type,
-				start_ms,          # 开始时间
-				duration_ms,       # 持续时间
-				lane               # 车道
-			)
-			
-			flow_notes.append(flow_note)
+	for seq in sequences:
+		# 确定车道 - 使用GameSequence的pitch字段
+		var lane = seq.pitch % lc
+		
+		# 将block_type转换为FlowArea.NoteType（值相同）
+		var note_type = seq.block_type  # 0=Block, 1=Slide, 2=Long
+		
+		# 创建FlowArea的Note对象
+		var flow_note = FlowArea.Note.new(
+			note_type,
+			seq.start_time_ms,   # 开始时间（毫秒）
+			seq.duration_ms,     # 持续时间（毫秒）
+			lane                 # 车道
+		)
+		
+		flow_notes.append(flow_note)
 	
-	# 按开始时间排序
+	print("[PlayView] Converted %d sequences to flow notes" % flow_notes.size())
+	# FlowArea期望按时间排序（虽然KeySequenceManager应该已排序）
 	flow_notes.sort_custom(func(a, b): return a.start_time < b.start_time)
 	
 	return flow_notes
+
+## 生成游戏序列
+func _generate_game_sequences(midi_data: MidiData) -> void:
+	if key_sequence_mgr == null:
+		GameLogger.instance.warning("KeySequenceManager not available", "PlayView")
+		return
+	
+	if midi_data.parsed_notes.is_empty():
+		GameLogger.instance.warning("No parsed notes available for key generation", "PlayView")
+		return
+	
+	# 设置MIDI时间参数
+	if playback_mgr != null:
+		key_sequence_mgr.set_midi_time_parameters(playback_mgr.midi_timebase, playback_mgr.bpm_timeline)
+		key_sequence_mgr.set_screen_size(lane_area.size.x)
+	
+	# 获取启用的音轨列表
+	var enabled_track_indices = _get_enabled_track_indices(midi_data)
+	
+	# 筛选只有启用音轨的音符
+	var enabled_notes = _filter_notes_by_enabled_tracks(midi_data.parsed_notes, enabled_track_indices)
+	
+	if enabled_notes.is_empty():
+		GameLogger.instance.warning("No notes in enabled tracks", "PlayView")
+		return
+	
+	# 调用键序列管理器生成游戏键
+	var success = key_sequence_mgr.generate_keys(enabled_notes)
+	if not success:
+		GameLogger.instance.warning("Failed to generate game keys", "PlayView")
+		return
+	
+	# 缓存生成的游戏序列
+	var raw_sequences = key_sequence_mgr.get_game_sequences()
+	print("[PlayView] get_game_sequences returned %d items" % raw_sequences.size())
+	game_sequences = raw_sequences
+	print("[PlayView] game_sequences assigned, size = %d" % game_sequences.size())
+	
+	GameLogger.instance.info("Generated %d game sequences for play mode (enabled tracks: %s)" % [game_sequences.size(), enabled_track_indices], "PlayView")
+
+## 获取启用的音轨列表（从MidiData.selected_track_configs读取）
+func _get_enabled_track_indices(midi_data: MidiData) -> Array[int]:
+	var enabled: Array[int] = []
+	
+	# 调试：打印 selected_track_configs 内容
+	GameLogger.instance.info("selected_track_configs: %s" % str(midi_data.selected_track_configs), "PlayView")
+	
+	# selected_track_configs 是 Dictionary，格式: {track_idx: [channel1, channel2, ...]}
+	# 轨道存在且有通道列表说明该轨道启用
+	for track_index in midi_data.selected_track_configs.keys():
+		var channels = midi_data.selected_track_configs[track_index]
+		# 只有当通道列表不为空时，才认为该轨道启用
+		if channels is Array and not channels.is_empty():
+			enabled.append(int(track_index))
+			GameLogger.instance.info("Track %d enabled with channels: %s" % [track_index, str(channels)], "PlayView")
+	
+	# 不再有后备逻辑：MidiData.from_json() 保证总会有默认配置
+	if enabled.is_empty():
+		push_error("[PlayView] No enabled tracks found and no default applied!")
+	
+	GameLogger.instance.info("Final enabled tracks: %s" % str(enabled), "PlayView")
+	return enabled
+
+## 筛选只有启用音轨的音符
+func _filter_notes_by_enabled_tracks(all_notes: Array, enabled_track_indices: Array[int]) -> Array:
+	var filtered: Array = []
+	var enabled_set = {}
+	
+	# 构建快速查找的Set
+	for track_idx in enabled_track_indices:
+		enabled_set[track_idx] = true
+	
+	GameLogger.instance.info("Filtering %d notes, enabled tracks: %s" % [all_notes.size(), str(enabled_track_indices)], "PlayView")
+	
+	# 筛选音符
+	var track_stats = {}  # 统计每个轨道的音符数
+	for note in all_notes:
+		if note is MidiParser.Note and note.event != null:
+			var evt = note.event
+			var track_idx = evt.track_index
+			
+			# 统计
+			if not track_stats.has(track_idx):
+				track_stats[track_idx] = 0
+			track_stats[track_idx] += 1
+			
+			# 筛选
+			if enabled_set.has(track_idx):
+				filtered.append(note)
+	
+	GameLogger.instance.info("Track note stats: %s" % str(track_stats), "PlayView")
+	GameLogger.instance.info("Filtered result: %d notes out of %d" % [filtered.size(), all_notes.size()], "PlayView")
+	
+	return filtered
+
+## 处理键盘输入触发音符播放
+func _process_input(event: InputEvent) -> void:
+	if not play_mode or not is_midi_playing or game_sequences.is_empty():
+		return
+	
+	# 检查键盘按键事件（演奏模式下才响应键盘输入）
+	if event is InputEventKey and event.pressed:
+		var current_time_ms = playback_mgr.get_position_ms()
+		
+		# 检查是否有键盘映射
+		if keyboard_mode:
+			# 根据键盘按键找对应的lane
+			var key_index = key_map.find(event.keycode)
+			if key_index >= 0:
+				_trigger_key_press(key_index, current_time_ms)
+				get_tree().root.set_input_as_handled()
+
+## 触发指定键的音符播放
+func _trigger_key_press(key_index: int, current_time_ms: float) -> void:
+	if key_index < 0 or key_index >= get_lane_count():
+		return
+	
+	# 计算该key对应的lane
+	var lc = get_lane_count()
+	var target_lane = key_index % lc
+	
+	# 查找当前时间接近的游戏序列（判定窗口内）
+	var judge_window_ms = 150.0  # 判定窗口（毫秒）
+	var triggered_sequences: Array[KeySequenceManager.GameSequence] = []
+	
+	for seq in game_sequences:
+		var time_diff = abs(seq.start_time_ms - current_time_ms)
+		# 只触发在时间窗口内且pitch对应的lane匹配的序列
+		if time_diff <= judge_window_ms:
+			var seq_lane = seq.pitch % lc
+			if seq_lane == target_lane:
+				triggered_sequences.append(seq)
+	
+	# 如果找到匹配的序列，触发所有pitch的音符
+	if not triggered_sequences.is_empty():
+		for seq in triggered_sequences:
+			# 播放该序列的所有pitch
+			for pitch in seq.pitch_list:
+				_play_note(pitch, seq.velocity)
+		
+		GameLogger.instance.info("Triggered %d notes at key %d (time: %.0f ms)" % [triggered_sequences.size(), key_index, current_time_ms], "PlayView")
+
+## 通过MIDI播放单个音符
+func _play_note(pitch: int, velocity: int = 100) -> void:
+	if playback_mgr == null or not playback_mgr.midi_player:
+		return
+	
+	# 使用MIDI播放器的note_on方法（如果可用）
+	# 这里假设midi_player有note_on和note_off方法
+	var midi_player = playback_mgr.midi_player
+	if midi_player and midi_player.has_method("note_on"):
+		# 发送Note On事件
+		midi_player.note_on(0, pitch, velocity)  # channel 0, 持续50ms
+		
+		# 延迟后发送Note Off事件
+		await get_tree().create_timer(0.05).timeout
+		if midi_player and midi_player.has_method("note_off"):
+			midi_player.note_off(0, pitch)
+
+## 从配置加载演奏模式设置
+func _load_play_mode_setting() -> void:
+	# 可以从配置文件读取演奏模式设置
+	# 临时使用默认值 true（演奏模式开启）
+	play_mode = true
+	GameLogger.instance.info("PlayView play mode: %s" % ("ON" if play_mode else "OFF"), "PlayView")
+
+## 应用TrackView中保存的MIDI运行时配置（音量、静音、独奏等）
+func _apply_midi_runtime_config(midi_data: MidiData) -> void:
+	if playback_mgr == null:
+		return
+	
+	# 应用全局音量
+	playback_mgr.set_volume_db(linear_to_db(float(midi_data.midi_volume) / 100.0))
+	
+	# 应用轨道-通道的静音状态
+	# track_channel_mute_state: {track_idx: {channel: bool}}
+	if not midi_data.track_channel_mute_state.is_empty():
+		for track_idx in midi_data.track_channel_mute_state.keys():
+			var channels = midi_data.track_channel_mute_state[track_idx]
+			if channels is Dictionary:
+				for channel in channels.keys():
+					var is_muted = channels[channel]
+					playback_mgr.set_track_channel_mute(track_idx, channel, is_muted)
+	
+	# 应用独奏状态（Additive Solo）
+	# solo_pairs: {"track:channel": true}
+	if not midi_data.solo_pairs.is_empty():
+		for solo_key in midi_data.solo_pairs.keys():
+			# solo_key 格式: "track:channel"
+			var parts = solo_key.split(":")
+			if parts.size() == 2:
+				var track = int(parts[0])
+				var channel = int(parts[1])
+				# 独奏意味着这个轨道要启用，其他非独奏的轨道要静音
+				playback_mgr.set_channel_mute(track, channel, false)
+	
+	# 应用音轨-通道的音量调整
+	# track_channel_volume_config: {track_idx: {channel: volume_value}}
+	if not midi_data.track_channel_volume_config.is_empty():
+		for track_idx in midi_data.track_channel_volume_config.keys():
+			var channels = midi_data.track_channel_volume_config[track_idx]
+			if channels is Dictionary:
+				for channel in channels.keys():
+					var volume = channels[channel]
+					# 设置通道音量
+					if playback_mgr.has_method("set_channel_volume"):
+						playback_mgr.set_channel_volume(track_idx, channel, float(volume) / 100.0)
+	
+	# 应用乐器覆盖（如果有）
+	if not midi_data.track_channel_instrument_overrides.is_empty():
+		for track_index in midi_data.track_channel_instrument_overrides.keys():
+			var channels = midi_data.track_channel_instrument_overrides[track_index]
+			for channel in channels.keys():
+				var instrument = channels[channel]
+				var bank = instrument.get("bank", 0)
+				var program = instrument.get("program", 0)
+				# 设置乐器
+				if playback_mgr.has_method("set_track_channel_program"):
+					playback_mgr.set_track_channel_program(track_index, channel, bank, program)
+	
+	GameLogger.instance.info("MIDI runtime config applied: volume=%d, mute_states=%d, solo_pairs=%d" % 
+		[midi_data.midi_volume, midi_data.track_channel_mute_state.size(), midi_data.solo_pairs.size()], "PlayView")
+
+## MIDI播放开始回调
+func _on_midi_started() -> void:
+	print("[PlayView] MIDI playback started")
+	is_midi_playing = true
 
 ## 游戏结束回调（可以扩展为显示结算界面）
 func _on_game_finished() -> void:
@@ -272,6 +499,7 @@ func _on_quit_pressed() -> void:
 		playback_mgr.stop()
 	_init_display()
 	flow_area.clear_flow_area()
+	game_sequences.clear()  # 清空游戏序列
 	
 	# 返回主菜单或上一级界面
 	UIStateManager.instance.go_back()
@@ -301,7 +529,11 @@ func _init_display():
 	
 	menu.visible = false
 	song_info.visible = true
-	center.modulate.a = 0
+	center_bg.visible = true
+	is_pause = true
+	
+	# 恢复flow_area显示（可能在听奏模式中被隐藏）
+	flow_area.visible = true
 
 	# 重置进度条
 	_current_rect = null
