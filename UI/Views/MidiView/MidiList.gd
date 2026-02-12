@@ -10,9 +10,9 @@ var current_midis: Array[MidiData] = []
 var last_selection:int = -1 # 上一次选中的节点
 
 # 路径
-const INDICATOR = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
-const PREVI_BTN = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Left/PreviBtn"
-const INFO_BTN = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Right/InfoBtn"
+const INDICATOR = "/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
+const PREVI_BTN = "/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Left/PreviBtn"
+const INFO_BTN = "/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/InfoBtn"
 
 func _ready() -> void:
 	work_state = UIStateManager.UIState.MIDI_VIEW

@@ -173,7 +173,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	is_pause = true
 	
 	# 读取并设置音频同步阈值
-	var setting_view = get_node_or_null("/root/Main/SettingView")
+	var setting_view = get_node_or_null("/root/Main/skew/C/SettingView")
 	if setting_view and setting_view.has_method("get_setting_value"):
 		var sync_threshold = setting_view.get_setting_value("audio_sync_threshold")
 		if sync_threshold != null:

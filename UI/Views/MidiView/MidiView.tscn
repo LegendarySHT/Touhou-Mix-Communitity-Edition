@@ -1,4 +1,4 @@
-[gd_scene load_steps=87 format=3 uid="uid://bylmyli6spbd6"]
+[gd_scene format=3 uid="uid://bylmyli6spbd6"]
 
 [ext_resource type="Texture2D" uid="uid://b2x5d0kfa0myq" path="res://Resources/icon/midiInfoPage/Arrow.png" id="1_036i2"]
 [ext_resource type="Script" uid="uid://sw6xgm4gxonh" path="res://UI/Views/MidiView/MidiView.gd" id="1_mxrx3"]
@@ -575,53 +575,48 @@ content_margin_left = 25.0
 content_margin_right = 25.0
 draw_center = false
 
-[node name="InfoUI" type="Node2D"]
-skew = 0.2617994
-
-[node name="Base" type="Control" parent="."]
+[node name="InfoUI" type="Control" unique_id=1711899844]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 75.0
-offset_right = 1995.0
-offset_bottom = 1120.1688
 grow_horizontal = 2
 grow_vertical = 2
 theme = SubResource("Theme_5hcss")
 script = ExtResource("1_mxrx3")
 
-[node name="LeftArea" type="VBoxContainer" parent="Base"]
-custom_minimum_size = Vector2(1200, 0)
+[node name="LeftArea" type="VBoxContainer" parent="." unique_id=874660304]
+custom_minimum_size = Vector2(1000, 0)
 layout_mode = 1
 anchors_preset = 9
 anchor_bottom = 1.0
-offset_left = -80.0
-offset_right = 1120.0
-offset_bottom = -116.16882
+offset_left = -50.0
+offset_top = 20.0
+offset_right = 950.0
+offset_bottom = -56.0
 grow_vertical = 2
 theme_override_constants/separation = 50
 alignment = 1
 
-[node name="InfoWindow" type="PanelContainer" parent="Base/LeftArea"]
+[node name="InfoWindow" type="PanelContainer" parent="LeftArea" unique_id=796666651]
 custom_minimum_size = Vector2(950, 400)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_srflm")
 
-[node name="HBoxC" type="HBoxContainer" parent="Base/LeftArea/InfoWindow"]
+[node name="HBoxC" type="HBoxContainer" parent="LeftArea/InfoWindow" unique_id=719007797]
 layout_mode = 2
 theme_override_constants/separation = 0
 alignment = 1
 metadata/_edit_lock_ = true
 
-[node name="Left" type="VBoxContainer" parent="Base/LeftArea/InfoWindow/HBoxC"]
+[node name="Left" type="VBoxContainer" parent="LeftArea/InfoWindow/HBoxC" unique_id=1246220916]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 theme_override_constants/separation = 0
 alignment = 1
 
-[node name="PreviBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Left"]
+[node name="PreviBtn" type="Button" parent="LeftArea/InfoWindow/HBoxC/Left" unique_id=1931708777]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 focus_neighbor_left = NodePath("../../Right/InfoBtn")
@@ -630,7 +625,7 @@ focus_neighbor_bottom = NodePath("../Fold/Btn")
 focus_next = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
 focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Comment")
 
-[node name="TextureRect" type="TextureRect" parent="Base/LeftArea/InfoWindow/HBoxC/Left/PreviBtn"]
+[node name="TextureRect" type="TextureRect" parent="LeftArea/InfoWindow/HBoxC/Left/PreviBtn" unique_id=2063931514]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -641,12 +636,12 @@ texture = ExtResource("1_036i2")
 stretch_mode = 5
 flip_v = true
 
-[node name="Fold" type="Panel" parent="Base/LeftArea/InfoWindow/HBoxC/Left"]
+[node name="Fold" type="Panel" parent="LeftArea/InfoWindow/HBoxC/Left" unique_id=320457279]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_5h6qm")
 
-[node name="Btn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Left/Fold"]
+[node name="Btn" type="Button" parent="LeftArea/InfoWindow/HBoxC/Left/Fold" unique_id=153442126]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -658,13 +653,13 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_f13vx")
 theme_override_styles/hover = SubResource("StyleBoxFlat_u7brx")
 icon = ExtResource("2_nagrd")
 
-[node name="NextBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Left"]
+[node name="NextBtn" type="Button" parent="LeftArea/InfoWindow/HBoxC/Left" unique_id=288120033]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 focus_neighbor_bottom = NodePath("../../../../MainBtn/TrackViewBtn")
 focus_next = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Rank")
 
-[node name="TextureRect" type="TextureRect" parent="Base/LeftArea/InfoWindow/HBoxC/Left/NextBtn"]
+[node name="TextureRect" type="TextureRect" parent="LeftArea/InfoWindow/HBoxC/Left/NextBtn" unique_id=205982058]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -679,7 +674,7 @@ focus_previous = NodePath("../../../../../../RightArea/OptionPanel/VBoxC/TabBtn/
 texture = ExtResource("1_036i2")
 stretch_mode = 5
 
-[node name="Description" type="RichTextLabel" parent="Base/LeftArea/InfoWindow/HBoxC"]
+[node name="Description" type="RichTextLabel" parent="LeftArea/InfoWindow/HBoxC" unique_id=1401665459]
 visible = false
 custom_minimum_size = Vector2(750, 0)
 layout_mode = 2
@@ -694,7 +689,7 @@ theme_override_font_sizes/mono_font_size = 24
 theme_override_styles/normal = SubResource("StyleBoxFlat_81q6d")
 theme_override_styles/focus = SubResource("StyleBoxFlat_lxuff")
 
-[node name="MidiList" type="ScrollContainer" parent="Base/LeftArea/InfoWindow/HBoxC"]
+[node name="MidiList" type="ScrollContainer" parent="LeftArea/InfoWindow/HBoxC" unique_id=43722694]
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_scroll_mode = 0
@@ -704,17 +699,17 @@ container_path = NodePath("VBOX")
 list_item_class = "res://UI/Views/MidiView/midiNode.tscn"
 metadata/_edit_lock_ = true
 
-[node name="VBOX" type="VBoxContainer" parent="Base/LeftArea/InfoWindow/HBoxC/MidiList"]
+[node name="VBOX" type="VBoxContainer" parent="LeftArea/InfoWindow/HBoxC/MidiList" unique_id=545536108]
 layout_mode = 2
 size_flags_vertical = 2
 
-[node name="Right" type="VBoxContainer" parent="Base/LeftArea/InfoWindow/HBoxC"]
+[node name="Right" type="VBoxContainer" parent="LeftArea/InfoWindow/HBoxC" unique_id=1009054736]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 theme_override_constants/separation = 0
 alignment = 1
 
-[node name="InfoBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Right"]
+[node name="InfoBtn" type="Button" parent="LeftArea/InfoWindow/HBoxC/Right" unique_id=1857789919]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 focus_neighbor_top = NodePath("../DelBtn")
@@ -725,13 +720,13 @@ focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Com
 icon = ExtResource("3_ua7bn")
 icon_alignment = 1
 
-[node name="Center" type="Panel" parent="Base/LeftArea/InfoWindow/HBoxC/Right"]
+[node name="Center" type="Panel" parent="LeftArea/InfoWindow/HBoxC/Right" unique_id=355351725]
 clip_contents = true
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_5h6qm")
 
-[node name="Indicator" type="VBoxContainer" parent="Base/LeftArea/InfoWindow/HBoxC/Right/Center"]
+[node name="Indicator" type="VBoxContainer" parent="LeftArea/InfoWindow/HBoxC/Right/Center" unique_id=35138421]
 clip_contents = true
 custom_minimum_size = Vector2(50, 200)
 layout_mode = 1
@@ -746,7 +741,7 @@ size_flags_vertical = 0
 theme_override_constants/separation = 9
 metadata/_edit_use_anchors_ = true
 
-[node name="DelBtn" type="Button" parent="Base/LeftArea/InfoWindow/HBoxC/Right"]
+[node name="DelBtn" type="Button" parent="LeftArea/InfoWindow/HBoxC/Right" unique_id=1190126601]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 focus_neighbor_top = NodePath("../InfoBtn")
@@ -757,7 +752,7 @@ focus_previous = NodePath("../../../../../RightArea/OptionPanel/VBoxC/TabBtn/Com
 icon = ExtResource("4_f44vb")
 icon_alignment = 1
 
-[node name="DetailData" type="GridContainer" parent="Base/LeftArea"]
+[node name="DetailData" type="GridContainer" parent="LeftArea" unique_id=2026642641]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 3
@@ -765,189 +760,189 @@ size_flags_stretch_ratio = 3.0
 theme_override_constants/v_separation = 30
 columns = 4
 
-[node name="Time" type="HBoxContainer" parent="Base/LeftArea/DetailData"]
+[node name="Time" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=988527352]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
 
-[node name="icon" type="TextureRect" parent="Base/LeftArea/DetailData/Time"]
+[node name="icon" type="TextureRect" parent="LeftArea/DetailData/Time" unique_id=1116322310]
 custom_minimum_size = Vector2(90, 50)
 layout_mode = 2
 texture = ExtResource("10_mxrx3")
 expand_mode = 5
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Base/LeftArea/DetailData/Time"]
+[node name="Label" type="Label" parent="LeftArea/DetailData/Time" unique_id=32487240]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "114:51"
 vertical_alignment = 2
 
-[node name="BPM" type="HBoxContainer" parent="Base/LeftArea/DetailData"]
+[node name="BPM" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1453914352]
 custom_minimum_size = Vector2(150, 120)
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
 
-[node name="icon" type="TextureRect" parent="Base/LeftArea/DetailData/BPM"]
+[node name="icon" type="TextureRect" parent="LeftArea/DetailData/BPM" unique_id=74843338]
 custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
 texture = ExtResource("11_sne8w")
 expand_mode = 5
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Base/LeftArea/DetailData/BPM"]
+[node name="Label" type="Label" parent="LeftArea/DetailData/BPM" unique_id=2003680533]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "114"
 vertical_alignment = 2
 
-[node name="Note" type="HBoxContainer" parent="Base/LeftArea/DetailData"]
+[node name="Note" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1360586405]
 custom_minimum_size = Vector2(150, 120)
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
 
-[node name="icon" type="TextureRect" parent="Base/LeftArea/DetailData/Note"]
+[node name="icon" type="TextureRect" parent="LeftArea/DetailData/Note" unique_id=1100259590]
 custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
 texture = ExtResource("12_migpj")
 expand_mode = 5
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Base/LeftArea/DetailData/Note"]
+[node name="Label" type="Label" parent="LeftArea/DetailData/Note" unique_id=177195718]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "114"
 vertical_alignment = 2
 
-[node name="MPP" type="HBoxContainer" parent="Base/LeftArea/DetailData"]
+[node name="MPP" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1008410678]
 custom_minimum_size = Vector2(150, 120)
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
 
-[node name="icon" type="TextureRect" parent="Base/LeftArea/DetailData/MPP"]
+[node name="icon" type="TextureRect" parent="LeftArea/DetailData/MPP" unique_id=669940350]
 custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
 texture = ExtResource("13_mxrx3")
 expand_mode = 5
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Base/LeftArea/DetailData/MPP"]
+[node name="Label" type="Label" parent="LeftArea/DetailData/MPP" unique_id=1870074518]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "114"
 vertical_alignment = 2
 
-[node name="HSepa" type="HSeparator" parent="Base/LeftArea/DetailData"]
+[node name="HSepa" type="HSeparator" parent="LeftArea/DetailData" unique_id=1593508892]
 layout_mode = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_btcpj")
 
-[node name="HSepa2" type="HSeparator" parent="Base/LeftArea/DetailData"]
+[node name="HSepa2" type="HSeparator" parent="LeftArea/DetailData" unique_id=148939604]
 layout_mode = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_btcpj")
 
-[node name="HSepa3" type="HSeparator" parent="Base/LeftArea/DetailData"]
+[node name="HSepa3" type="HSeparator" parent="LeftArea/DetailData" unique_id=1424263380]
 layout_mode = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_btcpj")
 
-[node name="HSepa4" type="HSeparator" parent="Base/LeftArea/DetailData"]
+[node name="HSepa4" type="HSeparator" parent="LeftArea/DetailData" unique_id=1474752671]
 layout_mode = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_btcpj")
 
-[node name="Play" type="HBoxContainer" parent="Base/LeftArea/DetailData"]
+[node name="Play" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=484836799]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
 
-[node name="icon" type="TextureRect" parent="Base/LeftArea/DetailData/Play"]
+[node name="icon" type="TextureRect" parent="LeftArea/DetailData/Play" unique_id=1399933230]
 custom_minimum_size = Vector2(90, 50)
 layout_mode = 2
 texture = ExtResource("14_jiooo")
 expand_mode = 5
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Base/LeftArea/DetailData/Play"]
+[node name="Label" type="Label" parent="LeftArea/DetailData/Play" unique_id=1402941091]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "114"
 vertical_alignment = 2
 
-[node name="UpCount" type="HBoxContainer" parent="Base/LeftArea/DetailData"]
+[node name="UpCount" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1809400482]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
 
-[node name="icon" type="TextureRect" parent="Base/LeftArea/DetailData/UpCount"]
+[node name="icon" type="TextureRect" parent="LeftArea/DetailData/UpCount" unique_id=136853161]
 custom_minimum_size = Vector2(90, 50)
 layout_mode = 2
 texture = ExtResource("15_27bbn")
 expand_mode = 5
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Base/LeftArea/DetailData/UpCount"]
+[node name="Label" type="Label" parent="LeftArea/DetailData/UpCount" unique_id=1059989272]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "114"
 vertical_alignment = 2
 
-[node name="AvgAcc" type="HBoxContainer" parent="Base/LeftArea/DetailData"]
+[node name="AvgAcc" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1145374602]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
 
-[node name="icon" type="TextureRect" parent="Base/LeftArea/DetailData/AvgAcc"]
+[node name="icon" type="TextureRect" parent="LeftArea/DetailData/AvgAcc" unique_id=1720372278]
 custom_minimum_size = Vector2(90, 50)
 layout_mode = 2
 texture = ExtResource("16_8spcd")
 expand_mode = 5
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Base/LeftArea/DetailData/AvgAcc"]
+[node name="Label" type="Label" parent="LeftArea/DetailData/AvgAcc" unique_id=1788423285]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "0.99"
 vertical_alignment = 2
 
-[node name="AvgPP" type="HBoxContainer" parent="Base/LeftArea/DetailData"]
+[node name="AvgPP" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1804367433]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
 
-[node name="icon" type="TextureRect" parent="Base/LeftArea/DetailData/AvgPP"]
+[node name="icon" type="TextureRect" parent="LeftArea/DetailData/AvgPP" unique_id=999930973]
 custom_minimum_size = Vector2(90, 50)
 layout_mode = 2
 texture = ExtResource("17_8kmhx")
 expand_mode = 5
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Base/LeftArea/DetailData/AvgPP"]
+[node name="Label" type="Label" parent="LeftArea/DetailData/AvgPP" unique_id=1067534368]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "9"
 vertical_alignment = 2
 
-[node name="RedirectButtons" type="HFlowContainer" parent="Base/LeftArea"]
+[node name="RedirectButtons" type="HFlowContainer" parent="LeftArea" unique_id=1288892772]
 visible = false
 custom_minimum_size = Vector2(850, 120)
 layout_mode = 2
 size_flags_horizontal = 4
 
-[node name="Button" type="Button" parent="Base/LeftArea/RedirectButtons"]
+[node name="Button" type="Button" parent="LeftArea/RedirectButtons" unique_id=1143753694]
 custom_minimum_size = Vector2(400, 120)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -958,13 +953,13 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_340v8")
 theme_override_styles/focus = SubResource("StyleBoxFlat_dnsld")
 text = "跳转至浏览器"
 
-[node name="MainBtn" type="HBoxContainer" parent="Base/LeftArea"]
+[node name="MainBtn" type="HBoxContainer" parent="LeftArea" unique_id=1543610834]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 0
 alignment = 1
 
-[node name="TrackViewBtn" type="Button" parent="Base/LeftArea/MainBtn"]
+[node name="TrackViewBtn" type="Button" parent="LeftArea/MainBtn" unique_id=1234650860]
 z_index = 1
 custom_minimum_size = Vector2(250, 150)
 layout_mode = 2
@@ -977,7 +972,7 @@ icon = ExtResource("7_cve6f")
 icon_alignment = 1
 expand_icon = true
 
-[node name="PlayBtn" type="Button" parent="Base/LeftArea/MainBtn"]
+[node name="PlayBtn" type="Button" parent="LeftArea/MainBtn" unique_id=146335706]
 custom_minimum_size = Vector2(300, 200)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -990,7 +985,7 @@ icon = ExtResource("9_7bkas")
 icon_alignment = 1
 expand_icon = true
 
-[node name="FavorListBtn" type="Button" parent="Base/LeftArea/MainBtn"]
+[node name="FavorListBtn" type="Button" parent="LeftArea/MainBtn" unique_id=465486697]
 custom_minimum_size = Vector2(250, 150)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -1003,43 +998,43 @@ icon = ExtResource("8_pgjff")
 icon_alignment = 1
 expand_icon = true
 
-[node name="Control" type="Control" parent="Base/LeftArea"]
+[node name="Control" type="Control" parent="LeftArea" unique_id=1136873940]
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="RightArea" type="MarginContainer" parent="Base"]
+[node name="RightArea" type="MarginContainer" parent="." unique_id=1730032866]
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 1
-anchors_preset = 13
+anchors_preset = -1
 anchor_left = 0.5
-anchor_right = 0.5
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 132.0
-offset_right = 740.0
-offset_bottom = -183.16882
-grow_horizontal = 2
+offset_left = 175.0
+offset_top = 75.0
+offset_bottom = 75.0
+grow_horizontal = 0
 grow_vertical = 2
 
-[node name="OptionPanel" type="PanelContainer" parent="Base/RightArea"]
+[node name="OptionPanel" type="PanelContainer" parent="RightArea" unique_id=1504818877]
 layout_mode = 2
 size_flags_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_fx5ny")
 
-[node name="VBoxC" type="VBoxContainer" parent="Base/RightArea/OptionPanel"]
+[node name="VBoxC" type="VBoxContainer" parent="RightArea/OptionPanel" unique_id=327543443]
 layout_mode = 2
 size_flags_vertical = 0
 theme_override_constants/separation = -1
 script = ExtResource("18_2bu1o")
 
-[node name="TabBtn" type="HBoxContainer" parent="Base/RightArea/OptionPanel/VBoxC"]
+[node name="TabBtn" type="HBoxContainer" parent="RightArea/OptionPanel/VBoxC" unique_id=339701538]
 custom_minimum_size = Vector2(600, 120)
 layout_mode = 2
 theme = SubResource("Theme_n3ivs")
 theme_override_constants/separation = 0
 alignment = 1
 
-[node name="Rank" type="Button" parent="Base/RightArea/OptionPanel/VBoxC/TabBtn"]
+[node name="Rank" type="Button" parent="RightArea/OptionPanel/VBoxC/TabBtn" unique_id=1349029556]
 layout_mode = 2
 size_flags_horizontal = 7
 toggle_mode = true
@@ -1050,7 +1045,7 @@ icon_alignment = 1
 expand_icon = true
 metadata/id = 1
 
-[node name="Mode" type="Button" parent="Base/RightArea/OptionPanel/VBoxC/TabBtn"]
+[node name="Mode" type="Button" parent="RightArea/OptionPanel/VBoxC/TabBtn" unique_id=452346499]
 layout_mode = 2
 size_flags_horizontal = 7
 toggle_mode = true
@@ -1060,7 +1055,7 @@ icon_alignment = 1
 expand_icon = true
 metadata/id = 2
 
-[node name="Comment" type="Button" parent="Base/RightArea/OptionPanel/VBoxC/TabBtn"]
+[node name="Comment" type="Button" parent="RightArea/OptionPanel/VBoxC/TabBtn" unique_id=2029033822]
 layout_mode = 2
 size_flags_horizontal = 7
 toggle_mode = true
@@ -1070,24 +1065,24 @@ icon_alignment = 1
 expand_icon = true
 metadata/id = 3
 
-[node name="TabView" type="MarginContainer" parent="Base/RightArea/OptionPanel/VBoxC"]
+[node name="TabView" type="MarginContainer" parent="RightArea/OptionPanel/VBoxC" unique_id=757236744]
 layout_mode = 2
 theme_override_constants/margin_top = 40
 
-[node name="TabC" type="TabContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView"]
+[node name="TabC" type="TabContainer" parent="RightArea/OptionPanel/VBoxC/TabView" unique_id=1154304984]
 layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 tabs_visible = false
 
-[node name="Rank" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC"]
+[node name="Rank" type="PanelContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC" unique_id=1031929289]
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(600, 770)
 layout_mode = 2
 mouse_filter = 2
 metadata/_tab_index = 0
 
-[node name="ScoreList" type="ScrollContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank"]
+[node name="ScoreList" type="ScrollContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Rank" unique_id=1921750512]
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_h1etv")
@@ -1095,14 +1090,14 @@ script = ExtResource("24_f13vx")
 container_path = NodePath("VBox")
 list_item_class = "res://UI/Views/MidiView/scoreNode.tscn"
 
-[node name="VBox" type="VBoxContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList"]
+[node name="VBox" type="VBoxContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Rank/ScoreList" unique_id=374945097]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/separation = 15
 alignment = 1
 
-[node name="Mode" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC"]
+[node name="Mode" type="PanelContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC" unique_id=290841234]
 visible = false
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(600, 770)
@@ -1110,14 +1105,14 @@ layout_mode = 2
 mouse_filter = 2
 metadata/_tab_index = 1
 
-[node name="GridC" type="GridContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode"]
+[node name="GridC" type="GridContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Mode" unique_id=741669]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/h_separation = 80
 theme_override_constants/v_separation = 20
 columns = 2
 
-[node name="Mode" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
+[node name="Mode" type="OptionButton" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC" unique_id=405700545]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
 focus_neighbor_right = NodePath("../Limit")
@@ -1134,7 +1129,7 @@ popup/item_1/text = "Auto Mode"
 popup/item_1/icon = ExtResource("21_2bu1o")
 popup/item_1/id = 1
 
-[node name="Limit" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
+[node name="Limit" type="OptionButton" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC" unique_id=1411967904]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
 focus_neighbor_left = NodePath("../Mode")
@@ -1154,7 +1149,7 @@ popup/item_2/text = "All Perfect"
 popup/item_2/icon = ExtResource("24_qg2wq")
 popup/item_2/id = 2
 
-[node name="Repeat" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
+[node name="Repeat" type="OptionButton" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC" unique_id=367832061]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
 focus_neighbor_top = NodePath("../Mode")
@@ -1171,7 +1166,7 @@ popup/item_1/text = "Repeat Infinity"
 popup/item_1/icon = ExtResource("26_8q3pc")
 popup/item_1/id = 1
 
-[node name="GameMode" type="OptionButton" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC"]
+[node name="GameMode" type="OptionButton" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC" unique_id=1462223095]
 custom_minimum_size = Vector2(200, 120)
 layout_mode = 2
 focus_neighbor_left = NodePath("../Repeat")
@@ -1188,7 +1183,7 @@ popup/item_1/text = "Scan Line"
 popup/item_1/icon = ExtResource("28_y3sh5")
 popup/item_1/id = 1
 
-[node name="Comment" type="PanelContainer" parent="Base/RightArea/OptionPanel/VBoxC/TabView/TabC"]
+[node name="Comment" type="PanelContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC" unique_id=1171996352]
 visible = false
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(600, 770)
@@ -1196,6 +1191,6 @@ layout_mode = 2
 mouse_filter = 2
 metadata/_tab_index = 2
 
-[connection signal="pressed" from="Base/LeftArea/InfoWindow/HBoxC/Left/PreviBtn" to="Base/LeftArea/InfoWindow/HBoxC/MidiList" method="_previous"]
-[connection signal="pressed" from="Base/LeftArea/InfoWindow/HBoxC/Left/Fold/Btn" to="Base/LeftArea/InfoWindow/HBoxC/MidiList" method="_show_midi_list"]
-[connection signal="pressed" from="Base/LeftArea/InfoWindow/HBoxC/Left/NextBtn" to="Base/LeftArea/InfoWindow/HBoxC/MidiList" method="_next"]
+[connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/PreviBtn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_previous"]
+[connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/Fold/Btn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_show_midi_list"]
+[connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/NextBtn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_next"]

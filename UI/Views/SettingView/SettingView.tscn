@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3 uid="uid://c2kvbawgs74cy"]
+[gd_scene format=3 uid="uid://c2kvbawgs74cy"]
 
 [ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingView/SettingView.gd" id="1_4walt"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="1_ys6ou"]
@@ -259,7 +259,7 @@ PopupMenu/font_sizes/font_size = 48
 PopupMenu/styles/hover = SubResource("StyleBoxFlat_dy1ft")
 PopupMenu/styles/panel = SubResource("StyleBoxFlat_nilp6")
 
-[node name="SettingView" type="Control"]
+[node name="SettingView" type="Control" unique_id=151413608]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -268,24 +268,23 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_4walt")
 
-[node name="Node2D" type="Node2D" parent="."]
-position = Vector2(130, 0)
-skew = 0.2617994
-
-[node name="HBoxC" type="HBoxContainer" parent="Node2D"]
-offset_left = 170.0
-offset_right = 1724.0
-offset_bottom = 1097.0
+[node name="HBoxC" type="HBoxContainer" parent="." unique_id=1982912626]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 alignment = 1
 
-[node name="ShortCut" type="VBoxContainer" parent="Node2D/HBoxC"]
+[node name="ShortCut" type="VBoxContainer" parent="HBoxC" unique_id=1510637142]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 focus_mode = 1
 theme = SubResource("Theme_07r5k")
 alignment = 1
 
-[node name="Btn1" type="Button" parent="Node2D/HBoxC/ShortCut"]
+[node name="Btn1" type="Button" parent="HBoxC/ShortCut" unique_id=156541801]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
@@ -295,7 +294,7 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "常规"
 
-[node name="Btn2" type="Button" parent="Node2D/HBoxC/ShortCut"]
+[node name="Btn2" type="Button" parent="HBoxC/ShortCut" unique_id=1013103172]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
@@ -304,7 +303,7 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "播放"
 
-[node name="Btn3" type="Button" parent="Node2D/HBoxC/ShortCut"]
+[node name="Btn3" type="Button" parent="HBoxC/ShortCut" unique_id=619785561]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
@@ -313,7 +312,7 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "轨道"
 
-[node name="Btn4" type="Button" parent="Node2D/HBoxC/ShortCut"]
+[node name="Btn4" type="Button" parent="HBoxC/ShortCut" unique_id=1322863020]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
@@ -322,7 +321,7 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "判定"
 
-[node name="Btn5" type="Button" parent="Node2D/HBoxC/ShortCut"]
+[node name="Btn5" type="Button" parent="HBoxC/ShortCut" unique_id=1115311117]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
@@ -331,7 +330,7 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "生成"
 
-[node name="Btn6" type="Button" parent="Node2D/HBoxC/ShortCut"]
+[node name="Btn6" type="Button" parent="HBoxC/ShortCut" unique_id=1128822496]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
@@ -341,10 +340,11 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "外观"
 
-[node name="SettingList" type="ScrollContainer" parent="Node2D/HBoxC"]
+[node name="SettingList" type="ScrollContainer" parent="HBoxC" unique_id=864187716]
 clip_contents = false
 custom_minimum_size = Vector2(1300, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 theme = SubResource("Theme_ys6ou")
 follow_focus = true
 horizontal_scroll_mode = 0
@@ -353,7 +353,7 @@ script = ExtResource("2_3x48f")
 container_path = NodePath("GridC")
 list_item_class = "res://UI/Views/SettingView/SettingListItem.tscn"
 
-[node name="GridC" type="GridContainer" parent="Node2D/HBoxC/SettingList"]
+[node name="GridC" type="GridContainer" parent="HBoxC/SettingList" unique_id=397882809]
 layout_mode = 2
 size_flags_horizontal = 6
 theme_override_constants/h_separation = 100

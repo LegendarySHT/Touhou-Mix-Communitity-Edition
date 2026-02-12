@@ -53,7 +53,6 @@ var solo_mute_snapshot: Dictionary = {}  # {"track:channel": bool}
 
 func _ready() -> void:
 	work_state = UIStateManager.UIState.TRACK_VIEW
-	need_h_expand = true
 
 	# 检查管理器引用
 	if midi_playback_manager == null:
@@ -1084,14 +1083,14 @@ func _restore_midi_data_config() -> void:
 	var vocal_vol = current_midi_data.vocal_volume
 	
 	if midi_vol == 50:  # 默认值
-		var setting_view = get_node_or_null("/root/Main/SettingView")
+		var setting_view = get_node_or_null("/root/Main/skew/C/SettingView")
 		if setting_view and setting_view.has_method("get_setting_value"):
 			var global_midi_vol = setting_view.get_setting_value("default_midi_volume")
 			if global_midi_vol != null:
 				midi_vol = int(global_midi_vol)
 	
 	if vocal_vol == 50:  # 默认值
-		var setting_view = get_node_or_null("/root/Main/SettingView")
+		var setting_view = get_node_or_null("/root/Main/skew/C/SettingView")
 		if setting_view and setting_view.has_method("get_setting_value"):
 			var global_vocal_vol = setting_view.get_setting_value("default_vocal_volume")
 			if global_vocal_vol != null:

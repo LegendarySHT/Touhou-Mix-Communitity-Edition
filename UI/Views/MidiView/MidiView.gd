@@ -34,14 +34,6 @@ func _ready() -> void:
 		push_error("[MidiViewInit] Failed to find main btn")
 		return
 
-	# 窗口事件
-	get_window().size_changed.connect(_on_window_size_changed)
-	self.resized.connect(func():
-		if size.x/2 - 960 >0:
-			get_node("RightArea").custom_minimum_size.x = size.x/2 - 360
-	)
-	_on_window_size_changed()
-
 	# 连接事件
 	event_bus.song_selected.connect(func (song_id: String):
 		midi_list.load_midi(data_manager.get_midis_by_song(song_id))
@@ -74,9 +66,6 @@ func _ready() -> void:
 	# 连接右侧按钮事件
 	info_btn.pressed.connect(_on_info_btn_pressed)
 	delete_btn.pressed.connect(_on_del_btn_pressed)
-
-func _on_window_size_changed() -> void:
-	set_deferred("size", get_viewport().get_visible_rect().size)
 
 # 点击开始游戏的事件
 func _on_click_start_btn() -> void:

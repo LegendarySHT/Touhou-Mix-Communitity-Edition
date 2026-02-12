@@ -253,7 +253,8 @@ func _exit_tree() -> void:
 ## 记录所有组件的状态
 var ui_exist = {
 	"Album_List" : true, 		# 程序启动时专辑列表存在
-	"Right_Part" : true, 		# 程序启动时右侧部分(按钮，立绘和头像区域)
+	"Player_Info": true,
+	"Shortcut_Menu" : true, 
 	"LT_Btn" : true, 			# 左上方设置按钮
 	"Song_List" : false, 		# 程序启动时歌曲列表不存在
 	"Sorted_List" : false,  	# 程序启动时排序列表不存在
@@ -268,9 +269,9 @@ var ui_exist = {
 
 ## 记录每个页面存在哪些组件
 var ui_part = {
-	UIStateManager.UIState.ALBUM_VIEW: ["Album_List", "Right_Part", "LT_Btn"],
-	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Right_Part", "RB_Btn", "LT_Btn"],
-	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Right_Part", "RB_Btn", "LT_Btn"],
+	UIStateManager.UIState.ALBUM_VIEW: ["Album_List", "Player_Info", "Shortcut_Menu", "LT_Btn"],
+	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Player_Info", "Shortcut_Menu", "RB_Btn", "LT_Btn"],
+	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Player_Info", "Shortcut_Menu", "RB_Btn", "LT_Btn"],
 	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View", "RB_Btn", "LT_Btn"],
 	UIStateManager.UIState.STORE_VIEW: ["Store_View", "RB_Btn"],
 	UIStateManager.UIState.TRACK_VIEW: ["Track_List", "RB_Btn", "LT_Btn"],
@@ -279,9 +280,33 @@ var ui_part = {
 	UIStateManager.UIState.SCORE_VIEW: ["Score_View", "RB_Btn"],
 }
 
-var ALBUMLIST="/root/Main/skew/AlbumList"
-var SONGLIST="/root/Main/skew/SongList"
-var _SS="/root/Main/skew/SS"
+var ui_path = {
+	"Album_List" : "/root/Main/skew/C/AlbumList",
+	"Player_Info": "/root/Main/PlayerInfo",
+	"Shortcut_Menu" : "/root/Main/skew/C/ShortCutMenu",
+	"LT_Btn" : "/root/Main/LT_Btn",
+	"Song_List" : "/root/Main/skew/C/SongList",
+	"Sorted_List" : "/root/Main/skew/C/SortedMidisList",
+	"Midi_Info_View" : "/root/Main/skew/C/InfoUI",
+	"RB_Btn": "",
+	"Store_View": "/root/Main/Store",
+	"Track_List": "/root/Main/skew/C/TrackView",
+	"Play_View": "/root/Main/PlayView",
+	"Setting_View": "/root/Main/skew/C/SettingView",
+	"Score_View": "/root/Main/ScoreView",
+}
+
+func get_comp(ui_part_name: String) -> Node:
+	if not ui_path[ui_part_name]:
+		return
+	var node = get_node_or_null(ui_path[ui_part_name])
+	if node:
+		return node
+	else:
+		push_error("[AniMGR] COMP %s Not Found" % ui_part_name)
+		return null
+
+var _SS = "/root/Main/skew/SS"
 
 var tan15 = tan(deg_to_rad(15))
 
@@ -305,11 +330,12 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 	
 	# 播放动画的组件
 	var SS = get_node_or_null(_SS)
-	var album_list:AlbumView = get_node_or_null(ALBUMLIST)
-	var song_list:SongView = get_node_or_null(SONGLIST)
+	var album_list:AlbumView = get_comp("Album_List")
+	var song_list:SongView = get_comp("Song_List")
 	var skew = get_node_or_null("/root/Main/skew")
+	var ani_comp = get_comp(ui_name)
 
-	match ui_name:	
+	match ui_name:
 		"Album_List":
 			var sIndex = album_list.selected_item
 			var tindex = -1 # 目标状态不是歌曲列表时所有项都要播放退场动画
@@ -351,70 +377,48 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			tween = animate_position(song_list, Vector2(song_list.position.x, 2*song_list.position.y), 0.25, tween_id)
 
 		"Sorted_List":
-			var sort_midi_list = get_node("/root/Main/skew/SortedMidisList")
-
-			tween = animate_position(sort_midi_list, Vector2(-1500, sort_midi_list.position.y), 0.25, tween_id)
+			tween = animate_position(ani_comp, Vector2(-1500, ani_comp.position.y), 0.25, tween_id)
 			tween.finished.connect(func() -> void:
-				sort_midi_list.visible=false
+				ani_comp.visible=false
 			)
 		"Midi_Info_View":
-			var info_ui = get_node_or_null("/root/Main/InfoUI")
-			
-			tween = animate_fade_out(info_ui, 0.3, tween_id)
+			tween = animate_fade_out(ani_comp, 0.3, tween_id)
 			
 			tween.finished.connect(func() -> void:
-				if info_ui.get_node_or_null("OptionWindow/Option/Rank"):
-					info_ui.get_node("OptionWindow/Option/Rank").button_pressed=true
+				ani_comp.get_node("RightArea/OptionPanel/VBoxC/TabBtn/Rank").button_pressed=true
 			)
-		"Right_Part":
-			var pi = get_node("/root/Main/PlayerInfo")
-			var chara = get_node("/root/Main/PlayerInfo/Chara")
-			
-			var shortcut_menu = get_node("/root/Main/ShortCutMenu")
-			var t = animate_position(shortcut_menu, Vector2(1920+500*tan15, 75-500), 0.25, "MenuBarPosition")
-			t.finished.connect(func() -> void:
-				shortcut_menu.visible = false
-			)
-			
+		"Player_Info":
+			var chara = ani_comp.get_node("Chara")
 			animate_position(chara, Vector2(chara.position.x, chara.position.y + chara.size.y), 0.35, "CharactorPosition")
-			animate_position(pi, Vector2(pi.position.x + 900, pi.position.y + 200), 0.55, "PlayerInfoPosition")
-		
+			animate_position(ani_comp, Vector2(ani_comp.position.x + 900, ani_comp.position.y + 200), 0.55, "PlayerInfoPosition")
+			
+		"Shortcut_Menu":
+			var t = animate_position(ani_comp, Vector2(1920+500*tan15, 75-500), 0.25, "MenuBarPosition")
+			t.finished.connect(func() -> void:
+				ani_comp.visible = false
+			)
+			
 		"RB_Btn":
 			EventBus.instance.storeButtonSwitch.emit(false)
 		"LT_Btn":
-			var lt_btn = get_node("/root/Main/LT_Btn")
-			animate_position(lt_btn, Vector2(lt_btn.position.x - 250, lt_btn.position.y), 0.25, tween_id)
+			animate_position(ani_comp, Vector2(ani_comp.position.x - 250, ani_comp.position.y), 0.25, tween_id)
 		"Store_View":
-			var store_node = get_node("/root/Main/Store")
-			# var top_bar = store_node.get_node("Top_bar")
-			# top_bar.position.y = -500
-			# animate_position(top_bar, Vector2.ZERO, 0.25, tween_id)
-
-			# var bottom = store_node.get_node("Bottom")
-			# bottom.position.y = bottom.position.y + 500
-			# animate_position(bottom, Vector2(bottom.position.x, bottom.position.y - 500), 0.25, tween_id)
-
-			tween = animate_fade_out(store_node, 0.35, tween_id)
+			tween = animate_fade_out(ani_comp, 0.35, tween_id)
 		"Track_List":
-			var track_list = get_node("/root/Main/TrackView")
-			tween = animate_fade_out(track_list, 0.35, tween_id)
-			animate_position(track_list, Vector2(track_list.position.x-1080*tan15, 1080), 0.25, "track_pos")
+			tween = animate_fade_out(ani_comp, 0.35, tween_id)
+			animate_position(ani_comp, Vector2(ani_comp.position.x, 1080), 0.25, "track_pos")
 		"Play_View":
-			var play_view = get_node("/root/Main/PlayView")
-			tween = animate_fade_out(play_view, 0.45, tween_id)
+			tween = animate_fade_out(ani_comp, 0.45, tween_id)
 		"Setting_View":
-			var setting_view = get_node("/root/Main/SettingView")
-			
 			# 在退出动画开始前保存配置
-			_save_settings_on_exit(setting_view)
+			_save_settings_on_exit(ani_comp)
 			
-			tween = animate_fade_out(setting_view, 0.35, tween_id)
+			tween = animate_fade_out(ani_comp, 0.35, tween_id)
 		"Score_View":
-			var score_view = get_node("/root/Main/ScoreView")
-			score_view.ani_out()
+			ani_comp.ani_out()
 			if new_state!= UIStateManager.UIState.PLAY_VIEW:
 				await get_tree().create_timer(0.8).timeout
-			tween = animate_fade_out(score_view, 0.45, tween_id)
+			tween = animate_fade_out(ani_comp, 0.45, tween_id)
 
 	# 发射结束信号
 	if tween:
@@ -446,9 +450,10 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 
 	# 播放动画的组件
 	var SS = get_node_or_null(_SS)
-	var album_list:AlbumView = get_node_or_null(ALBUMLIST)
-	var song_list:SongView = get_node_or_null(SONGLIST)
+	var album_list:AlbumView = get_comp("Album_List")
+	var song_list:SongView = get_comp("Song_List")
 	var skew = get_node_or_null("/root/Main/skew")
+	var ani_comp = get_comp(ui_name)
 
 	match ui_name:
 		"Album_List":
@@ -467,8 +472,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 				await create_tween().tween_property(border.get_theme_stylebox("panel"), "shadow_size", 0, 0.2).finished
 				SS.queue_free()
 			
-			for i in song_list.get_child(0).get_children():
-				i.queue_free()
+			song_list.clear_items()
 		"Song_List":
 			if old_state == UIStateManager.UIState.ALBUM_VIEW:
 				animate_position(SS, skew.to_local(Vector2(280, 10)), 0.15, "SSPosition")
@@ -476,7 +480,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 				animate_fade_in(SS, 0.15, "SSPosition")
 
 			song_list.visible=true
-			song_list.position=Vector2(310,-750)
+			song_list.position=Vector2(20,-750)
 			animate_position(song_list, Vector2(song_list.position.x, 400), 0.15, tween_id)
 			tween = animate_fade_in(song_list, 0.4, "SongListFadeIn")
 
@@ -486,61 +490,53 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			button.pressed.connect(func() -> void:
 				ui.change_state(ui.UIState.ALBUM_VIEW))
 		"Sorted_List":
-			var sort_midi_list = get_node("/root/Main/skew/SortedMidisList")
-			sort_midi_list.visible = true
+			ani_comp.visible = true
 			# EventBus.instance.storeButtonSwitch.emit(true)
 
-			animate_position(sort_midi_list, Vector2(280, sort_midi_list.position.y), 0.25, tween_id)
+			animate_position(ani_comp, Vector2(0, ani_comp.position.y), 0.25, tween_id)
 		"Midi_Info_View":
 			EvtBus.instance.storeButtonSwitch.emit(true)
 			
-			var info_ui = get_node_or_null("/root/Main/InfoUI")
+			var info_ui = get_comp(ui_name)
 
 			animate_fade_in(info_ui, 0.1, "InfoUIFadeIn")
 
-			info_ui.position = Vector2(130+500*tan15,-500)
-			tween = animate_position(info_ui, Vector2(130,50), 0.5, tween_id)
-		"Right_Part":
-			var pi = get_node("/root/Main/PlayerInfo")
-			var chara = get_node("/root/Main/PlayerInfo/Chara")
-			
-			var shortcut_menu = get_node("/root/Main/ShortCutMenu")
-			shortcut_menu.visible = true
-			animate_position(shortcut_menu, Vector2(1920, 75), 0.25, "MenuBarPosition")
-			animate_position(pi, Vector2(pi.position.x - 900, pi.position.y - 200), 0.35, "PlayerInfoPosition")
+			info_ui.position = Vector2(0,-500)
+			tween = animate_position(info_ui, Vector2.ZERO, 0.5, tween_id)
+		"Player_Info":
+			var chara = ani_comp.get_node("Chara")
+			animate_position(ani_comp, Vector2(ani_comp.position.x - 900, ani_comp.position.y - 200), 0.35, "PlayerInfoPosition")
 			animate_position(chara, Vector2(chara.position.x, chara.position.y - chara.size.y), 0.55, "CharactorPosition")
+		
+		"Shortcut_Menu":
+			ani_comp.visible = true
+			animate_position(ani_comp, Vector2(1920, 75), 0.25, "MenuBarPosition")
 		"RB_Btn":
 			EventBus.instance.storeButtonSwitch.emit(true)
 		"LT_Btn":
-			var lt_btn = get_node("/root/Main/LT_Btn")
-			animate_position(lt_btn, Vector2(lt_btn.position.x + 250, lt_btn.position.y), 0.25, tween_id)
+			animate_position(ani_comp, Vector2(ani_comp.position.x + 250, ani_comp.position.y), 0.25, tween_id)
 		"Store_View":
-			var store_node = get_node("/root/Main/Store")
-			var top_bar = store_node.get_node("TopBar")
+			var top_bar = ani_comp.get_node("TopBar")
 			top_bar.position.y = -500
 			animate_position(top_bar, Vector2.ZERO, 0.25, "top_bar_in")
 
-			var bottom = store_node.get_node("Bottom")
+			var bottom = ani_comp.get_node("Bottom")
 			bottom.position.y = bottom.position.y + 500
 			animate_position(bottom, Vector2(bottom.position.x, bottom.position.y - 500), 0.25, "bottom_in")
 
-			tween = animate_fade_in(store_node, 0.45, tween_id)
+			tween = animate_fade_in(ani_comp, 0.45, tween_id)
 		"Track_List":
-			var track_list = get_node("/root/Main/TrackView")
-			track_list.get_node("Track/TrackList").scroll_vertical = 300
-			tween = animate_fade_in(track_list, 0.45, tween_id)
-			animate_position(track_list, Vector2.ZERO, 0.25, "track_pos")
+			ani_comp.scroll_vertical = 300
+			tween = animate_fade_in(ani_comp, 0.45, tween_id)
+			animate_position(ani_comp, Vector2.ZERO, 0.25, "track_pos")
 		"Play_View":
-			var play_view = get_node("/root/Main/PlayView")
-			tween = animate_fade_in(play_view, 0.45, tween_id)
+			tween = animate_fade_in(ani_comp, 0.45, tween_id)
 		"Setting_View":
-			var setting_view = get_node("/root/Main/SettingView")
-			tween = animate_fade_in(setting_view, 0.45, tween_id)
+			tween = animate_fade_in(ani_comp, 0.45, tween_id)
 		"Score_View":
-			var score_view = get_node("/root/Main/ScoreView")
-			tween = animate_fade_in(score_view, 0.45, tween_id)
+			tween = animate_fade_in(ani_comp, 0.45, tween_id)
 			tween.finished.connect(func ():
-				score_view.ani_in())
+				ani_comp.ani_in())
 
 	# 播放完毕
 	if tween:

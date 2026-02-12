@@ -1,6 +1,6 @@
 extends Control
-@onready var setting_list: SettingList = $Node2D/HBoxC/SettingList
-@onready var short_cut_btn = $Node2D/HBoxC/ShortCut
+@onready var setting_list: SettingList = $HBoxC/SettingList
+@onready var short_cut_btn = $HBoxC/ShortCut
 
 ## ConfigLoader 引用
 var config_loader: ConfigManager = null
@@ -29,7 +29,7 @@ func _ready() -> void:
 		)
 
 	# 焦点信号到导航按钮
-	var btns = get_node("Node2D/HBoxC/ShortCut")
+	var btns = get_node("HBoxC/ShortCut")
 	btns.focus_entered.connect(func():
 		for i in btns.get_children():
 			if i is Button and i.button_pressed:
@@ -206,7 +206,7 @@ func _on_button_toggled(_toggled_on: bool, idx: int):
 	var target_idx = idx*2
 	var c_idx = 0
 
-	var settingList: SettingList = get_node("Node2D/HBoxC/SettingList")
+	var settingList: SettingList = get_node("HBoxC/SettingList")
 	for node in settingList.container.get_children():
 		if node is Separator:
 			if c_idx == target_idx:

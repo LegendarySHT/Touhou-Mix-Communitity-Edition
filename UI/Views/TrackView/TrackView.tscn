@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://dqo15t7ofwbtb"]
+[gd_scene format=3 uid="uid://dqo15t7ofwbtb"]
 
 [ext_resource type="Texture2D" uid="uid://b6ypeml7dno8b" path="res://Resources/icon/TrackView/import.png" id="1_3id1m"]
 [ext_resource type="Script" uid="uid://ca1rxwt3t1wel" path="res://UI/Views/TrackView/TrackView.gd" id="1_7vp1s"]
@@ -115,25 +115,12 @@ shadow_color = Color(0, 0, 0, 0.24705882)
 shadow_size = 10
 shadow_offset = Vector2(5, 5)
 
-[node name="TrackView" type="Control"]
-layout_mode = 3
+[node name="TrackView" type="ScrollContainer" unique_id=1056782616]
+custom_minimum_size = Vector2(1500, 1120)
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
-grow_vertical = 2
-
-[node name="Track" type="Polygon2D" parent="."]
-skew = 0.2617994
-
-[node name="TrackList" type="ScrollContainer" parent="Track"]
-custom_minimum_size = Vector2(1500, 1120)
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_left = 289.0
-offset_right = 1928.0
-offset_bottom = 1120.0
 grow_vertical = 2
 size_flags_horizontal = 0
 size_flags_vertical = 3
@@ -147,13 +134,13 @@ script = ExtResource("1_7vp1s")
 container_path = NodePath("MC/VBox")
 list_item_class = "res://UI/Views/TrackView/midiTrack.tscn"
 
-[node name="MC" type="MarginContainer" parent="Track/TrackList"]
+[node name="MC" type="MarginContainer" parent="." unique_id=4599201]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/margin_left = 30
 theme_override_constants/margin_right = 30
 
-[node name="VBox" type="VBoxContainer" parent="Track/TrackList/MC"]
+[node name="VBox" type="VBoxContainer" parent="MC" unique_id=628426335]
 custom_minimum_size = Vector2(1600, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -161,13 +148,13 @@ mouse_filter = 2
 theme_override_constants/separation = 29
 alignment = 1
 
-[node name="TotalView" type="Panel" parent="Track/TrackList/MC/VBox"]
+[node name="TotalView" type="Panel" parent="MC/VBox" unique_id=1479010735]
 custom_minimum_size = Vector2(1600, 350)
 layout_mode = 2
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
 
-[node name="MC" type="MarginContainer" parent="Track/TrackList/MC/VBox/TotalView"]
+[node name="MC" type="MarginContainer" parent="MC/VBox/TotalView" unique_id=1961593488]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -179,19 +166,19 @@ theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 60
 theme_override_constants/margin_bottom = 15
 
-[node name="VBoxC" type="VBoxContainer" parent="Track/TrackList/MC/VBox/TotalView/MC"]
+[node name="VBoxC" type="VBoxContainer" parent="MC/VBox/TotalView/MC" unique_id=699392840]
 layout_mode = 2
 theme_override_constants/separation = 13
 alignment = 1
 
-[node name="flowArea" type="HBoxContainer" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC"]
+[node name="flowArea" type="HBoxContainer" parent="MC/VBox/TotalView/MC/VBoxC" unique_id=376640490]
 custom_minimum_size = Vector2(0, 270)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 0
 script = ExtResource("2_8bk0u")
 
-[node name="noteFlowArea" type="Panel" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/flowArea"]
+[node name="noteFlowArea" type="Panel" parent="MC/VBox/TotalView/MC/VBoxC/flowArea" unique_id=759561544]
 custom_minimum_size = Vector2(1250, 270)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -199,7 +186,7 @@ size_flags_stretch_ratio = 10.08
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_3id1m")
 
-[node name="canvas" type="Panel" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea"]
+[node name="canvas" type="Panel" parent="MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea" unique_id=1164057364]
 clip_children = 1
 layout_mode = 1
 anchors_preset = 15
@@ -208,7 +195,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Button" type="Button" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea"]
+[node name="Button" type="Button" parent="MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea" unique_id=69255031]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -222,13 +209,13 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_8bk0u")
 theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_8bk0u")
 toggle_mode = true
 
-[node name="noteTotal" type="Panel" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/flowArea"]
+[node name="noteTotal" type="Panel" parent="MC/VBox/TotalView/MC/VBoxC/flowArea" unique_id=892610285]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_xcqgn")
 
-[node name="VBoxC" type="VBoxContainer" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal"]
+[node name="VBoxC" type="VBoxContainer" parent="MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal" unique_id=1465686392]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -243,7 +230,7 @@ grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
 
-[node name="passedNote" type="Label" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC"]
+[node name="passedNote" type="Label" parent="MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC" unique_id=1298249897]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -251,11 +238,11 @@ theme_override_font_sizes/font_size = 48
 text = "999"
 vertical_alignment = 1
 
-[node name="Control" type="Control" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC"]
+[node name="Control" type="Control" parent="MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC" unique_id=1618158598]
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 
-[node name="HSeparator" type="HSeparator" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC/Control"]
+[node name="HSeparator" type="HSeparator" parent="MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC/Control" unique_id=1871293944]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -269,7 +256,7 @@ grow_vertical = 2
 rotation = -0.34906584
 theme_override_styles/separator = SubResource("StyleBoxLine_7vp1s")
 
-[node name="totalNote" type="Label" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC"]
+[node name="totalNote" type="Label" parent="MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal/VBoxC" unique_id=1058508456]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 8
@@ -277,13 +264,13 @@ theme_override_font_sizes/font_size = 48
 text = "9999"
 vertical_alignment = 1
 
-[node name="playArea" type="HBoxContainer" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC"]
+[node name="playArea" type="HBoxContainer" parent="MC/VBox/TotalView/MC/VBoxC" unique_id=698025016]
 custom_minimum_size = Vector2(1500, 40)
 layout_mode = 2
 theme_override_constants/separation = 15
 alignment = 1
 
-[node name="currentTime" type="Label" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/playArea"]
+[node name="currentTime" type="Label" parent="MC/VBox/TotalView/MC/VBoxC/playArea" unique_id=2027984373]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
@@ -291,13 +278,13 @@ text = "00:00:00"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="progressBar" type="HSlider" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/playArea"]
+[node name="progressBar" type="HSlider" parent="MC/VBox/TotalView/MC/VBoxC/playArea" unique_id=734273531]
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 
-[node name="totalTime" type="Label" parent="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/playArea"]
+[node name="totalTime" type="Label" parent="MC/VBox/TotalView/MC/VBoxC/playArea" unique_id=1622121250]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
@@ -305,13 +292,13 @@ text = "99:60:60"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="VolumeView" type="Panel" parent="Track/TrackList/MC/VBox"]
+[node name="VolumeView" type="Panel" parent="MC/VBox" unique_id=1305853142]
 custom_minimum_size = Vector2(1600, 200)
 layout_mode = 2
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
 
-[node name="HBoxC" type="HBoxContainer" parent="Track/TrackList/MC/VBox/VolumeView"]
+[node name="HBoxC" type="HBoxContainer" parent="MC/VBox/VolumeView" unique_id=557361818]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -320,18 +307,18 @@ grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
 
-[node name="MCL" type="MarginContainer" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC"]
+[node name="MCL" type="MarginContainer" parent="MC/VBox/VolumeView/HBoxC" unique_id=1679742570]
 layout_mode = 2
 theme_override_constants/margin_left = 40
 
-[node name="VBoxC2" type="VBoxContainer" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC"]
+[node name="VBoxC2" type="VBoxContainer" parent="MC/VBox/VolumeView/HBoxC" unique_id=346501179]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 15
 alignment = 1
 
-[node name="VocalImportBtn" type="TextureButton" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/VBoxC2"]
+[node name="VocalImportBtn" type="TextureButton" parent="MC/VBox/VolumeView/HBoxC/VBoxC2" unique_id=1082562773]
 visible = false
 custom_minimum_size = Vector2(150, 150)
 layout_mode = 2
@@ -339,7 +326,7 @@ texture_normal = ExtResource("1_3id1m")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="VocalEnableBtn" type="Button" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/VBoxC2"]
+[node name="VocalEnableBtn" type="Button" parent="MC/VBox/VolumeView/HBoxC/VBoxC2" unique_id=328857307]
 custom_minimum_size = Vector2(225, 120)
 layout_mode = 2
 size_flags_horizontal = 0
@@ -352,23 +339,23 @@ theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_mxrqf")
 toggle_mode = true
 text = "人声已启用"
 
-[node name="HBoxC" type="HBoxContainer" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/VBoxC2"]
+[node name="HBoxC" type="HBoxContainer" parent="MC/VBox/VolumeView/HBoxC/VBoxC2" unique_id=308563010]
 layout_mode = 2
 alignment = 1
 
-[node name="Latency" type="LineEdit" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC"]
+[node name="Latency" type="LineEdit" parent="MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC" unique_id=2145421351]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 alignment = 1
 keep_editing_on_text_submit = true
 emoji_menu_enabled = false
 
-[node name="Label" type="Label" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC"]
+[node name="Label" type="Label" parent="MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC" unique_id=377052159]
 layout_mode = 2
 theme_override_font_sizes/font_size = 27
 text = "ms"
 
-[node name="GridC" type="GridContainer" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC"]
+[node name="GridC" type="GridContainer" parent="MC/VBox/VolumeView/HBoxC" unique_id=497056556]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
@@ -376,7 +363,7 @@ theme_override_constants/h_separation = 20
 theme_override_constants/v_separation = 15
 columns = 3
 
-[node name="midiVolIcon" type="TextureButton" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/GridC"]
+[node name="midiVolIcon" type="TextureButton" parent="MC/VBox/VolumeView/HBoxC/GridC" unique_id=1519618403]
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 toggle_mode = true
@@ -384,20 +371,20 @@ texture_normal = ExtResource("2_xcqgn")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="midiVolSlider" type="HSlider" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/GridC"]
+[node name="midiVolSlider" type="HSlider" parent="MC/VBox/VolumeView/HBoxC/GridC" unique_id=1938928655]
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 
-[node name="midiVolLabel" type="Label" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/GridC"]
+[node name="midiVolLabel" type="Label" parent="MC/VBox/VolumeView/HBoxC/GridC" unique_id=835564543]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 30
 text = "-1.99 dB"
 vertical_alignment = 1
 
-[node name="vocalVolIcon" type="TextureButton" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/GridC"]
+[node name="vocalVolIcon" type="TextureButton" parent="MC/VBox/VolumeView/HBoxC/GridC" unique_id=436473023]
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 toggle_mode = true
@@ -405,23 +392,23 @@ texture_normal = ExtResource("3_7vp1s")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="vocalVolSlider" type="HSlider" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/GridC"]
+[node name="vocalVolSlider" type="HSlider" parent="MC/VBox/VolumeView/HBoxC/GridC" unique_id=1345948155]
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 
-[node name="vocalVolLabel" type="Label" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC/GridC"]
+[node name="vocalVolLabel" type="Label" parent="MC/VBox/VolumeView/HBoxC/GridC" unique_id=1145066087]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 30
 text = "-1.99 dB"
 vertical_alignment = 1
 
-[node name="MC" type="MarginContainer" parent="Track/TrackList/MC/VBox/VolumeView/HBoxC"]
+[node name="MC" type="MarginContainer" parent="MC/VBox/VolumeView/HBoxC" unique_id=1605805065]
 layout_mode = 2
 theme_override_constants/margin_right = 60
 
-[connection signal="toggled" from="Track/TrackList/MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button" to="Track/TrackList" method="_on_expand_master_area_btn_toggled"]
-[connection signal="pressed" from="Track/TrackList/MC/VBox/VolumeView/HBoxC/VBoxC2/VocalImportBtn" to="Track/TrackList" method="_on_vocal_import_btn_pressed"]
-[connection signal="toggled" from="Track/TrackList/MC/VBox/VolumeView/HBoxC/VBoxC2/VocalEnableBtn" to="Track/TrackList" method="_on_vocal_enable_btn_toggled"]
+[connection signal="toggled" from="MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button" to="." method="_on_expand_master_area_btn_toggled"]
+[connection signal="pressed" from="MC/VBox/VolumeView/HBoxC/VBoxC2/VocalImportBtn" to="." method="_on_vocal_import_btn_pressed"]
+[connection signal="toggled" from="MC/VBox/VolumeView/HBoxC/VBoxC2/VocalEnableBtn" to="." method="_on_vocal_enable_btn_toggled"]

@@ -378,13 +378,13 @@ func set_track_channel_instrument(track_index: int, channel: int, bank: int, pro
 ## ========== 用户乐器覆盖接口 ==========
 
 ## 设置用户自定义的轨道-通道乐器覆盖
-func set_track_channel_instrument_override(track_idx: int, channel: int, bank: int, program: int, name: String = "") -> void:
+func set_track_channel_instrument_override(track_idx: int, channel: int, bank: int, program: int, nm: String = "") -> void:
 	if not track_channel_instrument_overrides.has(track_idx):
 		track_channel_instrument_overrides[track_idx] = {}
 	track_channel_instrument_overrides[track_idx][channel] = {
 		"bank": bank,
 		"program": program,
-		"name": name
+		"name": nm
 	}
 	print("[MidiData] Track %d Channel %d: 覆盖乐器 %s (Bank %d Program %d)" % [track_idx, channel, name, bank, program])
 

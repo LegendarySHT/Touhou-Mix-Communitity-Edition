@@ -134,12 +134,11 @@ func _initialize_core_systems() -> void:
 func _init_ui() -> void:
 	# Midi详细界面 (不提前初始化的话，内部的midi list可能收不到信号)
 	var Main = get_node_or_null("/root/Main")
-	var info_ui = Main.get_node_or_null("InfoUI")
-	if not info_ui:
-		var info_window = load(midi_view_path).instantiate()
-		info_window.visible = false
-		Main.add_child(info_window)
-		info_ui = Main.get_node_or_null("InfoUI")
+	var SkewArea = Main.get_node("skew/C")
+
+	var info_window = load(midi_view_path).instantiate()
+	info_window.visible = false
+	SkewArea.add_child(info_window)
 
 	# Midi商店
 	var store_page = load(store_view_path).instantiate()
@@ -153,13 +152,12 @@ func _init_ui() -> void:
 	# 音轨界面
 	var track_list = load(track_view_path).instantiate()
 	track_list.visible = false
-	track_list.position = Vector2(track_list.position.x-1080*tan(deg_to_rad(15)), 1080)
-	Main.add_child(track_list)
+	SkewArea.add_child(track_list)
 	
 	# 设置界面
 	var setting_page = load(setting_view_path).instantiate()
 	setting_page.visible = false
-	Main.add_child(setting_page)
+	SkewArea.add_child(setting_page)
 
 	# 结算界面
 	var score_page = load(score_view_path).instantiate()

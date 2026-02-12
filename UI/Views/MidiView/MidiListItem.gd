@@ -18,7 +18,7 @@ var expand_tween: Tween
 ## 吸附目标信号（用于滚动吸附）
 signal snap_node_target(midi_node_index)
 
-var INDICATOR = "/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
+var INDICATOR = "/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
 
 func _update_display() -> void:
 	# 初始化显示
@@ -99,8 +99,8 @@ func _on_button_toggled(toggled_on: bool):
 
 ## 更新信息面板
 func _update_data_display() -> void:
-	var info_node: GridContainer = get_node_or_null("/root/Main/InfoUI/Base/LeftArea/DetailData")
-	var description: RichTextLabel = get_node_or_null("/root/Main/InfoUI/Base/LeftArea/InfoWindow/HBoxC/Description")
+	var info_node: GridContainer = get_node_or_null("/root/Main/skew/C/InfoUI/LeftArea/DetailData")
+	var description: RichTextLabel = get_node_or_null("/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Description")
 	if not (info_node and description):
 		push_error("[MidiNode] Info Set Failed")
 		return

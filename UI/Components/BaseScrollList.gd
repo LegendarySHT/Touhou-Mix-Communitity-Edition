@@ -55,18 +55,10 @@ var _wheel_up: bool = false
 ## 计时器
 var scroll_state_reset_timer: Timer
 
-## 动态布局相关
-var is_skew: bool = false
-var need_h_expand: bool = false
-
 func _ready() -> void:
 	if container == null:
 		push_error("Container not found at path: %s" % container_path)
 		return
-	
-	if get_parent() is Node2D:
-		if work_state != UIStateManager.UIState.MIDI_VIEW:
-			is_skew = true
 
 	# 创建计时器
 	scroll_state_reset_timer = Timer.new()
@@ -80,10 +72,6 @@ func _ready() -> void:
 
 	get_v_scroll_bar().gui_input.connect(_on_v_scrollbar_gui_input)
 	get_v_scroll_bar().value_changed.connect(_on_v_scrollbar_changed)
-
-	# 监听窗口大小变化
-	if is_skew:
-		get_window().size_changed.connect(_on_window_size_changed)
 
 func _stop_scroll():
 	scroll_velocity = 0.0
@@ -107,10 +95,6 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	var enable:bool = state == work_state
 	set_process(enable)
 	set_process_input(enable)
-	
-	# 更新列表高度
-	if is_skew and enable:
-		_on_window_size_changed()
 
 	# 聚焦列表项
 	if enable and work_state not in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
@@ -254,9 +238,6 @@ func select_item(index: int) -> int:
 	index = (index + list_items.size()) % list_items.size()
 	container.get_child(index).button.button_pressed = true
 	
-	# if work_state == UIStateManager.UIState.ALBUM_VIEW:
-	# 	selected_item = index
-	
 	return index
 
 func get_selected_node() -> Node2D:
@@ -314,15 +295,3 @@ func _connect_head_and_tail() -> void:
 	node_h.focus_neighbor_left = node_t.get_path()
 	node_t.focus_neighbor_bottom = node_h.get_path()
 	node_t.focus_neighbor_right = node_h.get_path()
-
-## 响应式布局
-func _on_window_size_changed():
-	if work_state != UIStateManager.instance.current_state:
-		return
-	# 根据实际像素布局
-	var glb_rect: Rect2 = get_viewport().get_visible_rect()
-	var new_size: Vector2 = size
-	new_size.y = glb_rect.size.y + 40 - ( 400 if work_state == UIStateManager.UIState.SONG_VIEW else 0)
-	new_size.x = new_size.x if not need_h_expand else glb_rect.size.x - 350
-	
-	size = new_size
