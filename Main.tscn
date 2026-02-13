@@ -21,6 +21,7 @@
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
 [ext_resource type="PackedScene" uid="uid://xgcfhg1x2v6p" path="res://UI/Components/ShortCutMenu/favorListItem.tscn" id="20_devvj"]
+[ext_resource type="Script" uid="uid://dly3k36hy880k" path="res://UI/Components/PopupWindow.gd" id="23_bg4s2"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg4s2"]
@@ -209,6 +210,101 @@ keycode = 85
 [sub_resource type="Shortcut" id="Shortcut_3b0ty"]
 events = [SubResource("InputEventKey_devvj")]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ny7u2"]
+draw_center = false
+
+[sub_resource type="Theme" id="Theme_hhcpw"]
+PopupMenu/font_sizes/font_size = 32
+PopupMenu/styles/panel = SubResource("StyleBoxFlat_ny7u2")
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3b0ty"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_oye8v"]
+bg_color = Color(0.02643081, 0.37195656, 0.7135703, 0.81960785)
+border_width_top = 10
+border_width_bottom = 10
+border_color = Color(1, 1, 1, 0.9529412)
+corner_radius_top_left = 64
+corner_radius_top_right = 1
+corner_radius_bottom_right = 64
+corner_radius_bottom_left = 1
+corner_detail = 1
+shadow_color = Color(0, 0, 0, 0.68235296)
+shadow_size = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_40n85"]
+draw_center = false
+corner_radius_bottom_right = 50
+corner_detail = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x3yn0"]
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.8, 0.8, 0.8, 0.5294118)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sph85"]
+bg_color = Color(0.85952204, 0, 0.1479539, 1)
+border_width_left = 6
+border_width_right = 4
+border_color = Color(1, 1, 1, 0.69411767)
+border_blend = true
+corner_radius_top_left = 24
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 24
+corner_detail = 1
+shadow_size = 12
+shadow_offset = Vector2(-3, 5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5mkgo"]
+bg_color = Color(0.72951126, 0, 0.12012387, 1)
+corner_radius_top_left = 24
+corner_radius_bottom_left = 24
+corner_detail = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3ccbu"]
+bg_color = Color(0.72951126, 0, 0.12012387, 1)
+corner_radius_top_left = 24
+corner_radius_bottom_left = 24
+corner_detail = 1
+shadow_size = 12
+shadow_offset = Vector2(-3, 5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7g6l"]
+bg_color = Color(4.3317675e-07, 0.60644186, 0.20748785, 1)
+border_width_left = 4
+border_width_right = 6
+border_color = Color(1, 1, 1, 0.69411767)
+border_blend = true
+corner_radius_top_left = 3
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 3
+corner_detail = 1
+shadow_size = 12
+shadow_offset = Vector2(3, 5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gb15f"]
+bg_color = Color(1.3957917e-06, 0.504896, 0.16702056, 1)
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_detail = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vi5kq"]
+bg_color = Color(1.3957917e-06, 0.504896, 0.16702056, 1)
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_detail = 1
+shadow_size = 12
+shadow_offset = Vector2(3, 5)
+
 [node name="Main" type="Control" unique_id=1879436511]
 clip_contents = true
 layout_mode = 3
@@ -368,19 +464,18 @@ script = ExtResource("8_3b0ty")
 
 [node name="ShortCutMenu" type="VBoxContainer" parent="skew/C" unique_id=22779074]
 layout_mode = 1
-anchors_preset = 1
+anchors_preset = -1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -579.9038
-offset_top = 77.64571
-offset_right = 20.096191
-offset_bottom = 901.6457
+offset_left = -580.0
+offset_top = 75.0
+offset_right = 20.0
+offset_bottom = 899.0
 grow_horizontal = 0
 size_flags_horizontal = 4
 script = ExtResource("11_oye8v")
 
 [node name="Btns" type="HBoxContainer" parent="skew/C/ShortCutMenu" unique_id=403981443]
-z_index = 1
 custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -458,6 +553,7 @@ expand_mode = 3
 stretch_mode = 5
 
 [node name="Panel" type="Panel" parent="skew/C/ShortCutMenu" unique_id=1377748302]
+show_behind_parent = true
 clip_children = 2
 custom_minimum_size = Vector2(600, 700)
 layout_mode = 2
@@ -569,12 +665,10 @@ texture_normal = ExtResource("17_5mkgo")
 
 [node name="AlbumList" type="ScrollContainer" parent="skew/C" unique_id=257977288]
 physics_interpolation_mode = 1
-custom_minimum_size = Vector2(1020, 1120)
 layout_mode = 1
 anchors_preset = -1
 anchor_bottom = 1.0
 offset_right = 1020.0
-offset_bottom = 40.0
 grow_vertical = 2
 size_flags_horizontal = 0
 theme = SubResource("Theme_devvj")
@@ -599,10 +693,9 @@ layout_mode = 1
 anchors_preset = -1
 anchor_bottom = 1.0
 offset_left = 20.0
-offset_top = -1560.0
+offset_top = 400.0
 offset_right = 1034.0
-offset_bottom = -835.0
-grow_vertical = 2
+offset_bottom = 45.0
 size_flags_horizontal = 3
 size_flags_vertical = 0
 follow_focus = true
@@ -620,14 +713,11 @@ alignment = 1
 
 [node name="SortedMidisList" type="ScrollContainer" parent="skew/C" unique_id=1679713169]
 physics_interpolation_mode = 1
-custom_minimum_size = Vector2(1020, 1120)
 layout_mode = 1
 anchors_preset = -1
 anchor_bottom = 1.0
 offset_left = -1219.0
-offset_top = -541.0375
 offset_right = -199.0
-offset_bottom = 578.9625
 grow_vertical = 2
 size_flags_horizontal = 0
 theme = SubResource("Theme_devvj")
@@ -746,6 +836,122 @@ theme_override_font_sizes/font_size = 30
 text = "9999
 ms"
 
+[node name="PopupWindowBG" type="ColorRect" parent="." unique_id=1275441849]
+visible = false
+z_index = 99
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_hhcpw")
+color = Color(0, 0, 0, 0.84313726)
+script = ExtResource("23_bg4s2")
+
+[node name="Window" type="Panel" parent="PopupWindowBG" unique_id=449892969]
+custom_minimum_size = Vector2(800, 500)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -150.0
+offset_right = 250.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset_ratio = Vector2(0.5, 0.5)
+theme_override_styles/panel = SubResource("StyleBoxEmpty_3b0ty")
+
+[node name="Style" type="PanelContainer" parent="PopupWindowBG/Window" unique_id=1724784244]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_oye8v")
+
+[node name="PC" type="PanelContainer" parent="PopupWindowBG/Window/Style" unique_id=518236952]
+show_behind_parent = true
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_40n85")
+
+[node name="VBoxC" type="VBoxContainer" parent="PopupWindowBG/Window" unique_id=865508100]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 40.0
+offset_right = -20.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Content" type="VBoxContainer" parent="PopupWindowBG/Window/VBoxC" unique_id=1024175137]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+size_flags_stretch_ratio = 2.0
+alignment = 1
+
+[node name="Label" type="Label" parent="PopupWindowBG/Window/VBoxC/Content" unique_id=1957175364]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 36
+text = "请选择要删除的内容"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OptionButton" type="OptionButton" parent="PopupWindowBG/Window/VBoxC/Content" unique_id=1532759313]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_vertical = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_x3yn0")
+theme_override_constants/arrow_margin = 30
+alignment = 1
+selected = 0
+item_count = 2
+popup/item_0/text = "歌曲及人声音频"
+popup/item_0/id = 0
+popup/item_1/text = "仅歌曲"
+popup/item_1/id = 1
+
+[node name="Btns" type="HBoxContainer" parent="PopupWindowBG/Window/VBoxC" unique_id=1829572669]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 150
+
+[node name="Cancel" type="Button" parent="PopupWindowBG/Window/VBoxC/Btns" unique_id=672683709]
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 1, 1, 0.61960787)
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = SubResource("StyleBoxFlat_sph85")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_5mkgo")
+theme_override_styles/hover = SubResource("StyleBoxFlat_3ccbu")
+text = "取消"
+
+[node name="Confirm" type="Button" parent="PopupWindowBG/Window/VBoxC/Btns" unique_id=6080086]
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 1, 1, 0.61960787)
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = SubResource("StyleBoxFlat_o7g6l")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_gb15f")
+theme_override_styles/hover = SubResource("StyleBoxFlat_vi5kq")
+text = "确定"
+
 [node name="TestNode" type="Node2D" parent="." unique_id=2008611241]
 visible = false
 
@@ -753,3 +959,5 @@ visible = false
 [connection signal="toggled" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Data" to="skew/C/ShortCutMenu" method="_on_data_toggled"]
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Ordering" to="skew/C/ShortCutMenu" method="_on_ordering_pressed"]
 [connection signal="pressed" from="RB_Btn/Button" to="RB_Btn" method="_on_button_pressed"]
+[connection signal="pressed" from="PopupWindowBG/Window/VBoxC/Btns/Cancel" to="PopupWindowBG" method="_on_cancel_pressed"]
+[connection signal="pressed" from="PopupWindowBG/Window/VBoxC/Btns/Confirm" to="PopupWindowBG" method="_on_confirm_pressed"]

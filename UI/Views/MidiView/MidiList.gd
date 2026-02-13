@@ -18,7 +18,7 @@ func _ready() -> void:
 	work_state = UIStateManager.UIState.MIDI_VIEW
 	item_height = 150
 	item_spacing = 4
-	snap_offset_y = 150
+	snap_offset_y = 0
 
 	super._ready()
 
@@ -81,7 +81,7 @@ func _process(_delta):
 	super._process(_delta)
 
 	# 吸附	
-	if not (is_dragging_list or need_snap or selected_item == -1) and abs(scroll_vertical - get_selected_node().position.y - item_height + snap_offset_y) > 7:
+	if not (is_dragging_list or snap_tween or selected_item == -1) and abs(scroll_vertical - get_selected_node().position.y + snap_offset_y) > 7:
 		need_snap = true
 	
 	if abs(_mouse_delta) > 50 and is_dragging_list and not waiting and selected_item != -1:
@@ -144,3 +144,10 @@ func _refresh_display() -> void:
 
 			item.setup_with_midi(self, midi, counter, bg)
 			counter += 1
+
+func remove_selected_midi():
+	current_midis.erase(get_selection())
+	_refresh_display()
+
+	if not list_items.size():
+		UIStateManager.instance.go_back()

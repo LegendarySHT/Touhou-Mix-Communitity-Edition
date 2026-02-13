@@ -48,9 +48,9 @@ var selected_item: int = -1 # 选中的项，或者snap的目标项
 
 ## snap相关
 var need_snap: bool = false # 吸附完成后为false
-var snap_offset_y: int = 500 # 吸附偏移量
+var snap_offset_y: float = 500 # 吸附偏移量
 var snap_tween: Tween
-var _wheel_up: bool = false
+var _album_move_up: bool = false
 
 ## 计时器
 var scroll_state_reset_timer: Timer
@@ -129,18 +129,15 @@ func _process(delta: float) -> void:
 		var snap_distant: int = snap_node.position.y + snap_offset_y
 		if work_state in [UIStateManager.UIState.ALBUM_VIEW]:
 			snap_distant = snap_node.global_position.y + snap_offset_y + scroll_vertical
+			if not _album_move_up:
+				snap_distant -= 220		
 		
 		need_snap=false
 		if abs(snap_distant-scroll_vertical)<10:
 			return
 		# 补间动画
-		if snap_tween:
-			# return
-			snap_tween.kill()
 		snap_tween = AnimationManager.instance._create_tween("snap_target")
 
-		if not _wheel_up:
-			snap_distant -= 220
 		snap_tween.set_ease(Tween.EASE_IN)
 		snap_tween.tween_property(self, "scroll_vertical", snap_distant, 0.2)
 
@@ -174,7 +171,7 @@ func _gui_input(event: InputEvent) -> void:
 		# 鼠标滚轮事件
 		if event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_UP]:
 			var sig = 1 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1
-			_wheel_up = event.button_index == MOUSE_BUTTON_WHEEL_UP
+			_album_move_up = event.button_index == MOUSE_BUTTON_WHEEL_UP
 
 			if scroll_velocity * sig < 0.0: # 方向相反时重置
 				scroll_velocity = 0
@@ -189,7 +186,6 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 	
 	elif event is InputEventKey and event.pressed:
-	
 		if event.keycode in [KEY_W, KEY_S]:
 			var evt = InputEventKey.new()
 			if event.keycode == KEY_W:

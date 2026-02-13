@@ -393,7 +393,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			animate_position(ani_comp, Vector2(ani_comp.position.x + 900, ani_comp.position.y + 200), 0.55, "PlayerInfoPosition")
 			
 		"Shortcut_Menu":
-			var t = animate_position(ani_comp, Vector2(1920+500*tan15, 75-500), 0.25, "MenuBarPosition")
+			var t = animate_position(ani_comp, ani_comp.position + Vector2(500*tan15, -500), 0.25, "MenuBarPosition")
 			t.finished.connect(func() -> void:
 				ani_comp.visible = false
 			)
@@ -510,7 +510,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 		
 		"Shortcut_Menu":
 			ani_comp.visible = true
-			animate_position(ani_comp, Vector2(1920, 75), 0.25, "MenuBarPosition")
+			animate_position(ani_comp, ani_comp.position - Vector2(500*tan15, -500), 0.25, "MenuBarPosition")
 		"RB_Btn":
 			EventBus.instance.storeButtonSwitch.emit(true)
 		"LT_Btn":

@@ -80,8 +80,6 @@ func _on_button_toggled(toggled_on: bool):
 	tween.set_trans(Tween.TRANS_QUINT)
 	tween.set_parallel(true)
 	
-	print ("indx : %d state : %s" % [item_index,toggled_on])
-
 	var indicator=get_node(INDICATOR)
 	var expa = 1 if toggled_on else 0
 	tween.tween_property(self,"custom_minimum_size",Vector2(750,150 + 240*expa),0.5)

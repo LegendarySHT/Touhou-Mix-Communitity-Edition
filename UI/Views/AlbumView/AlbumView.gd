@@ -59,13 +59,12 @@ func _process(delta):
 		need_snap = true
 		print("need snap")
 
-
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		if event.keycode in [KEY_UP, KEY_DOWN]:
+			_album_move_up = event.keycode == KEY_UP
 
 func _gui_input(event: InputEvent) -> void:
-	super._gui_input(event)
-
-func _unhandled_input(event):
-	# print("Unhandled input event: %s" % event)
 	super._gui_input(event)
 
 func reset_selection():

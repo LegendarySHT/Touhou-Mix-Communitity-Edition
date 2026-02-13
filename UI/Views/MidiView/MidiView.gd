@@ -103,4 +103,30 @@ func _on_info_btn_pressed():
 	redirect_btns.visible = _show_info
 
 func _on_del_btn_pressed():
-	print("click del btn")
+	var window = PopupWindow.instance
+	var midi_to_del: MidiData = midi_list.get_selection()
+	
+	if not midi_to_del:
+		window.set_message("请先选择歌曲")
+		return
+	window.show_del_selection()
+
+	await window.window_close
+	# 取消
+	if not window.confirm:
+		return
+	
+	var del_result: bool = false
+
+	match window.option_btn.get_selected_id():
+		0: # 删除人声和midi
+			print("del all")
+		1: # 删除midi
+			print("del midi")
+	
+	# 在上面添加删除代码
+	if del_result:
+		print("del successed")
+		midi_list.remove_selected_midi()
+	else:
+		window.set_message("删除失败")
