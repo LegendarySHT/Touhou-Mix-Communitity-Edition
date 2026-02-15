@@ -359,3 +359,13 @@ size_flags_horizontal = 6
 theme_override_constants/h_separation = 100
 theme_override_constants/v_separation = 20
 columns = 2
+
+[node name="DelView" type="HBoxContainer" parent="." unique_id=2038911108]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -1920.0
+offset_right = -1920.0
+grow_horizontal = 2
+grow_vertical = 2

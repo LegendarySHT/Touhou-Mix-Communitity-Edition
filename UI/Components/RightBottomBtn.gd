@@ -1,0 +1,79 @@
+extends Panel
+class_name RB_Btn
+
+static var instance: RB_Btn
+
+enum ShowStat {
+	NONE = 0,
+	BACK_BTN,
+	STORE_BTN,
+	ARROW_RIGHT,
+}
+
+@onready var ani:AnimationManager = AniMGR.instance
+@onready var ui:UIStateManager = UIStateManager.instance
+@onready var eb: EventBus = EventBus.instance
+
+@onready var vboxc: VBoxContainer = $VBoxC
+@onready var btn: Button = $Button
+
+func _ready():
+	instance = self
+	ui.state_changed.connect(_on_state_change)
+
+	eb.page_right.connect(func ():
+		if ui.current_state == ui.UIState.SETTINGS_VIEW:
+			switch_display(ShowStat.BACK_BTN)
+	)
+	eb.page_left.connect(func ():
+		if ui.current_state == ui.UIState.SETTINGS_VIEW:
+			switch_display(ShowStat.ARROW_RIGHT)
+	)
+
+func _on_state_change(_old_state, new_state: UIStateManager.UIState):
+	if new_state in [ui.UIState.ALBUM_VIEW, ui.UIState.SONG_VIEW]:
+		switch_display(ShowStat.STORE_BTN)
+	elif new_state in [ui.UIState.PLAY_VIEW]:
+		switch_display(ShowStat.NONE)
+	else:
+		switch_display(ShowStat.BACK_BTN)
+
+var _current_stat: ShowStat = ShowStat.STORE_BTN
+var _visible: bool = true
+func switch_display(content_to_show: ShowStat = ShowStat.NONE):
+	if content_to_show == _current_stat:
+		return
+
+	# 控制按钮框架是否可见
+	if content_to_show == ShowStat.NONE:
+		if _visible:
+			ani.animate_position(self, position + Vector2(500, 134), 0.5, "RB_VISBLE")
+	else:
+		if not _visible:
+			ani.animate_position(self, position - Vector2(500, 134), 0.5, "RB_VISBLE")
+
+	var event = InputEventKey.new()
+	# 控制内容显示
+	match content_to_show:
+		ShowStat.BACK_BTN:
+			ani.animate_position(vboxc, Vector2(vboxc.position.x, 0), 0.35, "RB_ICON")
+			event.keycode = KEY_ESCAPE
+		ShowStat.STORE_BTN:
+			ani.animate_position(vboxc, Vector2(vboxc.position.x, 380), 0.35, "RB_ICON")
+			event.keycode = KEY_O
+		ShowStat.ARROW_RIGHT:
+			ani.animate_position(vboxc, Vector2(vboxc.position.x, -380), 0.35, "RB_ICON")
+			event.keycode = KEY_RIGHT
+	
+	# 快捷键
+	btn.shortcut.events[0] = event
+	_current_stat = content_to_show
+
+func _on_button_pressed() -> void:
+	match _current_stat:
+		ShowStat.BACK_BTN:
+			UiStatMGR.go_back()
+		ShowStat.STORE_BTN:
+			UiStatMGR.change_state(UiStatMGR.UIState.STORE_VIEW)
+		ShowStat.ARROW_RIGHT:
+			eb.page_right.emit()

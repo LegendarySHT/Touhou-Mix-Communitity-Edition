@@ -19,14 +19,8 @@ signal enter_track_view_with(midi: MidiData)
 signal start_game_with(midi: MidiData)
 
 ## ========== UI导航事件 ==========
-# signal navigate_to_album_view
-# signal navigate_to_song_view(album_id: String)
-# signal navigate_to_midi_view(song_id: String)
-# signal navigate_to_sort_view
-# signal navigate_to_detail_view(midi_id: String)
-#signal navigate_back
-
-signal storeButtonSwitch(showBackButton:bool)
+signal page_left
+signal page_right
 
 ## ========== 排序和筛选事件 ==========
 signal sort_finished

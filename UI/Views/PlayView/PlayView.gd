@@ -80,6 +80,8 @@ var beam_alpha: float = 0.5
 #################################
 
 func _ready() -> void:
+	# 窗口大小变化
+	get_window().size_changed.connect(_init_lane_display)
 
 	EventBus.instance.start_game_with.connect(_prepare_game)
 	UIStateManager.instance.state_changed.connect(_on_state_changed)
@@ -165,6 +167,8 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	play_result = ScoreView.ScoreData.new()
 
 	_init_display()
+	flow_area.init_flow_area()
+	
 	await get_tree().create_timer(0.8).timeout
 
 	# 加载MIDI并转换为FlowArea音符
@@ -188,7 +192,6 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	var flow_notes = _convert_game_sequences_to_flow_notes(game_sequences)
 	print("[PlayView] After _convert_game_sequences_to_flow_notes, flow_notes.size() = %d" % flow_notes.size())
 	flow_area.notes_list = flow_notes
-	flow_area.init_flow_area()
 	play_result.total_notes = flow_notes.size()
 	print("[PlayView] FlowArea initialized with %d game sequences" % flow_notes.size())
 	# 设置进度条最大值
@@ -529,6 +532,8 @@ func _init_display():
 	
 	menu.visible = false
 	song_info.visible = true
+
+	center.modulate.a = 0
 	center_bg.visible = true
 	is_pause = true
 	
@@ -543,11 +548,15 @@ func _init_display():
 	for i in progress_bar.get_children():
 		i.queue_free()
 	
+	_init_lane_display()
+
+	auto_label.visible = flow_area.auto_mode
+
+func _init_lane_display():
 	lane_area.init_beam(get_lane_count(), flow_area.note_visual_width, judge_line_offset_y, lane_padding)
 	lane_area.set_beam_alpha(beam_alpha)
 	if keyboard_mode:
 		lane_area.init_key_display(key_map)
-	auto_label.visible = flow_area.auto_mode
 
 const color_map = {
 	"Perfect": Color.PURPLE,

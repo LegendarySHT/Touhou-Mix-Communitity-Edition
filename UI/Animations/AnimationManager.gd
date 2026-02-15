@@ -255,11 +255,9 @@ var ui_exist = {
 	"Album_List" : true, 		# 程序启动时专辑列表存在
 	"Player_Info": true,
 	"Shortcut_Menu" : true, 
-	"LT_Btn" : true, 			# 左上方设置按钮
 	"Song_List" : false, 		# 程序启动时歌曲列表不存在
 	"Sorted_List" : false,  	# 程序启动时排序列表不存在
 	"Midi_Info_View" : false, 	# 程序启动时MIDI信息视图不存在
-	"RB_Btn": false, 			# False为显示商店按钮
 	"Store_View": false,
 	"Track_List": false, 		# 音轨界面的那个列表
 	"Play_View": false,
@@ -269,26 +267,24 @@ var ui_exist = {
 
 ## 记录每个页面存在哪些组件
 var ui_part = {
-	UIStateManager.UIState.ALBUM_VIEW: ["Album_List", "Player_Info", "Shortcut_Menu", "LT_Btn"],
-	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Player_Info", "Shortcut_Menu", "RB_Btn", "LT_Btn"],
-	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Player_Info", "Shortcut_Menu", "RB_Btn", "LT_Btn"],
-	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View", "RB_Btn", "LT_Btn"],
-	UIStateManager.UIState.STORE_VIEW: ["Store_View", "RB_Btn"],
-	UIStateManager.UIState.TRACK_VIEW: ["Track_List", "RB_Btn", "LT_Btn"],
-	UIStateManager.UIState.SETTINGS_VIEW: ["Setting_View", "RB_Btn", "LT_Btn"],
+	UIStateManager.UIState.ALBUM_VIEW: ["Album_List", "Player_Info", "Shortcut_Menu"],
+	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Player_Info", "Shortcut_Menu"],
+	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Player_Info", "Shortcut_Menu"],
+	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View"],
+	UIStateManager.UIState.STORE_VIEW: ["Store_View"],
+	UIStateManager.UIState.TRACK_VIEW: ["Track_List"],
+	UIStateManager.UIState.SETTINGS_VIEW: ["Setting_View"],
 	UIStateManager.UIState.PLAY_VIEW: ["Play_View"],
-	UIStateManager.UIState.SCORE_VIEW: ["Score_View", "RB_Btn"],
+	UIStateManager.UIState.SCORE_VIEW: ["Score_View"],
 }
 
 var ui_path = {
 	"Album_List" : "/root/Main/skew/C/AlbumList",
 	"Player_Info": "/root/Main/PlayerInfo",
 	"Shortcut_Menu" : "/root/Main/skew/C/ShortCutMenu",
-	"LT_Btn" : "/root/Main/LT_Btn",
 	"Song_List" : "/root/Main/skew/C/SongList",
 	"Sorted_List" : "/root/Main/skew/C/SortedMidisList",
 	"Midi_Info_View" : "/root/Main/skew/C/InfoUI",
-	"RB_Btn": "",
 	"Store_View": "/root/Main/Store",
 	"Track_List": "/root/Main/skew/C/TrackView",
 	"Play_View": "/root/Main/PlayView",
@@ -397,11 +393,6 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			t.finished.connect(func() -> void:
 				ani_comp.visible = false
 			)
-			
-		"RB_Btn":
-			EventBus.instance.storeButtonSwitch.emit(false)
-		"LT_Btn":
-			animate_position(ani_comp, Vector2(ani_comp.position.x - 250, ani_comp.position.y), 0.25, tween_id)
 		"Store_View":
 			tween = animate_fade_out(ani_comp, 0.35, tween_id)
 		"Track_List":
@@ -414,6 +405,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			_save_settings_on_exit(ani_comp)
 			
 			tween = animate_fade_out(ani_comp, 0.35, tween_id)
+			ani_comp.switch_page()
 		"Score_View":
 			ani_comp.ani_out()
 			if new_state!= UIStateManager.UIState.PLAY_VIEW:
@@ -491,18 +483,13 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 				ui.change_state(ui.UIState.ALBUM_VIEW))
 		"Sorted_List":
 			ani_comp.visible = true
-			# EventBus.instance.storeButtonSwitch.emit(true)
 
 			animate_position(ani_comp, Vector2(0, ani_comp.position.y), 0.25, tween_id)
 		"Midi_Info_View":
-			EvtBus.instance.storeButtonSwitch.emit(true)
-			
-			var info_ui = get_comp(ui_name)
+			animate_fade_in(ani_comp, 0.1, "InfoUIFadeIn")
 
-			animate_fade_in(info_ui, 0.1, "InfoUIFadeIn")
-
-			info_ui.position = Vector2(0,-500)
-			tween = animate_position(info_ui, Vector2.ZERO, 0.5, tween_id)
+			ani_comp.position = Vector2(0,-500)
+			tween = animate_position(ani_comp, Vector2.ZERO, 0.5, tween_id)
 		"Player_Info":
 			var chara = ani_comp.get_node("Chara")
 			animate_position(ani_comp, Vector2(ani_comp.position.x - 900, ani_comp.position.y - 200), 0.35, "PlayerInfoPosition")
@@ -511,10 +498,6 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 		"Shortcut_Menu":
 			ani_comp.visible = true
 			animate_position(ani_comp, ani_comp.position - Vector2(500*tan15, -500), 0.25, "MenuBarPosition")
-		"RB_Btn":
-			EventBus.instance.storeButtonSwitch.emit(true)
-		"LT_Btn":
-			animate_position(ani_comp, Vector2(ani_comp.position.x + 250, ani_comp.position.y), 0.25, tween_id)
 		"Store_View":
 			var top_bar = ani_comp.get_node("TopBar")
 			top_bar.position.y = -500

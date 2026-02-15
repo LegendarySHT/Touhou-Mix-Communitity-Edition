@@ -4,7 +4,7 @@ extends Control
 
 ## ConfigLoader 引用
 var config_loader: ConfigManager = null
-@onready var UI: UIStateManager = UIStateManager.instance
+@onready var ui: UIStateManager = UIStateManager.instance
 
 ## 配置文件路径
 const CONFIG_PATH = "user://files/settings.ini"
@@ -17,18 +17,11 @@ func _ready() -> void:
 		btn.toggled.connect(_on_button_toggled.bind(idx))
 		idx += 1
 
-	# 设置按钮信号链接
-	var setting_btn = get_node("/root/Main/LT_Btn/Button")
-	if setting_btn:
-		setting_btn.pressed.connect(
-			func():
-				if UI.current_state != UIStateManager.UIState.SETTINGS_VIEW:
-					UI.change_state(UIStateManager.UIState.SETTINGS_VIEW)
-				else:
-					UI.go_back()
-		)
+	# 页面切换
+	EventBus.instance.page_left.connect(switch_page.bind(-1))
+	EventBus.instance.page_right.connect(switch_page.bind(1))
 
-	# 焦点信号到导航按钮
+	# 转移焦点至导航按钮
 	var btns = get_node("HBoxC/ShortCut")
 	btns.focus_entered.connect(func():
 		for i in btns.get_children():
@@ -47,7 +40,7 @@ func _ready() -> void:
 	_load_config_from_file()
 
 	# 设置焦点
-	UI.state_changed.connect(func(_old_state: UIStateManager.UIState, state: UIStateManager.UIState):
+	ui.state_changed.connect(func(_old_state: UIStateManager.UIState, state: UIStateManager.UIState):
 		if state == UIStateManager.UIState.SETTINGS_VIEW:
 			# 确保按钮组有焦点
 			await get_tree().create_timer(0.5).timeout
@@ -140,13 +133,13 @@ func _load_config_from_file() -> void:
 func save_config_to_file() -> bool:
 	var config_manager = ConfigManager.instance
 	
-	# 获取当前 UI 中的配置
+	# 获取当前 ui 中的配置
 	var settings_dict = setting_list.get_all_settings_as_json()
 	
 	# 特殊处理 midi_backend：将选项索引转换为实际值
 	if settings_dict.has("midi_backend"):
 		var raw_value = settings_dict["midi_backend"]
-		print("[SettingView] midi_backend raw value from UI: %s (type: %s)" % [raw_value, typeof(raw_value)])
+		print("[SettingView] midi_backend raw value from ui: %s (type: %s)" % [raw_value, typeof(raw_value)])
 		if raw_value is int or (raw_value is String and raw_value.is_valid_int()):
 			var index = int(raw_value)
 			# 0 -> "addons", 1 -> "meltysynth"
@@ -390,3 +383,15 @@ func get_setting_value(setting_id: String) -> Variant:
 	
 	print("[SettingView] Setting not found: %s" % setting_id)
 	return null
+
+@onready var setting_page = $HBoxC
+@onready var delete_page = $DelView
+@onready var ani: AnimationManager = AnimationManager.instance
+func switch_page(direction: int = 0):
+	var op: bool = true
+	if direction == -1:
+		op = false
+
+	var wid = setting_page.size.x + 600
+	ani.animate_position(setting_page, Vector2(wid * 1 if not op else 0, 0), 0.5, "SV_PAGE_SW_1")
+	ani.animate_position(delete_page, Vector2(-wid * 1 if op else 0, 0), 0.5, "SV_PAGE_SW_2")

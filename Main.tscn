@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://bf7nd5qojdcla" path="res://Resources/icon/lily-white.png" id="2_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://cbkgu4o71ikgo" path="res://Resources/Gradient/gradient1.png" id="3_bg4s2"]
-[ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/store_button.gd" id="7_sqvbp"]
+[ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/RightBottomBtn.gd" id="7_sqvbp"]
 [ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView/AlbumView.gd" id="7_w3rk5"]
 [ext_resource type="Script" uid="uid://dpn6fchjbt3b8" path="res://UI/Components/SkewArea.gd" id="8_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://bq58thu46jvsq" path="res://Resources/icon/midi_store.png" id="8_hri7i"]
@@ -21,7 +21,9 @@
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
 [ext_resource type="PackedScene" uid="uid://xgcfhg1x2v6p" path="res://UI/Components/ShortCutMenu/favorListItem.tscn" id="20_devvj"]
+[ext_resource type="Texture2D" uid="uid://h6i2ju0tpkvl" path="res://Resources/icon/arrow-right.png" id="21_hhcpw"]
 [ext_resource type="Script" uid="uid://dly3k36hy880k" path="res://UI/Components/PopupWindow.gd" id="23_bg4s2"]
+[ext_resource type="Script" uid="uid://bb04m122u3fvm" path="res://UI/Components/LeftTopBtn.gd" id="23_mxvw5"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg4s2"]
@@ -193,7 +195,7 @@ keycode = 79
 unicode = 111
 
 [sub_resource type="Shortcut" id="Shortcut_bg4s2"]
-events = [SubResource("InputEventKey_3b0ty"), null]
+events = [SubResource("InputEventKey_3b0ty")]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mxvw5"]
 bg_color = Color(0.050980393, 0.5294118, 1, 1)
@@ -458,6 +460,7 @@ skew = 0.2617994
 [node name="C" type="Control" parent="skew" unique_id=35177544]
 editor_description = "为斜向的项提供锚点定位的区域"
 layout_mode = 3
+anchors_preset = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
 script = ExtResource("8_3b0ty")
@@ -769,26 +772,70 @@ shortcut = SubResource("Shortcut_bg4s2")
 shortcut_in_tooltip = false
 icon_alignment = 1
 
-[node name="Store" type="TextureRect" parent="RB_Btn" unique_id=449703424]
+[node name="VBoxC" type="VBoxContainer" parent="RB_Btn" unique_id=571032761]
 layout_mode = 0
-offset_left = 3.0
-offset_top = 430.0
-offset_right = 90.0
-offset_bottom = 491.0
-rotation = -0.523599
-scale = Vector2(2, 2)
+offset_left = -20.0
+offset_top = 380.0
+offset_right = 160.0
+offset_bottom = 1320.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 200
+
+[node name="C1" type="Control" parent="RB_Btn/VBoxC" unique_id=499774940]
+custom_minimum_size = Vector2(180, 180)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Store" type="TextureRect" parent="RB_Btn/VBoxC/C1" unique_id=449703424]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+rotation = -0.5235988
 mouse_filter = 2
 texture = ExtResource("8_hri7i")
+expand_mode = 1
+stretch_mode = 5
 
-[node name="Back" type="TextureRect" parent="RB_Btn" unique_id=1406446878]
-layout_mode = 0
-offset_left = 3.0
-offset_top = -30.0
-offset_right = 153.0
-offset_bottom = 120.0
-rotation = -0.523599
+[node name="C2" type="Control" parent="RB_Btn/VBoxC" unique_id=929447139]
+custom_minimum_size = Vector2(180, 180)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Back" type="TextureRect" parent="RB_Btn/VBoxC/C2" unique_id=1406446878]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+rotation = -0.5235988
 mouse_filter = 2
 texture = ExtResource("9_w3rk5")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="C3" type="Control" parent="RB_Btn/VBoxC" unique_id=1205842275]
+custom_minimum_size = Vector2(180, 180)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Arrow" type="TextureRect" parent="RB_Btn/VBoxC/C3" unique_id=1638160062]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+rotation = -0.5235988
+mouse_filter = 2
+texture = ExtResource("21_hhcpw")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="LT_Btn" type="Panel" parent="." unique_id=1967536020]
 layout_mode = 0
@@ -798,6 +845,7 @@ offset_right = 235.52328
 offset_bottom = 588.7093
 rotation = 0.34906584
 theme_override_styles/panel = SubResource("StyleBoxFlat_mxvw5")
+script = ExtResource("23_mxvw5")
 
 [node name="Button" type="Button" parent="LT_Btn" unique_id=427482582]
 layout_mode = 1
@@ -813,18 +861,6 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_xrxkg")
 shortcut = SubResource("Shortcut_3b0ty")
 shortcut_in_tooltip = false
 
-[node name="Setting" type="TextureRect" parent="LT_Btn" unique_id=1559149752]
-custom_minimum_size = Vector2(140, 140)
-layout_mode = 1
-offset_left = 25.0
-offset_top = 90.0
-offset_right = 165.0
-offset_bottom = 230.0
-rotation = -0.34906584
-mouse_filter = 2
-texture = ExtResource("10_5mvff")
-stretch_mode = 5
-
 [node name="Lag" type="Label" parent="LT_Btn" unique_id=413405156]
 layout_mode = 0
 offset_left = 100.0
@@ -835,6 +871,57 @@ rotation = -0.34906584
 theme_override_font_sizes/font_size = 30
 text = "9999
 ms"
+
+[node name="VBoxC" type="VBoxContainer" parent="LT_Btn" unique_id=757212644]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 55.0
+offset_right = 210.0
+offset_bottom = 995.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 300
+
+[node name="C" type="Control" parent="LT_Btn/VBoxC" unique_id=816651028]
+custom_minimum_size = Vector2(150, 150)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Setting" type="TextureRect" parent="LT_Btn/VBoxC/C" unique_id=1593430758]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -30.0
+grow_horizontal = 2
+grow_vertical = 2
+rotation = -0.34906584
+pivot_offset_ratio = Vector2(0.5, 0.5)
+mouse_filter = 2
+texture = ExtResource("10_5mvff")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="C2" type="Control" parent="LT_Btn/VBoxC" unique_id=2038039474]
+custom_minimum_size = Vector2(150, 150)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Arrow" type="TextureRect" parent="LT_Btn/VBoxC/C2" unique_id=771736228]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -30.0
+grow_horizontal = 2
+grow_vertical = 2
+rotation = -0.34906584
+pivot_offset_ratio = Vector2(0.5, 0.5)
+mouse_filter = 2
+texture = ExtResource("21_hhcpw")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="PopupWindowBG" type="ColorRect" parent="." unique_id=1275441849]
 visible = false
@@ -959,5 +1046,6 @@ visible = false
 [connection signal="toggled" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Data" to="skew/C/ShortCutMenu" method="_on_data_toggled"]
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Ordering" to="skew/C/ShortCutMenu" method="_on_ordering_pressed"]
 [connection signal="pressed" from="RB_Btn/Button" to="RB_Btn" method="_on_button_pressed"]
+[connection signal="pressed" from="LT_Btn/Button" to="LT_Btn" method="_on_button_pressed"]
 [connection signal="pressed" from="PopupWindowBG/Window/VBoxC/Btns/Cancel" to="PopupWindowBG" method="_on_cancel_pressed"]
 [connection signal="pressed" from="PopupWindowBG/Window/VBoxC/Btns/Confirm" to="PopupWindowBG" method="_on_confirm_pressed"]
