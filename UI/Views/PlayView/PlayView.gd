@@ -173,7 +173,11 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 
 	# 加载MIDI并转换为FlowArea音符
 	_load_and_convert_midi_notes(midi)
-	playback_mgr.seek(-1500)
+	
+	# 计算初始seek位置：-1000ms（固定：给予UI准备时间）- 音符下落时间（配置项）
+	var note_fall_time = ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
+	var seek_position = -(1000 + note_fall_time * 1000)
+	playback_mgr.seek(seek_position)
 	is_pause = true
 	
 	# 读取并设置音频同步阈值

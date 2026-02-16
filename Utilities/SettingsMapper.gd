@@ -60,6 +60,7 @@ static var mappings: Dictionary = {
 	"min_touch_cooldown_time": {"section": "Generator", "key": "min_touch_cooldown_time", "value_type": "float"},
 	"max_touch_move_speed": {"section": "Generator", "key": "max_touch_move_speed", "value_type": "int"},
 	"max_block_coalesce_time": {"section": "Generator", "key": "max_block_coalesce_time", "value_type": "float"},
+	"note_fall_time": {"section": "Generator", "key": "note_fall_time", "value_type": "float"},
 	
 	# ========== 外观设置 ==========
 	"randomize_block_color": {"section": "Appearance", "key": "randomize_block_color", "value_type": "int"},

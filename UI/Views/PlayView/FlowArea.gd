@@ -113,6 +113,10 @@ func init_flow_area():
 	notes_list = saved_notes
 	note_idx = 0
 	
+	# 从配置读取音符下落时间（秒转毫秒）
+	var note_fall_time = ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
+	note_generation_lead_time = note_fall_time * 1000.0
+	
 	var lc = parent_node.get_lane_count()
 	# 初始化轨道宽度
 	lane_width = size.x / lc

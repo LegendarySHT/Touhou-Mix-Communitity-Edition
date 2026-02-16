@@ -489,6 +489,18 @@ var setting_groups = [
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "0.5",
 				"unit": "s"
+			},
+			{
+				"id": "note_fall_time",
+				"name_en": "Note Fall Time",
+				"name_zh": "音符下落时间",
+				"description": "设置音符从屏幕顶端生成到落到判定线的时间，决定了音符下落速度的快慢，越小越快",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "1",
+				"unit": "s",
+				"min_value": 0.2,
+				"max_value": 5.0,
+				"step": 0.1
 			}
 		]
 	},
