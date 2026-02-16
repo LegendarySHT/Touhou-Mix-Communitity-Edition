@@ -39,7 +39,9 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private int _sampleRate;
 	private float _volumeLinear = 1.0f;
 	private bool _sequencerStarted = false;  // 追踪 sequencer 是否已启动
-	private double _pendingSeekMs = -1.0;  // 待处理的 seek 位置（-1 表示无待处理的 seek）
+	private double _pendingSeekMs = double.NaN;  // 待处理的 seek 位置（NaN 表示无待处理的 seek）
+	private double _currentOffsetMs = 0.0;  // 当前相对于 sequencer 的时间偏移（支持负数 pre-roll）
+	private bool _hasSkippedPreroolEvents = false;  // 标志：已跳过 pre-roll 事件
 
 	private readonly Dictionary<int, float> _virtualChannelVolumes = new Dictionary<int, float>();
 	private readonly Dictionary<int, (int bank, int program)> _virtualChannelInstruments = new Dictionary<int, (int bank, int program)>();
@@ -86,29 +88,58 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	public override void _Process(double delta)
 	{
 		// 【关键】处理待处理的 seek 操作优先级最高，即使不在播放中也要处理
-		if (_pendingSeekMs >= 0.0)
+		if (!double.IsNaN(_pendingSeekMs))
 		{
 			GD.Print($"[MeltySynthPlayer] Processing seek to {_pendingSeekMs} ms (playing={playing})");
 			
 			if (_sequencer == null || _midiFile == null)
 			{
 				GD.PrintErr("[MeltySynthPlayer] Cannot seek: sequencer or midiFile is null");
-				_pendingSeekMs = -1.0;
+				_pendingSeekMs = double.NaN;
 				return;
 			}
 
+			// 如果 seek 位置是负数，进入 pre-roll 模式
+			if (_pendingSeekMs < 0.0)
+			{
+				// 负数 seek：停止所有播放，记录 offset，准备 pre-roll
+				_currentOffsetMs = _pendingSeekMs;
+				_sequencerStarted = false;  // 标记 sequencer 需要重启
+				_hasSkippedPreroolEvents = false;  // 重置标志，准备首次 crossing zero
+				
+				// 停止所有播放（AudioStreamPlayer 和 Sequencer）
+				if (_player != null && _player.Playing)
+				{
+					_player.Stop();
+				}
+				
+				// 【关键】停止 sequencer，防止在后台继续运行
+				if (_sequencer != null)
+				{
+					_sequencer.Stop();
+					GD.Print($"[MeltySynthPlayer] Stopped sequencer for pre-roll mode");
+				}
+				
+				GD.Print($"[MeltySynthPlayer] Pre-roll mode: offset set to {_currentOffsetMs} ms");
+				_pendingSeekMs = double.NaN;
+				return;
+			}
+
+			// 正数 seek：正常处理
 			// 1. 如果正在播放，停止 AudioStreamPlayer 清空缓冲区
 			if (_player != null && _player.Playing)
 			{
 				_player.Stop();
 			}
 
-			var targetSeconds = Math.Max(0.0, _pendingSeekMs / 1000.0);
+			var targetSeconds = _pendingSeekMs / 1000.0;
 			var targetFrames = (long)(_sampleRate * targetSeconds);
 
 			// 2. 重新启动 sequencer 并快进到目标位置
 			_sequencer.Play(_midiFile, loop);
 			_sequencerStarted = true;
+			_currentOffsetMs = 0.0;  // 清除任何 pre-roll offset
+			_hasSkippedPreroolEvents = true;  // 正数seek时无需跳过事件
 
 			var scratchLeft = new float[_synth.BlockSize];
 			var scratchRight = new float[_synth.BlockSize];
@@ -131,12 +162,48 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			_playback = null;
 			
 			// 5. 清除待处理标志
-			_pendingSeekMs = -1.0;
+			_pendingSeekMs = double.NaN;
 			
 			GD.Print("[MeltySynthPlayer] Seek completed");
 			
 			// 【关键】返回，跳过本帧渲染，让缓冲区在下一帧重新开始
 			return;
+		}
+
+		// 【处理 pre-roll 阶段】如果在 pre-roll 中（offset 为负数），进行时间累积，不渲染
+		if (_currentOffsetMs < 0.0 && playing)
+		{
+			_currentOffsetMs += delta * 1000.0;  // 毫秒
+			
+			// 检查是否跨越零点（从 pre-roll 进入正常播放）
+			if (_currentOffsetMs >= 0.0 && !_hasSkippedPreroolEvents)
+			{
+				// 第一次跨越零点：启动 sequencer 和 AudioStreamPlayer
+				if (_sequencer != null && _midiFile != null && !_sequencerStarted)
+				{
+					GD.Print($"[MeltySynthPlayer] Crossing zero from pre-roll, starting sequencer at position 0");
+					_sequencer.Play(_midiFile, loop);
+					_sequencerStarted = true;
+				}
+				
+				// 【关键】启动 AudioStreamPlayer，确保 sequencer 和播放器同步
+				if (_player != null && !_player.Playing)
+				{
+					GD.Print($"[MeltySynthPlayer] Starting AudioStreamPlayer after crossing zero");
+					_player.Play();
+					_playback = _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
+				}
+				
+				_hasSkippedPreroolEvents = true;
+				_currentOffsetMs = 0.0;  // 重置 offset，准备正常播放阶段
+				
+				// 【不要返回】继续执行到正常播放流程，让 sequencer 自然渲染第一批帧
+			}
+			else
+			{
+				// 还在 pre-roll 期间，不播放声音
+				return;
+			}
 		}
 
 		// 正常播放检查
@@ -240,8 +307,16 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return;
 		}
 
-		GD.Print($"[MeltySynthPlayer] play() called - _midiFile: {_midiFile != null}, _sequencerStarted: {_sequencerStarted}, _player.Playing: {_player?.Playing}");
+		GD.Print($"[MeltySynthPlayer] play() called - _midiFile: {_midiFile != null}, _sequencerStarted: {_sequencerStarted}, _currentOffsetMs: {_currentOffsetMs}, _player.Playing: {_player?.Playing}");
 		_playback = null; // reset playback so we can reacquire a fresh AudioStreamGeneratorPlayback
+
+		// 【处理 pre-roll 模式】如果当前有负数 offset，不启动 sequencer，让 _Process 处理跨越零点
+		if (_currentOffsetMs < 0.0)
+		{
+			GD.Print($"[MeltySynthPlayer] In pre-roll mode (offset={_currentOffsetMs} ms), sequencer will start when crossing zero");
+			playing = true;
+			return;
+		}
 
 		// 如果 MIDI 已加载但还未启动 sequencer，则启动它
 		if (_midiFile != null && !_sequencerStarted)
@@ -287,6 +362,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		_player?.Stop();
 		_sequencer?.Stop();
 		_sequencerStarted = false;  // 重置标志，下次 play() 会重新启动
+		_currentOffsetMs = 0.0;  // 重置 offset
 		_playback = null; // ensure playback is reacquired on next play
 	}
 
@@ -297,9 +373,9 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return;
 		}
 
-		// 【修复】设置待处理的 seek 标志
+		// 【修复】允许负数 seek，设置待处理的 seek 标志
 		// _Process 会在下一帧处理这个 seek，确保不会阻塞音频线程
-		_pendingSeekMs = positionMs;
+		_pendingSeekMs = positionMs;  // 负数值会被接受
 		GD.Print($"[MeltySynthPlayer] Queued seek to {positionMs} ms");
 	}
 
@@ -358,12 +434,19 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	public double get_position_ms()
 	{
 		// 【修复】seek 待处理期间返回目标位置，避免 NoteDisplayer 看到不连贯的位置跳跃
-		if (_pendingSeekMs >= 0.0)
+		// 支持负数位置（pre-roll）
+		if (!double.IsNaN(_pendingSeekMs))
 		{
 			return _pendingSeekMs;
 		}
 
-		if (_sequencer == null) return 0.0;
+		// 在 pre-roll 阶段返回当前的负数 offset
+		if (_currentOffsetMs < 0.0)
+		{
+			return _currentOffsetMs;
+		}
+
+		if (_sequencer == null || !_sequencerStarted) return 0.0;
 
 		var sequencerMs = _sequencer.Position.TotalMilliseconds;
 
@@ -598,6 +681,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	public void pause()
 	{
 		playing = false;
+		GD.Print($"[MeltySynthPlayer] pause() called - _currentOffsetMs={_currentOffsetMs}, _sequencerStarted={_sequencerStarted}");
 		// 保持 sequencer 状态，不重置位置
 	}
 
@@ -606,6 +690,14 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	{
 		if (_midiFile != null && _sequencer != null)
 		{
+			// 【处理 pre-roll 模式】如果在 pre-roll 中，继续等待跨越零点
+			if (_currentOffsetMs < 0.0)
+			{
+				GD.Print($"[MeltySynthPlayer] Resume from pre-roll (offset={_currentOffsetMs} ms)");
+				playing = true;
+				return;  // 不启动 AudioStreamPlayer，等待跨越零点
+			}
+
 			playing = true;
 			if (_player != null && !_player.Playing)
 			{
@@ -713,6 +805,11 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			GD.Print("[MeltySynthPlayer] Using single synthesizer for both auto and manual notes");
 		}
 
+		// 重置状态
+		_sequencerStarted = false;
+		_currentOffsetMs = 0.0;
+		_hasSkippedPreroolEvents = false;
+
 		EmitSignal(SignalName.soundfont_changed, path);
 	}
 
@@ -746,6 +843,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		var globalPath = ProjectSettings.GlobalizePath(path);
 		_midiFile = new MidiFile(globalPath);
 		_sequencerStarted = false;  // 重置标志，等待 play() 调用
+		_currentOffsetMs = 0.0;  // 重置 offset
+		_hasSkippedPreroolEvents = false;  // 重置跳过标志
 		GD.Print($"[MeltySynthPlayer] MIDI file loaded, _sequencerStarted reset to false");
 		// 注意：不在这里调用 Play()，而是等待明确的 play() 调用
 		// 这样可以与 MidiPlayer (Addon) 的行为保持一致
