@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://ddhnyragi1haf"]
+[gd_scene format=3 uid="uid://ddhnyragi1haf"]
 
 [ext_resource type="Script" uid="uid://c4gjvjg4gl57p" path="res://UI/Views/SortedMidiView/SortedMidiListItem.gd" id="1_sx7kd"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_aaj07"]
@@ -30,7 +30,7 @@ border_width_right = 5
 border_width_bottom = 5
 border_color = Color(0.97, 0.97, 0.97, 0.6392157)
 
-[node name="MidiNode" type="MarginContainer"]
+[node name="MidiNode" type="MarginContainer" unique_id=1152888699]
 clip_contents = true
 custom_minimum_size = Vector2(900, 150)
 anchors_preset = 15
@@ -46,12 +46,13 @@ script = ExtResource("1_sx7kd")
 metadata/index = 0
 metadata/_edit_use_anchors_ = true
 
-[node name="Panel" type="Panel" parent="."]
+[node name="Panel" type="Panel" parent="." unique_id=1010215680]
 clip_contents = true
 custom_minimum_size = Vector2(900, 150)
 layout_mode = 2
+mouse_filter = 1
 
-[node name="cover" type="TextureRect" parent="Panel"]
+[node name="cover" type="TextureRect" parent="Panel" unique_id=547752909]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -65,7 +66,7 @@ expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true
 
-[node name="Data" type="Label" parent="Panel"]
+[node name="Data" type="Label" parent="Panel" unique_id=2008931109]
 layout_mode = 0
 offset_left = 50.0
 offset_top = 5.0
@@ -78,7 +79,7 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 30
 text = "Download Trail Up Love"
 
-[node name="MidiName" type="Label" parent="Panel"]
+[node name="MidiName" type="Label" parent="Panel" unique_id=516188229]
 custom_minimum_size = Vector2(840, 0)
 layout_mode = 1
 anchors_preset = 14
@@ -100,7 +101,7 @@ theme_override_font_sizes/font_size = 30
 text = "Midi Name"
 clip_text = true
 
-[node name="HBoxC" type="HBoxContainer" parent="Panel"]
+[node name="HBoxC" type="HBoxContainer" parent="Panel" unique_id=1823914334]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -116,7 +117,7 @@ size_flags_horizontal = 0
 size_flags_vertical = 8
 theme_override_constants/separation = 10
 
-[node name="Author" type="Label" parent="Panel/HBoxC"]
+[node name="Author" type="Label" parent="Panel/HBoxC" unique_id=1687568358]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 8
@@ -128,12 +129,12 @@ theme_override_font_sizes/font_size = 30
 text = "Midi Author"
 vertical_alignment = 2
 
-[node name="Line2D" type="Line2D" parent="Panel/HBoxC"]
+[node name="Line2D" type="Line2D" parent="Panel/HBoxC" unique_id=2145281276]
 position = Vector2(-135, -15)
 points = PackedVector2Array(120, 45, 945, 45)
 width = 8.0
 
-[node name="status" type="Label" parent="Panel/HBoxC"]
+[node name="status" type="Label" parent="Panel/HBoxC" unique_id=1694469925]
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
@@ -142,7 +143,7 @@ theme_override_constants/shadow_outline_size = 5
 theme_override_font_sizes/font_size = 30
 text = "Pending"
 
-[node name="Border" type="PanelContainer" parent="Panel"]
+[node name="Border" type="PanelContainer" parent="Panel" unique_id=1384303241]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -152,7 +153,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_sx7kd")
 
-[node name="Button" type="Button" parent="Panel"]
+[node name="Button" type="Button" parent="Panel" unique_id=1823057639]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -161,7 +162,7 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
-focus_next = NodePath("/root/Main/ShortCutMenu/skew/VBoxC/Btns/Search")
+focus_next = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
 mouse_filter = 1
 theme_override_styles/normal = SubResource("StyleBoxFlat_aaj07")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_ex0j5")
@@ -171,6 +172,6 @@ toggle_mode = true
 metadata/_edit_use_anchors_ = true
 metadata/index = 0
 
-[node name="VE" type="VisibleOnScreenEnabler2D" parent="."]
+[node name="VE" type="VisibleOnScreenEnabler2D" parent="." unique_id=1743677447]
 position = Vector2(-5, -410.5)
 rect = Rect2(0, 186, 905, 602)

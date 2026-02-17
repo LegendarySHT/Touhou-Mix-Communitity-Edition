@@ -15,9 +15,6 @@ var midi_data: MidiData
 ## 展开动画补间
 var expand_tween: Tween
 
-## 吸附目标信号（用于滚动吸附）
-signal snap_node_target(midi_node_index)
-
 var INDICATOR = "/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
 
 func _update_display() -> void:
@@ -47,11 +44,6 @@ func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg:ButtonGrou
 	_update_display()
 	_load_cover_image()
 	
-	# 信号
-	snap_node_target.connect(
-		func(midi_node_index) -> void:
-			parent.selected_item = midi_node_index
-	)
 	btn_confirmed.connect(parent._show_midi_list)
 
 	# if index == 0:
@@ -74,26 +66,38 @@ func _load_cover_image() -> void:
 	cover.texture = fs_manager.get_cover_by_midiData(midi_data)	
 
 ## 按钮切换回调
-func _on_button_toggled(toggled_on: bool):
-	var tween =create_tween()
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_QUINT)
-	tween.set_parallel(true)
+func on_item_button_toggled(toggled_on: bool):
+	if not parent_node.current_midis.size() >1 and not toggled_on:
+		return
+	expand_tween =create_tween()
+	expand_tween.set_ease(Tween.EASE_OUT)
+	expand_tween.set_trans(Tween.TRANS_QUINT)
+	expand_tween.set_parallel(true)
 	
 	var indicator=get_node(INDICATOR)
 	var expa = 1 if toggled_on else 0
-	tween.tween_property(self,"custom_minimum_size",Vector2(750,150 + 240*expa),0.5)
-	tween.tween_property(get_node("VBoxC/MC"),"theme_override_constants/margin_bottom",20 * expa, 0.15)
+	expand_tween.tween_property(self,"custom_minimum_size",Vector2(750,150 + 240*expa),0.35)
+	expand_tween.tween_property(get_node("VBoxC/MC"),"theme_override_constants/margin_bottom",20 * expa, 0.15)
 	#文字
-	tween.tween_property(midi_name_label,"theme_override_font_sizes/font_size",30 +10*expa,0.25)
-	tween.tween_property(line,"position",Vector2(-50,12 - 5*expa),0.15)
+	expand_tween.tween_property(midi_name_label,"theme_override_font_sizes/font_size",30 +10*expa,0.25)
+	expand_tween.tween_property(line,"position",Vector2(-50,12 - 5*expa),0.15)
 	#指示器
-	tween.tween_property(indicator.get_child(item_index),"color",Color(0.129, 0.412, 0.702) if expa else Color(1, 1, 1) ,0.15)
-	tween.tween_property(indicator,"position",Vector2(30,100 -item_index*24),0.35)
+	expand_tween.tween_property(indicator.get_child(item_index),"color",Color(0.129, 0.412, 0.702) if expa else Color(1, 1, 1) ,0.15)
+	expand_tween.tween_property(indicator,"position",Vector2(30,100 -item_index*24),0.35)
 	
 	if toggled_on:
-		snap_node_target.emit(item_index)
+		parent_node.selected_item = item_index
+
+	expand_tween.finished.connect(func():
+		expand_tween.kill()
+		expand_tween = null
+	)
+	await get_tree().create_timer(0.35).timeout
+	if toggled_on and parent_node.selected_item == item_index:
+		parent_node.need_snap = true
+
 		_update_data_display()
+
 
 ## 更新信息面板
 func _update_data_display() -> void:

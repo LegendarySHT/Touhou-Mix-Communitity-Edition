@@ -61,7 +61,7 @@ func _load_cover_image() -> void:
 	cover_texture.texture = fs_mgr.get_cover_by_midiData(midis[0])
 
 ## 专辑按钮切换回调
-func _on_button_toggled(toggled_on: bool) -> void:
+func on_item_button_toggled(toggled_on: bool) -> void:
 	if expand_tween:
 		expand_tween.kill()
 	
@@ -74,17 +74,15 @@ func _on_button_toggled(toggled_on: bool) -> void:
 	expand_tween.tween_property(self.get_node("PN"),"custom_minimum_size",Vector2(600 + expa*350, 150 + 250*expa),0.15)
 	expand_tween.tween_property(album_name_label,"theme_override_font_sizes/font_size",25 + 20*expa,0.15)
 
+	if toggled_on:
+		parent_node.selected_item = item_index
+	
 	expand_tween.finished.connect(func ():
 		expand_tween.kill()
 		expand_tween = null
 	)
 
-## 选中状态改变时调用
-func _on_selected() -> void:
-	# 已通过动画处理
-	pass
-
-## 取消选中时调用
-func _on_deselected() -> void:
-	# 已通过动画处理
-	pass
+	
+	await get_tree().create_timer(0.15).timeout
+	if toggled_on and parent_node.selected_item == item_index:
+		parent_node.need_snap = true

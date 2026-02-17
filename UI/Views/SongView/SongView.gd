@@ -57,11 +57,8 @@ func _refresh_display() -> void:
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)
 
-func _on_button_toggled(toggled_on: bool, index: int):
-	if toggled_on:
-		selected_item = index
 
-func _on_button_confirmed(index: int):
+func on_item_button_confirmed(index: int):
 	var song_data:SongData = current_songs[index]
 	print("Select Song:", song_data.name)
 	# 切换到MIDI视图

@@ -48,9 +48,11 @@ func switch_display(content_to_show: ShowStat = ShowStat.NONE):
 	if content_to_show == ShowStat.NONE:
 		if _visible:
 			ani.animate_position(self, position + Vector2(500, 134), 0.5, "RB_VISBLE")
+			_visible = false
 	else:
 		if not _visible:
 			ani.animate_position(self, position - Vector2(500, 134), 0.5, "RB_VISBLE")
+			_visible = true
 
 	var event = InputEventKey.new()
 	# 控制内容显示

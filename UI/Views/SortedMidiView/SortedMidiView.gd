@@ -23,7 +23,7 @@ var _midis_to_load: Array[MidiData] = []
 ## 当前加载的索引
 var _current_load_index: int = 0
 ## 每帧加载的节点数量（可调整以平衡性能）
-var _nodes_per_frame: int = 5
+var _nodes_per_frame: int = 2
 ## 加载延迟（帧数，用于降低每帧压力）
 var _load_frame_delay: int = 0
 ## 延迟计数器
@@ -88,7 +88,7 @@ func _process_loading() -> void:
 		_finish_loading()
 		print("Loaded %d midis" % _midis_to_load.size())
 
-func _on_button_confirmed(index: int) -> void:
+func on_item_button_confirmed(index: int) -> void:
 	var midi:MidiData = current_midis[index]
 	print("选中：%s / %s" % [midi.song_data.name, midi.name])
 	if event_bus and midi:

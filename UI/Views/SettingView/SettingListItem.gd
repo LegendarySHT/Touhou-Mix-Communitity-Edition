@@ -79,7 +79,6 @@ func setup_item(ID: String, content: String, desc: String, valueType: ValueType,
 
 # 更新弹出菜单样式
 func _on_popup_menu_popup(popup_menu: PopupMenu) -> void:
-	print("restyle")
 	await get_tree().process_frame
 	popup_menu.position.y += 20
 	popup_menu.position.x -= 20

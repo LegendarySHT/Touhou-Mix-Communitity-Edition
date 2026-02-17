@@ -30,6 +30,8 @@ var _mouse_press_pos:Vector2 = Vector2.ZERO
 
 var _pass_focus: bool = false
 
+var parent_node: Node = null
+
 signal btn_toggled(toggled_on: bool)
 signal btn_confirmed(index: int)
 
@@ -43,18 +45,17 @@ func init_btn(btn: Button, parent) -> void:
 		return
 
 	_item_btn = btn
+	parent_node = parent
 	
 	# 连接按钮信号
 	_item_btn.button_down.connect(_on_button_down)
 	_item_btn.button_up.connect(_on_button_up)
 	_item_btn.toggled.connect(_on_toggled)
 
-	if parent.has_method("_on_button_toggled"):
-		btn_toggled.connect(parent._on_button_toggled.bind(item_index))
-	if parent.has_method("_on_button_confirmed"):
-		btn_confirmed.connect(parent._on_button_confirmed)
-	if has_method("_on_button_toggled"):
-		btn_toggled.connect(self._on_button_toggled)
+	if parent.has_method("on_item_button_confirmed"):
+		btn_confirmed.connect(parent.on_item_button_confirmed)
+	if has_method("on_item_button_toggled"):
+		btn_toggled.connect(self.on_item_button_toggled)
 
 	# 自动选择聚焦的项
 	button.focus_entered.connect(_on_focus_entered)
@@ -65,8 +66,9 @@ func _on_focus_entered():
 		return
 
 	# 方向键聚焦时需要触发按钮
+	await get_tree().process_frame
 	if not button.button_pressed and _mouse_press_pos == Vector2.ZERO:
-		button.button_pressed = true
+		parent_node.select_item(item_index)
 
 func _on_button_down():
 	_mouse_press_pos = get_global_mouse_position()
@@ -152,7 +154,5 @@ func initialize(id: String, type: String) -> void:
 # 封面移动动画
 func process_item_cover_move() -> void:
 	var max_y = self.cover_texture.size.y - size.y
-	var window_height = get_viewport().get_visible_rect().size.y
-	var pos_y = - global_position.y / window_height * max_y
-	
-	self.cover_texture.position.y = pos_y
+	var window_height = parent_node.size.y
+	self.cover_texture.position.y = - global_position.y / window_height * max_y

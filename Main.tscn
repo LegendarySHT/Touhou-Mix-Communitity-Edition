@@ -25,6 +25,7 @@
 [ext_resource type="Script" uid="uid://dly3k36hy880k" path="res://UI/Components/PopupWindow.gd" id="23_bg4s2"]
 [ext_resource type="Script" uid="uid://bb04m122u3fvm" path="res://UI/Components/LeftTopBtn.gd" id="23_mxvw5"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
+[ext_resource type="Script" uid="uid://c6mxoockmlm1a" path="res://UI/Components/FocusManager.gd" id="26_xrxkg"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg4s2"]
 bg_color = Color(0.35644194, 0.4824527, 0.6469952, 1)
@@ -1038,6 +1039,17 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_o7g6l")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_gb15f")
 theme_override_styles/hover = SubResource("StyleBoxFlat_vi5kq")
 text = "确定"
+
+[node name="FocusManager" type="Control" parent="." unique_id=1592088624]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("26_xrxkg")
 
 [node name="TestNode" type="Node2D" parent="." unique_id=2008611241]
 visible = false

@@ -24,7 +24,7 @@ var active_tweens: Dictionary[String, Tween] = {}
 var tween_counter: int = 0
 
 # 场景退出信号
-# signal scene_transition_fin
+signal scene_transition_fin
 
 func _ready() -> void:
 	if instance == null:
@@ -278,12 +278,12 @@ var ui_part = {
 	UIStateManager.UIState.SCORE_VIEW: ["Score_View"],
 }
 
-var ui_path = {
+var ui_path_map = {
 	"Album_List" : "/root/Main/skew/C/AlbumList",
-	"Player_Info": "/root/Main/PlayerInfo",
-	"Shortcut_Menu" : "/root/Main/skew/C/ShortCutMenu",
 	"Song_List" : "/root/Main/skew/C/SongList",
+	"Player_Info": "/root/Main/PlayerInfo",
 	"Sorted_List" : "/root/Main/skew/C/SortedMidisList",
+	"Shortcut_Menu" : "/root/Main/skew/C/ShortCutMenu",
 	"Midi_Info_View" : "/root/Main/skew/C/InfoUI",
 	"Store_View": "/root/Main/Store",
 	"Track_List": "/root/Main/skew/C/TrackView",
@@ -293,9 +293,9 @@ var ui_path = {
 }
 
 func get_comp(ui_part_name: String) -> Node:
-	if not ui_path[ui_part_name]:
+	if not ui_path_map[ui_part_name]:
 		return
-	var node = get_node_or_null(ui_path[ui_part_name])
+	var node = get_node_or_null(ui_path_map[ui_part_name])
 	if node:
 		return node
 	else:
@@ -524,5 +524,5 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 	# 播放完毕
 	if tween:
 		tween.finished.connect(func() -> void:
-			pass
+			scene_transition_fin.emit()
 		)

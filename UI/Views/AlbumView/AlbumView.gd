@@ -57,12 +57,7 @@ func _process(delta):
 
 	if selected_item == -1 and not (is_dragging_list or is_dragging_bar or snap_tween or scroll_velocity != 0):
 		need_snap = true
-		print("need snap")
-
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed:
-		if event.keycode in [KEY_UP, KEY_DOWN]:
-			_album_move_up = event.keycode == KEY_UP
+		print("need snap v: %f" % scroll_velocity)
 
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)
@@ -74,12 +69,7 @@ func reset_selection():
 
 	selected_item= -1
 
-func _on_button_confirmed(index: int):
+func on_item_button_confirmed(index: int):
 	var album_id = current_albums[index].id
 	event_bus.album_selected.emit(album_id)
 	UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
-
-func _on_button_toggled(toggled_on: bool, index:int):
-	if toggled_on:
-		need_snap = true
-		selected_item = index

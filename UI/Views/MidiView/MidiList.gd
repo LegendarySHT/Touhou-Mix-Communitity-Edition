@@ -27,6 +27,9 @@ func load_midi(midis:Array[MidiData]) -> void:
 	current_midis = midis
 	_refresh_display()
 	_setup_focus_neighbor()
+	
+	await get_tree().process_frame
+	select_item(0)
 
 func _setup_focus_neighbor():
 	if container == null:
@@ -75,28 +78,11 @@ func _clear_list() -> void:
 func _gui_input(event):
 	super._gui_input(event)
 
-var waiting: bool = false
-
 func _process(_delta):
 	super._process(_delta)
-
-	# 吸附	
-	if not (is_dragging_list or snap_tween or selected_item == -1) and abs(scroll_vertical - get_selected_node().position.y + snap_offset_y) > 7:
-		need_snap = true
 	
-	if abs(_mouse_delta) > 50 and is_dragging_list and not waiting and selected_item != -1:
-		waiting = true
-		await wait_dragging()
-		var direction:int = 1 if _mouse_delta < 0.0 else -1
-		scroll_velocity = 0.0
-		need_snap = true
-		select_item(selected_item + direction)		
-
-func wait_dragging():
-	while Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		await get_tree().create_timer(0.2).timeout
-	waiting = false
-	return true
+	if abs(_mouse_delta) > 50 and is_dragging_list and list_items.size() > 1 and selected_item != -1:
+		_show_midi_list()
 
 func _show_midi_list(_index: int = 0) -> void:
 	if current_midis.size() == 1:

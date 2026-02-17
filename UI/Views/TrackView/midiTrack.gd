@@ -39,9 +39,6 @@ var midi_data: MidiData = null
 
 var instrument_options: Array = []
 
-# 父节点
-var parent_node: Node = null
-
 signal _init_fin
 
 func _ready():

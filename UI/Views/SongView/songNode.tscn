@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://b8gxe8bw01br7"]
+[gd_scene format=3 uid="uid://b8gxe8bw01br7"]
 
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="1_0asqb"]
 [ext_resource type="Script" uid="uid://bt0e0os76bnfm" path="res://UI/Views/SongView/SongListItem.gd" id="1_5wnnw"]
@@ -39,7 +39,7 @@ expand_margin_bottom = 3.0
 shadow_color = Color(0.18791977, 0.63770854, 0.86234844, 0.6)
 shadow_size = 10
 
-[node name="SongNode" type="MarginContainer"]
+[node name="SongNode" type="MarginContainer" unique_id=1629036043]
 custom_minimum_size = Vector2(900, 140)
 anchors_preset = 8
 anchor_left = 0.5
@@ -56,22 +56,22 @@ theme_override_constants/margin_left = 0
 script = ExtResource("1_5wnnw")
 metadata/index = 0
 
-[node name="PC" type="Panel" parent="."]
+[node name="PC" type="Panel" parent="." unique_id=1200680228]
 layout_mode = 2
 mouse_filter = 1
 
-[node name="HBoxC" type="HBoxContainer" parent="PC"]
+[node name="HBoxC" type="HBoxContainer" parent="PC" unique_id=1501583269]
 layout_mode = 0
 offset_right = 900.0
 offset_bottom = 140.0
 theme_override_constants/separation = 0
 
-[node name="PC" type="Panel" parent="PC/HBoxC"]
+[node name="PC" type="Panel" parent="PC/HBoxC" unique_id=533597184]
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="cover" type="TextureRect" parent="PC/HBoxC/PC"]
+[node name="cover" type="TextureRect" parent="PC/HBoxC/PC" unique_id=1928751118]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -84,7 +84,7 @@ expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true
 
-[node name="SongName" type="Label" parent="PC/HBoxC/PC"]
+[node name="SongName" type="Label" parent="PC/HBoxC/PC" unique_id=22989094]
 custom_minimum_size = Vector2(600, 40)
 layout_mode = 1
 anchors_preset = 2
@@ -104,13 +104,13 @@ text = "Test Title"
 vertical_alignment = 2
 metadata/_edit_use_anchors_ = true
 
-[node name="CountBase" type="PanelContainer" parent="PC/HBoxC"]
+[node name="CountBase" type="PanelContainer" parent="PC/HBoxC" unique_id=1977890608]
 custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
 size_flags_horizontal = 8
 theme_override_styles/panel = SubResource("StyleBoxFlat_xw3gp")
 
-[node name="SongCount" type="Label" parent="PC/HBoxC/CountBase"]
+[node name="SongCount" type="Label" parent="PC/HBoxC/CountBase" unique_id=1861393487]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 80
@@ -118,7 +118,7 @@ text = "9"
 horizontal_alignment = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="Border" type="PanelContainer" parent="PC"]
+[node name="Border" type="PanelContainer" parent="PC" unique_id=1884286811]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -128,7 +128,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_krpnw")
 
-[node name="SongButton" type="Button" parent="PC"]
+[node name="SongButton" type="Button" parent="PC" unique_id=1363007175]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -137,7 +137,7 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
-focus_next = NodePath("/root/Main/ShortCutMenu/skew/VBoxC/Btns/Search")
+focus_next = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
 mouse_filter = 1
 theme_override_styles/normal = SubResource("StyleBoxFlat_3ky2n")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_m8nr4")

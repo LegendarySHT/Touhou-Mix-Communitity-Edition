@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://nab403xwq74t"]
 
-[node name="ValueOption" type="OptionButton"]
+[node name="ValueOption" type="OptionButton" unique_id=552600227]
 custom_minimum_size = Vector2(500, 80)
 size_flags_vertical = 4
 focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")

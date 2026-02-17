@@ -360,7 +360,7 @@ func pause() -> void:
 
 	# 暂停人声播放
 	var audio_manager = AudioManager.instance
-	if audio_manager != null:
+	if current_midi_data and audio_manager:
 		audio_manager.set_vocal_playing(false)
 
 	midi_paused.emit()
@@ -376,7 +376,7 @@ func resume() -> void:
 
 	# 恢复人声播放
 	var audio_manager = AudioManager.instance
-	if audio_manager != null and not current_midi_data.vocal_file_path.is_empty():
+	if current_midi_data and audio_manager and current_midi_data.vocal_file_path:
 		audio_manager.set_vocal_playing(true)
 
 	midi_started.emit()

@@ -29,9 +29,6 @@ var _is_reloading_settings: bool = false
 func _ready():	
 	# 初始化架构的核心系统
 	_initialize_core_systems()
-	# get_viewport().gui_focus_changed.connect(func(node):
-	# 	print("[Main] Focus changed to: %s" % node.name)
-	# )
 
 ## 初始化核心系统
 func _initialize_core_systems() -> void:

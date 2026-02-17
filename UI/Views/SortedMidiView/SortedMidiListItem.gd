@@ -50,11 +50,3 @@ func setup_with_midi(midi: MidiData, index: int, bg:ButtonGroup) -> void:
 	enable_selected_animation(button, get_parent().get_parent())
 
 	_init_fin.emit()
-
-## 按钮切换回调
-# func _on_button_toggled(toggled_on: bool) -> void:
-	
-# 	select_tween = create_tween()
-# 	select_tween.set_trans(Tween.TRANS_SINE)
-	
-# 	select_tween.tween_property(line, "default_color", Color("#938aff" if toggled_on else "ffffff"), 0.15)
