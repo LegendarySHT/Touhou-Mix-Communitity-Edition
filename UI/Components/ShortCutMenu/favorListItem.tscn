@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://xgcfhg1x2v6p"]
+[gd_scene format=3 uid="uid://xgcfhg1x2v6p"]
 
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="1_2ct6a"]
 
@@ -14,20 +14,20 @@ corner_radius_top_right = 2
 corner_radius_bottom_right = 2
 corner_radius_bottom_left = 2
 
-[node name="FavorListItem" type="HBoxContainer"]
+[node name="FavorListItem" type="HBoxContainer" unique_id=501898749]
 custom_minimum_size = Vector2(500, 0)
 size_flags_horizontal = 4
 theme_override_constants/separation = 40
 alignment = 1
 
-[node name="Cover" type="TextureRect" parent="."]
+[node name="Cover" type="TextureRect" parent="." unique_id=768884939]
 custom_minimum_size = Vector2(130, 130)
 layout_mode = 2
 texture = ExtResource("1_2ct6a")
 expand_mode = 3
 stretch_mode = 5
 
-[node name="PanelContainer" type="PanelContainer" parent="Cover"]
+[node name="PanelContainer" type="PanelContainer" parent="Cover" unique_id=738276527]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -36,12 +36,12 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_w3rk5")
 
-[node name="Detail" type="VBoxContainer" parent="."]
+[node name="Detail" type="VBoxContainer" parent="." unique_id=151275904]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 20
 
-[node name="name" type="Label" parent="Detail"]
+[node name="name" type="Label" parent="Detail" unique_id=116221595]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 size_flags_horizontal = 0
@@ -51,7 +51,7 @@ text = "Test"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="midiCount" type="Label" parent="Detail"]
+[node name="midiCount" type="Label" parent="Detail" unique_id=2135430848]
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8

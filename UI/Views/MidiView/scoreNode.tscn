@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://bp8bri6wqdv2r"]
+[gd_scene format=3 uid="uid://bp8bri6wqdv2r"]
 
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_7sie2"]
 [ext_resource type="Script" uid="uid://b5vntbnq4wmg6" path="res://UI/Views/MidiView/ScoreListItem.gd" id="1_uq81t"]
@@ -51,14 +51,14 @@ corner_detail = 1
 expand_margin_left = 10.0
 expand_margin_right = 10.0
 
-[node name="scoreNode" type="Panel"]
+[node name="scoreNode" type="Panel" unique_id=385020851]
 custom_minimum_size = Vector2(540, 115)
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_qg2wq")
 script = ExtResource("1_uq81t")
 
-[node name="Rank" type="Label" parent="."]
+[node name="Rank" type="Label" parent="." unique_id=1945223485]
 layout_mode = 0
 offset_left = 5.0
 offset_top = 10.0
@@ -69,7 +69,7 @@ text = "9999"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Avator" type="PanelContainer" parent="."]
+[node name="Avator" type="PanelContainer" parent="." unique_id=1334152507]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 0
 offset_left = 80.0
@@ -78,13 +78,13 @@ offset_right = 160.0
 offset_bottom = 98.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_dnql7")
 
-[node name="img" type="TextureRect" parent="Avator"]
+[node name="img" type="TextureRect" parent="Avator" unique_id=1969631023]
 layout_mode = 2
 texture = ExtResource("1_7sie2")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Name" type="Label" parent="."]
+[node name="Name" type="Label" parent="." unique_id=1517668509]
 layout_mode = 1
 anchors_preset = 14
 anchor_top = 0.5
@@ -100,7 +100,7 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 25
 text = "Anonymous"
 
-[node name="Count" type="HBoxContainer" parent="."]
+[node name="Count" type="HBoxContainer" parent="." unique_id=1690664596]
 layout_mode = 1
 anchors_preset = 14
 anchor_top = 0.5
@@ -113,7 +113,7 @@ offset_bottom = 31.5
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="perfect" type="Label" parent="Count"]
+[node name="perfect" type="Label" parent="Count" unique_id=871669001]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 1, 1, 1)
@@ -121,7 +121,7 @@ theme_override_colors/font_outline_color = Color(1, 0, 1, 1)
 theme_override_constants/outline_size = 2
 text = "1234"
 
-[node name="great" type="Label" parent="Count"]
+[node name="great" type="Label" parent="Count" unique_id=477783863]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 1, 1, 1)
@@ -129,7 +129,7 @@ theme_override_colors/font_outline_color = Color(1, 0.4627451, 0, 1)
 theme_override_constants/outline_size = 2
 text = "5678"
 
-[node name="good" type="Label" parent="Count"]
+[node name="good" type="Label" parent="Count" unique_id=24369664]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 1, 1, 1)
@@ -137,7 +137,7 @@ theme_override_colors/font_outline_color = Color(0.10980392, 0.6901961, 1, 1)
 theme_override_constants/outline_size = 2
 text = "9101"
 
-[node name="bad" type="Label" parent="Count"]
+[node name="bad" type="Label" parent="Count" unique_id=1962548040]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 1, 1, 1)
@@ -145,7 +145,7 @@ theme_override_colors/font_outline_color = Color(0.4, 1, 0.3647059, 1)
 theme_override_constants/outline_size = 2
 text = "1121"
 
-[node name="miss" type="Label" parent="Count"]
+[node name="miss" type="Label" parent="Count" unique_id=479131242]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 1, 1, 1)
@@ -153,7 +153,7 @@ theme_override_colors/font_outline_color = Color(1, 0, 0, 1)
 theme_override_constants/outline_size = 2
 text = "3141"
 
-[node name="ScoreRank" type="Label" parent="."]
+[node name="ScoreRank" type="Label" parent="." unique_id=767573198]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -167,7 +167,7 @@ text = "SSS"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="Acc" type="Label" parent="."]
+[node name="Acc" type="Label" parent="." unique_id=2014071177]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -183,7 +183,7 @@ grow_vertical = 0
 text = "99.99%"
 horizontal_alignment = 2
 
-[node name="Score" type="Label" parent="."]
+[node name="Score" type="Label" parent="." unique_id=1227021279]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -197,7 +197,7 @@ theme_override_font_sizes/font_size = 24
 text = "1,000,000,000"
 horizontal_alignment = 2
 
-[node name="PP" type="Label" parent="."]
+[node name="PP" type="Label" parent="." unique_id=332974902]
 layout_mode = 0
 offset_left = 11.0
 offset_top = 55.0
@@ -208,7 +208,7 @@ theme_override_font_sizes/font_size = 18
 text = "99.99"
 horizontal_alignment = 1
 
-[node name="PP_unit" type="Label" parent="."]
+[node name="PP_unit" type="Label" parent="." unique_id=1873010154]
 layout_mode = 0
 offset_left = 11.0
 offset_top = 55.0
@@ -220,7 +220,7 @@ text = "
 pp"
 horizontal_alignment = 1
 
-[node name="Button" type="Button" parent="."]
+[node name="Button" type="Button" parent="." unique_id=487824627]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

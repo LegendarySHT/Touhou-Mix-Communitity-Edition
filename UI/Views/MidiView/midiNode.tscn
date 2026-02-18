@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://dcmlyvps8badu"]
+[gd_scene format=3 uid="uid://dcmlyvps8badu"]
 
 [ext_resource type="Script" uid="uid://cax20p7g1wjmk" path="res://UI/Views/MidiView/MidiListItem.gd" id="1_t5w3i"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_jdrqc"]
@@ -8,7 +8,7 @@
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yxlt8"]
 
-[node name="MidiNode" type="Panel"]
+[node name="MidiNode" type="Panel" unique_id=1462937211]
 clip_children = 2
 clip_contents = true
 custom_minimum_size = Vector2(750, 150)
@@ -29,7 +29,7 @@ script = ExtResource("1_t5w3i")
 metadata/index = 0
 metadata/_edit_use_anchors_ = true
 
-[node name="cover" type="TextureRect" parent="."]
+[node name="cover" type="TextureRect" parent="." unique_id=1008069035]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 1
 anchors_preset = 15
@@ -41,7 +41,7 @@ texture = ExtResource("2_jdrqc")
 expand_mode = 5
 stretch_mode = 6
 
-[node name="VBoxC" type="VBoxContainer" parent="."]
+[node name="VBoxC" type="VBoxContainer" parent="." unique_id=567127082]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -52,7 +52,7 @@ grow_horizontal = 2
 grow_vertical = 0
 alignment = 1
 
-[node name="MidiName" type="Label" parent="VBoxC"]
+[node name="MidiName" type="Label" parent="VBoxC" unique_id=2113026606]
 custom_minimum_size = Vector2(700, 0)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -65,17 +65,17 @@ theme_override_font_sizes/font_size = 30
 text = "Midi Name"
 clip_text = true
 
-[node name="Line2D" type="Line2D" parent="VBoxC"]
+[node name="Line2D" type="Line2D" parent="VBoxC" unique_id=491699227]
 position = Vector2(-50, 12)
 points = PackedVector2Array(80, 45, 810, 45)
 width = 6.0
 
-[node name="HBoxC" type="HBoxContainer" parent="VBoxC"]
+[node name="HBoxC" type="HBoxContainer" parent="VBoxC" unique_id=1276140823]
 custom_minimum_size = Vector2(700, 0)
 layout_mode = 2
 size_flags_horizontal = 4
 
-[node name="Author" type="Label" parent="VBoxC/HBoxC"]
+[node name="Author" type="Label" parent="VBoxC/HBoxC" unique_id=282130580]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 8
@@ -89,7 +89,7 @@ text = "Midi Author"
 vertical_alignment = 2
 clip_text = true
 
-[node name="status" type="Label" parent="VBoxC/HBoxC"]
+[node name="status" type="Label" parent="VBoxC/HBoxC" unique_id=362322097]
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
@@ -100,12 +100,12 @@ theme_override_font_sizes/font_size = 30
 text = "Pending"
 horizontal_alignment = 2
 
-[node name="MC" type="MarginContainer" parent="VBoxC"]
+[node name="MC" type="MarginContainer" parent="VBoxC" unique_id=810258023]
 layout_mode = 2
 size_flags_vertical = 8
 theme_override_constants/margin_bottom = 0
 
-[node name="Button" type="Button" parent="."]
+[node name="Button" type="Button" parent="." unique_id=188973569]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

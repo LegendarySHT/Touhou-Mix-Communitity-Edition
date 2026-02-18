@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3 uid="uid://ttmjc3cbi1bi"]
+[gd_scene format=3 uid="uid://ttmjc3cbi1bi"]
 
 [ext_resource type="Script" uid="uid://bh655hfw6k0q2" path="res://UI/Views/TrackView/midiTrack.gd" id="1_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://balwiilkbpuhy" path="res://Resources/icon/TrackView/note.png" id="1_ni118"]
@@ -149,7 +149,7 @@ thickness = 4
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3ket"]
 draw_center = false
 
-[node name="MidiTrack" type="Panel"]
+[node name="MidiTrack" type="Panel" unique_id=1103190500]
 custom_minimum_size = Vector2(1600, 220)
 anchors_preset = 15
 anchor_right = 1.0
@@ -163,7 +163,7 @@ theme = SubResource("Theme_7rc5s")
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
 script = ExtResource("1_7rc5s")
 
-[node name="HBoxC" type="HBoxContainer" parent="."]
+[node name="HBoxC" type="HBoxContainer" parent="." unique_id=1434828365]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -172,14 +172,14 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 0
 
-[node name="CH" type="Panel" parent="HBoxC"]
+[node name="CH" type="Panel" parent="HBoxC" unique_id=1411896934]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_83r2u")
 
-[node name="ChannelBtn" type="Button" parent="HBoxC/CH"]
+[node name="ChannelBtn" type="Button" parent="HBoxC/CH" unique_id=2026164560]
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
@@ -198,7 +198,7 @@ flat = true
 alignment = 0
 icon_alignment = 1
 
-[node name="ChannelNum" type="Label" parent="HBoxC/CH"]
+[node name="ChannelNum" type="Label" parent="HBoxC/CH" unique_id=1233572765]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 1
 anchors_preset = 10
@@ -212,14 +212,14 @@ text = "18"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="TR" type="Panel" parent="HBoxC"]
+[node name="TR" type="Panel" parent="HBoxC" unique_id=673994964]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_7vp1s")
 
-[node name="TrackBtn" type="Button" parent="HBoxC/TR"]
+[node name="TrackBtn" type="Button" parent="HBoxC/TR" unique_id=542580576]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -239,7 +239,7 @@ flat = true
 alignment = 0
 icon_alignment = 1
 
-[node name="TrackNum" type="Label" parent="HBoxC/TR"]
+[node name="TrackNum" type="Label" parent="HBoxC/TR" unique_id=238719046]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 1
 anchors_preset = 10
@@ -253,7 +253,7 @@ text = "1"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="MC" type="MarginContainer" parent="HBoxC"]
+[node name="MC" type="MarginContainer" parent="HBoxC" unique_id=1397601145]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/margin_left = 30
@@ -261,12 +261,12 @@ theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 50
 theme_override_constants/margin_bottom = 20
 
-[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC"]
+[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC" unique_id=327389710]
 custom_minimum_size = Vector2(1080, 0)
 layout_mode = 2
 theme_override_constants/separation = -4
 
-[node name="enableBtn" type="Button" parent="HBoxC/MC/HBoxC"]
+[node name="enableBtn" type="Button" parent="HBoxC/MC/HBoxC" unique_id=888662538]
 z_index = 1
 custom_minimum_size = Vector2(280, 180)
 layout_mode = 2
@@ -280,7 +280,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_r0ui6")
 theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_kgiiq")
 toggle_mode = true
 
-[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC/HBoxC/enableBtn"]
+[node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC/HBoxC/enableBtn" unique_id=627034855]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 1
 anchors_preset = 14
@@ -291,12 +291,12 @@ grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
 
-[node name="Icon" type="TextureRect" parent="HBoxC/MC/HBoxC/enableBtn/HBoxC"]
+[node name="Icon" type="TextureRect" parent="HBoxC/MC/HBoxC/enableBtn/HBoxC" unique_id=1705559011]
 layout_mode = 2
 texture = ExtResource("1_ni118")
 expand_mode = 3
 
-[node name="Text" type="Label" parent="HBoxC/MC/HBoxC/enableBtn/HBoxC"]
+[node name="Text" type="Label" parent="HBoxC/MC/HBoxC/enableBtn/HBoxC" unique_id=1745489155]
 custom_minimum_size = Vector2(130, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 48
@@ -304,25 +304,25 @@ text = "已启用"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="MC" type="MarginContainer" parent="HBoxC/MC/HBoxC"]
+[node name="MC" type="MarginContainer" parent="HBoxC/MC/HBoxC" unique_id=1795218493]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/margin_top = 25
 theme_override_constants/margin_bottom = 25
 
-[node name="flowArea" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC"]
+[node name="flowArea" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC" unique_id=1152135973]
 layout_mode = 2
 theme_override_constants/separation = 0
 script = ExtResource("2_7rc5s")
 
-[node name="noteFlowArea" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea"]
+[node name="noteFlowArea" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea" unique_id=938369012]
 custom_minimum_size = Vector2(940, 160)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxTexture_kgiiq")
 
-[node name="canvas" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea/noteFlowArea"]
+[node name="canvas" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea/noteFlowArea" unique_id=1782789059]
 clip_children = 1
 layout_mode = 1
 anchors_preset = 15
@@ -332,13 +332,13 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="noteTotal" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea"]
+[node name="noteTotal" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea" unique_id=876599378]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_xcqgn")
 
-[node name="VBoxC" type="VBoxContainer" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal"]
+[node name="VBoxC" type="VBoxContainer" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal" unique_id=1115858912]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -353,7 +353,7 @@ grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
 
-[node name="passedNote" type="Label" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC"]
+[node name="passedNote" type="Label" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC" unique_id=485936147]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -361,12 +361,12 @@ theme_override_font_sizes/font_size = 44
 text = "0"
 vertical_alignment = 1
 
-[node name="Control" type="Control" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC"]
+[node name="Control" type="Control" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC" unique_id=1616577273]
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="HSeparator" type="HSeparator" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC/Control"]
+[node name="HSeparator" type="HSeparator" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC/Control" unique_id=1309576665]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -380,7 +380,7 @@ grow_vertical = 2
 rotation = -0.34906584
 theme_override_styles/separator = SubResource("StyleBoxLine_7vp1s")
 
-[node name="totalNote" type="Label" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC"]
+[node name="totalNote" type="Label" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC" unique_id=884233785]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 8
@@ -388,14 +388,14 @@ theme_override_font_sizes/font_size = 44
 text = "9999"
 vertical_alignment = 1
 
-[node name="ControlPanel" type="Panel" parent="HBoxC/MC/HBoxC/MC"]
+[node name="ControlPanel" type="Panel" parent="HBoxC/MC/HBoxC/MC" unique_id=211174657]
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_c3ket")
 
-[node name="GridC" type="GridContainer" parent="HBoxC/MC/HBoxC/MC/ControlPanel"]
+[node name="GridC" type="GridContainer" parent="HBoxC/MC/HBoxC/MC/ControlPanel" unique_id=761362062]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -410,7 +410,7 @@ theme_override_constants/h_separation = 40
 theme_override_constants/v_separation = 20
 columns = 3
 
-[node name="MuteBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
+[node name="MuteBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=1626224669]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 focus_mode = 0
@@ -419,28 +419,28 @@ texture_normal = ExtResource("2_phpps")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="Volume" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
+[node name="Volume" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=34573128]
 custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 
-[node name="Slider" type="HSlider" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC/Volume"]
+[node name="Slider" type="HSlider" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC/Volume" unique_id=1999306910]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 size_flags_stretch_ratio = 3.5
 
-[node name="Label" type="Label" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC/Volume"]
+[node name="Label" type="Label" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC/Volume" unique_id=592580644]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "-1.00dB"
 horizontal_alignment = 2
 
-[node name="PlaceHolderBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
+[node name="PlaceHolderBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=1252566824]
 layout_mode = 2
 focus_mode = 0
 disabled = true
 
-[node name="SoloBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
+[node name="SoloBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=1461801783]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 focus_mode = 0
@@ -449,7 +449,7 @@ texture_normal = ExtResource("3_7rc5s")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="InstrumentBtn" type="OptionButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
+[node name="InstrumentBtn" type="OptionButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=1017194372]
 custom_minimum_size = Vector2(250, 50)
 layout_mode = 2
 focus_mode = 0
@@ -462,7 +462,7 @@ item_count = 1
 popup/item_0/text = "Grand Piano"
 popup/item_0/id = 0
 
-[node name="ResetBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC"]
+[node name="ResetBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=955571887]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 texture_normal = ExtResource("6_r0ui6")

@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://gcsnfsagjom5"]
 
-[node name="ValueLineEdit" type="HBoxContainer"]
+[node name="ValueLineEdit" type="HBoxContainer" unique_id=43757917]
 custom_minimum_size = Vector2(500, 80)
 size_flags_vertical = 4
 
-[node name="LineEdit" type="LineEdit" parent="."]
+[node name="LineEdit" type="LineEdit" parent="." unique_id=1158713396]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -16,7 +16,7 @@ placeholder_text = "222222"
 alignment = 1
 max_length = 64
 
-[node name="Label" type="Label" parent="."]
+[node name="Label" type="Label" parent="." unique_id=407175546]
 visible = false
 custom_minimum_size = Vector2(50, 0)
 layout_mode = 2

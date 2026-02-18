@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://dvvggbuqsfxbw"]
+[gd_scene format=3 uid="uid://dvvggbuqsfxbw"]
 
 [ext_resource type="Script" uid="uid://dbgwcersgki3c" path="res://UI/Views/StoreView/StoreView.gd" id="1_77ghf"]
 [ext_resource type="Texture2D" uid="uid://7e7lff81aa7n" path="res://Resources/Gradient/gradient2.png" id="1_aexbj"]
@@ -86,7 +86,7 @@ expand_margin_top = 1.0
 shadow_color = Color(0, 0, 0, 0.3137255)
 shadow_size = 5
 
-[node name="Store" type="Control"]
+[node name="Store" type="Control" unique_id=1657778665]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -95,7 +95,7 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 4
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="." unique_id=1241267256]
 custom_minimum_size = Vector2(1921, 1080)
 layout_mode = 1
 anchors_preset = 15
@@ -105,7 +105,7 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = ExtResource("1_aexbj")
 
-[node name="StoreMidiList" type="ScrollContainer" parent="."]
+[node name="StoreMidiList" type="ScrollContainer" parent="." unique_id=259951663]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -118,7 +118,7 @@ script = ExtResource("1_77ghf")
 container_path = NodePath("MC/HFlowBox")
 list_item_class = "res://UI/Views/StoreView/storeMidiNode.tscn"
 
-[node name="MC" type="MarginContainer" parent="StoreMidiList"]
+[node name="MC" type="MarginContainer" parent="StoreMidiList" unique_id=925431239]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/margin_left = 100
@@ -126,7 +126,7 @@ theme_override_constants/margin_top = 180
 theme_override_constants/margin_right = 80
 theme_override_constants/margin_bottom = 100
 
-[node name="HFlowBox" type="HFlowContainer" parent="StoreMidiList/MC"]
+[node name="HFlowBox" type="HFlowContainer" parent="StoreMidiList/MC" unique_id=1401520399]
 custom_minimum_size = Vector2(1790, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -135,7 +135,7 @@ theme_override_constants/h_separation = 65
 theme_override_constants/v_separation = 40
 alignment = 1
 
-[node name="TopBar" type="Panel" parent="."]
+[node name="TopBar" type="Panel" parent="." unique_id=508610703]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 1
 anchors_preset = 10
@@ -144,7 +144,7 @@ offset_bottom = 108.0
 grow_horizontal = 2
 theme_override_styles/panel = SubResource("StyleBoxTexture_77ghf")
 
-[node name="Left" type="HBoxContainer" parent="TopBar"]
+[node name="Left" type="HBoxContainer" parent="TopBar" unique_id=431206611]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -154,7 +154,7 @@ grow_vertical = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 30
 
-[node name="FilterBtn" type="OptionButton" parent="TopBar/Left"]
+[node name="FilterBtn" type="OptionButton" parent="TopBar/Left" unique_id=685507467]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 30
@@ -169,32 +169,32 @@ popup/item_1/text = "歌曲时长"
 popup/item_1/icon = ExtResource("4_6ial6")
 popup/item_1/id = 1
 
-[node name="Search" type="MarginContainer" parent="TopBar/Left"]
+[node name="Search" type="MarginContainer" parent="TopBar/Left" unique_id=802377483]
 custom_minimum_size = Vector2(800, 0)
 layout_mode = 2
 theme_override_constants/margin_left = 60
 theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 60
 
-[node name="Base" type="Polygon2D" parent="TopBar/Left/Search"]
+[node name="Base" type="Polygon2D" parent="TopBar/Left/Search" unique_id=1074993710]
 position = Vector2(-578, 22)
 offset = Vector2(0, -30)
 polygon = PackedVector2Array(515, 0, 555, 150, 1350, 150, 1390, 0)
 vertex_colors = PackedColorArray(0.101961, 0.576471, 1, 1, 0.0666667, 0.556863, 1, 1, 0.0862745, 0.439216, 1, 1, 0.180392, 0.454902, 0.952941, 1)
 
-[node name="HBoxC" type="HBoxContainer" parent="TopBar/Left/Search"]
+[node name="HBoxC" type="HBoxContainer" parent="TopBar/Left/Search" unique_id=249968099]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
 theme_override_constants/separation = 30
 alignment = 1
 
-[node name="LineEdit" type="LineEdit" parent="TopBar/Left/Search/HBoxC"]
+[node name="LineEdit" type="LineEdit" parent="TopBar/Left/Search/HBoxC" unique_id=1750621200]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 8.0
 
-[node name="Btn" type="TextureButton" parent="TopBar/Left/Search/HBoxC"]
+[node name="Btn" type="TextureButton" parent="TopBar/Left/Search/HBoxC" unique_id=957020667]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -202,11 +202,11 @@ texture_normal = ExtResource("2_e4ark")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="HBoxC" type="HBoxContainer" parent="TopBar/Left"]
+[node name="HBoxC" type="HBoxContainer" parent="TopBar/Left" unique_id=1608466823]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="OrderBtn" type="TextureButton" parent="TopBar/Left/HBoxC"]
+[node name="OrderBtn" type="TextureButton" parent="TopBar/Left/HBoxC" unique_id=93771349]
 self_modulate = Color(1, 1, 1, 0.768627)
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
@@ -216,7 +216,7 @@ texture_pressed = ExtResource("6_f6x17")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="Bottom" type="HBoxContainer" parent="."]
+[node name="Bottom" type="HBoxContainer" parent="." unique_id=518013240]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -231,7 +231,7 @@ grow_vertical = 0
 theme_override_constants/separation = 0
 alignment = 1
 
-[node name="Previ" type="Button" parent="Bottom"]
+[node name="Previ" type="Button" parent="Bottom" unique_id=1181404421]
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
@@ -242,7 +242,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_hfgmo")
 text = "⇦"
 icon_alignment = 1
 
-[node name="Indicate" type="Label" parent="Bottom"]
+[node name="Indicate" type="Label" parent="Bottom" unique_id=861064550]
 z_index = 1
 layout_mode = 2
 size_flags_horizontal = 3
@@ -254,7 +254,7 @@ text = "999/999"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Next" type="Button" parent="Bottom"]
+[node name="Next" type="Button" parent="Bottom" unique_id=1288374129]
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0

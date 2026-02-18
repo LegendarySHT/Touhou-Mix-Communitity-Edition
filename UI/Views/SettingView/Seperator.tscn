@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://dqfuc8qy1qhb7"]
+[gd_scene format=3 uid="uid://dqfuc8qy1qhb7"]
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_m3shx"]
 color = Color(1, 1, 1, 1)
@@ -6,7 +6,7 @@ grow_begin = 50.0
 grow_end = 60.0
 thickness = 8
 
-[node name="Seperator" type="HSeparator"]
+[node name="Seperator" type="HSeparator" unique_id=499412332]
 custom_minimum_size = Vector2(0, 150)
 size_flags_horizontal = 3
 mouse_filter = 1
