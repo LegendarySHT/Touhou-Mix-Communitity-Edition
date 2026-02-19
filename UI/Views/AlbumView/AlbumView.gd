@@ -71,5 +71,7 @@ func reset_selection():
 
 func on_item_button_confirmed(index: int):
 	var album_id = current_albums[index].id
+	if container.get_child(index).expand_tween:
+		await container.get_child(index).expand_tween.finished
 	event_bus.album_selected.emit(album_id)
 	UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)

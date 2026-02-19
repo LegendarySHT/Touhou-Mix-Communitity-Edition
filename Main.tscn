@@ -3,7 +3,6 @@
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_devvj"]
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://bf7nd5qojdcla" path="res://Resources/icon/lily-white.png" id="2_3b0ty"]
-[ext_resource type="Texture2D" uid="uid://cbkgu4o71ikgo" path="res://Resources/Gradient/gradient1.png" id="3_bg4s2"]
 [ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/RightBottomBtn.gd" id="7_sqvbp"]
 [ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView/AlbumView.gd" id="7_w3rk5"]
 [ext_resource type="Script" uid="uid://dpn6fchjbt3b8" path="res://UI/Components/SkewArea.gd" id="8_3b0ty"]
@@ -51,6 +50,14 @@ expand_margin_bottom = 6.0
 shadow_color = Color(0, 0, 0, 0.24313726)
 shadow_size = 12
 shadow_offset = Vector2(2, 2)
+
+[sub_resource type="Gradient" id="Gradient_mxvw5"]
+interpolation_mode = 2
+colors = PackedColorArray(0, 0.28235295, 0.6862745, 0.6, 0.39607844, 0.43137255, 0.8352941, 0.89411765)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_xrxkg"]
+gradient = SubResource("Gradient_mxvw5")
+fill_to = Vector2(1, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1vlqv"]
 content_margin_left = 4.0
@@ -451,7 +458,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-texture = ExtResource("3_bg4s2")
+texture = SubResource("GradientTexture2D_xrxkg")
 metadata/_edit_lock_ = true
 
 [node name="skew" type="Node2D" parent="." unique_id=761664000]

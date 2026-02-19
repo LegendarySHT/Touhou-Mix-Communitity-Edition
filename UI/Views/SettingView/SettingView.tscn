@@ -278,6 +278,7 @@ grow_vertical = 2
 alignment = 1
 
 [node name="ShortCut" type="VBoxContainer" parent="HBoxC" unique_id=1510637142]
+z_index = 2
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 focus_mode = 1
@@ -341,6 +342,7 @@ button_group = SubResource("ButtonGroup_tf36t")
 text = "外观"
 
 [node name="SettingList" type="ScrollContainer" parent="HBoxC" unique_id=864187716]
+z_index = 1
 clip_contents = false
 custom_minimum_size = Vector2(1300, 0)
 layout_mode = 2
@@ -361,6 +363,7 @@ theme_override_constants/v_separation = 20
 columns = 2
 
 [node name="DelView" type="HBoxContainer" parent="." unique_id=2038911108]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

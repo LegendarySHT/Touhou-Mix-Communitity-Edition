@@ -14,12 +14,16 @@ func _on_focus_change(_node: Control):
 	return
 
 func _on_state_enter():
-	if ui.current_state in [ui.UIState.ALBUM_VIEW, ui.UIState.SONG_VIEW, ui.UIState.SORTED_VIEW]:
-		var nd = get_node(ani.ui_path_map[ani.ui_path_map.keys()[ui.current_state]])
-		if nd.selected_item == -1:
-			nd.select_item(0)
-			# nd.selected_item = 0
-		nd.get_selected_node().button.grab_focus()
+	match ui.current_state:
+		ui.UIState.ALBUM_VIEW, ui.UIState.SONG_VIEW, ui.UIState.SORTED_VIEW:
+			var nd = get_node(ani.ui_path_map[ani.ui_path_map.keys()[ui.current_state]])
+			if nd.selected_item == -1:
+				nd.select_item(0)
+			nd.get_selected_node().button.grab_focus()
+		ui.UIState.SETTINGS_VIEW:
+			get_node("/root/Main/skew/C/SettingView").short_cut_btn.grab_focus()
+		ui.UIState.STORE_VIEW:
+			get_node("/root/Main/Store/StoreMidiList").container.get_child(0).button.grab_focus()
 
 
 

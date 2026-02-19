@@ -29,12 +29,15 @@ func _ready() -> void:
 func _on_state_change(_old_state, new_state: UIStateManager.UIState):
 	if new_state in [ui.UIState.SETTINGS_VIEW]:
 		switch_display(ShowStat.ARROW_LEFT)
+	elif new_state in [ui.UIState.STORE_VIEW, ui.UIState.PLAY_VIEW]:
+		switch_display(ShowStat.NONE)
 	else:
 		switch_display(ShowStat.SETTING_BTN)
 
 var _current_stat: ShowStat = ShowStat.SETTING_BTN
 var _visible: bool = true
 var _arrow_left: bool = false
+var _rot_tween: Tween = null
 func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 	if content_to_show == _current_stat:
 		return
@@ -46,6 +49,10 @@ func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 	else:
 		if not _visible:
 			ani.animate_position(self, position - Vector2(-500, -134), 0.5, "LT_VISBLE")
+	_visible = content_to_show != ShowStat.NONE
+	
+	if _rot_tween:
+		await _rot_tween.finished
 
 	var event = InputEventKey.new()
 	# 控制内容显示
@@ -56,16 +63,21 @@ func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 		ShowStat.ARROW_RIGHT:
 			ani.animate_position(vboxc, Vector2(vboxc.position.x, -390), 0.35, "LT_ICON")
 			if _arrow_left:
-				ani.animate_rotation(arrow, arrow.rotation + PI, 0.4, "LT_ARROW_ROT")
+				_rot_tween = ani.animate_rotation(arrow, arrow.rotation + PI, 0.2, "LT_ARROW_ROT")
 				_arrow_left = false
 			event.keycode = KEY_E
 		ShowStat.ARROW_LEFT:
 			ani.animate_position(vboxc, Vector2(vboxc.position.x, -390), 0.35, "LT_ICON")
 			if not _arrow_left:
-				ani.animate_rotation(arrow, arrow.rotation + PI, 0.4, "LT_ARROW_ROT")
+				_rot_tween = ani.animate_rotation(arrow, arrow.rotation + PI, 0.2, "LT_ARROW_ROT")
 				_arrow_left = true
 			event.keycode = KEY_Q
 	
+	if _rot_tween:
+		_rot_tween.finished.connect(func ():
+			_rot_tween = null
+		)
+
 	# 快捷键
 	btn.shortcut.events[0] = event
 	_current_stat = content_to_show

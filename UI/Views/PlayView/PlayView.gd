@@ -45,6 +45,9 @@ extends Control
 # 轨道光效及键位显示
 @onready var lane_area: Control = $Lane
 
+@onready var env: WorldEnvironment = $FlowArea/SVP/WorldEnvironment
+@onready var current_env: Environment = env.environment
+
 # auto标识
 @onready var auto_label: Label = $AutoLabel
 
@@ -110,6 +113,8 @@ func _ready() -> void:
 	
 	# 从配置加载演奏模式设置
 	_load_play_mode_setting()
+	
+	env.environment = null
 
 var current_time: float = 0
 var max_time: float = 20
@@ -133,6 +138,7 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	set_process(enable)
 	set_process_input(enable)
 	get_node("Layer").visible = enable
+	env.environment = current_env if enable else null
 	
 	# 离开播放视图时停止MIDI播放
 	if _oldState == UIStateManager.UIState.PLAY_VIEW and state != UIStateManager.UIState.PLAY_VIEW:

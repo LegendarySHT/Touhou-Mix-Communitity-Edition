@@ -733,6 +733,21 @@ var setting_groups = [
 func _ready() -> void:
 	work_state = UIStateManager.UIState.SETTINGS_VIEW
 	super._ready()
+	get_v_scroll_bar().value_changed.connect(func (_v):
+		var btns = get_parent().get_parent().short_cut_btn.get_children()
+		var tBtn: Button = btns[_get_current_para_sepa_idx()]
+		# await get_tree().process_frame
+		if tBtn.get_parent().has_meta("snaping"):
+			return
+		
+		if tBtn and not tBtn.button_pressed:
+			for b in btns:
+				b.set_block_signals(true)
+				b.call_deferred("set_block_signals", false)
+			tBtn.button_pressed = true
+			# for b in btns:
+			# 	b.set_block_signals(false)
+	)
 
 # 传入配置字典加载界面
 func load_settings(setting: Dictionary = {}):
@@ -750,14 +765,29 @@ func load_settings(setting: Dictionary = {}):
 			var init_value = setting.get(setting_data.id) if setting.get(setting_data.id) else ""
 			add_setting_item(setting_data, init_value)
 
+var separators = []
 func _add_separator():
 	# 加载并添加分隔符
 	var separator_scene = load(item_separator)
 	if separator_scene:
 		var separator = separator_scene.instantiate()
 		container.add_child(separator)
+
+		separators.append(separator)
 		separator = separator_scene.instantiate()
 		container.add_child(separator)
+
+func _get_current_para_sepa_idx():
+	var lower: int = separators.filter(func (s):
+		if s.global_position.y >= -s.size.y/2:
+			return true
+		return false
+	).size()
+	lower = clampi(lower+1, 1, separators.size())
+	return separators.size() - lower
+
+func _process(delta: float) -> void:
+	super._process(delta)
 
 func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 	# 创建设置项

@@ -27,7 +27,7 @@ extends Control
 @onready var data_manager: DataManager = DataManager.instance
 @onready var event_bus: EventBus = EventBus.instance
 
-var _show_info: bool = false
+var showing_info: bool = false
 
 func _ready() -> void:
 	if not (track_view_btn and favor_list_btn and play_btn):
@@ -91,16 +91,26 @@ func _on_click_favor_list_btn():
 
 # 显示简介什么的
 func _on_info_btn_pressed():
-	print("click info btn")
-	_show_info = not _show_info
+	if midi_list.selected_item == -1:
+		return
+	
+	showing_info = not showing_info
 	# 窗口部分
-	description.visible = _show_info
-	midi_list.visible = not _show_info
-	midi_list.get_parent().get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL if _show_info else SIZE_FILL
+	description.visible = showing_info
+	midi_list.visible = not showing_info
+
+	# 禁用按钮，防止点击
+	for btn in left_btns:
+		btn.disabled = showing_info
+	delete_btn.disabled = showing_info
+
+	midi_list.get_parent().get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL if showing_info else SIZE_FILL
 
 	# 数据区
-	detail_data_area.visible = not _show_info
-	redirect_btns.visible = _show_info
+	detail_data_area.visible = not showing_info
+	redirect_btns.visible = showing_info
+
+	midi_list.need_snap = true
 
 func _on_del_btn_pressed():
 	var window = PopupWindow.instance

@@ -4,7 +4,6 @@ extends Control
 
 ## ConfigLoader 引用
 var config_loader: ConfigManager = null
-@onready var ui: UIStateManager = UIStateManager.instance
 
 ## 配置文件路径
 const CONFIG_PATH = "user://files/settings.ini"
@@ -15,6 +14,7 @@ func _ready() -> void:
 	var idx: int = 0
 	for btn:Button in short_cut_btn.get_children():
 		btn.toggled.connect(_on_button_toggled.bind(idx))
+		btn.focus_entered.connect(_btn_focus_entered.bind(btn))
 		idx += 1
 
 	# 页面切换
@@ -22,30 +22,16 @@ func _ready() -> void:
 	EventBus.instance.page_right.connect(switch_page.bind(1))
 
 	# 转移焦点至导航按钮
-	var btns = get_node("HBoxC/ShortCut")
-	btns.focus_entered.connect(func():
-		for i in btns.get_children():
+	short_cut_btn.focus_entered.connect(func():
+		var btn: Button = short_cut_btn.get_child(0)
+		for i in short_cut_btn.get_children():
 			if i is Button and i.button_pressed:
-				i.grab_focus()
 				break
-			elif i == btns.get_child(-1):
-				btns.get_child(0).grab_focus()
+		btn.grab_focus()
 	)
-
-	for btn in btns.get_children():
-		if btn is Button:
-			btn.focus_entered.connect(_btn_focus_entered.bind(btn))
 
 	# 从 ConfigLoader 加载配置
 	_load_config_from_file()
-
-	# 设置焦点
-	ui.state_changed.connect(func(_old_state: UIStateManager.UIState, state: UIStateManager.UIState):
-		if state == UIStateManager.UIState.SETTINGS_VIEW:
-			# 确保按钮组有焦点
-			await get_tree().create_timer(0.5).timeout
-			short_cut_btn.grab_focus()
-	)
 
 func get_all_child_nodes(c: Container):
 	var node_array = []
@@ -86,6 +72,7 @@ func get_nearest_focusable_node(pos_y) -> Control:
 
 func _btn_focus_entered(btn: Button):
 	if not btn.button_pressed:
+		short_cut_btn.set_meta("snaping", true)
 		btn.button_pressed = true
 	
 	for i in btn.get_parent().get_children():
@@ -93,12 +80,6 @@ func _btn_focus_entered(btn: Button):
 			i.z_index = 0
 		else:
 			i.z_index = 1
-	
-	await get_tree().create_timer(0.15).timeout
-	var node = get_nearest_focusable_node(btn.get_global_position().y)
-	if node:
-		print("Focused on: %s" % node.get_path())
-		btn.focus_neighbor_right = node.get_path()
 
 ## 从文件加载配置
 func _load_config_from_file() -> void:
@@ -194,18 +175,28 @@ func save_config_to_file() -> bool:
 	
 	return success
 
+var _snap_tween: Tween = null
 # 左侧快速跳转按钮的事件
 func _on_button_toggled(_toggled_on: bool, idx: int):
 	var target_idx = idx*2
 	var c_idx = 0
-
-	var settingList: SettingList = get_node("HBoxC/SettingList")
-	for node in settingList.container.get_children():
+	
+	for node in setting_list.container.get_children():
 		if node is Separator:
 			if c_idx == target_idx:
-				var tween = create_tween()
-				tween.tween_property(settingList, "scroll_vertical", node.position.y, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-				settingList.scroll_velocity = 0.0
+				if _snap_tween:
+					_snap_tween.kill()
+				_snap_tween = create_tween()
+				_snap_tween.tween_property(setting_list, "scroll_vertical", node.position.y + node.size.y, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				setting_list.scroll_velocity = 0.0
+				_snap_tween.finished.connect(func ():
+					_snap_tween = null
+					short_cut_btn.remove_meta("snaping")
+					var btn = short_cut_btn.get_child(idx)
+					var neighbor = get_nearest_focusable_node(btn.get_global_position().y)
+					if neighbor:
+						btn.focus_neighbor_right = neighbor.get_path()
+				)
 			c_idx += 1
 
 # 获取当前ui中的配置
@@ -391,7 +382,13 @@ func switch_page(direction: int = 0):
 	var op: bool = true
 	if direction == -1:
 		op = false
+		delete_page.visible = true
+	else:
+		setting_page.visible = true
 
 	var wid = setting_page.size.x + 600
 	ani.animate_position(setting_page, Vector2(wid * 1 if not op else 0, 0), 0.5, "SV_PAGE_SW_1")
-	ani.animate_position(delete_page, Vector2(-wid * 1 if op else 0, 0), 0.5, "SV_PAGE_SW_2")
+	await ani.animate_position(delete_page, Vector2(-wid * 1 if op else 0, 0), 0.5, "SV_PAGE_SW_2").finished
+
+	setting_page.visible = op
+	delete_page.visible = not op

@@ -9,10 +9,12 @@ var current_midis: Array[MidiData] = []
 
 var last_selection:int = -1 # 上一次选中的节点
 
-# 路径
-const INDICATOR = "/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
-const PREVI_BTN = "/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Left/PreviBtn"
-const INFO_BTN = "/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/InfoBtn"
+@onready var indicator = $/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator
+@onready var  previ_btn = $/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Left/PreviBtn
+@onready var info_btn = $/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/InfoBtn
+
+# MidiView
+@onready var midi_view = $/root/Main/skew/C/InfoUI
 
 func _ready() -> void:
 	work_state = UIStateManager.UIState.MIDI_VIEW
@@ -35,8 +37,8 @@ func _setup_focus_neighbor():
 	if container == null:
 		return
 
-	var left_node_path = get_node(PREVI_BTN).get_path()
-	var right_node_path = get_node(INFO_BTN).get_path()
+	var left_node_path = previ_btn.get_path()
+	var right_node_path = info_btn.get_path()
 	
 	var ln = container.get_child(-1).button
 	var cn
@@ -68,7 +70,6 @@ func _clear_list() -> void:
 	clear_items()
 	
 	# 清空指示器
-	var indicator = get_node(INDICATOR)
 	if indicator:
 		for child in indicator.get_children():
 			child.free() # 因为初始化指示器时根据索引位置来设置颜色的，所以得立即清除
@@ -113,7 +114,6 @@ func _refresh_display() -> void:
 	# 添加新项
 	var counter = 0
 	var bg = ButtonGroup.new()
-	var indicator = get_node(INDICATOR)
 
 	for midi in current_midis:
 		var item = create_and_add_item(midi.id, "midi")

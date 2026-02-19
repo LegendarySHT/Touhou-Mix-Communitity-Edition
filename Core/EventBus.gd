@@ -19,6 +19,7 @@ signal enter_track_view_with(midi: MidiData)
 signal start_game_with(midi: MidiData)
 
 ## ========== UI导航事件 ==========
+# 设置页面及商店页面使用
 signal page_left
 signal page_right
 

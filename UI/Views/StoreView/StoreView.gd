@@ -2,22 +2,28 @@ extends BaseScrollList
 
 class_name StoreView
 
-@onready var state_manager: UIStateManager = UIStateManager.instance
-
 func _ready() -> void:
 	work_state = UIStateManager.UIState.STORE_VIEW
 
 	super._ready()
 
+	# 一页36个项
+	for i in range(36):
+		create_and_add_item("%d" % i, "StoreMidiItem")
+	
 	# 连接状态改变信号
-	EventBus.instance.data_loaded_complete.connect(_on_data_loaded)
-
-func _on_data_loaded() -> void:
-	var midi:Array[MidiData] = DataManager.instance.get_all_midis()
+	await EventBus.instance.data_loaded_complete
+	var test_midis:Array[MidiData] = DataManager.instance.get_all_midis()
+	# 临时填充五个
 	for i in range(5):
-		container.get_child(i).set_display(midi[i])
-# func _process(delta: float) -> void:
-# 	super._process(delta)
+		container.get_child(i).set_display(test_midis[i])
 
-# func _input(event: InputEvent) -> void:
-# 	super._input(event)
+func _process(delta: float) -> void:
+	super._process(delta)
+
+func _input(event: InputEvent) -> void:
+	super._gui_input(event)
+
+# 歌曲选中
+func on_midi_select(midi: MidiData):
+	print("select %s" % midi.name)

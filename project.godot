@@ -39,6 +39,10 @@ project/assembly_name="Touhou Mix Comunitity Edition"
 
 theme/custom_font="uid://drybvx6hogl55"
 
+[input_devices]
+
+sensors/enable_gravity=true
+
 [rendering]
 
 rendering_device/driver.windows="d3d12"

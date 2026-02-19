@@ -344,9 +344,15 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 				copy.position = skew.to_local(sItem.global_position)
 
 				# 设置节点
-				var button=copy.get_node("PN/AlbumButton")
+				var button: Button = copy.get_node("PN/AlbumButton")
 				button.button_group=null
 				button.toggle_mode=false
+
+				var sc = Shortcut.new()
+				var event = InputEventKey.new()
+				event.keycode = KEY_ESCAPE
+				sc.events = [event]
+				button.shortcut = sc
 
 				tindex = sIndex
 				sItem.modulate.a = 0.0

@@ -10,6 +10,7 @@ class_name BaseScrollList
 
 ## 列表项场景或预制体
 @export var list_item_class: Variant
+@onready var item_instance = load(list_item_class).instantiate()
 
 ## 列表项的高度
 @export var item_height: float = 100.0
@@ -261,15 +262,13 @@ func add_list_item(item: ListItemBase) -> void:
 	
 ## 创建并添加列表项
 func create_and_add_item(item_id: String, item_type: String = "") -> ListItemBase:
-	var item: ListItemBase
+	var item: ListItemBase = null
 	
-	if list_item_class is GDScript:
-		item = list_item_class.new()
-	elif list_item_class:
-		item = load(list_item_class).instantiate()
-	
-	item.initialize(item_id, item_type)
-	add_list_item(item)
+	if list_item_class:
+		item = item_instance.duplicate()
+
+		item.initialize(item_id, item_type)
+		add_list_item(item)
 	
 	return item
 

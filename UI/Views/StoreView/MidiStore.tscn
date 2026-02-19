@@ -1,12 +1,25 @@
 [gd_scene format=3 uid="uid://dvvggbuqsfxbw"]
 
 [ext_resource type="Script" uid="uid://dbgwcersgki3c" path="res://UI/Views/StoreView/StoreView.gd" id="1_77ghf"]
-[ext_resource type="Texture2D" uid="uid://7e7lff81aa7n" path="res://Resources/Gradient/gradient2.png" id="1_aexbj"]
 [ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="2_e4ark"]
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="3_u7c36"]
 [ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="4_6ial6"]
 [ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="5_uoxjv"]
 [ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="6_f6x17"]
+
+[sub_resource type="Gradient" id="Gradient_t7rtt"]
+interpolation_mode = 2
+colors = PackedColorArray(0.4392157, 0.7294118, 0.98039216, 1, 0.03529412, 0.09803922, 0.36862746, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_ay6ya"]
+gradient = SubResource("Gradient_t7rtt")
+fill_from = Vector2(0, 1)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_t7rtt"]
+content_margin_left = 50.0
+content_margin_top = 180.0
+content_margin_right = 50.0
+content_margin_bottom = 400.0
 
 [sub_resource type="Gradient" id="Gradient_2hjjb"]
 colors = PackedColorArray(0.047058824, 0.5568628, 0.88235295, 1, 0.20784314, 0.3764706, 0.88235295, 1)
@@ -103,7 +116,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-texture = ExtResource("1_aexbj")
+texture = SubResource("GradientTexture2D_ay6ya")
 
 [node name="StoreMidiList" type="ScrollContainer" parent="." unique_id=259951663]
 layout_mode = 1
@@ -112,21 +125,15 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_t7rtt")
+follow_focus = true
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 3
 script = ExtResource("1_77ghf")
-container_path = NodePath("MC/HFlowBox")
+container_path = NodePath("HFlowBox")
 list_item_class = "res://UI/Views/StoreView/storeMidiNode.tscn"
 
-[node name="MC" type="MarginContainer" parent="StoreMidiList" unique_id=925431239]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/margin_left = 100
-theme_override_constants/margin_top = 180
-theme_override_constants/margin_right = 80
-theme_override_constants/margin_bottom = 100
-
-[node name="HFlowBox" type="HFlowContainer" parent="StoreMidiList/MC" unique_id=1401520399]
+[node name="HFlowBox" type="HFlowContainer" parent="StoreMidiList" unique_id=1401520399]
 custom_minimum_size = Vector2(1790, 0)
 layout_mode = 2
 size_flags_horizontal = 3

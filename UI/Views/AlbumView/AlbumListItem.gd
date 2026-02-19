@@ -72,6 +72,7 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 	
 	var expa: int = 1 if toggled_on else 0
 	expand_tween.tween_property(self.get_node("PN"),"custom_minimum_size",Vector2(600 + expa*350, 150 + 250*expa),0.15)
+	expand_tween.tween_property(self.get_node("PN/PN/cover"),"size", Vector2.ONE *( 600 + expa*350),0.15)
 	expand_tween.tween_property(album_name_label,"theme_override_font_sizes/font_size",25 + 20*expa,0.15)
 
 	if toggled_on:
@@ -82,7 +83,7 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 		expand_tween = null
 	)
 
-	
+	# 因为塞在tween里的话，节点在屏幕外似乎无法触发，所以就成下面这样了
 	await get_tree().create_timer(0.15).timeout
 	if toggled_on and parent_node.selected_item == item_index:
 		parent_node.need_snap = true
