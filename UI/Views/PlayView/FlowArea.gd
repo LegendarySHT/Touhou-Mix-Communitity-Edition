@@ -8,7 +8,7 @@ class_name FlowArea
 @onready var canvas: CanvasLayer = $SVP
 
 ########## 配置参数 #############
-var auto_mode: bool = true
+var auto_mode: bool = false
 var judge_area_width: int = 150
 var judge_mode = JudgeMode.BestDist
 
@@ -188,15 +188,24 @@ var _note_max_size_y: float = 0
 var _note_fall_speed: float = 0
 var _note_fall_distance: float = 0
 
-func _create_note(tp: NoteType, x: float) -> Node:
+func _create_note(tp: NoteType, x: float, lane_idx: int = -1) -> Node:
+	var cl: Color = parent_node.get_lane_color(lane_idx)
+	
 	var note_rect: Node = null
 	match tp:
 		NoteType.Block:
 			note_rect = nt_b.duplicate()
+			if lane_idx != -1:
+				note_rect.get_node("core").modulate = cl
 		NoteType.Slide:
 			note_rect = nt_s.duplicate()
+			if lane_idx != -1:
+				note_rect.get_node("core").modulate = cl
 		NoteType.Long:
 			note_rect = nt_l.duplicate()
+			if lane_idx != -1:
+				for i in note_rect.get_node("VBoxC").get_children():
+					i.get_node("core").modulate = cl
 	
 	note_rect.position = Vector2(x, -note_rect.size.y)
 	canvas.add_child(note_rect)
@@ -212,7 +221,7 @@ func _spawn_note(note_index: int) -> void:
 	# 计算音符位置
 	var start_x = parent_node.lane_area.get_lane_by_idx(nt.lane).position.x + 10
 	
-	var rect = _create_note(nt.type, start_x)
+	var rect = _create_note(nt.type, start_x, nt.lane)
 	nt.set_rect(rect)
 
 	# 计算下落位置

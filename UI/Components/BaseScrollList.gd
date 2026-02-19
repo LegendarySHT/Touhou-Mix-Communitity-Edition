@@ -234,7 +234,7 @@ func _gui_input(event: InputEvent) -> void:
 			# 异号或者速度大于最大速度就更新速度
 			if scroll_velocity * event.velocity.y > 0.0 or abs(event.velocity.y) > abs(scroll_velocity):
 				scroll_velocity = - event.velocity.y
-			if _mouse_delta != 0:
+			if _mouse_delta != 0 and OS.get_name() not in ["Android", "iOS"]:
 				scroll_vertical = clamp(int(-_mouse_delta + _list_start_pos), 0, get_v_scroll_bar().max_value)
 
 func select_item(index: int) -> int:

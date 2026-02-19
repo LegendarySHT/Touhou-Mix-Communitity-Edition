@@ -70,6 +70,7 @@ var game_sequences: Array[KeySequenceManager.GameSequence] = []
 var is_midi_playing: bool = false
 
 ########## 配置参数 #############
+# 有一部分配置参数在flow_area里面
 var lane_count: int = 12
 var lane_padding: int = 200 # 左右填充安全区
 var keyboard_mode: bool = true
@@ -79,6 +80,9 @@ var judge_line_offset_y: int = 250
 
 # 光柱特效不透明度
 var beam_alpha: float = 0.5
+# 交错轨道颜色（启用时会覆盖音符颜色及轨道光效颜色）
+var intersect_lane_color: bool = true
+var intersect_color_set: Array = [Color.RED, Color.BLUE] # 这个颜色数量不能超过轨道数的一半
 
 #################################
 
@@ -132,6 +136,14 @@ func _process(_delta: float) -> void:
 	
 func get_lane_count() -> int:
 	return lane_count if not keyboard_mode else key_map.size()
+
+func get_lane_color(lane_idx: int):
+	if lane_idx == -1:
+		return
+	if intersect_lane_color:
+		@warning_ignore("integer_division")
+		var lc = int(get_lane_count() / 2)
+		return intersect_color_set[lane_idx % lc % intersect_color_set.size()]
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
@@ -563,7 +575,7 @@ func _init_display():
 	auto_label.visible = flow_area.auto_mode
 
 func _init_lane_display():
-	lane_area.init_beam(get_lane_count(), flow_area.note_visual_width, judge_line_offset_y, lane_padding)
+	lane_area.init_beam(get_lane_count(), self)
 	lane_area.set_beam_alpha(beam_alpha)
 	if keyboard_mode:
 		lane_area.init_key_display(key_map)

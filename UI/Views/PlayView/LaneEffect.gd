@@ -1,14 +1,21 @@
 extends Control
 
+# 这个beam除了用来搞光效，按键显示及音符生成也需要它
 @onready var beam = load("res://UI/Views/PlayView/beam.tscn").instantiate()
 @onready var ani: AnimationManager = AnimationManager.instance
 
-func init_beam(lane_count: int, note_width: float, judge_line_offset_y: float, padding: int):
+var play_view = null
+
+func init_beam(lane_count: int, parent_node):
 	for i in get_children():
 		i.free()
-	
+	play_view = parent_node
+
+	var note_width = play_view.flow_area.note_visual_width
+	var padding = play_view.lane_padding
+
 	var window = get_viewport().get_visible_rect().size
-	var beam_h = window.y - judge_line_offset_y
+	var beam_h = window.y - play_view.judge_line_offset_y
 	
 	beam.size = Vector2(note_width + 20, beam_h)
 	beam.self_modulate.a = 0
@@ -75,10 +82,9 @@ func light_lane(lane_index: int, cl: Color = 0):
 	var node = get_lane_by_idx(lane_index)
 	
 	# 颜色
-	if cl:
-		var style: StyleBox = node.get_node("Center").get_theme_stylebox("panel")
-		var node_cl = style.texture.gradient.colors
-		style.texture.gradient.colors = [Color(cl.r, cl.g, cl.b, node_cl[0].a), Color(cl.r, cl.g, cl.b, node_cl[1].a)]
+	var style: StyleBox = node.get_node("Center").get_theme_stylebox("panel")
+	var node_cl = style.texture.gradient.colors
+	style.texture.gradient.colors = [Color(cl.r, cl.g, cl.b, node_cl[0].a), Color(cl.r, cl.g, cl.b, node_cl[1].a)]
 	
 	# 淡出
 	node.self_modulate.a = 1
