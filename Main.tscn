@@ -1061,6 +1061,8 @@ script = ExtResource("26_xrxkg")
 [node name="TestNode" type="Node2D" parent="." unique_id=2008611241]
 visible = false
 
+[connection signal="text_submitted" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox/TextEdit" to="skew/C/ShortCutMenu" method="_on_search_query"]
+[connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox/SearchBtn" to="skew/C/ShortCutMenu" method="_on_search_query"]
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Status" to="skew/C/ShortCutMenu" method="_on_status_pressed"]
 [connection signal="toggled" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Data" to="skew/C/ShortCutMenu" method="_on_data_toggled"]
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Ordering" to="skew/C/ShortCutMenu" method="_on_ordering_pressed"]

@@ -10,6 +10,8 @@ extends VBoxContainer
 @onready var page_container = $Panel # 页面背景
 @onready var page = $Panel/Page # 页面内容
 
+@onready var search_lineedit: LineEdit = $Panel/Page/SortPage/SearchBox/TextEdit
+
 func _ready() -> void:
 	# 连接按钮点击事件
 	sort_button.toggled.connect(_on_menu_tab_btn_toggled.bind(sort_button))
@@ -47,6 +49,7 @@ func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
 	if _is_all_off():
 		tween.tween_property(page_container, "custom_minimum_size", Vector2.ZERO, 0.5)
 		ani.animate_fade_out(page_container, 0.6, "menu_fade")
+		search_lineedit.text = ""
 	else:
 		tween.tween_property(page_container, "custom_minimum_size",Vector2(600, 700), 0.5)
 		ani.animate_fade_in(page_container, 0, "menu_fade")
@@ -105,6 +108,13 @@ func _on_ordering_pressed() -> void:
 	sortDirection = (sortDirection + 1) % 2 as SortEngine.SortDirection
 	sort_btns.get_node("Ordering").texture_normal=load("res://Resources/icon/Sort/Ordering/Ascent.png" if sortDirection == SortEngine.SortDirection.ASCENDING else "res://Resources/icon/Sort/Ordering/Descent.png")
 	se.set_sort_mode(se.current_sort_stat_field, se.current_sort_field, sortDirection)
+
+	if ui.current_state!=ui.UIState.SORTED_VIEW:
+		ui.change_state(ui.UIState.SORTED_VIEW)
+
+
+func _on_search_query(query: String = "") -> void:
+	EventBus.instance.search_query_changed.emit(query if query else search_lineedit.text)
 
 	if ui.current_state!=ui.UIState.SORTED_VIEW:
 		ui.change_state(ui.UIState.SORTED_VIEW)

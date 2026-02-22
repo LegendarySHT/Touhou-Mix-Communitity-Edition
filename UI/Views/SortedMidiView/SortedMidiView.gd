@@ -8,32 +8,18 @@ class_name SortedMidiView
 var current_midis: Array[MidiData] = []
 
 ## 管理器引用
-@onready var state_manager: UIStateManager = UIStateManager.instance
-@onready var data_manager: DataManager = DataManager.instance
-@onready var event_bus: EventBus = EventBus.instance
-@onready var sorting_engine: SortingEngine = SortingEngine.instance
+@onready var sm: UIStateManager = UIStateManager.instance
+@onready var dm: DataManager = DataManager.instance
+@onready var eb: EventBus = EventBus.instance
+@onready var se: SortingEngine = SortingEngine.instance
 
-# ========== 新增的加载控制变量 ==========
 ## 是否正在加载
 var _is_loading: bool = false
-## 当前加载任务ID（用于识别和终止旧任务）
-var _current_load_task_id: int = 0
-## 当前加载的MIDI数据列表
-var _midis_to_load: Array[MidiData] = []
-## 当前加载的索引
-var _current_load_index: int = 0
-## 每帧加载的节点数量（可调整以平衡性能）
-var _nodes_per_frame: int = 2
-## 加载延迟（帧数，用于降低每帧压力）
-var _load_frame_delay: int = 0
-## 延迟计数器
-var _delay_counter: int = 0
-# ======================================
 
-var item_bg: ButtonGroup
+var item_bg: ButtonGroup = null
 
 func _ready() -> void:	
-	if not data_manager or not event_bus or not sorting_engine:
+	if not dm or not eb or not se:
 		push_error("SortedMidiView: Missing manager instances")
 		return
 	
@@ -42,139 +28,77 @@ func _ready() -> void:
 	item_spacing = 29
 
 	# 连接事件
-	event_bus.search_query_changed.connect(_on_search_query_changed)
-	event_bus.sort_finished.connect(_load_sorted_midis)
+	eb.search_query_changed.connect(_on_search_query_changed)
+	eb.sort_finished.connect(_load_sorted_midis)
 
 	super._ready()
 
 func _process(delta):
 	super._process(delta)
-	
-	# 处理分帧加载
-	_process_loading()
 
 func _gui_input(event):
 	super._gui_input(event)
 
-## 处理分帧加载逻辑
-func _process_loading() -> void:
-	if not _is_loading or _midis_to_load.is_empty():
-		return
-
-	# 处理加载延迟
-	if _delay_counter < _load_frame_delay:
-		_delay_counter += 1
-		return
-	_delay_counter = 0
-	
-	# 计算本帧要加载的节点数量
-	var nodes_to_load_this_frame = min(_nodes_per_frame, _midis_to_load.size() - _current_load_index)
-	
-	# 加载本帧的节点
-	for i in range(nodes_to_load_this_frame):
-		var index = _current_load_index + i
-		if index >= _midis_to_load.size():
-			break
-			
-		var midi = _midis_to_load[index]
-		var node = create_and_add_item(midi.id, "midi")
-		node.setup_with_midi(midi, index, item_bg)
-	
-	# 更新索引
-	_current_load_index += nodes_to_load_this_frame
-	
-	# 检查是否加载完成
-	if _current_load_index >= _midis_to_load.size():
-		_finish_loading()
-		print("Loaded %d midis" % _midis_to_load.size())
-
 func on_item_button_confirmed(index: int) -> void:
 	var midi:MidiData = current_midis[index]
 	print("选中：%s / %s" % [midi.song_data.name, midi.name])
-	if event_bus and midi:
-		state_manager.change_state(UIStateManager.UIState.MIDI_VIEW)
-		event_bus.emit_midi_selected(midi.id, midi)
+	if eb and midi:
+		sm.change_state(UIStateManager.UIState.MIDI_VIEW)
+		eb.emit_midi_selected(midi.id, midi)
 
-## 完成加载任务
-func _finish_loading() -> void:
-	_is_loading = false
-	_midis_to_load.clear()
-	_current_load_index = 0
-	_delay_counter = 0
-
+signal _load_abort
+var _ignore_sort_finished_signal: bool = false
 ## 加载排序的MIDI列表（启动新的加载任务）
-func _load_sorted_midis() -> void:
-	if not data_manager or not sorting_engine:
+func _load_sorted_midis(refectch: bool = true) -> void:
+	if _ignore_sort_finished_signal:
+		return
+
+	if not dm or not se:
 		print("Missing manager instances")
 		return
-	
-	if not item_bg:
-		item_bg = ButtonGroup.new()
-
-	# 生成新的任务ID（用于标识当前任务）
-	var new_task_id = _current_load_task_id + 1
-	_current_load_task_id = new_task_id
-	
-	current_midis = sorting_engine.get_midis()
-	# 清空现有列表（这会立即移除所有子节点）
-	clear_items()
 	
 	# 检查是否已经有加载任务在进行
 	if _is_loading:
 		# 中断当前的加载任务
-		_finish_loading()
+		_is_loading = false
+		await _load_abort
+	clear_items()
 	
-	# 启动新的加载任务
+	if not item_bg:
+		item_bg = ButtonGroup.new()
+	
+	if refectch:
+		current_midis = se.get_midis()
+	
 	_is_loading = true
-	_midis_to_load = current_midis.duplicate()
-	_current_load_index = 0
-	_delay_counter = 0
+	for midi in current_midis:
+		if not _is_loading:
+			_load_abort.emit()
+			break
+		
+		var node = create_and_add_item(midi.id, "midi")
+		node.setup_with_midi(midi, 0, item_bg)
+		
+		await get_tree().process_frame
 	
-	# 立即加载第一个节点以提供即时反馈
-	if not _midis_to_load.is_empty():
-		var node = create_and_add_item(_midis_to_load[0].id, "midi")
-		node.setup_with_midi(_midis_to_load[0], 0, item_bg)
-		_current_load_index = 1
-		
-		node.button.button_pressed = true
-		
-		# 如果只有一个节点，直接完成
-		if _midis_to_load.size() == 1:
-			_finish_loading()
-
-## 刷新显示（使用分帧加载）
-func _refresh_display() -> void:
-	# 这里可以调用 _load_sorted_midis() 或者实现类似逻辑
-	_load_sorted_midis()
-
-## 初始化MIDI项
-func _initialize_midi_item(item: ListItemBase, midi: MidiData) -> void:
-	# 如果item是SortedMidiListItem，调用setup方法
-	if item.has_method("setup_with_midi"):
-		var index = current_midis.find(midi)
-		item.setup_with_midi(midi, index)
+	_is_loading = false
 
 ## 搜索查询改变
 func _on_search_query_changed(query: String) -> void:
-	if not sorting_engine or not data_manager:
+	if not se or not dm:
 		return
-	
-	# 获取所有MIDI
-	var all_midis: Array = []
-	for midi in data_manager.midis.values():
-		all_midis.append(midi)
 	
 	if query.is_empty():
 		# 如果搜索为空，恢复正常排序视图
-		current_midis = sorting_engine.get_sorted_midis(all_midis)
+		current_midis = se.get_midis()
 	else:
 		# 执行搜索
-		current_midis = sorting_engine.search_midis(all_midis, query)
+		if not se.current_midis:
+			se.set_sort_mode()
+			_ignore_sort_finished_signal = true
+			await EvtBus.sort_finished
+			_ignore_sort_finished_signal = false
+		current_midis = se.search_midis(se.get_midis(), query)
+		print("过滤后midi数量：%d" % current_midis.size())
 	
-	_refresh_display()
-
-## 新增：强制停止所有加载任务
-func cancel_all_loading() -> void:
-	if _is_loading:
-		_finish_loading()
-		print("All loading tasks cancelled")
+	_load_sorted_midis(false)

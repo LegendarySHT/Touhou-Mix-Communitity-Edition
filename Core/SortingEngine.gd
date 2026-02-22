@@ -92,15 +92,6 @@ func _sort_midis(midis: Array[MidiData],
 	current_sort_field = sort_field
 	current_sort_direction = sort_direction
 	
-	# 生成缓存key
-	# cache_key = "%d_%d_%d" % [midis.size(), sort_field, sort_direction]
-	# print("生成缓存key:", cache_key)
-
-	# # 检查缓存
-	# if sort_cache.has(cache_key):
-	# 	print("使用缓存结果")
-	# 	return sort_cache[cache_key]
-	
 	# 执行排序
 	var sorted_result = midis
 	
@@ -289,7 +280,8 @@ func search_midis(midis: Array[MidiData], query: String) -> Array[MidiData]:
 		
 		if (midi.name.to_lower().contains(search_text) or
 			midi.artist_name.to_lower().contains(search_text) or
-			midi.uploader_name.to_lower().contains(search_text)):
+			midi.uploader_name.to_lower().contains(search_text) or
+			midi.description.to_lower().contains(search_text)):
 			result.append(midi)
 	
 	return result
@@ -305,29 +297,3 @@ func _exit_tree() -> void:
 	
 	# 清理缓存
 	clear_cache()
-
-## 强制终止并重新开始（用于紧急情况）
-func force_restart_sorting(status: SortStatField = SortStatField.ALL,
-							sort_field: SortDataField = SortDataField.DEFAULT,
-							sort_direction: SortDirection = SortDirection.DESCENDING):
-	# 强制停止
-	should_stop_sorting = true
-	
-	# 等待一小段时间让线程有机会退出
-	if sort_thread and sort_thread.is_active():
-		# 等待最多100ms
-		var wait_time = 0
-		while sort_thread.is_active() and wait_time < 100:
-			OS.delay_msec(10)
-			wait_time += 10
-	
-	# 如果线程还在运行，强制等待（这是最后的手段）
-	if sort_thread and sort_thread.is_active():
-		sort_thread.wait_to_finish()
-	
-	# 重置状态
-	is_sorting_active = false
-	should_stop_sorting = false
-	
-	# 重新开始排序
-	set_sort_mode(status, sort_field, sort_direction)
