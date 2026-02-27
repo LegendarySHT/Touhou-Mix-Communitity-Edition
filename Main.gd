@@ -29,7 +29,13 @@ var _is_reloading_settings: bool = false
 @onready var _orientation_reverse: bool = Input.get_gravity().y > 0
 
 func _ready():	
-	# 初始化架构的核心系统
+	# Android 平台：请求存储权限（fire-and-forget，外部私有目录实际不需要运行时权限）
+	if PathHelper.is_android():
+		print("=== Android platform detected ===")
+		print("=== Base dir: %s ===" % PathHelper.get_base_dir())
+		OS.request_permissions()
+	
+	# 所有平台统一初始化核心系统
 	_initialize_core_systems()
 
 	await get_tree().create_timer(2).timeout
@@ -240,7 +246,29 @@ func _load_configuration() -> void:
 
 ## 加载MIDI数据
 func _load_midi_data() -> void:
-	logger.info("Starting MIDI data load...", "Main")
+	logger.info("=== Starting MIDI Data Load ===", "Main")
+	logger.info("Platform: %s" % OS.get_name(), "Main")
+	logger.info("User data path: %s" % OS.get_user_data_dir(), "Main")
+	
+	# 诊断：检查 res:// 资源是否存在
+	var resources_to_check = [
+		"res://Resources/Config/config.ini",
+		"res://Resources/Charts/",
+		"res://Resources/Soundfont/",
+		"res://Resources/BackgroundImage/"
+	]
+	
+	for res in resources_to_check:
+		var exists = false
+		if res.ends_with("/"):
+			exists = DirAccess.dir_exists_absolute(res)
+		else:
+			exists = FileAccess.file_exists(res)
+		logger.info("Resource check [%s]: %s" % [res, "✓" if exists else "✗"], "Main")
+		if not exists:
+			logger.error("Critical resource missing - Check export settings!", "Main")
+	
+	logger.info("Waiting for FileSystemManager resources...", "Main")
 	
 	# 等待 FileSystemManager 资源准备完毕
 	var max_wait_frames = 300  # 最多等待5秒（300帧 * 60fps）
@@ -253,9 +281,15 @@ func _load_midi_data() -> void:
 	if not filesystem_manager.resources_scanned:
 		logger.warning("FileSystemManager resources timeout - proceeding anyway", "Main")
 	else:
-		logger.info("FileSystemManager resources scanned, starting MIDI load...", "Main")
+		logger.info("FileSystemManager resources scanned (%d frames), starting MIDI load..." % wait_count, "Main")
 	
+	# 输出 charts_index 信息用于诊断
+	var charts_count = filesystem_manager.charts_index.size()
+	logger.info("Charts index contains %d entries" % charts_count, "Main")
+	
+	logger.info("Loading all MIDI files asynchronously...", "Main")
 	data_manager.load_all_midis_async()
+	logger.info("=== MIDI Data Load Initiated ===", "Main")
 
 ## 数据加载完成回调
 func _on_data_loaded() -> void:

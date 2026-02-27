@@ -34,16 +34,19 @@ func _init() -> void:
 		push_error("ConfigManager is a singleton, use ConfigManager.instance instead")
 		return
 
-# ============ 配置路径常量 ============
+# ============ 配置路径 ============
 
 ## 默认配置文件路径（项目内置）
 const DEFAULT_CONFIG_PATH = "res://Resources/Config/config.ini"
 
-## 用户配置文件路径（user:// 目录）
-const USER_CONFIG_PATH = "user://files/settings.ini"
+## 用户配置文件路径（通过 PathHelper 动态获取，兼容 Android 外部存储）
+## 使用 getter 确保运行时才求值
+static var USER_CONFIG_PATH: String:
+	get: return PathHelper.get_user_config_path()
 
-## 音源文件目录
-const SOUNDFONT_DIR = "user://files/Soundfont/"
+## 音源文件目录（通过 PathHelper 动态获取）
+static var SOUNDFONT_DIR: String:
+	get: return PathHelper.get_soundfont_dir()
 
 ## 配置版本号
 const CONFIG_VERSION = "1.0.0"
@@ -60,18 +63,65 @@ var _current_config: Dictionary = {}
 
 ## 加载INI配置文件
 ## 若缓存中存在则直接返回，否则解析文件并缓存
+## Android 平台特殊处理：res:// 路径资源在 PCK 包中
 func load_config(file_path: String) -> Dictionary:
 	# 检查缓存
 	if configs.has(file_path):
 		return configs[file_path]
 	
-	var file = FileAccess.open(file_path, FileAccess.READ)
-	if file == null:
-		push_error("Failed to load config: %s" % file_path)
+	var content: String = ""
+	
+	# Android 平台 res:// 路径需要特殊处理
+	if file_path.begins_with("res://"):
+		# 检查资源是否存在于 PCK 包中
+		if not FileAccess.file_exists(file_path):
+			push_error("Config file not found in PCK: %s" % file_path)
+			GameLogger.instance.error("Config file not found in PCK: %s [Check export settings]" % file_path, "ConfigManager")
+			return {}
+		
+		var file = FileAccess.open(file_path, FileAccess.READ)
+		if file == null:
+			var error_code = FileAccess.get_open_error()
+			push_error("Failed to open config from PCK: %s (Error: %d)" % [file_path, error_code])
+			GameLogger.instance.error("Failed to open PCK config [%s] with error code %d" % [file_path, error_code], "ConfigManager")
+			if file:
+				file.close()
+			return {}
+		
+		if file.get_length() == 0:
+			GameLogger.instance.warning("Config file in PCK is empty: %s" % file_path, "ConfigManager")
+			file.close()
+			return {}
+		
+		content = file.get_as_text()
+		file.close()
+		GameLogger.instance.info("Config loaded from PCK: %s (size: %d bytes)" % [file_path, content.length()], "ConfigManager")
+	else:
+		# user:// 路径的常规加载
+		if not FileAccess.file_exists(file_path):
+			GameLogger.instance.warning("Config file not found in user://: %s" % file_path, "ConfigManager")
+			return {}
+		
+		var file = FileAccess.open(file_path, FileAccess.READ)
+		if file == null:
+			var error_code = FileAccess.get_open_error()
+			push_error("Failed to load config: %s (Error: %d)" % [file_path, error_code])
+			GameLogger.instance.error("Failed to open user config [%s] with error code %d" % [file_path, error_code], "ConfigManager")
+			return {}
+		
+		content = file.get_as_text()
+		file.close()
+		GameLogger.instance.info("Config loaded from user://: %s" % file_path, "ConfigManager")
+	
+	if content.is_empty():
+		push_error("Config content is empty: %s" % file_path)
+		GameLogger.instance.error("Config file is empty: %s" % file_path, "ConfigManager")
 		return {}
 	
-	var content = file.get_as_text()
 	var result = _parse_ini(content)
+	
+	if result.is_empty():
+		GameLogger.instance.warning("Config parsed to empty dictionary: %s" % file_path, "ConfigManager")
 	
 	# 缓存结果
 	configs[file_path] = result
@@ -213,6 +263,10 @@ func save_config(file_path: String, config: Variant = null) -> bool:
 		config = _current_config
 	
 	var content = _serialize_ini(config)
+	
+	# 确保目标目录存在（Android 外部存储路径可能首次使用时不存在）
+	var dir_path = file_path.get_base_dir()
+	PathHelper.ensure_dir_exists(dir_path)
 	
 	var file = FileAccess.open(file_path, FileAccess.WRITE)
 	if file == null:

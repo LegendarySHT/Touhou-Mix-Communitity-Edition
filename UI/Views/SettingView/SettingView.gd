@@ -5,8 +5,10 @@ extends Control
 ## ConfigLoader 引用
 var config_loader: ConfigManager = null
 
-## 配置文件路径
-const CONFIG_PATH = "user://files/settings.ini"
+## 配置文件路径（通过 PathHelper 动态获取，兼容 Android）
+## 使用 getter 确保运行时才求值
+static var CONFIG_PATH: String:
+	get: return PathHelper.get_user_config_path()
 const DEFAULT_CONFIG_PATH = "res://Resources/Config/config.ini"
 
 
@@ -241,8 +243,8 @@ func _scan_all_soundfonts() -> Array[String]:
 	"""
 	var soundfonts: Dictionary = {}  # {filename_without_ext: {display_name, path}}
 	
-	# 第一步：扫描user://files/Soundfont/ （user优先）
-	var user_dir = "user://files/Soundfont/"
+	# 第一步：扫描用户音源目录 （user优先）
+	var user_dir = PathHelper.get_soundfont_dir()
 	if DirAccess.open(user_dir) != null:
 		var dir = DirAccess.open(user_dir)
 		if dir:
@@ -309,8 +311,8 @@ func _verify_soundfont_exists(soundfont_name: String) -> bool:
 	Returns:
 		bool: 文件是否存在
 	"""
-	# 第一步：检查user://
-	var user_path = ("user://files/Soundfont/").path_join(soundfont_name + ".sf2")
+	# 第一步：检查用户音源目录
+	var user_path = PathHelper.get_soundfont_dir().path_join(soundfont_name + ".sf2")
 	if FileAccess.file_exists(user_path):
 		return true
 	
@@ -332,8 +334,8 @@ func _get_soundfont_path(soundfont_name: String) -> String:
 	Returns:
 		String: 完整文件路径，若不存在返回空字符串
 	"""
-	# 第一步：检查user://
-	var user_path = ("user://files/Soundfont/").path_join(soundfont_name + ".sf2")
+	# 第一步：检查用户音源目录
+	var user_path = PathHelper.get_soundfont_dir().path_join(soundfont_name + ".sf2")
 	if FileAccess.file_exists(user_path):
 		return user_path
 	

@@ -118,12 +118,13 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 		"bpm_timeline": []  # BPM变化时间线
 	}
 	
-	# 检查文件是否存在（user:// 使用 FileAccess）
+	# 检查文件是否存在
 	if not FileAccess.file_exists(file_path):
-		# 后备：尝试将 user://files 替换为 res://Resources
+		# 后备：尝试将用户数据目录路径替换为 res://Resources
 		var fallback_path = file_path
-		if file_path.begins_with("user://files"):
-			fallback_path = file_path.replace("user://files", "res://Resources")
+		var files_dir = PathHelper.get_files_dir()
+		if file_path.begins_with(files_dir):
+			fallback_path = file_path.replace(files_dir, "res://Resources/")
 
 		if not FileAccess.file_exists(fallback_path):
 			push_error("MIDI file not found: %s" % file_path)

@@ -869,10 +869,10 @@ func _get_active_backend() -> MidiPlaybackInterface:
 		_:
 			return midi_player
 
-## 辅助函数：定位soundfont文件（user优先）
+## 辅助函数：定位soundfont文件（用户目录优先）
 func _locate_soundfont(soundfont_name: String) -> String:
 	"""
-	定位soundfont文件，user://优先于res://
+	定位soundfont文件，用户目录优先于res://
 	
 	Args:
 		soundfont_name: 文件名不含.sf2扩展名
@@ -880,8 +880,8 @@ func _locate_soundfont(soundfont_name: String) -> String:
 	Returns:
 		String: 完整文件路径，若不存在返回空字符串
 	"""
-	# 第一步：检查user://files/Soundfont/
-	var user_path = "user://files/Soundfont/".path_join(soundfont_name + ".sf2")
+	# 第一步：检查用户音源目录
+	var user_path = PathHelper.get_soundfont_dir().path_join(soundfont_name + ".sf2")
 	if FileAccess.file_exists(user_path):
 		return user_path
 	

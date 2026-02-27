@@ -51,11 +51,7 @@ func _ready() -> void:
 	
 	# 初始化日志文件路径（包含日期）
 	var date = Time.get_date_string_from_system()
-	var logs_dir = "user://files/Logs/"  # 默认路径
-
-	# 如果 FileSystemManager 已初始化则使用其目录，否则回落到默认
-	if FileSystemManager and FileSystemManager.instance: #由于初始化顺序问题，这段检查事实上永远不会通过，但是先留着吧:(
-		logs_dir = FileSystemManager.instance.get_logs_directory()
+	var logs_dir = PathHelper.get_logs_dir()  # 通过 PathHelper 获取平台自适应路径
 
 	log_file_path = logs_dir.path_join("game_%s.log" % date)
 	
@@ -65,19 +61,11 @@ func _ready() -> void:
 func _ensure_log_directory() -> void:
 	# 获取日志目录路径
 	var log_dir = log_file_path.get_base_dir()
-	var dir = DirAccess.open("user://")
 	
-	if dir == null:
-		push_error("Failed to open user:// directory")
+	# 使用 PathHelper 创建目录（兼容 Android 绝对路径）
+	if not PathHelper.ensure_dir_exists(log_dir):
+		push_error("Failed to create logs directory: %s" % log_dir)
 		return
-	
-	# 创建日志目录（如果不存在）
-	var relative_path = log_dir.replace("user://", "")
-	if not dir.dir_exists(relative_path):
-		var new_error = dir.make_dir_recursive(relative_path)
-		if new_error != OK:
-			push_error("Failed to create logs directory: %s" % new_error)
-			return
 	
 	# 确保日志文件存在，或者追加到现有文件
 	if not FileAccess.file_exists(log_file_path):
