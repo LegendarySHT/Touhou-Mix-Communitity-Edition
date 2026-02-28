@@ -18,6 +18,8 @@
 [ext_resource type="ButtonGroup" uid="uid://ba4mkjssd25nv" path="res://Resources/ButtonGroup/SortButton.tres" id="15_bg4s2"]
 [ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="16_vi5kq"]
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
+[ext_resource type="Texture2D" uid="uid://boaosvxm4ii76" path="res://Resources/icon/TrackView/reset.png" id="18_sqvbp"]
+[ext_resource type="Script" uid="uid://papxqcjsxm8u" path="res://UI/Components/LoadingCircle.gd" id="19_hri7i"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
 [ext_resource type="PackedScene" uid="uid://xgcfhg1x2v6p" path="res://UI/Components/ShortCutMenu/favorListItem.tscn" id="20_devvj"]
 [ext_resource type="Texture2D" uid="uid://h6i2ju0tpkvl" path="res://Resources/icon/arrow-right.png" id="21_hhcpw"]
@@ -745,6 +747,19 @@ size_flags_horizontal = 2
 mouse_filter = 2
 theme_override_constants/separation = 29
 
+[node name="Loading" type="TextureRect" parent="skew/C" unique_id=759121335]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 0
+offset_left = 350.0
+offset_top = 400.0
+offset_right = 550.0
+offset_bottom = 600.0
+pivot_offset_ratio = Vector2(0.5, 0.5)
+texture = ExtResource("18_sqvbp")
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("19_hri7i")
+
 [node name="RB_Btn" type="Panel" parent="." unique_id=334519352]
 clip_contents = true
 layout_mode = 1
@@ -854,6 +869,7 @@ offset_bottom = 588.7093
 rotation = 0.34906584
 theme_override_styles/panel = SubResource("StyleBoxFlat_mxvw5")
 script = ExtResource("23_mxvw5")
+metadata/_edit_lock_ = true
 
 [node name="Button" type="Button" parent="LT_Btn" unique_id=427482582]
 layout_mode = 1
@@ -868,6 +884,7 @@ focus_mode = 0
 theme_override_styles/normal = SubResource("StyleBoxFlat_xrxkg")
 shortcut = SubResource("Shortcut_3b0ty")
 shortcut_in_tooltip = false
+metadata/_edit_lock_ = true
 
 [node name="Lag" type="Label" parent="LT_Btn" unique_id=413405156]
 layout_mode = 0
@@ -890,11 +907,13 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 theme_override_constants/separation = 300
+metadata/_edit_lock_ = true
 
 [node name="C" type="Control" parent="LT_Btn/VBoxC" unique_id=816651028]
 custom_minimum_size = Vector2(150, 150)
 layout_mode = 2
 mouse_filter = 2
+metadata/_edit_lock_ = true
 
 [node name="Setting" type="TextureRect" parent="LT_Btn/VBoxC/C" unique_id=1593430758]
 layout_mode = 1
@@ -910,6 +929,7 @@ mouse_filter = 2
 texture = ExtResource("10_5mvff")
 expand_mode = 1
 stretch_mode = 5
+metadata/_edit_lock_ = true
 
 [node name="C2" type="Control" parent="LT_Btn/VBoxC" unique_id=2038039474]
 custom_minimum_size = Vector2(150, 150)

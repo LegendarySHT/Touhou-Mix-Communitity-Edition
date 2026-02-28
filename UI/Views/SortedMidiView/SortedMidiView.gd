@@ -63,6 +63,7 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 		_is_loading = false
 		await _load_abort
 	clear_items()
+	await get_tree().process_frame
 	
 	if not item_bg:
 		item_bg = ButtonGroup.new()

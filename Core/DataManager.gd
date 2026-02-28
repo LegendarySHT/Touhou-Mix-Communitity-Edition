@@ -47,32 +47,20 @@ func load_all_midis_async() -> void:
 	if not is_loading:
 		return
 	
-	var thread = Thread.new()
-	var result = thread.start(_load_midis_thread)
-	print("[DataMGR] Thread started, result: %s" % result)
-	var thread_result = thread.wait_to_finish()
-	print("[DataMGR] Thread finished, result: %s" % thread_result)
-	print("[DataMGR] About to emit data_loaded signal...")
-	_emit_data_loaded()
-
-## 线程函数：加载MIDI数据
-## 使用新的谱面格式（从 FileSystemManager 获取谱面索引）
-func _load_midis_thread() -> void:
-	print("[DataMGR] Thread started, loading MIDI data...")
-	
-	# 确保 FileSystemManager 已初始化并扫描完成
+	# var thread = Thread.new()
+	# var result = thread.start(_load_midis)
 	if FileSystemManager.instance == null:
 		push_error("FileSystemManager not initialized")
 		return
 	
-	# 等待资源扫描完成（线程中不能用 await，使用轮询）
-	var timeout = 0
-	while not FileSystemManager.instance.is_initialized and timeout < 100:
-		OS.delay_msec(100)
-		timeout += 1
-	
-	if not FileSystemManager.instance.is_initialized:
-		print("[DataMGR] FileSystemManager timeout or not initialized after 10 seconds")
+	while not FileSystemManager.instance.is_initialized:
+		await get_tree().process_frame
+	_load_midis()
+
+## 线程函数：加载MIDI数据
+## 使用新的谱面格式（从 FileSystemManager 获取谱面索引）
+func _load_midis() -> void:
+	print("[DataMGR] Thread started, loading MIDI data...")
 	
 	# 获取谱面索引
 	var charts = FileSystemManager.instance.get_charts_index()
@@ -94,9 +82,12 @@ func _load_midis_thread() -> void:
 		# 每处理 100 个谱面打印一次进度
 		if processed_count % 100 == 0:
 			print("[DataMGR] Processing charts: %d/%d" % [processed_count, charts.size()])
+			await get_tree().process_frame
 	
 	print("[DataMGR] Finished processing %d charts, now emitting signal..." % processed_count)
 	print("[DataMGR] Midis in dictionary: %d" % midis.size())
+
+	_emit_data_loaded()
 
 func _emit_data_loaded():
 	print("[DataMGR] _emit_data_loaded() called")

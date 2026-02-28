@@ -117,8 +117,7 @@ func check_critical_resources() -> void:
 	
 	GameLogger.instance.info("=== Resource check complete ===", "FileSystemMGR")
 
-## 初始化目录结构
-## 检查并创建所有必需的目录，如果目录不存在则创建并填充默认资源
+## 初始化目录结构（修改为异步等待资源复制完成）
 func initialize_directory_structure() -> void:
 	if is_initialized:
 		GameLogger.instance.warning("FileSystemManager already initialized", "FileSystemMGR")
@@ -142,13 +141,8 @@ func initialize_directory_structure() -> void:
 	for dir_path in directories:
 		_ensure_directory_exists(dir_path)
 	
-	# 检查并复制默认资源（异步）
-	_check_and_copy_default_resources()
-	
-	is_initialized = true
-	initialization_complete.emit()
-	
-	GameLogger.instance.info("Directory structure initialized", "FileSystemMGR")
+	# 异步复制默认资源（改为协程，不再开线程）
+	await _check_and_copy_default_resources_async()
 
 ## 确保目录存在，不存在则创建
 ## 使用 make_dir_recursive_absolute 以兼容 Android 绝对路径
@@ -165,47 +159,41 @@ func _ensure_directory_exists(dir_path: String) -> bool:
 		resource_error.emit("Failed to create directory: %s" % dir_path)
 		return false
 
-## 检查并复制默认资源
-func _check_and_copy_default_resources() -> void:
-	# 使用线程异步处理，避免阻塞启动
-	var thread = Thread.new()
-	thread.start(_copy_default_resources_thread)
-
-## 线程函数：复制默认资源
-func _copy_default_resources_thread() -> void:
-	# 检查是否需要复制谱面（针对 Android 优化）
+## 异步检查并复制默认资源
+func _check_and_copy_default_resources_async() -> void:
+	# 复制谱面（若目录为空）
 	if _is_directory_empty(CHARTS_DIR):
 		GameLogger.instance.info("Charts directory is empty, copying default charts...", "FileSystemMGR")
-		_copy_default_charts()
+		await _copy_default_charts_async()   # 改为异步版本
 	
-	# 检查是否需要复制皮肤
+	# 复制皮肤（若目录为空）
 	if _is_directory_empty(SKINS_DIR):
 		GameLogger.instance.info("Skins directory is empty, copying default skins...", "FileSystemMGR")
-		_copy_directory_recursive(DEFAULT_SKINS_SRC, SKINS_DIR)
+		await _copy_directory_recursive_async(DEFAULT_SKINS_SRC, SKINS_DIR)
 	
 	# 音源目录：仅创建目录，不复制默认资源
 	_ensure_directory_exists(SOUNDFONT_DIR)
 	GameLogger.instance.info("Soundfont directory ready (no default resources copied)", "FileSystemMGR")
+	
+	# 复制背景图（若目录为空）
 	if _is_directory_empty(BACKGROUND_DIR):
 		GameLogger.instance.info("Background directory is empty, copying default backgrounds...", "FileSystemMGR")
-		_copy_directory_contents(DEFAULT_BACKGROUND_SRC, BACKGROUND_DIR, "jpg,png")
+		await _copy_directory_contents_async(DEFAULT_BACKGROUND_SRC, BACKGROUND_DIR, "jpg,png")
 	
-	# 完成后扫描资源
+	# 所有复制完成后扫描资源
 	call_deferred("_scan_all_resources")
 
-## 复制所有默认谱面到 user:// 目录（Android 优化版本）
-func _copy_default_charts() -> void:
+## 异步复制所有默认谱面（在每个文件夹复制后让步）
+func _copy_default_charts_async() -> void:
 	var source_base = DEFAULT_CHARTS_SRC
 	var dest_base = CHARTS_DIR
 	
-	# 首先检查源目录
 	if not DirAccess.dir_exists_absolute(source_base):
 		GameLogger.instance.warning("Charts source directory not found in PCK", "FileSystemMGR")
 		return
 	
 	GameLogger.instance.info("Starting to copy default charts from PCK...", "FileSystemMGR")
 	
-	# 打开源目录
 	var source_dir = DirAccess.open(source_base)
 	if not source_dir:
 		GameLogger.instance.error("Failed to open source charts directory", "FileSystemMGR")
@@ -217,25 +205,26 @@ func _copy_default_charts() -> void:
 	
 	while chart_folder != "":
 		if source_dir.current_is_dir() and not chart_folder.begins_with("."):
-			# 每个 chart 文件夹包含 MIDI 文件和 info.json
 			var source_chart_path = source_base + chart_folder
 			var dest_chart_path = dest_base + chart_folder
 			
-			# 创建目标文件夹
 			if not DirAccess.dir_exists_absolute(dest_chart_path):
 				DirAccess.make_dir_absolute(dest_chart_path)
 			
-			# 复制该文件夹内的所有文件
-			if _copy_chart_files_from_pck(source_chart_path, dest_chart_path):
+			# 复制该文件夹内的所有文件（内部已改为可让步的版本）
+			if await _copy_chart_files_from_pck_async(source_chart_path, dest_chart_path):
 				copied_count += 1
+			
+			# 每处理完一个 chart 文件夹，让出一帧，保持界面响应
+			await get_tree().process_frame
 		
 		chart_folder = source_dir.get_next()
 	
 	source_dir.list_dir_end()
 	GameLogger.instance.info("Copied %d chart folders from PCK" % copied_count, "FileSystemMGR")
 
-## 从 PCK 中复制单个 chart 文件夹的所有文件
-func _copy_chart_files_from_pck(source_path: String, dest_path: String) -> bool:
+## 异步复制单个 chart 文件夹的所有文件（内部处理图片时使用资源加载器）
+func _copy_chart_files_from_pck_async(source_path: String, dest_path: String) -> bool:
 	var source_dir = DirAccess.open(source_path)
 	if not source_dir:
 		GameLogger.instance.warning("Failed to open chart folder: %s" % source_path, "FileSystemMGR")
@@ -247,9 +236,6 @@ func _copy_chart_files_from_pck(source_path: String, dest_path: String) -> bool:
 	
 	while file_name != "":
 		if not source_dir.current_is_dir():
-			# Godot 导出后，图片文件在 PCK 中以 .import 形式存在
-			# 例如 cover.jpg → cover.jpg.import
-			# 需要检测并使用 ResourceLoader 加载原始图片资源
 			if _is_image_import_file(file_name):
 				var original_name = _strip_import_suffix(file_name)
 				var source_resource = source_path + "/" + original_name
@@ -257,16 +243,19 @@ func _copy_chart_files_from_pck(source_path: String, dest_path: String) -> bool:
 				if _copy_image_via_resource_loader(source_resource, dest_file):
 					success = true
 			else:
-				# 非 .import 文件：正常复制（JSON、MIDI 等）
 				var source_file = source_path + "/" + file_name
 				var dest_file = dest_path + "/" + file_name
 				if _copy_file_from_pck(source_file, dest_file):
 					success = true
+			
+			# 每复制一个文件后让出（可选，可减少卡顿感）
+			await get_tree().process_frame
 		
 		file_name = source_dir.get_next()
 	
 	source_dir.list_dir_end()
 	return success
+
 
 ## 检查文件是否为图片文件（基于扩展名）
 static func _is_image_file(file_path: String) -> bool:
@@ -334,9 +323,9 @@ func _copy_image_via_resource_loader(src_path: String, dest_path: String) -> boo
 		)
 		return false
 	
-	GameLogger.instance.info(
-		"Copied image via resource loader: %s" % dest_path.get_file(), "FileSystemMGR"
-	)
+	#GameLogger.instance.info(
+		#"Copied image via resource loader: %s" % dest_path.get_file(), "FileSystemMGR"
+	#)
 	return true
 
 ## 从 PCK 复制单个文件（关键方法）
@@ -409,19 +398,16 @@ func _is_directory_empty(dir_path: String) -> bool:
 	dir.list_dir_end()
 	return true
 
-## 复制目录内容（仅顶层文件，按扩展名过滤）
-## Android 兼容：res:// 路径在 PCK 包中
-func _copy_directory_contents(src_dir: String, dest_dir: String, extensions: String) -> void:
-	# Android 平台检查：res:// 资源是否存在
+## 异步复制目录内容（仅顶层文件）
+func _copy_directory_contents_async(src_dir: String, dest_dir: String, extensions: String) -> void:
 	if src_dir.begins_with("res://"):
 		if not DirAccess.dir_exists_absolute(src_dir):
-			GameLogger.instance.warning("Source directory not found in PCK: %s (Check export settings)" % src_dir, "FileSystemMGR")
+			GameLogger.instance.warning("Source directory not found in PCK: %s" % src_dir, "FileSystemMGR")
 			return
 	
 	var dir = DirAccess.open(src_dir)
 	if dir == null:
-		var error_msg = "Failed to open source directory: %s" % src_dir
-		GameLogger.instance.warning(error_msg, "FileSystemMGR")
+		GameLogger.instance.warning("Failed to open source directory: %s" % src_dir, "FileSystemMGR")
 		return
 	
 	var ext_list = extensions.split(",")
@@ -431,7 +417,6 @@ func _copy_directory_contents(src_dir: String, dest_dir: String, extensions: Str
 	
 	while file_name != "":
 		if not dir.current_is_dir() and not file_name.begins_with("."):
-			# Godot 导出后图片以 .import 形式存在，需要特殊处理
 			if _is_image_import_file(file_name):
 				var original_name = _strip_import_suffix(file_name)
 				var original_ext = original_name.get_extension().to_lower()
@@ -447,25 +432,25 @@ func _copy_directory_contents(src_dir: String, dest_dir: String, extensions: Str
 					var dest_path = dest_dir.path_join(file_name)
 					if _copy_file(src_path, dest_path):
 						copied_count += 1
+			
+			# 每复制一个文件后让步
+			await get_tree().process_frame
 		
 		file_name = dir.get_next()
 	
 	dir.list_dir_end()
 	GameLogger.instance.info("Copied %d files from %s to %s" % [copied_count, src_dir, dest_dir], "FileSystemMGR")
 
-## 递归复制整个目录（包括子目录）
-## Android 兼容：res:// 路径在 PCK 包中
-func _copy_directory_recursive(src_dir: String, dest_dir: String) -> void:
-	# Android 平台检查：res:// 资源是否存在
+## 异步递归复制整个目录（在文件循环中让步）
+func _copy_directory_recursive_async(src_dir: String, dest_dir: String) -> void:
 	if src_dir.begins_with("res://"):
 		if not DirAccess.dir_exists_absolute(src_dir):
-			GameLogger.instance.warning("Source directory not found in PCK: %s (Check export settings)" % src_dir, "FileSystemMGR")
+			GameLogger.instance.warning("Source directory not found in PCK: %s" % src_dir, "FileSystemMGR")
 			return
 	
 	var dir = DirAccess.open(src_dir)
 	if dir == null:
-		var error_msg = "Failed to open source directory: %s" % src_dir
-		GameLogger.instance.warning(error_msg, "FileSystemMGR")
+		GameLogger.instance.warning("Failed to open source directory: %s" % src_dir, "FileSystemMGR")
 		return
 	
 	dir.list_dir_begin()
@@ -475,29 +460,30 @@ func _copy_directory_recursive(src_dir: String, dest_dir: String) -> void:
 	while file_name != "":
 		if not file_name.begins_with("."):
 			if dir.current_is_dir():
-				# 递归复制子目录
 				var src_path = src_dir.path_join(file_name)
 				var dest_path = dest_dir.path_join(file_name)
 				_ensure_directory_exists(dest_path)
-				_copy_directory_recursive(src_path, dest_path)
+				await _copy_directory_recursive_async(src_path, dest_path)
 			elif _is_image_import_file(file_name):
-				# Godot 导出后图片以 .import 形式存在，通过 ResourceLoader 加载
 				var original_name = _strip_import_suffix(file_name)
 				var src_resource = src_dir.path_join(original_name)
 				var dest_path = dest_dir.path_join(original_name)
 				if _copy_image_via_resource_loader(src_resource, dest_path):
 					copied_count += 1
 			else:
-				# 非图片 .import 文件：正常复制
 				var src_path = src_dir.path_join(file_name)
 				var dest_path = dest_dir.path_join(file_name)
 				if _copy_file(src_path, dest_path):
 					copied_count += 1
+			
+			# 每处理一个文件后让步
+			await get_tree().process_frame
 		
 		file_name = dir.get_next()
 	
 	dir.list_dir_end()
 	GameLogger.instance.info("Recursively copied %d files from %s" % [copied_count, src_dir], "FileSystemMGR")
+
 
 ## 复制单个文件
 ## Android 兼容：处理 res:// 和 user:// 路径
@@ -548,19 +534,28 @@ func _scan_all_resources() -> void:
 	is_scanning = true
 	GameLogger.instance.info("Scanning all resources...", "FileSystemMGR")
 	
-	scan_charts()
-	scan_skins()
-	scan_soundfonts()
-	scan_backgrounds()
+	var scan_thread = Thread.new()
+	scan_thread.start(func ():
+		scan_charts()
+		scan_skins()
+		scan_soundfonts()
+		scan_backgrounds()
+	)
+	scan_thread.wait_to_finish()
 	
 	is_scanning = false
 	resources_scanned = true
 	resources_ready.emit()
-	GameLogger.instance.info("All resources scanned and ready", "FileSystemMGR")
+	
+	is_initialized = true
+	initialization_complete.emit()
+	
+	GameLogger.instance.info("Directory structure initialized", "FileSystemMGR")
 
 ## 扫描谱面目录
 ## 仅扫描新的谱面文件夹格式（每个文件夹一个谱面）
 func scan_charts() -> void:
+	# await get_tree().process_frame
 	charts_index.clear()
 	
 	var dir = DirAccess.open(CHARTS_DIR)
@@ -582,11 +577,17 @@ func scan_charts() -> void:
 				count += 1
 		
 		folder_name = dir.get_next()
+		# if count % 10 == 0:
+		# 	await get_tree().process_frame
 	
 	dir.list_dir_end()
 	
-	resource_scan_completed.emit("charts", count)
+	call_deferred("emit_scan_completed","charts",count)
+	
 	GameLogger.instance.info("Scanned %d charts" % count, "FileSystemMGR")
+
+func emit_scan_completed(str, ctn):
+	resource_scan_completed.emit(str, ctn)
 
 ## 加载谱面元数据（从谱面文件夹）
 ## 文件夹命名格式：{hash}_{song_name}_{difficulty}/
@@ -669,6 +670,7 @@ func _load_chart_from_json(json_path: String, chart_id: String) -> Dictionary:
 
 ## 扫描皮肤目录
 func scan_skins() -> void:
+	# await get_tree().process_frame
 	skins_index.clear()
 	
 	var dir = DirAccess.open(SKINS_DIR)
@@ -690,9 +692,10 @@ func scan_skins() -> void:
 				count += 1
 		
 		folder_name = dir.get_next()
+		# await get_tree().process_frame
 	
 	dir.list_dir_end()
-	resource_scan_completed.emit("skins", count)
+	call_deferred("emit_scan_completed","skins",count)
 	GameLogger.instance.info("Scanned %d skins" % count, "FileSystemMGR")
 
 ## 加载皮肤元数据
@@ -726,6 +729,7 @@ func _load_skin_metadata(skin_path: String, skin_name: String) -> Dictionary:
 
 ## 扫描音源目录
 func scan_soundfonts() -> void:
+	# await get_tree().process_frame
 	soundfonts_index.clear()
 	
 	var dir = DirAccess.open(SOUNDFONT_DIR)
@@ -745,13 +749,15 @@ func scan_soundfonts() -> void:
 			count += 1
 		
 		file_name = dir.get_next()
+		# await get_tree().process_frame
 	
 	dir.list_dir_end()
-	resource_scan_completed.emit("soundfonts", count)
+	call_deferred("emit_scan_completed","soundfonts",count)
 	GameLogger.instance.info("Scanned %d soundfonts" % count, "FileSystemMGR")
 
 ## 扫描背景图目录
 func scan_backgrounds() -> void:
+	# await get_tree().process_frame
 	backgrounds_index.clear()
 	
 	var dir = DirAccess.open(BACKGROUND_DIR)
@@ -774,7 +780,7 @@ func scan_backgrounds() -> void:
 		file_name = dir.get_next()
 	
 	dir.list_dir_end()
-	resource_scan_completed.emit("backgrounds", count)
+	call_deferred("emit_scan_completed","backgrounds",count)
 	GameLogger.instance.info("Scanned %d backgrounds" % count, "FileSystemMGR")
 
 ## ========== 公共查询接口 ==========

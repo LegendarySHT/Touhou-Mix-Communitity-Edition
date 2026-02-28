@@ -34,8 +34,6 @@ func _load_albums() -> void:
 	current_albums = data_manager.get_all_albums()
 	_refresh_display()
 
-	_connect_head_and_tail()
-
 	container.custom_minimum_size.y = (item_height + item_spacing) * current_albums.size() - 200
 
 ## 刷新显示
@@ -51,13 +49,18 @@ func _refresh_display() -> void:
 		item.setup_with_album(self, album, counter, bg)
 
 		counter += 1
+	
+	if counter:
+		_connect_head_and_tail()
+	
+	get_parent().get_node("Loading").stop_rotation()
 
 func _process(delta):
 	super._process(delta)
 
 	if selected_item == -1 and not (is_dragging_list or is_dragging_bar or snap_tween or scroll_velocity != 0):
 		need_snap = true
-		print("need snap v: %f" % scroll_velocity)
+		# print("need snap v: %f" % scroll_velocity)
 
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)
