@@ -2,6 +2,7 @@ using Godot;
 using MeltySynth;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using TouhouMix.Midi;
 
 /// <summary>
@@ -763,6 +764,36 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	// ===================== 私有辅助方法 =====================
 
+	/// <summary>
+	/// 使用 Godot FileAccess 读取文件为 MemoryStream
+	/// 解决 Android 上 res:// 路径无法通过 System.IO 访问的问题
+	/// </summary>
+	private MemoryStream OpenFileAsStream(string path)
+	{
+		// res:// 路径在 Android 上嵌入 APK/PCK 中，必须通过 Godot FileAccess 读取
+		// user:// 和绝对路径可以通过 System.IO 访问，但为统一起见全部用 Godot API
+		var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
+		if (file == null)
+		{
+			var error = Godot.FileAccess.GetOpenError();
+			GD.PrintErr($"[MeltySynthPlayer] Failed to open file via Godot FileAccess: {path} (error: {error})");
+			
+			// 回退：尝试 System.IO（仅对非 res:// 路径有效）
+			if (!path.StartsWith("res://") && !path.StartsWith("user://"))
+			{
+				GD.Print($"[MeltySynthPlayer] Falling back to System.IO for path: {path}");
+				return new MemoryStream(System.IO.File.ReadAllBytes(path));
+			}
+			throw new FileNotFoundException($"Cannot open file: {path} (Godot error: {error})");
+		}
+		
+		var length = (long)file.GetLength();
+		var bytes = file.GetBuffer(length);
+		file.Close();
+		GD.Print($"[MeltySynthPlayer] Loaded {length} bytes from: {path}");
+		return new MemoryStream(bytes);
+	}
+
 	private void LoadSoundfont(string path)
 	{
 		if (string.IsNullOrEmpty(path))
@@ -770,8 +801,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return;
 		}
 
-		var globalPath = ProjectSettings.GlobalizePath(path);
-		_soundFont = new SoundFont(globalPath);
+		using var stream = OpenFileAsStream(path);
+		_soundFont = new SoundFont(stream);
 		var settings = new SynthesizerSettings(_sampleRate)
 		{
 			MaximumPolyphony = max_polyphony
@@ -840,8 +871,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return;
 		}
 
-		var globalPath = ProjectSettings.GlobalizePath(path);
-		_midiFile = new MidiFile(globalPath);
+		using var stream = OpenFileAsStream(path);
+		_midiFile = new MidiFile(stream);
 		_sequencerStarted = false;  // 重置标志，等待 play() 调用
 		_currentOffsetMs = 0.0;  // 重置 offset
 		_hasSkippedPreroolEvents = false;  // 重置跳过标志

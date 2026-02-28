@@ -76,6 +76,9 @@ var midi_player_config: Dictionary = {
 	"volume_db": -20.0
 }
 
+## Android 平台标志（用于降级音频复杂度）
+var _is_android: bool = false
+
 ## 信号：MIDI加载完成
 signal midi_loaded(midi_data: MidiData)
 
@@ -108,6 +111,14 @@ func _ready() -> void:
 		return
 	
 	add_to_group("singleton")
+	
+	# 检测 Android 平台，降级音频参数以避免引擎级崩溃
+	_is_android = OS.get_name() == "Android"
+	if _is_android:
+		# Android 上 AudioStreamPlayer 数量过多会导致音频线程 StringName 腐败
+		# 从 96（192个播放器节点）降低到 24（48个播放器节点）
+		midi_player_config["max_polyphony"] = 24
+		print("[MidiPlaybackManager] Android detected: max_polyphony reduced to 24")
 	
 	# 从配置文件加载MIDI后端设置
 	_load_backend_from_config()
@@ -191,11 +202,20 @@ func _process(_delta: float) -> void:
 	
 	# 对于addon后端，直接读取position（tick）
 	if midi_backend == "addons" and midi_player != null:
+		# Android线程安全：检查对象有效性（音频线程可能导致对象被释放）
+		if not is_instance_valid(midi_player):
+			push_warning("[MidiPlaybackManager] midi_player invalidated during playback, stopping")
+			is_playing = false
+			midi_player = null
+			return
+		
 		position = midi_player.position
 		
 		# 更新position_ms，带BPM时间线支持
-		if midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
-			midi_timebase = midi_player.smf_data.timebase
+		# 安全检查：确保smf_data在音频线程操作中仍然有效
+		var smf = midi_player.smf_data
+		if smf != null and smf.timebase > 0:
+			midi_timebase = smf.timebase
 			position_ms = _calculate_position_with_bpm_timeline(position, midi_timebase)
 	
 	# 对于meltysynth后端，使用毫秒位置
@@ -667,6 +687,27 @@ func _load_backend_from_config() -> void:
 
 ## 初始化指定后端
 func _initialize_backend() -> bool:
+	# Android 平台强制优先使用 MeltySynth 后端
+	# 原因：addons 后端使用大量 AudioStreamPlayer 节点，会触发 Godot 引擎级
+	# StringName 引用计数竞态条件（音频线程 crash: "Unreferenced static string to 0"）
+	# MeltySynth 使用单个 AudioStreamPlayer + AudioStreamGenerator 软件混音，完全避免此 bug
+	if _is_android:
+		print("[MidiPlaybackManager] Android: attempting MeltySynth backend to avoid audio thread crash")
+		if _is_csharp_available():
+			var melty_ok = _initialize_meltysynth_backend()
+			if melty_ok:
+				midi_backend = "meltysynth"
+				print("[MidiPlaybackManager] Android: MeltySynth backend active (safe mode)")
+				return true
+			else:
+				push_warning("[MidiPlaybackManager] Android: MeltySynth initialization failed, falling back to addon backend")
+		else:
+			push_warning("[MidiPlaybackManager] Android: C# not available - addon backend may cause audio thread crashes")
+			push_warning("[MidiPlaybackManager] Android: Consider exporting with .NET support for stable MIDI playback")
+		# Android fallback to addon backend with warning
+		return _initialize_addon_backend()
+	
+	# 非 Android 平台：按配置选择后端
 	match midi_backend:
 		"addons":
 			return _initialize_addon_backend()
@@ -800,9 +841,20 @@ func _initialize_meltysynth_backend() -> bool:
 	
 	return true
 
-## 检查C#支持
+## 检查C#支持（兼容导出包）
+## 旧方法检查 .csproj 文件，但导出的 APK 不包含此文件
+## 新方法：检查 C# 运行时 + MeltySynth 场景是否存在
 func _is_csharp_available() -> bool:
-	return FileAccess.file_exists("res://Touhou Mix Comunitity Edition.csproj")
+	# 1. 检查 Godot C# 运行时是否可用（仅 Mono 构建版本有此类）
+	if not ClassDB.class_exists(&"CSharpScript"):
+		print("[MidiPlaybackManager] C# runtime not available (non-Mono build)")
+		return false
+	# 2. 检查 MeltySynth 场景是否存在
+	if not ResourceLoader.exists("res://CSharp/MeltySynthPlayer.tscn"):
+		print("[MidiPlaybackManager] MeltySynth scene not found")
+		return false
+	print("[MidiPlaybackManager] C# runtime and MeltySynth scene available")
+	return true
 
 ## 清理旧后端（彻底销毁以避免同时运行多个后端）
 ## 这是动态切换的关键步骤，防止旧后端继续在后台运行
@@ -811,10 +863,13 @@ func _cleanup_old_backend(backend_type: String) -> void:
 		"addons":
 			if midi_player != null:
 				print("[MidiPlaybackManager] Cleaning up Addon backend")
-				# 1. 停止播放器
+				# 1. 停止播放器并停止所有音符（确保音频线程不再处理数据）
 				if midi_player.has_method("stop"):
 					midi_player.stop()
 					print("[MidiPlaybackManager] Addon backend stopped")
+				if midi_player.has_method("_stop_all_notes"):
+					midi_player._stop_all_notes()
+					print("[MidiPlaybackManager] All addon notes stopped")
 				
 				# 2. 断开所有信号
 				if midi_player.has_signal("finished"):
@@ -822,16 +877,16 @@ func _cleanup_old_backend(backend_type: String) -> void:
 						midi_player.finished.disconnect(_on_midi_finished)
 						print("[MidiPlaybackManager] Addon finished signal disconnected")
 				
-				# 3. 从场景树移除（立即删除，同步操作）
-				if midi_player.get_parent() != null:
-					if midi_player.get_parent() == self:
-						remove_child(midi_player)
-					midi_player.free()  # 使用free()而不是queue_free()以确保立即销毁
-					print("[MidiPlaybackManager] Addon backend freed immediately from scene")
-				
-				# 4. 清空引用
+				# 3. 清空引用（先清引用，防止下一帧_process访问）
+				var old_player = midi_player
 				midi_player = null
-				print("[MidiPlaybackManager] Addon backend reference cleared")
+				
+				# 4. 从场景树移除（使用queue_free而非free，给音频线程时间完成当前回调）
+				if old_player.get_parent() != null:
+					if old_player.get_parent() == self:
+						remove_child(old_player)
+				old_player.queue_free()
+				print("[MidiPlaybackManager] Addon backend queued for deletion")
 		
 		"meltysynth":
 			if meltysynth_player != null:
@@ -847,16 +902,16 @@ func _cleanup_old_backend(backend_type: String) -> void:
 						meltysynth_player.finished.disconnect(_on_midi_finished)
 						print("[MidiPlaybackManager] MeltySynth finished signal disconnected")
 				
-				# 3. 从场景树移除（立即删除，同步操作）
-				if meltysynth_player.get_parent() != null:
-					if meltysynth_player.get_parent() == self:
-						remove_child(meltysynth_player)
-					meltysynth_player.free()  # 使用free()而不是queue_free()以确保立即销毁
-					print("[MidiPlaybackManager] MeltySynth backend freed immediately from scene")
-				
-				# 4. 清空引用
+				# 3. 清空引用（先清引用，防止下一帧_process访问）
+				var old_player = meltysynth_player
 				meltysynth_player = null
-				print("[MidiPlaybackManager] MeltySynth backend reference cleared")
+				
+				# 4. 从场景树移除（使用queue_free，给音频线程时间完成当前回调）
+				if old_player.get_parent() != null:
+					if old_player.get_parent() == self:
+						remove_child(old_player)
+				old_player.queue_free()
+				print("[MidiPlaybackManager] MeltySynth backend queued for deletion")
 		
 		_:
 			print("[MidiPlaybackManager] Unknown backend type for cleanup: %s" % backend_type)

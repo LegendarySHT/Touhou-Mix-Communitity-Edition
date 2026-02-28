@@ -831,7 +831,11 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 				option_texts = ["Loading..."]
 			else:
 				# 静态options，正常处理
+				# Android 上过滤掉 addons 插件后端选项（该后端在 Android 上已禁用）
+				var is_android = OS.get_name() == "Android"
 				for option in setting_data.options:
+					if is_android and setting_data.id == "midi_backend" and option.get("value", "") == "addons":
+						continue
 					var option_text = option["text_%s" % language] if language in ["en", "zh"] else option.text_en
 					option_texts.append(option_text)
 			
@@ -846,6 +850,9 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 				# 初始值在选项列表中，查找其索引
 				default_index = option_texts.find(initial_value)
 			
+			# 确保索引不越界（如 Android 过滤选项后原索引可能超出范围）
+			if not option_texts.is_empty():
+				default_index = clampi(default_index, 0, option_texts.size() - 1)
 			setting_item.set_options(option_texts, default_index)
 	
 		# 如果是颜色类型的设置项，设置颜色选择器选项
