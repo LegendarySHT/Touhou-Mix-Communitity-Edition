@@ -198,7 +198,6 @@ func init_displayer(mn: Node, notes: Array[NoteEvent]):
 
 # 重置播放头位置 - 用于进度条跳转
 func reset_playhead_position(target_ms: float) -> void:
-	# return
 	if current_notes.is_empty() or master_node == null:
 		return
 	
@@ -221,26 +220,55 @@ func reset_playhead_position(target_ms: float) -> void:
 	
 	print("[NoteDisplayer] Reset to position: %.1f ms (tick: %.0f)" % [target_ms, target_tick])
 	
-	# 更新current_idx - 找到第一个start_tick >= target_tick的note
-	var new_idx = 0
-	for i in range(current_notes.size()):
-		if current_notes[i].start_tick >= target_tick:
-			new_idx = i
-			break
-		new_idx = i + 1  # 如果都小于target，则new_idx为notes.size()
-	
 	# 清空所有活动的note
 	for note_rect in active_notes:
 		note_rect.queue_free()
 	active_notes.clear()
 	
-	# 重置索引和计数
+	# 计算视野右边界对应的tick
+	var view_right_bound = target_tick + area_width / scale_factor
+	
+	# 找到第一个 end_tick >= target_tick 的音符（即尚未完全飞出左边界的音符）
+	# 这些音符可能正在播放中，仍然部分或全部可见
+	var first_visible_idx = current_notes.size()
+	for i in range(current_notes.size()):
+		var end_tick = current_notes[i].start_tick + current_notes[i].duration
+		if end_tick >= target_tick:
+			first_visible_idx = i
+			break
+	
+	# 从 first_visible_idx 开始，立即生成所有在视野范围内的音符
+	var new_idx = first_visible_idx
+	for i in range(first_visible_idx, current_notes.size()):
+		if current_notes[i].start_tick >= view_right_bound:
+			new_idx = i
+			break
+		# 该音符在视野内，立即生成
+		_create_note(current_notes[i])
+		new_idx = i + 1
+	
+	# 设置 current_idx 为下一个待生成的音符索引
 	current_idx = new_idx
 	
-	# 重新计算已通过的音符数
-	note_count_passed.text = str(new_idx - active_notes.size())
+	# 重新计算已通过的音符数（start_tick < target_tick 且不在当前活动列表中的）
+	var passed_count = 0
+	for note in current_notes:
+		if note.start_tick < target_tick:
+			passed_count += 1
+		else:
+			break  # notes 已按时间排序，可以提前退出
+	# 减去那些 start_tick < target_tick 但仍在活动列表中显示的音符
+	for note_rect in active_notes:
+		var st = note_rect.get_meta("start_tick")
+		if st < target_tick:
+			# 这个音符虽然 start_tick 已过，但 end_tick 还在视野内，不算passed
+			# 标记为已通过（与_process中的逻辑一致）
+			if not note_rect.get_meta("is_passed"):
+				note_rect.set_meta("is_passed", true)
+	note_count_passed.text = str(passed_count)
 	
-	print("[NoteDisplayer] Reset complete: current_idx=%d, passed=%s" % [current_idx, note_count_passed.text])
+	print("[NoteDisplayer] Reset complete: current_idx=%d, visible=%d, passed=%d" % 
+		[current_idx, active_notes.size(), passed_count])
 
 # 根据音高获取颜色
 func _get_color_by_track_idx(track_idx: int) -> Color:

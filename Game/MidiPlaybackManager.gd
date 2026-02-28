@@ -344,6 +344,9 @@ func play() -> void:
 
 	backend.play()
 	is_playing = true
+	# 重置播放位置，确保 position 与后端实际位置同步
+	position = 0.0
+	position_ms = 0.0
 
 	# 启动人声播放（如果有人声文件）
 	if not current_midi_data.vocal_file_path.is_empty():
@@ -362,6 +365,7 @@ func stop() -> void:
 	
 	backend.stop()
 	is_playing = false
+	position = 0.0
 	position_ms = 0.0
 
 	# 停止人声播放
@@ -433,14 +437,21 @@ func seek(pos: float) -> void:
 			var target_tick = _calculate_tick_from_position_with_bpm_timeline(pos, midi_player.smf_data.timebase)
 			print("[MidiPlaybackManager] Seeking to tick %.1f (addons backend)" % target_tick)
 			midi_player.seek(target_tick)
+			# 立即同步 position，避免其他系统在下一帧前读到过时的 tick 值
+			position = target_tick
 		elif midi_timebase > 0:
 			var target_tick = _calculate_tick_from_position_with_bpm_timeline(pos, midi_timebase)
 			print("[MidiPlaybackManager] Seeking to tick %.1f (addons backend, using cached timebase)" % target_tick)
 			midi_player.seek(target_tick)
+			# 立即同步 position
+			position = target_tick
 	elif midi_backend == "meltysynth" and meltysynth_player != null:
 		# 直接调用 C# 的 seek_ms 方法
 		print("[MidiPlaybackManager] Calling MeltySynth seek_ms(%.1f)" % pos)
 		meltysynth_player.seek_ms(pos)
+		# 立即同步 position（从毫秒转 tick）
+		if midi_timebase > 0:
+			position = _calculate_tick_from_position_with_bpm_timeline(pos, midi_timebase)
 	else:
 		print("[MidiPlaybackManager] Seek failed: backend not available")
 

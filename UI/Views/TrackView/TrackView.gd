@@ -316,6 +316,10 @@ func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
 	# 执行跳转
 	midi_playback_manager.seek(target_ms)
 	
+	# 【关键】更新 last_position_ms 和 current_tick，防止下一帧循环检测误判
+	last_position_ms = target_ms
+	current_tick = int(midi_playback_manager.position)
+	
 	# 重置noteDisplayer状态
 	if master_note_displayer:
 		master_note_displayer.reset_playhead_position(target_ms)
@@ -1022,6 +1026,13 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 		
 		# 收起主面板的展开状态
 		get_node("MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button").button_pressed = false
+
+		# 重置主音符显示器状态（防止残留数据影响重进后的显示）
+		if master_note_displayer:
+			master_note_displayer.init_displayer(null, [])
+		
+		# 重置播放位置追踪
+		current_tick = 0
 
 		# 清空轨道列表
 		clear_items()
