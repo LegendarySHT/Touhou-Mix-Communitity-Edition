@@ -1,4 +1,4 @@
-extends Control
+﻿extends Control
 
 class_name ScoreView
 
@@ -22,62 +22,41 @@ class_name ScoreView
 @onready var lvl_exp_progress: ProgressBar = $LevelingProgress/Data/ProgressBar
 
 class ScoreData:
-	var accuracy: float = 0
-	var performance_point: float = 0
+	## 由 ScoreCalculator 填充的最终数据（纯数据容器，不含计算逻辑）
+	var accuracy: float = 1.0
+	var performance_point: float = 0.0
 	var max_combo: int = 0
 	var total_notes: int = 0
-
-	var score: int = 0:
-		set(v):
-			score = v
-			_update_result()
+	var score: int = 0
 	var count: Dictionary = {
 		"Perfect": 0,
 		"Great": 0,
 		"Good": 0,
 		"Bad": 0,
 		"Miss": 0
-	}:
-		set(v):
-			count = v
-			_update_result()
-
+	}
 	var early_count: int = 0
 	var late_count: int = 0
 
-	func _update_result():
-		# accuracy = (perfect_count + (2.0/3) * great_count + (1.0/3) * good_count)/(perfect_count + great_count + good_count + bad_count + miss_count)
-		accuracy = (count["Perfect"] + (2.0/3) * count["Great"] + (1.0/3) * count["Good"])/ count.values().reduce(func(acc, v): return acc + v, 0)
-		performance_point = log(1 + score) * pow(accuracy, 2)
-
+	## 评级 - 委托 ScoreCalculator（唯一计分真源）
 	func get_rank() -> String:
-		if accuracy == 1:
-			return "Ω"
-		elif accuracy > 0.9999:
-			return "SSS"
-		elif accuracy > 0.999:
-			return "SS"
-		elif accuracy > 0.99:
-			return "S"
-		elif accuracy > 0.6:
-			var l:int = int(accuracy*100-60)
-			@warning_ignore("integer_division")
-			return char(ord("D") - l/10)+("+" if l%10>4 else "")
-		else:
-			return "F"
+		if ScoreCalculator.instance:
+			return ScoreCalculator.instance.get_rank()
+		# 回退：使用本地 accuracy 按阈值查找
+		for threshold in ScoreCalculator.RANK_THRESHOLDS:
+			if accuracy >= threshold[0]:
+				return threshold[1]
+		return "F"
 
 	func get_formated_score() -> String:
 		var str_num = str(score)
 		var regex = RegEx.new()
 		regex.compile("(\\d)(?=(\\d{3})+(?!\\d))")
-		# 替换匹配的部分
-		var result = regex.sub(str_num, "$1,", true)
-		# 反转字符串，从后向前每三位加逗号
-		return result
+		return regex.sub(str_num, "$1,", true)
 
 	func get_accuracy() -> String:
-		return "%0.2f%%" % (accuracy*100)
-	
+		return "%0.2f%%" % (accuracy * 100)
+
 	func get_pp() -> String:
 		return "%0.2fpp" % performance_point
 

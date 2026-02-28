@@ -31,11 +31,12 @@ var note_color_short: Color = Color.DEEP_PINK
 var note_color_slide: Color = Color.CYAN
 var note_color_long: Color = Color.DARK_ORANGE
 
-# 判定参数
+# 判定参数（毫秒）- 与 ScoreCalculator.JUDGE_WINDOWS（秒）对应
 var judge_windows: Dictionary = {
-	"perfect": 25,    # 完美判定窗口
-	"great": 50,      # 良好判定窗口
-	"good": 100       # 一般判定窗口
+	"perfect": 50,    # < 0.05s
+	"great": 150,     # < 0.15s
+	"good": 200,      # < 0.20s
+	"bad": 500        # < 0.50s
 }
 
 # 音符生成提前量（毫秒） - 确保音符在到达判定线前有足够时间显示 - 调下落速度也是用它（
@@ -45,8 +46,12 @@ var note_generation_lead_time: float = 1000.0
 var particle_scale: float = 0.8
 ###################################
 
-signal note_judged(result: String, offset: String)
-signal long_holding
+## note_judged(result: String, offset: String, block_type: int, timing_sec: float, signed_offset_sec: float)
+## block_type: KeySequenceManager.BlockType 值 (0=INSTANT,1=SHORT,2=LONG)
+## timing_sec: 偏差绝对值(秒)  signed_offset_sec: 带符号偏差(秒)
+signal note_judged(result: String, offset: String, block_type: int, timing_sec: float, signed_offset_sec: float)
+## long_holding(long_instance_id: int) - 长条持续加分 tick
+signal long_holding(long_instance_id: int)
 
 # 音符相关
 var lane_width: float = 0
@@ -90,6 +95,12 @@ class Note:
 	# 用于长条
 	var is_held: bool = false    	# 是否被按住
 	var cooldown: float = 0      	# 长按时的触发计时器
+	var long_instance_id: int = -1  # 同一长条的唯一 ID（用于 ScoreCalculator 衰减链）
+	
+	static var _next_long_id: int = 0
+	static func _gen_long_id() -> int:
+		_next_long_id += 1
+		return _next_long_id
 	
 	func _init(tp: NoteType, st: float, dur: float, l: int):
 		start_time = st
@@ -270,7 +281,7 @@ func _spawn_note(note_index: int) -> void:
 			if nt.rect:
 				_remove_note(nt)
 				# 只有在音符播放完毕但未被击打时才判定为Miss
-				note_judged.emit("Miss", "")
+				note_judged.emit("Miss", "", nt.type, 1.0, 0.0)
 		)
 	)
 
@@ -397,6 +408,9 @@ func _handle_touch_drag(touch_id: int, pos: Vector2) -> void:
 func _hold_long_note(touch_id: int, note: Note) -> void:
 	note.is_held = true
 	note.held_by_touch_id = touch_id
+	# 为新长条分配唯一实例 ID（用于 ScoreCalculator 独立衰减链）
+	if note.long_instance_id < 0:
+		note.long_instance_id = Note._gen_long_id()
 	active_holds[touch_id] = note
 	
 	_judge_note(note)
@@ -476,19 +490,27 @@ func _generate_particle(type: String, pos: Vector2):
 	ptc.play(type)
 	
 func _judge_note(judge_note: Note):
-	var time_diff = judge_note.start_time - parent_node.current_time
+	var time_diff = judge_note.start_time - parent_node.current_time  # 毫秒
+	var abs_diff = abs(time_diff)
 	var result: String = "Bad"
 
-	if abs(time_diff) <= judge_windows["perfect"]:
+	if abs_diff <= judge_windows["perfect"]:
 		result = "Perfect"
-	elif abs(time_diff) <= judge_windows["great"]:
+	elif abs_diff <= judge_windows["great"]:
 		result = "Great"
-	elif abs(time_diff) <= judge_windows["good"]:
+	elif abs_diff <= judge_windows["good"]:
 		result = "Good"
+	elif abs_diff <= judge_windows["bad"]:
+		result = "Bad"
 
-	# 发射判定结果
-	# print("%s diff %f st %f" % [result, time_diff, judge_note.start_time])
-	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff])
+	# 转换为秒，传递给 ScoreCalculator 所需的数据
+	var timing_sec: float = abs_diff / 1000.0
+	var signed_offset_sec: float = time_diff / 1000.0
+	# 将 NoteType 映射到 BlockType (值相同: Block=0→INSTANT, Slide=1→SHORT, Long=2→LONG)
+	var block_type: int = judge_note.type
+
+	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff],
+		block_type, timing_sec, signed_offset_sec)
 	if judge_note.type != NoteType.Long:
 		_remove_note(judge_note)
 
@@ -553,6 +575,6 @@ func _process(delta: float) -> void:
 			# 加分及加combo
 			if note.cooldown > 0.25: # 0.25是触发频率
 				note.cooldown = 0
-				long_holding.emit()
+				long_holding.emit(note.long_instance_id)
 			else:
 				note.cooldown += delta

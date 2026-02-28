@@ -53,7 +53,7 @@ var audio_manager: AudioManager
 var notes_renderer: Node
 
 ## ScoreCalculator引用
-var score_calculator: Node
+var score_calculator: ScoreCalculator
 
 ## 游戏状态改变信号
 signal game_state_changed(old_state: GameState, new_state: GameState)
@@ -88,6 +88,7 @@ func _initialize_managers() -> void:
 	midi_playback_manager = MidiPlaybackManager.instance
 	key_sequence_manager = KeySequenceManager.instance
 	audio_manager = AudioManager.instance
+	score_calculator = ScoreCalculator.instance
 	
 	# 连接MIDI播放管理器信号
 	if midi_playback_manager:
@@ -255,16 +256,26 @@ func _on_game_finished() -> void:
 	var score_data = _calculate_final_score()
 	game_finished.emit(score_data)
 
-## 计算最终分数（占位符）
+## 计算最终分数（从 ScoreCalculator 获取真实数据）
 func _calculate_final_score() -> Dictionary:
+	if score_calculator:
+		return score_calculator.get_snapshot()
+	# 回退
 	return {
-		"perfect_count": 0,
-		"good_count": 0,
-		"ok_count": 0,
-		"miss_count": 0,
 		"total_score": 0,
 		"accuracy": 0.0,
-		"rank": "F"
+		"rank": "F",
+		"max_combo": 0,
+		"combo": 0,
+		"judge_counts": {},
+		"early_count": 0,
+		"late_count": 0,
+		"pp": 0.0,
+		"pp_text": "0.00pp",
+		"accuracy_text": "0.00%",
+		"formatted_score": "0",
+		"total_notes": 0,
+		"last_score_add": 0,
 	}
 
 ## MIDI播放完成回调

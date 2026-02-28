@@ -10,6 +10,7 @@ var state_manager: UIStateManager
 var animation_manager: AnimationManager
 var sorting_engine: SortingEngine
 var gameplay_manager: GameplayManager
+var score_calculator: ScoreCalculator
 var audio_manager: AudioManager
 var midi_playback_manager: MidiPlaybackManager
 var key_sequence_manager: KeySequenceManager
@@ -119,6 +120,13 @@ func _initialize_core_systems() -> void:
 	add_child(gameplay_manager)
 	if logger:
 		logger.info("GameplayManager initialized", "Main")
+	
+	# 9.5 初始化分数计算器
+	score_calculator = ScoreCalculator.new()
+	score_calculator.name = "ScoreCalculator"
+	add_child(score_calculator)
+	if logger:
+		logger.info("ScoreCalculator initialized", "Main")
 	
 	# 10. 初始化音频管理器
 	audio_manager = AudioManager.new()

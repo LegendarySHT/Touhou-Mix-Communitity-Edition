@@ -52,11 +52,13 @@ extends Control
 @onready var auto_label: Label = $AutoLabel
 
 var current_midi: MidiData = null
+## play_result 仅作为传递给 ScoreView 的展示数据容器
 var play_result: ScoreView.ScoreData = null
 
 @onready var ani: AnimationManager = AnimationManager.instance
 @onready var playback_mgr: MidiPlaybackManager = MidiPlaybackManager.instance
 @onready var key_sequence_mgr: KeySequenceManager = KeySequenceManager.instance
+@onready var score_calc: ScoreCalculator = ScoreCalculator.instance
 
 var midi_start_time: float = 0.0
 
@@ -97,7 +99,7 @@ func _ready() -> void:
 	progress_bar.value_changed.connect(_on_top_progress_bar_value_changed)
 
 	flow_area.note_judged.connect(_on_note_judged)
-	flow_area.long_holding.connect(_holding_bonus)
+	flow_area.long_holding.connect(_on_long_holding)
 	flow_area.parent_node = self
 
 	menu_btn.pressed.connect(show_or_hide_menu)
@@ -184,6 +186,10 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	current_midi = midi
 	play_result = ScoreView.ScoreData.new()
 
+	# 重置 ScoreCalculator
+	if score_calc:
+		score_calc.reset()
+
 	_init_display()
 	flow_area.init_flow_area()
 	
@@ -214,6 +220,9 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	var flow_notes = _convert_game_sequences_to_flow_notes(game_sequences)
 	print("[PlayView] After _convert_game_sequences_to_flow_notes, flow_notes.size() = %d" % flow_notes.size())
 	flow_area.notes_list = flow_notes
+	# 告知 ScoreCalculator 总音符数(LONG的持续 tick 不计入)
+	if score_calc:
+		score_calc.total_notes = flow_notes.size()
 	play_result.total_notes = flow_notes.size()
 	print("[PlayView] FlowArea initialized with %d game sequences" % flow_notes.size())
 	# 设置进度条最大值
@@ -499,18 +508,29 @@ func _on_midi_started() -> void:
 	print("[PlayView] MIDI playback started")
 	is_midi_playing = true
 
-## 游戏结束回调（可以扩展为显示结算界面）
+## 游戏结束回调
 func _on_game_finished() -> void:
 	print("[PlayView] Game finished!")
 	
-	# 更新最大Combo
-	play_result.max_combo = int(combo.text) if int(combo.text) > play_result.max_combo else play_result.max_combo
+	# 从 ScoreCalculator 拿最终快照，填充结算数据
+	var snap = score_calc.get_snapshot()
+	play_result.score = snap["total_score"]
+	play_result.max_combo = snap["max_combo"]
+	play_result.accuracy = snap["accuracy"]
+	play_result.performance_point = snap["pp"]
+	play_result.count["Perfect"] = snap["judge_counts"][ScoreCalculator.Judgment.PERFECT]
+	play_result.count["Great"] = snap["judge_counts"][ScoreCalculator.Judgment.GREAT]
+	play_result.count["Good"] = snap["judge_counts"][ScoreCalculator.Judgment.GOOD]
+	play_result.count["Bad"] = snap["judge_counts"][ScoreCalculator.Judgment.BAD]
+	play_result.count["Miss"] = snap["judge_counts"][ScoreCalculator.Judgment.MISS]
+	play_result.early_count = snap["early_count"]
+	play_result.late_count = snap["late_count"]
 	is_pause = true
 
-	# 结束后的等待（去掉也行
+	# 结束后的等待
 	await get_tree().create_timer(2).timeout
 
-	# 可以在这里触发结算界面
+	# 进入结算界面
 	get_node("/root/Main/ScoreView").set_display(play_result)
 	UIStateManager.instance.change_state(UIStateManager.UIState.SCORE_VIEW, false)
 	await get_tree().create_timer(0.8).timeout
@@ -588,50 +608,41 @@ const color_map = {
 	"Miss": Color.RED
 }
 
-func _on_note_judged(result: String, offset: String):
+func _on_note_judged(result: String, offset: String, block_type: int, timing_sec: float, signed_offset_sec: float):
+	# ---- 委托 ScoreCalculator 计算 ----
+	var judgment = ScoreCalculator.Judgment.MISS
+	match result:
+		"Perfect": judgment = ScoreCalculator.Judgment.PERFECT
+		"Great":   judgment = ScoreCalculator.Judgment.GREAT
+		"Good":    judgment = ScoreCalculator.Judgment.GOOD
+		"Bad":     judgment = ScoreCalculator.Judgment.BAD
+		"Miss":    judgment = ScoreCalculator.Judgment.MISS
+
+	var snap = score_calc.record_judgment(judgment, block_type, timing_sec, signed_offset_sec)
+
+	# ---- 以下纯 UI 刷新，数据全部来自快照 ----
 	center_text.text = result
 	var cl = color_map[result]
-	var score_add_amount = 0
-	match result:
-		"Perfect":
-			score_add_amount = 150
-		"Great":
-			score_add_amount = 100
-		"Good":
-			score_add_amount = 50
-	play_result.count[result] += 1
-	if offset:
-		match offset[0]:
-			"+":
-				play_result.early_count += 1
-			"-":
-				play_result.late_count += 1
-	
-	if score_add_amount:
-		play_result.score += score_add_amount
 	center_text.add_theme_color_override("font_color", cl)
 
 	# combo显示
-	if result in ["Bad", "Miss"]:
-		play_result.max_combo = int(combo.text) if int(combo.text) > play_result.max_combo else play_result.max_combo
-		combo.text = "0"
-	else:
-		combo.text = str(int(combo.text)+1)
+	combo.text = str(snap["combo"])
 
 	# 增加分数
+	var score_add_amount = int(snap["last_score_add"])
 	_set_score_add_amount(score_add_amount)
 
 	# 设置进度条颜色
 	_set_progress_bar_color(cl)
 
 	# pp和准度
-	pp_text.text = play_result.get_pp()
-	accuracy_text.text = play_result.get_accuracy()
+	pp_text.text = snap["pp_text"]
+	accuracy_text.text = snap["accuracy_text"]
 
 	# 显示偏移
 	early_text.self_modulate.a = 0
 	late_text.self_modulate.a = 0
-	if result != "Miss":
+	if result != "Miss" and offset != "":
 		if offset[0] == "+":
 			early_text.text = offset
 			early_text.self_modulate.a = 1
@@ -652,17 +663,20 @@ func _on_note_judged(result: String, offset: String):
 	t.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	t.tween_property(center, "modulate:a", 0.0, 2)
 
-func _holding_bonus():
+## LONG 持续 tick 加分（已委托 ScoreCalculator）
+func _on_long_holding(long_instance_id: int):
+	var snap = score_calc.record_long_sustain(ScoreCalculator.Judgment.PERFECT, long_instance_id)
+
 	var cl = color_map["Perfect"]
 	center_text.add_theme_color_override("font_color", cl)
 	center_text.text = "Perfect"
-	combo.text = str(int(combo.text)+1)
+	combo.text = str(snap["combo"])
 
 	_set_progress_bar_color(cl)
+	_set_score_add_amount(int(snap["last_score_add"]))
 
-	# 增加分数
-	_set_score_add_amount(50)
-	play_result.score += 50
+	pp_text.text = snap["pp_text"]
+	accuracy_text.text = snap["accuracy_text"]
 
 var score_wait_to_add = 0
 func _set_score_add_amount(amount: int):
