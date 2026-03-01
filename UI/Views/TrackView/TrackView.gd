@@ -928,11 +928,12 @@ func _init_master_note_displayer() -> void:
 		push_warning("No notes found in selected tracks")
 		return
 	
-	# 初始化selected_track_configs - 如果是新MIDI（当前为空），则默认将所有(track, channel)对设为启用
+	# 初始化selected_track_configs - 如果是新MIDI（从未配置过），则默认将所有(track, channel)对设为启用
 	# 这是新MIDI的首次初始化，将完成enable按钮的最终状态设置
-	if current_midi_data.selected_track_configs.is_empty():
+	if not current_midi_data._track_config_initialized:
 		for note in All_Notes:
 			current_midi_data.set_track_channel_enabled(note.track_index, note.channel, true)
+		current_midi_data._track_config_initialized = true
 		print("[TrackView] Initialized %d notes from all (track, channel) pairs as ENABLED" % All_Notes.size())
 		
 		# 同时更新UI显示（更新enable按钮和文本）
@@ -958,7 +959,7 @@ func _init_master_note_displayer() -> void:
 						track_item.note_display.note_color = track_item.color_normal
 						track_item.note_display.update_color()
 	else:
-		# 旧MIDI：selected_track_configs已从JSON恢复，只需要记录日志
+		# 旧MIDI：selected_track_configs已从JSON恢复（可能为空或有配置），只需要记录日志
 		print("[TrackView] Existing MIDI: selected_track_configs already initialized with %d tracks" % 
 			current_midi_data.selected_track_configs.size())
 	
@@ -1141,14 +1142,14 @@ func _restore_midi_data_config() -> void:
 	# 恢复独奏状态（到内存，后续UI恢复会用到）
 	solo_pairs = current_midi_data.solo_pairs.duplicate()
 	
-	# 初始化音轨启用状态：如果是新MIDI（selected_track_configs为空），则默认全部启用
+	# 初始化音轨启用状态：如果是新MIDI（从未配置过），则默认全部启用
 	# 这很重要，因为_restore_midi_ui_config()会检查这个值来显示enable按钮状态
-	if current_midi_data.selected_track_configs.is_empty():
+	if not current_midi_data._track_config_initialized:
 		# 新MIDI：等待All_Notes加载后进行初始化（在_init_master_note_displayer中）
 		# 但这里需要先设置一个占位符，否则_restore_midi_ui_config会显示"禁用"
-		print("[TrackView] New MIDI detected (empty selected_track_configs), will initialize in _init_master_note_displayer")
+		print("[TrackView] New MIDI detected (not initialized), will initialize in _init_master_note_displayer")
 	else:
-		# 旧MIDI：selected_track_configs已从JSON恢复，将在_restore_midi_ui_config中应用
+		# 旧MIDI：selected_track_configs已从JSON恢复（可能为空或有配置），将在_restore_midi_ui_config中应用
 		print("[TrackView] Existing MIDI config restored: %d tracks have enabled channels" % 
 			current_midi_data.selected_track_configs.size())
 	
@@ -1194,9 +1195,9 @@ func _restore_midi_ui_config() -> void:
 			var channel = track_item.track_channel
 			
 			# 更新启用按钮状态
-			# 新MIDI时，selected_track_configs为空，应该默认显示"启用"
+			# 新MIDI时，尚未初始化配置，应该默认显示"启用"
 			var is_enabled = current_midi_data.is_track_channel_selected(track_idx, channel)
-			if current_midi_data.selected_track_configs.is_empty():
+			if not current_midi_data._track_config_initialized:
 				# 新MIDI的情况：默认认为所有轨道启用（待_init_master_note_displayer正式初始化）
 				is_enabled = true
 			
@@ -1247,8 +1248,11 @@ func _restore_midi_ui_config() -> void:
 		_capture_solo_snapshot()
 		_apply_solo_state()
 	
-	if not current_midi_data.selected_track_configs.is_empty():
-		print("[TrackView] Restored enable states: %d tracks with specific enabled channels" % current_midi_data.selected_track_configs.size())
+	if current_midi_data._track_config_initialized:
+		if not current_midi_data.selected_track_configs.is_empty():
+			print("[TrackView] Restored enable states: %d tracks with enabled channels" % current_midi_data.selected_track_configs.size())
+		else:
+			print("[TrackView] Restored enable states: All tracks are DISABLED")
 	else:
 		print("[TrackView] New MIDI: All tracks shown as enabled, will be finalized in _init_master_note_displayer")
 

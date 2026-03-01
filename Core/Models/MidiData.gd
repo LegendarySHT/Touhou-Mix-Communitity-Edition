@@ -96,6 +96,13 @@ var bpm: float = 120.0
 ## MIDI总时长（毫秒）
 var duration_ms: float = 0.0
 
+## MIDI BPM 变化时间线（解析后缓存，供预览计算使用）
+## 格式：[{tick, bpm, time_ms}, ...]
+var bpm_timeline: Array = []
+
+## MIDI 时间基准（ticks per quarter note），解析后缓存
+var midi_timebase: int = 480
+
 ## ========== 用户配置字段（运行时可修改，需持久化）==========
 
 ## MIDI播放音量（0-100）
@@ -122,6 +129,10 @@ var track_channel_instruments: Dictionary = {}
 ## 用户自定义的轨道-通道音色覆盖 {track_idx: {channel: {bank: int, program: int, name: String}}}
 ## 区别于 track_channel_instruments（MIDI解析的原始值），此字段专门存储用户覆盖配置
 var track_channel_instrument_overrides: Dictionary = {}
+
+## 标记：音轨配置是否曾被初始化过（用于区分"新MIDI"和"所有音轨禁用"两种情况）
+## 该标记在第一次配置时被设为true，保存到JSON中，使得重新加载时不会误把禁用状态视为新MIDI
+var _track_config_initialized: bool = false
 ## 从JSON数据构造MIDI数据
 func from_json(json_data: Dictionary) -> void:
 	id = json_data.get("_id", "")
@@ -204,23 +215,31 @@ func from_json(json_data: Dictionary) -> void:
 		if saved_solo_pairs is Dictionary:
 			solo_pairs = saved_solo_pairs.duplicate()
 		
-		# 恢复音轨启用状态（处理JSON中的字符串键）
-		var saved_track_configs = runtime_config.get("selected_track_configs", {})
-		if saved_track_configs is Dictionary:
-			selected_track_configs.clear()
-			for track_key in saved_track_configs.keys():
-				var track_idx = int(track_key)  # JSON中的整数键被转换为字符串
-				var channels = saved_track_configs[track_key]
-				if channels is Array:
-					# 将数组中的元素转换为整数（通道编号）
-					selected_track_configs[track_idx] = []
-					for ch in channels:
-						selected_track_configs[track_idx].append(int(ch))
+		# 恢复音轨配置初始化标记
+		_track_config_initialized = runtime_config.get("_track_config_initialized", false)
 		
-		# 如果没有保存的轨道配置，默认启用轨道0的通道0
-		if selected_track_configs.is_empty():
-			selected_track_configs[0] = [0]
-			#GameLogger.instance.info("No track config found, using default: track 0, channel 0", "MidiData")
+		# 恢复音轨启用状态（处理JSON中的字符串键）
+		# 关键：区分"从未保存过"和"保存的配置为空（所有禁用）"
+		if runtime_config.has("selected_track_configs"):
+			# 该MIDI已经配置过，恢复保存的配置（可能是空）
+			var saved_track_configs = runtime_config.get("selected_track_configs", {})
+			if saved_track_configs is Dictionary:
+				selected_track_configs.clear()
+				for track_key in saved_track_configs.keys():
+					var track_idx = int(track_key)  # JSON中的整数键被转换为字符串
+					var channels = saved_track_configs[track_key]
+					if channels is Array:
+						# 将数组中的元素转换为整数（通道编号）
+						selected_track_configs[track_idx] = []
+						for ch in channels:
+							selected_track_configs[track_idx].append(int(ch))
+				# selected_track_configs 可能为空，这表示用户禁用了所有音轨（正常行为）
+			_track_config_initialized = true  # 标记为已配置
+		else:
+			# 第一次加载此MIDI，没有保存过配置，使用默认值
+			if not _track_config_initialized:
+				selected_track_configs[0] = [0]
+				#GameLogger.instance.info("First load: No track config found, using default: track 0, channel 0", "MidiData")
 		
 		# 恢复人声文件路径
 		var saved_vocal_path = runtime_config.get("vocal_file_path", "")
@@ -359,6 +378,7 @@ func export_runtime_config() -> Dictionary:
 		"track_channel_instrument_overrides": track_channel_instrument_overrides.duplicate(),
 		"solo_pairs": solo_pairs.duplicate(),
 		"use_soundfont": use_soundfont,
+		"_track_config_initialized": _track_config_initialized,
 		"saved_at": Time.get_ticks_msec()
 	}
 

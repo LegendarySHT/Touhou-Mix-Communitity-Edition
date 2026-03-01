@@ -274,6 +274,8 @@ func load_midi(midi_data: MidiData) -> bool:
 	current_midi_data.track_count = parse_result["track_infos"].size()
 	current_midi_data.bpm = parse_result["bpm"]
 	current_midi_data.duration_ms = parse_result["duration"]
+	current_midi_data.bpm_timeline = bpm_timeline.duplicate()
+	current_midi_data.midi_timebase = midi_timebase
 	duration_ms = parse_result["duration"]
 	
 	# 从 track_infos 中提取乐器信息（用于不维护此信息的后端，如 MeltySynth）

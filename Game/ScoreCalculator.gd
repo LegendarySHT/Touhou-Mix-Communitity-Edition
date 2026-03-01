@@ -273,7 +273,7 @@ func _calculate_note_score(judgment: Judgment, block_type: int, timing_sec: floa
 	var timing_mult = _get_timing_multiplier(timing_sec)
 	var combo_mult = _get_combo_multiplier()
 
-	return SCORE_BASE * block_mult * timing_mult * combo_mult
+	return max(1.0, SCORE_BASE * block_mult * timing_mult * combo_mult)
 
 ## blockTypeMultiplier
 func _get_block_type_multiplier(block_type: int, _is_long_sustain: bool, long_instance_id: int) -> float:

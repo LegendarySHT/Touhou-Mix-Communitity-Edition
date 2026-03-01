@@ -336,9 +336,12 @@ func _get_enabled_track_indices(midi_data: MidiData) -> Array[int]:
 			enabled.append(int(track_index))
 			GameLogger.instance.info("Track %d enabled with channels: %s" % [track_index, str(channels)], "PlayView")
 	
-	# 不再有后备逻辑：MidiData.from_json() 保证总会有默认配置
+	# 如果没有启用的音轨
 	if enabled.is_empty():
-		push_error("[PlayView] No enabled tracks found and no default applied!")
+		if midi_data._track_config_initialized and midi_data.selected_track_configs.is_empty():
+			push_error("[PlayView] All tracks are disabled! Cannot play game without enabled tracks.")
+		else:
+			push_error("[PlayView] No enabled tracks found and no default configuration applied!")
 	
 	GameLogger.instance.info("Final enabled tracks: %s" % str(enabled), "PlayView")
 	return enabled
