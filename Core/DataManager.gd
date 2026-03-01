@@ -385,3 +385,35 @@ func clear_data() -> void:
 	midis.clear()
 	midi_tree.clear()
 	json_cache.clear()
+
+## 从内存中移除指定 MIDI 及其关联的空 Song / Album
+## 参数: midi_id - MidiData 的 id 字段
+func remove_midi(midi_id: String) -> void:
+	if not midis.has(midi_id):
+		GameLogger.instance.warning("remove_midi: midi_id not found: %s" % midi_id, "DataMGR")
+		return
+
+	var midi: MidiData = midis[midi_id]
+	var song_id: String = midi.song_data.id if midi.song_data else ""
+	var album_id: String = midi.album_data.id if midi.album_data else ""
+
+	# 从 midis 与缓存移除
+	midis.erase(midi_id)
+	json_cache.erase(midi_id)
+
+	# 从 midi_tree 移除，并级联清理空的 Song / Album
+	if not album_id.is_empty() and not song_id.is_empty() and midi_tree.has(album_id):
+		var album_tree: Dictionary = midi_tree[album_id]
+		if album_tree.has(song_id):
+			var midi_ids: Array = album_tree[song_id]
+			midi_ids.erase(midi_id)
+			if midi_ids.is_empty():
+				# Song 下已无 midi，移除 Song
+				album_tree.erase(song_id)
+				songs.erase(song_id)
+				# Album 下已无 song，移除 Album
+				if album_tree.is_empty():
+					midi_tree.erase(album_id)
+					albums.erase(album_id)
+
+	GameLogger.instance.info("Removed midi from memory: %s" % midi_id, "DataMGR")

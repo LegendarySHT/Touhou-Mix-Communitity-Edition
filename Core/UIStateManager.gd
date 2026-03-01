@@ -96,6 +96,23 @@ func go_back() -> bool:
 	current_state = back_state
 	return true
 
+## 直接返回到目标状态，跳过中间层级，只发一次 state_changed 信号
+## 用于级联删除等需要跳过多级 UI 的场景
+func go_back_to(target_state: UIState) -> bool:
+	if current_state == target_state:
+		return false
+	# 弹出历史栈直到找到目标状态，或清空为止
+	while not state_history.is_empty() and state_history.back() != target_state:
+		state_history.pop_back()
+	if not state_history.is_empty():
+		state_history.pop_back()  # 弹出 target_state 本身
+	if not state_history.is_empty():
+		previous_state = state_history.back()
+	var old_state = current_state
+	current_state = target_state
+	state_changed.emit(old_state, target_state)
+	return true
+
 ## 获取当前状态
 func get_current_state() -> UIState:
 	return current_state

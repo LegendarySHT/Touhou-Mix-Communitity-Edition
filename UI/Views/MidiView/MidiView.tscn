@@ -27,7 +27,7 @@
 [ext_resource type="Texture2D" uid="uid://c0dy510alwr6b" path="res://Resources/icon/midiInfoPage/RightWindow/None.png" id="22_u7brx"]
 [ext_resource type="Texture2D" uid="uid://dl0xmd5o5p0bc" path="res://Resources/icon/midiInfoPage/RightWindow/FC.png" id="23_f13vx"]
 [ext_resource type="Texture2D" uid="uid://djgl4aj3u5cty" path="res://Resources/icon/midiInfoPage/comments.png" id="23_u7brx"]
-[ext_resource type="Script" uid="uid://be3a1dinys4ne" path="res://UI/Views/MidiView/ScoreList.gd" id="24_f13vx"]
+[ext_resource type="Script" path="res://UI/Views/MidiView/ScoreList.gd" id="24_f13vx"]
 [ext_resource type="Texture2D" uid="uid://btlqly2gxykd3" path="res://Resources/icon/midiInfoPage/RightWindow/AP.png" id="24_qg2wq"]
 [ext_resource type="Texture2D" uid="uid://7j1xi27sa57q" path="res://Resources/icon/midiInfoPage/RightWindow/One.png" id="25_dnql7"]
 [ext_resource type="Texture2D" uid="uid://dkawdaqn2h0i4" path="res://Resources/icon/midiInfoPage/RightWindow/Inf.png" id="26_8q3pc"]
@@ -1072,10 +1072,11 @@ theme_override_constants/margin_top = 40
 [node name="TabC" type="TabContainer" parent="RightArea/OptionPanel/VBoxC/TabView" unique_id=1154304984]
 layout_mode = 2
 size_flags_vertical = 3
-current_tab = 0
+current_tab = 1
 tabs_visible = false
 
 [node name="Rank" type="PanelContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC" unique_id=1031929289]
+visible = false
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(600, 770)
 layout_mode = 2
@@ -1098,7 +1099,6 @@ theme_override_constants/separation = 15
 alignment = 1
 
 [node name="Mode" type="PanelContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC" unique_id=290841234]
-visible = false
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(600, 770)
 layout_mode = 2

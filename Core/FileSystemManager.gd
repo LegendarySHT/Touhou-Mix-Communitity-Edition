@@ -964,3 +964,66 @@ func get_chart_json_path(chart_id: String) -> String:
 	# 如果未找到，打印调试信息并返回空字符串
 	GameLogger.instance.warning("Chart JSON path not found for ID: %s (charts_index has %d entries)" % [chart_id, charts_index.size()], "FileSystemMGR")
 	return ""
+
+## 删除单个文件
+## 参数: absolute_path - 文件绝对路径（user:// 路径或系统路径均可）
+## 返回: 是否成功删除
+func delete_file(absolute_path: String) -> bool:
+	if absolute_path.is_empty():
+		GameLogger.instance.warning("delete_file: path is empty", "FileSystemMGR")
+		return false
+	if not FileAccess.file_exists(absolute_path):
+		GameLogger.instance.warning("delete_file: file not found: %s" % absolute_path, "FileSystemMGR")
+		return false
+	var err = DirAccess.remove_absolute(absolute_path)
+	if err != OK:
+		GameLogger.instance.error("delete_file: failed to delete %s (err %d)" % [absolute_path, err], "FileSystemMGR")
+		return false
+	GameLogger.instance.info("Deleted file: %s" % absolute_path, "FileSystemMGR")
+	return true
+
+## 递归删除整个目录及其所有内容
+## 参数: absolute_path - 目录绝对路径
+## 返回: 是否成功删除
+func delete_directory_recursive(absolute_path: String) -> bool:
+	if absolute_path.is_empty():
+		GameLogger.instance.warning("delete_directory_recursive: path is empty", "FileSystemMGR")
+		return false
+	var dir = DirAccess.open(absolute_path)
+	if dir == null:
+		GameLogger.instance.warning("delete_directory_recursive: cannot open dir: %s" % absolute_path, "FileSystemMGR")
+		return false
+	# 先递归删除所有子内容
+	dir.list_dir_begin()
+	var entry_name = dir.get_next()
+	while entry_name != "":
+		if entry_name != "." and entry_name != "..":
+			var full_path = absolute_path.path_join(entry_name)
+			if dir.current_is_dir():
+				delete_directory_recursive(full_path)
+			else:
+				DirAccess.remove_absolute(full_path)
+		entry_name = dir.get_next()
+	dir.list_dir_end()
+	# 删除已空的目录本身
+	var err = DirAccess.remove_absolute(absolute_path)
+	if err != OK:
+		GameLogger.instance.error("delete_directory_recursive: failed to remove dir %s (err %d)" % [absolute_path, err], "FileSystemMGR")
+		return false
+	GameLogger.instance.info("Deleted directory: %s" % absolute_path, "FileSystemMGR")
+	return true
+
+## 从 charts_index 中移除指定 chart_id 对应的条目
+## 参数: chart_id - MidiData 中的 file_hash 或 id
+func remove_from_charts_index(chart_id: String) -> void:
+	for folder_name in charts_index.keys():
+		var metadata: Dictionary = charts_index[folder_name]
+		var metadata_id: String = metadata.get("id", "")
+		var json_data = metadata.get("data", {})
+		if metadata_id == chart_id \
+				or json_data.get("hash", "") == chart_id \
+				or json_data.get("file_hash", "") == chart_id:
+			charts_index.erase(folder_name)
+			GameLogger.instance.info("Removed chart from index: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
+			return
+	GameLogger.instance.warning("remove_from_charts_index: chart_id not found: %s" % chart_id, "FileSystemMGR")

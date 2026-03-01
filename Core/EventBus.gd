@@ -49,6 +49,7 @@ signal filesystem_initialized
 signal resources_scanned(resource_type: String, count: int)
 signal chart_imported(chart_id: String)
 signal skin_imported(skin_name: String)
+signal midi_deleted(midi_id: String)
 signal resource_validation_failed(resource_id: String, reason: String)
 
 ## ========== 错误和警告事件 ==========

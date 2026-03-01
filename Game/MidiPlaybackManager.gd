@@ -1474,7 +1474,7 @@ func start_vocal_playback() -> void:
 
 	# 首先检查文件是否存在（使用FileAccess，支持user://目录）
 	if not FileAccess.file_exists(vocal_file_path):
-		push_error("Vocal file does not exist: %s" % vocal_file_path)
+		GameLogger.instance.warning("Vocal file does not exist, skipping vocal playback: %s" % vocal_file_path, "MidiPlaybackMGR")
 		return
 
 	# 根据文件扩展名加载对应的AudioStream类型

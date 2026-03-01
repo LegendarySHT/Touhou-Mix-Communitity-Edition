@@ -23,6 +23,7 @@ func _ready() -> void:
 
 	# 连接事件
 	data_manager.data_loaded.connect(_load_albums)
+	event_bus.midi_deleted.connect(func(_id): _load_albums())
 
 	super._ready()
 

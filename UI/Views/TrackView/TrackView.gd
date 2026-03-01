@@ -481,6 +481,10 @@ func _on_vocal_file_selected(file_path: String) -> void:
 	# 刷新UI显示
 	_init_vocal_btn_display()
 	
+	# 如果 MIDI 正在播放，立即启动人声同步播放
+	if midi_playback_manager and midi_playback_manager.is_playing:
+		midi_playback_manager.start_vocal_playback()
+	
 	GameLogger.instance.info("Vocal file imported and copied successfully: %s -> %s" % [selected_file, destination_path], "TrackView")
 	print("[TrackView] Vocal file copied to: %s" % destination_path)
 
@@ -525,22 +529,26 @@ func _detect_vocal_file(midi_data: MidiData) -> void:
 		# 匹配方式1：metadata 的 id
 		if metadata_id == chart_id:
 			var audio_path = metadata.get("audio_path", "")
-			if not audio_path.is_empty():
+			if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
 				vocal_file_path = audio_path
 				midi_data.vocal_file_path = audio_path
 				GameLogger.instance.info("Vocal file detected from chart metadata: %s" % audio_path, "TrackView")
 				return
+			elif not audio_path.is_empty():
+				GameLogger.instance.warning("Vocal file in chart metadata no longer exists: %s" % audio_path, "TrackView")
 		
 		# 匹配方式2：JSON 数据中的 hash 字段
 		var json_data = metadata.get("data", {})
 		if json_data is Dictionary and json_data.has("hash"):
 			if json_data.get("hash", "") == chart_id:
 				var audio_path = metadata.get("audio_path", "")
-				if not audio_path.is_empty():
+				if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
 					vocal_file_path = audio_path
 					midi_data.vocal_file_path = audio_path
 					GameLogger.instance.info("Vocal file detected from JSON hash match: %s" % audio_path, "TrackView")
 					return
+				elif not audio_path.is_empty():
+					GameLogger.instance.warning("Vocal file in JSON hash metadata no longer exists: %s" % audio_path, "TrackView")
 	
 	# 未找到人声文件
 	GameLogger.instance.info("No vocal file found for MIDI: %s" % chart_id, "TrackView")

@@ -19,7 +19,10 @@ func _on_state_enter():
 			var nd = get_node(ani.ui_path_map[ani.ui_path_map.keys()[ui.current_state]])
 			if nd.selected_item == -1:
 				nd.select_item(0)
-			nd.get_selected_node().button.grab_focus()
+			var selected_node = nd.get_selected_node()
+			if selected_node == null:
+				return
+			selected_node.button.grab_focus()
 		ui.UIState.SETTINGS_VIEW:
 			get_node("/root/Main/skew/C/SettingView").short_cut_btn.grab_focus()
 		ui.UIState.STORE_VIEW:
