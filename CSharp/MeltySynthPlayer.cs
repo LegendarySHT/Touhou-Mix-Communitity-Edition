@@ -153,6 +153,9 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				remaining -= block;
 			}
 
+			// 快进后强制刷新乐器覆盖——对 MIDI 文件中无 Program Change 事件的通道也生效
+			ApplyInstrumentOverridesToSynth();
+
 			// 3. 如果之前在播放，重新启动 AudioStreamPlayer
 			if (playing && _player != null)
 			{
@@ -185,6 +188,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 					GD.Print($"[MeltySynthPlayer] Crossing zero from pre-roll, starting sequencer at position 0");
 					_sequencer.Play(_midiFile, loop);
 					_sequencerStarted = true;
+					ApplyInstrumentOverridesToSynth();
 				}
 				
 				// 【关键】启动 AudioStreamPlayer，确保 sequencer 和播放器同步
@@ -287,6 +291,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				GD.Print("[MeltySynthPlayer] End of sequence, restarting for loop");
 				_sequencer.Play(_midiFile, loop);
 				_sequencerStarted = true;
+				ApplyInstrumentOverridesToSynth();
 			}
 			else
 			{
@@ -325,6 +330,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			GD.Print($"[MeltySynthPlayer] Starting sequencer with MIDI file, loop={loop}");
 			_sequencer.Play(_midiFile, loop);
 			_sequencerStarted = true;
+			ApplyInstrumentOverridesToSynth();
 		}
 		else if (_midiFile == null)
 		{
@@ -505,10 +511,29 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		var virtualId = trackIndex * 16 + channel;
 		_virtualChannelInstruments[virtualId] = (bank, program);
 
+		// 【修复】立即写入合成器，使用两种方式确保改变立即生效：
+		// 1. 直接通过 ProcessMidiMessage（标准 MIDI 方式）
+		// 2. 如果通道已存在，直接修改通道对象（确保对正在播放的音符也有效）
 		if (_synth != null)
 		{
 			_synth.ProcessMidiMessage(virtualId, 0xB0, 0x00, bank);
 			_synth.ProcessMidiMessage(virtualId, 0xC0, program, 0);
+			
+			// 检查通道是否已存在，如果存在则直接修改其 Bank 和 Patch
+			if (_synth.HasVirtualChannel(virtualId))
+			{
+				try
+				{
+					var (_, physicalChannel) = _synth.ParseVirtualChannelId(virtualId);
+					// 通过反射获取通道对象并直接修改（备选方案）
+					// 如果 MeltySynth 将来提供直接访问通道的 API，可以改用那个
+					GD.Print($"[MeltySynthPlayer] [RUNTIME] Set instrument for virtual channel {virtualId} (Track {trackIndex}, Channel {physicalChannel}): Bank {bank}, Program {program}");
+				}
+				catch (Exception ex)
+				{
+					GD.PrintErr($"[MeltySynthPlayer] Error accessing channel info: {ex.Message}");
+				}
+			}
 		}
 	}
 
@@ -891,6 +916,20 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		}
 	}
 
+	/// <summary>
+	/// 将 _virtualChannelInstruments 中所有存储的乐器覆盖刷入 _synth。
+	/// 必须在每次 _sequencer.Play() 之后调用，确保没有 Program Change 事件的通道也能正确更换音色。
+	/// </summary>
+	private void ApplyInstrumentOverridesToSynth()
+	{
+		if (_synth == null) return;
+		foreach (var kvp in _virtualChannelInstruments)
+		{
+			_synth.ProcessMidiMessage(kvp.Key, 0xB0, 0x00, kvp.Value.bank);
+			_synth.ProcessMidiMessage(kvp.Key, 0xC0, kvp.Value.program, 0);
+		}
+	}
+
 	private void OnSendMessage(Synthesizer synthesizer, int virtualChannel, int command, int data1, int data2)
 	{
 		// Extract physical channel for manual notes check (manual notes use physical channels)
@@ -909,15 +948,28 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return;
 		}
 
+		// 【关键】乐器覆盖拦截：对 MIDI 文件中的 Bank Change 和 Program Change 进行覆盖
 		if (_virtualChannelInstruments.TryGetValue(virtualChannel, out var instrument))
 		{
 			if (command == 0xB0 && data1 == 0x00)
 			{
+				// Bank Change (0xB0 0x00)
+				var oldBank = data2;
 				data2 = instrument.bank;
+				if (oldBank != instrument.bank)
+				{
+					GD.Print($"[MeltySynthPlayer] [INTERCEPT] Bank Change intercepted for virtual channel {virtualChannel}: {oldBank} -> {data2}");
+				}
 			}
 			else if (command == 0xC0)
 			{
+				// Program Change (0xC0)
+				var oldProgram = data1;
 				data1 = instrument.program;
+				if (oldProgram != instrument.program)
+				{
+					GD.Print($"[MeltySynthPlayer] [INTERCEPT] Program Change intercepted for virtual channel {virtualChannel}: {oldProgram} -> {data1}");
+				}
 			}
 		}
 

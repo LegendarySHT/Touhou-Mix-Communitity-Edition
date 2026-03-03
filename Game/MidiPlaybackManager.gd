@@ -212,11 +212,14 @@ func _process(_delta: float) -> void:
 		position = midi_player.position
 		
 		# 更新position_ms，带BPM时间线支持
-		# 安全检查：确保smf_data在音频线程操作中仍然有效
-		var smf = midi_player.smf_data
-		if smf != null and smf.timebase > 0:
-			midi_timebase = smf.timebase
-			position_ms = _calculate_position_with_bpm_timeline(position, midi_timebase)
+		# 【修复】安全检查：确保smf_data在音频线程操作中仍然有效（仅MidiPlayer插件有此属性）
+		if "smf_data" in midi_player:
+			var smf = midi_player.smf_data
+			if smf != null and smf.timebase > 0:
+				midi_timebase = smf.timebase
+				position_ms = _calculate_position_with_bpm_timeline(position, midi_timebase)
+			else:
+				position_ms = position  # 无效的 timebase，直接用 position
 	
 	# 对于meltysynth后端，使用毫秒位置
 	elif midi_backend == "meltysynth" and meltysynth_player != null:
@@ -435,14 +438,17 @@ func seek(pos: float) -> void:
 	
 	if midi_backend == "addons" and midi_player != null:
 		# 使用BPM时间线计算精确的tick位置
-		if midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
-			var target_tick = _calculate_tick_from_position_with_bpm_timeline(pos, midi_player.smf_data.timebase)
+		# 【修复】安全检查 smf_data（仅MidiPlayer插件有）
+		var timebase_for_seek = midi_timebase
+		if "smf_data" in midi_player and midi_player.smf_data != null and midi_player.smf_data.timebase > 0:
+			timebase_for_seek = midi_player.smf_data.timebase
+		
+		if timebase_for_seek > 0:
+			var target_tick = _calculate_tick_from_position_with_bpm_timeline(pos, timebase_for_seek)
 			print("[MidiPlaybackManager] Seeking to tick %.1f (addons backend)" % target_tick)
 			midi_player.seek(target_tick)
 			# 立即同步 position，避免其他系统在下一帧前读到过时的 tick 值
 			position = target_tick
-		elif midi_timebase > 0:
-			var target_tick = _calculate_tick_from_position_with_bpm_timeline(pos, midi_timebase)
 			print("[MidiPlaybackManager] Seeking to tick %.1f (addons backend, using cached timebase)" % target_tick)
 			midi_player.seek(target_tick)
 			# 立即同步 position
@@ -680,8 +686,13 @@ func set_backend(backend_name: String) -> bool:
 			backend_switching = false
 			return set_backend("addons")  # Fallback
 		
+		# 【关键修复】设置 midi_player 指向 meltysynth_player，确保后续调用能正确转发
+		midi_player = meltysynth_player
 		midi_backend = "meltysynth"
 		print("[MidiPlaybackManager] Switched to MeltySynth MIDI backend (C#)")
+		print("[MidiPlaybackManager] midi_player set to: %s" % midi_player)
+		print("[MidiPlaybackManager] meltysynth_player set to: %s" % meltysynth_player)
+		print("[MidiPlaybackManager] midi_player == meltysynth_player: %s" % (midi_player == meltysynth_player))
 		backend_switching = false
 		return true
 	
@@ -849,8 +860,11 @@ func _initialize_meltysynth_backend() -> bool:
 	
 	# 保存引用
 	meltysynth_player = wrapper
+	# 【关键修复】初始化时也要设置 midi_player 指向 meltysynth_player，确保 TrackView 的调用能正确转发
+	midi_player = wrapper
 	GameLogger.instance.info("MeltySynth C# backend initialized successfully", "MidiPlaybackManager")
 	print("[MidiPlaybackManager] MeltySynth backend initialization complete")
+	print("[MidiPlaybackManager] Set both meltysynth_player and midi_player to: %s" % wrapper)
 	
 	return true
 

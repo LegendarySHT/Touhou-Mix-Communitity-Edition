@@ -659,14 +659,33 @@ func _on_track_instrument_changed(index: int, track_index: int, channel: int) ->
 		instr_data["name"]
 	)
 	
-	# 2. 立即应用到 MidiPlayer
-	if midi_playback_manager and midi_playback_manager.midi_player:
-		midi_playback_manager.midi_player.set_track_channel_instrument(
-			track_index,
-			channel,
-			instr_data["bank"],
-			instr_data["program"]
-		)
+	# 2. 立即应用到后端播放器
+	if not midi_playback_manager:
+		push_error("[TrackView] midi_playback_manager is null")
+		return
+	
+	var backend_name = midi_playback_manager.midi_backend
+	var midi_player_ref = midi_playback_manager.midi_player
+	
+	print("[TrackView] 当前后端: %s, midi_player: %s" % [backend_name, midi_player_ref])
+	
+	if midi_player_ref == null:
+		push_error("[TrackView] midi_player is null - backend probably not initialized")
+		return
+	
+	if not midi_player_ref.has_method("set_track_channel_instrument"):
+		push_error("[TrackView] midi_player doesn't have set_track_channel_instrument method")
+		return
+	
+	print("[TrackView] 【调用】 set_track_channel_instrument(track=%d, channel=%d, bank=%d, program=%d)" %
+		[track_index, channel, instr_data["bank"], instr_data["program"]])
+	
+	midi_player_ref.set_track_channel_instrument(
+		track_index,
+		channel,
+		instr_data["bank"],
+		instr_data["program"]
+	)
 	
 	print("[TrackView] Track %d Channel %d: 乐器设置为 %s (Bank %d Program %d)" %
 		[track_index, channel, instr_data["name"], instr_data["bank"], instr_data["program"]])
