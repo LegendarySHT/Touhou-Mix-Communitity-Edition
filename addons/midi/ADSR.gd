@@ -59,10 +59,6 @@ var linked_base_pitch:float = 0.0
 ## 同時発音数
 var polyphony_count:float = 1.0
 
-## Android安全：预缓存立体声总线 StringName（避免每次 note_play 动态格式化字符串）
-var _cached_stereo_bus_left: Array[StringName] = []
-var _cached_stereo_bus_right: Array[StringName] = []
-
 ## 現在のADSRボリューム
 var current_volume_db:float = 0.0
 ## 自動リリースモード？
@@ -92,10 +88,6 @@ var is_stereo_sample:bool = false
 ## 準備
 func _ready( ) -> void:
 	self.stop( )
-	# 预缓存所有 16 个通道的立体声总线名称
-	for i in range( 16 ):
-		_cached_stereo_bus_left.append( StringName( stereo_bus_name_left % i ) )
-		_cached_stereo_bus_right.append( StringName( stereo_bus_name_right % i ) )
 
 ## Linkedサウンドを使用しているか？
 ## @return	使用している場合true
@@ -104,26 +96,24 @@ func _check_using_linked( ) -> bool:
 
 ## 楽器を変更
 ## @param	_instrument	楽器
-## 注意：此方法应在 AudioServer.lock() 保护下调用（通常由 MidiPlayer._process 提供外层锁）
 func set_instrument( _instrument:Bank.Instrument ) -> void:
 	if self.instrument == _instrument:
 		return
 
 	self.instrument = _instrument
 	self.base_pitch = _instrument.array_base_pitch[0]
+	self.stream = _instrument.array_stream[0]
 	self.ads_state = _instrument.ads_state
 	self.release_state = _instrument.release_state
 	self.is_stereo_sample = _instrument.is_stereo_sample
 
 	self.is_check_using_linked = self._check_using_linked( )
-	self.stream = _instrument.array_stream[0]
 	if self.is_check_using_linked:
 		self.linked_base_pitch = _instrument.array_base_pitch[1]
 		self.linked.stream = _instrument.array_stream[1]
 
 ## 再生
 ## @param	from_position	再生位置
-## 注意：此方法应在 AudioServer.lock() 保护下调用（通常由 MidiPlayer._process 提供外层锁）
 func note_play( from_position:float = 0.0 ) -> void:
 	self.releasing = false
 	self.request_release = false
@@ -134,9 +124,8 @@ func note_play( from_position:float = 0.0 ) -> void:
 
 	# ステレオサンプルであれば、L/Rバスを分ける
 	if self.is_stereo_sample and self.is_check_using_linked and self.channel_number >= 0:
-		# Android安全：使用预缓存的 StringName 而不是动态格式化
-		self.bus = _cached_stereo_bus_left[self.channel_number]
-		self.linked.bus = _cached_stereo_bus_right[self.channel_number]
+		self.bus = self.stereo_bus_name_left % self.channel_number
+		self.linked.bus = self.stereo_bus_name_right % self.channel_number
 	else:
 		self.linked.bus = self.bus
 
@@ -156,10 +145,9 @@ func note_play( from_position:float = 0.0 ) -> void:
 	self.force_update = false
 
 ## 停止
-## 注意：此方法应在 AudioServer.lock() 保护下调用（通常由 MidiPlayer._process 提供外层锁）
 func note_stop( ) -> void:
 	super.stop( )
-	if self.linked != null and is_instance_valid( self.linked ):
+	if self.linked != null:
 		self.linked.stop( )
 	self.hold = false
 
@@ -186,9 +174,7 @@ func _update_adsr( delta:float ) -> void:
 	var last_state:int = all_states - 1
 	if use_state[last_state].time <= self.timer:
 		self.current_volume_db = use_state[last_state].volume_db
-		if self.releasing:
-			# 使用 note_stop() 代替 self.stop()，确保 linked 播放器也被停止
-			self.note_stop( )
+		if self.releasing: self.stop( )
 		if self.auto_release_mode: self.request_release = true
 	else:
 		for state_number in range( 1, all_states ):

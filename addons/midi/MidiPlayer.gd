@@ -325,11 +325,6 @@ var is_audio_server_inited:bool = false
 # 
 var _previous_time:float
 
-## Android安全：预缓存的总线 StringName（避免每次 note_on 时动态格式化字符串导致 StringName 腐败）
-var _cached_channel_bus_names: Array[StringName] = []
-var _cached_channel_bus_names_left: Array[StringName] = []
-var _cached_channel_bus_names_right: Array[StringName] = []
-
 # -----------------------------------------------------------------------------
 # シグナル
 
@@ -437,16 +432,6 @@ func _ready( ):
 
 	self.set_max_polyphony( self.max_polyphony )
 	self.set_volume_db( self.volume_db )
-
-	# Android安全：预缓存所有 16 个通道的总线 StringName
-	# 避免在每次 note_on 时通过字符串格式化创建临时 StringName
-	_cached_channel_bus_names.clear()
-	_cached_channel_bus_names_left.clear()
-	_cached_channel_bus_names_right.clear()
-	for i in range( max_channel ):
-		_cached_channel_bus_names.append( StringName( midi_channel_bus_name % i ) )
-		_cached_channel_bus_names_left.append( StringName( midi_channel_bus_name_left % i ) )
-		_cached_channel_bus_names_right.append( StringName( midi_channel_bus_name_right % i ) )
 
 	if self.playing:
 		self.play( )
@@ -642,9 +627,7 @@ func play( from_position:float = 0.0 ) -> void:
 ## @param	from_position	再生位置
 func seek( to_position:float ) -> void:
 	self._previous_time = 0.0
-	AudioServer.lock()
 	self._stop_all_notes( )
-	AudioServer.unlock()
 	self.position = to_position
 
 	var pointer:int = 0
@@ -676,9 +659,7 @@ func seek( to_position:float ) -> void:
 ## 停止
 func stop( ) -> void:
 	self._previous_time = 0.0
-	AudioServer.lock()
 	self._stop_all_notes( )
-	AudioServer.unlock()
 	self.playing = false
 
 ## 暂停播放 (接口方法)
@@ -712,18 +693,12 @@ func load_midi(file_path: String) -> bool:
 func set_max_polyphony( mp:int ) -> void:
 	max_polyphony = mp
 
-	# 削除（Android安全：先停止播放再移除，防止音频线程访问已释放对象）
-	var old_players = self.audio_stream_players.duplicate()
-	self.audio_stream_players = []
-	AudioServer.lock()
-	for asp in old_players:
-		if is_instance_valid( asp ):
-			asp.note_stop( )
-			self.remove_child( asp )
-			asp.queue_free( )
-	AudioServer.unlock()
+	# 削除
+	for asp in self.audio_stream_players:
+		self.remove_child( asp )
 
 	# 再作成
+	self.audio_stream_players = []
 	for i in range( max_polyphony ):
 		var audio_stream_player:AudioStreamPlayerADSR = ADSR.instantiate( )
 		audio_stream_player.mix_target = self.mix_target
@@ -859,9 +834,8 @@ func set_volume_db( vdb:float ) -> void:
 ## 全音を止める
 func _stop_all_notes( ) -> void:
 	for audio_stream_player in self.audio_stream_players:
-		if is_instance_valid( audio_stream_player ):
-			audio_stream_player.hold = false
-			audio_stream_player.note_stop( )
+		audio_stream_player.hold = false
+		audio_stream_player.note_stop( )
 
 	for channel in self.channel_status:
 		channel.note_on.clear( )
@@ -869,25 +843,13 @@ func _stop_all_notes( ) -> void:
 ## 毎フレーム処理
 ## @param	delta
 func _process( delta:float ) -> void:
-	# Android安全：使用细粒度锁保护每个独立的音频操作
-	# 避免长时间持有 AudioServer 锁导致 OpenSL ES 音频线程饥饿
-	# 每次锁定时间极短（微秒级），音频线程可在锁间隙正常处理
-
 	if self.smf_data != null:
 		if self.playing:
 			self.position += float( self.smf_data.timebase ) * delta * self.seconds_to_timebase * self.play_speed
-			# 锁定 MIDI 事件处理（note_on/off 会修改 stream/bus/play/stop）
-			AudioServer.lock()
 			self._process_track( )
-			AudioServer.unlock()
 
-	# ADSR 包络更新：仅对正在播放的播放器加锁
-	# 每个播放器独立加锁/解锁，最小化锁持有时间
 	for asp in self.audio_stream_players:
-		if is_instance_valid( asp ) and asp.playing:
-			AudioServer.lock()
-			asp._update_adsr( delta )
-			AudioServer.unlock()
+		asp._update_adsr( delta )
 
 ## トラック処理
 ## @return	実行イベント数
@@ -1000,7 +962,6 @@ func _process_track_event_note_off( channel:GodotMIDIPlayerChannelStatus, note:i
 	if channel.drum_track: return
 
 	for asp in self.audio_stream_players:
-		if not is_instance_valid( asp ): continue
 		if asp.channel_number == channel.number and asp.key_number == key_number:
 			if force_disable_hold: asp.hold = false
 			asp.start_release( )
@@ -1091,8 +1052,7 @@ func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:in
 				note_player.track_index = track_index  # 记录轨道索引用于音量控制
 				note_player.track_volume_multiplier = get_track_channel_volume(track_index, channel.number)  # 立即设置轨道级音量
 				note_player.key_number = key_number
-				# Android安全：使用预缓存的 StringName 而不是动态格式化字符串
-				note_player.bus = self._cached_channel_bus_names[channel.number]
+				note_player.bus = self.midi_channel_bus_name % channel.number
 				note_player.velocity = velocity
 				note_player.pitch_bend = channel.pitch_bend
 				note_player.pitch_bend_sensitivity = channel.rpn.pitch_bend_sensitivity
@@ -1171,7 +1131,6 @@ func _process_track_event_control_change( channel:GodotMIDIPlayerChannelStatus, 
 			self._stop_all_notes( )
 		SMF.control_number_all_note_off:
 			for asp in self.audio_stream_players:
-				if not is_instance_valid( asp ): continue
 				if asp.channel_number == channel.number:
 					asp.hold = false
 					asp.start_release( )
@@ -1206,7 +1165,6 @@ func set_track_channel_volume(track_index: int, channel: int, volume_linear: flo
 	# 立即更新所有该(track, channel)的正在播放的notes的track_volume_multiplier
 	# ADSR的_update_volume会在下一帧自动重新计算volume_db（包含track_volume_multiplier）
 	for asp in self.audio_stream_players:
-		if not is_instance_valid( asp ): continue
 		if asp.track_index == track_index and asp.channel_number == channel and asp.playing:
 			asp.track_volume_multiplier = clamped_volume
 			# 不再手动设置volume_db，让ADSR的_update_volume在下一帧自动应用
@@ -1242,7 +1200,7 @@ func set_track_channel_instrument(track_index: int, channel: int, bank: int, pro
 ## @param	channel	チャンネルステータス
 func _apply_channel_volume( channel:GodotMIDIPlayerChannelStatus ) -> void:
 	var base_volume_db = linear_to_db( channel.volume * channel.expression )
-	AudioServer.set_bus_volume_db( AudioServer.get_bus_index( self._cached_channel_bus_names[channel.number] ), base_volume_db )
+	AudioServer.set_bus_volume_db( AudioServer.get_bus_index( self.midi_channel_bus_name % channel.number ), base_volume_db )
 	# 注意：轨道级音量衰减现在由ADSR的_update_volume处理，
 	# 不再在这里额外应用。这确保每个note的音量由ADSR信封正确控制
 
@@ -1263,7 +1221,6 @@ func _apply_channel_pitch_bend( channel:GodotMIDIPlayerChannelStatus ) -> void:
 	var pbs:float = channel.rpn.pitch_bend_sensitivity
 	var pb:float = channel.pitch_bend
 	for asp in self.audio_stream_players:
-		if not is_instance_valid( asp ): continue
 		if asp.channel_number == channel.number and ( not asp.request_release ):
 			asp.pitch_bend_sensitivity = pbs
 			asp.pitch_bend = pb
@@ -1289,7 +1246,6 @@ func _apply_channel_modulation( channel:GodotMIDIPlayerChannelStatus ) -> void:
 	var ms:float = channel.rpn.modulation_sensitivity
 	var m:float = channel.modulation
 	for asp in self.audio_stream_players:
-		if not is_instance_valid( asp ): continue
 		if asp.channel_number == channel.number and ( not asp.request_release ):
 			asp.modulation_sensitivity = ms
 			asp.modulation = m
@@ -1299,7 +1255,6 @@ func _apply_channel_modulation( channel:GodotMIDIPlayerChannelStatus ) -> void:
 func _apply_channel_hold( channel:GodotMIDIPlayerChannelStatus ) -> void:
 	var hold:bool = channel.hold
 	for asp in self.audio_stream_players:
-		if not is_instance_valid( asp ): continue
 		if asp.channel_number == channel.number:
 			asp.hold = hold and ( not asp.request_release )
 
@@ -1407,14 +1362,13 @@ func _process_track_sys_ex_reset_all_channels( ) -> void:
 	for channel in self.channel_status:
 		channel.initialize( )
 
-		AudioServer.set_bus_volume_db( AudioServer.get_bus_index( self._cached_channel_bus_names[channel.number] ), linear_to_db( float( channel.volume * channel.expression ) ) )
+		AudioServer.set_bus_volume_db( AudioServer.get_bus_index( self.midi_channel_bus_name % channel.number ), linear_to_db( float( channel.volume * channel.expression ) ) )
 		self.channel_audio_effects[channel.number].ae_reverb.wet = channel.reverb * self.reverb_power
 		self.channel_audio_effects[channel.number].ae_chorus.wet = channel.chorus * self.chorus_power
 		self.channel_audio_effects[channel.number].ae_panner.pan = ( ( channel.pan * 2 ) - 1.0 ) * self.pan_power
 
 ## 未使用の AudioStreamPlayerADSR を取得する
 ## 未使用がない場合はNoteOnしてから経過した時間がもっとも長いAudioStreamPlayerADSRを返す
-## Android安全：复用前先停止旧音频，防止音频线程访问已释放的stream
 ## @return	AudioStreamPlayerADSR
 func _get_idle_player( ) -> AudioStreamPlayerADSR:
 	var released_audio_stream_player:AudioStreamPlayerADSR = null
@@ -1424,8 +1378,6 @@ func _get_idle_player( ) -> AudioStreamPlayerADSR:
 	var oldest:float = -1.0
 
 	for audio_stream_player in self.audio_stream_players:
-		if not is_instance_valid( audio_stream_player ):
-			continue
 		if not audio_stream_player.playing:
 			return audio_stream_player
 		if audio_stream_player.releasing and audio_stream_player.volume_db < minimum_volume_db:
@@ -1435,14 +1387,9 @@ func _get_idle_player( ) -> AudioStreamPlayerADSR:
 			oldest_audio_stream_player = audio_stream_player
 			oldest = audio_stream_player.using_timer
 
-	# Android安全：复用正在播放的player前，先彻底停止它
-	# 这确保音频线程不会在stream被替换时仍在读取旧数据
 	if released_audio_stream_player != null:
-		released_audio_stream_player.note_stop( )
 		return released_audio_stream_player
 
-	if oldest_audio_stream_player != null:
-		oldest_audio_stream_player.note_stop( )
 	return oldest_audio_stream_player
 
 ## 現在発音中の音色数を返す

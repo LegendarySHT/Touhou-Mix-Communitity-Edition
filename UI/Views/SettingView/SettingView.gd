@@ -125,13 +125,8 @@ func save_config_to_file() -> bool:
 		print("[SettingView] midi_backend raw value from ui: %s (type: %s)" % [raw_value, typeof(raw_value)])
 		if raw_value is int or (raw_value is String and raw_value.is_valid_int()):
 			var index = int(raw_value)
-			var converted: String
-			if OS.get_name() == "Android":
-				# Android 上 addons 选项已移除，index 0 直接对应 meltysynth
-				converted = "meltysynth"
-			else:
-				# 0 -> "addons", 1 -> "meltysynth"
-				converted = "addons" if index == 0 else "meltysynth"
+			# 0 -> "addons", 1 -> "meltysynth"
+			var converted = "addons" if index == 0 else "meltysynth"
 			print("[SettingView] Converting midi_backend index %d to '%s'" % [index, converted])
 			settings_dict["midi_backend"] = converted
 	

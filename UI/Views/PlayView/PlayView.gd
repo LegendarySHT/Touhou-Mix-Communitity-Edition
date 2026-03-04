@@ -572,6 +572,8 @@ func _init_display():
 	album.text = current_midi.artist_name
 	song.text = current_midi.song_data.name
 	# artist.text = current_midi.song_data.artist_name # 没找着歌手在哪
+	var s := int(current_midi.duration_ms / 1000.0)
+	midi_duration.text = "%02d:%02d" % [s / 60, s % 60]
 	midi_name.text = current_midi.name
 	midi_author.text = current_midi.artist_name
 	
@@ -582,7 +584,7 @@ func _init_display():
 	center_bg.visible = true
 	is_pause = true
 	
-	# 恢复flow_area显示（可能在听奏模式中被隐藏）
+	# 恢复flow_area显示
 	flow_area.visible = true
 
 	# 重置进度条
