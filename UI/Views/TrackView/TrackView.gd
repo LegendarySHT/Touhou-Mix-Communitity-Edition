@@ -713,9 +713,9 @@ func _on_track_instrument_reset(track_index: int, channel: int) -> void:
 	current_midi_data.clear_track_channel_instrument_override(track_index, channel)
 	
 	# 从 MIDI 原始数据恢复
-	if midi_playback_manager and midi_playback_manager.midi_player:
-		var original_instr = midi_playback_manager.midi_player._track_channel_instruments.get(track_index, {}).get(channel, {"bank": 0, "program": 0})
-		midi_playback_manager.midi_player.set_track_channel_instrument(
+	if midi_playback_manager:
+		var original_instr = midi_playback_manager.get_original_track_channel_instrument(track_index, channel)
+		midi_playback_manager.set_track_channel_instrument(
 			track_index,
 			channel,
 			original_instr["bank"],

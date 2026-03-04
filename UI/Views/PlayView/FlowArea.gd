@@ -88,6 +88,7 @@ class Note:
 	var lane: int            		# 轨道索引
 	var tween: Tween
 	var held_by_touch_id: int = -1  # 按住该音符的触摸点ID
+	var game_sequence_ref: Object = null  # 新增：指向对应的GameSequence（演奏模式触发使用）
 
 	# 用于滑键
 	var can_judge: bool = false
@@ -476,11 +477,46 @@ func judge_note_at_lane(lane_l: int, lane_r: int) -> Note:
 						best_diff = note.start_time
 						best_note = note
 
-	if best_note:		
+	if best_note:
+		# 新增：当演奏模式开启时，从GameSequence触发MIDI音符
+		if parent_node.play_mode and best_note.game_sequence_ref:
+			_trigger_midi_notes_from_sequence(best_note.game_sequence_ref)
+		
 		_judge_note(best_note)
 		return best_note
 	else:
 		return null
+
+## 新增：从GameSequence触发MIDI音符（演奏模式）
+func _trigger_midi_notes_from_sequence(game_seq: Object) -> void:
+	# game_seq 是 KeySequenceManager.GameSequence 对象
+	if not game_seq or game_seq.original_notes.is_empty():
+		return
+	
+	var midi_player = MidiPlaybackManager.instance.midi_player
+	if not midi_player:
+		return
+	
+	# 触发原始notes中的所有MIDI音符
+	for note in game_seq.original_notes:
+		if note is MidiParser.Note and note.event:
+			var evt = note.event
+			
+			# 触发note_on
+			if midi_player.has_method("trigger_note_on"):
+				midi_player.trigger_note_on(evt.pitch, evt.velocity, evt.channel)
+			elif midi_player.has_method("note_on"):
+				midi_player.note_on(evt.channel, evt.pitch, evt.velocity)
+			
+			# 延迟note_off（使用GameSequence的duration_ms）
+			var delay_seconds = (game_seq.duration_ms / 1000.0) if game_seq.duration_ms > 0 else 0.1
+			
+			await get_tree().create_timer(delay_seconds).timeout
+			
+			if midi_player.has_method("trigger_note_off"):
+				midi_player.trigger_note_off(evt.pitch, evt.velocity, evt.channel)
+			elif midi_player.has_method("note_off"):
+				midi_player.note_off(evt.channel, evt.pitch)
 
 func _generate_particle(type: String, pos: Vector2):
 	var ptc = particle.duplicate()

@@ -273,7 +273,7 @@ var manually_controlled_notes:Dictionary = {} : set = set_manually_controlled_no
 func set_manually_controlled_notes(notes_dict: Dictionary) -> void:
 	manually_controlled_notes = notes_dict
 	# 调试输出
-	#print("[MidiPlayer] Set manually controlled notes: %s" % manually_controlled_notes)
+	print("[MidiPlayer] Set manually controlled notes: %s" % manually_controlled_notes)
 
 ## ドラムトラック用アサイングループ
 var drum_assign_groups:Dictionary = {
@@ -680,6 +680,9 @@ func set_file( path:String ) -> void:
 	file = path
 	self.stop( )
 	self.smf_data = null
+	# 清理旧的乐器覆盖配置，防止状态在不同 MIDI 之间错误延续
+	track_channel_instruments.clear()
+	print("[MidiPlayer] Cleared instrument overrides on file change")
 
 ## 加载MIDI文件 (接口方法 - 调用 set_file)
 ## @param	file_path	MIDI文件路径
@@ -984,7 +987,7 @@ func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:in
 	if manually_controlled_notes.has(channel.number):
 		if manually_controlled_notes[channel.number].has(note):
 			if manually_controlled_notes[channel.number][note] == true:
-				#print("[MidiPlayer] Skipping auto-play for manually controlled note: ch=%d, pitch=%d, vel=%d" % [channel.number, note, velocity])
+				print("[MidiPlayer] Skipping auto-play for manually controlled note: ch=%d, pitch=%d, vel=%d" % [channel.number, note, velocity])
 				return  # 跳过内部播放，等待游戏通过trigger_note_on手动触发
 
 	var track_key_shift:int = self.key_shift if not channel.drum_track else 0

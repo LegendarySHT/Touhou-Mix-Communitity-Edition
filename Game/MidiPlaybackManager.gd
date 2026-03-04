@@ -307,10 +307,13 @@ func load_midi(midi_data: MidiData) -> bool:
 					backend.set_track_channel_volume(track_idx, ch, midi_data.track_channel_volume_config[track_idx][ch])
 		print("[MidiPlaybackManager] Applied %d track volume configs" % midi_data.track_channel_volume_config.size())
 	
-	# 清理旧乐器覆盖配置
+	# 清理旧乐器覆盖配置（双重保障：后端 set_file/load_midi 已清理，这里再次确认）
+	# 注意：后端的 set_file/load_midi 方法已经清理了 track_channel_instruments
+	# 这里的检查主要用于防御性编程，确保清理操作成功
 	if backend != null and "track_channel_instruments" in backend:
-		backend.track_channel_instruments.clear()
-		print("[MidiPlaybackManager] Cleared old instrument overrides before loading new MIDI")
+		if backend.track_channel_instruments.size() > 0:
+			print("[MidiPlaybackManager] Warning: Backend still has %d instrument overrides after file load, clearing..." % backend.track_channel_instruments.size())
+			backend.track_channel_instruments.clear()
 	
 	# 应用轨道-通道乐器覆盖配置
 	if midi_data.track_channel_instrument_overrides and not midi_data.track_channel_instrument_overrides.is_empty():
@@ -1188,6 +1191,16 @@ func get_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
 	# 使用缓存的信息（从 MIDI 文件中提取）
 	return _get_instrument_from_cache(track_index, channel)
 
+## 获取 MIDI 文件中的原始乐器配置（不考虑用户覆盖）
+func get_original_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
+	return _get_instrument_from_cache(track_index, channel)
+
+## 设置轨道通道的乐器
+func set_track_channel_instrument(track_index: int, channel: int, bank: int, program: int) -> void:
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("set_track_channel_instrument"):
+		backend.set_track_channel_instrument(track_index, channel, bank, program)
+
 ## 从缓存中获取乐器信息
 func _get_instrument_from_cache(track_index: int, channel: int) -> Dictionary:
 	if cached_track_channel_instruments.has(track_index):
@@ -1400,7 +1413,7 @@ func classify_notes(all_notes: Array, manual_track_indices: Array[int] = []) -> 
 
 ## 设置MidiPlayer的手动控制note标记
 ## 游戏完成分类后，应调用此方法通知MidiPlayer哪些note需要手动控制
-## @param	manual_control_notes	ManualControlNote数组
+## @param	manual_control_notes	Note或ManualControlNote数组
 func set_manual_control_notes(manual_control_notes: Array) -> void:
 	if midi_player == null:
 		push_warning("[MidiPlaybackManager] MidiPlayer not initialized")
@@ -1410,7 +1423,8 @@ func set_manual_control_notes(manual_control_notes: Array) -> void:
 	var manually_controlled: Dictionary = {}
 	
 	for note in manual_control_notes:
-		if note is MidiParser.ManualControlNote:
+		# 支持普通Note和ManualControlNote两种类型
+		if note is MidiParser.Note and note.event:
 			var channel = note.event.channel
 			var pitch = note.event.pitch
 			
@@ -1420,7 +1434,29 @@ func set_manual_control_notes(manual_control_notes: Array) -> void:
 			manually_controlled[channel][pitch] = true
 	
 	# 传递给MidiPlayer
-	midi_player.set_manually_controlled_notes(manually_controlled)
+	if midi_player.has_method("set_manually_controlled_notes"):
+		midi_player.set_manually_controlled_notes(manually_controlled)
+		
+		# 调试日志：显示已标记的手动控制notes
+		var total_pitches = 0
+		for ch in manually_controlled.keys():
+			total_pitches += manually_controlled[ch].size()
+		print("[MidiPlaybackManager] Set manual control: %d notes, %d unique (ch,pitch) pairs" % 
+			[manual_control_notes.size(), total_pitches])
+		print("[MidiPlaybackManager] Channels with manual notes: %s" % manually_controlled.keys())
+	else:
+		push_warning("[MidiPlaybackManager] MidiPlayer does not support set_manually_controlled_notes")
+
+## 清除所有手动控制note标记（恢复所有notes自动播放）
+## 当退出PlayView返回TrackView等场景时调用
+func clear_manual_control_notes() -> void:
+	if midi_player == null:
+		return
+	
+	# 传递空字典给MidiPlayer，清除所有手动控制标记
+	if midi_player.has_method("set_manually_controlled_notes"):
+		midi_player.set_manually_controlled_notes({})
+		print("[MidiPlaybackManager] Cleared all manual control notes, restored auto-play")
 
 ## ========== 位置单位转换工具 ==========
 ## 将tick位置转换为毫秒（使用BPM时间线）

@@ -29,6 +29,7 @@ class GameSequence:
 	var pitch_list: Array[int] = []  # 同lane合并的所有pitch列表（便于同时发出多个音）
 	var connected_prev: bool = false  # 是否与前一块连接
 	var original_notes: Array[MidiParser.Note] = []  # 保留该块包含的原始Note列表
+	var flow_note_ref: Object = null  # 新增：指向对应的FlowArea.Note（演奏模式使用）
 	
 	func _init(idx: int, key: int, p: int, start: float, dur: float, x: float, oct: int, vel: int) -> void:
 		note_index = idx
@@ -102,6 +103,11 @@ var game_sequences: Array[GameSequence] = []
 
 ## 背景伴奏序列
 var background_sequences: Array[BackgroundSequence] = []
+
+## 生成后的手动控制notes（演奏模式可触发）
+var last_manual_control_notes: Array = []
+## 生成后的自动播放notes（背景伴奏）
+var last_auto_play_notes: Array = []
 
 ## 键ID计数器
 var next_key_id: int = 0
@@ -326,6 +332,9 @@ func generate_keys(game_notes: Array) -> bool:
 			var bg_seq = BackgroundSequence.new(track)
 			bg_seq.notes = bg_by_track[track]
 			background_sequences.append(bg_seq)
+	
+	# 在generate_keys完成后立即进行分类统计
+	_finalize_notes_classification()
 	
 	keys_generated.emit(game_sequences.size())
 	return true
@@ -800,6 +809,40 @@ func judge_key(key_id: int, hit_time_ms: float, judge_windows: Dictionary) -> in
 		return 2  # OK
 	else:
 		return 3  # MISS
+
+## 生成后的有效Notes分类（在generate_keys()后调用）
+## 在generate_keys()的最后调用此方法，统计真实分类
+func _finalize_notes_classification() -> void:
+	last_manual_control_notes.clear()
+	last_auto_play_notes.clear()
+	
+	# 从game_sequences中收集所有manual_control_notes
+	for game_seq in game_sequences:
+		if game_seq and not game_seq.original_notes.is_empty():
+			for note in game_seq.original_notes:
+				if note not in last_manual_control_notes:
+					last_manual_control_notes.append(note)
+	
+	# 从background_sequences中收集所有auto_play_notes
+	for bg_seq in background_sequences:
+		if bg_seq and not bg_seq.notes.is_empty():
+			for note in bg_seq.notes:
+				# 处理可能的Note对象或NoteEvent对象
+				if note not in last_auto_play_notes:
+					last_auto_play_notes.append(note)
+	
+	GameLogger.instance.info(
+		"Notes classification finalized: %d manual-control, %d auto-play" % 
+		[last_manual_control_notes.size(), last_auto_play_notes.size()],
+		"KeySequenceManager"
+	)
+
+## 获取最后一次生成的分类结果
+func get_last_notes_classification() -> Dictionary:
+	return {
+		"manual_control_notes": last_manual_control_notes.duplicate(),
+		"auto_play_notes": last_auto_play_notes.duplicate()
+	}
 
 ## 清空所有序列
 func clear_sequences() -> void:

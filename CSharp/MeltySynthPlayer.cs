@@ -901,7 +901,11 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		_sequencerStarted = false;  // 重置标志，等待 play() 调用
 		_currentOffsetMs = 0.0;  // 重置 offset
 		_hasSkippedPreroolEvents = false;  // 重置跳过标志
-		GD.Print($"[MeltySynthPlayer] MIDI file loaded, _sequencerStarted reset to false");
+		
+		// 清理旧的乐器覆盖配置，防止状态在不同 MIDI 之间错误延续
+		track_channel_instruments.Clear();
+		_virtualChannelInstruments.Clear();
+		GD.Print($"[MeltySynthPlayer] MIDI file loaded, cleared instrument overrides, _sequencerStarted reset to false");
 		// 注意：不在这里调用 Play()，而是等待明确的 play() 调用
 		// 这样可以与 MidiPlayer (Addon) 的行为保持一致
 		// _sequencer.Play(_midiFile, loop);  // 移除自动播放

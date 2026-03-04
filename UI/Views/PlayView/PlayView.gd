@@ -158,9 +158,17 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	if _oldState == UIStateManager.UIState.PLAY_VIEW and state != UIStateManager.UIState.PLAY_VIEW:
 		if playback_mgr:
 			playback_mgr.stop()
+			# 清除手动控制notes标记，恢复TrackView等场景的自动播放
+			playback_mgr.clear_manual_control_notes()
 	
 	if enable:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
+
+## 新增：配置变更回调
+func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	if section == "Playback" and key == "performing_mode":
+		play_mode = (value as int) == 1
+		GameLogger.instance.info("Performing mode updated: %s" % ("ON" if play_mode else "OFF"), "PlayView")
 
 var is_pause: bool = false:
 	set(v):
@@ -197,6 +205,15 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 
 	# 加载MIDI并转换为FlowArea音符
 	_load_and_convert_midi_notes(midi)
+	
+	# 新增：从配置读取演奏模式
+	var performing_mode = ConfigManager.instance.get_int("Playback", "performing_mode", 1)
+	play_mode = (performing_mode == 1)
+	GameLogger.instance.info("Performing mode: %s" % ("ON" if play_mode else "OFF"), "PlayView")
+	
+	# 新增：连接配置变更信号
+	if not EventBus.instance.config_changed.is_connected(_on_config_changed):
+		EventBus.instance.config_changed.connect(_on_config_changed)
 	
 	# 计算初始seek位置：-1000ms（固定：给予UI准备时间）- 音符下落时间（配置项）
 	var note_fall_time = ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
@@ -273,6 +290,10 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowArea.N
 			lane                 # 车道
 		)
 		
+		# 新增：建立双向映射
+		seq.flow_note_ref = flow_note
+		flow_note.game_sequence_ref = seq
+		
 		flow_notes.append(flow_note)
 	
 	print("[PlayView] Converted %d sequences to flow notes" % flow_notes.size())
@@ -311,6 +332,20 @@ func _generate_game_sequences(midi_data: MidiData) -> void:
 	if not success:
 		GameLogger.instance.warning("Failed to generate game keys", "PlayView")
 		return
+	
+	# 新增：获取KeySequenceManager统计的真实分类结果
+	var classification = key_sequence_mgr.get_last_notes_classification()
+	var manual_control_notes = classification["manual_control_notes"]
+	var auto_play_notes = classification["auto_play_notes"]
+	
+	# 新增：将真实分类提交给MidiPlaybackManager
+	if playback_mgr:
+		playback_mgr.set_manual_control_notes(manual_control_notes)
+		GameLogger.instance.info(
+			"Submitted notes classification to MidiPlaybackManager: %d manual, %d auto" %
+			[manual_control_notes.size(), auto_play_notes.size()],
+			"PlayView"
+		)
 	
 	# 缓存生成的游戏序列
 	var raw_sequences = key_sequence_mgr.get_game_sequences()
@@ -545,6 +580,8 @@ func _on_quit_pressed() -> void:
 	# 停止MIDI播放
 	if playback_mgr:
 		playback_mgr.stop()
+		# 清除手动控制notes标记，恢复TrackView等场景的自动播放
+		playback_mgr.clear_manual_control_notes()
 	_init_display()
 	flow_area.clear_flow_area()
 	game_sequences.clear()  # 清空游戏序列
