@@ -886,27 +886,43 @@ func _on_setting_value_changed(id: String, value: Variant):
 		if not section.is_empty() and not key.is_empty():
 			# 根据配置类型转换值（确保类型匹配）
 			var converted_value = value
-			match value_type:
-				"int":
-					converted_value = int(value) if value is not int else value
-				"float":
-					converted_value = float(value) if value is not float else value
-				"bool":
-					# 布尔值可能来自int或字符串
-					if value is int:
-						converted_value = value != 0
-					elif value is String:
-						converted_value = value.to_lower() in ["1", "true", "yes"]
-					else:
-						converted_value = bool(value)
-				"string":
-					converted_value = str(value)
-				"color":
-					# 颜色保持为Color类型
-					if value is Color:
-						converted_value = value
-					else:
-						converted_value = Color(str(value))
+			
+			# 特殊处理：midi_backend 需要将索引转换为实际值
+			if id == "midi_backend" and value is int:
+				# 0 -> "addons", 1 -> "meltysynth"
+				converted_value = "addons" if value == 0 else "meltysynth"
+				print("[SettingList] Converting midi_backend index %d to '%s'" % [value, converted_value])
+			# 特殊处理：soundfont_select 需要将索引转换为文件名
+			elif id == "soundfont_select" and value is int:
+				var display_text = get_option_text(id, value)
+				# 去掉 [内置] 标签和 .sf2 扩展名
+				var actual_name = display_text.split(" [")[0] if " [" in display_text else display_text
+				if actual_name.ends_with(".sf2"):
+					actual_name = actual_name.get_basename()
+				converted_value = actual_name
+				print("[SettingList] Converting soundfont_select index %d to '%s'" % [value, converted_value])
+			else:
+				match value_type:
+					"int":
+						converted_value = int(value) if value is not int else value
+					"float":
+						converted_value = float(value) if value is not float else value
+					"bool":
+						# 布尔值可能来自int或字符串
+						if value is int:
+							converted_value = value != 0
+						elif value is String:
+							converted_value = value.to_lower() in ["1", "true", "yes"]
+						else:
+							converted_value = bool(value)
+					"string":
+						converted_value = str(value)
+					"color":
+						# 颜色保持为Color类型
+						if value is Color:
+							converted_value = value
+						else:
+							converted_value = Color(str(value))
 			
 			# 调用set_value_and_notify()以实时通知所有监听器
 			config_mgr.set_value_and_notify(section, key, converted_value)

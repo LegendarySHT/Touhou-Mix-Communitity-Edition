@@ -1630,5 +1630,15 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	# 处理 MIDI 后端配置变更
 	elif key == "midi_backend":
 		var backend = str(value).to_lower().strip_edges()
+		
+		# 防御性检查：如果传入的是索引数字，转换为实际名称
+		if backend == "0" or backend == "addons":
+			backend = "addons"
+		elif backend == "1" or backend == "meltysynth":
+			backend = "meltysynth"
+		else:
+			push_warning("[MidiPlaybackManager] Invalid backend value: %s, ignoring" % backend)
+			return
+		
 		if backend != midi_backend and not backend_switching:
 			set_backend(backend)
