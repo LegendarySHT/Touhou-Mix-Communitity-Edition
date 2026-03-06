@@ -75,8 +75,8 @@ var is_midi_playing: bool = false
 # 有一部分配置参数在flow_area里面
 var lane_count: int = 12
 var lane_padding: int = 200 # 左右填充安全区
-var keyboard_mode: bool = true
-var key_map: Array[Key] = [KEY_Q, KEY_W, KEY_D, KEY_J, KEY_I, KEY_O]
+var keyboard_mode: bool = false
+var key_map: Array[Key] = []
 
 var judge_line_offset_y: int = 250
 
@@ -89,6 +89,9 @@ var intersect_color_set: Array = [Color.RED, Color.BLUE] # 这个颜色数量不
 #################################
 
 func _ready() -> void:
+	# 从配置加载键盘和轨道相关的参数
+	_load_lane_parameters()
+	
 	# 窗口大小变化
 	get_window().size_changed.connect(_init_lane_display)
 
@@ -119,6 +122,9 @@ func _ready() -> void:
 	
 	# 从配置加载演奏模式设置
 	_load_play_mode_setting()
+	
+	# 连接配置变更信号
+	EventBus.instance.config_changed.connect(_on_lane_config_changed)
 	
 	env.environment = null
 
@@ -457,6 +463,10 @@ func _process_input(event: InputEvent) -> void:
 				_trigger_key_press(key_index, current_time_ms)
 				get_tree().root.set_input_as_handled()
 
+## 输入事件回调 - Godot标准方法
+func _input(event: InputEvent) -> void:
+	_process_input(event)
+
 ## 触发指定键的音符播放
 func _trigger_key_press(key_index: int, current_time_ms: float) -> void:
 	if key_index < 0 or key_index >= get_lane_count():
@@ -503,6 +513,92 @@ func _play_note(pitch: int, velocity: int = 100) -> void:
 		await get_tree().create_timer(0.05).timeout
 		if midi_player and midi_player.has_method("note_off"):
 			midi_player.note_off(0, pitch)
+
+## 从ConfigManager加载键盘和轨道相关的参数
+func _load_lane_parameters() -> void:
+	var config_mgr = ConfigManager.instance
+	
+	# 加载轨道数量（默认12）
+	lane_count = config_mgr.get_int("Lane", "lane_count", 12)
+	
+	# 加载键盘模式（0=关闭，1=开启，默认0）
+	keyboard_mode = config_mgr.get_int("Lane", "keyboard_mode", 0) == 1
+	
+	# 加载键盘键位字符串（默认 "A,S,D,F,J,K,L,;"）
+	var keyboard_keys_str = config_mgr.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")
+	key_map = ConfigParser.parse_keyboard_keys(keyboard_keys_str)
+	
+	GameLogger.instance.info(
+		"PlayView lane parameters loaded: lane_count=%d, keyboard_mode=%s, key_map_size=%d" % 
+		[lane_count, str(keyboard_mode), key_map.size()],
+		"PlayView"
+	)
+
+## 处理Lane段配置变更
+func _on_lane_config_changed(key: String, section: String, value: Variant) -> void:
+	if section != "Lane":
+		return
+	
+	var should_reinit = false
+	
+	match key:
+		"lane_count":
+			var new_lane_count = int(value)
+			if new_lane_count != lane_count:
+				lane_count = new_lane_count
+				# 仅在非键盘模式时需要重初始化轨道显示
+				if not keyboard_mode:
+					should_reinit = true
+				GameLogger.instance.info("PlayView lane_count updated: %d" % lane_count, "PlayView")
+		
+		"keyboard_mode":
+			var new_mode = int(value) == 1
+			if new_mode != keyboard_mode:
+				keyboard_mode = new_mode
+				should_reinit = true
+				GameLogger.instance.info("PlayView keyboard_mode updated: %s" % str(keyboard_mode), "PlayView")
+		
+		"keyboard_mode_keys":
+			var new_keys = ConfigParser.parse_keyboard_keys(str(value))
+			if new_keys.size() != key_map.size() or _are_keys_different(new_keys, key_map):
+				key_map = new_keys
+				# 仅在键盘模式时需要重初始化
+				if keyboard_mode:
+					should_reinit = true
+				GameLogger.instance.info("PlayView keyboard_mode_keys updated: %d keys" % key_map.size(), "PlayView")
+	
+	if should_reinit:
+		# 仅在游戏未开始或者允许的情况下重新初始化轨道
+		if not is_midi_playing:
+			_reinit_lane_display()
+
+## 比较两个KeyCode数组是否不同
+func _are_keys_different(keys1: Array[Key], keys2: Array[Key]) -> bool:
+	if keys1.size() != keys2.size():
+		return true
+	for i in range(keys1.size()):
+		if keys1[i] != keys2[i]:
+			return true
+	return false
+
+## 重新初始化轨道显示
+## 清空旧轨道并根据当前配置重新初始化
+func _reinit_lane_display() -> void:
+	if flow_area == null or lane_area == null:
+		return
+	
+	# 重新初始化流动区域
+	flow_area.init_flow_area()
+	
+	# 重新初始化轨道光效（lane_area 已经是 LaneEffect 实例）
+	lane_area.init_beam(get_lane_count(), self)
+	lane_area.set_beam_alpha(beam_alpha)
+	
+	# 如果启用了键盘模式，显示键位提示
+	if keyboard_mode and key_map.size() > 0:
+		lane_area.init_key_display(key_map)
+	
+	GameLogger.instance.info("PlayView lane display reinitialized", "PlayView")
 
 ## 从配置加载演奏模式设置
 func _load_play_mode_setting() -> void:

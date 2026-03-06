@@ -870,6 +870,48 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 func _on_setting_value_changed(id: String, value: Variant):
 	# 设置项值改变时的处理
 	print("Setting '%s' changed to: %s" % [id, value])
+	
+	# 获取该设置的section信息（从SettingsMapper查询）
+	var config_mgr = ConfigManager.instance
+	if config_mgr == null:
+		return
+	
+	# 从SettingsMapper中查找该设置项对应的section和key
+	if id in SettingsMapper.mappings:
+		var setting_info = SettingsMapper.mappings[id]
+		var section = setting_info.get("section", "")
+		var key = setting_info.get("key", "")
+		var value_type = setting_info.get("value_type", "string")
+		
+		if not section.is_empty() and not key.is_empty():
+			# 根据配置类型转换值（确保类型匹配）
+			var converted_value = value
+			match value_type:
+				"int":
+					converted_value = int(value) if value is not int else value
+				"float":
+					converted_value = float(value) if value is not float else value
+				"bool":
+					# 布尔值可能来自int或字符串
+					if value is int:
+						converted_value = value != 0
+					elif value is String:
+						converted_value = value.to_lower() in ["1", "true", "yes"]
+					else:
+						converted_value = bool(value)
+				"string":
+					converted_value = str(value)
+				"color":
+					# 颜色保持为Color类型
+					if value is Color:
+						converted_value = value
+					else:
+						converted_value = Color(str(value))
+			
+			# 调用set_value_and_notify()以实时通知所有监听器
+			config_mgr.set_value_and_notify(section, key, converted_value)
+			print("Config notification sent: [%s] %s = %s (type: %s)" % [section, key, str(converted_value), value_type])
+
 
 
 func get_all_settings_as_json() -> Dictionary:

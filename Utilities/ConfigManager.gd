@@ -226,6 +226,9 @@ func get_bool(section: String, key: String, default: bool = false, config: Varia
 	var value = get_value(section, key, str(default), config).to_lower()
 	return value in ["true", "1", "yes"]
 
+func get_string(section: String, key: String, default: String = "", config: Variant = null) -> String:
+	return str(get_value(section, key, default, config))
+
 # ============ 配置写入方法 ============
 
 ## 设置配置值并发送变更通知（使用当前活跃配置或指定配置）
@@ -242,7 +245,11 @@ func set_value_and_notify(section: String, key: String, value: Variant, config: 
 	config[section][key] = value
 	
 	# 只有当值确实改变时才发送通知
-	if old_value != value:
+	# 使用字符串比较避免类型不匹配错误（例如 "0" vs 0）
+	var old_value_str = str(old_value) if old_value != null else ""
+	var new_value_str = str(value)
+	
+	if old_value_str != new_value_str:
 		if EventBus.instance != null:
 			EventBus.instance.config_changed.emit(key, section, value)
 		GameLogger.instance.info("Config changed: [%s] %s = %s" % [section, key, str(value)], "ConfigManager")

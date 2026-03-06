@@ -608,7 +608,7 @@ func set_soundfont(soundfont_name: String) -> bool:
 	
 	# 如果正在播放，立即切换音源
 	if is_playing and midi_player != null:
-		midi_player.soundfont = soundfont_path
+		midi_player.set_soundfont(soundfont_path)
 	
 	soundfont_changed.emit(soundfont_path)
 	print("[MidiPlaybackManager] Soundfont set to: %s" % soundfont_path)

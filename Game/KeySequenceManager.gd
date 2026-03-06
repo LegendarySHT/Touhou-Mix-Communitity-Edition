@@ -226,9 +226,18 @@ func _load_config_parameters() -> void:
 	generate_instant_connect = config_manager.get_bool(app_cfg, "generate_instant_connect", false)
 	max_instant_connect_seconds = config_manager.get_float(app_cfg, "instant_connect_max_time", 0.5)
 	
+	# 键盘模式特殊处理：禁用触摸移动速度限制
+	var keyboard_mode_enabled = config_manager.get_int("Lane", "keyboard_mode", 0) == 1
+	if keyboard_mode_enabled:
+		max_touch_move_velocity = 999999.0
+		GameLogger.instance.info(
+			"Keyboard mode enabled: max_touch_move_velocity set to unlimited (999999.0)",
+			"KeySequenceManager"
+		)
+	
 	GameLogger.instance.info(
-		"KeyGeneration config loaded: block_coalesce=%.2fs, instant=%.2fs, short=%.2fs, maxTouch=%d" % 
-		[block_coalesce_seconds, instant_block_threshold, short_block_threshold, max_touch_count],
+		"KeyGeneration config loaded: block_coalesce=%.2fs, instant=%.2fs, short=%.2fs, maxTouch=%d, max_touch_velocity=%.1f" % 
+		[block_coalesce_seconds, instant_block_threshold, short_block_threshold, max_touch_count, max_touch_move_velocity],
 		"KeySequenceManager"
 	)
 func classify_sequences(midi_data: MidiData, all_midi_notes: Array) -> bool:
@@ -888,12 +897,26 @@ func _count_background_notes() -> int:
 ## 配置变更回调（新增）
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	# 处理 Lane 相关配置变更
-	if section == "Lane" and key == "lane_count":
-		lane_count = int(value)
-		GameLogger.instance.info("Lane count changed to: %d" % lane_count, "KeySequenceManager")
-		# 如果已经有生成的键，需要重新生成
-		if not game_sequences.is_empty():
-			GameLogger.instance.warning("Lane count changed while sequences exist, regeneration may be needed", "KeySequenceManager")
+	if section == "Lane":
+		match key:
+			"lane_count":
+				lane_count = int(value)
+				GameLogger.instance.info("Lane count changed to: %d" % lane_count, "KeySequenceManager")
+				# 如果已经有生成的键，需要重新生成
+				if not game_sequences.is_empty():
+					GameLogger.instance.warning("Lane count changed while sequences exist, regeneration may be needed", "KeySequenceManager")
+			
+			"keyboard_mode":
+				var keyboard_mode_enabled = int(value) == 1
+				# 更新触摸移动速度限制
+				if keyboard_mode_enabled:
+					max_touch_move_velocity = 999999.0
+					GameLogger.instance.info("Keyboard mode enabled: max_touch_move_velocity set to unlimited", "KeySequenceManager")
+				else:
+					# 恢复到配置中的值
+					var config_manager = ConfigManager.instance
+					max_touch_move_velocity = config_manager.get_float("Generator", "max_touch_move_speed", 500.0)
+					GameLogger.instance.info("Keyboard mode disabled: max_touch_move_velocity restored to %.1f" % max_touch_move_velocity, "KeySequenceManager")
 	
 	# 处理 Generator 相关配置变更
 	elif section == "Generator":
@@ -909,7 +932,11 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			"min_touch_cooldown_time":
 				cooldown_seconds = float(value)
 			"max_touch_move_speed":
-				max_touch_move_velocity = float(value)
+				# 仅在非键盘模式下更新（键盘模式时保持999999）
+				if ConfigManager.instance.get_int("Lane", "keyboard_mode", 0) == 0:
+					max_touch_move_velocity = float(value)
+				else:
+					GameLogger.instance.info("Ignored max_touch_move_speed change (keyboard mode active)", "KeySequenceManager")
 			"max_block_coalesce_time":
 				block_coalesce_seconds = float(value)
 	
