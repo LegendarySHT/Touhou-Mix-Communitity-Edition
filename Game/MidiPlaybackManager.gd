@@ -415,11 +415,12 @@ func resume() -> void:
 
 ## 设置循环播放
 func set_loop(enabled: bool) -> void:
-	if midi_backend == "addons" and midi_player != null:
-		midi_player.loop = enabled
-	elif midi_backend == "meltysynth" and meltysynth_player != null:
-		# 直接调用 C# 方法
-		meltysynth_player.set_loop(enabled)
+	var backend = _get_active_backend()
+	if backend != null:
+		if backend.has_method("set_loop"):
+			backend.call("set_loop", enabled)
+		elif "loop" in backend:
+			backend.loop = enabled
 	
 	# 同时更新配置
 	midi_player_config["loop"] = enabled
@@ -427,10 +428,12 @@ func set_loop(enabled: bool) -> void:
 
 ## 获取循环播放状态
 func get_loop() -> bool:
-	if midi_backend == "addons" and midi_player != null:
-		return midi_player.loop
-	elif midi_backend == "meltysynth" and meltysynth_player != null:
-		return meltysynth_player.get("loop")
+	var backend = _get_active_backend()
+	if backend != null:
+		if backend.has_method("get_loop"):
+			return backend.call("get_loop")
+		elif "loop" in backend:
+			return backend.loop
 	return false
 
 ## 跳转到指定位置
@@ -752,8 +755,15 @@ func _initialize_backend() -> bool:
 ## 返回: bool - 初始化是否成功
 func _initialize_addon_backend() -> bool:
 	if midi_player != null:
-		print("[MidiPlaybackManager] Addon backend already initialized, skipping")
-		return true  # 已经初始化
+		# 若当前引用不是 Addon MidiPlayer（例如切换后残留 MeltySynth wrapper），先清理再重建
+		if "loop" in midi_player and "smf_data" in midi_player:
+			print("[MidiPlaybackManager] Addon backend already initialized, skipping")
+			return true  # 已经初始化
+		print("[MidiPlaybackManager] Existing midi_player is not addon backend, recreating addon instance")
+		if midi_player.get_parent() == self:
+			remove_child(midi_player)
+		midi_player.queue_free()
+		midi_player = null
 	
 	print("[MidiPlaybackManager] Attempting to initialize addon MIDI backend")
 	
@@ -845,7 +855,8 @@ func _initialize_meltysynth_backend() -> bool:
 	
 	# 配置播放器参数
 	wrapper.set("max_polyphony", midi_player_config["max_polyphony"])
-	wrapper.set("loop", midi_player_config["loop"])
+	if wrapper.has_method("set_loop"):
+		wrapper.call("set_loop", midi_player_config["loop"])
 	print("[MidiPlaybackManager] Set playback parameters")
 	
 	if wrapper.has_method("set_volume_db"):
@@ -935,6 +946,8 @@ func _cleanup_old_backend(backend_type: String) -> void:
 				# 3. 清空引用（先清引用，防止下一帧_process访问）
 				var old_player = meltysynth_player
 				meltysynth_player = null
+				if midi_player == old_player:
+					midi_player = null
 				
 				# 4. 从场景树移除（使用queue_free，给音频线程时间完成当前回调）
 				if old_player.get_parent() != null:

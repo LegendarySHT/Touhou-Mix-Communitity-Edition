@@ -167,8 +167,26 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 ## 新增：配置变更回调
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	if section == "Playback" and key == "performing_mode":
-		play_mode = (value as int) == 1
-		GameLogger.instance.info("Performing mode updated: %s" % ("ON" if play_mode else "OFF"), "PlayView")
+		var new_mode = (value as int) == 1
+		
+		# 只在值实际改变时处理
+		if new_mode == play_mode:
+			return
+		
+		play_mode = new_mode
+		
+		if play_mode:
+			# 演奏模式开启：重新应用手动控制notes标记
+			if playback_mgr and game_sequences.size() > 0:
+				var classification = key_sequence_mgr.get_last_notes_classification()
+				var manual_control_notes = classification["manual_control_notes"]
+				playback_mgr.set_manual_control_notes(manual_control_notes)
+				GameLogger.instance.info("Performing mode ON: reapplied manual control notes (%d)" % manual_control_notes.size(), "PlayView")
+		else:
+			# 演奏模式关闭：清除手动控制notes标记，恢复全自动播放
+			if playback_mgr:
+				playback_mgr.clear_manual_control_notes()
+				GameLogger.instance.info("Performing mode OFF: cleared manual control notes", "PlayView")
 
 var is_pause: bool = false:
 	set(v):
@@ -339,13 +357,22 @@ func _generate_game_sequences(midi_data: MidiData) -> void:
 	var auto_play_notes = classification["auto_play_notes"]
 	
 	# 新增：将真实分类提交给MidiPlaybackManager
+	# 仅在演奏模式开启时下发手动控制；关闭时必须清空以恢复自动播放
 	if playback_mgr:
-		playback_mgr.set_manual_control_notes(manual_control_notes)
-		GameLogger.instance.info(
-			"Submitted notes classification to MidiPlaybackManager: %d manual, %d auto" %
-			[manual_control_notes.size(), auto_play_notes.size()],
-			"PlayView"
-		)
+		if play_mode:
+			playback_mgr.set_manual_control_notes(manual_control_notes)
+			GameLogger.instance.info(
+				"[Performing ON] Submitted notes classification: %d manual, %d auto" %
+				[manual_control_notes.size(), auto_play_notes.size()],
+				"PlayView"
+			)
+		else:
+			playback_mgr.clear_manual_control_notes()
+			GameLogger.instance.info(
+				"[Performing OFF] Cleared manual control notes: all notes will auto-play (manual=%d, auto=%d)" %
+				[manual_control_notes.size(), auto_play_notes.size()],
+				"PlayView"
+			)
 	
 	# 缓存生成的游戏序列
 	var raw_sequences = key_sequence_mgr.get_game_sequences()

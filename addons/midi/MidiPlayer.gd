@@ -269,6 +269,9 @@ var audio_stream_players:Array[AudioStreamPlayerADSR] = []
 ## 格式: {channel: {pitch: is_manual_controlled}}
 var manually_controlled_notes:Dictionary = {} : set = set_manually_controlled_notes
 
+## 标志：当前note是否由trigger_note_on手动触发（用于绕过manually_controlled_notes检查）
+var _is_manually_triggered: bool = false
+
 ## 设置手动控制的note集合
 func set_manually_controlled_notes(notes_dict: Dictionary) -> void:
 	manually_controlled_notes = notes_dict
@@ -810,8 +813,11 @@ func trigger_note_on(pitch: int, velocity: int, channel_number: int = 0) -> void
 		return
 	
 	var channel = self.channel_status[channel_number]
-	# 调用内部的note_on处理，但此时不会再次检查manually_controlled_notes（因为已跳过自动处理）
+	# 设置标志：这是手动触发，应该绕过manually_controlled_notes检查
+	_is_manually_triggered = true
 	self._process_track_event_note_on(channel, pitch, velocity)
+	_is_manually_triggered = false
+	print("[MidiPlayer] Manually triggered note_on: ch=%d, pitch=%d, vel=%d" % [channel_number, pitch, velocity])
 
 ## 手动触发noteOff事件 - 停止指定音符的播放
 ## @param	pitch			MIDI音符号 (0-127)
@@ -824,6 +830,7 @@ func trigger_note_off(pitch: int, velocity: int, channel_number: int = 0) -> voi
 	
 	var channel = self.channel_status[channel_number]
 	self._process_track_event_note_off(channel, pitch)
+	print("[MidiPlayer] Manually triggered note_off: ch=%d, pitch=%d" % [channel_number, pitch])
 
 ## 音量設定
 ## @param	vdb	音量
@@ -979,16 +986,20 @@ func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:in
 	if self.bank == null: return
 	
 	# ===== track_channel_mute 状態を確認（個別 track の channel 静音対応）=====
-	if _should_mute_track_channel(channel.number, note, track_index):
-		return
+	# 但如果是通过 trigger_note_on 手动触发，则绕过此检查
+	if not _is_manually_triggered:
+		if _should_mute_track_channel(channel.number, note, track_index):
+			return
 	
 	# ========== 手动控制note检查 ==========
 	# 如果该note被标记为手动控制，则跳过内部播放逻辑
-	if manually_controlled_notes.has(channel.number):
-		if manually_controlled_notes[channel.number].has(note):
-			if manually_controlled_notes[channel.number][note] == true:
-				print("[MidiPlayer] Skipping auto-play for manually controlled note: ch=%d, pitch=%d, vel=%d" % [channel.number, note, velocity])
-				return  # 跳过内部播放，等待游戏通过trigger_note_on手动触发
+	# 但如果是通过trigger_note_on手动触发，则绕过此检查
+	if not _is_manually_triggered:
+		if manually_controlled_notes.has(channel.number):
+			if manually_controlled_notes[channel.number].has(note):
+				if manually_controlled_notes[channel.number][note] == true:
+					print("[MidiPlayer] Skipping auto-play for manually controlled note: ch=%d, pitch=%d, vel=%d" % [channel.number, note, velocity])
+					return  # 跳过内部播放，等待游戏通过trigger_note_on手动触发
 
 	var track_key_shift:int = self.key_shift if not channel.drum_track else 0
 	var key_number:int = note + track_key_shift
