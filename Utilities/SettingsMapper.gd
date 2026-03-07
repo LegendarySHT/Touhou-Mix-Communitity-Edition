@@ -7,6 +7,7 @@ class_name SettingsMapper
 static var mappings: Dictionary = {
 	# ========== 常规设置 ==========
 	"online_mode": {"section": "General", "key": "online_mode", "value_type": "int"},
+	"display_debug_info": {"section": "General", "key": "display_debug_info", "value_type": "int"},
 	"language": {"section": "General", "key": "language", "value_type": "int"},
 	"server_address": {"section": "General", "key": "server_address", "value_type": "string"},
 	"reload_builtin_resources": {"section": "General", "key": "reload_builtin_resources", "value_type": "int"},

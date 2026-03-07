@@ -151,6 +151,16 @@ texture_normal = ExtResource("1_8cbrq")
 ignore_texture_size = true
 stretch_mode = 5
 
+[node name="DebugInfo" type="Label" parent="Layer"]
+visible = false
+offset_left = 16.0
+offset_top = 100.0
+offset_right = 520.0
+offset_bottom = 240.0
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 20
+text = "调试信息"
+
 [node name="Center" type="VBoxContainer" parent="Layer" unique_id=823749499]
 custom_minimum_size = Vector2(450, 300)
 anchors_preset = 8

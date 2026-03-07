@@ -50,6 +50,7 @@ extends Control
 
 # auto标识
 @onready var auto_label: Label = $AutoLabel
+@onready var debug_info_label: Label = $Layer/DebugInfo
 
 var current_midi: MidiData = null
 ## play_result 仅作为传递给 ScoreView 的展示数据容器
@@ -86,11 +87,16 @@ var beam_alpha: float = 0.5
 var intersect_lane_color: bool = true
 var intersect_color_set: Array = [Color.RED, Color.BLUE] # 这个颜色数量不能超过轨道数的一半
 
+var show_debug_info: bool = false
+var debug_info_refresh_interval: float = 0.5
+var debug_info_elapsed: float = 0.0
+
 #################################
 
 func _ready() -> void:
 	# 从配置加载键盘和轨道相关的参数
 	_load_lane_parameters()
+	_load_debug_display_setting()
 	
 	# 窗口大小变化
 	get_window().size_changed.connect(_init_lane_display)
@@ -124,18 +130,28 @@ func _ready() -> void:
 	_load_play_mode_setting()
 	
 	# 连接配置变更信号
-	EventBus.instance.config_changed.connect(_on_lane_config_changed)
+	if not EventBus.instance.config_changed.is_connected(_on_lane_config_changed):
+		EventBus.instance.config_changed.connect(_on_lane_config_changed)
+	if not EventBus.instance.config_changed.is_connected(_on_config_changed):
+		EventBus.instance.config_changed.connect(_on_config_changed)
+	_set_debug_overlay_visible(show_debug_info)
 	
 	env.environment = null
 
 var current_time: float = 0
 var max_time: float = 20
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if score_wait_to_add > 0:
 		var amount = int(sqrt(score_wait_to_add))
 		score.text = str(int(score.text) + amount)
 		score_wait_to_add -= amount
+
+	if show_debug_info and debug_info_label and debug_info_label.visible:
+		debug_info_elapsed += delta
+		if debug_info_elapsed >= debug_info_refresh_interval:
+			debug_info_elapsed = 0.0
+			_update_debug_overlay()
 
 	if not is_pause:
 		# 如果正在播放MIDI，使用MIDI播放管理器的时间
@@ -172,6 +188,11 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 
 ## 新增：配置变更回调
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	if section == "General" and key == "display_debug_info":
+		show_debug_info = int(value) == 1
+		_set_debug_overlay_visible(show_debug_info)
+		return
+
 	if section == "Playback" and key == "performing_mode":
 		var new_mode = (value as int) == 1
 		
@@ -193,6 +214,38 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			if playback_mgr:
 				playback_mgr.clear_manual_control_notes()
 				GameLogger.instance.info("Performing mode OFF: cleared manual control notes", "PlayView")
+
+func _load_debug_display_setting() -> void:
+	show_debug_info = ConfigManager.instance.get_int("General", "display_debug_info", 0) == 1
+
+func _set_debug_overlay_visible(visible: bool) -> void:
+	if debug_info_label == null:
+		return
+
+	debug_info_label.visible = visible
+	debug_info_elapsed = debug_info_refresh_interval
+	if visible:
+		_update_debug_overlay()
+
+func _update_debug_overlay() -> void:
+	if debug_info_label == null:
+		return
+
+	var fps = Engine.get_frames_per_second()
+	var frame_ms = (1000.0 / max(1.0, float(fps)))
+	var draw_calls = int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	var objects_in_frame = int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))
+	var memory_static_mb = float(Performance.get_monitor(Performance.MEMORY_STATIC)) / (1024.0 * 1024.0)
+	var memory_static_max_mb = float(Performance.get_monitor(Performance.MEMORY_STATIC_MAX)) / (1024.0 * 1024.0)
+
+	debug_info_label.text = "FPS: %d (%.2f ms)\n渲染: DrawCalls %d | Objects %d\n内存: %.1f MB / 峰值 %.1f MB" % [
+		fps,
+		frame_ms,
+		draw_calls,
+		objects_in_frame,
+		memory_static_mb,
+		memory_static_max_mb
+	]
 
 var is_pause: bool = false:
 	set(v):
