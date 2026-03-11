@@ -9,17 +9,11 @@ class_name FlowArea
 
 ########## 配置参数 #############
 var auto_mode: bool = false
-var judge_area_width: int = 150
-var judge_mode = JudgeMode.BestDist
-
-enum JudgeMode {
-	BestTime = 0,
-	BestDist,
-	MostDown
-}
-
-var note_judge_width: int = 120
+var judge_area_width: int = 150  # 滑块 x 轴检测专用，不经由配置读取
+var judge_mode: int = NoteJudger.JudgeMode.BEST_TIMING_FIFO  # 从 Judge/touch_judging_criteria 配置初始化
+var note_judge_width: int = 100  # 从 Judge/block_judging_width 配置读取
 var note_visual_width: int = 200
+var note_judger: NoteJudger = NoteJudger.new()
 
 # 音符下落动画
 var trans_before_line = Tween.TRANS_LINEAR
@@ -124,7 +118,11 @@ func init_flow_area():
 	# 从配置读取音符下落时间（秒转毫秒）
 	var note_fall_time = ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
 	note_generation_lead_time = note_fall_time * 1000.0
-	
+
+	# 从配置读取判定模式和判定宽度
+	judge_mode = ConfigManager.instance.get_int("Judge", "touch_judging_criteria", NoteJudger.JudgeMode.BEST_TIMING_FIFO)
+	note_judge_width = ConfigManager.instance.get_int("Judge", "block_judging_width", 100)
+
 	var lc = parent_node.get_lane_count()
 	# 初始化轨道宽度
 	lane_width = size.x / lc
@@ -291,6 +289,7 @@ func _auto_click(note: Note):
 	if not note.rect:
 		return
 	if note.type == NoteType.Long:
+		_judge_note(note)
 		_hold_long_note(_auto_hold_idx + 666, note)
 		_auto_hold_idx += 1
 	else:
@@ -379,14 +378,14 @@ func _input(event: InputEvent) -> void:
 
 # 处理触摸按下
 func _handle_press(touch_id: int, pos: Vector2) -> void:
-	# 否则进行普通轨道判定
-	@warning_ignore("integer_division")
-	var click_lane_l: int = clampi(int((pos.x-judge_area_width/2) / lane_width), 0, parent_node.get_lane_count() - 1)
-	@warning_ignore("integer_division")
-	var click_lane_r: int = clampi(int((pos.x+judge_area_width/2) / lane_width), 0, parent_node.get_lane_count() - 1)
-	var node = judge_note_at_lane(click_lane_l, click_lane_r)
-	if node and node.type == NoteType.Long:
-		_hold_long_note(touch_id, node)
+	var note = note_judger.find_best_note(pos, active_notes, jl.position.y, note_judge_width, judge_mode)
+	if note == null:
+		return
+	if parent_node.play_mode and note.game_sequence_ref:
+		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
+	_judge_note(note)
+	if note.type == NoteType.Long:
+		_hold_long_note(touch_id, note)
 
 # 处理触摸松开 释放长条音符
 func _handle_release(touch_id: int) -> void:
@@ -418,6 +417,7 @@ func _handle_touch_drag(touch_id: int, pos: Vector2) -> void:
 	note.rect.position.x = clamp(pos.x - note.rect.size.x / 2, 0, size.x - note.rect.size.x)
 
 # 按住长条音符
+# 注意：调用方负责在调用此函数之前已通过 _judge_note() 完成判定
 func _hold_long_note(touch_id: int, note: Note) -> void:
 	note.is_held = true
 	note.held_by_touch_id = touch_id
@@ -425,8 +425,6 @@ func _hold_long_note(touch_id: int, note: Note) -> void:
 	if note.long_instance_id < 0:
 		note.long_instance_id = Note._gen_long_id()
 	active_holds[touch_id] = note
-	
-	_judge_note(note)
 
 # 检查slide音符是否在手指范围内（用于自动判定接近判定线的slide）
 func _check_slides_at_touch_pos(touch_id: int, pos: Vector2) -> void:
@@ -460,44 +458,46 @@ func _check_slide_stat(note: Note):
 	if note.can_judge:
 		_judge_note(note)
 
+## 获取音符的代表 Y 坐标（屏幕坐标）
+## Long 音符使用 VBoxC/head 中心 Y，其他使用 rect 中心 Y
+func _get_note_center_y(note: Note) -> float:
+	if note.type == NoteType.Long:
+		var head := note.rect.get_node("VBoxC/head") as Control
+		return head.global_position.y + head.size.y * 0.5
+	return note.rect.position.y + note.rect.size.y * 0.5
+
+## 键盘模式专用：在指定轨道范围内查找最合适的音符并完成判定
+## 触摸模式请使用 _handle_press()（通过 NoteJudger 实现）
 func judge_note_at_lane(lane_l: int, lane_r: int) -> Note:
-	# 查找范围内最合适的音符
-	var best_note = null
-	var best_diff = INF
-	
+	var best_note: Note = null
+	var best_score: float = INF
+
 	for note in active_notes:
-		if note.lane >= lane_l and note.lane <= lane_r and not note.is_held:
-			match judge_mode:
-				JudgeMode.BestTime:
-					var time_diff = abs(parent_node.current_time - note.start_time)
-					if time_diff < best_diff:
-						best_diff = time_diff
-						best_note = note
-				JudgeMode.BestDist:
-					# 获取用于距离判断的Y坐标：Long音符使用head节点，其他使用rect中心
-					var note_y: float = note.rect.position.y + note.rect.size.y / 2
-					if note.type == NoteType.Long:
-						var head_node = note.rect.get_node("VBoxC/head")
-						note_y = head_node.global_position.y + head_node.size.y / 2
-					
-					var diff_y = abs(jl.position.y - note_y)
-					if diff_y < best_diff:
-						best_diff = diff_y
-						best_note = note
-				JudgeMode.MostDown:
-					if note.start_time > best_diff:
-						best_diff = note.start_time
-						best_note = note
+		if note.lane < lane_l or note.lane > lane_r or note.is_held:
+			continue
+
+		var note_y: float = _get_note_center_y(note)
+
+		match judge_mode:
+			NoteJudger.JudgeMode.NEAREST, NoteJudger.JudgeMode.BEST_TIMING, NoteJudger.JudgeMode.NEAREST_JUDGE:
+				# 键盘模式无点击位置，以判定线 Y 为参考选最近音符
+				var diff: float = abs(jl.position.y - note_y)
+				if diff < best_score:
+					best_score = diff
+					best_note = note
+			NoteJudger.JudgeMode.BEST_TIMING_FIFO:
+				# 先现先判：选最靠近底部（note_y 最大）的音符
+				var score: float = -note_y
+				if score < best_score:
+					best_score = score
+					best_note = note
 
 	if best_note:
-		# 新增：当演奏模式开启时，从GameSequence触发MIDI音符
 		if parent_node.play_mode and best_note.game_sequence_ref:
 			_trigger_midi_notes_from_sequence(best_note.game_sequence_ref)
-		
 		_judge_note(best_note)
 		return best_note
-	else:
-		return null
+	return null
 
 ## 新增：从GameSequence触发MIDI音符（演奏模式）
 func _trigger_midi_notes_from_sequence(game_seq: Object) -> void:
