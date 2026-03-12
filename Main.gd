@@ -252,6 +252,11 @@ func _load_configuration() -> void:
 	audio_manager.set_music_volume(music_vol)
 	audio_manager.set_sfx_volume(sfx_vol)
 
+	# 应用HDR设置
+	var hdr_enabled = config_loader.get_int("Appearance", "hdr_2d", 0) == 1
+	get_tree().root.use_hdr_2d = hdr_enabled
+	logger.debug("HDR 2D: %s" % ("enabled" if hdr_enabled else "disabled"), "Main")
+
 ## 加载MIDI数据
 func _load_midi_data() -> void:
 	logger.info("=== Starting MIDI Data Load ===", "Main")
@@ -449,6 +454,12 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			elif key == "vsync_enabled":
 				var is_vsync = value in ["1", "true", "True", "yes", "Yes"]
 				DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if is_vsync else DisplayServer.VSYNC_DISABLED)
+
+		"Appearance":
+			if key == "hdr_2d":
+				var hdr_on = value in [1, "1", "true", "True"]
+				get_tree().root.use_hdr_2d = hdr_on
+				logger.info("HDR 2D set to: %s" % ("enabled" if hdr_on else "disabled"), "Main")
 
 
 # 在 AspectRatioContainer 的父节点添加脚本

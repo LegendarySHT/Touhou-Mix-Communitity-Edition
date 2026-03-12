@@ -28,6 +28,19 @@ func _ready() -> void:
 	_load_cover_image()
 
 func _process(_delta: float) -> void:
+	if parent_node == null:
+		return
+	# 方案A：仅在滚动、吸附或展开动画期间才更新视差
+	if parent_node.scroll_velocity == 0 and parent_node.snap_tween == null and expand_tween == null:
+		return
+	# 方案B：跳过不在 ScrollContainer 可视区内的项目
+	var item_top := global_position.y
+	var item_bottom := item_top + size.y
+	var parent_ctrl := parent_node as Control
+	var view_top: float = parent_ctrl.global_position.y
+	var view_bottom: float = view_top + parent_ctrl.size.y
+	if item_bottom < view_top or item_top > view_bottom:
+		return
 	process_item_cover_move()
 
 ## 从AlbumData初始化显示

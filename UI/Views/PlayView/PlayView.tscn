@@ -21,10 +21,8 @@ color = Color(2, 2, 2, 1)
 thickness = 10
 
 [sub_resource type="Environment" id="Environment_jlvmc"]
-background_mode = 3
 background_color = Color(1, 1, 1, 1)
 background_canvas_max_layer = 1
-glow_enabled = true
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_50kwk"]
 
@@ -113,7 +111,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="FlowArea" type="Panel" parent="." unique_id=14663010]
-clip_children = 1
+self_modulate = Color(1, 1, 1, 0)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -151,7 +149,7 @@ texture_normal = ExtResource("1_8cbrq")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="DebugInfo" type="Label" parent="Layer"]
+[node name="DebugInfo" type="Label" parent="Layer" unique_id=2091083272]
 visible = false
 offset_left = 16.0
 offset_top = 100.0

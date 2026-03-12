@@ -15,7 +15,7 @@ texture = SubResource("GradientTexture2D_fs2nj")
 
 [sub_resource type="Gradient" id="Gradient_s53n3"]
 interpolation_mode = 2
-colors = PackedColorArray(1, 0, 0, 0.8, 1, 0, 0, 0.467)
+colors = PackedColorArray(1, 1, 1, 0.8, 1, 1, 1, 0.467)
 metadata/_snap_enabled = true
 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_peama"]
