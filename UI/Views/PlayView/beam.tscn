@@ -35,7 +35,7 @@ corner_radius_bottom_right = 1
 corner_radius_bottom_left = 1
 corner_detail = 1
 shadow_color = Color(1.2, 1.2, 1.2, 0.42)
-shadow_size = 40
+shadow_size = 14
 
 [node name="Beam" type="Panel" unique_id=1875885047]
 mouse_filter = 2

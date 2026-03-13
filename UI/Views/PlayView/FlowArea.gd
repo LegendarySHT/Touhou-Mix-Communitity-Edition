@@ -8,7 +8,7 @@ class_name FlowArea
 @onready var canvas: CanvasLayer = $SVP
 
 ########## 配置参数 #############
-var auto_mode: bool = false
+var auto_mode: bool = true
 var judge_area_width: int = 150  # 滑块 x 轴检测专用，不经由配置读取
 var judge_mode: int = NoteJudger.JudgeMode.BEST_TIMING_FIFO  # 从 Judge/touch_judging_criteria 配置初始化
 var note_judge_width: int = 100  # 从 Judge/block_judging_width 配置读取
@@ -55,6 +55,10 @@ var active_notes: Array = []  # 存储活跃的音符
 @onready var nt_s = load("res://UI/Views/PlayView/note_slide.tscn").instantiate()
 @onready var nt_l = load("res://UI/Views/PlayView/note_long.tscn").instantiate()
 @onready var particle = load("res://UI/Views/PlayView/particleSquare.tscn").instantiate()
+
+# 粒子对象池：预创建固定数量实例并复用，避免每次按键 duplicate()+queue_free()
+const _PARTICLE_POOL_SIZE = 12
+var _particle_pool: Array = []
 
 var parent_node: Node = null
 
@@ -132,6 +136,7 @@ func init_flow_area():
 	
 	# 配置初始化
 	set_particle_scale(particle_scale)
+	_init_particle_pool()
 	set_note_color(NoteType.Block, note_color_short)
 	set_note_color(NoteType.Slide, note_color_slide)
 	set_note_color(NoteType.Long, note_color_long)
@@ -288,6 +293,8 @@ var _auto_hold_idx: int = 0
 func _auto_click(note: Note):
 	if not note.rect:
 		return
+	if parent_node.play_mode and note.game_sequence_ref:
+		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
 	if note.type == NoteType.Long:
 		_judge_note(note)
 		_hold_long_note(_auto_hold_idx + 666, note)
@@ -530,11 +537,36 @@ func _trigger_midi_notes_from_sequence(game_seq: Object) -> void:
 			elif midi_player.has_method("note_off"):
 				midi_player.note_off(evt.channel, evt.pitch)
 
-func _generate_particle(type: String, pos: Vector2):
-	var ptc = particle.duplicate()
-	
-	canvas.add_child(ptc)
+func _init_particle_pool() -> void:
+	if not _particle_pool.is_empty():
+		# 重新初始化时同步比例（重试场景）
+		for ptc in _particle_pool:
+			ptc.set_particle_scale(particle_scale)
+		return
+	for _i in _PARTICLE_POOL_SIZE:
+		var ptc = particle.duplicate()
+		canvas.add_child(ptc)
+		ptc.visible = false
+		ptc.particle_done.connect(_on_particle_done.bind(ptc))
+		_particle_pool.append(ptc)
+
+func _on_particle_done(ptc: Node2D) -> void:
+	ptc.visible = false
+	_particle_pool.append(ptc)
+
+func _get_particle_from_pool() -> Node2D:
+	if _particle_pool.is_empty():
+		# 池耗尽时回退创建（密集谱面极端情况）
+		var ptc := particle.duplicate() as Node2D
+		canvas.add_child(ptc)
+		ptc.particle_done.connect(_on_particle_done.bind(ptc))
+		return ptc
+	return _particle_pool.pop_back()
+
+func _generate_particle(type: String, pos: Vector2) -> void:
+	var ptc := _get_particle_from_pool()
 	ptc.position = pos
+	ptc.visible = true
 	ptc.play(type)
 	
 func _judge_note(judge_note: Note):

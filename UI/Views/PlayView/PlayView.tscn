@@ -118,7 +118,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_50kwk")
+theme_override_styles/panel = SubResource("StyleBoxEmpty_50kwk")
 script = ExtResource("2_jlvmc")
 
 [node name="JudgeLine" type="HSeparator" parent="FlowArea" unique_id=1743550222]
