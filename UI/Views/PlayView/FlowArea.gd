@@ -189,14 +189,22 @@ func set_particle_scale(scl: float):
 	particle.set_particle_scale(scl)
 
 func clear_flow_area():
-	if not notes_list:
-		return
-	
-	notes_list.clear()
-	for i in active_notes:
-		_remove_note(i)
-	note_idx = 0
+	if notes_list:
+		notes_list.clear()
+
+	for note in active_notes.duplicate():
+		if note.tween:
+			note.tween.kill()
+		if note.rect:
+			note.rect.visible = false
+			note.rect.queue_free()
+			note.rect = null
+
+	active_notes.clear()
 	active_holds.clear()
+	touch_positions.clear()
+	pressed_keys.clear()
+	note_idx = 0
 
 
 var _note_max_size_y: float = 0

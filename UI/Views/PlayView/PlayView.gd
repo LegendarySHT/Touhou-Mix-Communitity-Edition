@@ -71,6 +71,7 @@ var game_sequences: Array[KeySequenceManager.GameSequence] = []
 
 ## MIDI播放中标志
 var is_midi_playing: bool = false
+var _is_finishing_game: bool = false
 
 ########## 配置参数 #############
 # 有一部分配置参数在flow_area里面
@@ -270,6 +271,7 @@ func show_or_hide_menu():
 func _prepare_game(midi:MidiData = current_midi) -> void:
 	current_midi = midi
 	play_result = ScoreView.ScoreData.new()
+	_is_finishing_game = false
 
 	# 重置 ScoreCalculator
 	if score_calc:
@@ -724,6 +726,10 @@ func _on_midi_started() -> void:
 
 ## 游戏结束回调
 func _on_game_finished() -> void:
+	if _is_finishing_game:
+		return
+	_is_finishing_game = true
+
 	print("[PlayView] Game finished!")
 	
 	# 从 ScoreCalculator 拿最终快照，填充结算数据
@@ -740,9 +746,20 @@ func _on_game_finished() -> void:
 	play_result.early_count = snap["early_count"]
 	play_result.late_count = snap["late_count"]
 	is_pause = true
+	is_midi_playing = false
 
-	# 结束后的等待
-	await get_tree().create_timer(2).timeout
+	# 结束后的等待：2秒 + 音符下落时间（秒）
+	var note_fall_time := ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
+	var setting_view = get_node_or_null("/root/Main/skew/C/SettingView")
+	if setting_view and setting_view.has_method("get_setting_value"):
+		var setting_note_fall_time = setting_view.get_setting_value("note_fall_time")
+		if setting_note_fall_time != null:
+			note_fall_time = float(setting_note_fall_time)
+	var end_buffer_seconds: float = 2.0 + float(max(0.0, note_fall_time))
+	await get_tree().create_timer(end_buffer_seconds).timeout
+
+	# 进入结算前强制清场，防止残留音符
+	flow_area.clear_flow_area()
 
 	# 进入结算界面
 	get_node("/root/Main/ScoreView").set_display(play_result)
@@ -767,6 +784,7 @@ func _on_quit_pressed() -> void:
 
 # 初始化分数等内容的显示
 func _init_display():
+	_is_finishing_game = false
 	score.text = "0"
 	combo.text = "0"
 	score_wait_to_add = 0
