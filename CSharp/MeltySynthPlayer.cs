@@ -46,7 +46,14 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	private readonly Dictionary<int, float> _virtualChannelVolumes = new Dictionary<int, float>();
 	private readonly Dictionary<int, (int bank, int program)> _virtualChannelInstruments = new Dictionary<int, (int bank, int program)>();
-	private readonly Dictionary<int, HashSet<int>> _manualNotes = new Dictionary<int, HashSet<int>>();
+	private sealed class ManualFilterState
+	{
+		public readonly Dictionary<int, int> PendingManualOnsByTick = new Dictionary<int, int>();
+		public int ActiveManualNotes;
+	}
+
+	private readonly Dictionary<long, ManualFilterState> _manualNoteFilters = new Dictionary<long, ManualFilterState>();
+	private const int MANUAL_WILDCARD_TICK = -1;
 	private readonly HashSet<int> _mutedVirtualChannels = new HashSet<int>();
 
 	private float[] _leftBuffer = Array.Empty<float>();
@@ -597,18 +604,239 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	public void set_manually_controlled_notes(Godot.Collections.Dictionary manuallyControlled)
 	{
-		_manualNotes.Clear();
+		_manualNoteFilters.Clear();
+
+		// 新格式：{track_index: {channel: {pitch: {start_tick: true}}}}
+		// 旧格式：{channel: {pitch: true}}
 		foreach (var key in manuallyControlled.Keys)
 		{
-			var channel = (int)key;
-			var pitchesDict = (Godot.Collections.Dictionary)manuallyControlled[key];
-			var pitchSet = new HashSet<int>();
-			foreach (var pitchKey in pitchesDict.Keys)
+			var level1Variant = (Variant)manuallyControlled[key];
+			if (level1Variant.VariantType != Variant.Type.Dictionary)
 			{
-				pitchSet.Add((int)pitchKey);
+				continue;
 			}
-			_manualNotes[channel] = pitchSet;
+			var level1Dict = level1Variant.AsGodotDictionary();
+
+			if (!TryConvertToInt(key, out var outerKey))
+			{
+				continue;
+			}
+			var isNewFormat = false;
+
+			// 探测新格式：level1 的 value 仍是 Dictionary（channel -> pitchMap）
+			foreach (var level1Key in level1Dict.Keys)
+			{
+				var level2Variant = (Variant)level1Dict[level1Key];
+				if (level2Variant.VariantType == Variant.Type.Dictionary)
+				{
+					isNewFormat = true;
+				}
+				break;
+			}
+
+			if (isNewFormat)
+			{
+				var trackIndex = outerKey;
+				foreach (var channelKey in level1Dict.Keys)
+				{
+					var pitchMapVariant = (Variant)level1Dict[channelKey];
+					if (pitchMapVariant.VariantType != Variant.Type.Dictionary)
+					{
+						continue;
+					}
+					var pitchMap = pitchMapVariant.AsGodotDictionary();
+
+					if (!TryConvertToInt(channelKey, out var channel))
+					{
+						continue;
+					}
+					var virtualChannel = trackIndex * 16 + channel;
+
+					foreach (var pitchKey in pitchMap.Keys)
+					{
+						if (TryConvertToInt(pitchKey, out var pitch))
+						{
+							var startTickMapVariant = (Variant)pitchMap[pitchKey];
+							AddManualFilterCountsByTick(virtualChannel, pitch, startTickMapVariant);
+						}
+					}
+				}
+			}
+			else
+			{
+				// 旧格式兼容：outerKey 即 channel，默认 track=0
+				var channel = outerKey;
+				var virtualChannel = channel;
+
+				foreach (var pitchKey in level1Dict.Keys)
+				{
+					if (TryConvertToInt(pitchKey, out var pitch))
+					{
+						// 旧格式只有 bool，保持“全局屏蔽该音高”语义
+						AddManualFilterCount(virtualChannel, pitch, MANUAL_WILDCARD_TICK, int.MaxValue / 4);
+					}
+				}
+			}
 		}
+
+		var mappedPairs = 0;
+		var pendingOns = 0;
+		foreach (var pair in _manualNoteFilters)
+		{
+			mappedPairs += 1;
+			foreach (var count in pair.Value.PendingManualOnsByTick.Values)
+			{
+				pendingOns += count;
+			}
+		}
+		GD.Print($"[MeltySynthPlayer] Manual control mapping updated: vc_pitch_entries={mappedPairs}, pending_manual_ons={pendingOns}");
+	}
+
+	private static long MakeManualFilterKey(int virtualChannel, int pitch)
+	{
+		return ((long)virtualChannel << 32) | (uint)pitch;
+	}
+
+	private void AddManualFilterCount(int virtualChannel, int pitch, int tick, int count)
+	{
+		if (count <= 0)
+		{
+			return;
+		}
+
+		var key = MakeManualFilterKey(virtualChannel, pitch);
+		if (!_manualNoteFilters.TryGetValue(key, out var state))
+		{
+			state = new ManualFilterState();
+			_manualNoteFilters[key] = state;
+		}
+
+		var current = state.PendingManualOnsByTick.ContainsKey(tick) ? state.PendingManualOnsByTick[tick] : 0;
+		if (current > int.MaxValue - count)
+		{
+			state.PendingManualOnsByTick[tick] = int.MaxValue;
+		}
+		else
+		{
+			state.PendingManualOnsByTick[tick] = current + count;
+		}
+	}
+
+	private void AddManualFilterCountsByTick(int virtualChannel, int pitch, Variant startTickMapVariant)
+	{
+		if (startTickMapVariant.VariantType == Variant.Type.Dictionary)
+		{
+			var tickDict = startTickMapVariant.AsGodotDictionary();
+			foreach (var tickKey in tickDict.Keys)
+			{
+				if (!TryConvertToInt(tickKey, out var tick))
+				{
+					continue;
+				}
+
+				var entry = (Variant)tickDict[tickKey];
+				var count = 0;
+				switch (entry.VariantType)
+				{
+					case Variant.Type.Bool:
+						count = entry.AsBool() ? 1 : 0;
+						break;
+					case Variant.Type.Int:
+						count = Math.Max(0, (int)entry.AsInt64());
+						break;
+					case Variant.Type.Float:
+						count = Math.Max(0, (int)Math.Round(entry.AsDouble()));
+						break;
+					default:
+						count = 1;
+						break;
+				}
+
+				AddManualFilterCount(virtualChannel, pitch, tick, count);
+			}
+			return;
+		}
+
+		if (startTickMapVariant.VariantType == Variant.Type.Bool)
+		{
+			if (startTickMapVariant.AsBool())
+			{
+				AddManualFilterCount(virtualChannel, pitch, MANUAL_WILDCARD_TICK, 1);
+			}
+			return;
+		}
+
+		if (startTickMapVariant.VariantType == Variant.Type.Int)
+		{
+			AddManualFilterCount(virtualChannel, pitch, MANUAL_WILDCARD_TICK, Math.Max(0, (int)startTickMapVariant.AsInt64()));
+			return;
+		}
+
+		if (startTickMapVariant.VariantType == Variant.Type.Float)
+		{
+			AddManualFilterCount(virtualChannel, pitch, MANUAL_WILDCARD_TICK, Math.Max(0, (int)Math.Round(startTickMapVariant.AsDouble())));
+			return;
+		}
+
+		AddManualFilterCount(virtualChannel, pitch, MANUAL_WILDCARD_TICK, 1);
+	}
+
+	private static bool TryConvertToInt(object value, out int result)
+	{
+		result = 0;
+
+		if (value == null)
+		{
+			return false;
+		}
+
+		if (value is int intValue)
+		{
+			result = intValue;
+			return true;
+		}
+
+		if (value is long longValue)
+		{
+			result = (int)longValue;
+			return true;
+		}
+
+		if (value is float floatValue)
+		{
+			result = (int)floatValue;
+			return true;
+		}
+
+		if (value is double doubleValue)
+		{
+			result = (int)doubleValue;
+			return true;
+		}
+
+		if (value is string stringValue)
+		{
+			return int.TryParse(stringValue, out result);
+		}
+
+		if (value is Variant variantValue)
+		{
+			switch (variantValue.VariantType)
+			{
+				case Variant.Type.Int:
+					result = (int)variantValue.AsInt64();
+					return true;
+				case Variant.Type.Float:
+					result = (int)variantValue.AsDouble();
+					return true;
+				case Variant.Type.String:
+					return int.TryParse(variantValue.AsString(), out result);
+				default:
+					return false;
+			}
+		}
+
+		return false;
 	}
 
 	public void trigger_note_on(int pitch, int velocity, int channel)
@@ -934,16 +1162,39 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		}
 	}
 
-	private void OnSendMessage(Synthesizer synthesizer, int virtualChannel, int command, int data1, int data2)
+	private void OnSendMessage(Synthesizer synthesizer, int virtualChannel, int command, int data1, int data2, int tick)
 	{
-		// Extract physical channel for manual notes check (manual notes use physical channels)
-		var physicalChannel = virtualChannel % 16;
-		
-		if (_manualNotes.TryGetValue(physicalChannel, out var pitches) && (command == 0x90 || command == 0x80))
+		var isNoteOn = command == 0x90 && data2 > 0;
+		var isNoteOff = command == 0x80 || (command == 0x90 && data2 == 0);
+		if (isNoteOn || isNoteOff)
 		{
-			if (pitches.Contains(data1))
+			var key = MakeManualFilterKey(virtualChannel, data1);
+			if (_manualNoteFilters.TryGetValue(key, out var state))
 			{
-				return;
+				if (isNoteOn)
+				{
+					var exactCount = state.PendingManualOnsByTick.ContainsKey(tick) ? state.PendingManualOnsByTick[tick] : 0;
+					if (exactCount > 0)
+					{
+						state.PendingManualOnsByTick[tick] = exactCount - 1;
+						state.ActiveManualNotes += 1;
+						return;
+					}
+
+					var wildcardCount = state.PendingManualOnsByTick.ContainsKey(MANUAL_WILDCARD_TICK) ? state.PendingManualOnsByTick[MANUAL_WILDCARD_TICK] : 0;
+					if (wildcardCount > 0)
+					{
+						state.PendingManualOnsByTick[MANUAL_WILDCARD_TICK] = wildcardCount - 1;
+						state.ActiveManualNotes += 1;
+						return;
+					}
+				}
+
+				if (isNoteOff && state.ActiveManualNotes > 0)
+				{
+					state.ActiveManualNotes -= 1;
+					return;
+				}
 			}
 		}
 

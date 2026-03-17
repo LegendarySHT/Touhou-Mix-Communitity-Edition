@@ -326,12 +326,8 @@ func generate_keys(game_notes: Array) -> bool:
 		# 按track分组背景Note
 		var bg_by_track: Dictionary = {}
 		for bg_note in bg_notes:
-			# 处理 bg_note 可能是 NoteEvent 对象或字典
-			var track = 0
-			if bg_note is MidiParser.NoteEvent:
-				track = bg_note.track_index
-			elif bg_note is Dictionary:
-				track = bg_note.get("track_index", 0)
+			# 处理 bg_note 可能是 Note / NoteEvent / 字典
+			var track = _get_note_track_index(bg_note)
 			
 			if not bg_by_track.has(track):
 				bg_by_track[track] = []
@@ -422,11 +418,11 @@ func _dedup_batch(batch: Array, bg_notes: Array) -> Array[BlockInfo]:
 			# 比较音高，保留更高的
 			if pitch > existing_pitch:
 				# 将旧的加入背景
-				bg_notes.append(existing_note)
+				_append_note_to_background(existing_note, bg_notes)
 				lane_to_note[lane] = note
 			else:
 				# 将当前的加入背景
-				bg_notes.append(note)
+				_append_note_to_background(note, bg_notes)
 		else:
 			lane_to_note[lane] = note
 	
@@ -453,12 +449,57 @@ func _dedup_batch(batch: Array, bg_notes: Array) -> Array[BlockInfo]:
 			var removed_block = blocks.pop_back()
 			# 将移除的块的Note加入背景
 			for removed_note in removed_block.notes:
-				if removed_note is MidiParser.Note:
-					bg_notes.append(removed_note.event)
-				else:
-					bg_notes.append(removed_note)
+				_append_note_to_background(removed_note, bg_notes)
 	
 	return blocks
+
+## 将各种中间格式的note统一追加到背景列表
+## 优先保留 MidiParser.Note（便于后续精确分类）；其次使用 NoteEvent；最后兜底字典
+func _append_note_to_background(note_data: Variant, bg_notes: Array) -> void:
+	if note_data == null:
+		return
+
+	if note_data is MidiParser.Note:
+		bg_notes.append(note_data)
+		return
+
+	if note_data is MidiParser.NoteEvent:
+		bg_notes.append(note_data)
+		return
+
+	if note_data is Dictionary:
+		if note_data.has("original_note"):
+			var original_note = note_data["original_note"]
+			if original_note is MidiParser.Note or original_note is MidiParser.NoteEvent:
+				bg_notes.append(original_note)
+				return
+		bg_notes.append(note_data)
+		return
+
+	bg_notes.append(note_data)
+
+## 提取note所属轨道索引（兼容 Note / NoteEvent / Dictionary）
+func _get_note_track_index(note_data: Variant) -> int:
+	if note_data == null:
+		return 0
+
+	if note_data is MidiParser.Note:
+		if note_data.event:
+			return note_data.event.track_index
+		return 0
+
+	if note_data is MidiParser.NoteEvent:
+		return note_data.track_index
+
+	if note_data is Dictionary:
+		if note_data.has("track_index"):
+			return int(note_data.get("track_index", 0))
+		if note_data.has("original_note") and note_data["original_note"] is MidiParser.Note:
+			var original_note = note_data["original_note"]
+			if original_note.event:
+				return original_note.event.track_index
+
+	return 0
 
 ## Step C/D: 虚拟触点匹配和块类型判定
 func _assign_touches_and_judge_types(blocks: Array[BlockInfo]) -> void:

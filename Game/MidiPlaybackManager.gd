@@ -1432,31 +1432,41 @@ func set_manual_control_notes(manual_control_notes: Array) -> void:
 		push_warning("[MidiPlaybackManager] MidiPlayer not initialized")
 		return
 	
-	# 构建手动控制note的字典 {channel: {pitch: true}}
+	# 构建手动控制note的字典（精确到起始tick）
+	# 新格式：{track_index: {channel: {pitch: {start_tick: true}}}}
+	# 兼容性：播放器端仍兼容旧格式 {channel: {pitch: true}}
 	var manually_controlled: Dictionary = {}
 	
 	for note in manual_control_notes:
 		# 支持普通Note和ManualControlNote两种类型
 		if note is MidiParser.Note and note.event:
+			var track_index = note.event.track_index
 			var channel = note.event.channel
 			var pitch = note.event.pitch
+			var start_tick = int(round(note.event.start_time))
 			
-			if not manually_controlled.has(channel):
-				manually_controlled[channel] = {}
+			if not manually_controlled.has(track_index):
+				manually_controlled[track_index] = {}
+			if not manually_controlled[track_index].has(channel):
+				manually_controlled[track_index][channel] = {}
+			if not manually_controlled[track_index][channel].has(pitch):
+				manually_controlled[track_index][channel][pitch] = {}
 			
-			manually_controlled[channel][pitch] = true
+			var tick_map = manually_controlled[track_index][channel][pitch]
+			tick_map[start_tick] = int(tick_map.get(start_tick, 0)) + 1
 	
 	# 传递给MidiPlayer
 	if midi_player.has_method("set_manually_controlled_notes"):
 		midi_player.set_manually_controlled_notes(manually_controlled)
 		
 		# 调试日志：显示已标记的手动控制notes
-		var total_pitches = 0
-		for ch in manually_controlled.keys():
-			total_pitches += manually_controlled[ch].size()
-		print("[MidiPlaybackManager] Set manual control: %d notes, %d unique (ch,pitch) pairs" % 
-			[manual_control_notes.size(), total_pitches])
-		print("[MidiPlaybackManager] Channels with manual notes: %s" % manually_controlled.keys())
+		var total_entries = 0
+		for track_key in manually_controlled.keys():
+			for ch in manually_controlled[track_key].keys():
+				for pitch in manually_controlled[track_key][ch].keys():
+					total_entries += manually_controlled[track_key][ch][pitch].size()
+		print("[MidiPlaybackManager] Set manual control: %d notes, %d precise (track,ch,pitch,start_tick) entries" % 
+			[manual_control_notes.size(), total_entries])
 	else:
 		push_warning("[MidiPlaybackManager] MidiPlayer does not support set_manually_controlled_notes")
 

@@ -266,7 +266,8 @@ var audio_stream_players:Array[AudioStreamPlayerADSR] = []
 
 ## ========== 手動控制Note支持 ==========
 ## 手动控制的note列表 - 记录哪些note应该由游戏手动触发，跳过自动播放
-## 格式: {channel: {pitch: is_manual_controlled}}
+## 新格式: {track_index: {channel: {pitch: {start_tick: true}}}}
+## 兼容旧格式: {channel: {pitch: true}}
 var manually_controlled_notes:Dictionary = {} : set = set_manually_controlled_notes
 
 ## 标志：当前note是否由trigger_note_on手动触发（用于绕过manually_controlled_notes检查）
@@ -277,6 +278,36 @@ func set_manually_controlled_notes(notes_dict: Dictionary) -> void:
 	manually_controlled_notes = notes_dict
 	# 调试输出
 	print("[MidiPlayer] Set manually controlled notes: %s" % manually_controlled_notes)
+
+## 判断当前Note是否应由游戏手动控制（从而跳过自动播放）
+## 支持新旧两种 manually_controlled_notes 数据结构
+func _is_note_manually_controlled(channel_number: int, pitch: int, track_index: int, event_time: int = -1) -> bool:
+	if manually_controlled_notes.is_empty():
+		return false
+
+	# 新格式：{track: {channel: {pitch: {start_tick: true}}}}
+	if manually_controlled_notes.has(track_index):
+		var track_map = manually_controlled_notes[track_index]
+		if track_map is Dictionary and track_map.has(channel_number):
+			var channel_map = track_map[channel_number]
+			if channel_map is Dictionary and channel_map.has(pitch):
+				var pitch_entry = channel_map[pitch]
+				if pitch_entry is Dictionary:
+					if event_time >= 0 and pitch_entry.has(event_time):
+						return bool(pitch_entry[event_time])
+					# 无法提供 event_time 时退化为“该 pitch 任一条目存在即手动控制”
+					if event_time < 0 and not pitch_entry.is_empty():
+						return true
+				elif pitch_entry is bool:
+					return pitch_entry
+
+	# 旧格式兼容：{channel: {pitch: true}}
+	if manually_controlled_notes.has(channel_number):
+		var old_channel_map = manually_controlled_notes[channel_number]
+		if old_channel_map is Dictionary and old_channel_map.has(pitch):
+			return bool(old_channel_map[pitch])
+
+	return false
 
 ## ドラムトラック用アサイングループ
 var drum_assign_groups:Dictionary = {
@@ -902,7 +933,7 @@ func _process_track( ) -> int:
 			SMF.MIDIEventType.note_on:
 				var event_note_on:SMF.MIDIEventNoteOn = event as SMF.MIDIEventNoteOn
 				# ===== track_index を note_on ハンドラに渡す =====
-				self._process_track_event_note_on( channel, event_note_on.note, event_note_on.velocity, event_chunk.track_index )
+				self._process_track_event_note_on( channel, event_note_on.note, event_note_on.velocity, event_chunk.track_index, event_chunk.time )
 			SMF.MIDIEventType.program_change:
 				channel.program = ( event as SMF.MIDIEventProgramChange ).number
 			SMF.MIDIEventType.control_change:
@@ -928,7 +959,7 @@ func receive_raw_midi_message( input_event:InputEventMIDI ) -> void:
 			self._process_track_event_note_off( channel, input_event.pitch )
 		MIDI_MESSAGE_NOTE_ON:
 			# 外部入力の場合、track_index = 0（単軌）と仮定
-			self._process_track_event_note_on( channel, input_event.pitch, input_event.velocity, 0 )
+			self._process_track_event_note_on( channel, input_event.pitch, input_event.velocity, 0, -1 )
 		MIDI_MESSAGE_AFTERTOUCH:
 			# polyphonic key pressure プレイヤー自体が未実装
 			pass
@@ -981,7 +1012,7 @@ func _process_track_event_note_off( channel:GodotMIDIPlayerChannelStatus, note:i
 ## @param	note				ノート番号
 ## @param	velocity			ベロシティ
 ## @param	track_index			トラックインデックス
-func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:int, velocity:int, track_index:int = 0 ) -> void:
+func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:int, velocity:int, track_index:int = 0, event_time:int = -1 ) -> void:
 	if channel.mute: return
 	if self.bank == null: return
 	
@@ -995,11 +1026,9 @@ func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:in
 	# 如果该note被标记为手动控制，则跳过内部播放逻辑
 	# 但如果是通过trigger_note_on手动触发，则绕过此检查
 	if not _is_manually_triggered:
-		if manually_controlled_notes.has(channel.number):
-			if manually_controlled_notes[channel.number].has(note):
-				if manually_controlled_notes[channel.number][note] == true:
-					print("[MidiPlayer] Skipping auto-play for manually controlled note: ch=%d, pitch=%d, vel=%d" % [channel.number, note, velocity])
-					return  # 跳过内部播放，等待游戏通过trigger_note_on手动触发
+		if _is_note_manually_controlled(channel.number, note, track_index, event_time):
+			print("[MidiPlayer] Skipping auto-play for manually controlled note: track=%d, ch=%d, pitch=%d, vel=%d, time=%d" % [track_index, channel.number, note, velocity, event_time])
+			return  # 跳过内部播放，等待游戏通过trigger_note_on手动触发
 
 	var track_key_shift:int = self.key_shift if not channel.drum_track else 0
 	var key_number:int = note + track_key_shift

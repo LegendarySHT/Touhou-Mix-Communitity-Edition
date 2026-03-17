@@ -116,6 +116,7 @@ namespace MeltySynth
             while (msgIndex < midiFile.Messages.Length)
             {
                 var time = midiFile.Times[msgIndex];
+                var tick = midiFile.Ticks[msgIndex];
                 var msg = midiFile.Messages[msgIndex];
                 if (time <= currentTime)
                 {
@@ -128,7 +129,7 @@ namespace MeltySynth
                         }
                         else
                         {
-                            onSendMessage(synthesizer, virtualChannel, msg.Command, msg.Data1, msg.Data2);
+                            onSendMessage(synthesizer, virtualChannel, msg.Command, msg.Data1, msg.Data2, tick);
                         }
                     }
                     else if (loop)
@@ -241,6 +242,7 @@ namespace MeltySynth
         /// <param name="command">The type of the message.</param>
         /// <param name="data1">The first data part of the message.</param>
         /// <param name="data2">The second data part of the message.</param>
-        public delegate void MessageHook(Synthesizer synthesizer, int channel, int command, int data1, int data2);
+        /// <param name="tick">The absolute MIDI tick of the message.</param>
+        public delegate void MessageHook(Synthesizer synthesizer, int channel, int command, int data1, int data2, int tick);
     }
 }

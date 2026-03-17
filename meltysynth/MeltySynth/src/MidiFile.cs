@@ -14,6 +14,7 @@ namespace MeltySynth
     {
         private Message[] messages;
         private TimeSpan[] times;
+        private int[] ticks;
 
         /// <summary>
         /// Loads a MIDI file from the stream.
@@ -209,7 +210,7 @@ namespace MeltySynth
                     }
                 }
 
-                (messages, times) = MergeTracks(messageLists, tickLists, resolution);
+                (messages, times, ticks) = MergeTracks(messageLists, tickLists, resolution);
             }
         }
 
@@ -322,10 +323,11 @@ namespace MeltySynth
             }
         }
 
-        private static (Message[], TimeSpan[]) MergeTracks(List<Message>[] messageLists, List<int>[] tickLists, int resolution)
+        private static (Message[], TimeSpan[], int[]) MergeTracks(List<Message>[] messageLists, List<int>[] tickLists, int resolution)
         {
             var mergedMessages = new List<Message>();
             var mergedTimes = new List<TimeSpan>();
+            var mergedTicks = new List<int>();
 
             var indices = new int[messageLists.Length];
 
@@ -372,12 +374,13 @@ namespace MeltySynth
                 {
                     mergedMessages.Add(message);
                     mergedTimes.Add(currentTime);
+                    mergedTicks.Add(currentTick);
                 }
 
                 indices[minIndex]++;
             }
 
-            return (mergedMessages.ToArray(), mergedTimes.ToArray());
+            return (mergedMessages.ToArray(), mergedTimes.ToArray(), mergedTicks.ToArray());
         }
 
         private static int ReadTempo(BinaryReader reader)
@@ -407,6 +410,7 @@ namespace MeltySynth
 
         internal Message[] Messages => messages;
         internal TimeSpan[] Times => times;
+        internal int[] Ticks => ticks;
 
 
 
