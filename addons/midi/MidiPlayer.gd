@@ -358,6 +358,12 @@ var prepared_to_play:bool = false
 var is_audio_server_inited:bool = false
 # 
 var _previous_time:float
+## 是否使用系统时钟推进播放位置
+var _use_system_stopwatch: bool = false
+## 系统时钟基准（秒）
+var _system_clock_base_time_sec: float = 0.0
+## 系统时钟基准对应的tick位置
+var _system_clock_base_position_tick: float = 0.0
 
 # -----------------------------------------------------------------------------
 # シグナル
@@ -656,6 +662,8 @@ func play( from_position:float = 0.0 ) -> void:
 		self.track_status.event_pointer = 0
 	else:
 		self.seek( from_position )
+	if self._use_system_stopwatch:
+		self._sync_system_clock_base(self.position)
 
 ## シーク
 ## @param	from_position	再生位置
@@ -689,6 +697,8 @@ func seek( to_position:float ) -> void:
 				pass
 		pointer += 1
 	self.track_status.event_pointer = pointer
+	if self._use_system_stopwatch:
+		self._sync_system_clock_base(self.position)
 
 ## 停止
 func stop( ) -> void:
@@ -698,11 +708,34 @@ func stop( ) -> void:
 
 ## 暂停播放 (接口方法)
 func pause() -> void:
+	if self._use_system_stopwatch and self.playing:
+		self.position = self._get_system_clock_position( )
 	self.playing = false
 
 ## 恢复播放 (接口方法)
 func resume() -> void:
+	if self._use_system_stopwatch:
+		self._sync_system_clock_base(self.position)
 	self.playing = true
+
+## 设置是否启用系统时钟模式
+func set_use_system_stopwatch(enabled: bool) -> void:
+	if self._use_system_stopwatch == enabled:
+		return
+
+	var current_position: float = self.position
+	if self._use_system_stopwatch and self.playing:
+		current_position = self._get_system_clock_position( )
+
+	self._use_system_stopwatch = enabled
+	self.position = current_position
+
+	if self._use_system_stopwatch:
+		self._sync_system_clock_base(current_position)
+
+## 获取系统时钟模式是否启用
+func get_use_system_stopwatch() -> bool:
+	return self._use_system_stopwatch
 
 ## リセット命令を強制的に発行する
 func send_reset( ) -> void:
@@ -886,7 +919,10 @@ func _stop_all_notes( ) -> void:
 func _process( delta:float ) -> void:
 	if self.smf_data != null:
 		if self.playing:
-			self.position += float( self.smf_data.timebase ) * delta * self.seconds_to_timebase * self.play_speed
+			if self._use_system_stopwatch:
+				self.position = self._get_system_clock_position( )
+			else:
+				self.position += float( self.smf_data.timebase ) * delta * self.seconds_to_timebase * self.play_speed
 			self._process_track( )
 
 	for asp in self.audio_stream_players:
@@ -907,6 +943,8 @@ func _process_track( ) -> int:
 			self.seek( self.loop_start )
 			self.emit_signal( "looped" )
 			self.position += diff
+			if self._use_system_stopwatch:
+				self._sync_system_clock_base(self.position)
 		else:
 			self.playing = false
 			self.emit_signal( "finished" )
@@ -1404,11 +1442,29 @@ func _process_track_sys_ex_reset_all_channels( ) -> void:
 
 	for channel in self.channel_status:
 		channel.initialize( )
-
 		AudioServer.set_bus_volume_db( AudioServer.get_bus_index( self.midi_channel_bus_name % channel.number ), linear_to_db( float( channel.volume * channel.expression ) ) )
 		self.channel_audio_effects[channel.number].ae_reverb.wet = channel.reverb * self.reverb_power
 		self.channel_audio_effects[channel.number].ae_chorus.wet = channel.chorus * self.chorus_power
 		self.channel_audio_effects[channel.number].ae_panner.pan = ( ( channel.pan * 2 ) - 1.0 ) * self.pan_power
+
+## 同步系统时钟基准
+func _sync_system_clock_base(base_position_tick: float) -> void:
+	self._system_clock_base_position_tick = base_position_tick
+	self._system_clock_base_time_sec = Time.get_ticks_usec() / 1000000.0
+
+## 获取系统时钟计算出的当前位置（tick）
+func _get_system_clock_position( ) -> float:
+	if self.smf_data == null:
+		return self.position
+
+	var elapsed_sec: float = (Time.get_ticks_usec() / 1000000.0) - self._system_clock_base_time_sec
+	if elapsed_sec < 0.0:
+		elapsed_sec = 0.0
+
+	var ticks_per_sec: float = float(self.smf_data.timebase) * self.seconds_to_timebase * self.play_speed
+	var current_tick: float = self._system_clock_base_position_tick + elapsed_sec * ticks_per_sec
+
+	return current_tick
 
 ## 未使用の AudioStreamPlayerADSR を取得する
 ## 未使用がない場合はNoteOnしてから経過した時間がもっとも長いAudioStreamPlayerADSRを返す

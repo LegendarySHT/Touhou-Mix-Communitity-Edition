@@ -248,7 +248,8 @@ func _sync_playback_position() -> void:
 	game_time = midi_position_ms / 1000.0
 	
 	# 启动MIDI播放（第一次调用时）
-	if not midi_playback_manager.is_playing and current_state == GameState.PLAYING:
+	# 若处于显式暂停（例如PlayView预热负数seek阶段），不要自动重启播放
+	if not midi_playback_manager.is_playing and not midi_playback_manager.is_paused and current_state == GameState.PLAYING:
 		midi_playback_manager.play()
 
 ## 游戏结束处理

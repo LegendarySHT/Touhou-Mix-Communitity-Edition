@@ -28,6 +28,7 @@ var cached_track_channel_instruments: Dictionary = {}
 
 ## MIDI播放状态
 var is_playing: bool = false
+var is_paused: bool = false
 
 ## 后端切换锁（防止短时间内重复切换）
 ## 当正在处理后端切换时，此标志为true，防止重复的set_backend()调用
@@ -339,8 +340,8 @@ func load_midi(midi_data: MidiData) -> bool:
 	# 同步轨道-通道静音状态（清理旧MIDI的残留静音）
 	_apply_mute_state_to_backend(backend)
 	
-	# 【修复D-4】应用系统时钟配置（仅MeltySynth后端支持）
-	if midi_backend == "meltysynth" and backend != null and backend.has_method("set_use_system_stopwatch"):
+	# 应用系统时钟配置（后端实现了 set_use_system_stopwatch 即可）
+	if backend != null and backend.has_method("set_use_system_stopwatch"):
 		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
 		backend.set_use_system_stopwatch(use_system_stopwatch)
 		GameLogger.instance.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
@@ -368,11 +369,20 @@ func play() -> void:
 	# 重置同步状态
 	reset_sync_state()
 
+	# 保留当前 seek 目标（可为负数 pre-roll），避免 play() 覆盖外部预设位置
+	var start_position_ms = position_ms
+
 	backend.play()
 	is_playing = true
-	# 重置播放位置，确保 position 与后端实际位置同步
-	position = 0.0
-	position_ms = 0.0
+	is_paused = false
+
+	# 若存在预设起始位置（含负数 pre-roll），在启动后立即恢复到该位置
+	if abs(start_position_ms) > 0.001:
+		seek(start_position_ms)
+	else:
+		# 默认从 0 开始
+		position = 0.0
+		position_ms = 0.0
 
 	# 启动人声播放（如果有人声文件）
 	if not current_midi_data.vocal_file_path.is_empty():
@@ -391,6 +401,7 @@ func stop() -> void:
 	
 	backend.stop()
 	is_playing = false
+	is_paused = false
 	position = 0.0
 	position_ms = 0.0
 
@@ -407,6 +418,7 @@ func pause() -> void:
 	
 	backend.pause()
 	is_playing = false
+	is_paused = true
 
 	# 暂停人声播放
 	var audio_manager = AudioManager.instance
@@ -423,6 +435,7 @@ func resume() -> void:
 	
 	backend.resume()
 	is_playing = true
+	is_paused = false
 
 	# 恢复人声播放
 	var audio_manager = AudioManager.instance
@@ -472,10 +485,6 @@ func seek(pos: float) -> void:
 			print("[MidiPlaybackManager] Seeking to tick %.1f (addons backend)" % target_tick)
 			midi_player.seek(target_tick)
 			# 立即同步 position，避免其他系统在下一帧前读到过时的 tick 值
-			position = target_tick
-			print("[MidiPlaybackManager] Seeking to tick %.1f (addons backend, using cached timebase)" % target_tick)
-			midi_player.seek(target_tick)
-			# 立即同步 position
 			position = target_tick
 	elif midi_backend == "meltysynth" and meltysynth_player != null:
 		# 直接调用 C# 的 seek_ms 方法
