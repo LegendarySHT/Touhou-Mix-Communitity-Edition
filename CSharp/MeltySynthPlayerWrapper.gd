@@ -168,6 +168,19 @@ func get_loop() -> bool:
 	var result = meltysynth_player.call("get_loop")
 	return result if result is bool else false
 
+## 设置是否启用系统时钟模式
+func set_use_system_stopwatch(enabled: bool) -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("set_use_system_stopwatch", enabled)
+
+## 获取系统时钟模式状态
+func get_use_system_stopwatch() -> bool:
+	if meltysynth_player == null:
+		return false
+	var result = meltysynth_player.call("get_use_system_stopwatch")
+	return result if result is bool else false
+
 ## 跳转到指定位置（毫秒）
 func seek_ms(position_ms: float) -> void:
 	if meltysynth_player == null:

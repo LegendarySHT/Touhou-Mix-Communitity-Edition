@@ -71,6 +71,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private bool _useSeparateSynthForManual = true;  // 启用独立合成器
 	private const int MANUAL_CHANNEL_OFFSET = 16;   // 手动音符的虚拟通道偏移
 	private readonly Dictionary<int, float> _manualNoteVelocities = new Dictionary<int, float>();
+	private bool _preferNativeSequencerSeek = false;
 
 	private void EnsureAudioInitialized()
 	{
@@ -109,7 +110,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			_previousPlaying = true;
 			if (_useSystemStopwatch)
 			{
-				GD.Print($"[MeltySynthPlayer] Play started at system time {_playStartTime}ms");
+				// GD.Print($"[MeltySynthPlayer] Play started at system time {_playStartTime}ms");
 			}
 		}
 		else if (!playing && _previousPlaying)
@@ -120,7 +121,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		// 【关键】处理待处理的 seek 操作优先级最高，即使不在播放中也要处理
 		if (!double.IsNaN(_pendingSeekMs))
 		{
-			GD.Print($"[MeltySynthPlayer] Processing seek to {_pendingSeekMs} ms (playing={playing})");
+			// GD.Print($"[MeltySynthPlayer] Processing seek to {_pendingSeekMs} ms (playing={playing})");
 			
 			if (_sequencer == null || _midiFile == null)
 			{
@@ -147,10 +148,10 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				if (_sequencer != null)
 				{
 					_sequencer.Stop();
-					GD.Print($"[MeltySynthPlayer] Stopped sequencer for pre-roll mode");
+					// GD.Print($"[MeltySynthPlayer] Stopped sequencer for pre-roll mode");
 				}
 				
-				GD.Print($"[MeltySynthPlayer] Pre-roll mode: offset set to {_currentOffsetMs} ms");
+			// GD.Print($"[MeltySynthPlayer] Pre-roll mode: offset set to {_currentOffsetMs} ms");
 				_pendingSeekMs = double.NaN;
 				return;
 			}
@@ -162,28 +163,32 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				_player.Stop();
 			}
 
-			var targetSeconds = _pendingSeekMs / 1000.0;
-			var targetFrames = (long)(_sampleRate * targetSeconds);
-
-			// 2. 重新启动 sequencer 并快进到目标位置
-			_sequencer.Play(_midiFile, loop);
-			_sequencerStarted = true;
-			_currentOffsetMs = 0.0;  // 清除任何 pre-roll offset
-			_hasSkippedPreroolEvents = true;  // 正数seek时无需跳过事件
-
-			var scratchLeft = new float[_synth.BlockSize];
-			var scratchRight = new float[_synth.BlockSize];
-			long remaining = targetFrames;
-
-			while (remaining > 0)
+			// 2. 确保 sequencer 已启动，再使用原生 Seek
+			if (!_sequencerStarted)
 			{
-				var block = (int)Math.Min(remaining, _synth.BlockSize);
-				_sequencer.Render(scratchLeft.AsSpan(0, block), scratchRight.AsSpan(0, block));
-				remaining -= block;
+				_sequencer.Play(_midiFile, loop);
+				_sequencerStarted = true;
+				ApplyInstrumentOverridesToSynth();
 			}
 
-			// 快进后强制刷新乐器覆盖——对 MIDI 文件中无 Program Change 事件的通道也生效
-			ApplyInstrumentOverridesToSynth();
+			if (_preferNativeSequencerSeek)
+			{
+				try
+				{
+					_sequencer.Seek(TimeSpan.FromMilliseconds(_pendingSeekMs));
+				}
+				catch (Exception ex)
+				{
+					GD.PrintErr($"[MeltySynthPlayer] Native sequencer seek failed, fallback to legacy seek: {ex.Message}");
+					LegacySeekByFastForward(_pendingSeekMs);
+				}
+			}
+			else
+			{
+				LegacySeekByFastForward(_pendingSeekMs);
+			}
+			_currentOffsetMs = 0.0;  // 清除任何 pre-roll offset
+			_hasSkippedPreroolEvents = true;  // 正数seek时无需跳过事件
 
 			// 3. 如果之前在播放，重新启动 AudioStreamPlayer
 			if (playing && _player != null)
@@ -197,7 +202,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			// 5. 清除待处理标志
 			_pendingSeekMs = double.NaN;
 			
-			GD.Print("[MeltySynthPlayer] Seek completed");
+			// GD.Print("[MeltySynthPlayer] Seek completed");
 			
 			// 【关键】返回，跳过本帧渲染，让缓冲区在下一帧重新开始
 			return;
@@ -214,7 +219,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				// 第一次跨越零点：启动 sequencer 和 AudioStreamPlayer
 				if (_sequencer != null && _midiFile != null && !_sequencerStarted)
 				{
-					GD.Print($"[MeltySynthPlayer] Crossing zero from pre-roll, starting sequencer at position 0");
+					// GD.Print($"[MeltySynthPlayer] Crossing zero from pre-roll, starting sequencer at position 0");
 					_sequencer.Play(_midiFile, loop);
 					_sequencerStarted = true;
 					ApplyInstrumentOverridesToSynth();
@@ -223,7 +228,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				// 【关键】启动 AudioStreamPlayer，确保 sequencer 和播放器同步
 				if (_player != null && !_player.Playing)
 				{
-					GD.Print($"[MeltySynthPlayer] Starting AudioStreamPlayer after crossing zero");
+					// GD.Print($"[MeltySynthPlayer] Starting AudioStreamPlayer after crossing zero");
 					_player.Play();
 					_playback = _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
 				}
@@ -313,11 +318,11 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		// 【修复循环】检查序列器是否已到达结束
 		if (_sequencer.EndOfSequence)
 		{
-			GD.Print($"[MeltySynthPlayer] EndOfSequence detected, loop={loop}");
+			// GD.Print($"[MeltySynthPlayer] EndOfSequence detected, loop={loop}");
 			if (loop)
 			{
 				// 循环播放：重新启动 sequencer
-				GD.Print("[MeltySynthPlayer] End of sequence, restarting for loop");
+				// GD.Print("[MeltySynthPlayer] End of sequence, restarting for loop");
 				_sequencer.Play(_midiFile, loop);
 				_sequencerStarted = true;
 				ApplyInstrumentOverridesToSynth();
@@ -325,7 +330,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			else
 			{
 				// 无循环：停止播放
-				GD.Print("[MeltySynthPlayer] End of sequence, stopping playback (no loop)");
+				// GD.Print("[MeltySynthPlayer] End of sequence, stopping playback (no loop)");
 				playing = false;
 				_player.Stop();
 				EmitSignal(SignalName.finished);
@@ -342,13 +347,13 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return;
 		}
 
-		GD.Print($"[MeltySynthPlayer] play() called - _midiFile: {_midiFile != null}, _sequencerStarted: {_sequencerStarted}, _currentOffsetMs: {_currentOffsetMs}, _player.Playing: {_player?.Playing}");
+		// GD.Print($"[MeltySynthPlayer] play() called - _midiFile: {_midiFile != null}, _sequencerStarted: {_sequencerStarted}, _currentOffsetMs: {_currentOffsetMs}, _player.Playing: {_player?.Playing}");
 		_playback = null; // reset playback so we can reacquire a fresh AudioStreamGeneratorPlayback
 
 		// 【处理 pre-roll 模式】如果当前有负数 offset，不启动 sequencer，让 _Process 处理跨越零点
 		if (_currentOffsetMs < 0.0)
 		{
-			GD.Print($"[MeltySynthPlayer] In pre-roll mode (offset={_currentOffsetMs} ms), sequencer will start when crossing zero");
+			// GD.Print($"[MeltySynthPlayer] In pre-roll mode (offset={_currentOffsetMs} ms), sequencer will start when crossing zero");
 			playing = true;
 			return;
 		}
@@ -356,7 +361,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		// 如果 MIDI 已加载但还未启动 sequencer，则启动它
 		if (_midiFile != null && !_sequencerStarted)
 		{
-			GD.Print($"[MeltySynthPlayer] Starting sequencer with MIDI file, loop={loop}");
+			// GD.Print($"[MeltySynthPlayer] Starting sequencer with MIDI file, loop={loop}");
 			_sequencer.Play(_midiFile, loop);
 			_sequencerStarted = true;
 			ApplyInstrumentOverridesToSynth();
@@ -368,7 +373,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		}
 		else if (_sequencerStarted)
 		{
-			GD.Print("[MeltySynthPlayer] Sequencer already started, resuming playback");
+			// GD.Print("[MeltySynthPlayer] Sequencer already started, resuming playback");
 		}
 		
 		playing = true;
@@ -377,13 +382,13 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		{
 			if (!_player.Playing)
 			{
-				GD.Print("[MeltySynthPlayer] Starting AudioStreamPlayer");
+				// GD.Print("[MeltySynthPlayer] Starting AudioStreamPlayer");
 				_player.Play();
 				_playback = _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
 			}
 			else
 			{
-				GD.Print("[MeltySynthPlayer] AudioStreamPlayer already playing");
+				// GD.Print("[MeltySynthPlayer] AudioStreamPlayer already playing");
 			}
 		}
 		else
@@ -420,7 +425,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			_playStartTime = Time.GetTicksMsec();
 		}
 		
-		GD.Print($"[MeltySynthPlayer] Queued seek to {positionMs} ms");
+		// GD.Print($"[MeltySynthPlayer] Queued seek to {positionMs} ms");
 	}
 
 	public void set_soundfont(string soundfontPath)
@@ -431,7 +436,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		// 注意：LoadSoundfont 创建新的 _sequencer，需要重新加载 MIDI 文件
 		if (!string.IsNullOrEmpty(_file))
 		{
-			GD.Print($"[MeltySynthPlayer] Reloading MIDI after soundfont change: {_file}");
+			// GD.Print($"[MeltySynthPlayer] Reloading MIDI after soundfont change: {_file}");
 			LoadMidiFile(_file);
 		}
 	}
@@ -461,7 +466,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	public void set_loop(bool enabled)
 	{
 		loop = enabled;
-		GD.Print($"[MeltySynthPlayer] Loop set to: {enabled}");
+		// GD.Print($"[MeltySynthPlayer] Loop set to: {enabled}");
 	}
 
 	public bool get_loop()
@@ -495,17 +500,20 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return 0.0;
 		}
 
-		// 【修复D-3】使用系统时钟模式（如果启用）
-		// 系统时钟提供更精确和平滑的时间，避免缓冲抖动
+		// 【修复D-3】使用 Sequencer 内部系统时钟模式（如果启用）
 		if (_useSystemStopwatch)
 		{
-			double elapsedMs = Time.GetTicksMsec() - _playStartTime;
-			double resultMs = _playStartPositionMs + elapsedMs;
+			if (_sequencer == null || !_sequencerStarted)
+			{
+				return 0.0;
+			}
+
+			double resultMs = _sequencer.Position.TotalMilliseconds;
 			
 			if (Engine.GetProcessFrames() % 30 == 0)
 			{
-				GD.Print($"[MeltySynthPlayer] get_position_ms (system clock): " +
-						$"elapsed={elapsedMs:F1}ms, result={resultMs:F1}ms");
+				// GD.Print($"[MeltySynthPlayer] get_position_ms (sequencer system clock): result={resultMs:F1}ms, " +
+				// 	$"drift=({_sequencer.GetDiagnosticsSnapshot()})");
 			}
 			
 			return resultMs;
@@ -529,11 +537,11 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			
 			if (Engine.GetProcessFrames() % 30 == 0)
 			{
-				GD.Print($"[MeltySynthPlayer] get_position_ms debug: " +
-					$"sequencer={sequencerMs:F1}ms, " +
-					$"bufferLatency={bufferLatencyMs:F1}ms, " +
-					$"framesAvailable={framesAvailable}/{totalBufferFrames}, " +
-					$"result={compensatedMs:F1}ms");
+				// GD.Print($"[MeltySynthPlayer] get_position_ms debug: " +
+				// 	$"sequencer={sequencerMs:F1}ms, " +
+				// 	$"bufferLatency={bufferLatencyMs:F1}ms, " +
+				// 	$"framesAvailable={framesAvailable}/{totalBufferFrames}, " +
+				// 	$"result={compensatedMs:F1}ms");
 			}
 			
 			
@@ -559,7 +567,13 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	public void set_use_system_stopwatch(bool enabled)
 	{
 		_useSystemStopwatch = enabled;
-		GD.Print($"[MeltySynthPlayer] System stopwatch mode: {(_useSystemStopwatch ? "ON" : "OFF")}");
+		if (_sequencer != null)
+		{
+			_sequencer.SetSystemClockMode(enabled);
+			_sequencer.SetDiagnosticsEnabled(enabled);
+		}
+		// GD.Print($"[MeltySynthPlayer] System stopwatch mode: {(_useSystemStopwatch ? "ON" : "OFF")}" +
+		// 	$", sequencerReady={_sequencer != null}, sequencerStarted={_sequencerStarted}");
 	}
 
 	public bool get_use_system_stopwatch()
@@ -600,7 +614,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 					var (_, physicalChannel) = _synth.ParseVirtualChannelId(virtualId);
 					// 通过反射获取通道对象并直接修改（备选方案）
 					// 如果 MeltySynth 将来提供直接访问通道的 API，可以改用那个
-					GD.Print($"[MeltySynthPlayer] [RUNTIME] Set instrument for virtual channel {virtualId} (Track {trackIndex}, Channel {physicalChannel}): Bank {bank}, Program {program}");
+					// GD.Print($"[MeltySynthPlayer] [RUNTIME] Set instrument for virtual channel {virtualId} (Track {trackIndex}, Channel {physicalChannel}): Bank {bank}, Program {program}");
 				}
 				catch (Exception ex)
 				{
@@ -755,7 +769,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				pendingOns += count;
 			}
 		}
-		GD.Print($"[MeltySynthPlayer] Manual control mapping updated: vc_pitch_entries={mappedPairs}, pending_manual_ons={pendingOns}");
+		// GD.Print($"[MeltySynthPlayer] Manual control mapping updated: vc_pitch_entries={mappedPairs}, pending_manual_ons={pendingOns}");
 	}
 
 	private static long MakeManualFilterKey(int virtualChannel, int pitch)
@@ -922,8 +936,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		try
 		{
 			_manualSynth.NoteOn(manualVirtualId, pitch, velocity);
-			GD.Print($"[MeltySynthPlayer] Manual NoteOn: pitch={pitch}, velocity={velocity}, " +
-					$"channel={channel}, manualVirtualId={manualVirtualId}");
+			// GD.Print($"[MeltySynthPlayer] Manual NoteOn: pitch={pitch}, velocity={velocity}, " +
+			// 		$"channel={channel}, manualVirtualId={manualVirtualId}");
 		}
 		catch (Exception ex)
 		{
@@ -1001,7 +1015,11 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	public void pause()
 	{
 		playing = false;
-		GD.Print($"[MeltySynthPlayer] pause() called - _currentOffsetMs={_currentOffsetMs}, _sequencerStarted={_sequencerStarted}");
+		if (_sequencer != null)
+		{
+			_sequencer.Pause();
+		}
+		// GD.Print($"[MeltySynthPlayer] pause() called - _currentOffsetMs={_currentOffsetMs}, _sequencerStarted={_sequencerStarted}");
 		// 保持 sequencer 状态，不重置位置
 	}
 
@@ -1010,10 +1028,12 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	{
 		if (_midiFile != null && _sequencer != null)
 		{
+			_sequencer.Resume();
+
 			// 【处理 pre-roll 模式】如果在 pre-roll 中，继续等待跨越零点
 			if (_currentOffsetMs < 0.0)
 			{
-				GD.Print($"[MeltySynthPlayer] Resume from pre-roll (offset={_currentOffsetMs} ms)");
+				// GD.Print($"[MeltySynthPlayer] Resume from pre-roll (offset={_currentOffsetMs} ms)");
 				playing = true;
 				return;  // 不启动 AudioStreamPlayer，等待跨越零点
 			}
@@ -1100,7 +1120,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			// 回退：尝试 System.IO（仅对非 res:// 路径有效）
 			if (!path.StartsWith("res://") && !path.StartsWith("user://"))
 			{
-				GD.Print($"[MeltySynthPlayer] Falling back to System.IO for path: {path}");
+				// GD.Print($"[MeltySynthPlayer] Falling back to System.IO for path: {path}");
 				return new MemoryStream(System.IO.File.ReadAllBytes(path));
 			}
 			throw new FileNotFoundException($"Cannot open file: {path} (Godot error: {error})");
@@ -1109,7 +1129,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		var length = (long)file.GetLength();
 		var bytes = file.GetBuffer(length);
 		file.Close();
-		GD.Print($"[MeltySynthPlayer] Loaded {length} bytes from: {path}");
+		// GD.Print($"[MeltySynthPlayer] Loaded {length} bytes from: {path}");
 		return new MemoryStream(bytes);
 	}
 
@@ -1136,6 +1156,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		{
 			OnSendMessage = OnSendMessage
 		};
+		_sequencer.SetSystemClockMode(_useSystemStopwatch);
+		_sequencer.SetDiagnosticsEnabled(_useSystemStopwatch);
 
 		// 手动音符合成器（独立，用于低延迟响应）
 		if (_useSeparateSynthForManual)
@@ -1146,13 +1168,13 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				MaximumPolyphony = Math.Max(16, max_polyphony / 4)  // 至少 16 个复音
 			};
 			_manualSynth = new Synthesizer(_soundFont, manualSettings);
-			GD.Print($"[MeltySynthPlayer] Created separate synthesizers: " +
-					$"auto={max_polyphony} voices, manual={manualSettings.MaximumPolyphony} voices");
+			// GD.Print($"[MeltySynthPlayer] Created separate synthesizers: " +
+			// 		$"auto={max_polyphony} voices, manual={manualSettings.MaximumPolyphony} voices");
 		}
 		else
 		{
 			_manualSynth = _autoSynth;  // 回退：使用同一个合成器
-			GD.Print("[MeltySynthPlayer] Using single synthesizer for both auto and manual notes");
+			// GD.Print("[MeltySynthPlayer] Using single synthesizer for both auto and manual notes");
 		}
 
 		// 重置状态
@@ -1171,7 +1193,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return;
 		}
 
-		GD.Print($"[MeltySynthPlayer] LoadMidiFile: {path}");
+		// GD.Print($"[MeltySynthPlayer] LoadMidiFile: {path}");
 
 		if (_synth == null)
 		{
@@ -1199,7 +1221,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		// 清理旧的乐器覆盖配置，防止状态在不同 MIDI 之间错误延续
 		track_channel_instruments.Clear();
 		_virtualChannelInstruments.Clear();
-		GD.Print($"[MeltySynthPlayer] MIDI file loaded, cleared instrument overrides, _sequencerStarted reset to false");
+		// GD.Print($"[MeltySynthPlayer] MIDI file loaded, cleared instrument overrides, _sequencerStarted reset to false");
 		// 注意：不在这里调用 Play()，而是等待明确的 play() 调用
 		// 这样可以与 MidiPlayer (Addon) 的行为保持一致
 		// _sequencer.Play(_midiFile, loop);  // 移除自动播放
@@ -1211,6 +1233,50 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		{
 			_leftBuffer = new float[length];
 			_rightBuffer = new float[length];
+		}
+	}
+
+	private void LegacySeekByFastForward(double targetMs)
+	{
+		if (_sequencer == null || _midiFile == null || _synth == null)
+		{
+			return;
+		}
+
+		var restoreSystemClock = _useSystemStopwatch;
+		if (restoreSystemClock)
+		{
+			_sequencer.SetSystemClockMode(false);
+			_sequencer.SetDiagnosticsEnabled(false);
+		}
+
+		if (targetMs < 0.0)
+		{
+			targetMs = 0.0;
+		}
+
+		var targetSeconds = targetMs / 1000.0;
+		var targetFrames = (long)(_sampleRate * targetSeconds);
+
+		_sequencer.Play(_midiFile, loop);
+		_sequencerStarted = true;
+		ApplyInstrumentOverridesToSynth();
+
+		var scratchLeft = new float[_synth.BlockSize];
+		var scratchRight = new float[_synth.BlockSize];
+		long remaining = targetFrames;
+
+		while (remaining > 0)
+		{
+			var block = (int)Math.Min(remaining, _synth.BlockSize);
+			_sequencer.Render(scratchLeft.AsSpan(0, block), scratchRight.AsSpan(0, block));
+			remaining -= block;
+		}
+
+		if (restoreSystemClock)
+		{
+			_sequencer.SetSystemClockMode(true);
+			_sequencer.SetDiagnosticsEnabled(true);
 		}
 	}
 
@@ -1279,7 +1345,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				data2 = instrument.bank;
 				if (oldBank != instrument.bank)
 				{
-					GD.Print($"[MeltySynthPlayer] [INTERCEPT] Bank Change intercepted for virtual channel {virtualChannel}: {oldBank} -> {data2}");
+					// GD.Print($"[MeltySynthPlayer] [INTERCEPT] Bank Change intercepted for virtual channel {virtualChannel}: {oldBank} -> {data2}");
 				}
 			}
 			else if (command == 0xC0)
@@ -1289,7 +1355,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				data1 = instrument.program;
 				if (oldProgram != instrument.program)
 				{
-					GD.Print($"[MeltySynthPlayer] [INTERCEPT] Program Change intercepted for virtual channel {virtualChannel}: {oldProgram} -> {data1}");
+					// GD.Print($"[MeltySynthPlayer] [INTERCEPT] Program Change intercepted for virtual channel {virtualChannel}: {oldProgram} -> {data1}");
 				}
 			}
 		}
