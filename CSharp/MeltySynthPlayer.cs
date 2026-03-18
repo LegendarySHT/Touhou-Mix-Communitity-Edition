@@ -880,7 +880,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		try
 		{
 			_manualSynth.NoteOff(manualVirtualId, pitch);
-			GD.Print($"[MeltySynthPlayer] Manual NoteOff: pitch={pitch}, channel={channel}");
+			//GD.Print($"[MeltySynthPlayer] Manual NoteOff: pitch={pitch}, channel={channel}");
 		}
 		catch (Exception ex)
 		{

@@ -158,6 +158,8 @@ func _process(delta: float) -> void:
 		# 如果正在播放MIDI，使用MIDI播放管理器的时间
 		current_time = playback_mgr.get_position_ms()
 		progress_bar.value = current_time
+		# 【方案C】同步时间到FlowArea，确保note判定与MIDI播放位置完全一致
+		flow_area.set_current_time(current_time)
 	
 func get_lane_count() -> int:
 	return lane_count if not keyboard_mode else key_map.size()

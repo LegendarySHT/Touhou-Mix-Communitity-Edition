@@ -267,16 +267,12 @@ func read_soundfont( sf:SoundFont.SoundFontData, need_program_numbers:Array = []
 		self.presets[program_number] = preset
 		
 		# デバッグ: ドラムトラックのプリセットをロードした場合
-		if phdr.bank == drum_track_bank or program_number >= (drum_track_bank << 7):
-			print("[Bank Debug] Loaded drum preset: name='%s', phdr.bank=%d, phdr.preset=%d, program_number=%d" % [phdr.name, phdr.bank, phdr.preset, program_number])
+		#if phdr.bank == drum_track_bank or program_number >= (drum_track_bank << 7):
+		#	print("[Bank Debug] Loaded drum preset: name='%s', phdr.bank=%d, phdr.preset=%d, program_number=%d" % [phdr.name, phdr.bank, phdr.preset, program_number])
 
 		#times.append( Time.get_ticks_msec( ) )
 
-	#for i in ( times.size( ) - 1 ):
-	#	var diff:int = times[i+1] - times[i]
-	#	if 10 <= diff:
-	#		printt( i, diff )
-	#printt( "all", times[-1] - times[0] )
+	
 
 ## サウンドフォントからプリセットデータを読み込む
 ## @param	sf	サウンドフォントデータ

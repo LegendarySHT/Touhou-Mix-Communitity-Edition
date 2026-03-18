@@ -62,6 +62,11 @@ var _particle_pool: Array = []
 
 var parent_node: Node = null
 
+# 【方案C】从PlayView同步的当前播放时间（毫秒）
+## 这个时间来自 MidiPlaybackManager.get_position_ms()，已包含缓冲补偿
+## 用于确保note判定与MIDI播放位置完全同步
+var _synced_current_time: float = 0.0
+
 # 修改为从PlayView传入的音符列表
 var notes_list: Array[Note] = []  # 移除测试用的音符
 var note_idx: int = 0
@@ -577,8 +582,13 @@ func _generate_particle(type: String, pos: Vector2) -> void:
 	ptc.visible = true
 	ptc.play(type)
 	
+## 【方案C】同步当前播放时间（毫秒）
+## 由 PlayView._process() 每帧调用，确保 FlowArea 的时间与 MIDI 播放位置完全同步
+func set_current_time(time_ms: float) -> void:
+	_synced_current_time = time_ms
+
 func _judge_note(judge_note: Note):
-	var time_diff = judge_note.start_time - parent_node.current_time  # 毫秒
+	var time_diff = judge_note.start_time - _synced_current_time  # 毫秒 【方案C】使用同步时间
 	var abs_diff = abs(time_diff)
 	var result: String = "Bad"
 
