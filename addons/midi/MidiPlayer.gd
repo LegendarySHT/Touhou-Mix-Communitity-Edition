@@ -848,7 +848,7 @@ func trigger_note_on(pitch: int, velocity: int, channel_number: int = 0) -> void
 	_is_manually_triggered = true
 	self._process_track_event_note_on(channel, pitch, velocity)
 	_is_manually_triggered = false
-	print("[MidiPlayer] Manually triggered note_on: ch=%d, pitch=%d, vel=%d" % [channel_number, pitch, velocity])
+	#print("[MidiPlayer] Manually triggered note_on: ch=%d, pitch=%d, vel=%d" % [channel_number, pitch, velocity])
 
 ## 手动触发noteOff事件 - 停止指定音符的播放
 ## @param	pitch			MIDI音符号 (0-127)
@@ -861,7 +861,7 @@ func trigger_note_off(pitch: int, velocity: int, channel_number: int = 0) -> voi
 	
 	var channel = self.channel_status[channel_number]
 	self._process_track_event_note_off(channel, pitch)
-	print("[MidiPlayer] Manually triggered note_off: ch=%d, pitch=%d" % [channel_number, pitch])
+	#print("[MidiPlayer] Manually triggered note_off: ch=%d, pitch=%d" % [channel_number, pitch])
 
 ## 音量設定
 ## @param	vdb	音量
@@ -1027,7 +1027,7 @@ func _process_track_event_note_on( channel:GodotMIDIPlayerChannelStatus, note:in
 	# 但如果是通过trigger_note_on手动触发，则绕过此检查
 	if not _is_manually_triggered:
 		if _is_note_manually_controlled(channel.number, note, track_index, event_time):
-			print("[MidiPlayer] Skipping auto-play for manually controlled note: track=%d, ch=%d, pitch=%d, vel=%d, time=%d" % [track_index, channel.number, note, velocity, event_time])
+			#print("[MidiPlayer] Skipping auto-play for manually controlled note: track=%d, ch=%d, pitch=%d, vel=%d, time=%d" % [track_index, channel.number, note, velocity, event_time])
 			return  # 跳过内部播放，等待游戏通过trigger_note_on手动触发
 
 	var track_key_shift:int = self.key_shift if not channel.drum_track else 0

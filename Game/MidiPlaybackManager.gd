@@ -194,6 +194,18 @@ func _on_settings_changed(setting_name: String, value: Variant) -> void:
 		print("[MidiPlaybackManager] Reloading soundfont from settings")
 		_load_soundfont_from_config()
 		print("[MidiPlaybackManager] Soundfont reloaded successfully")
+	
+	# 【修复D-4】如果是泛指信号或系统时钟设置改变
+	if setting_name == "*" or setting_name == "use_system_stopwatch":
+		print("[MidiPlaybackManager] Applying system stopwatch setting")
+		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
+		var backend = _get_active_backend()
+		if backend != null and backend.has_method("set_use_system_stopwatch"):
+			backend.set_use_system_stopwatch(use_system_stopwatch)
+			GameLogger.instance.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
+			print("[MidiPlaybackManager] System stopwatch mode set to: %s" % ("ON" if use_system_stopwatch else "OFF"))
+		else:
+			print("[MidiPlaybackManager] Current backend does not support system stopwatch setting")
 
 func _process(_delta: float) -> void:
 	var backend = _get_active_backend()
@@ -326,6 +338,12 @@ func load_midi(midi_data: MidiData) -> bool:
 	
 	# 同步轨道-通道静音状态（清理旧MIDI的残留静音）
 	_apply_mute_state_to_backend(backend)
+	
+	# 【修复D-4】应用系统时钟配置（仅MeltySynth后端支持）
+	if midi_backend == "meltysynth" and backend != null and backend.has_method("set_use_system_stopwatch"):
+		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
+		backend.set_use_system_stopwatch(use_system_stopwatch)
+		GameLogger.instance.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
 	
 	# 发出信号
 	midi_loaded.emit(current_midi_data)
@@ -866,6 +884,12 @@ func _initialize_meltysynth_backend() -> bool:
 	if wrapper.has_method("set_bus"):
 		wrapper.call("set_bus", "Master")
 		print("[MidiPlaybackManager] Called set_bus")
+	
+	# 【修复D-4】初始化系统时钟配置
+	if wrapper.has_method("set_use_system_stopwatch"):
+		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
+		wrapper.call("set_use_system_stopwatch", use_system_stopwatch)
+		print("[MidiPlaybackManager] Set system stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"))
 	
 	# 连接信号
 	if wrapper.has_signal("finished"):

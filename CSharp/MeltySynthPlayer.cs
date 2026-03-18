@@ -44,6 +44,12 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private double _currentOffsetMs = 0.0;  // 当前相对于 sequencer 的时间偏移（支持负数 pre-roll）
 	private bool _hasSkippedPreroolEvents = false;  // 标志：已跳过 pre-roll 事件
 
+	// 【修复D】系统时钟模式的时间追踪
+	private bool _useSystemStopwatch = false;      // 是否启用系统时钟模式
+	private ulong _playStartTime = 0;              // 播放开始时的系统时间（毫秒）
+	private double _playStartPositionMs = 0.0;     // 播放开始时的MIDI位置
+	private bool _previousPlaying = false;         // 上一帧的播放状态
+
 	private readonly Dictionary<int, float> _virtualChannelVolumes = new Dictionary<int, float>();
 	private readonly Dictionary<int, (int bank, int program)> _virtualChannelInstruments = new Dictionary<int, (int bank, int program)>();
 	private sealed class ManualFilterState
@@ -95,6 +101,22 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	public override void _Process(double delta)
 	{
+		// 【修复D-1】记录播放开始的时刻（用于系统时钟模式）
+		if (playing && !_previousPlaying)
+		{
+			_playStartTime = Time.GetTicksMsec();
+			_playStartPositionMs = 0.0;
+			_previousPlaying = true;
+			if (_useSystemStopwatch)
+			{
+				GD.Print($"[MeltySynthPlayer] Play started at system time {_playStartTime}ms");
+			}
+		}
+		else if (!playing && _previousPlaying)
+		{
+			_previousPlaying = false;
+		}
+
 		// 【关键】处理待处理的 seek 操作优先级最高，即使不在播放中也要处理
 		if (!double.IsNaN(_pendingSeekMs))
 		{
@@ -390,6 +412,14 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		// 【修复】允许负数 seek，设置待处理的 seek 标志
 		// _Process 会在下一帧处理这个 seek，确保不会阻塞音频线程
 		_pendingSeekMs = positionMs;  // 负数值会被接受
+		
+		// 【修复D-2】同时更新系统时钟基准点
+		if (_useSystemStopwatch)
+		{
+			_playStartPositionMs = positionMs;
+			_playStartTime = Time.GetTicksMsec();
+		}
+		
 		GD.Print($"[MeltySynthPlayer] Queued seek to {positionMs} ms");
 	}
 
@@ -460,6 +490,28 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return _currentOffsetMs;
 		}
 
+		if (!playing)
+		{
+			return 0.0;
+		}
+
+		// 【修复D-3】使用系统时钟模式（如果启用）
+		// 系统时钟提供更精确和平滑的时间，避免缓冲抖动
+		if (_useSystemStopwatch)
+		{
+			double elapsedMs = Time.GetTicksMsec() - _playStartTime;
+			double resultMs = _playStartPositionMs + elapsedMs;
+			
+			if (Engine.GetProcessFrames() % 30 == 0)
+			{
+				GD.Print($"[MeltySynthPlayer] get_position_ms (system clock): " +
+						$"elapsed={elapsedMs:F1}ms, result={resultMs:F1}ms");
+			}
+			
+			return resultMs;
+		}
+
+		// 【原有逻辑】使用 sequencer.Position + 缓冲补偿
 		if (_sequencer == null || !_sequencerStarted) return 0.0;
 
 		var sequencerMs = _sequencer.Position.TotalMilliseconds;
@@ -475,11 +527,13 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			double bufferLatencyMs = (double)bufferedFrames / _sampleRate * 1000.0;
 			var compensatedMs = Math.Max(0.0, sequencerMs - bufferLatencyMs);
 			
-			// 每 120 帧输出一次诊断日志
-			
-			if (Engine.GetProcessFrames() % 120 == 0)
+			if (Engine.GetProcessFrames() % 30 == 0)
 			{
-				GD.Print($"[MeltySynthPlayer] get_position_ms: sequencer={sequencerMs:F1}ms, latency={bufferLatencyMs:F1}ms, result={compensatedMs:F1}ms");
+				GD.Print($"[MeltySynthPlayer] get_position_ms debug: " +
+					$"sequencer={sequencerMs:F1}ms, " +
+					$"bufferLatency={bufferLatencyMs:F1}ms, " +
+					$"framesAvailable={framesAvailable}/{totalBufferFrames}, " +
+					$"result={compensatedMs:F1}ms");
 			}
 			
 			
@@ -499,6 +553,18 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	{
 		var virtualId = trackIndex * 16 + channel;
 		return _virtualChannelVolumes.TryGetValue(virtualId, out var volume) ? volume : 1.0f;
+	}
+
+	// 【修复D】设置是否使用系统时钟模式
+	public void set_use_system_stopwatch(bool enabled)
+	{
+		_useSystemStopwatch = enabled;
+		GD.Print($"[MeltySynthPlayer] System stopwatch mode: {(_useSystemStopwatch ? "ON" : "OFF")}");
+	}
+
+	public bool get_use_system_stopwatch()
+	{
+		return _useSystemStopwatch;
 	}
 
 	public void set_track_channel_instrument(int trackIndex, int channel, int bank, int program)
