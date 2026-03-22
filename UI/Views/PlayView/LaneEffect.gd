@@ -76,12 +76,17 @@ func init_beam(lane_count: int, parent_node) -> void:
 	var padding: int      = play_view.lane_padding
 	var window            := get_viewport().get_visible_rect().size
 	var beam_h: float     = window.y - play_view.judge_line_offset_y
-	var lane_width: float = (window.x - 2.0 * padding) / lane_count
 	var beam_w: float     = note_width + 20.0
+	var safe_width: float = max(1.0, window.x - 2.0 * float(padding))
+	var lane_step: float = 0.0
+	var lane_start_center_x: float = float(padding) + safe_width * 0.5
+	if lane_count > 1:
+		lane_start_center_x = float(padding) + beam_w * 0.5
+		lane_step = max(0.0, (safe_width - beam_w) / float(lane_count - 1))
 
 	_beam_height     = beam_h
 	_beam_padding    = padding
-	_beam_lane_width = lane_width
+	_beam_lane_width = lane_step
 	_beam_note_width = note_width
 
 	# 与 beam.tscn 的渐变参数保持一致
@@ -94,8 +99,9 @@ func init_beam(lane_count: int, parent_node) -> void:
 		b.visible = false
 		add_child(b)
 		b.setup(Vector2(beam_w, beam_h), _outer_tex, _center_tex)
+		var center_x: float = lane_start_center_x + lane_step * i
 		b.position = Vector2(
-			padding + lane_width * i + (lane_width - beam_w) / 2.0,
+			center_x - beam_w * 0.5,
 			0.0
 		)
 
@@ -117,7 +123,8 @@ func init_key_display(key_map: Array[Key]) -> void:
 	for i in range(key_map.size()):
 		var nl: Label = label if i == key_map.size() - 1 else label.duplicate()
 		nl.text = OS.get_keycode_string(key_map[i])
-		var label_x := _beam_padding + _beam_lane_width * i + (_beam_lane_width - beam_width) / 2.0
+		var beam_node: Node2D = get_lane_by_idx(i) as Node2D
+		var label_x := beam_node.position.x
 		_key_label_overlay.add_child(nl)
 		nl.position = Vector2(label_x, _beam_height)
 

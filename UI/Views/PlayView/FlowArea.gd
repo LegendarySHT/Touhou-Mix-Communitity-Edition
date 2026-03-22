@@ -9,10 +9,9 @@ class_name FlowArea
 
 ########## 配置参数 #############
 var auto_mode: bool = false
-var judge_area_width: int = 150  # 滑块 x 轴检测专用，不经由配置读取
 var judge_mode: int = NoteJudger.JudgeMode.BEST_TIMING_FIFO  # 从 Judge/touch_judging_criteria 配置初始化
-var note_judge_width: int = 100  # 从 Judge/block_judging_width 配置读取
-var note_visual_width: int = 200
+var note_judge_width: int = 100  # 统一判定宽度，从 Judge/block_judging_width 配置读取
+var note_visual_width: int = 200  # 从 Appearance/block_size 配置读取
 var note_judger: NoteJudger = NoteJudger.new()
 
 # 音符下落动画
@@ -131,10 +130,15 @@ func init_flow_area():
 	# 从配置读取判定模式和判定宽度
 	judge_mode = ConfigManager.instance.get_int("Judge", "touch_judging_criteria", NoteJudger.JudgeMode.BEST_TIMING_FIFO)
 	note_judge_width = ConfigManager.instance.get_int("Judge", "block_judging_width", 100)
+	note_visual_width = ConfigManager.instance.get_int("Appearance", "block_size", note_visual_width)
 
 	var lc = parent_node.get_lane_count()
-	# 初始化轨道宽度
-	lane_width = size.x / lc
+	# 初始化轨道步长（考虑左右安全区，效果对齐 Unity 的中心点分布）
+	var safe_width: float = max(1.0, get_viewport().get_visible_rect().size.x - 2.0 * float(parent_node.lane_padding))
+	if lc <= 1:
+		lane_width = safe_width
+	else:
+		lane_width = (safe_width - float(note_visual_width)) / float(lc - 1)
 	
 	# 设置判定线位置
 	jl.position.y = get_viewport().get_visible_rect().size.y - parent_node.judge_line_offset_y
@@ -434,7 +438,11 @@ func _handle_touch_drag(touch_id: int, pos: Vector2) -> void:
 		return
 
 	# 只更新x位置，y位置保持与判定线对齐
-	note.rect.position.x = clamp(pos.x - note.rect.size.x / 2, 0, size.x - note.rect.size.x)
+	note.rect.position.x = clamp(
+		pos.x - note.rect.size.x / 2,
+		float(parent_node.lane_padding),
+		size.x - float(parent_node.lane_padding) - note.rect.size.x
+	)
 
 # 按住长条音符
 # 注意：调用方负责在调用此函数之前已通过 _judge_note() 完成判定
@@ -459,13 +467,13 @@ func _check_slides_at_touch_pos(touch_id: int, pos: Vector2) -> void:
 		var note_x = rect.position.x + rect.size.x / 2
 		var distance_to_touch = abs(pos.x - note_x)
 
-		if note.can_judge and note.held_by_touch_id == touch_id and distance_to_touch > judge_area_width:
+		if note.can_judge and note.held_by_touch_id == touch_id and distance_to_touch > note_judge_width:
 			if abs(parent_node.current_time - note.start_time) < 100:
 				_judge_note(note)
 			else:
 				note.can_judge = false
 
-		if distance_to_touch < judge_area_width and not note.can_judge:
+		if distance_to_touch < note_judge_width and not note.can_judge:
 			note.can_judge = true
 			note.held_by_touch_id = touch_id
 			# return
