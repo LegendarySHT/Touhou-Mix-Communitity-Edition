@@ -407,7 +407,7 @@ func _handle_press(touch_id: int, pos: Vector2) -> void:
 		return
 	if parent_node.play_mode and note.game_sequence_ref:
 		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
-	_judge_note(note)
+	_judge_note(note, true)
 	if note.type == NoteType.Long:
 		_hold_long_note(touch_id, note)
 
@@ -469,7 +469,7 @@ func _check_slides_at_touch_pos(touch_id: int, pos: Vector2) -> void:
 
 		if note.can_judge and note.held_by_touch_id == touch_id and distance_to_touch > note_judge_width:
 			if abs(parent_node.current_time - note.start_time) < 100:
-				_judge_note(note)
+				_judge_note(note, true)
 			else:
 				note.can_judge = false
 
@@ -523,7 +523,7 @@ func judge_note_at_lane(lane_l: int, lane_r: int) -> Note:
 	if best_note:
 		if parent_node.play_mode and best_note.game_sequence_ref:
 			_trigger_midi_notes_from_sequence(best_note.game_sequence_ref)
-		_judge_note(best_note)
+		_judge_note(best_note, true)
 		return best_note
 	return null
 
@@ -557,6 +557,16 @@ func _trigger_midi_notes_from_sequence(game_seq: Object) -> void:
 				midi_player.trigger_note_off(evt.pitch, evt.velocity, evt.channel)
 			elif midi_player.has_method("note_off"):
 				midi_player.note_off(evt.channel, evt.pitch)
+
+func _trigger_touch_vibration() -> void:
+	if not Input.has_method("vibrate_handheld"):
+		return
+	if not (OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios")):
+		return
+	if ConfigManager.instance.get_int("Playback", "vibrate_on_touch", 1) != 1:
+		return
+	var duration_ms = max(1.0, ConfigManager.instance.get_int("Playback", "vibration_duration", 20))
+	Input.vibrate_handheld(duration_ms, 0.5)
 
 func _init_particle_pool() -> void:
 	if not _particle_pool.is_empty():
@@ -595,7 +605,7 @@ func _generate_particle(type: String, pos: Vector2) -> void:
 func set_current_time(time_ms: float) -> void:
 	_synced_current_time = time_ms
 
-func _judge_note(judge_note: Note):
+func _judge_note(judge_note: Note, trigger_vibration: bool = false):
 	var time_diff = judge_note.start_time - _synced_current_time  # 毫秒 【方案C】使用同步时间
 	var abs_diff = abs(time_diff)
 	var result: String = "Bad"
@@ -617,6 +627,8 @@ func _judge_note(judge_note: Note):
 
 	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff],
 		block_type, timing_sec, signed_offset_sec)
+	if trigger_vibration:
+		_trigger_touch_vibration()
 	if judge_note.type != NoteType.Long:
 		_remove_note(judge_note)
 
