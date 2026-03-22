@@ -8,7 +8,7 @@ class_name FlowArea
 @onready var canvas: CanvasLayer = $SVP
 
 ########## 配置参数 #############
-var auto_mode: bool = true
+var auto_mode: bool = false
 var judge_area_width: int = 150  # 滑块 x 轴检测专用，不经由配置读取
 var judge_mode: int = NoteJudger.JudgeMode.BEST_TIMING_FIFO  # 从 Judge/touch_judging_criteria 配置初始化
 var note_judge_width: int = 100  # 从 Judge/block_judging_width 配置读取

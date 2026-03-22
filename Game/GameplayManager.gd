@@ -49,9 +49,6 @@ var key_sequence_manager: KeySequenceManager
 ## 音频管理器引用
 var audio_manager: AudioManager
 
-## NotesRenderer引用（待实现的UI组件）
-var notes_renderer: Node
-
 ## ScoreCalculator引用
 var score_calculator: ScoreCalculator
 
