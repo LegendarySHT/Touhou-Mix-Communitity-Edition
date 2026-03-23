@@ -804,15 +804,6 @@ func optimize_keys() -> bool:
 	keys_optimized.emit(game_sequences.size())
 	return true
 
-## 辅助函数：根据音高计算屏幕X位置（已弃用，使用_calculate_lane_position）
-## @deprecated: Use _calculate_lane_position instead
-func _calculate_key_position(midi_note: int) -> float:
-	# 提取相对音高（0-11，C到B）
-	var relative_pitch = midi_note % 12
-	
-	# 在屏幕宽度内均匀分配
-	var position_ratio = float(relative_pitch) / 12.0
-	return screen_width * position_ratio
 
 ## 获取游戏序列列表
 func get_game_sequences() -> Array[GameSequence]:
@@ -840,25 +831,6 @@ func get_visible_keys(start_time_ms: float, end_time_ms: float) -> Array[GameSeq
 	
 	return visible
 
-## 判定一个键是否应该在给定时间被触发
-## 返回判定等级：PERFECT(0), GOOD(1), OK(2), MISS(3)
-## 判定窗口由GameplayManager或配置文件提供
-func judge_key(key_id: int, hit_time_ms: float, judge_windows: Dictionary) -> int:
-	var seq = get_game_sequence_by_key_id(key_id)
-	if seq == null:
-		return 3  # MISS
-	
-	var time_diff = abs(hit_time_ms - seq.start_time_ms)
-	
-	# 判定逻辑（具体参数由GameplayManager提供）
-	if time_diff <= judge_windows.get("perfect", 50):
-		return 0  # PERFECT
-	elif time_diff <= judge_windows.get("good", 100):
-		return 1  # GOOD
-	elif time_diff <= judge_windows.get("ok", 150):
-		return 2  # OK
-	else:
-		return 3  # MISS
 
 ## 生成后的有效Notes分类（在generate_keys()后调用）
 ## 在generate_keys()的最后调用此方法，统计真实分类
