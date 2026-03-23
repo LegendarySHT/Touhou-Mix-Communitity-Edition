@@ -112,6 +112,10 @@ func _load_config_from_file() -> void:
 	# 初始化SoundFont列表
 	_initialize_soundfont_options(settings_dict)
 
+	# 初始化下落模式和缓动选项可见性
+	var note_fall_mode = settings_dict.get("note_fall_mode", "0")
+	var mode_value = int(note_fall_mode) if note_fall_mode.is_valid_int() else 0
+	setting_list.set_note_fall_mode_and_show_custom_options(mode_value)
 ## 保存配置到文件（由 AnimationManager 在退出时调用）
 func save_config_to_file() -> bool:
 	var config_manager = ConfigManager.instance
@@ -129,16 +133,44 @@ func save_config_to_file() -> bool:
 			var converted = "addons" if index == 0 else "meltysynth"
 			print("[SettingView] Converting midi_backend index %d to '%s'" % [index, converted])
 			settings_dict["midi_backend"] = converted
+
+	# 特殊处理缓动选项：将选项索引转换为缓动函数/相位的名称
+	var easing_options_to_convert = [
+		"note_fall_easing_before_func",
+		"note_fall_easing_before_phase",
+		"note_fall_easing_after_func",
+		"note_fall_easing_after_phase"
+	]
+
+	for easing_id in easing_options_to_convert:
+		if settings_dict.has(easing_id):
+			var easing_raw_value = settings_dict[easing_id]
+			if easing_raw_value is int or (easing_raw_value is String and easing_raw_value.is_valid_int()):
+				var easing_index = int(easing_raw_value)
+				var easing_options = []
+
+				# 根据ID类型选择options
+				if "func" in easing_id:
+					easing_options = EasingMapper.get_func_options()
+				elif "phase" in easing_id:
+					easing_options = EasingMapper.get_phase_options()
+
+				# 转换索引为名称
+				if easing_index >= 0 and easing_index < easing_options.size():
+					var easing_name = easing_options[easing_index]["name"]
+					settings_dict[easing_id] = easing_name
+					print("[SettingView] Converting %s index %d to '%s'" % [easing_id, easing_index, easing_name])
+	
 	
 	# 特殊处理soundfont_select：转换为实际文件名
 	if settings_dict.has("soundfont_select"):
-		var raw_value = settings_dict["soundfont_select"]
+		var soundfont_raw_value = settings_dict["soundfont_select"]
 		var display_name = ""
-		if raw_value is int or (raw_value is String and raw_value.is_valid_int()):
-			var index = int(raw_value)
+		if soundfont_raw_value is int or (soundfont_raw_value is String and soundfont_raw_value.is_valid_int()):
+			var index = int(soundfont_raw_value)
 			display_name = setting_list.get_option_text("soundfont_select", index)
 		else:
-			display_name = str(raw_value)
+			display_name = str(soundfont_raw_value)
 		# 去掉 [内置] 标签，获取实际文件名
 		var actual_name = display_name.split(" [")[0] if " [" in display_name else display_name
 		if actual_name.ends_with(".sf2"):

@@ -513,6 +513,71 @@ var setting_groups = [
 				"min_value": 0.2,
 				"max_value": 5.0,
 				"step": 0.1
+			},
+			{
+				"id": "note_fall_mode",
+				"name_en": "Note Fall Mode",
+				"name_zh": "音符下落模式",
+				"description": "选择音符的下落速度模式：匀速、加速下落或自定义",
+				"type": "TYPE_OPTION",
+				"default_value": "0",
+				"options": [
+					{"text_en": "Uniform", "text_zh": "匀速"},
+					{"text_en": "Accelerate", "text_zh": "加速下落"},
+					{"text_en": "Custom", "text_zh": "自定义"}
+				]
+			},
+			{
+				"id": "note_fall_speed_after_judge_multiplier",
+				"name_en": "Note Fall Speed Multiplier After Judge Line",
+				"name_zh": "音符过判定线后的下落速度倍率",
+				"description": "设置音符过判定线后的下落速度相对于判定线前的倍率（1.0表示相同）",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "1.0",
+				"unit": "x",
+				"min_value": 0.1,
+				"max_value": 5.0,
+				"step": 0.1
+			},
+			{
+				"id": "note_fall_easing_before_func",
+				"name_en": "Note Fall Easing (Before Judge) - Function",
+				"name_zh": "音符下落缓动（判定线前）- 函数",
+				"description": "选择音符在判定线前的缓动函数类型",
+				"type": "TYPE_OPTION",
+				"default_value": "LINEAR",
+				"is_custom_easing": true,
+				"easing_type": "func"
+			},
+			{
+				"id": "note_fall_easing_before_phase",
+				"name_en": "Note Fall Easing (Before Judge) - Phase",
+				"name_zh": "音符下落缓动（判定线前）- 相位",
+				"description": "选择音符在判定线前的缓动相位",
+				"type": "TYPE_OPTION",
+				"default_value": "IN",
+				"is_custom_easing": true,
+				"easing_type": "phase"
+			},
+			{
+				"id": "note_fall_easing_after_func",
+				"name_en": "Note Fall Easing (After Judge) - Function",
+				"name_zh": "音符下落缓动（判定线后）- 函数",
+				"description": "选择音符在判定线后的缓动函数类型",
+				"type": "TYPE_OPTION",
+				"default_value": "LINEAR",
+				"is_custom_easing": true,
+				"easing_type": "func"
+			},
+			{
+				"id": "note_fall_easing_after_phase",
+				"name_en": "Note Fall Easing (After Judge) - Phase",
+				"name_zh": "音符下落缓动（判定线后）- 相位",
+				"description": "选择音符在判定线后的缓动相位",
+				"type": "TYPE_OPTION",
+				"default_value": "IN",
+				"is_custom_easing": true,
+				"easing_type": "phase"
 			}
 		]
 	},
@@ -589,52 +654,6 @@ var setting_groups = [
 				"options": [
 					{"text_en": "Default", "text_zh": "默认"},
 					{"text_en": "Simple", "text_zh": "简单"}
-				]
-			},
-			{
-				"id": "cache_time",
-				"name_en": "Cache Time",
-				"name_zh": "音符下落速度",
-				"description": "调整音符在判定线以上范围的下落速度，数值越小速度越快",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "2.0",
-				"unit": "x"
-			},
-			{
-				"id": "cache_easing_type",
-				"name_en": "Cache Easing Type",
-				"name_zh": "音符下落模式",
-				"description": "设置音符在判定线以上范围的下落方式",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Linear", "text_zh": "线性"},
-					{"text_en": "In", "text_zh": "缓入"},
-					{"text_en": "Out", "text_zh": "缓出"},
-					{"text_en": "InOut", "text_zh": "缓入缓出"}
-				]
-			},
-			{
-				"id": "grace_time",
-				"name_en": "Grace Time",
-				"name_zh": "音符过判定线后的下落速度",
-				"description": "同本栏第2项，但调整的是音符过判定线后的下落速度",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "0.5",
-				"unit": "x"
-			},
-			{
-				"id": "grace_easing_type",
-				"name_en": "Grace Easing Type",
-				"name_zh": "音符过判定线后的下落模式",
-				"description": "同本栏第3项，但影响的是音符过判定线后的下落方式",
-				"type": "TYPE_OPTION",
-				"default_value": "2",
-				"options": [
-					{"text_en": "Linear", "text_zh": "线性"},
-					{"text_en": "In", "text_zh": "缓入"},
-					{"text_en": "Out", "text_zh": "缓出"},
-					{"text_en": "InOut", "text_zh": "缓入缓出"}
 				]
 			},
 			{
@@ -853,6 +872,19 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 			if setting_data.get("dynamic_options", false) and setting_data.options.is_empty():
 				# 动态options为空，先设置空列表，等SettingView调用update_soundfont_options()更新
 				option_texts = ["Loading..."]
+			elif setting_data.get("is_custom_easing", false):
+				# 自定义缓动选项，从EasingMapper动态生成
+				var easing_type = setting_data.get("easing_type", "func")  # "func" or "phase"
+				var easing_options = []
+				
+				if easing_type == "func":
+					easing_options = EasingMapper.get_func_options()
+				elif easing_type == "phase":
+					easing_options = EasingMapper.get_phase_options()
+				
+				# 提取显示名称
+				for easing_opt in easing_options:
+					option_texts.append(easing_opt.display_name)
 			else:
 				# 静态options，正常处理
 				for option in setting_data.options:
@@ -861,14 +893,23 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 			
 			# 设置选项，并选中初始值对应的索引
 			var default_index = 0
-			if initial_value is String and initial_value.is_valid_int():
+			if setting_data.get("is_custom_easing", false) and initial_value is String:
+				var easing_type = setting_data.get("easing_type", "func")
+				var easing_options = []
+				if easing_type == "func":
+					easing_options = EasingMapper.get_func_options()
+				elif easing_type == "phase":
+					easing_options = EasingMapper.get_phase_options()
+
+				for i in range(easing_options.size()):
+					if easing_options[i].name.to_upper() == initial_value.to_upper():
+						default_index = i
+						break
+			elif initial_value is String and initial_value.is_valid_int():
 				default_index = int(initial_value)
-			elif initial_value is String and not option_texts.has(initial_value):
-				# 初始值不在选项列表中，使用第一个选项
-				default_index = 0
 			elif initial_value is String:
-				# 初始值在选项列表中，查找其索引
-				default_index = option_texts.find(initial_value)
+				var idx = option_texts.find(initial_value)
+				default_index = idx if idx >= 0 else 0
 			
 			setting_item.set_options(option_texts, default_index)
 	
@@ -916,6 +957,10 @@ func _on_setting_value_changed(id: String, value: Variant):
 				# 0 -> "addons", 1 -> "meltysynth"
 				converted_value = "addons" if value == 0 else "meltysynth"
 				print("[SettingList] Converting midi_backend index %d to '%s'" % [value, converted_value])
+			# 特殊处理：note_fall_mode 需要控制自定义缓动选项的可见性
+			elif id == "note_fall_mode" and value is int:
+				set_note_fall_mode_and_show_custom_options(value)
+				converted_value = value
 			# 特殊处理：soundfont_select 需要将索引转换为文件名
 			elif id == "soundfont_select" and value is int:
 				var display_text = get_option_text(id, value)
@@ -1051,3 +1096,28 @@ func update_soundfont_options(soundfont_list: Array, current_selection: String =
 			if font_name == current_selection or display_name == current_selection:
 				setting_item.set_value(i)
 				break
+
+
+## 设置下落模式和控制自定义缓动选项的可见性
+func set_note_fall_mode_and_show_custom_options(mode: int) -> void:
+	"""
+	设置下落模式并控制自定义缓动选项的可见性
+	
+	Args:
+		mode: 0=匀速, 1=加速下落, 2=自定义
+	"""
+	var custom_easing_ids = [
+		"note_fall_easing_before_func",
+		"note_fall_easing_before_phase",
+		"note_fall_easing_after_func",
+		"note_fall_easing_after_phase"
+	]
+	
+	for easing_id in custom_easing_ids:
+		if setting_items.has(easing_id):
+			var setting_item = setting_items[easing_id]
+			if setting_item and setting_item.value_node:
+				# 当模式为2（自定义）时显示，否则隐藏
+				setting_item.visible = (mode == 2)
+				if setting_item.value_node:
+					setting_item.value_node.visible = (mode == 2)

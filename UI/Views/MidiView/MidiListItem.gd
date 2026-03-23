@@ -245,6 +245,7 @@ func _fill_time_bpm_cache(midi: MidiData, entry: Dictionary) -> void:
 	# Time
 	if midi.duration_ms > 0:
 		var s := int(midi.duration_ms / 1000.0)
+		@warning_ignore("integer_division")
 		entry["time_str"] = "%d:%02d" % [s / 60, s % 60]
 	else:
 		entry["time_str"] = "—"

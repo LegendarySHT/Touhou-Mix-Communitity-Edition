@@ -15,10 +15,10 @@ var note_visual_width: int = 200  # 从 Appearance/block_size 配置读取
 var note_judger: NoteJudger = NoteJudger.new()
 
 # 音符下落动画
-var trans_before_line = Tween.TRANS_LINEAR
-var ease_before_line = Tween.EASE_IN_OUT
-var trans_after_line = Tween.TRANS_LINEAR
-var ease_after_line = Tween.EASE_OUT
+var trans_before_line: int = Tween.TRANS_LINEAR as int
+var ease_before_line: int = Tween.EASE_IN_OUT as int
+var trans_after_line: int = Tween.TRANS_LINEAR as int
+var ease_after_line: int = Tween.EASE_OUT as int
 
 var note_color_short: Color = Color.DEEP_PINK
 var note_color_slide: Color = Color.CYAN
@@ -35,6 +35,9 @@ var judge_windows: Dictionary = {
 # 音符生成提前量（毫秒） - 确保音符在到达判定线前有足够时间显示 - 调下落速度也是用它（
 var note_generation_lead_time: float = 1000.0
 
+# 下落参数
+var _note_fall_time_seconds: float = 1.0
+var _note_fall_speed_after_judge_multiplier: float = 1.0
 # 音符特效缩放
 var particle_scale: float = 0.8
 ###################################
@@ -58,6 +61,7 @@ var active_notes: Array = []  # 存储活跃的音符
 # 粒子对象池：预创建固定数量实例并复用，避免每次按键 duplicate()+queue_free()
 const _PARTICLE_POOL_SIZE = 12
 var _particle_pool: Array = []
+var _note_fall_calculator: NoteFallCalculator = NoteFallCalculator.new()
 
 var parent_node: Node = null
 
@@ -122,16 +126,15 @@ func init_flow_area():
 	clear_flow_area()
 	notes_list = saved_notes
 	note_idx = 0
-	
-	# 从配置读取音符下落时间（秒转毫秒）
-	var note_fall_time = ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
-	note_generation_lead_time = note_fall_time * 1000.0
 
+	if EventBus.instance and not EventBus.instance.config_changed.is_connected(_on_config_changed):
+		EventBus.instance.config_changed.connect(_on_config_changed)
+	
 	# 从配置读取判定模式和判定宽度
 	judge_mode = ConfigManager.instance.get_int("Judge", "touch_judging_criteria", NoteJudger.JudgeMode.BEST_TIMING_FIFO)
 	note_judge_width = ConfigManager.instance.get_int("Judge", "block_judging_width", 100)
 	note_visual_width = ConfigManager.instance.get_int("Appearance", "block_size", note_visual_width)
-
+	_apply_note_fall_config_from_settings()
 	var lc = parent_node.get_lane_count()
 	# 初始化轨道步长（考虑左右安全区，效果对齐 Unity 的中心点分布）
 	var safe_width: float = max(1.0, get_viewport().get_visible_rect().size.x - 2.0 * float(parent_node.lane_padding))
@@ -154,7 +157,67 @@ func init_flow_area():
 
 	# 预计算下落距离和速度
 	_note_fall_distance = jl.position.y + _note_max_size_y
-	_note_fall_speed = _note_fall_distance / note_generation_lead_time
+	_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
+
+func _apply_note_fall_config_from_settings() -> void:
+	var note_fall_time = ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
+	note_generation_lead_time = max(1.0, note_fall_time * 1000.0)
+
+	var note_fall_mode = ConfigManager.instance.get_int("Generator", "note_fall_mode", 0)
+	var note_fall_speed_after_judge_multiplier = ConfigManager.instance.get_float("Generator", "note_fall_speed_after_judge_multiplier", -1.0)
+	if note_fall_speed_after_judge_multiplier <= 0.0:
+		note_fall_speed_after_judge_multiplier = ConfigManager.instance.get_float("Appearance", "grace_time", 1.0)
+
+	match note_fall_mode:
+		0:
+			var uniform_config = EasingMapper.get_preset_config(0)
+			trans_before_line = EasingMapper.string_to_trans(uniform_config["before_func"])
+			ease_before_line = EasingMapper.string_to_ease(uniform_config["before_phase"])
+			trans_after_line = EasingMapper.string_to_trans(uniform_config["after_func"])
+			ease_after_line = EasingMapper.string_to_ease(uniform_config["after_phase"])
+		1:
+			var accelerate_config = EasingMapper.get_preset_config(1)
+			trans_before_line = EasingMapper.string_to_trans(accelerate_config["before_func"])
+			ease_before_line = EasingMapper.string_to_ease(accelerate_config["before_phase"])
+			trans_after_line = EasingMapper.string_to_trans(accelerate_config["after_func"])
+			ease_after_line = EasingMapper.string_to_ease(accelerate_config["after_phase"])
+		2:
+			var before_func = ConfigManager.instance.get_string("Generator", "note_fall_easing_before_func", "LINEAR")
+			var before_phase = ConfigManager.instance.get_string("Generator", "note_fall_easing_before_phase", "IN")
+			var after_func = ConfigManager.instance.get_string("Generator", "note_fall_easing_after_func", "LINEAR")
+			var after_phase = ConfigManager.instance.get_string("Generator", "note_fall_easing_after_phase", "IN")
+
+			trans_before_line = EasingMapper.string_to_trans(before_func)
+			ease_before_line = EasingMapper.string_to_ease(before_phase)
+			trans_after_line = EasingMapper.string_to_trans(after_func)
+			ease_after_line = EasingMapper.string_to_ease(after_phase)
+		_:
+			var fallback_config = EasingMapper.get_preset_config(0)
+			trans_before_line = EasingMapper.string_to_trans(fallback_config["before_func"])
+			ease_before_line = EasingMapper.string_to_ease(fallback_config["before_phase"])
+			trans_after_line = EasingMapper.string_to_trans(fallback_config["after_func"])
+			ease_after_line = EasingMapper.string_to_ease(fallback_config["after_phase"])
+
+	_note_fall_time_seconds = note_fall_time
+	_note_fall_speed_after_judge_multiplier = max(0.01, note_fall_speed_after_judge_multiplier)
+
+func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	if section != "Generator":
+		return
+
+	if key in [
+		"note_fall_time",
+		"note_fall_mode",
+		"note_fall_speed_after_judge_multiplier",
+		"note_fall_easing_before_func",
+		"note_fall_easing_before_phase",
+		"note_fall_easing_after_func",
+		"note_fall_easing_after_phase"
+	]:
+		_apply_note_fall_config_from_settings()
+		_note_fall_distance = jl.position.y + _note_max_size_y
+		_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
+		GameLogger.instance.info("Note fall config hot-reloaded: [%s] %s=%s" % [section, key, str(value)], "FlowArea")
 
 # 修改音符颜色
 func set_note_color(type: NoteType, cl: Color):
@@ -267,12 +330,12 @@ func _spawn_note(note_index: int) -> void:
 
 	if nt.type == NoteType.Long:
 		var box = nt.rect.get_node("VBoxC")
-		var new_h = _note_fall_speed * nt.duration - 2 * note_half
+		var new_h = _note_fall_calculator.compute_long_body_height(nt.duration, _note_fall_speed, 2 * note_half)
 		box.get_node("body").custom_minimum_size.y = new_h
 
 		nt.rect.position.y -= (new_h + 2*note_half)
 
-	var fall_time = (target_pos_y - nt.rect.position.y) / _note_fall_speed / 1000
+	var fall_time = _note_fall_calculator.compute_duration_seconds(target_pos_y - nt.rect.position.y, _note_fall_speed)
 	
 	# 使用Tween创建下落动画
 	var tween = create_tween()
@@ -289,9 +352,9 @@ func _spawn_note(note_index: int) -> void:
 			_auto_click(nt)
 
 		var t = create_tween()
-		# 判定线后动画
-		var after_line_time = (parent_node.judge_line_offset_y / _note_fall_speed) / 1000.0
 		var window_y = get_viewport().get_visible_rect().size.y
+		var after_line_distance = max(1.0, window_y - target_pos_y)
+		var after_line_time = _note_fall_calculator.compute_after_line_duration_seconds(after_line_distance, _note_fall_speed, _note_fall_speed_after_judge_multiplier)
 		t.tween_property(rect, "position:y", window_y , after_line_time).set_trans(trans_after_line).set_ease(ease_after_line)
 
 		# 创建Note对象并添加到活跃列表	

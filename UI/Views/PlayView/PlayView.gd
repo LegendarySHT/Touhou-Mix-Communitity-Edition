@@ -842,6 +842,7 @@ func _init_display():
 	song.text = current_midi.song_data.name
 	# artist.text = current_midi.song_data.artist_name # 没找着歌手在哪
 	var s := int(current_midi.duration_ms / 1000.0)
+	@warning_ignore("integer_division")
 	midi_duration.text = "%02d:%02d" % [s / 60, s % 60]
 	midi_name.text = current_midi.name
 	midi_author.text = current_midi.artist_name

@@ -64,6 +64,14 @@ static var mappings: Dictionary = {
 	"note_fall_time": {"section": "Generator", "key": "note_fall_time", "value_type": "float"},
 	
 	# ========== 外观设置 ==========
+	
+		# ========== 音符下落方式 ==========
+		"note_fall_mode": {"section": "Generator", "key": "note_fall_mode", "value_type": "int"},
+		"note_fall_speed_after_judge_multiplier": {"section": "Generator", "key": "note_fall_speed_after_judge_multiplier", "value_type": "float"},
+		"note_fall_easing_before_func": {"section": "Generator", "key": "note_fall_easing_before_func", "value_type": "string"},
+		"note_fall_easing_before_phase": {"section": "Generator", "key": "note_fall_easing_before_phase", "value_type": "string"},
+		"note_fall_easing_after_func": {"section": "Generator", "key": "note_fall_easing_after_func", "value_type": "string"},
+		"note_fall_easing_after_phase": {"section": "Generator", "key": "note_fall_easing_after_phase", "value_type": "string"},
 	"randomize_block_color": {"section": "Appearance", "key": "randomize_block_color", "value_type": "int"},
 	"sync_color_across_block_type": {"section": "Appearance", "key": "sync_color_across_block_type", "value_type": "int"},
 	"instant_block_color": {"section": "Appearance", "key": "instant_block_color", "value_type": "color"},
@@ -71,10 +79,6 @@ static var mappings: Dictionary = {
 	"long_block_color": {"section": "Appearance", "key": "long_block_color", "value_type": "color"},
 	"custom_block_skin_texture_filter_mode": {"section": "Appearance", "key": "custom_block_skin_texture_filter_mode", "value_type": "int"},
 	"block_skin_preset": {"section": "Appearance", "key": "block_skin_preset", "value_type": "int"},
-	"cache_time": {"section": "Appearance", "key": "cache_time", "value_type": "float"},
-	"cache_easing_type": {"section": "Appearance", "key": "cache_easing_type", "value_type": "int"},
-	"grace_time": {"section": "Appearance", "key": "grace_time", "value_type": "float"},
-	"grace_easing_type": {"section": "Appearance", "key": "grace_easing_type", "value_type": "int"},
 	"custom_background_image_size_mode": {"section": "Appearance", "key": "custom_background_image_size_mode", "value_type": "int"},
 	"block_size": {"section": "Appearance", "key": "block_size", "value_type": "int"},
 	"background_image_preset": {"section": "Appearance", "key": "background_image_preset", "value_type": "int"},

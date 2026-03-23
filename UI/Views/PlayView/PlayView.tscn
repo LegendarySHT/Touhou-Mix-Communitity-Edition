@@ -13,8 +13,7 @@ colors = PackedColorArray(0.3882353, 0.20392157, 0.654902, 1, 0.71, 0.355, 0.71,
 gradient = SubResource("Gradient_7ak4s")
 fill_to = Vector2(1, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_50kwk"]
-bg_color = Color(1, 1, 1, 1)
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_50kwk"]
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_uj6qe"]
 color = Color(2, 2, 2, 1)
@@ -23,8 +22,6 @@ thickness = 10
 [sub_resource type="Environment" id="Environment_jlvmc"]
 background_color = Color(1, 1, 1, 1)
 background_canvas_max_layer = 1
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_50kwk"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kvdpo"]
 bg_color = Color(0.25336733, 0.36870298, 0.8464057, 1)
