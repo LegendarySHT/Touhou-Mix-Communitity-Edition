@@ -131,7 +131,7 @@ func load_config(file_path: String) -> Dictionary:
 ## 加载配置文件并设置为当前活跃配置
 ## 优先加载用户配置，如果不存在或为空则加载默认配置
 ## 然后用默认配置补充缺失的部分
-func load_and_set_current(file_path: String = "") -> Dictionary:
+func load_and_set_current(_file_path: String = "") -> Dictionary:
 	# 清除缓存以确保读取最新的文件内容
 	configs.clear()
 	

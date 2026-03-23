@@ -868,10 +868,6 @@ func _initialize_meltysynth_backend() -> bool:
 	
 	print("[MidiPlaybackManager] CSharpBackend child node found")
 	
-	# 尝试设置属性
-	if not wrapper.has_meta("script"):
-		push_warning("[MidiPlaybackManager] MeltySynth wrapper does not have script meta")
-	
 	# 设置meltysynth_player属性
 	wrapper.set("meltysynth_player", csharp_backend)
 	print("[MidiPlaybackManager] Set meltysynth_player property on wrapper")

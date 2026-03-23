@@ -317,9 +317,11 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 				for ch in channels:
 					enabled_pairs["%d:%d" % [int(track_index), int(ch)]] = true
 
+	# 声明 entry 变量，传递缓存数据
+	var entry: Dictionary = _info_cache.get(midi.id, {})
+	
 	# 全部禁用时直接写 0，不需要走 generate_keys
 	if configs_initialized and enabled_pairs.is_empty():
-		var entry: Dictionary = _info_cache.get(midi.id, {})
 		entry["note_str"] = "0"
 		entry["mpp_str"]  = "—"
 		_info_cache[midi.id] = entry
@@ -337,8 +339,6 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 				var key := "%d:%d" % [note.event.track_index, note.event.channel]
 				if enabled_pairs.has(key):
 					filtered.append(note)
-
-	var entry: Dictionary = _info_cache.get(midi.id, {})
 
 	if filtered.is_empty():
 		entry["note_str"] = "0"

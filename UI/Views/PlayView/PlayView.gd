@@ -227,11 +227,11 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 func _load_debug_display_setting() -> void:
 	show_debug_info = ConfigManager.instance.get_int("General", "display_debug_info", 0) == 1
 
-func _set_debug_overlay_visible(visible: bool) -> void:
+func _set_debug_overlay_visible(is_visible: bool) -> void:
 	if debug_info_label == null:
 		return
 
-	debug_info_label.visible = visible
+	debug_info_label.visible = is_visible
 	debug_info_elapsed = debug_info_refresh_interval
 	if visible:
 		_update_debug_overlay()

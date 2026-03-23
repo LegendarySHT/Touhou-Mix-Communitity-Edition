@@ -112,13 +112,13 @@ static func trans_to_string(trans: int) -> String:
 	return "LINEAR"
 
 ## 将Tween.EASE_*常量转换为缓动相位名称
-## @param ease Tween.EASE_*常量值
+## @param ease_type Tween.EASE_*常量值
 ## @return 缓动相位名称（如"OUT"），如果不存在则返回"OUT"
-static func ease_to_string(ease: int) -> String:
-	if ease in ease_int_to_name:
-		return ease_int_to_name[ease]
+static func ease_to_string(ease_type: int) -> String:
+	if ease_type in ease_int_to_name:
+		return ease_int_to_name[ease_type]
 	
-	GameLogger.instance.warning("Unknown ease constant: %d, using OUT as fallback" % ease, "EasingMapper")
+	GameLogger.instance.warning("Unknown ease constant: %d, using OUT as fallback" % ease_type, "EasingMapper")
 	return "OUT"
 
 ## 生成组合的缓动名称字符串（func + phase）

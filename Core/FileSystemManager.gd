@@ -586,8 +586,8 @@ func scan_charts() -> void:
 	
 	GameLogger.instance.info("Scanned %d charts" % count, "FileSystemMGR")
 
-func emit_scan_completed(str, ctn):
-	resource_scan_completed.emit(str, ctn)
+func emit_scan_completed(p_str, ctn):
+	resource_scan_completed.emit(p_str, ctn)
 
 ## 加载谱面元数据（从谱面文件夹）
 ## 文件夹命名格式：{hash}_{song_name}_{difficulty}/
