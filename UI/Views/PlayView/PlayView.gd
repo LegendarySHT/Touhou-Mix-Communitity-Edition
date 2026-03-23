@@ -101,6 +101,8 @@ func _ready() -> void:
 	
 	# 窗口大小变化
 	get_window().size_changed.connect(_init_lane_display)
+	if not get_window().focus_exited.is_connected(_on_window_focus_exited):
+		get_window().focus_exited.connect(_on_window_focus_exited)
 
 	EventBus.instance.start_game_with.connect(_prepare_game)
 	UIStateManager.instance.state_changed.connect(_on_state_changed)
@@ -138,6 +140,10 @@ func _ready() -> void:
 	_set_debug_overlay_visible(show_debug_info)
 	
 	env.environment = null
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		_auto_pause_on_background("app_notification_%d" % what)
 
 var current_time: float = 0
 var max_time: float = 20
@@ -261,14 +267,32 @@ var is_pause: bool = false:
 
 func show_or_hide_menu():
 	song_info.visible = false
-	is_pause = not is_pause
-	
 	if is_pause:
-		ani.animate_fade_in(menu, 0.2, "_show_menu")
-		ani.animate_fade_in(center_bg, 0.2, "_show_bg")
-	else:
+		is_pause = false
 		ani.animate_fade_out(menu, 0.2, "_show_menu")
 		ani.animate_fade_out(center_bg, 0.2, "_show_bg")
+	else:
+		_show_pause_menu()
+
+func _show_pause_menu() -> void:
+	song_info.visible = false
+	is_pause = true
+	ani.animate_fade_in(menu, 0.2, "_show_menu")
+	ani.animate_fade_in(center_bg, 0.2, "_show_bg")
+
+func _on_window_focus_exited() -> void:
+	_auto_pause_on_background("window_focus_exited")
+
+func _auto_pause_on_background(reason: String) -> void:
+	if UIStateManager.instance.current_state != UIStateManager.UIState.PLAY_VIEW:
+		return
+	if not is_midi_playing:
+		return
+	if is_pause:
+		return
+
+	_show_pause_menu()
+	GameLogger.instance.info("Auto pause triggered by background event: %s" % reason, "PlayView")
 
 func _prepare_game(midi:MidiData = current_midi) -> void:
 	current_midi = midi
