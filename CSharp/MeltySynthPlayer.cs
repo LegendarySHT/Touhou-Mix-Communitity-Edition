@@ -39,12 +39,13 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	private int _sampleRate;
 	private float _volumeLinear = 1.0f;
+	private const float MELTYSYNTH_OUTPUT_GAIN = 4.5f; //音量增益，整体调整meltySynth整体音量
 	private bool _sequencerStarted = false;  // 追踪 sequencer 是否已启动
 	private double _pendingSeekMs = double.NaN;  // 待处理的 seek 位置（NaN 表示无待处理的 seek）
 	private double _currentOffsetMs = 0.0;  // 当前相对于 sequencer 的时间偏移（支持负数 pre-roll）
 	private bool _hasSkippedPreroolEvents = false;  // 标志：已跳过 pre-roll 事件
 
-	// 【修复D】系统时钟模式的时间追踪
+	// 系统时钟模式的时间追踪
 	private bool _useSystemStopwatch = false;      // 是否启用系统时钟模式
 	private ulong _playStartTime = 0;              // 播放开始时的系统时间（毫秒）
 	private double _playStartPositionMs = 0.0;     // 播放开始时的MIDI位置
@@ -307,7 +308,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 							 _rightBuffer.AsSpan(0, framesAvailable));
 		}
 
-		var scale = _volumeLinear;
+		var scale = _volumeLinear * MELTYSYNTH_OUTPUT_GAIN;
 		for (var i = 0; i < framesAvailable; i++)
 		{
 			var left = _leftBuffer[i] * scale;
