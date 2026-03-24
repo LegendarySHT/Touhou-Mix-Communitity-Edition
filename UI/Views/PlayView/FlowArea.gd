@@ -98,6 +98,9 @@ class Note:
 
 	# 用于滑键
 	var can_judge: bool = false
+	
+	# 防止重复判定标志
+	var is_judged: bool = false  # 已被判定过，防止同一note重复记录combo
 
 	# 用于长条
 	var is_held: bool = false    	# 是否被按住
@@ -533,6 +536,8 @@ func _check_slides_at_touch_pos(touch_id: int, pos: Vector2) -> void:
 		if note.can_judge and note.held_by_touch_id == touch_id and distance_to_touch > note_judge_width:
 			if abs(parent_node.current_time - note.start_time) < 100:
 				_judge_note(note, true)
+				# 判定后立即设置标志，防止重复判定
+				note.can_judge = false
 			else:
 				note.can_judge = false
 
@@ -669,6 +674,10 @@ func set_current_time(time_ms: float) -> void:
 	_synced_current_time = time_ms
 
 func _judge_note(judge_note: Note, trigger_vibration: bool = false):
+	# 防止重复判定：如果该note已被判定过，直接返回
+	if judge_note.is_judged:
+		return
+	
 	var time_diff = judge_note.start_time - _synced_current_time  # 毫秒 【方案C】使用同步时间
 	var abs_diff = abs(time_diff)
 	var result: String = "Bad"
@@ -688,6 +697,9 @@ func _judge_note(judge_note: Note, trigger_vibration: bool = false):
 	# 将 NoteType 映射到 BlockType (值相同: Block=0→INSTANT, Slide=1→SHORT, Long=2→LONG)
 	var block_type: int = judge_note.type
 
+	# 标记该note已被判定，防止重复
+	judge_note.is_judged = true
+	
 	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff],
 		block_type, timing_sec, signed_offset_sec)
 	if trigger_vibration:

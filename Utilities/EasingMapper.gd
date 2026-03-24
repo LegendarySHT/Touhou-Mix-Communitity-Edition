@@ -166,7 +166,7 @@ static func get_preset_config(preset_mode: int) -> Dictionary:
 				"before_func": "QUAD",
 				"before_phase": "IN",
 				"after_func": "QUAD",
-				"after_phase": "IN"
+			 	"after_phase": "IN"
 			}
 		_:  # 默认（匀速）
 			return {
