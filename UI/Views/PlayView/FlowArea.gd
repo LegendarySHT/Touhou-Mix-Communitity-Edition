@@ -106,6 +106,8 @@ class Note:
 	var is_held: bool = false    	# 是否被按住
 	var cooldown: float = 0      	# 长按时的触发计时器
 	var long_instance_id: int = -1  # 同一长条的唯一 ID（用于 ScoreCalculator 衰减链）
+	var long_head_height: float = 0.0
+	var long_tail_height: float = 0.0
 	
 	static var _next_long_id: int = 0
 	static func _gen_long_id() -> int:
@@ -326,23 +328,24 @@ func _spawn_note(note_index: int) -> void:
 	var note_half = rect.size.y/2
 	if nt.type == NoteType.Long:
 		await get_tree().process_frame
-		note_half = nt.rect.get_node("VBoxC/tail").size.y/2
+		nt.long_tail_height = nt.rect.get_node("VBoxC/tail").size.y
+		nt.long_head_height = nt.rect.get_node("VBoxC/head").size.y
+		note_half = nt.long_tail_height / 2.0
 	
 	var target_pos_y = jl.position.y - note_half
 	nt.rect.position.y = target_pos_y - _note_fall_distance # 因为音符需要匀速所以动态起点
 
 	if nt.type == NoteType.Long:
-		var box = nt.rect.get_node("VBoxC")
-		var new_h = _note_fall_calculator.compute_long_body_height(nt.duration, _note_fall_speed, 2 * note_half)
-		box.get_node("body").custom_minimum_size.y = new_h
-
-		nt.rect.position.y -= (new_h + 2*note_half)
+		active_notes.append(nt)
+		nt.tween = null
+		_update_long_note_fall(nt, _synced_current_time)
+		return
 
 	var fall_time = _note_fall_calculator.compute_duration_seconds(target_pos_y - nt.rect.position.y, _note_fall_speed)
-	
+
 	# 使用Tween创建下落动画
 	var tween = create_tween()
-	
+
 	tween.tween_property(rect, "position:y", target_pos_y, fall_time).set_trans(trans_before_line).set_ease(ease_before_line)
 	active_notes.append(nt)
 	nt.tween = tween
@@ -371,6 +374,58 @@ func _spawn_note(note_index: int) -> void:
 				note_judged.emit("Miss", "", nt.type, 1.0, 0.0)
 		)
 	)
+
+func _compute_center_y_by_judge_time(judge_time_ms: float, current_time_ms: float, half_height: float) -> float:
+	var pre_ms = max(1.0, _note_fall_time_seconds * 1000.0)
+	var spawn_time_ms = judge_time_ms - pre_ms
+
+	if current_time_ms <= judge_time_ms:
+		var progress = clamp((current_time_ms - spawn_time_ms) / pre_ms, 0.0, 1.0)
+		var eased = _note_fall_calculator.evaluate_curve_progress(progress, trans_before_line, ease_before_line)
+		return jl.position.y - _note_fall_distance + eased * _note_fall_distance
+
+	var window_y = get_viewport().get_visible_rect().size.y
+	var after_distance = max(1.0, window_y - jl.position.y + half_height)
+	var after_time_ms = max(
+		1.0,
+		_note_fall_calculator.compute_after_line_duration_seconds(after_distance, _note_fall_speed, _note_fall_speed_after_judge_multiplier) * 1000.0
+	)
+	var after_progress = clamp((current_time_ms - judge_time_ms) / after_time_ms, 0.0, 1.0)
+	var eased_after = _note_fall_calculator.evaluate_curve_progress(after_progress, trans_after_line, ease_after_line)
+	return jl.position.y + eased_after * after_distance
+
+func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
+	if not note.rect:
+		return
+
+	var box := note.rect.get_node("VBoxC") as Control
+	var head := box.get_node("head") as Control
+	var tail := box.get_node("tail") as Control
+	var body := box.get_node("body") as Control
+
+	if note.long_head_height <= 0.0:
+		note.long_head_height = head.size.y
+	if note.long_tail_height <= 0.0:
+		note.long_tail_height = tail.size.y
+
+	var head_half = note.long_head_height * 0.5
+	var tail_half = note.long_tail_height * 0.5
+
+	var head_center = _compute_center_y_by_judge_time(note.start_time, current_time_ms, head_half)
+	var tail_center = _compute_center_y_by_judge_time(note.start_time + max(0.0, note.duration), current_time_ms, tail_half)
+
+	var tail_top = tail_center - tail_half
+	var tail_bottom = tail_center + tail_half
+	var head_top = head_center - head_half
+
+	body.custom_minimum_size.y = max(0.0, head_top - tail_bottom)
+	note.rect.position.y = tail_top
+
+	if not note.is_judged:
+		var window_y = get_viewport().get_visible_rect().size.y
+		if tail_top > window_y:
+			_remove_note(note)
+			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
 
 var _auto_hold_idx: int = 0
 func _auto_click(note: Note):
@@ -738,6 +793,10 @@ func _process(delta: float) -> void:
 	while note_idx < notes_list.size() and notes_list[note_idx].start_time < parent_node.current_time + note_generation_lead_time:
 		_spawn_note(note_idx)
 		note_idx += 1
+
+	for note in active_notes:
+		if note.type == NoteType.Long and not note.is_held:
+			_update_long_note_fall(note, _synced_current_time)
 	
 	# 自动按长条
 	if auto_mode:
