@@ -181,7 +181,6 @@ func get_lane_color(lane_idx: int):
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
 	set_process(enable)
-	set_process_input(enable)
 	get_node("Layer").visible = enable
 	env.environment = current_env if enable else null
 	
@@ -507,74 +506,6 @@ func _filter_notes_by_enabled_track_channels(all_notes: Array, midi_data: MidiDa
 	GameLogger.instance.info("Filtered result by (track,channel): %d notes out of %d" % [filtered.size(), all_notes.size()], "PlayView")
 	
 	return filtered
-
-## 处理键盘输入触发音符播放
-func _process_input(event: InputEvent) -> void:
-	if not play_mode or not is_midi_playing or game_sequences.is_empty():
-		return
-	
-	# 检查键盘按键事件（演奏模式下才响应键盘输入）
-	if event is InputEventKey and event.pressed:
-		var current_time_ms = playback_mgr.get_position_ms()
-		
-		# 检查是否有键盘映射
-		if keyboard_mode:
-			# 根据键盘按键找对应的lane
-			var key_index = key_map.find(event.keycode)
-			if key_index >= 0:
-				_trigger_key_press(key_index, current_time_ms)
-				get_tree().root.set_input_as_handled()
-
-## 输入事件回调 - Godot标准方法
-func _input(event: InputEvent) -> void:
-	_process_input(event)
-
-## 触发指定键的音符播放
-func _trigger_key_press(key_index: int, current_time_ms: float) -> void:
-	if key_index < 0 or key_index >= get_lane_count():
-		return
-	
-	# 计算该key对应的lane
-	var lc = get_lane_count()
-	var target_lane = key_index % lc
-	
-	# 查找当前时间接近的游戏序列（判定窗口内）
-	var judge_window_ms = 150.0  # 判定窗口（毫秒）
-	var triggered_sequences: Array[KeySequenceManager.GameSequence] = []
-	
-	for seq in game_sequences:
-		var time_diff = abs(seq.start_time_ms - current_time_ms)
-		# 只触发在时间窗口内且pitch对应的lane匹配的序列
-		if time_diff <= judge_window_ms:
-			var seq_lane = seq.pitch % lc
-			if seq_lane == target_lane:
-				triggered_sequences.append(seq)
-	
-	# 如果找到匹配的序列，触发所有pitch的音符
-	if not triggered_sequences.is_empty():
-		for seq in triggered_sequences:
-			# 播放该序列的所有pitch
-			for pitch in seq.pitch_list:
-				_play_note(pitch, seq.velocity)
-		
-		GameLogger.instance.info("Triggered %d notes at key %d (time: %.0f ms)" % [triggered_sequences.size(), key_index, current_time_ms], "PlayView")
-
-## 通过MIDI播放单个音符
-func _play_note(pitch: int, velocity: int = 100) -> void:
-	if playback_mgr == null or not playback_mgr.midi_player:
-		return
-	
-	# 使用MIDI播放器的note_on方法（如果可用）
-	# 这里假设midi_player有note_on和note_off方法
-	var midi_player = playback_mgr.midi_player
-	if midi_player and midi_player.has_method("note_on"):
-		# 发送Note On事件
-		midi_player.note_on(0, pitch, velocity)  # channel 0, 持续50ms
-		
-		# 延迟后发送Note Off事件
-		await get_tree().create_timer(0.05).timeout
-		if midi_player and midi_player.has_method("note_off"):
-			midi_player.note_off(0, pitch)
 
 ## 从ConfigManager加载键盘和轨道相关的参数
 func _load_lane_parameters() -> void:
