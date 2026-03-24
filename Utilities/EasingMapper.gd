@@ -164,7 +164,7 @@ static func get_preset_config(preset_mode: int) -> Dictionary:
 		1:  # 加速下落
 			return {
 				"before_func": "QUAD",
-				"before_phase": "OUT",
+				"before_phase": "IN",
 				"after_func": "QUAD",
 				"after_phase": "IN"
 			}
