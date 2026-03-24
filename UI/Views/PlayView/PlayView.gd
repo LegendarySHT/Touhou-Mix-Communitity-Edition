@@ -422,14 +422,11 @@ func _generate_game_sequences(midi_data: MidiData) -> void:
 		key_sequence_mgr.set_midi_time_parameters(playback_mgr.midi_timebase, playback_mgr.bpm_timeline)
 		key_sequence_mgr.set_screen_size(lane_area.size.x)
 	
-	# 获取启用的音轨列表
-	var enabled_track_indices = _get_enabled_track_indices(midi_data)
-	
-	# 筛选只有启用音轨的音符
-	var enabled_notes = _filter_notes_by_enabled_tracks(midi_data.parsed_notes, enabled_track_indices)
+	# 按启用的(track, channel)筛选音符
+	var enabled_notes = _filter_notes_by_enabled_track_channels(midi_data.parsed_notes, midi_data)
 	
 	if enabled_notes.is_empty():
-		GameLogger.instance.warning("No notes in enabled tracks", "PlayView")
+		GameLogger.instance.warning("No notes in enabled (track, channel) pairs", "PlayView")
 		return
 	
 	# 调用键序列管理器生成游戏键
@@ -467,63 +464,47 @@ func _generate_game_sequences(midi_data: MidiData) -> void:
 	game_sequences = raw_sequences
 	print("[PlayView] game_sequences assigned, size = %d" % game_sequences.size())
 	
-	GameLogger.instance.info("Generated %d game sequences for play mode (enabled tracks: %s)" % [game_sequences.size(), enabled_track_indices], "PlayView")
+	GameLogger.instance.info("Generated %d game sequences for play mode" % game_sequences.size(), "PlayView")
 
-## 获取启用的音轨列表（从MidiData.selected_track_configs读取）
-func _get_enabled_track_indices(midi_data: MidiData) -> Array[int]:
-	var enabled: Array[int] = []
-	
-	# 调试：打印 selected_track_configs 内容
-	GameLogger.instance.info("selected_track_configs: %s" % str(midi_data.selected_track_configs), "PlayView")
-	
-	# selected_track_configs 是 Dictionary，格式: {track_idx: [channel1, channel2, ...]}
-	# 轨道存在且有通道列表说明该轨道启用
-	for track_index in midi_data.selected_track_configs.keys():
-		var channels = midi_data.selected_track_configs[track_index]
-		# 只有当通道列表不为空时，才认为该轨道启用
-		if channels is Array and not channels.is_empty():
-			enabled.append(int(track_index))
-			GameLogger.instance.info("Track %d enabled with channels: %s" % [track_index, str(channels)], "PlayView")
-	
-	# 如果没有启用的音轨
-	if enabled.is_empty():
-		if midi_data._track_config_initialized and midi_data.selected_track_configs.is_empty():
-			push_error("[PlayView] All tracks are disabled! Cannot play game without enabled tracks.")
-		else:
-			push_error("[PlayView] No enabled tracks found and no default configuration applied!")
-	
-	GameLogger.instance.info("Final enabled tracks: %s" % str(enabled), "PlayView")
-	return enabled
-
-## 筛选只有启用音轨的音符
-func _filter_notes_by_enabled_tracks(all_notes: Array, enabled_track_indices: Array[int]) -> Array:
+## 按启用的(track, channel)筛选音符
+func _filter_notes_by_enabled_track_channels(all_notes: Array, midi_data: MidiData) -> Array:
 	var filtered: Array = []
-	var enabled_set = {}
 	
-	# 构建快速查找的Set
-	for track_idx in enabled_track_indices:
-		enabled_set[track_idx] = true
-	
-	GameLogger.instance.info("Filtering %d notes, enabled tracks: %s" % [all_notes.size(), str(enabled_track_indices)], "PlayView")
+	if midi_data == null:
+		GameLogger.instance.warning("midi_data is null when filtering notes", "PlayView")
+		return filtered
+
+	# selected_track_configs 是 Dictionary，格式: {track_idx: [channel1, channel2, ...]}
+	if midi_data.selected_track_configs.is_empty():
+		if midi_data._track_config_initialized:
+			push_error("[PlayView] All (track, channel) pairs are disabled! Cannot play game without enabled notes.")
+		else:
+			push_error("[PlayView] No (track, channel) configuration found and no default configuration applied!")
+		return filtered
+
+	GameLogger.instance.info("selected_track_configs: %s" % str(midi_data.selected_track_configs), "PlayView")
+	GameLogger.instance.info("Filtering %d notes by enabled (track, channel) pairs" % all_notes.size(), "PlayView")
 	
 	# 筛选音符
-	var track_stats = {}  # 统计每个轨道的音符数
+	var pair_stats = {}  # 统计每个(track, channel)对的音符数
 	for note in all_notes:
 		if note is MidiParser.Note and note.event != null:
 			var evt = note.event
-			var track_idx = evt.track_index
+			var track_idx = int(evt.track_index)
+			var channel = int(evt.channel)
+			var pair_key = "%d:%d" % [track_idx, channel]
 			
 			# 统计
-			if not track_stats.has(track_idx):
-				track_stats[track_idx] = 0
-			track_stats[track_idx] += 1
+			if not pair_stats.has(pair_key):
+				pair_stats[pair_key] = 0
+			pair_stats[pair_key] += 1
 			
 			# 筛选
-			if enabled_set.has(track_idx):
+			if midi_data.is_track_channel_selected(track_idx, channel):
 				filtered.append(note)
 	
-	GameLogger.instance.info("Track note stats: %s" % str(track_stats), "PlayView")
-	GameLogger.instance.info("Filtered result: %d notes out of %d" % [filtered.size(), all_notes.size()], "PlayView")
+	GameLogger.instance.info("Track-channel note stats: %s" % str(pair_stats), "PlayView")
+	GameLogger.instance.info("Filtered result by (track,channel): %d notes out of %d" % [filtered.size(), all_notes.size()], "PlayView")
 	
 	return filtered
 
