@@ -412,6 +412,8 @@ func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 	var tail_half = note.long_tail_height * 0.5
 
 	var head_center = _compute_center_y_by_judge_time(note.start_time, current_time_ms, head_half)
+	if note.is_held:
+		head_center = jl.position.y
 	var tail_center = _compute_center_y_by_judge_time(note.start_time + max(0.0, note.duration), current_time_ms, tail_half)
 
 	var tail_top = tail_center - tail_half
@@ -421,7 +423,7 @@ func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 	body.custom_minimum_size.y = max(0.0, head_top - tail_bottom)
 	note.rect.position.y = tail_top
 
-	if not note.is_judged:
+	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
 		var window_y = get_viewport().get_visible_rect().size.y
 		if tail_top > window_y:
 			_remove_note(note)
@@ -570,6 +572,8 @@ func _handle_touch_drag(touch_id: int, pos: Vector2) -> void:
 # 按住长条音符
 # 注意：调用方负责在调用此函数之前已通过 _judge_note() 完成判定
 func _hold_long_note(touch_id: int, note: Note) -> void:
+	# 兜底：长条进入按住态后不应再走未判定 Miss 分支
+	note.is_judged = true
 	note.is_held = true
 	note.held_by_touch_id = touch_id
 	# 为新长条分配唯一实例 ID（用于 ScoreCalculator 独立衰减链）
@@ -813,7 +817,7 @@ func _process(delta: float) -> void:
 		note_idx += 1
 
 	for note in active_notes:
-		if note.type == NoteType.Long and not note.is_held:
+		if note.type == NoteType.Long:
 			_update_long_note_fall(note, _synced_current_time)
 	
 	# 自动按长条
@@ -826,25 +830,23 @@ func _process(delta: float) -> void:
 			_auto_click(long)
 
 	# 更新长条音符的按住进度和显示
-	for touch_id in active_holds:
+	for touch_id in active_holds.keys():
 		var note = active_holds[touch_id]
-		if note.is_held:
-			# 更新进度
-			var vbox = note.rect.get_node("VBoxC")
-			var n_half = vbox.get_node("head").size.y / 2
-			var h = jl.position.y - vbox.global_position.y - n_half * 3 - 3
-			if h >= 0:
-				vbox.get_node("body").custom_minimum_size.y = h
-			else: # 提前判定掉防止错位
-				# note_judged.emit("Perfect", "完成") # 如果尾部算一个音符的话可以取消注释这个
-				_generate_particle("Perfect", vbox.get_node("head").global_position + Vector2(float(note_visual_width)/2, n_half))
-				_remove_note(note)
-				active_holds.erase(touch_id)
-				continue
-			
-			# 加分及加combo
-			if note.cooldown > 0.25: # 0.25是触发频率
-				note.cooldown = 0
-				long_holding.emit(note.long_instance_id)
-			else:
-				note.cooldown += delta
+		if not note or not note.rect or not note.is_held:
+			continue
+
+		var long_end_time = note.start_time + max(0.0, note.duration)
+		if _synced_current_time >= long_end_time:
+			var head = note.rect.get_node("VBoxC/head") as Control
+			var n_half = head.size.y * 0.5
+			_generate_particle("Perfect", head.global_position + Vector2(float(note_visual_width) * 0.5, n_half))
+			_remove_note(note)
+			active_holds.erase(touch_id)
+			continue
+
+		# 加分及加combo
+		if note.cooldown > 0.25: # 0.25是触发频率
+			note.cooldown = 0
+			long_holding.emit(note.long_instance_id)
+		else:
+			note.cooldown += delta
