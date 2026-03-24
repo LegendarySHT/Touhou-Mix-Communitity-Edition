@@ -462,11 +462,12 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 		return
 
+	var event_time_ms := _get_realtime_position_ms()
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			# 手指按下
 			touch_positions[event.index] = event.position
-			_handle_press(event.index, event.position)
+			_handle_press(event.index, event.position, event_time_ms)
 		else:
 			# 手指松开
 			if event.index in touch_positions:
@@ -480,7 +481,7 @@ func _gui_input(event: InputEvent) -> void:
 	# 桌面端鼠标点击/松开（复用触摸逻辑）
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			_handle_press(-1, event.position)
+			_handle_press(-1, event.position, event_time_ms)
 		else:
 			_handle_release(-1)
 	# 桌面端鼠标拖动（用于长条跟随）
@@ -489,9 +490,9 @@ func _gui_input(event: InputEvent) -> void:
 			_handle_touch_drag(-1, event.position)
 
 	if (event is InputEventScreenTouch or event is InputEventScreenDrag) and event.index in touch_positions:
-		_check_slides_at_touch_pos(event.index, touch_positions[event.index])
+		_check_slides_at_touch_pos(event.index, touch_positions[event.index], event_time_ms)
 	elif event is InputEventMouseMotion and -1 in active_holds:
-		_check_slides_at_touch_pos(-1, event.position)
+		_check_slides_at_touch_pos(-1, event.position, event_time_ms)
 
 func _input(event: InputEvent) -> void:
 
@@ -507,9 +508,10 @@ func _input(event: InputEvent) -> void:
 
 			if event.pressed:
 				var idx = parent_node.key_map.find(event.keycode)
+				var event_time_ms := _get_realtime_position_ms()
 				pressed_keys[event.keycode] = idx
 				# 使用统一的判定函数，支持所有音符类型
-				var bn = judge_note_at_lane(idx, idx)
+				var bn = judge_note_at_lane(idx, idx, event_time_ms)
 				if bn:
 					if bn.type == NoteType.Long:
 						_hold_long_note(event.keycode, bn)
@@ -522,13 +524,13 @@ func _input(event: InputEvent) -> void:
 			parent_node.show_or_hide_menu()
 
 # 处理触摸按下
-func _handle_press(touch_id: int, pos: Vector2) -> void:
+func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> void:
 	var note = note_judger.find_best_note(pos, active_notes, jl.position.y, note_judge_width, judge_mode)
 	if note == null:
 		return
 	if parent_node.play_mode and note.game_sequence_ref:
 		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
-	_judge_note(note, true)
+	_judge_note(note, true, input_time_ms)
 	if note.type == NoteType.Long:
 		_hold_long_note(touch_id, note)
 
@@ -576,7 +578,11 @@ func _hold_long_note(touch_id: int, note: Note) -> void:
 	active_holds[touch_id] = note
 
 # 检查slide音符是否在手指范围内（用于自动判定接近判定线的slide）
-func _check_slides_at_touch_pos(touch_id: int, pos: Vector2) -> void:
+func _check_slides_at_touch_pos(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> void:
+	var judge_time_ms := input_time_ms
+	if judge_time_ms < 0.0:
+		judge_time_ms = _get_realtime_position_ms()
+
 	for note in active_notes.filter(func (n):
 			if n.type == NoteType.Slide:
 				return true
@@ -589,8 +595,8 @@ func _check_slides_at_touch_pos(touch_id: int, pos: Vector2) -> void:
 		var distance_to_touch = abs(pos.x - note_x)
 
 		if note.can_judge and note.held_by_touch_id == touch_id and distance_to_touch > note_judge_width:
-			if abs(parent_node.current_time - note.start_time) < 100:
-				_judge_note(note, true)
+			if abs(judge_time_ms - note.start_time) < 100:
+				_judge_note(note, true, judge_time_ms)
 				# 判定后立即设置标志，防止重复判定
 				note.can_judge = false
 			else:
@@ -619,7 +625,7 @@ func _get_note_center_y(note: Note) -> float:
 
 ## 键盘模式专用：在指定轨道范围内查找最合适的音符并完成判定
 ## 触摸模式请使用 _handle_press()（通过 NoteJudger 实现）
-func judge_note_at_lane(lane_l: int, lane_r: int) -> Note:
+func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -> Note:
 	var best_note: Note = null
 	var best_score: float = INF
 
@@ -646,7 +652,7 @@ func judge_note_at_lane(lane_l: int, lane_r: int) -> Note:
 	if best_note:
 		if parent_node.play_mode and best_note.game_sequence_ref:
 			_trigger_midi_notes_from_sequence(best_note.game_sequence_ref)
-		_judge_note(best_note, true)
+		_judge_note(best_note, true, input_time_ms)
 		return best_note
 	return null
 
@@ -670,16 +676,21 @@ func _trigger_midi_notes_from_sequence(game_seq: Object) -> void:
 				midi_player.trigger_note_on(evt.pitch, evt.velocity, evt.channel)
 			elif midi_player.has_method("note_on"):
 				midi_player.note_on(evt.channel, evt.pitch, evt.velocity)
-			
-			# 延迟note_off（使用GameSequence的duration_ms）
+
+			# 非阻塞调度 note_off（避免循环内 await 导致后续音符串行延后）
 			var delay_seconds = (game_seq.duration_ms / 1000.0) if game_seq.duration_ms > 0 else 0.1
-			
-			await get_tree().create_timer(delay_seconds).timeout
-			
-			if midi_player.has_method("trigger_note_off"):
-				midi_player.trigger_note_off(evt.pitch, evt.velocity, evt.channel)
-			elif midi_player.has_method("note_off"):
-				midi_player.note_off(evt.channel, evt.pitch)
+			_schedule_note_off(midi_player, evt.pitch, evt.velocity, evt.channel, delay_seconds)
+
+func _schedule_note_off(midi_player: Object, pitch: int, velocity: int, channel: int, delay_seconds: float) -> void:
+	var timer = get_tree().create_timer(max(delay_seconds, 0.01))
+	timer.timeout.connect(func():
+		if not is_instance_valid(midi_player):
+			return
+		if midi_player.has_method("trigger_note_off"):
+			midi_player.trigger_note_off(pitch, velocity, channel)
+		elif midi_player.has_method("note_off"):
+			midi_player.note_off(channel, pitch)
+	)
 
 func _trigger_touch_vibration() -> void:
 	if not Input.has_method("vibrate_handheld"):
@@ -728,12 +739,19 @@ func _generate_particle(type: String, pos: Vector2) -> void:
 func set_current_time(time_ms: float) -> void:
 	_synced_current_time = time_ms
 
-func _judge_note(judge_note: Note, trigger_vibration: bool = false):
+func _get_realtime_position_ms() -> float:
+	var playback_mgr = MidiPlaybackManager.instance
+	if playback_mgr:
+		return playback_mgr.get_position_ms()
+	return _synced_current_time
+
+func _judge_note(judge_note: Note, trigger_vibration: bool = false, input_time_ms: float = -1.0):
 	# 防止重复判定：如果该note已被判定过，直接返回
 	if judge_note.is_judged:
 		return
-	
-	var time_diff = judge_note.start_time - _synced_current_time  # 毫秒 【方案C】使用同步时间
+
+	var judge_time_ms := input_time_ms if input_time_ms >= 0.0 else _get_realtime_position_ms()
+	var time_diff = judge_note.start_time - judge_time_ms  # 毫秒，优先使用事件时刻的实时播放位置
 	var abs_diff = abs(time_diff)
 	var result: String = "Bad"
 
