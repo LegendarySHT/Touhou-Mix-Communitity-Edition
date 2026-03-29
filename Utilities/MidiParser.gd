@@ -76,7 +76,7 @@ class ManualControlNote extends Note:
 			return
 		
 		is_on = true
-		midi_player.trigger_note_on(event.pitch, event.velocity, event.channel)
+		midi_player.trigger_note_on(event.pitch, event.velocity, event.channel, event.track_index)
 	
 	## 手动触发noteOff
 	func stop() -> void:
@@ -85,7 +85,7 @@ class ManualControlNote extends Note:
 			return
 		
 		is_off = true
-		midi_player.trigger_note_off(event.pitch, event.velocity, event.channel)
+		midi_player.trigger_note_off(event.pitch, event.velocity, event.channel, event.track_index)
 
 ## MIDI轨道信息
 class TrackInfo:

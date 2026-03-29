@@ -88,11 +88,11 @@ func set_track_channel_mute(_track_index: int, _channel: int, _muted: bool) -> v
 	push_error("set_track_channel_mute not implemented")
 
 ## 手动触发Note On
-func trigger_note_on(_pitch: int, _velocity: int, _channel: int) -> void:
+func trigger_note_on(_pitch: int, _velocity: int, _channel: int, _track_index: int = 0) -> void:
 	push_error("trigger_note_on not implemented")
 
 ## 手动触发Note Off
-func trigger_note_off(_pitch: int, _velocity: int, _channel: int) -> void:
+func trigger_note_off(_pitch: int, _velocity: int, _channel: int, _track_index: int = 0) -> void:
 	push_error("trigger_note_off not implemented")
 
 ## 获取可用乐器列表

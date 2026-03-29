@@ -110,16 +110,16 @@ func get_preset_name(program: int, bank: int = 0) -> String:
 	return meltysynth_player.call("get_preset_name", program, bank)
 
 ## 触发按键（Note On）
-func trigger_note_on(pitch: int, velocity: int, channel: int) -> void:
+func trigger_note_on(pitch: int, velocity: int, channel: int, track_index: int = 0) -> void:
 	if meltysynth_player == null:
 		return
-	meltysynth_player.call("trigger_note_on", pitch, velocity, channel)
+	meltysynth_player.call("trigger_note_on", pitch, velocity, channel, track_index)
 
 ## 释放按键（Note Off）
-func trigger_note_off(pitch: int, velocity: int, channel: int) -> void:
+func trigger_note_off(pitch: int, velocity: int, channel: int, track_index: int = 0) -> void:
 	if meltysynth_player == null:
 		return
-	meltysynth_player.call("trigger_note_off", pitch, velocity, channel)
+	meltysynth_player.call("trigger_note_off", pitch, velocity, channel, track_index)
 
 ## 获取轨道/通道的音量
 func get_track_channel_volume(track_index: int, channel: int) -> float:

@@ -871,7 +871,7 @@ func set_track_channel_mute(track_index: int, channel: int, muted: bool) -> void
 ## @param	pitch			MIDI音符号 (0-127)
 ## @param	velocity		力度 (1-127)
 ## @param	channel_number	MIDI通道号 (0-15，默认通道0)
-func trigger_note_on(pitch: int, velocity: int, channel_number: int = 0) -> void:
+func trigger_note_on(pitch: int, velocity: int, channel_number: int = 0, track_index: int = 0) -> void:
 	if channel_number < 0 or channel_number >= self.channel_status.size():
 		push_warning("[MidiPlayer] Invalid channel number: %d" % channel_number)
 		return
@@ -879,7 +879,7 @@ func trigger_note_on(pitch: int, velocity: int, channel_number: int = 0) -> void
 	var channel = self.channel_status[channel_number]
 	# 设置标志：这是手动触发，应该绕过manually_controlled_notes检查
 	_is_manually_triggered = true
-	self._process_track_event_note_on(channel, pitch, velocity)
+	self._process_track_event_note_on(channel, pitch, velocity, track_index)
 	_is_manually_triggered = false
 	#print("[MidiPlayer] Manually triggered note_on: ch=%d, pitch=%d, vel=%d" % [channel_number, pitch, velocity])
 
@@ -887,7 +887,7 @@ func trigger_note_on(pitch: int, velocity: int, channel_number: int = 0) -> void
 ## @param	pitch			MIDI音符号 (0-127)
 ## @param	velocity		力度 (1-127，通常忽略)
 ## @param	channel_number	MIDI通道号 (0-15，默认通道0)
-func trigger_note_off(pitch: int, velocity: int, channel_number: int = 0) -> void:
+func trigger_note_off(pitch: int, velocity: int, channel_number: int = 0, _track_index: int = 0) -> void:
 	if channel_number < 0 or channel_number >= self.channel_status.size():
 		push_warning("[MidiPlayer] Invalid channel number: %d" % channel_number)
 		return

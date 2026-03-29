@@ -53,6 +53,12 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	private readonly Dictionary<int, float> _virtualChannelVolumes = new Dictionary<int, float>();
 	private readonly Dictionary<int, (int bank, int program)> _virtualChannelInstruments = new Dictionary<int, (int bank, int program)>();
+	private readonly Dictionary<int, int> _virtualChannelCurrentBank = new Dictionary<int, int>();
+	private readonly Dictionary<int, int> _virtualChannelCurrentProgram = new Dictionary<int, int>();
+	private readonly Dictionary<int, int> _virtualChannelCc7 = new Dictionary<int, int>();
+	private readonly Dictionary<int, int> _virtualChannelCc11 = new Dictionary<int, int>();
+	private readonly Dictionary<int, int> _virtualChannelCc10 = new Dictionary<int, int>();
+	private readonly Dictionary<int, int> _virtualChannelPitchBend = new Dictionary<int, int>();
 	private sealed class ManualFilterState
 	{
 		public readonly Dictionary<int, int> PendingManualOnsByTick = new Dictionary<int, int>();
@@ -70,8 +76,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private Synthesizer _manualSynth;      // 专用于手动触发的音符
 	private Synthesizer _autoSynth;        // 原有：用于MIDI自动播放（就是 _synth）
 	private bool _useSeparateSynthForManual = true;  // 启用独立合成器
-	private const int MANUAL_CHANNEL_OFFSET = 16;   // 手动音符的虚拟通道偏移
-	private readonly Dictionary<int, float> _manualNoteVelocities = new Dictionary<int, float>();
 	private bool _preferNativeSequencerSeek = false;
 
 	// A1: 目标排队帧策略（尽量维持短队列，降低触发到发声延迟）
@@ -475,8 +479,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			// 混合输出：自动播放 + 手动音符（手动音降低 3dB 避免过载）
 			for (var i = 0; i < renderFrames; i++)
 			{
-				_leftBuffer[i] = _leftBuffer[i] + manualLeft[i] * 0.5f;
-				_rightBuffer[i] = _rightBuffer[i] + manualRight[i] * 0.5f;
+				_leftBuffer[i] = _leftBuffer[i] + manualLeft[i];
+				_rightBuffer[i] = _rightBuffer[i] + manualRight[i];
 			}
 		}
 		else
@@ -776,6 +780,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 		var virtualId = trackIndex * 16 + channel;
 		_virtualChannelInstruments[virtualId] = (bank, program);
+		_virtualChannelCurrentBank[virtualId] = bank;
+		_virtualChannelCurrentProgram[virtualId] = program;
 
 		// 【修复】立即写入合成器，使用两种方式确保改变立即生效：
 		// 1. 直接通过 ProcessMidiMessage（标准 MIDI 方式）
@@ -800,6 +806,12 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 					GD.PrintErr($"[MeltySynthPlayer] Error accessing channel info: {ex.Message}");
 				}
 			}
+		}
+
+		if (_manualSynth != null)
+		{
+			_manualSynth.ProcessMidiMessage(virtualId, 0xB0, 0x00, bank);
+			_manualSynth.ProcessMidiMessage(virtualId, 0xC0, program, 0);
 		}
 	}
 
@@ -1100,23 +1112,35 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	public void trigger_note_on(int pitch, int velocity, int channel)
 	{
+		trigger_note_on(pitch, velocity, channel, 0);
+	}
+
+	public void trigger_note_on(int pitch, int velocity, int channel, int trackIndex)
+	{
+		var virtualId = trackIndex * 16 + channel;
+		var volume = _virtualChannelVolumes.TryGetValue(virtualId, out var vol) ? vol : 1.0f;
+		var scaledVelocity = Math.Clamp((int)Math.Round(velocity * volume), 0, 127);
+
+		if (_mutedVirtualChannels.Contains(virtualId) || scaledVelocity == 0)
+		{
+			return;
+		}
+
+		ApplyChannelStateToManualSynth(virtualId);
+
 		// ========== 优化：直接调用手动合成器 ==========
 		if (!_useSeparateSynthForManual || _manualSynth == null)
 		{
 			// 回退：使用自动合成器
-			var virtualId = channel;
-			_synth?.NoteOn(virtualId, pitch, velocity);
+			_synth?.NoteOn(virtualId, pitch, scaledVelocity);
 			return;
 		}
-
-		// 使用手动合成器（虚拟通道偏移以避免冲突）
-		var manualVirtualId = channel + MANUAL_CHANNEL_OFFSET;
 		
 		try
 		{
-			_manualSynth.NoteOn(manualVirtualId, pitch, velocity);
+			_manualSynth.NoteOn(virtualId, pitch, scaledVelocity);
 			// GD.Print($"[MeltySynthPlayer] Manual NoteOn: pitch={pitch}, velocity={velocity}, " +
-			// 		$"channel={channel}, manualVirtualId={manualVirtualId}");
+			// 		$"channel={channel}, track={trackIndex}, virtualId={virtualId}");
 		}
 		catch (Exception ex)
 		{
@@ -1126,20 +1150,24 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	public void trigger_note_off(int pitch, int _velocity, int channel)
 	{
+		trigger_note_off(pitch, _velocity, channel, 0);
+	}
+
+	public void trigger_note_off(int pitch, int _velocity, int channel, int trackIndex)
+	{
+		var virtualId = trackIndex * 16 + channel;
+
 		// ========== 优化：直接调用手动合成器 ==========
 		if (!_useSeparateSynthForManual || _manualSynth == null)
 		{
-			var virtualId = channel;
 			_synth?.NoteOff(virtualId, pitch);
 			return;
 		}
-
-		var manualVirtualId = channel + MANUAL_CHANNEL_OFFSET;
 		
 		try
 		{
-			_manualSynth.NoteOff(manualVirtualId, pitch);
-			//GD.Print($"[MeltySynthPlayer] Manual NoteOff: pitch={pitch}, channel={channel}");
+			_manualSynth.NoteOff(virtualId, pitch);
+			//GD.Print($"[MeltySynthPlayer] Manual NoteOff: pitch={pitch}, channel={channel}, track={trackIndex}");
 		}
 		catch (Exception ex)
 		{
@@ -1152,6 +1180,11 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		_synth?.ProcessMidiMessage(channel, 0xB0, 0x7B, 0);
 	}
 
+	private void stop_channel_notes_manual(int channel)
+	{
+		_manualSynth?.ProcessMidiMessage(channel, 0xB0, 0x7B, 0);
+	}
+
 	// Note: set_track_channel_mute with three parameters
 	public void set_track_channel_mute(int trackIndex, int channel, bool muted)
 	{
@@ -1160,6 +1193,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		{
 			_mutedVirtualChannels.Add(virtualId);
 			stop_channel_notes(virtualId);
+			stop_channel_notes_manual(virtualId);
 		}
 		else
 		{
@@ -1475,6 +1509,34 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	private void OnSendMessage(Synthesizer synthesizer, int virtualChannel, int command, int data1, int data2, int tick)
 	{
+		if (command == 0xB0)
+		{
+			if (data1 == 0x00)
+			{
+				_virtualChannelCurrentBank[virtualChannel] = data2;
+			}
+			else if (data1 == 0x07)
+			{
+				_virtualChannelCc7[virtualChannel] = data2;
+			}
+			else if (data1 == 0x0B)
+			{
+				_virtualChannelCc11[virtualChannel] = data2;
+			}
+			else if (data1 == 0x0A)
+			{
+				_virtualChannelCc10[virtualChannel] = data2;
+			}
+		}
+		else if (command == 0xC0)
+		{
+			_virtualChannelCurrentProgram[virtualChannel] = data1;
+		}
+		else if (command == 0xE0)
+		{
+			_virtualChannelPitchBend[virtualChannel] = (data2 << 7) | data1;
+		}
+
 		var isNoteOn = command == 0x90 && data2 > 0;
 		var isNoteOff = command == 0x80 || (command == 0x90 && data2 == 0);
 		if (isNoteOn || isNoteOff)
@@ -1550,5 +1612,50 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		}
 
 		synthesizer.ProcessMidiMessage(virtualChannel, command, data1, data2);
+	}
+
+	private void ApplyChannelStateToManualSynth(int virtualChannel)
+	{
+		if (_manualSynth == null)
+		{
+			return;
+		}
+
+		if (_virtualChannelCurrentBank.TryGetValue(virtualChannel, out var bank))
+		{
+			_manualSynth.ProcessMidiMessage(virtualChannel, 0xB0, 0x00, bank);
+		}
+		else if (_virtualChannelInstruments.TryGetValue(virtualChannel, out var overrideInstrument))
+		{
+			_manualSynth.ProcessMidiMessage(virtualChannel, 0xB0, 0x00, overrideInstrument.bank);
+		}
+
+		if (_virtualChannelCurrentProgram.TryGetValue(virtualChannel, out var program))
+		{
+			_manualSynth.ProcessMidiMessage(virtualChannel, 0xC0, program, 0);
+		}
+		else if (_virtualChannelInstruments.TryGetValue(virtualChannel, out var overrideProgram))
+		{
+			_manualSynth.ProcessMidiMessage(virtualChannel, 0xC0, overrideProgram.program, 0);
+		}
+
+		if (_virtualChannelCc7.TryGetValue(virtualChannel, out var cc7))
+		{
+			_manualSynth.ProcessMidiMessage(virtualChannel, 0xB0, 0x07, cc7);
+		}
+		if (_virtualChannelCc11.TryGetValue(virtualChannel, out var cc11))
+		{
+			_manualSynth.ProcessMidiMessage(virtualChannel, 0xB0, 0x0B, cc11);
+		}
+		if (_virtualChannelCc10.TryGetValue(virtualChannel, out var cc10))
+		{
+			_manualSynth.ProcessMidiMessage(virtualChannel, 0xB0, 0x0A, cc10);
+		}
+		if (_virtualChannelPitchBend.TryGetValue(virtualChannel, out var pitchBend14))
+		{
+			var lsb = pitchBend14 & 0x7F;
+			var msb = (pitchBend14 >> 7) & 0x7F;
+			_manualSynth.ProcessMidiMessage(virtualChannel, 0xE0, lsb, msb);
+		}
 	}
 }
