@@ -208,6 +208,10 @@ func _on_settings_changed(setting_name: String, value: Variant) -> void:
 		else:
 			print("[MidiPlaybackManager] Current backend does not support system stopwatch setting")
 
+	# MeltySynth A1 音频参数变更
+	if setting_name == "*" or setting_name.begins_with("melty_"):
+		_apply_meltysynth_audio_config()
+
 func _process(_delta: float) -> void:
 	var backend = _get_active_backend()
 	if not is_playing or backend == null:
@@ -895,6 +899,9 @@ func _initialize_meltysynth_backend() -> bool:
 		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
 		wrapper.call("set_use_system_stopwatch", use_system_stopwatch)
 		print("[MidiPlaybackManager] Set system stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"))
+
+	# 初始化 MeltySynth A1 音频参数配置
+	_apply_meltysynth_audio_config(wrapper)
 	
 	# 连接信号
 	if wrapper.has_signal("finished"):
@@ -1681,3 +1688,44 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		
 		if backend != midi_backend and not backend_switching:
 			set_backend(backend)
+		return
+
+	# MeltySynth A1 音频参数项变化
+	if key.begins_with("melty_"):
+		_apply_meltysynth_audio_config()
+
+func _apply_meltysynth_audio_config(target_backend: MidiPlaybackInterface = null) -> void:
+	var backend = target_backend if target_backend != null else _get_active_backend()
+	if backend == null or midi_backend != "meltysynth":
+		return
+
+	if not backend.has_method("apply_a1_audio_config"):
+		return
+
+	var config = ConfigManager.instance
+	if config == null:
+		return
+
+	var preset = config.get_int("Gameplay", "melty_audio_preset", 1)
+	var custom_target = config.get_int("Gameplay", "melty_custom_target_queued_frames", 448)
+	var custom_min = config.get_int("Gameplay", "melty_custom_min_target_queued_frames", 256)
+	var custom_max = config.get_int("Gameplay", "melty_custom_max_target_queued_frames", 896)
+	var custom_underrun = config.get_int("Gameplay", "melty_custom_underrun_threshold_frames", 128)
+	var custom_stable_window = config.get_int("Gameplay", "melty_custom_stable_window_frames", 140)
+	var custom_step_up = config.get_int("Gameplay", "melty_custom_step_up_frames", 64)
+	var custom_step_down = config.get_int("Gameplay", "melty_custom_step_down_frames", 24)
+	var debug_log = config.get_int("Gameplay", "melty_audio_debug_log", 0) == 1
+
+	backend.call(
+		"apply_a1_audio_config",
+		preset,
+		custom_target,
+		custom_min,
+		custom_max,
+		custom_underrun,
+		custom_stable_window,
+		custom_step_up,
+		custom_step_down,
+		debug_log
+	)
+	print("[MidiPlaybackManager] Applied MeltySynth A1 audio config (preset=%d)" % preset)

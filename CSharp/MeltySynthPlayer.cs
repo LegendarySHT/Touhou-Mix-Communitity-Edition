@@ -74,6 +74,29 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private readonly Dictionary<int, float> _manualNoteVelocities = new Dictionary<int, float>();
 	private bool _preferNativeSequencerSeek = false;
 
+	// A1: 目标排队帧策略（尽量维持短队列，降低触发到发声延迟）
+	private bool _a1QueueControlEnabled = true;
+	private int _targetQueuedFrames = 384;
+	private int _minTargetQueuedFrames = 256;
+	private int _maxTargetQueuedFrames = 768;
+	private int _underrunThresholdFrames = 128;
+	private int _a1StableWindowFrames = 120;
+	private int _a1StepUpFrames = 64;
+	private int _a1StepDownFrames = 32;
+	private int _framesSinceUnderrun = 0;
+	private int _underrunCount = 0;
+	private bool _wasBelowUnderrunThreshold = false;
+	private bool _a1DebugLog = false;
+	private ulong _a1LastLatencyLogMs = 0;
+
+	private enum A1AudioPreset
+	{
+		UltraLowLatency = 0,
+		Balanced = 1,
+		StabilityFirst = 2,
+		Custom = 3
+	}
+
 	private void EnsureAudioInitialized()
 	{
 		if (_player != null)
@@ -98,7 +121,103 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	public override void _Ready()
 	{
 		EnsureAudioInitialized();
+
+		// Windows 上略微提高队列目标，优先消除轻微杂声。
+		if (OS.GetName() == "Windows")
+		{
+			_targetQueuedFrames = 448;
+			_minTargetQueuedFrames = 320;
+			_maxTargetQueuedFrames = 896;
+			_underrunThresholdFrames = 160;
+		}
+
+		// Android 默认更保守，优先稳定播放避免欠载。
+		if (OS.GetName() == "Android")
+		{
+			_targetQueuedFrames = 512;
+			_minTargetQueuedFrames = 320;
+			_maxTargetQueuedFrames = 896;
+			_underrunThresholdFrames = 160;
+		}
+
 		SetProcess(true);
+	}
+
+	public void apply_a1_audio_config(
+		int preset,
+		int customTargetQueuedFrames,
+		int customMinTargetQueuedFrames,
+		int customMaxTargetQueuedFrames,
+		int customUnderrunThresholdFrames,
+		int customStableWindowFrames,
+		int customStepUpFrames,
+		int customStepDownFrames,
+		bool enableDebugLog = false)
+	{
+		var selectedPreset = (A1AudioPreset)Math.Clamp(preset, 0, 3);
+
+		switch (selectedPreset)
+		{
+			case A1AudioPreset.UltraLowLatency:
+				_targetQueuedFrames = 320;
+				_minTargetQueuedFrames = 192;
+				_maxTargetQueuedFrames = 640;
+				_underrunThresholdFrames = 96;
+				_a1StableWindowFrames = 150;
+				_a1StepUpFrames = 48;
+				_a1StepDownFrames = 24;
+				break;
+			case A1AudioPreset.Balanced:
+				_targetQueuedFrames = 448;
+				_minTargetQueuedFrames = 256;
+				_maxTargetQueuedFrames = 896;
+				_underrunThresholdFrames = 128;
+				_a1StableWindowFrames = 140;
+				_a1StepUpFrames = 64;
+				_a1StepDownFrames = 24;
+				break;
+			case A1AudioPreset.StabilityFirst:
+				_targetQueuedFrames = 640;
+				_minTargetQueuedFrames = 384;
+				_maxTargetQueuedFrames = 1152;
+				_underrunThresholdFrames = 192;
+				_a1StableWindowFrames = 100;
+				_a1StepUpFrames = 96;
+				_a1StepDownFrames = 16;
+				break;
+			case A1AudioPreset.Custom:
+				_targetQueuedFrames = customTargetQueuedFrames;
+				_minTargetQueuedFrames = customMinTargetQueuedFrames;
+				_maxTargetQueuedFrames = customMaxTargetQueuedFrames;
+				_underrunThresholdFrames = customUnderrunThresholdFrames;
+				_a1StableWindowFrames = customStableWindowFrames;
+				_a1StepUpFrames = customStepUpFrames;
+				_a1StepDownFrames = customStepDownFrames;
+				break;
+		}
+
+		if (OS.GetName() == "Android" && selectedPreset != A1AudioPreset.Custom)
+		{
+			_targetQueuedFrames += 64;
+			_maxTargetQueuedFrames += 128;
+			_underrunThresholdFrames += 16;
+		}
+
+		_minTargetQueuedFrames = Math.Clamp(_minTargetQueuedFrames, 64, 4096);
+		_maxTargetQueuedFrames = Math.Clamp(_maxTargetQueuedFrames, _minTargetQueuedFrames, 8192);
+		_targetQueuedFrames = Math.Clamp(_targetQueuedFrames, _minTargetQueuedFrames, _maxTargetQueuedFrames);
+		_underrunThresholdFrames = Math.Clamp(_underrunThresholdFrames, 32, _targetQueuedFrames);
+		_a1StableWindowFrames = Math.Clamp(_a1StableWindowFrames, 15, 600);
+		_a1StepUpFrames = Math.Clamp(_a1StepUpFrames, 8, 512);
+		_a1StepDownFrames = Math.Clamp(_a1StepDownFrames, 4, 256);
+
+		_a1DebugLog = enableDebugLog;
+		_framesSinceUnderrun = 0;
+		_wasBelowUnderrunThreshold = false;
+
+		GD.Print($"[MeltySynthPlayer][A1] config applied: preset={(int)selectedPreset}, target={_targetQueuedFrames}, " +
+			$"min={_minTargetQueuedFrames}, max={_maxTargetQueuedFrames}, underrun_threshold={_underrunThresholdFrames}, " +
+			$"stable_window={_a1StableWindowFrames}, step_up={_a1StepUpFrames}, step_down={_a1StepDownFrames}, debug={_a1DebugLog}");
 	}
 
 	public override void _Process(double delta)
@@ -270,24 +389,83 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return;
 		}
 
-		EnsureBuffers(framesAvailable);
+		var renderFrames = framesAvailable;
+		if (_a1QueueControlEnabled && _generator != null)
+		{
+			var totalBufferFrames = Math.Max(1, (int)(_generator.BufferLength * _sampleRate));
+			var queuedFrames = Math.Max(0, totalBufferFrames - framesAvailable);
+			var theoreticalLatencyMs = (double)queuedFrames / _sampleRate * 1000.0;
+			var targetLatencyMs = (double)_targetQueuedFrames / _sampleRate * 1000.0;
+			var belowThreshold = queuedFrames < _underrunThresholdFrames;
+
+			if (belowThreshold)
+			{
+				_framesSinceUnderrun = 0;
+				if (!_wasBelowUnderrunThreshold)
+				{
+					_underrunCount += 1;
+					_targetQueuedFrames = Math.Min(_maxTargetQueuedFrames, _targetQueuedFrames + _a1StepUpFrames);
+				}
+			}
+			else
+			{
+				_framesSinceUnderrun += 1;
+				if (_framesSinceUnderrun >= _a1StableWindowFrames)
+				{
+					_targetQueuedFrames = Math.Max(_minTargetQueuedFrames, _targetQueuedFrames - _a1StepDownFrames);
+					_framesSinceUnderrun = 0;
+				}
+			}
+
+			_wasBelowUnderrunThreshold = belowThreshold;
+
+			var needFrames = Math.Max(0, _targetQueuedFrames - queuedFrames);
+			renderFrames = Math.Min(framesAvailable, needFrames);
+
+			if (queuedFrames == 0)
+			{
+				var burstFrames = Math.Min(framesAvailable, Math.Max(_targetQueuedFrames * 2, totalBufferFrames / 2));
+				renderFrames = Math.Max(renderFrames, burstFrames);
+			}
+
+			if (_a1DebugLog && Engine.GetProcessFrames() % 60 == 0)
+			{
+				GD.Print($"[MeltySynthPlayer][A1] queued={queuedFrames}, target={_targetQueuedFrames}, " +
+					$"render={renderFrames}, avail={framesAvailable}, underrun={_underrunCount}");
+			}
+
+			var nowMs = Time.GetTicksMsec();
+			if (nowMs - _a1LastLatencyLogMs >= 1000)
+			{
+				_a1LastLatencyLogMs = nowMs;
+				GD.Print($"[MeltySynthPlayer][A1] theoretical_latency_ms={theoreticalLatencyMs:F2}, " +
+					$"target_latency_ms={targetLatencyMs:F2}, queued={queuedFrames}, target={_targetQueuedFrames}, underrun={_underrunCount}");
+			}
+		}
+
+		if (renderFrames <= 0)
+		{
+			return;
+		}
+
+		EnsureBuffers(renderFrames);
 
 		// ========== 选项 A：混合两个合成器的输出 ==========
 		if (_useSeparateSynthForManual && _manualSynth != _autoSynth && _manualSynth != null)
 		{
 			// 创建临时缓冲区用于手动合成器的输出
-			var manualLeft = new float[framesAvailable];
-			var manualRight = new float[framesAvailable];
+			var manualLeft = new float[renderFrames];
+			var manualRight = new float[renderFrames];
 
 			// 自动播放合成（MIDI 序列）
-			_sequencer.Render(_leftBuffer.AsSpan(0, framesAvailable), 
-							 _rightBuffer.AsSpan(0, framesAvailable));
+			_sequencer.Render(_leftBuffer.AsSpan(0, renderFrames), 
+							 _rightBuffer.AsSpan(0, renderFrames));
 
 			// 手动合成（低延迟响应）
 			try
 			{
-				_manualSynth.Render(manualLeft.AsSpan(0, framesAvailable), 
-								   manualRight.AsSpan(0, framesAvailable));
+				_manualSynth.Render(manualLeft.AsSpan(0, renderFrames), 
+								   manualRight.AsSpan(0, renderFrames));
 			}
 			catch (Exception ex)
 			{
@@ -295,7 +473,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			}
 
 			// 混合输出：自动播放 + 手动音符（手动音降低 3dB 避免过载）
-			for (var i = 0; i < framesAvailable; i++)
+			for (var i = 0; i < renderFrames; i++)
 			{
 				_leftBuffer[i] = _leftBuffer[i] + manualLeft[i] * 0.5f;
 				_rightBuffer[i] = _rightBuffer[i] + manualRight[i] * 0.5f;
@@ -304,12 +482,12 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		else
 		{
 			// 原有逻辑：仅使用自动合成器
-			_sequencer.Render(_leftBuffer.AsSpan(0, framesAvailable), 
-							 _rightBuffer.AsSpan(0, framesAvailable));
+			_sequencer.Render(_leftBuffer.AsSpan(0, renderFrames), 
+							 _rightBuffer.AsSpan(0, renderFrames));
 		}
 
 		var scale = _volumeLinear * MELTYSYNTH_OUTPUT_GAIN;
-		for (var i = 0; i < framesAvailable; i++)
+		for (var i = 0; i < renderFrames; i++)
 		{
 			var left = _leftBuffer[i] * scale;
 			var right = _rightBuffer[i] * scale;

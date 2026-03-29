@@ -184,6 +184,95 @@ var setting_groups = [
 				{"text_en": "Addon (GDScript)", "text_zh": "插件合成器", "value": "addons"},
 				{"text_en": "MeltySynth (C#)", "text_zh": "MeltySynth", "value": "meltysynth"}
 			]
+		},
+		{
+			"id": "melty_audio_preset",
+			"name_en": "MeltySynth Audio Preset",
+			"name_zh": "MeltySynth 音频预设",
+			"description": "仅在使用MeltySynth后端时生效：低延迟/均衡/稳定优先/自定义。",
+			"type": "TYPE_OPTION",
+			"default_value": "1",
+			"options": [
+				{"text_en": "Ultra Low Latency", "text_zh": "极低延迟"},
+				{"text_en": "Balanced", "text_zh": "均衡"},
+				{"text_en": "Stability First", "text_zh": "稳定优先"},
+				{"text_en": "Custom", "text_zh": "自定义"}
+			]
+		},
+		{
+			"id": "melty_custom_target_queued_frames",
+			"name_en": "Melty Custom Target Queue",
+			"name_zh": "Melty 自定义目标排队帧",
+			"description": "A1目标队列帧数（仅自定义预设生效）。",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "448",
+			"unit": "frames"
+		},
+		{
+			"id": "melty_custom_min_target_queued_frames",
+			"name_en": "Melty Custom Min Queue",
+			"name_zh": "Melty 自定义最小排队帧",
+			"description": "A1最小队列帧数（仅自定义预设生效）。",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "256",
+			"unit": "frames"
+		},
+		{
+			"id": "melty_custom_max_target_queued_frames",
+			"name_en": "Melty Custom Max Queue",
+			"name_zh": "Melty 自定义最大排队帧",
+			"description": "A1最大队列帧数（仅自定义预设生效）。",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "896",
+			"unit": "frames"
+		},
+		{
+			"id": "melty_custom_underrun_threshold_frames",
+			"name_en": "Melty Custom Underrun Threshold",
+			"name_zh": "Melty 自定义欠载阈值",
+			"description": "队列低于该值判定为欠载（仅自定义预设生效）。",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "128",
+			"unit": "frames"
+		},
+		{
+			"id": "melty_custom_stable_window_frames",
+			"name_en": "Melty Custom Stable Window",
+			"name_zh": "Melty 自定义稳定窗口",
+			"description": "连续稳定多少帧后降低目标队列（仅自定义预设生效）。",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "140",
+			"unit": "frames"
+		},
+		{
+			"id": "melty_custom_step_up_frames",
+			"name_en": "Melty Custom Step Up",
+			"name_zh": "Melty 自定义升档步长",
+			"description": "欠载时目标队列增加步长（仅自定义预设生效）。",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "64",
+			"unit": "frames"
+		},
+		{
+			"id": "melty_custom_step_down_frames",
+			"name_en": "Melty Custom Step Down",
+			"name_zh": "Melty 自定义降档步长",
+			"description": "稳定时目标队列减少步长（仅自定义预设生效）。",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "24",
+			"unit": "frames"
+		},
+		{
+			"id": "melty_audio_debug_log",
+			"name_en": "Melty A1 Debug Log",
+			"name_zh": "Melty A1 调试日志",
+			"description": "输出更详细A1队列日志（建议仅调试时开启）。",
+			"type": "TYPE_OPTION",
+			"default_value": "0",
+			"options": [
+				{"text_en": "Off", "text_zh": "关闭"},
+				{"text_en": "On", "text_zh": "开启"}
+			]
 		}
 	]
 	},
@@ -808,6 +897,9 @@ func load_settings(setting: Dictionary = {}):
 			var init_value = setting.get(setting_data.id) if setting.get(setting_data.id) else ""
 			add_setting_item(setting_data, init_value)
 
+	# 初始化依赖可见性
+	_refresh_meltysynth_audio_visibility()
+
 var separators = []
 func _add_separator():
 	# 加载并添加分隔符
@@ -957,6 +1049,10 @@ func _on_setting_value_changed(id: String, value: Variant):
 				# 0 -> "addons", 1 -> "meltysynth"
 				converted_value = "addons" if value == 0 else "meltysynth"
 				print("[SettingList] Converting midi_backend index %d to '%s'" % [value, converted_value])
+				_refresh_meltysynth_audio_visibility()
+			elif id == "melty_audio_preset" and value is int:
+				converted_value = value
+				_refresh_meltysynth_audio_visibility()
 			# 特殊处理：note_fall_mode 需要控制自定义缓动选项的可见性
 			elif id == "note_fall_mode" and value is int:
 				set_note_fall_mode_and_show_custom_options(value)
@@ -996,6 +1092,53 @@ func _on_setting_value_changed(id: String, value: Variant):
 			# 调用set_value_and_notify()以实时通知所有监听器
 			config_mgr.set_value_and_notify(section, key, converted_value)
 			print("Config notification sent: [%s] %s = %s (type: %s)" % [section, key, str(converted_value), value_type])
+
+func _refresh_meltysynth_audio_visibility() -> void:
+	var backend_index = 0
+	if setting_items.has("midi_backend"):
+		var backend_item = setting_items["midi_backend"]
+		if backend_item:
+			backend_index = int(backend_item.get_value())
+
+	var preset_index = 1
+	if setting_items.has("melty_audio_preset"):
+		var preset_item = setting_items["melty_audio_preset"]
+		if preset_item:
+			preset_index = int(preset_item.get_value())
+
+	var melty_enabled = backend_index == 1
+	var custom_enabled = melty_enabled and preset_index == 3
+
+	var melty_only_ids = [
+		"melty_audio_preset",
+		"melty_audio_debug_log"
+	]
+
+	var melty_custom_ids = [
+		"melty_custom_target_queued_frames",
+		"melty_custom_min_target_queued_frames",
+		"melty_custom_max_target_queued_frames",
+		"melty_custom_underrun_threshold_frames",
+		"melty_custom_stable_window_frames",
+		"melty_custom_step_up_frames",
+		"melty_custom_step_down_frames"
+	]
+
+	for id in melty_only_ids:
+		if setting_items.has(id):
+			var item = setting_items[id]
+			if item:
+				item.visible = melty_enabled
+				if item.value_node:
+					item.value_node.visible = melty_enabled
+
+	for id in melty_custom_ids:
+		if setting_items.has(id):
+			var item = setting_items[id]
+			if item:
+				item.visible = custom_enabled
+				if item.value_node:
+					item.value_node.visible = custom_enabled
 
 
 
