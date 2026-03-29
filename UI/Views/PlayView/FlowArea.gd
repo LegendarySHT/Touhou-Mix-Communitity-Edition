@@ -134,6 +134,8 @@ func init_flow_area():
 
 	if EventBus.instance and not EventBus.instance.config_changed.is_connected(_on_config_changed):
 		EventBus.instance.config_changed.connect(_on_config_changed)
+
+	auto_mode = ConfigManager.instance.get_int("Playback", "auto_mode", 0) == 1
 	
 	# 从配置读取判定模式和判定宽度
 	judge_mode = ConfigManager.instance.get_int("Judge", "touch_judging_criteria", NoteJudger.JudgeMode.BEST_TIMING_FIFO)
@@ -207,6 +209,11 @@ func _apply_note_fall_config_from_settings() -> void:
 	_note_fall_speed_after_judge_multiplier = max(0.01, note_fall_speed_after_judge_multiplier)
 
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	if section == "Playback" and key == "auto_mode":
+		auto_mode = int(value) == 1
+		GameLogger.instance.info("FlowArea auto_mode updated: %s" % ("ON" if auto_mode else "OFF"), "FlowArea")
+		return
+
 	if section != "Generator":
 		return
 

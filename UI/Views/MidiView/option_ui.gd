@@ -9,6 +9,11 @@ extends VBoxContainer
 # 游戏模式 （普通/扫描线）
 @onready var gamme_mode_btn: OptionButton = $TabView/TabC/Mode/GridC/GameMode
 
+const MODE_NORMAL_ID: int = 0
+const MODE_AUTO_ID: int = 1
+
+var _is_syncing_mode_ui: bool = false
+
 
 func _ready():
 	# 连接选项卡按钮
@@ -22,6 +27,38 @@ func _ready():
 	
 	for i in get_node("TabView/TabC/Mode/GridC").get_children():
 		i.get_popup().about_to_popup.connect(_on_popup_menu_popup.bind(i.get_popup()))
+
+	if not mode_btn.item_selected.is_connected(_on_mode_selected):
+		mode_btn.item_selected.connect(_on_mode_selected)
+
+	_sync_mode_from_config()
+
+func _sync_mode_from_config() -> void:
+	var is_auto := ConfigManager.instance.get_int("Playback", "auto_mode", 0) == 1
+	var target_id := MODE_AUTO_ID if is_auto else MODE_NORMAL_ID
+	var target_index := mode_btn.get_item_index(target_id)
+
+	if target_index < 0:
+		target_index = 0
+
+	_is_syncing_mode_ui = true
+	mode_btn.select(target_index)
+	_is_syncing_mode_ui = false
+
+func _on_mode_selected(index: int) -> void:
+	if _is_syncing_mode_ui:
+		return
+
+	var selected_id := mode_btn.get_item_id(index)
+	var is_auto := selected_id == MODE_AUTO_ID
+	var value := 1 if is_auto else 0
+
+	ConfigManager.instance.set_value_and_notify("Playback", "auto_mode", value)
+	var save_ok := ConfigManager.instance.save_config(ConfigManager.USER_CONFIG_PATH)
+	if not save_ok:
+		GameLogger.instance.warning("Failed to persist Playback.auto_mode to user config", "OptionUI")
+	else:
+		GameLogger.instance.info("Playback.auto_mode set to %d" % value, "OptionUI")
 
 # 修改popupmenu的弹出位置
 func _on_popup_menu_popup(popup_menu: PopupMenu) -> void:

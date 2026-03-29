@@ -201,6 +201,14 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		_set_debug_overlay_visible(show_debug_info)
 		return
 
+	if section == "Playback" and key == "auto_mode":
+		var auto_enabled = int(value) == 1
+		if flow_area:
+			flow_area.auto_mode = auto_enabled
+		auto_label.visible = auto_enabled
+		GameLogger.instance.info("PlayView auto mode changed: %s" % ("ON" if auto_enabled else "OFF"), "PlayView")
+		return
+
 	if section == "Playback" and key == "performing_mode":
 		var new_mode = (value as int) == 1
 		
@@ -304,6 +312,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 
 	_init_display()
 	flow_area.init_flow_area()
+	auto_label.visible = flow_area.auto_mode
 	
 	await get_tree().create_timer(0.8).timeout
 
