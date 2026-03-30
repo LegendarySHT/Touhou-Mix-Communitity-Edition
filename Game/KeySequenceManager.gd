@@ -55,6 +55,7 @@ class BackgroundSequence:
 ## 块信息（生成后的块对象）
 class BlockInfo:
 	var notes: Array[MidiParser.Note] = []  # 合并后该块包含的所有原始Note对象
+	var batch: int = -1          # 批次编号（用于与Unity一致的连块语义）
 	var lane: int = 0           # 轨道编号（由pitch计算）
 	var x: float = 0.0          # 屏幕X位置
 	var start_time_ms: float = 0.0  # 块的起始时间
@@ -123,15 +124,15 @@ var min_note_spacing_ms: float = 10.0
 
 ## ========== 键生成配置参数 ==========
 var lane_count: int = 12  # 轨道数量
-var block_coalesce_seconds: float = 0.5  # 批次合并时间窗口（秒）
+var block_coalesce_seconds: float = 0.1  # 批次合并时间窗口（秒）
 var instant_block_threshold: float = 0.1  # INSTANT块时长阈值（秒）
 var short_block_threshold: float = 0.5  # SHORT块时长阈值（秒）
 var min_tap_interval: float = 0.2  # 最小敲击间隔（秒）
 var cooldown_seconds: float = 0.2  # 触点冷却时间（秒）
-var max_touch_move_velocity: float = 500.0  # 最大触点移动速度（像素/秒）
-var max_touch_count: int = 3  # 最大同时活跃键数
-var generate_instant_connect: bool = false  # 是否生成INSTANT连块
-var generate_short_connect: bool = false  # 是否生成SHORT连块
+var max_touch_move_velocity: float = 400.0  # 最大触点移动速度（像素/秒）
+var max_touch_count: int = 2  # 最大同时活跃键数
+var generate_instant_connect: bool = true  # 是否生成INSTANT连块
+var generate_short_connect: bool = true  # 是否生成SHORT连块
 var max_instant_connect_seconds: float = 0.5  # INSTANT连块最大间隔（秒）
 
 ## 信号：序列分类完成
@@ -177,27 +178,41 @@ func _tick_to_ms(tick: float) -> float:
 func _calculate_position_with_bpm_timeline(tick: float) -> float:
 	if bpm_timeline.is_empty():
 		return (tick / float(midi_timebase)) * (60000.0 / 120.0)
-	
-	var position_ms = 0.0
-	var current_tick = 0.0
-	
-	for bpm_entry in bpm_timeline:
-		var bpm_tick = bpm_entry.get("tick", 0)
-		var bpm_value = bpm_entry.get("bpm", 120)
-		
-		if tick <= bpm_tick:
-			break
-		
-		var delta_tick = bpm_tick - current_tick
-		position_ms += (delta_tick / float(midi_timebase)) * (60000.0 / bpm_value)
-		
-		current_tick = bpm_tick
-	
-	var final_delta_tick = tick - current_tick
-	var final_bpm = bpm_timeline[-1].get("bpm", 120) if bpm_timeline.size() > 0 else 120
-	position_ms += (final_delta_tick / float(midi_timebase)) * (60000.0 / final_bpm)
-	
-	return position_ms
+
+	var cumulative_time_ms: float = 0.0
+
+	# 与MidiPlaybackManager一致：按BPM段累计到当前tick
+	for i in range(bpm_timeline.size()):
+		var entry = bpm_timeline[i]
+		var entry_tick: float = float(entry.get("tick", 0.0))
+
+		var next_tempo_tick: float
+		if i + 1 < bpm_timeline.size():
+			next_tempo_tick = float(bpm_timeline[i + 1].get("tick", entry_tick))
+		else:
+			next_tempo_tick = tick + 1000000.0
+
+		if tick < next_tempo_tick:
+			var bpm = float(entry.get("bpm", 120.0))
+			var tick_delta = tick - entry_tick
+			var ms_per_tick = (60000.0 / bpm) / float(midi_timebase)
+			return cumulative_time_ms + tick_delta * ms_per_tick
+		else:
+			if i + 1 < bpm_timeline.size():
+				var bpm = float(entry.get("bpm", 120.0))
+				var tick_delta = float(bpm_timeline[i + 1].get("tick", entry_tick)) - entry_tick
+				var ms_per_tick = (60000.0 / bpm) / float(midi_timebase)
+				cumulative_time_ms += tick_delta * ms_per_tick
+
+	return cumulative_time_ms
+
+## 将tick时长转换为毫秒时长（考虑BPM变化）
+func _tick_duration_to_ms(start_tick: float, duration_tick: float) -> float:
+	if duration_tick <= 0.0:
+		return 0.0
+	var start_ms = _tick_to_ms(start_tick)
+	var end_ms = _tick_to_ms(start_tick + duration_tick)
+	return max(0.0, end_ms - start_ms)
 
 ## 设置屏幕尺寸（用于键位映射计算）
 func set_screen_size(width: float) -> void:
@@ -214,17 +229,18 @@ func _load_config_parameters() -> void:
 	var gen_cfg = "Generator"
 	instant_block_threshold = config_manager.get_float(gen_cfg, "instant_block_max_time", 0.1)
 	short_block_threshold = config_manager.get_float(gen_cfg, "short_block_max_time", 0.5)
-	max_touch_count = config_manager.get_int(gen_cfg, "max_simultaneous_blocks", 3)
+	max_touch_count = config_manager.get_int(gen_cfg, "max_simultaneous_blocks", 2)
 	min_tap_interval = config_manager.get_float(gen_cfg, "min_tap_interval", 0.2)
 	cooldown_seconds = config_manager.get_float(gen_cfg, "min_touch_cooldown_time", 0.2)
-	max_touch_move_velocity = config_manager.get_float(gen_cfg, "max_touch_move_speed", 500.0)
-	block_coalesce_seconds = config_manager.get_float(gen_cfg, "max_block_coalesce_time", 0.5)
+	max_touch_move_velocity = config_manager.get_float(gen_cfg, "max_touch_move_speed", 400.0)
+	block_coalesce_seconds = config_manager.get_float(gen_cfg, "max_block_coalesce_time", 0.1)
 	
 	# 从Appearance段读取连块参数
 	var app_cfg = "Appearance"
-	generate_short_connect = config_manager.get_bool(app_cfg, "generate_short_connect", false)
-	generate_instant_connect = config_manager.get_bool(app_cfg, "generate_instant_connect", false)
+	generate_short_connect = config_manager.get_bool(app_cfg, "generate_short_connect", true)
+	generate_instant_connect = config_manager.get_bool(app_cfg, "generate_instant_connect", true)
 	max_instant_connect_seconds = config_manager.get_float(app_cfg, "instant_connect_max_time", 0.5)
+	key_width = config_manager.get_float(app_cfg, "block_size", key_width)
 	
 	# 键盘模式特殊处理：禁用触摸移动速度限制
 	var keyboard_mode_enabled = config_manager.get_int("Lane", "keyboard_mode", 0) == 1
@@ -293,7 +309,11 @@ func generate_keys(game_notes: Array) -> bool:
 	
 	# Step 2: 按时间排序Note
 	var sorted_notes = converted_notes.duplicate()
-	sorted_notes.sort_custom(func(a, b): return a["start_time_ms"] < b["start_time_ms"])
+	sorted_notes.sort_custom(func(a, b):
+		if a["start_time_ms"] == b["start_time_ms"]:
+			return a.get("channel", 0) < b.get("channel", 0)
+		return a["start_time_ms"] < b["start_time_ms"]
+	)
 	
 	# Step 3: 执行批次合并（Step A）
 	var batches := _batch_notes_by_coalesce(sorted_notes)
@@ -302,8 +322,8 @@ func generate_keys(game_notes: Array) -> bool:
 	# Step 4: 为每个批次执行去重（Step B）
 	var all_blocks: Array[BlockInfo] = []
 	var bg_notes: Array = []
-	for batch in batches:
-		var deduped_blocks = _dedup_batch(batch, bg_notes)
+	for batch_idx in range(batches.size()):
+		var deduped_blocks = _dedup_batch(batches[batch_idx], bg_notes, batch_idx)
 		all_blocks.append_array(deduped_blocks)
 	
 	GameLogger.instance.info("Dedup: generated %d blocks, %d background notes" % [all_blocks.size(), bg_notes.size()], "KeySequenceManager")
@@ -317,26 +337,17 @@ func generate_keys(game_notes: Array) -> bool:
 	# Step 7: 转换为GameSequence集合
 	_convert_blocks_to_game_sequences(all_blocks)
 	
-	# Step 8: 添加背景序列
-	if bg_notes.is_empty():
-		var bg_seq = BackgroundSequence.new(0)
-		bg_seq.notes = []
-		background_sequences.append(bg_seq)
-	else:
-		# 按track分组背景Note
-		var bg_by_track: Dictionary = {}
-		for bg_note in bg_notes:
-			# 处理 bg_note 可能是 Note / NoteEvent / 字典
-			var track = _get_note_track_index(bg_note)
-			
-			if not bg_by_track.has(track):
-				bg_by_track[track] = []
-			bg_by_track[track].append(bg_note)
-		
-		for track in bg_by_track.keys():
-			var bg_seq = BackgroundSequence.new(track)
-			bg_seq.notes = bg_by_track[track]
-			background_sequences.append(bg_seq)
+	# Step 8: 添加背景序列（与Unity一致：输出单一背景序列）
+	bg_notes.sort_custom(func(a, b):
+		var a_start = _get_note_start_time_ms(a)
+		var b_start = _get_note_start_time_ms(b)
+		if a_start == b_start:
+			return _get_note_pitch(a) < _get_note_pitch(b)
+		return a_start < b_start
+	)
+	var bg_seq = BackgroundSequence.new(0)
+	bg_seq.notes = bg_notes
+	background_sequences.append(bg_seq)
 	
 	# 在generate_keys完成后立即进行分类统计
 	_finalize_notes_classification()
@@ -359,7 +370,7 @@ func _convert_notes_to_internal_format(game_notes: Array) -> Array:
 			note_dict["track_index"] = evt.track_index
 			note_dict["channel"] = evt.channel
 			note_dict["start_time_ms"] = _tick_to_ms(evt.start_time)
-			note_dict["duration_ms"] = _tick_to_ms(evt.duration)
+			note_dict["duration_ms"] = _tick_duration_to_ms(evt.start_time, evt.duration)
 			note_dict["original_note"] = note
 		else:
 			# 如果已经是字典或其他格式，尝试直接使用
@@ -403,7 +414,7 @@ func _batch_notes_by_coalesce(sorted_notes: Array) -> Array:
 	return batches
 
 ## Step B: 去重与冲突消除 - 同lane保留高音符，低音移入背景（Unity兼容版本）
-func _dedup_batch(batch: Array, bg_notes: Array) -> Array[BlockInfo]:
+func _dedup_batch(batch: Array, bg_notes: Array, batch_idx: int) -> Array[BlockInfo]:
 	var blocks: Array[BlockInfo] = []
 	var lane_to_note: Dictionary = {}  # lane -> note_dict
 	
@@ -430,6 +441,7 @@ func _dedup_batch(batch: Array, bg_notes: Array) -> Array[BlockInfo]:
 	for lane in lane_to_note.keys():
 		var note = lane_to_note[lane]
 		var block = BlockInfo.new()
+		block.batch = batch_idx
 		# 添加原始Note对象（BlockInfo._init()已初始化notes为[]）
 		if note.has("original_note"):
 			block.notes.append(note["original_note"])
@@ -501,6 +513,50 @@ func _get_note_track_index(note_data: Variant) -> int:
 
 	return 0
 
+## 提取note起始时间（毫秒，兼容 Note / NoteEvent / Dictionary）
+func _get_note_start_time_ms(note_data: Variant) -> float:
+	if note_data == null:
+		return 0.0
+
+	if note_data is MidiParser.Note:
+		if note_data.event:
+			return _tick_to_ms(note_data.event.start_time)
+		return 0.0
+
+	if note_data is MidiParser.NoteEvent:
+		return _tick_to_ms(note_data.start_time)
+
+	if note_data is Dictionary:
+		if note_data.has("start_time_ms"):
+			return float(note_data.get("start_time_ms", 0.0))
+		if note_data.has("start_time"):
+			return _tick_to_ms(float(note_data.get("start_time", 0.0)))
+
+	return 0.0
+
+## 提取note音高（兼容 Note / NoteEvent / Dictionary）
+func _get_note_pitch(note_data: Variant) -> int:
+	if note_data == null:
+		return 0
+
+	if note_data is MidiParser.Note:
+		if note_data.event:
+			return int(note_data.event.pitch)
+		return 0
+
+	if note_data is MidiParser.NoteEvent:
+		return int(note_data.pitch)
+
+	if note_data is Dictionary:
+		if note_data.has("pitch"):
+			return int(note_data.get("pitch", 0))
+		if note_data.has("original_note") and note_data["original_note"] is MidiParser.Note:
+			var original_note = note_data["original_note"]
+			if original_note.event:
+				return int(original_note.event.pitch)
+
+	return 0
+
 ## Step C/D: 虚拟触点匹配和块类型判定
 func _assign_touches_and_judge_types(blocks: Array[BlockInfo]) -> void:
 	if blocks.is_empty():
@@ -510,31 +566,32 @@ func _assign_touches_and_judge_types(blocks: Array[BlockInfo]) -> void:
 	var touches: Array[VirtualTouch] = []
 	for i in range(max_touch_count):
 		touches.append(VirtualTouch.new(i))
-	
-	# 按时间排序块（确保处理顺序一致）
-	blocks.sort_custom(func(a, b): return a.start_time_ms < b.start_time_ms)
-	
-	# 分批处理（对于每个时间接近的块组进行虚拟触点分配）
-	var current_time = -INF
-	var current_group: Array[BlockInfo] = []
-	
+
+	# 与Unity一致：按批次处理触点匹配与块类型判定
+	var blocks_by_batch: Dictionary = {}
 	for block in blocks:
-		# 如果块超出当前时间窗口，处理当前组
-		if block.start_time_ms > current_time + (block_coalesce_seconds * 1000.0):
-			if not current_group.is_empty():
-				_match_blocks_to_touches(current_group, touches)
-			current_group = [block]
-			current_time = block.start_time_ms
-		else:
-			current_group.append(block)
-	
-	# 处理最后一组
-	if not current_group.is_empty():
-		_match_blocks_to_touches(current_group, touches)
-	
-	# 判定所有块的类型
-	for block in blocks:
-		_judge_block_type(block, touches)
+		if not blocks_by_batch.has(block.batch):
+			blocks_by_batch[block.batch] = []
+		blocks_by_batch[block.batch].append(block)
+
+	var batch_ids: Array = blocks_by_batch.keys()
+	batch_ids.sort()
+
+	for batch_id in batch_ids:
+		var batch_blocks_raw: Array = blocks_by_batch[batch_id]
+		var batch_blocks: Array[BlockInfo] = []
+		for b in batch_blocks_raw:
+			batch_blocks.append(b as BlockInfo)
+		_match_blocks_to_touches(batch_blocks, touches)
+
+		# Unity在批内按start顺序进行判型与状态推进
+		batch_blocks.sort_custom(func(a, b):
+			if a.start_time_ms == b.start_time_ms:
+				return a.lane < b.lane
+			return a.start_time_ms < b.start_time_ms
+		)
+		for block in batch_blocks:
+			_judge_block_type(block, touches)
 
 ## 虚拟触点匹配 - 递归回溯找成本最小的分配方案（Unity兼容版本）
 func _match_blocks_to_touches(blocks_in_group: Array[BlockInfo], touches: Array[VirtualTouch]) -> void:
@@ -559,12 +616,6 @@ func _match_blocks_to_touches(blocks_in_group: Array[BlockInfo], touches: Array[
 		var block = sorted_blocks[i]
 		var touch_idx = min_matching_touch_index[i]
 		block.touch_index = touch_idx
-		
-		if touch_idx >= 0 and touch_idx < touches.size():
-			var touch = touches[touch_idx]
-			touch.last_press_x = block.x
-			touch.last_press_time_ms = block.start_time_ms
-			touch.last_press_block = block
 
 ## 递归回溯：找最优的块→触点分配，最小化移动成本（Unity兼容版本）
 ## 关键修复：(1)修正成本函数仅为移动距离，(2)使用递增的touchIndex避免重复分配
@@ -597,23 +648,12 @@ func _find_optimal_matching(
 	
 	var block = blocks[block_idx]
 	
-	# ✅ 修正：使用递增的touchIndex分配（从last_touch_idx开始），避免重复
+	# 与Unity一致：使用递增touch索引，避免同批次重复分配同一触点
 	for touch_idx in range(last_touch_idx, touches.size()):
-		var touch = touches[touch_idx]
-		
-		# 检查约束条件
-		if not _can_assign_block_to_touch(block, touch):
-			continue
-		
 		# 尝试分配此块给此触点
 		current_assignment.append(touch_idx)
-		_find_optimal_matching(blocks, touches, block_idx + 1, touch_idx, current_assignment, out_min_matching_touch_index, inout_min_cost)
+		_find_optimal_matching(blocks, touches, block_idx + 1, touch_idx + 1, current_assignment, out_min_matching_touch_index, inout_min_cost)
 		current_assignment.pop_back()
-	
-	# 如果无可用触点，也尝试未分配（在某些情况下）
-	current_assignment.append(-1)
-	_find_optimal_matching(blocks, touches, block_idx + 1, last_touch_idx, current_assignment, out_min_matching_touch_index, inout_min_cost)
-	current_assignment.pop_back()
 
 ## 检查块是否可以分配给该触点（考虑冷却和移动速度约束）
 func _can_assign_block_to_touch(block: BlockInfo, touch: VirtualTouch) -> bool:
@@ -714,31 +754,43 @@ func _judge_block_type(block: BlockInfo, touches: Array[VirtualTouch]) -> void:
 func _generate_connects(blocks: Array[BlockInfo]) -> void:
 	if blocks.is_empty() or not (generate_instant_connect or generate_short_connect):
 		return
-	
-	# 按时间排序
-	blocks.sort_custom(func(a, b): return a.start_time_ms < b.start_time_ms)
-	
-	# 维护每个lane的前一个块
-	var prev_block_per_lane: Dictionary = {}  # lane -> BlockInfo
-	
+
+	# 先清理旧连接状态
 	for block in blocks:
-		var prev = prev_block_per_lane.get(block.lane)
-		
-		if prev != null:
-			# ShortConnect: 同lane相邻SHORT块
-			if generate_short_connect and block.type == BlockType.SHORT and prev.type == BlockType.SHORT:
-				if block.start_time_ms <= prev.end_time_ms + (block_coalesce_seconds * 1000.0):
-					block.connected_prev = true
-					block.prev_block = prev
-			
-			# InstantConnect: 同lane相邻INSTANT块
-			elif generate_instant_connect and block.type == BlockType.INSTANT and prev.type == BlockType.INSTANT:
-				var gap = (block.start_time_ms - prev.end_time_ms) / 1000.0
+		block.connected_prev = false
+
+	# InstantConnect 对齐 Unity：基于触点前驱 prev_block 判定
+	if generate_instant_connect:
+		for block in blocks:
+			var prev = block.prev_block
+			if block.type == BlockType.INSTANT and prev != null and prev.type == BlockType.INSTANT:
+				var gap = (block.start_time_ms - prev.start_time_ms) / 1000.0
 				if gap <= max_instant_connect_seconds:
 					block.connected_prev = true
-					block.prev_block = prev
-		
-		prev_block_per_lane[block.lane] = block
+
+	# ShortConnect 对齐 Unity：每个批次仅连接最左与最右块
+	if generate_short_connect:
+		var blocks_by_batch: Dictionary = {}
+		for block in blocks:
+			if not blocks_by_batch.has(block.batch):
+				blocks_by_batch[block.batch] = []
+			blocks_by_batch[block.batch].append(block)
+
+		for batch_blocks in blocks_by_batch.values():
+			if batch_blocks.size() <= 1:
+				continue
+
+			var min_block: BlockInfo = batch_blocks[0]
+			var max_block: BlockInfo = batch_blocks[0]
+			for b in batch_blocks:
+				if b.x < min_block.x:
+					min_block = b
+				if b.x > max_block.x:
+					max_block = b
+
+			if min_block != max_block:
+				max_block.connected_prev = true
+				max_block.prev_block = min_block
 
 ## 转换BlockInfo到GameSequence
 func _convert_blocks_to_game_sequences(blocks: Array[BlockInfo]) -> void:
@@ -775,8 +827,13 @@ func _convert_blocks_to_game_sequences(blocks: Array[BlockInfo]) -> void:
 
 ## 计算lane对应的屏幕X位置
 func _calculate_lane_position(lane: int) -> float:
-	# 按lane均匀分配屏幕宽度
-	return float(lane) / float(lane_count) * screen_width
+	# 与Unity一致：两侧保留半个块宽度
+	if lane_count <= 1:
+		return screen_width * 0.5
+
+	var lane_start = key_width * 0.5
+	var lane_spacing = (screen_width - key_width) / float(lane_count - 1)
+	return lane_start + float(lane) * lane_spacing
 
 ## 优化生成的键
 ## 实现难度自适应过滤、重叠消除等优化
@@ -962,3 +1019,5 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 				generate_instant_connect = value in ["1", "true", "True", "yes", "Yes"]
 			"instant_connect_max_time":
 				max_instant_connect_seconds = float(value)
+			"block_size":
+				key_width = float(value)
