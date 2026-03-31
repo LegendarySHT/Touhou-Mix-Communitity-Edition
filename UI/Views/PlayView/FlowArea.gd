@@ -61,6 +61,15 @@ var active_notes: Array = []  # 存储活跃的音符
 # 粒子对象池：预创建固定数量实例并复用，避免每次按键 duplicate()+queue_free()
 const _PARTICLE_POOL_SIZE = 12
 var _particle_pool: Array = []
+
+# 音符对象池：分离三种类型，避免重复创建节点（第1阶段：基础框架）
+const _NOTE_POOL_BLOCK_SIZE = 30   # Block 音符池大小
+const _NOTE_POOL_SLIDE_SIZE = 30   # Slide 音符池大小
+const _NOTE_POOL_LONG_SIZE = 6     # Long 音符池大小
+var _note_pool_block: Array[Node] = []   # Block 音符复用池
+var _note_pool_slide: Array[Node] = []   # Slide 音符复用池
+var _note_pool_long: Array[Node] = []    # Long 音符复用池
+
 var _note_fall_calculator: NoteFallCalculator = NoteFallCalculator.new()
 
 var parent_node: Node = null
@@ -77,6 +86,12 @@ var note_idx: int = 0
 # 多点触控支持
 var touch_positions: Dictionary = {}  # 存储每个触摸点的位置
 var active_holds: Dictionary = {}     # 存储正在按住长条音符的触摸点ID和对应的音符
+
+# 输入去重：防止桌面环境下鼠标与触摸事件双触发导致一次点击判定多个音符
+const _PRESS_DEDUP_MS: float = 35.0
+const _PRESS_DEDUP_DISTANCE: float = 6.0
+var _last_press_time_ms: float = -1000000.0
+var _last_press_pos: Vector2 = Vector2(-1000000.0, -1000000.0)
 
 var pressed_keys: Dictionary = {}
 
@@ -121,8 +136,6 @@ class Note:
 		lane = l
 	
 	func set_rect(rt: Node):
-		if rect :
-			rect.queue_free()
 		rect = rt
 
 func init_flow_area():
@@ -156,6 +169,7 @@ func init_flow_area():
 	# 配置初始化
 	set_particle_scale(particle_scale)
 	_init_particle_pool()
+	_init_note_pool()
 	set_note_color(NoteType.Block, note_color_short)
 	set_note_color(NoteType.Slide, note_color_slide)
 	set_note_color(NoteType.Long, note_color_long)
@@ -260,9 +274,12 @@ func set_note_texture(texture_array: Array):
 # 修改音符宽度
 func set_note_width(wid: float):
 	for nt in [nt_b, nt_s, nt_l]:
-		nt.size.x = wid
+		# 关键：使用 custom_minimum_size 而非 size.x（修复 VBoxContainer 覆盖问题）
+		nt.custom_minimum_size = Vector2(wid, 0)
+		nt.size.x = wid  # 保留兼容性
 		if nt == nt_l:
-			nt.get_node("VBoxC").size.x = wid
+			nt.get_node("VBoxC").custom_minimum_size = Vector2(wid, 0)
+			nt.get_node("VBoxC").size.x = wid  # 保留兼容性
 			var hd = nt.get_node("VBoxC/head")
 			_note_max_size_y = _note_max_size_y if _note_max_size_y > hd.size.y else hd.size.y
 		else:
@@ -281,7 +298,8 @@ func clear_flow_area():
 			note.tween.kill()
 		if note.rect:
 			note.rect.visible = false
-			note.rect.queue_free()
+			# 改为回池而不是 queue_free()
+			_return_note_to_pool(note.rect, note.type)
 			note.rect = null
 
 	active_notes.clear()
@@ -298,24 +316,23 @@ var _note_fall_distance: float = 0
 func _create_note(tp: NoteType, x: float, lane_idx: int = -1) -> Node:
 	var cl: Color = parent_node.get_lane_color(lane_idx)
 	
-	var note_rect: Node = null
+	# 改为从池中取而不是 duplicate()
+	var note_rect: Node = _get_note_from_pool(tp)
+	note_rect.visible = true  # 从池中取出后立即可见
+	
 	match tp:
 		NoteType.Block:
-			note_rect = nt_b.duplicate()
 			if lane_idx != -1:
 				note_rect.get_node("core").modulate = cl
 		NoteType.Slide:
-			note_rect = nt_s.duplicate()
 			if lane_idx != -1:
 				note_rect.get_node("core").modulate = cl
 		NoteType.Long:
-			note_rect = nt_l.duplicate()
 			if lane_idx != -1:
 				for i in note_rect.get_node("VBoxC").get_children():
 					i.get_node("core").modulate = cl
 	
 	note_rect.position = Vector2(x, -note_rect.size.y)
-	canvas.add_child(note_rect)
 
 	return note_rect
 
@@ -324,6 +341,15 @@ func _spawn_note(note_index: int) -> void:
 		return
 	
 	var nt = notes_list[note_index]
+	# 关键：重置 Note 数据对象的判定状态（修复多音符同时判定问题）
+	nt.is_judged = false
+	nt.can_judge = false
+	nt.is_held = false
+	nt.held_by_touch_id = -1
+	nt.cooldown = 0
+	if nt.type == NoteType.Long:
+		nt.long_head_height = 0.0
+		nt.long_tail_height = 0.0
 
 	# 计算音符位置
 	var start_x = parent_node.lane_area.get_lane_by_idx(nt.lane).position.x + 10
@@ -356,13 +382,20 @@ func _spawn_note(note_index: int) -> void:
 	tween.tween_property(rect, "position:y", target_pos_y, fall_time).set_trans(trans_before_line).set_ease(ease_before_line)
 	active_notes.append(nt)
 	nt.tween = tween
+	# 关键：保存 Tween 引用用于复用前清理（修复 Tween lambda 被释放错误）
+	rect.set_meta("_last_tween", tween)
 
 	tween.finished.connect(func():
+		if nt.is_judged or nt.rect == null:
+			return
+
 		if nt.type == NoteType.Slide:
 			_check_slide_stat(nt)
 
 		if auto_mode and nt.type != NoteType.Long:
 			_auto_click(nt)
+			if nt.is_judged or nt.rect == null:
+				return
 
 		var t = create_tween()
 		var window_y = get_viewport().get_visible_rect().size.y
@@ -372,10 +405,12 @@ func _spawn_note(note_index: int) -> void:
 
 		# 创建Note对象并添加到活跃列表	
 		nt.tween = t
+		# 关键：保存第二个 Tween 引用用于复用前清理
+		rect.set_meta("_last_tween", t)
 
 		# 动画结束后回收音符
 		t.finished.connect(func():
-			if nt.rect:
+			if nt.rect and not nt.is_judged:
 				_remove_note(nt)
 				# 只有在音符播放完毕但未被击打时才判定为Miss
 				note_judged.emit("Miss", "", nt.type, 1.0, 0.0)
@@ -387,6 +422,10 @@ func _compute_center_y_by_judge_time(judge_time_ms: float, current_time_ms: floa
 	var spawn_time_ms = judge_time_ms - pre_ms
 
 	if current_time_ms <= judge_time_ms:
+		if current_time_ms < spawn_time_ms:
+			# 提前生成时继续保持匀速下落，避免音符在顶端静止等待
+			var early_dt_ms = spawn_time_ms - current_time_ms
+			return jl.position.y - _note_fall_distance - early_dt_ms * _note_fall_speed
 		var progress = clamp((current_time_ms - spawn_time_ms) / pre_ms, 0.0, 1.0)
 		var eased = _note_fall_calculator.evaluate_curve_progress(progress, trans_before_line, ease_before_line)
 		return jl.position.y - _note_fall_distance + eased * _note_fall_distance
@@ -453,10 +492,137 @@ func _auto_click(note: Note):
 func _delay_free(list, item_to_free):
 	list.erase(item_to_free)
 
+# ========== 音符对象池管理（第1阶段：框架 + 第2阶段：重置逻辑） =========
+func _get_pool_by_type(tp: NoteType) -> Array[Node]:
+	"""根据音符类型返回对应的池"""
+	match tp:
+		NoteType.Block:
+			return _note_pool_block
+		NoteType.Slide:
+			return _note_pool_slide
+		NoteType.Long:
+			return _note_pool_long
+		_:
+			return _note_pool_block  # 默认
+
+func _get_pool_max_size(tp: NoteType) -> int:
+	"""根据音符类型返回池的最大大小"""
+	match tp:
+		NoteType.Block:
+			return _NOTE_POOL_BLOCK_SIZE
+		NoteType.Slide:
+			return _NOTE_POOL_SLIDE_SIZE
+		NoteType.Long:
+			return _NOTE_POOL_LONG_SIZE
+		_:
+			return _NOTE_POOL_BLOCK_SIZE
+
+func _reset_note_for_reuse(note: Node, note_type: NoteType) -> void:
+	"""重用节点前的完整状态重置。避免上一次使用的残留（第2阶段关键）"""
+	
+	# ✅ P0: 位置、可见性、基础属性
+	note.position = Vector2.ZERO  # 关键：重置到原点（后续会在 _spawn_note 重新设置）
+	note.visible = true
+	note.modulate = Color.WHITE  # 清除任何颜色/透明残留
+	note.z_index = 0
+	note.scale = Vector2.ONE
+	note.rotation = 0.0
+	
+	# ✅ P1: 关键 - 重新应用尺寸约束（用 custom_minimum_size 而非 size）
+	# 这是之前失败的核心原因！VBoxContainer 会覆盖 size.x，但尊重 custom_minimum_size
+	match note_type:
+		NoteType.Block, NoteType.Slide:
+			note.custom_minimum_size = Vector2(note_visual_width, 0)
+		NoteType.Long:
+			note.custom_minimum_size = Vector2(note_visual_width, 0)
+			# 长条还要重置内部 VBoxC
+			var vbox = note.get_node("VBoxC")
+			vbox.custom_minimum_size = Vector2(note_visual_width, 0)
+			# 清理长条的长条特有状态
+			note.set_meta("_needs_height_recalc", true)  # 标记需要在 _spawn_note 里重新计算
+	
+	# ✅ P2: 清理动画状态（关键！）
+	if note.has_meta("_last_tween"):
+		var old_tween = note.get_meta("_last_tween")
+		if old_tween and old_tween.is_valid():
+			old_tween.kill()
+		note.remove_meta("_last_tween")
+	
+	# ✅ P3: 清理子节点状态
+	for child in note.get_children():
+		child.visible = true
+		child.modulate = Color.WHITE
+
+func _init_note_pool() -> void:
+	"""初始化音符对象池：预创建固定数量的节点并复用"""
+	# Block 音符池
+	for _i in _NOTE_POOL_BLOCK_SIZE:
+		var note_node = nt_b.duplicate()
+		note_node.visible = false
+		canvas.add_child(note_node)
+		_note_pool_block.append(note_node)
+	
+	# Slide 音符池
+	for _i in _NOTE_POOL_SLIDE_SIZE:
+		var note_node = nt_s.duplicate()
+		note_node.visible = false
+		canvas.add_child(note_node)
+		_note_pool_slide.append(note_node)
+	
+	# Long 音符池
+	for _i in _NOTE_POOL_LONG_SIZE:
+		var note_node = nt_l.duplicate()
+		note_node.visible = false
+		canvas.add_child(note_node)
+		_note_pool_long.append(note_node)
+
+func _get_note_from_pool(tp: NoteType) -> Node:
+	"""从池中获取一个音符节点，如果池空则创建新的"""
+	var pool = _get_pool_by_type(tp)
+	
+	# 关键：清理池中已释放的节点（解决 queue_free 延迟导致的无效节点问题）
+	while not pool.is_empty():
+		var note = pool.pop_back()
+		if is_instance_valid(note):
+			# 从池取出后立即重置（修复尺寸、位置等问题）
+			_reset_note_for_reuse(note, tp)
+			return note
+		# 否则继续弹出下一个（跳过已释放的节点）
+	
+	# 池空或所有节点都已释放：发出警告并创建新节点作为临时扩容
+	GameLogger.instance.warning("Note pool overflow for type %d, creating new node" % tp, "FlowArea")
+	var new_node = null
+	match tp:
+		NoteType.Block:
+			new_node = nt_b.duplicate()
+		NoteType.Slide:
+			new_node = nt_s.duplicate()
+		NoteType.Long:
+			new_node = nt_l.duplicate()
+		_:
+			new_node = nt_b.duplicate()
+	_reset_note_for_reuse(new_node, tp)
+	canvas.add_child(new_node)
+	return new_node
+
+func _return_note_to_pool(note: Node, tp: NoteType) -> void:
+	"""将音符节点返回到池中重复使用"""
+	note.visible = false
+	var pool = _get_pool_by_type(tp)
+	if pool.size() < _get_pool_max_size(tp):
+		# 仍有空间，加入池
+		pool.append(note)
+	else:
+		# 池满时仍保留节点并加入池，避免隐藏孤儿节点和后续状态错乱
+		note.position = Vector2.ZERO
+		note.visible = false
+		pool.append(note)
+
 func _remove_note(note: Note) -> void:
 	if note.rect:
-		note.rect.visible = false
-		note.rect.queue_free()
+		# 改为回池而不是 queue_free()
+		_return_note_to_pool(note.rect, note.type)
+		note.rect = null
 		call_deferred("_delay_free", active_notes, note)
 	
 	if note.tween:
@@ -534,12 +700,22 @@ func _input(event: InputEvent) -> void:
 
 # 处理触摸按下
 func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> void:
+	var judge_time_ms := input_time_ms
+	if judge_time_ms < 0.0:
+		judge_time_ms = _get_realtime_position_ms()
+
+	# 同一时刻同一位置的重复输入（常见于鼠标模拟触摸）只处理一次
+	if abs(judge_time_ms - _last_press_time_ms) <= _PRESS_DEDUP_MS and pos.distance_to(_last_press_pos) <= _PRESS_DEDUP_DISTANCE:
+		return
+	_last_press_time_ms = judge_time_ms
+	_last_press_pos = pos
+
 	var note = note_judger.find_best_note(pos, active_notes, jl.position.y, note_judge_width, judge_mode)
 	if note == null:
 		return
 	if parent_node.play_mode and note.game_sequence_ref:
 		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
-	_judge_note(note, true, input_time_ms)
+	_judge_note(note, true, judge_time_ms)
 	if note.type == NoteType.Long:
 		_hold_long_note(touch_id, note)
 
@@ -784,6 +960,9 @@ func _judge_note(judge_note: Note, trigger_vibration: bool = false, input_time_m
 
 	# 标记该note已被判定，防止重复
 	judge_note.is_judged = true
+	var hit_pos := Vector2.ZERO
+	if judge_note.rect:
+		hit_pos = judge_note.rect.position + judge_note.rect.size / 2.0
 	
 	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff],
 		block_type, timing_sec, signed_offset_sec)
@@ -796,8 +975,8 @@ func _judge_note(judge_note: Note, trigger_vibration: bool = false, input_time_m
 	var light_color = note_color_short if judge_note.type == NoteType.Block else (note_color_slide if judge_note.type == NoteType.Slide else note_color_long)
 	get_parent().lane_area.light_lane(judge_note.lane, light_color)
 	
-	if judge_note.type != NoteType.Long:
-		_generate_particle(result, judge_note.rect.position + judge_note.rect.size/2)
+	if judge_note.type != NoteType.Long and hit_pos != Vector2.ZERO:
+		_generate_particle(result, hit_pos)
 
 var _is_pause: bool = false
 func _process(delta: float) -> void:

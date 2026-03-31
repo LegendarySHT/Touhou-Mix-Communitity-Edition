@@ -29,7 +29,7 @@ func find_best_note(click_pos: Vector2, active_notes: Array, judge_line_y: float
 	var best_score: float = INF
 
 	for note in active_notes:
-		if note.is_held:
+		if note.is_held or note.is_judged or note.rect == null:
 			continue
 
 		var center: Vector2 = _get_note_center(note)
