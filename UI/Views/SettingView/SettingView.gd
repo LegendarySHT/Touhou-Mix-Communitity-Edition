@@ -119,6 +119,8 @@ func _load_config_from_file() -> void:
 ## 保存配置到文件（由 AnimationManager 在退出时调用）
 func save_config_to_file() -> bool:
 	var config_manager = ConfigManager.instance
+	var base_config_path = CONFIG_PATH if FileAccess.file_exists(CONFIG_PATH) else DEFAULT_CONFIG_PATH
+	var base_config = config_manager.load_config(base_config_path).duplicate(true)
 	
 	# 获取当前 ui 中的配置
 	var settings_dict = setting_list.get_all_settings_as_json()
@@ -184,19 +186,26 @@ func save_config_to_file() -> bool:
 			print("[SettingView] Soundfont '%s' not found, falling back to default" % soundfont_name)
 			settings_dict["soundfont_select"] = "GeneralUser-GS.sf2"
 	
-	# 转换为 INI 格式
+	# 转换为 INI 格式，并增量合并到现有配置中，避免未暴露设置被重置
 	var ini_config = SettingsMapper.settings_to_ini(settings_dict)
-	
+	for section in ini_config.keys():
+		if not base_config.has(section) or not (base_config[section] is Dictionary):
+			base_config[section] = {}
+		var section_dict = ini_config[section]
+		if section_dict is Dictionary:
+			for key in section_dict.keys():
+				base_config[section][key] = section_dict[key]
+
 	# 确保有 Game 节（包含版本号）
-	if not ini_config.has("Game"):
-		ini_config["Game"] = {}
-	ini_config["Game"]["config_version"] = ConfigManager.CONFIG_VERSION
-	
+	if not base_config.has("Game"):
+		base_config["Game"] = {}
+	base_config["Game"]["config_version"] = ConfigManager.CONFIG_VERSION
+
 	# 保存前打印信息
-	print("[SettingView] About to save config. Gameplay section: %s" % ini_config.get("Gameplay", {}))
+	print("[SettingView] About to save config. Gameplay section: %s" % base_config.get("Gameplay", {}))
 	
 	# 保存到用户配置文件
-	var success = config_manager.save_config(CONFIG_PATH, ini_config)
+	var success = config_manager.save_config(CONFIG_PATH, base_config)
 	
 	if success:
 		print("[SettingView] Saved %d settings to: %s" % [settings_dict.size(), CONFIG_PATH])
