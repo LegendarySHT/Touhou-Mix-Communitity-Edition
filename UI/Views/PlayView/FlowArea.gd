@@ -38,6 +38,9 @@ var note_generation_lead_time: float = 1000.0
 # 下落参数
 var _note_fall_time_seconds: float = 1.0
 var _note_fall_speed_after_judge_multiplier: float = 1.0
+# 渲染裁剪参数：仅影响可见性，不影响判定/时序
+var _note_cull_margin_top: float = 120.0
+var _note_cull_margin_bottom: float = 180.0
 # 音符特效缩放
 var particle_scale: float = 0.8
 ###################################
@@ -474,6 +477,30 @@ func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 		if tail_top > window_y:
 			_remove_note(note)
 			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
+
+func _update_note_visibility(note: Note) -> void:
+	# 仅做渲染层裁剪：不移除，不影响判定，仅设置 visible
+	if not note or not note.rect:
+		return
+
+	var rect_ctrl := note.rect as Control
+	if rect_ctrl == null:
+		return
+
+	var top_y := rect_ctrl.position.y
+	var visual_height := rect_ctrl.size.y
+
+	if note.type == NoteType.Long and rect_ctrl.has_node("VBoxC"):
+		var vbox := rect_ctrl.get_node("VBoxC") as Control
+		if vbox:
+			visual_height = max(visual_height, vbox.size.y)
+
+	var bottom_y = top_y + max(1.0, visual_height)
+	var view_h := get_viewport().get_visible_rect().size.y
+	var visible_top := -_note_cull_margin_top
+	var visible_bottom := view_h + _note_cull_margin_bottom
+
+	rect_ctrl.visible = (bottom_y >= visible_top and top_y <= visible_bottom)
 
 var _auto_hold_idx: int = 0
 func _auto_click(note: Note):
@@ -1006,6 +1033,7 @@ func _process(delta: float) -> void:
 	for note in active_notes:
 		if note.type == NoteType.Long:
 			_update_long_note_fall(note, _synced_current_time)
+		_update_note_visibility(note)
 	
 	# 自动按长条
 	if auto_mode:
