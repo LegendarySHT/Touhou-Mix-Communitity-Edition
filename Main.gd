@@ -26,6 +26,7 @@ var _is_reloading_settings: bool = false
 @export var play_view_path: String
 @export var score_view_path: String
 @export var setting_view_path: String
+@export var fun_view_path: String
 
 @onready var _orientation_reverse: bool = Input.get_gravity().y > 0
 
@@ -208,6 +209,13 @@ func _init_ui() -> void:
 	play_page.visible = false
 	play_page.z_index = 21
 	Main.add_child(play_page)
+
+	# 愚人节 FunView（启动覆盖层）
+	if not fun_view_path.is_empty():
+		var fun_page = load(fun_view_path).instantiate()
+		fun_page.visible = true
+		fun_page.z_index = 200
+		Main.add_child(fun_page)
 
 ## 连接核心系统信号
 func _connect_signals() -> void:

@@ -333,6 +333,7 @@ track_view_path = "res://UI/Views/TrackView/TrackView.tscn"
 play_view_path = "res://UI/Views/PlayView/PlayView.tscn"
 score_view_path = "res://UI/Views/ScoreView/ScoreView.tscn"
 setting_view_path = "res://UI/Views/SettingView/SettingView.tscn"
+fun_view_path = "res://UI/Views/FunView/FunView.tscn"
 
 [node name="PlayerInfo" type="Control" parent="." unique_id=453758657]
 layout_mode = 1

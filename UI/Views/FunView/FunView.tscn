@@ -1,0 +1,159 @@
+[gd_scene format=3 uid="uid://d0jpnweqvk6s8"]
+
+[ext_resource type="Script" uid="uid://c2nheah5b10c4" path="res://UI/Views/FunView/FunView.gd" id="1_funview"]
+[ext_resource type="VideoStream" uid="uid://dt0qcue20dlbs" path="res://Resources/Video/Never Gonna Give You Up.ogv" id="2_m3bg3"]
+
+[node name="FunView" type="Control" unique_id=740944413]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_funview")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1981695666]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="ColorRect" unique_id=718487856]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -670.0
+offset_top = -209.5
+offset_right = 670.0
+offset_bottom = 71.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 250
+text = "Touhou Mix"
+
+[node name="Label2" type="Label" parent="ColorRect" unique_id=673764244]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -312.0
+offset_top = 129.0
+offset_right = 312.0
+offset_bottom = 282.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 120
+text = "4.1.0.599"
+
+[node name="Label3" type="Label" parent="ColorRect" unique_id=1779568400]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -706.0
+offset_top = -327.0
+offset_right = 706.0
+offset_bottom = -202.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 80
+text = "東方混音傳  ~Note Phantasm of Reality"
+
+[node name="Label4" type="Label" parent="ColorRect" unique_id=426830320]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -337.0
+offset_top = 401.0
+offset_right = 337.0
+offset_bottom = 480.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.29101563, 0.29101563, 0.29101563, 1)
+theme_override_colors/font_outline_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 65
+text = "Join Discord:m2BeMbj"
+
+[node name="Label5" type="Label" parent="ColorRect" unique_id=1657349771]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -291.0
+offset_top = 465.0
+offset_right = 291.0
+offset_bottom = 539.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.29101563, 0.29101563, 0.29101563, 1)
+theme_override_colors/font_outline_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 65
+text = "加群：1020610194"
+
+[node name="VideoStreamPlayer" type="VideoStreamPlayer" parent="." unique_id=1296314]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stream = ExtResource("2_m3bg3")
+expand = true
+loop = true
+
+[node name="EnterButton" type="Button" parent="." unique_id=1393156534]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -536.0
+offset_top = 253.0
+offset_right = 533.0
+offset_bottom = 396.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 100
+text = "点击观看广告以继续"
+flat = true
+
+[node name="BackButton" type="Button" parent="." unique_id=1965099518]
+visible = false
+layout_mode = 0
+offset_left = 48.0
+offset_top = 44.0
+offset_right = 340.0
+offset_bottom = 164.0
+theme_override_font_sizes/font_size = 52
+text = "返回"
+flat = true
+
+[node name="BlackOverlay" type="ColorRect" parent="." unique_id=497418743]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
