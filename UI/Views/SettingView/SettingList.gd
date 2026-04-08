@@ -3,6 +3,7 @@ class_name SettingList
 
 var item_separator: String = "res://UI/Views/SettingView/Seperator.tscn"
 var setting_items: Dictionary = {}  # 存储所有设置项，键为id，值为SettingItem
+var pending_config_updates: Dictionary = {}  # 待提交配置，键为 "section::key"
 
 # 设置项分组数据
 var setting_groups = [
@@ -886,6 +887,7 @@ func load_settings(setting: Dictionary = {}):
 	# 清空现有项目
 	clear_items()
 	setting_items.clear()
+	pending_config_updates.clear()
 	
 	# 遍历所有分组
 	for group in setting_groups:
@@ -1028,11 +1030,6 @@ func _on_setting_value_changed(id: String, value: Variant):
 	# 设置项值改变时的处理
 	print("Setting '%s' changed to: %s" % [id, value])
 	
-	# 获取该设置的section信息（从SettingsMapper查询）
-	var config_mgr = ConfigManager.instance
-	if config_mgr == null:
-		return
-	
 	# 从SettingsMapper中查找该设置项对应的section和key
 	if id in SettingsMapper.mappings:
 		var setting_info = SettingsMapper.mappings[id]
@@ -1088,10 +1085,38 @@ func _on_setting_value_changed(id: String, value: Variant):
 							converted_value = value
 						else:
 							converted_value = Color(str(value))
-			
-			# 调用set_value_and_notify()以实时通知所有监听器
-			config_mgr.set_value_and_notify(section, key, converted_value)
-			print("Config notification sent: [%s] %s = %s (type: %s)" % [section, key, str(converted_value), value_type])
+
+			# 改为延迟提交：先缓存变更，退出SettingView时统一应用
+			var update_id = "%s::%s" % [section, key]
+			pending_config_updates[update_id] = {
+				"section": section,
+				"key": key,
+				"value": converted_value
+			}
+			print("[SettingList] Deferred config update: [%s] %s = %s (type: %s)" % [section, key, str(converted_value), value_type])
+
+func apply_pending_config_updates() -> int:
+	var emitted_count = 0
+	if pending_config_updates.is_empty():
+		return emitted_count
+
+	if EventBus.instance == null:
+		push_warning("[SettingList] EventBus is null, skip applying pending config updates")
+		pending_config_updates.clear()
+		return emitted_count
+
+	for update_key in pending_config_updates.keys():
+		var update = pending_config_updates[update_key]
+		if update is Dictionary:
+			var section = update.get("section", "")
+			var key = update.get("key", "")
+			if section.is_empty() or key.is_empty():
+				continue
+			EventBus.instance.config_changed.emit(key, section, update.get("value", null))
+			emitted_count += 1
+
+	pending_config_updates.clear()
+	return emitted_count
 
 func _refresh_meltysynth_audio_visibility() -> void:
 	var backend_index = 0

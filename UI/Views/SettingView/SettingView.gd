@@ -209,6 +209,10 @@ func save_config_to_file() -> bool:
 	
 	if success:
 		print("[SettingView] Saved %d settings to: %s" % [settings_dict.size(), CONFIG_PATH])
+		# 仅在成功保存后统一应用配置变更，避免输入过程频繁触发重逻辑
+		if setting_list and setting_list.has_method("apply_pending_config_updates"):
+			var applied_count = setting_list.apply_pending_config_updates()
+			print("[SettingView] Applied %d deferred config updates" % applied_count)
 		# 保存后立即验证（使用单例缓存）
 		var verify_config = config_manager.load_config(CONFIG_PATH)
 		if verify_config.has("Gameplay"):
