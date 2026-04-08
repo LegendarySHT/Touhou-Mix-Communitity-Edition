@@ -692,7 +692,7 @@ func _gui_input(event: InputEvent) -> void:
 			# 手指松开
 			if event.index in touch_positions:
 				touch_positions.erase(event.index)
-			_handle_release(event.index)
+				_handle_release(event.index, event_time_ms)
 	
 	# 处理触摸拖动
 	elif event is InputEventScreenDrag:
@@ -703,7 +703,7 @@ func _gui_input(event: InputEvent) -> void:
 		if event.pressed:
 			_handle_press(-1, event.position, event_time_ms)
 		else:
-			_handle_release(-1)
+			_handle_release(-1, event_time_ms)
 	# 桌面端鼠标拖动（用于长条跟随）
 	elif event is InputEventMouseMotion:
 		if -1 in active_holds:
@@ -739,7 +739,8 @@ func _input(event: InputEvent) -> void:
 					parent_node.lane_area.light_lane(idx)
 			else:
 				pressed_keys.erase(event.keycode)
-				_handle_release(event.keycode)
+				var released_lane = parent_node.key_map.find(event.keycode)
+				_handle_release(event.keycode, _get_realtime_position_ms(), released_lane)
 		elif event.keycode == KEY_ESCAPE and event.pressed:
 			parent_node.show_or_hide_menu()
 
@@ -750,8 +751,8 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 		judge_time_ms = _get_realtime_position_ms()
 
 	# 同一时刻同一位置的重复输入（常见于鼠标模拟触摸）只处理一次
-	if abs(judge_time_ms - _last_press_time_ms) <= _PRESS_DEDUP_MS and pos.distance_to(_last_press_pos) <= _PRESS_DEDUP_DISTANCE:
-		return
+	#if abs(judge_time_ms - _last_press_time_ms) <= _PRESS_DEDUP_MS and pos.distance_to(_last_press_pos) <= _PRESS_DEDUP_DISTANCE:
+	#	return
 	_last_press_time_ms = judge_time_ms
 	_last_press_pos = pos
 
@@ -776,10 +777,21 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 		_hold_long_note(touch_id, note)
 
 # 处理触摸松开 释放长条音符
-func _handle_release(touch_id: int) -> void:
-	# 清理与该触点绑定的滑块按住状态，避免抬手后仍被视为按住
+func _handle_release(touch_id: int, input_time_ms: float = -1.0, released_lane: int = -1) -> void:
+	var judge_time_ms := input_time_ms if input_time_ms >= 0.0 else _get_realtime_position_ms()
+
+	if check_slide_when_finger_up:
+		_judge_slides_on_release(touch_id, released_lane, judge_time_ms)
+
+	# 清理与该触点/按键绑定的滑块按住状态，避免后续拖动或同帧事件误判
 	for note in active_notes:
-		if note.type == NoteType.Slide and note.held_by_touch_id == touch_id:
+		if note.type != NoteType.Slide:
+			continue
+		if released_lane >= 0:
+			if note.lane == released_lane:
+				note.can_judge = false
+				note.held_by_touch_id = -1
+		elif note.held_by_touch_id == touch_id:
 			note.can_judge = false
 			note.held_by_touch_id = -1
 
@@ -848,12 +860,8 @@ func _check_slides_at_touch_pos(touch_id: int, pos: Vector2, input_time_ms: floa
 		var distance_to_touch = abs(pos.x - note_x)
 
 		if note.can_judge and note.held_by_touch_id == touch_id and distance_to_touch > note_judge_width:
-			if not only_perfect_slides and check_slide_when_finger_up and abs(judge_time_ms - note.start_time) < 100:
-				_judge_note(note, true, judge_time_ms)
-				# 判定后立即设置标志，防止重复判定
-				note.can_judge = false
-			else:
-				note.can_judge = false
+			note.can_judge = false
+			note.held_by_touch_id = -1
 
 		if distance_to_touch < note_judge_width and not note.can_judge:
 			note.can_judge = true
@@ -878,6 +886,28 @@ func _check_slide_stat(note: Note):
 		else:
 			_judge_note(note)
 		note.can_judge = false
+
+func _judge_slides_on_release(touch_id: int, released_lane: int, judge_time_ms: float) -> void:
+	var perfect_window_ms = float(judge_windows["perfect"])
+	var pending_notes: Array[Note] = []
+
+	for note in active_notes:
+		if note == null or note.is_judged or note.is_held or note.type != NoteType.Slide:
+			continue
+		if note.rect == null or not is_instance_valid(note.rect):
+			continue
+
+		if released_lane >= 0:
+			if note.lane != released_lane or not note.can_judge:
+				continue
+		elif note.held_by_touch_id != touch_id or not note.can_judge:
+			continue
+
+		if abs(judge_time_ms - note.start_time) <= perfect_window_ms:
+			pending_notes.append(note)
+
+	for note in pending_notes:
+		_judge_note(note, false, judge_time_ms, -1, "Perfect")
 
 ## 获取音符的代表 Y 坐标（屏幕坐标）
 ## Long 音符使用 VBoxC/head 中心 Y，其他使用 rect 中心 Y
