@@ -12,6 +12,8 @@ var auto_mode: bool = false
 var judge_mode: int = NoteJudger.JudgeMode.BEST_TIMING_FIFO  # 从 Judge/touch_judging_criteria 配置初始化
 var note_judge_width: int = 100  # 统一判定宽度，从 Judge/block_judging_width 配置读取
 var note_visual_width: int = 200  # 从 Appearance/block_size 配置读取
+var check_slide_when_finger_up: bool = true  # Judge/check_instant_blocks_when_finger_up
+var only_perfect_slides: bool = false  # Judge/only_perfect_instant_blocks_before_judge
 var note_judger: NoteJudger = NoteJudger.new()
 
 # 音符下落动画
@@ -156,6 +158,8 @@ func init_flow_area():
 	# 从配置读取判定模式和判定宽度
 	judge_mode = ConfigManager.instance.get_int("Judge", "touch_judging_criteria", NoteJudger.JudgeMode.BEST_TIMING_FIFO)
 	note_judge_width = ConfigManager.instance.get_int("Judge", "block_judging_width", 100)
+	check_slide_when_finger_up = ConfigManager.instance.get_int("Judge", "check_instant_blocks_when_finger_up", 1) == 1
+	only_perfect_slides = ConfigManager.instance.get_int("Judge", "only_perfect_instant_blocks_before_judge", 0) == 1
 	note_visual_width = ConfigManager.instance.get_int("Appearance", "block_size", note_visual_width)
 	_apply_note_fall_config_from_settings()
 	var lc = parent_node.get_lane_count()
@@ -230,6 +234,20 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		auto_mode = int(value) == 1
 		GameLogger.instance.info("FlowArea auto_mode updated: %s" % ("ON" if auto_mode else "OFF"), "FlowArea")
 		return
+
+	if section == "Judge":
+		if key == "touch_judging_criteria":
+			judge_mode = int(value)
+			return
+		if key == "block_judging_width":
+			note_judge_width = int(value)
+			return
+		if key == "check_instant_blocks_when_finger_up":
+			check_slide_when_finger_up = int(value) == 1
+			return
+		if key == "only_perfect_instant_blocks_before_judge":
+			only_perfect_slides = int(value) == 1
+			return
 
 	if section != "Generator":
 		return
@@ -737,17 +755,34 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	_last_press_time_ms = judge_time_ms
 	_last_press_pos = pos
 
-	var note = note_judger.find_best_note(pos, active_notes, jl.position.y, note_judge_width, judge_mode)
+	var candidate_notes: Array = active_notes
+	if only_perfect_slides:
+		# 仅判定完美滑块开启时，点击/按键选音符阶段直接忽略滑块
+		candidate_notes = active_notes.filter(func(n):
+			return n.type != NoteType.Slide
+		)
+
+	var note = note_judger.find_best_note(pos, candidate_notes, jl.position.y, note_judge_width, judge_mode)
 	if note == null:
 		return
 	if parent_node.play_mode and note.game_sequence_ref:
 		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
-	_judge_note(note, true, judge_time_ms)
+	if note.type == NoteType.Slide:
+		# 仅在关闭“仅判定完美滑块”时允许点击滑块，且按点块计分
+		_judge_note(note, true, judge_time_ms, NoteType.Block)
+	else:
+		_judge_note(note, true, judge_time_ms)
 	if note.type == NoteType.Long:
 		_hold_long_note(touch_id, note)
 
 # 处理触摸松开 释放长条音符
 func _handle_release(touch_id: int) -> void:
+	# 清理与该触点绑定的滑块按住状态，避免抬手后仍被视为按住
+	for note in active_notes:
+		if note.type == NoteType.Slide and note.held_by_touch_id == touch_id:
+			note.can_judge = false
+			note.held_by_touch_id = -1
+
 	if touch_id not in active_holds:
 		return
 	
@@ -802,14 +837,18 @@ func _check_slides_at_touch_pos(touch_id: int, pos: Vector2, input_time_ms: floa
 				return true
 			return false
 			):
+		if note == null or note.rect == null or not is_instance_valid(note.rect):
+			continue
 		var rect = note.rect as Control
+		if rect == null:
+			continue
 
 		# 如果slide音符在触摸点范围内
 		var note_x = rect.position.x + rect.size.x / 2
 		var distance_to_touch = abs(pos.x - note_x)
 
 		if note.can_judge and note.held_by_touch_id == touch_id and distance_to_touch > note_judge_width:
-			if abs(judge_time_ms - note.start_time) < 100:
+			if not only_perfect_slides and check_slide_when_finger_up and abs(judge_time_ms - note.start_time) < 100:
 				_judge_note(note, true, judge_time_ms)
 				# 判定后立即设置标志，防止重复判定
 				note.can_judge = false
@@ -822,12 +861,23 @@ func _check_slides_at_touch_pos(touch_id: int, pos: Vector2, input_time_ms: floa
 			# return
 
 func _check_slide_stat(note: Note):
+	if note.is_judged:
+		return
+
 	if note.lane in pressed_keys.values():
-		_judge_note(note)
+		if only_perfect_slides:
+			_judge_note(note, false, note.start_time, -1, "Perfect")
+		else:
+			_judge_note(note)
+		note.can_judge = false
 		return
 
 	if note.can_judge:
-		_judge_note(note)
+		if only_perfect_slides:
+			_judge_note(note, false, note.start_time, -1, "Perfect")
+		else:
+			_judge_note(note)
+		note.can_judge = false
 
 ## 获取音符的代表 Y 坐标（屏幕坐标）
 ## Long 音符使用 VBoxC/head 中心 Y，其他使用 rect 中心 Y
@@ -845,6 +895,8 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 
 	for note in active_notes:
 		if note.lane < lane_l or note.lane > lane_r or note.is_held:
+			continue
+		if only_perfect_slides and note.type == NoteType.Slide:
 			continue
 
 		var note_y: float = _get_note_center_y(note)
@@ -866,7 +918,11 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 	if best_note:
 		if parent_node.play_mode and best_note.game_sequence_ref:
 			_trigger_midi_notes_from_sequence(best_note.game_sequence_ref)
-		_judge_note(best_note, true, input_time_ms)
+		if best_note.type == NoteType.Slide:
+			# 键盘点击滑块按点块计分；与按住触发（滑块计分）路径互斥
+			_judge_note(best_note, true, input_time_ms, NoteType.Block)
+		else:
+			_judge_note(best_note, true, input_time_ms)
 		return best_note
 	return null
 
@@ -960,7 +1016,8 @@ func _get_realtime_position_ms() -> float:
 		return playback_mgr.get_position_ms()
 	return _synced_current_time
 
-func _judge_note(judge_note: Note, trigger_vibration: bool = false, input_time_ms: float = -1.0):
+func _judge_note(judge_note: Note, trigger_vibration: bool = false, input_time_ms: float = -1.0,
+		block_type_override: int = -1, result_override: String = ""):
 	# 防止重复判定：如果该note已被判定过，直接返回
 	if judge_note.is_judged:
 		return
@@ -968,22 +1025,24 @@ func _judge_note(judge_note: Note, trigger_vibration: bool = false, input_time_m
 	var judge_time_ms := input_time_ms if input_time_ms >= 0.0 else _get_realtime_position_ms()
 	var time_diff = judge_note.start_time - judge_time_ms  # 毫秒，优先使用事件时刻的实时播放位置
 	var abs_diff = abs(time_diff)
-	var result: String = "Bad"
+	var result: String = result_override
 
-	if abs_diff <= judge_windows["perfect"]:
-		result = "Perfect"
-	elif abs_diff <= judge_windows["great"]:
-		result = "Great"
-	elif abs_diff <= judge_windows["good"]:
-		result = "Good"
-	elif abs_diff <= judge_windows["bad"]:
+	if result.is_empty():
 		result = "Bad"
+		if abs_diff <= judge_windows["perfect"]:
+			result = "Perfect"
+		elif abs_diff <= judge_windows["great"]:
+			result = "Great"
+		elif abs_diff <= judge_windows["good"]:
+			result = "Good"
+		elif abs_diff <= judge_windows["bad"]:
+			result = "Bad"
 
 	# 转换为秒，传递给 ScoreCalculator 所需的数据
 	var timing_sec: float = abs_diff / 1000.0
 	var signed_offset_sec: float = time_diff / 1000.0
-	# 将 NoteType 映射到 BlockType (值相同: Block=0→INSTANT, Slide=1→SHORT, Long=2→LONG)
-	var block_type: int = judge_note.type
+	# 默认将 NoteType 映射到 BlockType；点击滑块时可覆盖为 INSTANT
+	var block_type: int = block_type_override if block_type_override >= 0 else judge_note.type
 
 	# 标记该note已被判定，防止重复
 	judge_note.is_judged = true
