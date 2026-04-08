@@ -98,6 +98,7 @@ func _ready() -> void:
 	# 从配置加载键盘和轨道相关的参数
 	_load_lane_parameters()
 	_load_debug_display_setting()
+	_load_lane_effect_quality_setting()
 	
 	# 窗口大小变化
 	get_window().size_changed.connect(_init_lane_display)
@@ -196,6 +197,12 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 
 ## 新增：配置变更回调
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	if section == "Appearance" and key == "lane_effect_quality":
+		if lane_area and lane_area.has_method("set_quality_mode"):
+			lane_area.set_quality_mode(int(value))
+			lane_area.set_beam_alpha(beam_alpha)
+		return
+
 	if section == "General" and key == "display_debug_info":
 		show_debug_info = int(value) == 1
 		_set_debug_overlay_visible(show_debug_info)
@@ -233,6 +240,11 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 
 func _load_debug_display_setting() -> void:
 	show_debug_info = ConfigManager.instance.get_int("General", "display_debug_info", 0) == 1
+
+
+func _load_lane_effect_quality_setting() -> void:
+	if lane_area and lane_area.has_method("set_quality_mode"):
+		lane_area.set_quality_mode(ConfigManager.instance.get_int("Appearance", "lane_effect_quality", 1))
 
 func _set_debug_overlay_visible(is_visible: bool) -> void:
 	if debug_info_label == null:
