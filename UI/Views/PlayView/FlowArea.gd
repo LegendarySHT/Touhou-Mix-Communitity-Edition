@@ -93,7 +93,7 @@ var touch_positions: Dictionary = {}  # 存储每个触摸点的位置
 var active_holds: Dictionary = {}     # 存储正在按住长条音符的触摸点ID和对应的音符
 
 # 输入去重：防止桌面环境下鼠标与触摸事件双触发导致一次点击判定多个音符
-const _PRESS_DEDUP_MS: float = 35.0
+const _PRESS_DEDUP_MS: float = 5.0
 const _PRESS_DEDUP_DISTANCE: float = 6.0
 var _last_press_time_ms: float = -1000000.0
 var _last_press_pos: Vector2 = Vector2(-1000000.0, -1000000.0)
@@ -751,8 +751,8 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 		judge_time_ms = _get_realtime_position_ms()
 
 	# 同一时刻同一位置的重复输入（常见于鼠标模拟触摸）只处理一次
-	#if abs(judge_time_ms - _last_press_time_ms) <= _PRESS_DEDUP_MS and pos.distance_to(_last_press_pos) <= _PRESS_DEDUP_DISTANCE:
-	#	return
+	if abs(judge_time_ms - _last_press_time_ms) <= _PRESS_DEDUP_MS and pos.distance_to(_last_press_pos) <= _PRESS_DEDUP_DISTANCE:
+		return
 	_last_press_time_ms = judge_time_ms
 	_last_press_pos = pos
 
