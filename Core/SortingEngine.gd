@@ -49,40 +49,31 @@ var current_sort_direction: SortDirection = SortDirection.DESCENDING
 var sort_cache: Dictionary = {}
 var cache_key: String = ""
 
-## 排序线程
-var sort_thread: Thread = null
-var should_stop_sorting: bool = false
+const FILTER_BATCH_SIZE := 100
+
+## 排序任务状态
+var _sort_request_id: int = 0
 var is_sorting_active: bool = false
 
 ## 当前的midi列表
 var current_midis: Array[MidiData] = []
 
-## 安全的开始排序线程
-func _start_sort_thread(status: SortStatField, sort_field: SortDataField, sort_direction: SortDirection) -> void:
-	# 如果已有线程在运行，请求停止并等待
-	if sort_thread and sort_thread.is_alive():
-		print("已有线程在运行，请求停止并等待")
-		stop_sorting()
-		sort_thread.wait_to_finish()
-	
-	# 重置停止标志
-	should_stop_sorting = false
-	is_sorting_active = true
-	
-	# 创建新线程
-	if sort_thread:
-		sort_thread.wait_to_finish()
-	sort_thread = Thread.new()
-	sort_thread.start(_sort_mode_thread.bind(status, sort_field, sort_direction))
-
-## 停止排序线程
+## 停止排序任务
 func stop_sorting() -> void:
-	if is_sorting_active:
-		should_stop_sorting = true
+	_sort_request_id += 1
+	is_sorting_active = false
 
-## 检查是否应该停止
-func _should_stop() -> bool:
-	return should_stop_sorting
+## 检查排序请求是否已失效
+func _is_sort_cancelled(request_id: int) -> bool:
+	return request_id != _sort_request_id or not is_inside_tree()
+
+## 协程步骤之间让出一帧，保持UI响应
+func _yield_for_sort_step(request_id: int) -> bool:
+	var tree := get_tree()
+	if tree == null:
+		return true
+	await tree.process_frame
+	return _is_sort_cancelled(request_id)
 
 ## 获取排序后的MIDI列表
 func _sort_midis(midis: Array[MidiData], 
@@ -93,16 +84,12 @@ func _sort_midis(midis: Array[MidiData],
 	current_sort_direction = sort_direction
 	
 	# 执行排序
-	var sorted_result = midis
+	var sorted_result: Array[MidiData] = midis.duplicate()
 	
-	# 使用自定义排序函数，并在每次比较前检查停止标志
+	# 使用显式配置进行排序，避免依赖全局状态
 	sorted_result.sort_custom(func(a: MidiData, b: MidiData) -> bool:
-		return _compare_midis(a, b)
+		return _compare_midis(a, b, sort_field, sort_direction)
 	)
-	
-	# 检查是否应该停止
-	if should_stop_sorting:
-		return []
 	
 	# 缓存结果
 	# sort_cache[cache_key] = sorted_result
@@ -110,11 +97,16 @@ func _sort_midis(midis: Array[MidiData],
 	return sorted_result
 
 ## 比较两个MIDI谱面
-func _compare_midis(midi_a: MidiData, midi_b: MidiData) -> bool:
-	var is_ascending = current_sort_direction == SortDirection.DESCENDING
+func _compare_midis(
+	midi_a: MidiData,
+	midi_b: MidiData,
+	sort_field: SortDataField,
+	sort_direction: SortDirection
+) -> bool:
+	var sort_ascending = sort_direction == SortDirection.ASCENDING
 	var result: int = 0
 	
-	match current_sort_field:
+	match sort_field:
 		SortDataField.DOWNLOAD_COUNT:
 			result = _compare_int(midi_a.download_count, midi_b.download_count)
 		
@@ -141,10 +133,7 @@ func _compare_midis(midi_a: MidiData, midi_b: MidiData) -> bool:
 				result = _compare_string(midi_a.name, midi_b.name)
 	
 	# 根据排序方向返回结果
-	if is_ascending:
-		return result > 0
-	else:
-		return result < 0
+	return result < 0 if sort_ascending else result > 0
 
 ## 比较整数
 func _compare_int(a: int, b: int) -> int:
@@ -164,35 +153,45 @@ func _compare_string(a: String, b: String) -> int:
 	else:
 		return 0
 
-## 按状态过滤MIDI列表（可中断版本）
-func _filter_midis(midis: Array[MidiData], status: String) -> Array[MidiData]:
-	var result: Array[MidiData] = []
-	# midis = midis.duplicate()
-	for i in range(midis.size()):
-		# 定期检查停止标志（每处理10个元素检查一次）
-		if i % 10 == 0 and should_stop_sorting:
-			return []  # 返回空数组表示被中断
-		
-		var midi = midis[i]
-		if midi.status == status:
-			result.append(midi)
-	
-	return result
+## 将状态枚举映射为数据中的字符串
+func _get_status_name(status: SortStatField) -> String:
+	match status:
+		SortStatField.PENDING:
+			return "PENDING"
+		SortStatField.APPROVED:
+			return "APPROVED"
+		SortStatField.INCLUDED:
+			return "INCLUDED"
+		SortStatField.DEAD:
+			return "DEAD"
+		_:
+			return ""
 
-## 按状态过滤MIDI列表（批量处理版本，更高效）
-func _filter_midis_batch(midis: Array[MidiData], status: String, batch_size: int = 50) -> Array[MidiData]:
+## 按状态过滤MIDI列表（协程批量处理版本）
+func _filter_midis_by_status(
+	midis: Array[MidiData],
+	status: SortStatField,
+	request_id: int,
+	batch_size: int = FILTER_BATCH_SIZE
+) -> Array[MidiData]:
+	if status == SortStatField.ALL:
+		return midis
+	
+	var status_name := _get_status_name(status)
 	var result: Array[MidiData] = []
 	
 	for i in range(0, midis.size(), batch_size):
-		# 检查停止标志
-		if should_stop_sorting:
+		if _is_sort_cancelled(request_id):
 			return []
 		
 		var end_index = min(i + batch_size, midis.size())
 		for j in range(i, end_index):
 			var midi = midis[j]
-			if midi.status == status:
+			if midi.status == status_name:
 				result.append(midi)
+		
+		if end_index < midis.size() and await _yield_for_sort_step(request_id):
+			return []
 	
 	return result
 
@@ -205,55 +204,49 @@ func get_midis() -> Array[MidiData]:
 func set_sort_mode(status: SortStatField = SortStatField.ALL,
 					sort_field: SortDataField = SortDataField.DEFAULT,
 					sort_direction: SortDirection = SortDirection.DESCENDING):
-	_start_sort_thread(status, sort_field, sort_direction)
+	_sort_request_id += 1
+	var request_id := _sort_request_id
+	is_sorting_active = true
+	_sort_mode_task(request_id, status, sort_field, sort_direction)
 
-## 按状态和排序过滤MIDI列表（线程函数）
-func _sort_mode_thread(status: SortStatField = SortStatField.ALL,
-					 sort_field: SortDataField = SortDataField.DEFAULT,
-					 sort_direction: SortDirection = SortDirection.DESCENDING):
-	print("开始排序线程: 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction])
+## 排序任务收尾
+func _finish_sort_task(request_id: int, should_emit_signal: bool) -> void:
+	if request_id != _sort_request_id:
+		return
+	
+	is_sorting_active = false
+	if should_emit_signal:
+		_emit_sort_finished()
+
+## 按状态和排序过滤MIDI列表（协程任务）
+func _sort_mode_task(
+	request_id: int,
+	status: SortStatField = SortStatField.ALL,
+	sort_field: SortDataField = SortDataField.DEFAULT,
+	sort_direction: SortDirection = SortDirection.DESCENDING
+) -> void:
+	print("开始排序任务: 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction])
 
 	var midis = DataMGR.midis.values().duplicate()
 	current_sort_field = sort_field
 	current_sort_direction = sort_direction
-	var temp_list = _sort_midis(midis, sort_field, sort_direction)
-	
-	# 检查是否应该停止
-	if should_stop_sorting:
-		_cleanup_thread()
-		return
-	current_midis = temp_list
-	
 	current_sort_stat_field = status
-	print("过滤前midi数量", current_midis.size())
-	match status:
-		SortStatField.PENDING:
-			temp_list = _filter_midis_batch(current_midis, "PENDING", 100)
-			print("过滤PENDING完成", current_midis.size())
-		SortStatField.APPROVED:
-			temp_list = _filter_midis_batch(current_midis, "APPROVED", 100)
-			print("过滤APPROVED完成", current_midis.size())
-		SortStatField.INCLUDED:
-			temp_list = _filter_midis_batch(current_midis, "INCLUDED", 100)
-			print("过滤INCLUDED完成", current_midis.size())
-		SortStatField.DEAD:
-			temp_list = _filter_midis_batch(current_midis, "DEAD", 100)
-			print("过滤DEAD完成", current_midis.size())
-	
-	# 检查是否应该停止
-	if should_stop_sorting:
-		_cleanup_thread()
-		return
-	
-	current_midis = temp_list
-	call_deferred("_emit_sort_finished")
-	
-	# 清理线程状态
-	_cleanup_thread()
+	print("排序前midi数量", midis.size())
 
-## 清理线程状态
-func _cleanup_thread() -> void:
-	is_sorting_active = false
+	if await _yield_for_sort_step(request_id):
+		return
+
+	var temp_list = await _filter_midis_by_status(midis, status, request_id)
+	if _is_sort_cancelled(request_id):
+		return
+
+	print("过滤后midi数量", temp_list.size())
+	temp_list = _sort_midis(temp_list, sort_field, sort_direction)
+	if _is_sort_cancelled(request_id):
+		return
+
+	current_midis = temp_list
+	_finish_sort_task(request_id, true)
 
 ## 发射排序完成信号
 func _emit_sort_finished() -> void:
@@ -270,30 +263,33 @@ func search_midis(midis: Array[MidiData], query: String) -> Array[MidiData]:
 	if query.is_empty():
 		return midis
 	
-	var search_text = query.to_lower()
+	var keywords = query.to_lower().split(" ", false)
 	var result: Array[MidiData] = []
 	
-	# 添加中断检查
 	for midi in midis:
-		if _should_stop():
-			break
+		var midi_name = midi.name.to_lower()
+		var artist_name = midi.artist_name.to_lower()
+		var uploader_name = midi.uploader_name.to_lower()
+		var description = midi.description.to_lower()
 		
-		if (midi.name.to_lower().contains(search_text) or
-			midi.artist_name.to_lower().contains(search_text) or
-			midi.uploader_name.to_lower().contains(search_text) or
-			midi.description.to_lower().contains(search_text)):
+		var all_keywords_match = true
+		for keyword in keywords:
+			if not (midi_name.contains(keyword) or
+				artist_name.contains(keyword) or
+				uploader_name.contains(keyword) or
+				description.contains(keyword)):
+				all_keywords_match = false
+				break
+		
+		if all_keywords_match:
 			result.append(midi)
 	
 	return result
 
 ## 场景退出时的清理
 func _exit_tree() -> void:
-	# 停止排序线程
+	# 停止排序任务
 	stop_sorting()
-	
-	# 等待线程结束
-	if sort_thread and sort_thread.is_active():
-		sort_thread.wait_to_finish()
-	
+
 	# 清理缓存
 	clear_cache()
