@@ -111,6 +111,7 @@ func _load_config_from_file() -> void:
 	
 	# 初始化SoundFont列表
 	_initialize_soundfont_options(settings_dict)
+	_initialize_background_image_options(settings_dict)
 
 	# 初始化下落模式和缓动选项可见性
 	var note_fall_mode = settings_dict.get("note_fall_mode", "0")
@@ -178,6 +179,13 @@ func save_config_to_file() -> bool:
 		if actual_name.ends_with(".sf2"):
 			actual_name = actual_name.get_basename()
 		settings_dict["soundfont_select"] = actual_name
+
+	# 特殊处理 play_background_image_file：将选项索引转换为文件名
+	if settings_dict.has("play_background_image_file"):
+		var background_raw_value = settings_dict["play_background_image_file"]
+		if background_raw_value is int or (background_raw_value is String and background_raw_value.is_valid_int()):
+			var bg_index = int(background_raw_value)
+			settings_dict["play_background_image_file"] = setting_list.get_option_text("play_background_image_file", bg_index)
 	
 	# 验证soundfont文件存在性，若不存在则回退
 	if settings_dict.has("soundfont_select"):
@@ -276,6 +284,33 @@ func _initialize_soundfont_options(loaded_settings: Dictionary) -> void:
 	setting_list.update_soundfont_options(soundfont_list, current_selection)
 	
 	print("[SettingView] Initialized %d soundfont options" % soundfont_list.size())
+
+
+func _initialize_background_image_options(loaded_settings: Dictionary) -> void:
+	var image_files = _scan_background_images()
+	var current_selection = str(loaded_settings.get("play_background_image_file", ""))
+	setting_list.update_background_image_options(image_files, current_selection)
+
+
+func _scan_background_images() -> Array[String]:
+	var result: Array[String] = []
+	var image_dir = PathHelper.get_background_dir()
+	var dir = DirAccess.open(image_dir)
+	if dir == null:
+		return result
+
+	dir.list_dir_begin()
+	var file_name = dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir() and not file_name.begins_with("."):
+			var ext = file_name.get_extension().to_lower()
+			if ext in ["jpg", "jpeg", "png", "webp"]:
+				result.append(file_name)
+		file_name = dir.get_next()
+	dir.list_dir_end()
+
+	result.sort()
+	return result
 
 ## 扫描所有SoundFont文件（user优先）
 func _scan_all_soundfonts() -> Array[String]:

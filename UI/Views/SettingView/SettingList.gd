@@ -759,6 +759,58 @@ var setting_groups = [
 				]
 			},
 			{
+				"id": "play_background_mode",
+				"name_en": "Play Background Mode",
+				"name_zh": "游玩背景类型",
+				"description": "选择游玩界面背景来源：曲包封面、用户图片或纯色。",
+				"type": "TYPE_OPTION",
+				"default_value": "0",
+				"options": [
+					{"text_en": "Cover", "text_zh": "封面"},
+					{"text_en": "Image", "text_zh": "图片"},
+					{"text_en": "Solid", "text_zh": "纯色"}
+				]
+			},
+			{
+				"id": "play_background_cover_blur",
+				"name_en": "Cover Blur",
+				"name_zh": "封面模糊程度",
+				"description": "仅封面模式生效。0.0 表示不模糊，1.0 表示最强模糊。",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "0.35"
+			},
+			{
+				"id": "play_background_size_mode",
+				"name_en": "Play Background Size Mode",
+				"name_zh": "游玩背景尺寸模式",
+				"description": "封面/图片模式生效。覆盖会等比填满，拉伸会按屏幕比例拉伸。",
+				"type": "TYPE_OPTION",
+				"default_value": "0",
+				"options": [
+					{"text_en": "Cover", "text_zh": "覆盖"},
+					{"text_en": "Stretch", "text_zh": "拉伸"}
+				]
+			},
+			{
+				"id": "play_background_image_file",
+				"name_en": "Play Background Image",
+				"name_zh": "游玩背景图片",
+				"description": "仅图片模式生效。图片列表来自用户目录 BackgroundImage。",
+				"type": "TYPE_OPTION",
+				"default_value": "",
+				"options": [],
+				"dynamic_options": true
+			},
+			{
+				"id": "play_background_color",
+				"name_en": "Play Background Color",
+				"name_zh": "游玩背景颜色",
+				"description": "仅纯色模式生效。用于设置游玩背景纯色。",
+				"type": "TYPE_COLOR",
+				"edit_alpha": true,
+				"default_value": "#10121AFF"
+			},
+			{
 				"id": "block_size",
 				"name_en": "Block Size",
 				"name_zh": "音符尺寸大小",
@@ -914,6 +966,7 @@ func load_settings(setting: Dictionary = {}):
 
 	# 初始化依赖可见性
 	_refresh_meltysynth_audio_visibility()
+	_refresh_play_background_visibility()
 
 var separators = []
 func _add_separator():
@@ -1063,6 +1116,9 @@ func _on_setting_value_changed(id: String, value: Variant):
 			elif id == "melty_audio_preset" and value is int:
 				converted_value = value
 				_refresh_meltysynth_audio_visibility()
+			elif id == "play_background_mode" and value is int:
+				converted_value = value
+				_refresh_play_background_visibility()
 			# 特殊处理：note_fall_mode 需要控制自定义缓动选项的可见性
 			elif id == "note_fall_mode" and value is int:
 				set_note_fall_mode_and_show_custom_options(value)
@@ -1076,6 +1132,9 @@ func _on_setting_value_changed(id: String, value: Variant):
 					actual_name = actual_name.get_basename()
 				converted_value = actual_name
 				print("[SettingList] Converting soundfont_select index %d to '%s'" % [value, converted_value])
+			elif id == "play_background_image_file" and value is int:
+				converted_value = get_option_text(id, value)
+				print("[SettingList] Converting play_background_image_file index %d to '%s'" % [value, converted_value])
 			else:
 				match value_type:
 					"int":
@@ -1179,6 +1238,35 @@ func _refresh_meltysynth_audio_visibility() -> void:
 					item.value_node.visible = custom_enabled
 
 
+func _refresh_play_background_visibility() -> void:
+	var mode_index = 0
+	if setting_items.has("play_background_mode"):
+		var mode_item = setting_items["play_background_mode"]
+		if mode_item:
+			mode_index = int(mode_item.get_value())
+
+	var show_cover_only = mode_index == 0
+	var show_image_only = mode_index == 1
+	var show_color_only = mode_index == 2
+	var show_size_mode = mode_index == 0 or mode_index == 1
+
+	var visibility_rules = {
+		"play_background_cover_blur": show_cover_only,
+		"play_background_image_file": show_image_only,
+		"play_background_color": show_color_only,
+		"play_background_size_mode": show_size_mode
+	}
+
+	for setting_id in visibility_rules.keys():
+		if setting_items.has(setting_id):
+			var item = setting_items[setting_id]
+			if item:
+				var is_visible = visibility_rules[setting_id]
+				item.visible = is_visible
+				if item.value_node:
+					item.value_node.visible = is_visible
+
+
 
 func get_all_settings_as_json() -> Dictionary:
 	# 返回所有设置项的当前值，格式为 {"设置项ID": "值", ...}
@@ -1277,6 +1365,26 @@ func update_soundfont_options(soundfont_list: Array, current_selection: String =
 			if font_name == current_selection or display_name == current_selection:
 				setting_item.set_value(i)
 				break
+
+
+func update_background_image_options(image_files: Array, current_selection: String = "") -> void:
+	if not setting_items.has("play_background_image_file"):
+		return
+
+	var setting_item = setting_items["play_background_image_file"]
+	if setting_item == null:
+		return
+
+	if image_files.is_empty():
+		setting_item.set_options([""], 0)
+		return
+
+	setting_item.set_options(image_files, 0)
+
+	if not current_selection.is_empty():
+		var target_index = image_files.find(current_selection)
+		if target_index >= 0:
+			setting_item.set_value(target_index)
 
 
 ## 设置下落模式和控制自定义缓动选项的可见性

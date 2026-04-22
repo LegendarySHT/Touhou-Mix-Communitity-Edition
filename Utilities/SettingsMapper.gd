@@ -89,6 +89,11 @@ static var mappings: Dictionary = {
 	"custom_block_skin_texture_filter_mode": {"section": "Appearance", "key": "custom_block_skin_texture_filter_mode", "value_type": "int"},
 	"block_skin_preset": {"section": "Appearance", "key": "block_skin_preset", "value_type": "int"},
 	"custom_background_image_size_mode": {"section": "Appearance", "key": "custom_background_image_size_mode", "value_type": "int"},
+	"play_background_mode": {"section": "Appearance", "key": "play_background_mode", "value_type": "int"},
+	"play_background_cover_blur": {"section": "Appearance", "key": "play_background_cover_blur", "value_type": "float"},
+	"play_background_size_mode": {"section": "Appearance", "key": "play_background_size_mode", "value_type": "int"},
+	"play_background_image_file": {"section": "Appearance", "key": "play_background_image_file", "value_type": "string"},
+	"play_background_color": {"section": "Appearance", "key": "play_background_color", "value_type": "color"},
 	"block_size": {"section": "Appearance", "key": "block_size", "value_type": "int"},
 	"background_image_preset": {"section": "Appearance", "key": "background_image_preset", "value_type": "int"},
 	"background_image_color": {"section": "Appearance", "key": "background_image_color", "value_type": "color"},
@@ -232,6 +237,12 @@ static func validate_value(setting_id: String, value: Variant) -> bool:
 			return float(value) >= 0.0 and float(value) <= 1.0
 		"lane_effect_quality":
 			return int(value) >= 0 and int(value) <= 2
+		"play_background_mode":
+			return int(value) >= 0 and int(value) <= 2
+		"play_background_cover_blur":
+			return float(value) >= 0.0 and float(value) <= 1.0
+		"play_background_size_mode":
+			return int(value) >= 0 and int(value) <= 1
 		"background_dim_alpha":
 			return float(value) >= 0.0 and float(value) <= 1.0
 		"vibration_duration":

@@ -48,6 +48,13 @@ extends Control
 @onready var env: WorldEnvironment = $FlowArea/SVP/WorldEnvironment
 @onready var current_env: Environment = env.environment
 
+const PLAY_BG_MODE_COVER := 0
+const PLAY_BG_MODE_IMAGE := 1
+const PLAY_BG_MODE_SOLID := 2
+const PLAY_BG_SIZE_COVER := 0
+const PLAY_BG_SIZE_STRETCH := 1
+const BG_BLUR_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundBlur.gdshader"
+
 # auto标识
 @onready var auto_label: Label = $AutoLabel
 @onready var debug_info_label: Label = $Layer/DebugInfo
@@ -197,6 +204,16 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 
 ## 新增：配置变更回调
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	if section == "Appearance" and key in [
+		"play_background_mode",
+		"play_background_cover_blur",
+		"play_background_size_mode",
+		"play_background_image_file",
+		"play_background_color"
+	]:
+		_apply_play_background()
+		return
+
 	if section == "Appearance" and key == "lane_effect_quality":
 		if lane_area and lane_area.has_method("set_quality_mode"):
 			lane_area.set_quality_mode(int(value))
@@ -768,6 +785,7 @@ func _init_display():
 	var cover_texture = FileSystemManager.instance.get_cover_by_midiData(current_midi)
 	if cover_texture:
 		cover.texture = cover_texture
+	_apply_play_background()
 
 	ani.animate_fade_in(center_bg, 0.2, "_show_bg")
 
@@ -801,6 +819,125 @@ func _init_display():
 	_init_lane_display()
 
 	auto_label.visible = flow_area.auto_mode
+
+
+func _apply_play_background() -> void:
+	if background == null:
+		return
+
+	var mode = ConfigManager.instance.get_int("Appearance", "play_background_mode", PLAY_BG_MODE_COVER)
+	var size_mode = ConfigManager.instance.get_int("Appearance", "play_background_size_mode", PLAY_BG_SIZE_COVER)
+	var blur_strength = ConfigManager.instance.get_float("Appearance", "play_background_cover_blur", 0.35)
+	var image_file = ConfigManager.instance.get_string("Appearance", "play_background_image_file", "")
+	var color_html = ConfigManager.instance.get_string("Appearance", "play_background_color", "#10121AFF")
+
+	_apply_background_size_mode(size_mode)
+
+	if mode == PLAY_BG_MODE_COVER:
+		if _has_cover_for_current_midi():
+			var cover_texture = FileSystemManager.instance.get_cover_by_midiData(current_midi)
+			if cover_texture:
+				background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+				background.texture = _prepare_background_texture(cover_texture)
+				background.modulate = Color.WHITE
+				_set_cover_blur_material(blur_strength)
+				return
+		_apply_background_solid(color_html)
+		return
+
+	if mode == PLAY_BG_MODE_IMAGE:
+		var texture = _load_user_background_texture(image_file)
+		if texture:
+			background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			background.texture = texture
+			background.modulate = Color.WHITE
+			_clear_cover_blur_material()
+			return
+		# 图片不存在时自动降级纯色
+		_apply_background_solid(color_html)
+		return
+
+	_apply_background_solid(color_html)
+
+
+func _apply_background_size_mode(size_mode: int) -> void:
+	if size_mode == PLAY_BG_SIZE_STRETCH:
+		background.stretch_mode = TextureRect.STRETCH_SCALE
+	else:
+		background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+
+
+func _apply_background_solid(color_html: String) -> void:
+	background.texture = null
+	background.modulate = Color(color_html) if color_html.is_valid_html_color() else Color("#10121AFF")
+	_clear_cover_blur_material()
+
+
+func _set_cover_blur_material(blur_strength: float) -> void:
+	var shader = load(BG_BLUR_SHADER_PATH)
+	if shader == null:
+		return
+
+	var mat: ShaderMaterial = null
+	if background.material and background.material is ShaderMaterial:
+		mat = background.material as ShaderMaterial
+	if mat == null or mat.shader != shader:
+		mat = ShaderMaterial.new()
+		mat.shader = shader
+
+	mat.set_shader_parameter("blur_strength", clampf(blur_strength, 0.0, 1.0))
+	background.material = mat
+
+
+func _clear_cover_blur_material() -> void:
+	background.material = null
+
+
+func _load_user_background_texture(file_name: String) -> Texture2D:
+	if file_name.is_empty():
+		return null
+
+	var full_path = PathHelper.get_background_dir().path_join(file_name)
+	if not FileAccess.file_exists(full_path):
+		return null
+
+	var image = Image.load_from_file(full_path)
+	if image == null:
+		return null
+	if not image.has_mipmaps():
+		image.generate_mipmaps()
+
+	return ImageTexture.create_from_image(image)
+
+
+func _prepare_background_texture(source_texture: Texture2D) -> Texture2D:
+	if source_texture == null:
+		return null
+
+	var image := source_texture.get_image()
+	if image == null or image.is_empty():
+		return source_texture
+
+	if not image.has_mipmaps():
+		image.generate_mipmaps()
+		return ImageTexture.create_from_image(image)
+
+	return source_texture
+
+
+func _has_cover_for_current_midi() -> bool:
+	if current_midi == null or FileSystemManager.instance == null:
+		return false
+
+	var charts = FileSystemManager.instance.get_charts_index()
+	for folder_name in charts.keys():
+		var metadata: Dictionary = charts[folder_name]
+		var chart_id: String = metadata.get("id", "")
+		if chart_id == current_midi.file_hash or metadata.get("data", {}).get("_id", "") == current_midi.id:
+			var cover_path = str(metadata.get("cover_path", ""))
+			return not cover_path.is_empty() and FileAccess.file_exists(cover_path)
+
+	return false
 
 func _init_lane_display():
 	lane_area.init_beam(get_lane_count(), self)

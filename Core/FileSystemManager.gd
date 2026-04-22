@@ -178,7 +178,7 @@ func _check_and_copy_default_resources_async() -> void:
 	# 复制背景图（若目录为空）
 	if _is_directory_empty(BACKGROUND_DIR):
 		GameLogger.instance.info("Background directory is empty, copying default backgrounds...", "FileSystemMGR")
-		await _copy_directory_contents_async(DEFAULT_BACKGROUND_SRC, BACKGROUND_DIR, "jpg,png")
+		await _copy_directory_contents_async(DEFAULT_BACKGROUND_SRC, BACKGROUND_DIR, "jpg,jpeg,png,webp")
 	
 	# 所有复制完成后扫描资源
 	call_deferred("_scan_all_resources")
