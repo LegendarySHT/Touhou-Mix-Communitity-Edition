@@ -1072,16 +1072,6 @@ func get_track_channel_volume(track_index: int, channel: int) -> float:
 		return backend.get_track_channel_volume(track_index, channel)
 	return 1.0
 
-## 设置特定轨道的音量（相对于主音量）
-## @deprecated 使用 set_track_channel_volume 替代
-func set_track_volume_db(track_index: int, volume_db: float) -> void:
-	if midi_player == null or current_midi_data == null:
-		return
-	
-	# 注：此方法已升级，现在通过set_track_channel_volume实现
-	# 为保持兼容性，这里仅记录日志
-	print("[MidiPlaybackManager] Set track %d volume to %.2f dB (deprecated, use set_track_channel_volume)" % [track_index, volume_db])
-
 ## 设置人声音量
 func set_vocal_volume_db(volume_db: float) -> void:
 	var audio_manager = AudioManager.instance
