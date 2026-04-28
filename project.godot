@@ -23,6 +23,7 @@ SortEngine="*res://Core/SortingEngine.gd"
 UiStatMGR="*res://Core/UIStateManager.gd"
 AniMGR="*res://UI/Animations/AnimationManager.gd"
 GLogger="*res://Utilities/Logger.gd"
+FmodManager="*uid://cds10pm7hwn3p"
 
 [display]
 
@@ -34,6 +35,10 @@ window/stretch/aspect="expand"
 [dotnet]
 
 project/assembly_name="Touhou Mix Comunitity Edition"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/fmod/plugin.cfg", "res://addons/midi/plugin.cfg")
 
 [gui]
 
