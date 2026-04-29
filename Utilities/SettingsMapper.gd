@@ -26,6 +26,7 @@ static var mappings: Dictionary = {
 	"default_midi_volume": {"section": "Gameplay", "key": "default_midi_volume", "value_type": "int"},
 	"default_vocal_volume": {"section": "Gameplay", "key": "default_vocal_volume", "value_type": "int"},
 	"audio_sync_threshold": {"section": "Gameplay", "key": "audio_sync_threshold", "value_type": "int"},
+	"melty_audio_output_backend": {"section": "Gameplay", "key": "melty_audio_output_backend", "value_type": "string"},
 	"melty_audio_preset": {"section": "Gameplay", "key": "melty_audio_preset", "value_type": "int"},
 	"melty_custom_target_queued_frames": {"section": "Gameplay", "key": "melty_custom_target_queued_frames", "value_type": "int"},
 	"melty_custom_min_target_queued_frames": {"section": "Gameplay", "key": "melty_custom_min_target_queued_frames", "value_type": "int"},
@@ -153,6 +154,19 @@ static func ini_to_settings(config: Dictionary) -> Dictionary:
 			result["midi_backend"] = "0"
 		elif backend_value == "meltysynth":
 			result["midi_backend"] = "1"
+
+	# 兼容旧配置：melty_audio_output_backend 早期曾保存为索引值
+	if result.has("melty_audio_output_backend"):
+		var output_backend_value = str(result["melty_audio_output_backend"]).to_lower()
+		match output_backend_value:
+			"0":
+				result["melty_audio_output_backend"] = "auto"
+			"1":
+				result["melty_audio_output_backend"] = "godot"
+			"2":
+				result["melty_audio_output_backend"] = "fmod"
+			"auto", "godot", "fmod":
+				result["melty_audio_output_backend"] = output_backend_value
 	
 	return result
 
@@ -219,6 +233,8 @@ static func validate_value(setting_id: String, value: Variant) -> bool:
 			return int(value) >= 1 and int(value) <= 1000
 		"melty_audio_preset":
 			return int(value) >= 0 and int(value) <= 3
+		"melty_audio_output_backend":
+			return str(value).to_lower() in ["auto", "godot", "fmod"]
 		"melty_custom_target_queued_frames", "melty_custom_min_target_queued_frames", "melty_custom_max_target_queued_frames":
 			return int(value) >= 64 and int(value) <= 8192
 		"melty_custom_underrun_threshold_frames":

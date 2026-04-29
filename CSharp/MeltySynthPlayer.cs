@@ -1,8 +1,11 @@
 using Godot;
 using MeltySynth;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Reflection;
 using TouhouMix.Midi;
 
 /// <summary>
@@ -11,6 +14,616 @@ using TouhouMix.Midi;
 /// </summary>
 public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 {
+	private interface IAudioOutputBridge
+	{
+		bool Initialize(Node owner, StringName bus, int sampleRate);
+		void SetBus(StringName bus);
+		void Play();
+		void Stop();
+		void Update();
+		bool IsPlaying { get; }
+		int GetFramesAvailable();
+		int GetTotalBufferFrames();
+		void PushFrame(Vector2 frame);
+	}
+
+	private sealed class FmodAudioOutputBridge : IAudioOutputBridge
+	{
+		private readonly float _bufferLengthSeconds;
+		private readonly object _bufferLock = new object();
+		private FmodNative.FMOD_SOUND_PCMREAD_CALLBACK _pcmReadCallback;
+		private FmodNative.FMOD_SOUND_PCMSETPOS_CALLBACK _pcmSetPosCallback;
+		private IntPtr _system = IntPtr.Zero;
+		private IntPtr _sound = IntPtr.Zero;
+		private IntPtr _channel = IntPtr.Zero;
+		private float[] _buffer = Array.Empty<float>();
+		private int _sampleRate = 48000;
+		private int _capacityFrames = 0;
+		private int _readFrameIndex = 0;
+		private int _writeFrameIndex = 0;
+		private int _queuedFrames = 0;
+		private bool _initialized = false;
+		private bool _playing = false;
+		private StringName _bus = new StringName("Master");
+
+		public FmodAudioOutputBridge(float bufferLengthSeconds)
+		{
+			_bufferLengthSeconds = Math.Clamp(bufferLengthSeconds, 0.005f, 0.1f);
+		}
+
+		public bool Initialize(Node owner, StringName bus, int sampleRate)
+		{
+			if (_initialized)
+			{
+				return true;
+			}
+
+			_bus = bus;
+			_sampleRate = sampleRate > 0 ? sampleRate : 48000;
+			_capacityFrames = Math.Max(1, (int)Math.Round(_sampleRate * _bufferLengthSeconds));
+			_buffer = new float[_capacityFrames * 2];
+			GD.Print($"[MeltySynthPlayer][FMOD] Initializing bridge: sample_rate={_sampleRate}, capacity_frames={_capacityFrames}, buffer_seconds={_bufferLengthSeconds:F3}");
+
+			if (!FmodNative.TryLoadNativeLibrary())
+			{
+				GD.PushWarning("[MeltySynthPlayer][FMOD] Native FMOD library could not be loaded.");
+				return false;
+			}
+
+			if (!TryCreateSystem())
+			{
+				DisposeNative();
+				return false;
+			}
+
+			if (!TryCreateStreamSound())
+			{
+				DisposeNative();
+				return false;
+			}
+
+			_initialized = true;
+			return true;
+		}
+
+		public void SetBus(StringName bus)
+		{
+			_bus = bus;
+		}
+
+		public void Play()
+		{
+			if (_channel == IntPtr.Zero)
+			{
+				return;
+			}
+
+			if (!_playing)
+			{
+				FmodNative.FMOD_Channel_SetPaused(_channel, false);
+				_playing = true;
+			}
+		}
+
+		public void Stop()
+		{
+			if (_channel != IntPtr.Zero)
+			{
+				FmodNative.FMOD_Channel_SetPaused(_channel, true);
+			}
+
+			lock (_bufferLock)
+			{
+				_readFrameIndex = 0;
+				_writeFrameIndex = 0;
+				_queuedFrames = 0;
+			}
+
+			_playing = false;
+		}
+
+		public void Update()
+		{
+			if (_system != IntPtr.Zero)
+			{
+				FmodNative.FMOD_System_Update(_system);
+			}
+		}
+
+		public bool IsPlaying => _playing;
+
+		public int GetFramesAvailable()
+		{
+			lock (_bufferLock)
+			{
+				return Math.Max(0, _capacityFrames - _queuedFrames);
+			}
+		}
+
+		public int GetTotalBufferFrames()
+		{
+			return _capacityFrames;
+		}
+
+		public void PushFrame(Vector2 frame)
+		{
+			lock (_bufferLock)
+			{
+				if (_capacityFrames <= 0)
+				{
+					return;
+				}
+
+				if (_queuedFrames >= _capacityFrames)
+				{
+					_readFrameIndex = (_readFrameIndex + 1) % _capacityFrames;
+					_queuedFrames -= 1;
+				}
+
+				var writeOffset = _writeFrameIndex * 2;
+				_buffer[writeOffset] = frame.X;
+				_buffer[writeOffset + 1] = frame.Y;
+				_writeFrameIndex = (_writeFrameIndex + 1) % _capacityFrames;
+				_queuedFrames += 1;
+			}
+		}
+
+		private bool TryCreateSystem()
+		{
+			var result = FmodNative.CreateSystem(out _system);
+			if (result != FmodNative.RESULT.OK || _system == IntPtr.Zero)
+			{
+				GD.PushWarning($"[MeltySynthPlayer][FMOD] FMOD_System_Create failed: {result}");
+				return false;
+			}
+
+			GD.Print("[MeltySynthPlayer][FMOD] FMOD_System_Create succeeded");
+
+			result = FmodNative.FMOD_System_Init(_system, 256, FmodNative.INITFLAGS.NORMAL, IntPtr.Zero);
+			if (result != FmodNative.RESULT.OK)
+			{
+				GD.PushWarning($"[MeltySynthPlayer][FMOD] FMOD_System_Init failed: {result}");
+				return false;
+			}
+
+			GD.Print("[MeltySynthPlayer][FMOD] FMOD_System_Init succeeded");
+
+			return true;
+		}
+
+		private bool TryCreateStreamSound()
+		{
+			_pcmReadCallback = OnPcmRead;
+			_pcmSetPosCallback = OnPcmSetPos;
+
+			// Set a standardized decode buffer size optimized for low latency tracking.
+			// FMOD splits its streaming read into 2 blocks (e.g. 512 total -> two 256 frame chunks requested)
+			// This matches typical Godot generated frame chunks without starving the A1 queue (which often targets ~400 frames).
+			uint decodeFrames = 512;
+			uint totalFrames = (uint)_sampleRate * 60; // Set logical stream length to 60 seconds
+			
+			// FMOD loops back when it hits `length` for streaming buffers. The length *must* be an exact multiple 
+			// of `decodebuffersize`, otherwise a partial read chunk at the loop seam results in phase pops/electrical crackles.
+			totalFrames = (totalFrames / decodeFrames) * decodeFrames;
+
+			var exinfo = new FmodNative.FMOD_CREATESOUNDEXINFO
+			{
+				cbsize = Marshal.SizeOf<FmodNative.FMOD_CREATESOUNDEXINFO>(),
+				length = totalFrames * 2 * sizeof(float),
+				numchannels = 2,
+				defaultfrequency = _sampleRate,
+				format = FmodNative.SOUND_FORMAT.PCMFLOAT,
+				decodebuffersize = decodeFrames,
+				pcmreadcallback = Marshal.GetFunctionPointerForDelegate(_pcmReadCallback),
+				pcmsetposcallback = Marshal.GetFunctionPointerForDelegate(_pcmSetPosCallback)
+			};
+
+			var mode = FmodNative.MODE.OPENUSER | FmodNative.MODE.CREATESTREAM | FmodNative.MODE.LOOP_NORMAL;
+			var result = FmodNative.FMOD_System_CreateSound(_system, "melty_synth_stream", mode, ref exinfo, out _sound);
+			if (result != FmodNative.RESULT.OK || _sound == IntPtr.Zero)
+			{
+				GD.PushWarning($"[MeltySynthPlayer][FMOD] FMOD_System_CreateSound failed: {result}");
+				return false;
+			}
+
+			GD.Print("[MeltySynthPlayer][FMOD] FMOD_System_CreateSound succeeded");
+
+			result = FmodNative.FMOD_System_PlaySound(_system, _sound, IntPtr.Zero, true, out _channel);
+			if (result != FmodNative.RESULT.OK || _channel == IntPtr.Zero)
+			{
+				GD.PushWarning($"[MeltySynthPlayer][FMOD] FMOD_System_PlaySound failed: {result}");
+				return false;
+			}
+
+			GD.Print("[MeltySynthPlayer][FMOD] FMOD_System_PlaySound succeeded (initially paused)");
+
+			FmodNative.FMOD_Channel_SetPaused(_channel, true);
+			return true;
+		}
+
+		private void DisposeNative()
+		{
+			if (_channel != IntPtr.Zero)
+			{
+				FmodNative.FMOD_Channel_Stop(_channel);
+				_channel = IntPtr.Zero;
+			}
+
+			if (_sound != IntPtr.Zero)
+			{
+				FmodNative.FMOD_Sound_Release(_sound);
+				_sound = IntPtr.Zero;
+			}
+
+			if (_system != IntPtr.Zero)
+			{
+				FmodNative.FMOD_System_Close(_system);
+				FmodNative.FMOD_System_Release(_system);
+				_system = IntPtr.Zero;
+			}
+
+			_initialized = false;
+			_playing = false;
+		}
+
+		private FmodNative.RESULT OnPcmRead(IntPtr soundraw, IntPtr data, uint datalen)
+		{
+			if (_playing && _queuedFrames == 0)
+			{
+				GD.Print("[MeltySynthPlayer][FMOD] PCM callback reached with empty queue");
+			}
+
+			return FillPcmData(soundraw, data, datalen);
+		}
+
+		private FmodNative.RESULT OnPcmSetPos(IntPtr soundraw, int subsound, uint position, FmodNative.TIMEUNIT postype)
+		{
+			// FMOD routinely calls this when its internal stream loops over the 'length'.
+			// We MUST NOT flush our circular generative buffer when this happens, 
+			// otherwise we actively throw away Godot's audio frames and cause massive dropouts/crackles.
+			return FmodNative.RESULT.OK;
+		}
+
+		private FmodNative.RESULT FillPcmData(IntPtr soundraw, IntPtr data, uint datalen)
+		{
+			lock (_bufferLock)
+			{
+				if (_capacityFrames <= 0)
+				{
+					ZeroMemory(data, datalen);
+					return FmodNative.RESULT.OK;
+				}
+
+				var floatCount = (int)(datalen / sizeof(float));
+				var output = new float[floatCount];
+				var samplesAvailable = _queuedFrames * 2;
+				var samplesToCopy = Math.Min(samplesAvailable, floatCount);
+
+				for (var i = 0; i < samplesToCopy / 2; i++)
+				{
+					var readOffset = _readFrameIndex * 2;
+					output[i * 2] = _buffer[readOffset];
+					output[i * 2 + 1] = _buffer[readOffset + 1];
+					_readFrameIndex = (_readFrameIndex + 1) % _capacityFrames;
+					_queuedFrames -= 1;
+				}
+
+				if (samplesToCopy < floatCount)
+				{
+					Array.Clear(output, samplesToCopy, floatCount - samplesToCopy);
+				}
+
+				Marshal.Copy(output, 0, data, floatCount);
+				return FmodNative.RESULT.OK;
+			}
+		}
+
+		private static void ZeroMemory(IntPtr data, uint datalen)
+		{
+			var zero = new byte[(int)datalen];
+			Marshal.Copy(zero, 0, data, (int)datalen);
+		}
+	}
+
+	private static class FmodNative
+	{
+		private const uint FMOD_VERSION = 0x00020306;
+
+		internal enum RESULT : int
+		{
+			OK = 0
+		}
+
+		[Flags]
+		internal enum MODE : uint
+		{
+			DEFAULT = 0x00000000,
+			LOOP_NORMAL = 0x00000002,
+			CREATESTREAM = 0x00000080,
+			OPENUSER = 0x00000400
+		}
+
+		internal enum INITFLAGS : uint
+		{
+			NORMAL = 0x00000000
+		}
+
+		internal enum SOUND_FORMAT : int
+		{
+			PCMFLOAT = 5
+		}
+
+		internal enum TIMEUNIT : uint
+		{
+			MS = 0x00000001
+		}
+
+		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+		internal delegate RESULT FMOD_SOUND_PCMREAD_CALLBACK(IntPtr soundraw, IntPtr data, uint datalen);
+
+		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+		internal delegate RESULT FMOD_SOUND_PCMSETPOS_CALLBACK(IntPtr soundraw, int subsound, uint position, TIMEUNIT postype);
+
+		[StructLayout(LayoutKind.Sequential)]
+		internal struct FMOD_CREATESOUNDEXINFO
+		{
+				public int cbsize;
+			public uint length;
+			public uint fileoffset;
+			public int numchannels;
+			public int defaultfrequency;
+			public SOUND_FORMAT format;
+			public uint decodebuffersize;
+			public int initialsubsound;
+			public int numsubsounds;
+			public IntPtr inclusionlist;
+				public int inclusionlistnum;
+			public IntPtr pcmreadcallback;
+			public IntPtr pcmsetposcallback;
+				public IntPtr nonblockcallback;
+				public IntPtr dlsname;
+				public IntPtr encryptionkey;
+				public int maxpolyphony;
+				public IntPtr userdata;
+				public int suggestedsoundtype;
+				public Guid fsbguid;
+				public IntPtr fileuseropen;
+				public IntPtr fileuserclose;
+				public IntPtr fileuserread;
+				public IntPtr fileuserseek;
+				public IntPtr fileuserasyncread;
+				public IntPtr fileuserasynccancel;
+				public IntPtr fileuserdata;
+		}
+
+		private static readonly object _loadLock = new object();
+		private static IntPtr _libraryHandle = IntPtr.Zero;
+		private static bool _resolverInstalled = false;
+
+		static FmodNative()
+		{
+			InstallResolver();
+		}
+
+		private static void InstallResolver()
+		{
+			if (_resolverInstalled)
+			{
+				return;
+			}
+
+			System.Runtime.InteropServices.NativeLibrary.SetDllImportResolver(typeof(FmodNative).Assembly, ResolveLibrary);
+			_resolverInstalled = true;
+		}
+
+		internal static bool TryLoadNativeLibrary()
+		{
+			if (_libraryHandle != IntPtr.Zero)
+			{
+				return true;
+			}
+
+			lock (_loadLock)
+			{
+				if (_libraryHandle != IntPtr.Zero)
+				{
+					return true;
+				}
+
+				var libraryPath = ResolveLibraryPath();
+				if (string.IsNullOrEmpty(libraryPath))
+				{
+					return false;
+				}
+
+				try
+				{
+					_libraryHandle = System.Runtime.InteropServices.NativeLibrary.Load(libraryPath);
+					return _libraryHandle != IntPtr.Zero;
+				}
+				catch (Exception ex)
+				{
+					GD.PushWarning($"[MeltySynthPlayer][FMOD] Failed to load native library '{libraryPath}': {ex.Message}");
+					return false;
+				}
+			}
+		}
+
+		private static IntPtr ResolveLibrary(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+		{
+			if (!libraryName.Equals("fmod", StringComparison.OrdinalIgnoreCase))
+			{
+				return IntPtr.Zero;
+			}
+
+			if (TryLoadNativeLibrary())
+			{
+				return _libraryHandle;
+			}
+
+			return IntPtr.Zero;
+		}
+
+		private static string ResolveLibraryPath()
+		{
+			var baseDir = ProjectSettings.GlobalizePath("res://addons/fmod/libs");
+			if (OS.GetName() == "Windows")
+			{
+				var debugName = OS.IsDebugBuild() ? "fmodL.dll" : "fmod.dll";
+				var path = Path.Combine(baseDir, "windows", debugName);
+				return File.Exists(path) ? path : string.Empty;
+			}
+
+			if (OS.GetName() == "Linux")
+			{
+				var debugName = OS.IsDebugBuild() ? "libfmodL.so" : "libfmod.so";
+				var path = Path.Combine(baseDir, "linux", debugName);
+				return File.Exists(path) ? path : string.Empty;
+			}
+
+			if (OS.GetName() == "macOS")
+			{
+				var debugName = OS.IsDebugBuild() ? "libfmodL.dylib" : "libfmod.dylib";
+				var path = Path.Combine(baseDir, "macos", debugName);
+				return File.Exists(path) ? path : string.Empty;
+			}
+
+			return string.Empty;
+		}
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_System_Create(out IntPtr system, uint version);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_System_Init(IntPtr system, int maxchannels, INITFLAGS flags, IntPtr extradriverdata);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_System_Update(IntPtr system);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_System_Close(IntPtr system);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_System_Release(IntPtr system);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_System_CreateSound(IntPtr system, string name_or_data, MODE mode, ref FMOD_CREATESOUNDEXINFO exinfo, out IntPtr sound);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_System_PlaySound(IntPtr system, IntPtr sound, IntPtr channelgroup, bool paused, out IntPtr channel);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_Channel_SetPaused(IntPtr channel, bool paused);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_Channel_Stop(IntPtr channel);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_Sound_Release(IntPtr sound);
+
+		internal static RESULT CreateSystem(out IntPtr system)
+		{
+			return FMOD_System_Create(out system, FMOD_VERSION);
+		}
+	}
+
+	private sealed class GodotAudioOutputBridge : IAudioOutputBridge
+	{
+		private readonly Node _owner;
+		private AudioStreamPlayer _player;
+		private AudioStreamGenerator _generator;
+		private AudioStreamGeneratorPlayback _playback;
+		private readonly float _bufferLengthSeconds;
+
+		public GodotAudioOutputBridge(Node owner, float bufferLengthSeconds)
+		{
+			_owner = owner;
+			_bufferLengthSeconds = Math.Clamp(bufferLengthSeconds, 0.005f, 0.1f);
+		}
+
+		public bool Initialize(Node owner, StringName bus, int sampleRate)
+		{
+			if (_player != null)
+			{
+				return true;
+			}
+
+			_player = new AudioStreamPlayer();
+			_player.Bus = bus;
+			_owner.AddChild(_player);
+
+			_generator = new AudioStreamGenerator
+			{
+				MixRate = sampleRate,
+				BufferLength = _bufferLengthSeconds
+			};
+
+			_player.Stream = _generator;
+			return true;
+		}
+
+		public void SetBus(StringName bus)
+		{
+			if (_player != null)
+			{
+				_player.Bus = bus;
+			}
+		}
+
+		public void Play()
+		{
+			if (_player == null)
+			{
+				return;
+			}
+
+			if (!_player.Playing)
+			{
+				_player.Play();
+				_playback = _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
+			}
+		}
+
+		public void Stop()
+		{
+			_player?.Stop();
+			_playback = null;
+		}
+
+		public void Update()
+		{
+		}
+
+		public bool IsPlaying => _player != null && _player.Playing;
+
+		public int GetFramesAvailable()
+		{
+			if (_player == null || _generator == null)
+			{
+				return 0;
+			}
+
+			_playback ??= _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
+			return _playback != null ? _playback.GetFramesAvailable() : 0;
+		}
+
+		public int GetTotalBufferFrames()
+		{
+			if (_generator == null)
+			{
+				return 0;
+			}
+
+			return Math.Max(1, (int)(_generator.BufferLength * AudioServer.GetMixRate()));
+		}
+
+		public void PushFrame(Vector2 frame)
+		{
+			_playback ??= _player?.GetStreamPlayback() as AudioStreamGeneratorPlayback;
+			_playback?.PushFrame(frame);
+		}
+	}
+
 	[Signal]
 	public delegate void finishedEventHandler();
 
@@ -28,9 +641,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	public Godot.Collections.Dictionary track_channel_instruments = new Godot.Collections.Dictionary();
 	public Godot.Collections.Dictionary _track_channel_instruments = new Godot.Collections.Dictionary();
 
-	private AudioStreamPlayer _player;
-	private AudioStreamGenerator _generator;
-	private AudioStreamGeneratorPlayback _playback;
+	private IAudioOutputBridge _audioOutput;
 
 	private Synthesizer _synth;
 	private MidiFileSequencer _sequencer;
@@ -39,7 +650,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	private int _sampleRate;
 	private float _volumeLinear = 1.0f;
-	private const float MELTYSYNTH_OUTPUT_GAIN = 4.5f; //音量增益，整体调整meltySynth整体音量
+	private const float MELTYSYNTH_OUTPUT_GAIN = 1.0f; //音量增益，整体调整meltySynth整体音量
 	private bool _sequencerStarted = false;  // 追踪 sequencer 是否已启动
 	private double _pendingSeekMs = double.NaN;  // 待处理的 seek 位置（NaN 表示无待处理的 seek）
 	private double _currentOffsetMs = 0.0;  // 当前相对于 sequencer 的时间偏移（支持负数 pre-roll）
@@ -77,6 +688,11 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private Synthesizer _autoSynth;        // 原有：用于MIDI自动播放（就是 _synth）
 	private bool _useSeparateSynthForManual = true;  // 启用独立合成器
 	private bool _preferNativeSequencerSeek = false;
+	private bool _fmodPendingStart = false;
+	private int _fmodWarmupQueuedFrames = 0;
+	private int _fmodTargetQueuedFrames = 0;
+	private int _fmodLowWatermarkFrames = 0;
+	private int _fmodBurstFrames = 0;
 
 	// A1: 目标排队帧策略（尽量维持短队列，降低触发到发声延迟）
 	private bool _a1QueueControlEnabled = true;
@@ -101,25 +717,128 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		Custom = 3
 	}
 
+	private bool IsFmodAudioBackend()
+	{
+		return _audioOutput is FmodAudioOutputBridge;
+	}
+
+	private void RequestAudioOutputPlay()
+	{
+		if (_audioOutput == null)
+		{
+			return;
+		}
+
+		if (IsFmodAudioBackend())
+		{
+			if (!_audioOutput.IsPlaying)
+			{
+				_fmodPendingStart = true;
+			}
+			return;
+		}
+
+		_audioOutput.Play();
+	}
+
+	private void ConfigureFmodPlaybackWatermarks()
+	{
+		_fmodPendingStart = false;
+
+		if (!IsFmodAudioBackend() || _audioOutput == null || _sampleRate <= 0)
+		{
+			return;
+		}
+
+		var totalBufferFrames = Math.Max(1, _audioOutput.GetTotalBufferFrames());
+		var warmupMin = Math.Max(1, Math.Min(512, totalBufferFrames));
+		var lowMin = Math.Max(1, Math.Min(256, totalBufferFrames));
+
+		_fmodWarmupQueuedFrames = Math.Clamp((int)Math.Round(_sampleRate * 0.024d), warmupMin, totalBufferFrames);
+		_fmodTargetQueuedFrames = Math.Clamp((int)Math.Round(_sampleRate * 0.030d), _fmodWarmupQueuedFrames, totalBufferFrames);
+		_fmodLowWatermarkFrames = Math.Clamp((int)Math.Round(_sampleRate * 0.018d), lowMin, _fmodTargetQueuedFrames);
+		_fmodBurstFrames = Math.Clamp((int)Math.Round(_sampleRate * 0.024d), _fmodLowWatermarkFrames, totalBufferFrames);
+
+		GD.Print($"[MeltySynthPlayer][FMOD] fixed watermarks configured: warmup={_fmodWarmupQueuedFrames}, low={_fmodLowWatermarkFrames}, target={_fmodTargetQueuedFrames}, burst={_fmodBurstFrames}, total={totalBufferFrames}");
+	}
+
 	private void EnsureAudioInitialized()
 	{
-		if (_player != null)
+		if (_audioOutput != null)
 		{
 			return;
 		}
 
 		_sampleRate = (int)AudioServer.GetMixRate();
-		_player = new AudioStreamPlayer();
-		_player.Bus = _bus;
-		AddChild(_player);
-
-		_generator = new AudioStreamGenerator
+		var bufferLengthSeconds = GetPreferredBufferLengthSeconds();
+		var bridge = CreateAudioOutputBridge();
+		if (bridge == null || !bridge.Initialize(this, _bus, _sampleRate))
 		{
-			MixRate = _sampleRate,
-			BufferLength = 0.1f
-		};
+			if (!(bridge is GodotAudioOutputBridge))
+			{
+				GD.PushWarning("[MeltySynthPlayer] Selected audio bridge failed to initialize; falling back to Godot audio bridge.");
+			}
 
-		_player.Stream = _generator;
+			bridge = new GodotAudioOutputBridge(this, bufferLengthSeconds);
+			if (!bridge.Initialize(this, _bus, _sampleRate))
+			{
+				GD.PrintErr("[MeltySynthPlayer] Failed to initialize Godot audio bridge.");
+				return;
+			}
+		}
+
+		_audioOutput = bridge;
+		ConfigureFmodPlaybackWatermarks();
+	}
+
+	private IAudioOutputBridge CreateAudioOutputBridge()
+	{
+		var bufferLengthSeconds = GetPreferredBufferLengthSeconds();
+		var requestedBackend = "auto";
+
+		if (ClassDB.ClassExists("FmodServer") && Engine.HasSingleton("FmodManager"))
+		{
+			var fmodManager = Engine.GetSingleton("FmodManager");
+			if (fmodManager != null)
+			{
+				if (fmodManager.HasMethod("get_melty_audio_output_backend"))
+				{
+					requestedBackend = (string)fmodManager.Call("get_melty_audio_output_backend");
+				}
+			}
+		}
+
+		if (requestedBackend == "godot")
+		{
+			GD.Print("[MeltySynthPlayer] Godot audio bridge selected by configuration");
+			return new GodotAudioOutputBridge(this, bufferLengthSeconds);
+		}
+
+		bufferLengthSeconds = Math.Max(bufferLengthSeconds, 0.05f);
+
+		if (requestedBackend == "fmod")
+		{
+			GD.Print("[MeltySynthPlayer] FMOD audio bridge selected by configuration");
+			return new FmodAudioOutputBridge(bufferLengthSeconds);
+		}
+
+		GD.Print("[MeltySynthPlayer] Auto audio bridge selection: trying FMOD bridge first");
+		return new FmodAudioOutputBridge(bufferLengthSeconds);
+	}
+
+	private float GetPreferredBufferLengthSeconds()
+	{
+		var bufferLengthSeconds = 0.025f;
+		if (Engine.HasSingleton("FmodManager"))
+		{
+			var fmodManager = Engine.GetSingleton("FmodManager");
+			if (fmodManager != null && fmodManager.HasMethod("get_melty_audio_buffer_length_seconds"))
+			{
+				bufferLengthSeconds = Convert.ToSingle(fmodManager.Call("get_melty_audio_buffer_length_seconds"));
+			}
+		}
+
+		return bufferLengthSeconds;
 	}
 
 	public override void _Ready()
@@ -226,6 +945,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	public override void _Process(double delta)
 	{
+		_audioOutput?.Update();
+
 		// 【修复D-1】记录播放开始的时刻（用于系统时钟模式）
 		if (playing && !_previousPlaying)
 		{
@@ -261,12 +982,10 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				_currentOffsetMs = _pendingSeekMs;
 				_sequencerStarted = false;  // 标记 sequencer 需要重启
 				_hasSkippedPreroolEvents = false;  // 重置标志，准备首次 crossing zero
+				_fmodPendingStart = false;
 				
 				// 停止所有播放（AudioStreamPlayer 和 Sequencer）
-				if (_player != null && _player.Playing)
-				{
-					_player.Stop();
-				}
+				_audioOutput?.Stop();
 				
 				// 【关键】停止 sequencer，防止在后台继续运行
 				if (_sequencer != null)
@@ -282,10 +1001,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 			// 正数 seek：正常处理
 			// 1. 如果正在播放，停止 AudioStreamPlayer 清空缓冲区
-			if (_player != null && _player.Playing)
-			{
-				_player.Stop();
-			}
+			_audioOutput?.Stop();
 
 			// 2. 确保 sequencer 已启动，再使用原生 Seek
 			if (!_sequencerStarted)
@@ -315,13 +1031,10 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			_hasSkippedPreroolEvents = true;  // 正数seek时无需跳过事件
 
 			// 3. 如果之前在播放，重新启动 AudioStreamPlayer
-			if (playing && _player != null)
+			if (playing)
 			{
-				_player.Play();
+				RequestAudioOutputPlay();
 			}
-			
-			// 4. 重置 playback，下一帧会重新获取
-			_playback = null;
 			
 			// 5. 清除待处理标志
 			_pendingSeekMs = double.NaN;
@@ -350,12 +1063,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				}
 				
 				// 【关键】启动 AudioStreamPlayer，确保 sequencer 和播放器同步
-				if (_player != null && !_player.Playing)
-				{
-					// GD.Print($"[MeltySynthPlayer] Starting AudioStreamPlayer after crossing zero");
-					_player.Play();
-					_playback = _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
-				}
+				RequestAudioOutputPlay();
 				
 				_hasSkippedPreroolEvents = true;
 				_currentOffsetMs = 0.0;  // 重置 offset，准备正常播放阶段
@@ -369,35 +1077,53 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			}
 		}
 
-		// 正常播放检查
-		if (!playing || _sequencer == null || _player == null)
+		if (!playing || _sequencer == null || _audioOutput == null)
 		{
 			return;
 		}
 
 		// 【正常渲染流程】
-		if (!_player.Playing)
-		{
-			_player.Play();
-		}
+		RequestAudioOutputPlay();
 
-		_playback ??= _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
-		if (_playback == null)
-		{
-			return;
-		}
-
-		var framesAvailable = _playback.GetFramesAvailable();
+		var framesAvailable = _audioOutput.GetFramesAvailable();
 		if (framesAvailable <= 0)
 		{
 			return;
 		}
 
 		var renderFrames = framesAvailable;
-		if (_a1QueueControlEnabled && _generator != null)
+		var totalBufferFrames = Math.Max(1, _audioOutput.GetTotalBufferFrames());
+		var queuedFrames = Math.Max(0, totalBufferFrames - framesAvailable);
+		var isFmodBackend = IsFmodAudioBackend();
+
+		if (isFmodBackend)
 		{
-			var totalBufferFrames = Math.Max(1, (int)(_generator.BufferLength * _sampleRate));
-			var queuedFrames = Math.Max(0, totalBufferFrames - framesAvailable);
+			if (_fmodWarmupQueuedFrames <= 0 || _fmodTargetQueuedFrames <= 0)
+			{
+				ConfigureFmodPlaybackWatermarks();
+			}
+
+			if (_fmodPendingStart)
+			{
+				var warmupNeedFrames = Math.Max(0, _fmodWarmupQueuedFrames - queuedFrames);
+				renderFrames = Math.Min(framesAvailable, Math.Max(_fmodBurstFrames, warmupNeedFrames));
+			}
+			else if (queuedFrames < _fmodLowWatermarkFrames)
+			{
+				var refillNeedFrames = Math.Max(0, _fmodTargetQueuedFrames - queuedFrames);
+				renderFrames = Math.Min(framesAvailable, Math.Max(_fmodBurstFrames, refillNeedFrames));
+			}
+			else if (queuedFrames < _fmodTargetQueuedFrames)
+			{
+				renderFrames = Math.Min(framesAvailable, _fmodTargetQueuedFrames - queuedFrames);
+			}
+			else
+			{
+				renderFrames = 0;
+			}
+		}
+		else if (_a1QueueControlEnabled)
+		{
 			var theoreticalLatencyMs = (double)queuedFrames / _sampleRate * 1000.0;
 			var targetLatencyMs = (double)_targetQueuedFrames / _sampleRate * 1000.0;
 			var belowThreshold = queuedFrames < _underrunThresholdFrames;
@@ -447,6 +1173,16 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			}
 		}
 
+		if (isFmodBackend && _fmodPendingStart)
+		{
+			var queuedAfterRender = queuedFrames + renderFrames;
+			if (queuedAfterRender >= _fmodWarmupQueuedFrames)
+			{
+				_audioOutput.Play();
+				_fmodPendingStart = false;
+			}
+		}
+
 		if (renderFrames <= 0)
 		{
 			return;
@@ -476,7 +1212,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				GD.PrintErr($"[MeltySynthPlayer] Error processing manual synth: {ex.Message}");
 			}
 
-			// 混合输出：自动播放 + 手动音符（手动音降低 3dB 避免过载）
 			for (var i = 0; i < renderFrames; i++)
 			{
 				_leftBuffer[i] = _leftBuffer[i] + manualLeft[i];
@@ -493,9 +1228,9 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		var scale = _volumeLinear * MELTYSYNTH_OUTPUT_GAIN;
 		for (var i = 0; i < renderFrames; i++)
 		{
-			var left = _leftBuffer[i] * scale;
-			var right = _rightBuffer[i] * scale;
-			_playback.PushFrame(new Vector2(left, right));
+			var left = Math.Clamp(_leftBuffer[i] * scale, -1.0f, 1.0f);
+			var right = Math.Clamp(_rightBuffer[i] * scale, -1.0f, 1.0f);
+			_audioOutput.PushFrame(new Vector2(left, right));
 		}
 
 		// 【修复循环】检查序列器是否已到达结束
@@ -515,7 +1250,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				// 无循环：停止播放
 				// GD.Print("[MeltySynthPlayer] End of sequence, stopping playback (no loop)");
 				playing = false;
-				_player.Stop();
+				_audioOutput?.Stop();
 				EmitSignal(SignalName.finished);
 			}
 		}
@@ -530,8 +1265,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return;
 		}
 
-		// GD.Print($"[MeltySynthPlayer] play() called - _midiFile: {_midiFile != null}, _sequencerStarted: {_sequencerStarted}, _currentOffsetMs: {_currentOffsetMs}, _player.Playing: {_player?.Playing}");
-		_playback = null; // reset playback so we can reacquire a fresh AudioStreamGeneratorPlayback
+		// GD.Print($"[MeltySynthPlayer] play() called - _midiFile: {_midiFile != null}, _sequencerStarted: {_sequencerStarted}, _currentOffsetMs: {_currentOffsetMs}, _audioOutput.IsPlaying: {_audioOutput?.IsPlaying}");
 
 		// 【处理 pre-roll 模式】如果当前有负数 offset，不启动 sequencer，让 _Process 处理跨越零点
 		if (_currentOffsetMs < 0.0)
@@ -560,34 +1294,17 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		}
 		
 		playing = true;
-		
-		if (_player != null)
-		{
-			if (!_player.Playing)
-			{
-				// GD.Print("[MeltySynthPlayer] Starting AudioStreamPlayer");
-				_player.Play();
-				_playback = _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
-			}
-			else
-			{
-				// GD.Print("[MeltySynthPlayer] AudioStreamPlayer already playing");
-			}
-		}
-		else
-		{
-			GD.PrintErr("[MeltySynthPlayer] _player is null!");
-		}
+		RequestAudioOutputPlay();
 	}
 
 	public void stop()
 	{
 		playing = false;
-		_player?.Stop();
+		_fmodPendingStart = false;
+		_audioOutput?.Stop();
 		_sequencer?.Stop();
 		_sequencerStarted = false;  // 重置标志，下次 play() 会重新启动
 		_currentOffsetMs = 0.0;  // 重置 offset
-		_playback = null; // ensure playback is reacquired on next play
 	}
 
 	public void seek_ms(double positionMs)
@@ -640,9 +1357,9 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	public void set_bus(StringName targetBus)
 	{
 		_bus = targetBus;
-		if (_player != null)
+		if (_audioOutput != null)
 		{
-			_player.Bus = targetBus;
+			_audioOutput.SetBus(targetBus);
 		}
 	}
 
@@ -710,10 +1427,10 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		// 补偿 AudioStreamGenerator 缓冲延迟
 		// Sequencer.Position 是"已生成到缓冲区的位置"，缓冲区中尚有未播放的数据
 		// 实际播放位置 = Sequencer位置 - 缓冲区中未播放的时长
-		if (_playback != null && _player != null && _player.Playing)
+		if (_audioOutput != null && _audioOutput.IsPlaying)
 		{
-			int totalBufferFrames = (int)(_generator.BufferLength * _sampleRate);
-			int framesAvailable = _playback.GetFramesAvailable();
+			int totalBufferFrames = _audioOutput.GetTotalBufferFrames();
+			int framesAvailable = _audioOutput.GetFramesAvailable();
 			int bufferedFrames = totalBufferFrames - framesAvailable;
 			double bufferLatencyMs = (double)bufferedFrames / _sampleRate * 1000.0;
 			var compensatedMs = Math.Max(0.0, sequencerMs - bufferLatencyMs);
@@ -1252,10 +1969,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			}
 
 			playing = true;
-			if (_player != null && !_player.Playing)
-			{
-				_player.Play();
-			}
+			_audioOutput?.Play();
 		}
 	}
 

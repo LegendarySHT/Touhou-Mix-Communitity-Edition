@@ -187,6 +187,19 @@ var setting_groups = [
 			]
 		},
 		{
+			"id": "melty_audio_output_backend",
+			"name_en": "Melty Audio Output Backend",
+			"name_zh": "Melty 音频输出后端",
+			"description": "仅在使用MeltySynth时生效：选择 Godot 回退、FMOD，或自动检测。",
+			"type": "TYPE_OPTION",
+			"default_value": "0",
+			"options": [
+				{"text_en": "Auto", "text_zh": "自动", "value": "auto"},
+				{"text_en": "Godot", "text_zh": "Godot", "value": "godot"},
+				{"text_en": "FMOD", "text_zh": "FMOD", "value": "fmod"}
+			]
+		},
+		{
 			"id": "melty_audio_preset",
 			"name_en": "MeltySynth Audio Preset",
 			"name_zh": "MeltySynth 音频预设",
@@ -1068,8 +1081,17 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 			elif initial_value is String and initial_value.is_valid_int():
 				default_index = int(initial_value)
 			elif initial_value is String:
-				var idx = option_texts.find(initial_value)
-				default_index = idx if idx >= 0 else 0
+				var matched_index = -1
+				for i in range(setting_data.options.size()):
+					var option_data = setting_data.options[i]
+					if option_data.has("value") and str(option_data["value"]).to_lower() == initial_value.to_lower():
+						matched_index = i
+						break
+				if matched_index >= 0:
+					default_index = matched_index
+				else:
+					var idx = option_texts.find(initial_value)
+					default_index = idx if idx >= 0 else 0
 			
 			setting_item.set_options(option_texts, default_index)
 	
@@ -1113,6 +1135,11 @@ func _on_setting_value_changed(id: String, value: Variant):
 				converted_value = "addons" if value == 0 else "meltysynth"
 				print("[SettingList] Converting midi_backend index %d to '%s'" % [value, converted_value])
 				_refresh_meltysynth_audio_visibility()
+			elif id == "melty_audio_output_backend" and value is int:
+				var output_values = ["auto", "godot", "fmod"]
+				var output_index = clamp(value, 0, output_values.size() - 1)
+				converted_value = output_values[output_index]
+				print("[SettingList] Converting melty_audio_output_backend index %d to '%s'" % [value, converted_value])
 			elif id == "melty_audio_preset" and value is int:
 				converted_value = value
 				_refresh_meltysynth_audio_visibility()
@@ -1208,6 +1235,7 @@ func _refresh_meltysynth_audio_visibility() -> void:
 
 	var melty_only_ids = [
 		"melty_audio_preset",
+		"melty_audio_output_backend",
 		"melty_audio_debug_log"
 	]
 
