@@ -655,6 +655,28 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				return File.Exists(path) ? path : string.Empty;
 			}
 
+			if (OS.GetName() == "Android")
+			{
+				return OS.IsDebugBuild() ? "libfmodL.so" : "libfmod.so";
+			}
+
+			if (OS.GetName() == "iOS")
+			{
+				var debugSuffix = OS.IsDebugBuild() ? "L" : "";
+				string targetName;
+				if (OS.IsDebugBuild() || OS.HasFeature("editor"))
+				{
+					targetName = "iphonesimulator";
+				}
+				else
+				{
+					targetName = "iphoneos";
+				}
+				var libName = $"libfmod{debugSuffix}_{targetName}.a";
+				var path = Path.Combine(baseDir, "iOS", libName);
+				return File.Exists(path) ? path : string.Empty;
+			}
+
 			return string.Empty;
 		}
 
