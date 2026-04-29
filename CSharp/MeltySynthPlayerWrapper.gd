@@ -5,6 +5,9 @@ class_name MeltySynthPlayerWrapper
 
 @export var meltysynth_player: Node
 
+# FMOD模式下没有AudioStreamPlayer，返回空数组以避免错误
+var audio_stream_players: Array = []
+
 func _ready() -> void:
 	# 尽管 meltysynth_player 是 C# 对象，我们可以通过 call() 和方法名称与之交互
 	pass
