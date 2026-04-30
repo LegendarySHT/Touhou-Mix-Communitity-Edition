@@ -26,16 +26,7 @@ static var mappings: Dictionary = {
 	"default_midi_volume": {"section": "Gameplay", "key": "default_midi_volume", "value_type": "int"},
 	"default_vocal_volume": {"section": "Gameplay", "key": "default_vocal_volume", "value_type": "int"},
 	"audio_sync_threshold": {"section": "Gameplay", "key": "audio_sync_threshold", "value_type": "int"},
-	"melty_audio_output_backend": {"section": "Gameplay", "key": "melty_audio_output_backend", "value_type": "string"},
-	"melty_audio_preset": {"section": "Gameplay", "key": "melty_audio_preset", "value_type": "int"},
-	"melty_custom_target_queued_frames": {"section": "Gameplay", "key": "melty_custom_target_queued_frames", "value_type": "int"},
-	"melty_custom_min_target_queued_frames": {"section": "Gameplay", "key": "melty_custom_min_target_queued_frames", "value_type": "int"},
-	"melty_custom_max_target_queued_frames": {"section": "Gameplay", "key": "melty_custom_max_target_queued_frames", "value_type": "int"},
-	"melty_custom_underrun_threshold_frames": {"section": "Gameplay", "key": "melty_custom_underrun_threshold_frames", "value_type": "int"},
-	"melty_custom_stable_window_frames": {"section": "Gameplay", "key": "melty_custom_stable_window_frames", "value_type": "int"},
-	"melty_custom_step_up_frames": {"section": "Gameplay", "key": "melty_custom_step_up_frames", "value_type": "int"},
-	"melty_custom_step_down_frames": {"section": "Gameplay", "key": "melty_custom_step_down_frames", "value_type": "int"},
-	"melty_audio_debug_log": {"section": "Gameplay", "key": "melty_audio_debug_log", "value_type": "int"},
+
 	"lane_count": {"section": "Lane", "key": "lane_count", "value_type": "int"},
 	"keyboard_mode": {"section": "Lane", "key": "keyboard_mode", "value_type": "int"},
 	"keyboard_mode_keys": {"section": "Lane", "key": "keyboard_mode_keys", "value_type": "string"},
@@ -155,19 +146,6 @@ static func ini_to_settings(config: Dictionary) -> Dictionary:
 		elif backend_value == "meltysynth":
 			result["midi_backend"] = "1"
 
-	# 兼容旧配置：melty_audio_output_backend 早期曾保存为索引值
-	if result.has("melty_audio_output_backend"):
-		var output_backend_value = str(result["melty_audio_output_backend"]).to_lower()
-		match output_backend_value:
-			"0":
-				result["melty_audio_output_backend"] = "auto"
-			"1":
-				result["melty_audio_output_backend"] = "godot"
-			"2":
-				result["melty_audio_output_backend"] = "fmod"
-			"auto", "godot", "fmod":
-				result["melty_audio_output_backend"] = output_backend_value
-	
 	return result
 
 ## 将 SettingList 格式的字典转换为 INI 配置
@@ -231,22 +209,6 @@ static func validate_value(setting_id: String, value: Variant) -> bool:
 			return int(value) > 0 and int(value) <= 24
 		"audio_sync_threshold":
 			return int(value) >= 1 and int(value) <= 1000
-		"melty_audio_preset":
-			return int(value) >= 0 and int(value) <= 3
-		"melty_audio_output_backend":
-			return str(value).to_lower() in ["auto", "godot", "fmod"]
-		"melty_custom_target_queued_frames", "melty_custom_min_target_queued_frames", "melty_custom_max_target_queued_frames":
-			return int(value) >= 64 and int(value) <= 8192
-		"melty_custom_underrun_threshold_frames":
-			return int(value) >= 32 and int(value) <= 4096
-		"melty_custom_stable_window_frames":
-			return int(value) >= 15 and int(value) <= 600
-		"melty_custom_step_up_frames":
-			return int(value) >= 8 and int(value) <= 512
-		"melty_custom_step_down_frames":
-			return int(value) >= 4 and int(value) <= 256
-		"melty_audio_debug_log":
-			return int(value) == 0 or int(value) == 1
 		"playback_speed_scaling":
 			return float(value) > 0.0 and float(value) <= 3.0
 		"flash_alpha":

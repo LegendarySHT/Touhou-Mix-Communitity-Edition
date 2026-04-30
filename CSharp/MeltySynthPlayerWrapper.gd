@@ -190,29 +190,4 @@ func seek_ms(position_ms: float) -> void:
 		return
 	meltysynth_player.call("seek_ms", position_ms)
 
-## 应用 MeltySynth A1 音频参数配置
-func apply_a1_audio_config(
-	preset: int,
-	custom_target_queued_frames: int,
-	custom_min_target_queued_frames: int,
-	custom_max_target_queued_frames: int,
-	custom_underrun_threshold_frames: int,
-	custom_stable_window_frames: int,
-	custom_step_up_frames: int,
-	custom_step_down_frames: int,
-	enable_debug_log: bool = false
-) -> void:
-	if meltysynth_player == null:
-		return
-	meltysynth_player.call(
-		"apply_a1_audio_config",
-		preset,
-		custom_target_queued_frames,
-		custom_min_target_queued_frames,
-		custom_max_target_queued_frames,
-		custom_underrun_threshold_frames,
-		custom_stable_window_frames,
-		custom_step_up_frames,
-		custom_step_down_frames,
-		enable_debug_log
-	)
+

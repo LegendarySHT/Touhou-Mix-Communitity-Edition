@@ -12,7 +12,7 @@ const _LOW_LEVEL_AUDIO_METHODS := [
 	"play_sound"
 ]
 
-const _MELTY_AUDIO_OUTPUT_KEY := "melty_audio_output_backend"
+const _MELTY_AUDIO_OUTPUT_KEY := "melty_audio_output_backend"  # 保留以兼容旧配置
 
 func _ready():
 	process_mode = PROCESS_MODE_ALWAYS
@@ -47,42 +47,13 @@ func has_studio_event_api() -> bool:
 	return ClassDB.class_has_method(&"FmodServer", &"create_event_instance_with_guid")
 
 func get_melty_audio_output_backend() -> String:
-	var config_manager = ConfigManager.instance
-	if config_manager == null:
-		return "auto"
-
-	var backend = str(config_manager.get_value("Gameplay", _MELTY_AUDIO_OUTPUT_KEY, "auto")).to_lower().strip_edges()
-	if backend != "auto" and backend != "godot" and backend != "fmod":
-		return "auto"
-	return backend
+	return "fmod"  # 始终使用FMOD后端
 
 func should_use_fmod_audio_output() -> bool:
-	var backend = get_melty_audio_output_backend()
-	if backend == "godot":
-		return false
-
-	if backend == "fmod":
-		return has_low_level_audio_api()
-
-	return has_low_level_audio_api()
+	return has_runtime_fmod()  # 始终使用FMOD后端
 
 func has_melty_audio_output_preference() -> bool:
-	return get_melty_audio_output_backend() != "godot"
+	return true  # 始终使用FMOD后端
 
 func get_melty_audio_buffer_length_seconds() -> float:
-	var config_manager = ConfigManager.instance
-	if config_manager == null:
-		return 0.1
-
-	var preset = config_manager.get_int("Gameplay", "melty_audio_preset", 1)
-	match preset:
-		0:
-			return 0.01
-		1:
-			return 0.025
-		2:
-			return 0.1
-		3:
-			return 0.025
-		_:
-			return 0.025
+	return 0.025

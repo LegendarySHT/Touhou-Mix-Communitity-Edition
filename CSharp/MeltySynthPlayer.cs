@@ -772,103 +772,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		}
 	}
 
-	private sealed class GodotAudioOutputBridge : IAudioOutputBridge
-	{
-		private readonly Node _owner;
-		private AudioStreamPlayer _player;
-		private AudioStreamGenerator _generator;
-		private AudioStreamGeneratorPlayback _playback;
-		private readonly float _bufferLengthSeconds;
-
-		public GodotAudioOutputBridge(Node owner, float bufferLengthSeconds)
-		{
-			_owner = owner;
-			_bufferLengthSeconds = Math.Clamp(bufferLengthSeconds, 0.005f, 0.1f);
-		}
-
-		public bool Initialize(Node owner, StringName bus, int sampleRate)
-		{
-			if (_player != null)
-			{
-				return true;
-			}
-
-			_player = new AudioStreamPlayer();
-			_player.Bus = bus;
-			_owner.AddChild(_player);
-
-			_generator = new AudioStreamGenerator
-			{
-				MixRate = sampleRate,
-				BufferLength = _bufferLengthSeconds
-			};
-
-			_player.Stream = _generator;
-			return true;
-		}
-
-		public void SetBus(StringName bus)
-		{
-			if (_player != null)
-			{
-				_player.Bus = bus;
-			}
-		}
-
-		public void Play()
-		{
-			if (_player == null)
-			{
-				return;
-			}
-
-			if (!_player.Playing)
-			{
-				_player.Play();
-				_playback = _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
-			}
-		}
-
-		public void Stop()
-		{
-			_player?.Stop();
-			_playback = null;
-		}
-
-		public void Update()
-		{
-		}
-
-		public bool IsPlaying => _player != null && _player.Playing;
-
-		public int GetFramesAvailable()
-		{
-			if (_player == null || _generator == null)
-			{
-				return 0;
-			}
-
-			_playback ??= _player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
-			return _playback != null ? _playback.GetFramesAvailable() : 0;
-		}
-
-		public int GetTotalBufferFrames()
-		{
-			if (_generator == null)
-			{
-				return 0;
-			}
-
-			return Math.Max(1, (int)(_generator.BufferLength * AudioServer.GetMixRate()));
-		}
-
-		public void PushFrame(Vector2 frame)
-		{
-			_playback ??= _player?.GetStreamPlayback() as AudioStreamGeneratorPlayback;
-			_playback?.PushFrame(frame);
-		}
-	}
-
 	[Signal]
 	public delegate void finishedEventHandler();
 
@@ -939,28 +842,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private int _fmodLowWatermarkFrames = 0;
 	private int _fmodBurstFrames = 0;
 
-	// A1: 目标排队帧策略（尽量维持短队列，降低触发到发声延迟）
-	private bool _a1QueueControlEnabled = true;
-	private int _targetQueuedFrames = 384;
-	private int _minTargetQueuedFrames = 256;
-	private int _maxTargetQueuedFrames = 768;
-	private int _underrunThresholdFrames = 128;
-	private int _a1StableWindowFrames = 120;
-	private int _a1StepUpFrames = 64;
-	private int _a1StepDownFrames = 32;
-	private int _framesSinceUnderrun = 0;
-	private int _underrunCount = 0;
-	private bool _wasBelowUnderrunThreshold = false;
-	private bool _a1DebugLog = false;
-	private ulong _a1LastLatencyLogMs = 0;
-
-	private enum A1AudioPreset
-	{
-		UltraLowLatency = 0,
-		Balanced = 1,
-		StabilityFirst = 2,
-		Custom = 3
-	}
+	// 目标排队帧（用于FMOD缓冲配置）
+	private int _targetQueuedFrames = 448;
 
 	private bool IsFmodAudioBackend()
 	{
@@ -1016,21 +899,11 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		}
 
 		_sampleRate = (int)AudioServer.GetMixRate();
-		var bufferLengthSeconds = GetPreferredBufferLengthSeconds();
 		var bridge = CreateAudioOutputBridge();
 		if (bridge == null || !bridge.Initialize(this, _bus, _sampleRate))
 		{
-			if (!(bridge is GodotAudioOutputBridge))
-			{
-				GD.PushWarning("[MeltySynthPlayer] Selected audio bridge failed to initialize; falling back to Godot audio bridge.");
-			}
-
-			bridge = new GodotAudioOutputBridge(this, bufferLengthSeconds);
-			if (!bridge.Initialize(this, _bus, _sampleRate))
-			{
-				GD.PrintErr("[MeltySynthPlayer] Failed to initialize Godot audio bridge.");
-				return;
-			}
+			GD.PrintErr("[MeltySynthPlayer] Failed to initialize FMOD audio bridge.");
+			return;
 		}
 
 		_audioOutput = bridge;
@@ -1048,35 +921,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	private IAudioOutputBridge CreateAudioOutputBridge()
 	{
-		var bufferLengthSeconds = GetPreferredBufferLengthSeconds();
-		var requestedBackend = "auto";
-
-		if (ClassDB.ClassExists("FmodServer") && Engine.HasSingleton("FmodManager"))
-		{
-			var fmodManager = Engine.GetSingleton("FmodManager");
-			if (fmodManager != null)
-			{
-				if (fmodManager.HasMethod("get_melty_audio_output_backend"))
-				{
-					requestedBackend = (string)fmodManager.Call("get_melty_audio_output_backend");
-				}
-			}
-		}
-
-		if (requestedBackend == "godot")
-		{
-			GD.Print("[MeltySynthPlayer] Godot audio bridge selected by configuration");
-			return new GodotAudioOutputBridge(this, bufferLengthSeconds);
-		}
-
-		if (requestedBackend == "fmod")
-		{
-			GD.Print("[MeltySynthPlayer] FMOD audio bridge selected by configuration");
-			return new FmodAudioOutputBridge(bufferLengthSeconds);
-		}
-
-		GD.Print("[MeltySynthPlayer] Auto audio bridge selection: trying FMOD bridge first");
-		return new FmodAudioOutputBridge(bufferLengthSeconds);
+		GD.Print("[MeltySynthPlayer] Creating FMOD audio bridge");
+		return new FmodAudioOutputBridge(GetPreferredBufferLengthSeconds());
 	}
 
 	private float GetPreferredBufferLengthSeconds()
@@ -1102,92 +948,15 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		if (OS.GetName() == "Windows")
 		{
 			_targetQueuedFrames = 448;
-			_minTargetQueuedFrames = 320;
-			_maxTargetQueuedFrames = 896;
-			_underrunThresholdFrames = 160;
 		}
 
 		// Android 默认更保守，优先稳定播放避免欠载。
 		if (OS.GetName() == "Android")
 		{
 			_targetQueuedFrames = 512;
-			_minTargetQueuedFrames = 320;
-			_maxTargetQueuedFrames = 896;
-			_underrunThresholdFrames = 160;
 		}
 
 		SetProcess(true);
-	}
-
-	public void apply_a1_audio_config(
-		int preset,
-		int customTargetQueuedFrames,
-		int customMinTargetQueuedFrames,
-		int customMaxTargetQueuedFrames,
-		int customUnderrunThresholdFrames,
-		int customStableWindowFrames,
-		int customStepUpFrames,
-		int customStepDownFrames,
-		bool enableDebugLog = false)
-	{
-		var selectedPreset = (A1AudioPreset)Math.Clamp(preset, 0, 3);
-
-		switch (selectedPreset)
-		{
-			case A1AudioPreset.UltraLowLatency:
-				_targetQueuedFrames = 320;
-				_minTargetQueuedFrames = 192;
-				_maxTargetQueuedFrames = 640;
-				_underrunThresholdFrames = 96;
-				_a1StableWindowFrames = 150;
-				_a1StepUpFrames = 48;
-				_a1StepDownFrames = 24;
-				break;
-			case A1AudioPreset.Balanced:
-				_targetQueuedFrames = 448;
-				_minTargetQueuedFrames = 256;
-				_maxTargetQueuedFrames = 896;
-				_underrunThresholdFrames = 128;
-				_a1StableWindowFrames = 140;
-				_a1StepUpFrames = 64;
-				_a1StepDownFrames = 24;
-				break;
-			case A1AudioPreset.StabilityFirst:
-				_targetQueuedFrames = 640;
-				_minTargetQueuedFrames = 384;
-				_maxTargetQueuedFrames = 1152;
-				_underrunThresholdFrames = 192;
-				_a1StableWindowFrames = 100;
-				_a1StepUpFrames = 96;
-				_a1StepDownFrames = 16;
-				break;
-			case A1AudioPreset.Custom:
-				_targetQueuedFrames = customTargetQueuedFrames;
-				_minTargetQueuedFrames = customMinTargetQueuedFrames;
-				_maxTargetQueuedFrames = customMaxTargetQueuedFrames;
-				_underrunThresholdFrames = customUnderrunThresholdFrames;
-				_a1StableWindowFrames = customStableWindowFrames;
-				_a1StepUpFrames = customStepUpFrames;
-				_a1StepDownFrames = customStepDownFrames;
-				break;
-		}
-
-
-		_minTargetQueuedFrames = Math.Clamp(_minTargetQueuedFrames, 64, 4096);
-		_maxTargetQueuedFrames = Math.Clamp(_maxTargetQueuedFrames, _minTargetQueuedFrames, 8192);
-		_targetQueuedFrames = Math.Clamp(_targetQueuedFrames, _minTargetQueuedFrames, _maxTargetQueuedFrames);
-		_underrunThresholdFrames = Math.Clamp(_underrunThresholdFrames, 32, _targetQueuedFrames);
-		_a1StableWindowFrames = Math.Clamp(_a1StableWindowFrames, 15, 600);
-		_a1StepUpFrames = Math.Clamp(_a1StepUpFrames, 8, 512);
-		_a1StepDownFrames = Math.Clamp(_a1StepDownFrames, 4, 256);
-
-		_a1DebugLog = enableDebugLog;
-		_framesSinceUnderrun = 0;
-		_wasBelowUnderrunThreshold = false;
-
-		GD.Print($"[MeltySynthPlayer][A1] config applied: preset={(int)selectedPreset}, target={_targetQueuedFrames}, " +
-			$"min={_minTargetQueuedFrames}, max={_maxTargetQueuedFrames}, underrun_threshold={_underrunThresholdFrames}, " +
-			$"stable_window={_a1StableWindowFrames}, step_up={_a1StepUpFrames}, step_down={_a1StepDownFrames}, debug={_a1DebugLog}");
 	}
 
 	public override void _Process(double delta)
@@ -1329,203 +1098,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			return;
 		}
 
-		// ========== 新架构：FMOD后端直接在回调中合成，跳过主循环渲染 ==========
-		if (IsFmodAudioBackend() && _audioOutput is FmodAudioOutputBridge)
-		{
-			// 只需要确保播放已启动
-			RequestAudioOutputPlay();
-			// 不需要在这里渲染，直接在FMOD回调中处理
-			return;
-		}
-
-		// 【正常渲染流程】（用于Godot后端）
+		// FMOD后端：直接在回调中合成，主循环只需要确保播放已启动
 		RequestAudioOutputPlay();
-
-		var framesAvailable = _audioOutput.GetFramesAvailable();
-		if (framesAvailable <= 0)
-		{
-			return;
-		}
-
-		var renderFrames = framesAvailable;
-		var totalBufferFrames = Math.Max(1, _audioOutput.GetTotalBufferFrames());
-		var queuedFrames = Math.Max(0, totalBufferFrames - framesAvailable);
-		var isFmodBackend = IsFmodAudioBackend();
-
-		if (isFmodBackend)
-		{
-			if (_fmodWarmupQueuedFrames <= 0 || _fmodTargetQueuedFrames <= 0)
-			{
-				ConfigureFmodPlaybackWatermarks();
-			}
-
-			if (_fmodPendingStart)
-			{
-				var warmupNeedFrames = Math.Max(0, _fmodWarmupQueuedFrames - queuedFrames);
-				renderFrames = Math.Min(framesAvailable, Math.Max(_fmodBurstFrames, warmupNeedFrames));
-			}
-			else if (queuedFrames < _fmodLowWatermarkFrames)
-			{
-				var refillNeedFrames = Math.Max(0, _fmodTargetQueuedFrames - queuedFrames);
-				renderFrames = Math.Min(framesAvailable, Math.Max(_fmodBurstFrames, refillNeedFrames));
-			}
-			else if (queuedFrames < _fmodTargetQueuedFrames)
-			{
-				renderFrames = Math.Min(framesAvailable, _fmodTargetQueuedFrames - queuedFrames);
-			}
-			else
-			{
-				renderFrames = 0;
-			}
-		}
-		else if (_a1QueueControlEnabled)
-		{
-			var theoreticalLatencyMs = (double)queuedFrames / _sampleRate * 1000.0;
-			var targetLatencyMs = (double)_targetQueuedFrames / _sampleRate * 1000.0;
-			var belowThreshold = queuedFrames < _underrunThresholdFrames;
-
-			if (belowThreshold)
-			{
-				_framesSinceUnderrun = 0;
-				if (!_wasBelowUnderrunThreshold)
-				{
-					_underrunCount += 1;
-					_targetQueuedFrames = Math.Min(_maxTargetQueuedFrames, _targetQueuedFrames + _a1StepUpFrames);
-				}
-			}
-			else
-			{
-				_framesSinceUnderrun += 1;
-				if (_framesSinceUnderrun >= _a1StableWindowFrames)
-				{
-					_targetQueuedFrames = Math.Max(_minTargetQueuedFrames, _targetQueuedFrames - _a1StepDownFrames);
-					_framesSinceUnderrun = 0;
-				}
-			}
-
-			_wasBelowUnderrunThreshold = belowThreshold;
-
-			var needFrames = Math.Max(0, _targetQueuedFrames - queuedFrames);
-			renderFrames = Math.Min(framesAvailable, needFrames);
-
-			if (queuedFrames == 0)
-			{
-				var burstFrames = Math.Min(framesAvailable, Math.Max(_targetQueuedFrames * 2, totalBufferFrames / 2));
-				renderFrames = Math.Max(renderFrames, burstFrames);
-			}
-
-			if (_a1DebugLog && Engine.GetProcessFrames() % 60 == 0)
-			{
-				GD.Print($"[MeltySynthPlayer][A1] queued={queuedFrames}, target={_targetQueuedFrames}, " +
-					$"render={renderFrames}, avail={framesAvailable}, underrun={_underrunCount}");
-			}
-
-			var nowMs = Time.GetTicksMsec();
-			if (nowMs - _a1LastLatencyLogMs >= 1000)
-			{
-				_a1LastLatencyLogMs = nowMs;
-				GD.Print($"[MeltySynthPlayer][A1] theoretical_latency_ms={theoreticalLatencyMs:F2}, " +
-					$"target_latency_ms={targetLatencyMs:F2}, queued={queuedFrames}, target={_targetQueuedFrames}, underrun={_underrunCount}");
-			}
-		}
-
-		if (isFmodBackend && _fmodPendingStart)
-		{
-			var queuedAfterRender = queuedFrames + renderFrames;
-			if (queuedAfterRender >= _fmodWarmupQueuedFrames)
-			{
-				_audioOutput.Play();
-				_fmodPendingStart = false;
-			}
-		}
-
-		if (renderFrames <= 0)
-		{
-			return;
-		}
-
-		EnsureBuffers(renderFrames);
-
-		// ========== 选项 A：混合两个合成器的输出 ==========
-		if (_useSeparateSynthForManual && _manualSynth != _autoSynth && _manualSynth != null)
-		{
-			// 创建临时缓冲区用于手动合成器的输出
-			var manualLeft = new float[renderFrames];
-			var manualRight = new float[renderFrames];
-
-			// 自动播放合成（MIDI 序列）
-			_sequencer.Render(_leftBuffer.AsSpan(0, renderFrames), 
-							 _rightBuffer.AsSpan(0, renderFrames));
-
-			// 手动合成（低延迟响应）
-			try
-			{
-				_manualSynth.Render(manualLeft.AsSpan(0, renderFrames), 
-								   manualRight.AsSpan(0, renderFrames));
-			}
-			catch (Exception ex)
-			{
-				GD.PrintErr($"[MeltySynthPlayer] Error processing manual synth: {ex.Message}");
-			}
-
-			for (var i = 0; i < renderFrames; i++)
-			{
-				_leftBuffer[i] = _leftBuffer[i] + manualLeft[i];
-				_rightBuffer[i] = _rightBuffer[i] + manualRight[i];
-			}
-		}
-		else
-		{
-			// 原有逻辑：仅使用自动合成器
-			_sequencer.Render(_leftBuffer.AsSpan(0, renderFrames), 
-							 _rightBuffer.AsSpan(0, renderFrames));
-		}
-
-		var scale = _volumeLinear * MELTYSYNTH_OUTPUT_GAIN;
-
-		// 优化：使用批量推送（如果支持）
-		if (isFmodBackend && _audioOutput is FmodAudioOutputBridge fmodBridge)
-		{
-			// 使用批量推送优化性能，减少原子操作次数
-			for (var i = 0; i < renderFrames; i++)
-			{
-				_leftBuffer[i] = Math.Clamp(_leftBuffer[i] * scale, -1.0f, 1.0f);
-				_rightBuffer[i] = Math.Clamp(_rightBuffer[i] * scale, -1.0f, 1.0f);
-			}
-			fmodBridge.PushFrames(_leftBuffer.AsSpan(0, renderFrames), _rightBuffer.AsSpan(0, renderFrames));
-		}
-		else
-		{
-			// 标准逐帧推送
-			for (var i = 0; i < renderFrames; i++)
-			{
-				var left = Math.Clamp(_leftBuffer[i] * scale, -1.0f, 1.0f);
-				var right = Math.Clamp(_rightBuffer[i] * scale, -1.0f, 1.0f);
-				_audioOutput.PushFrame(new Vector2(left, right));
-			}
-		}
-
-		// 【修复循环】检查序列器是否已到达结束
-		if (_sequencer.EndOfSequence)
-		{
-			// GD.Print($"[MeltySynthPlayer] EndOfSequence detected, loop={loop}");
-			if (loop)
-			{
-				// 循环播放：重新启动 sequencer
-				// GD.Print("[MeltySynthPlayer] End of sequence, restarting for loop");
-				_sequencer.Play(_midiFile, loop);
-				_sequencerStarted = true;
-				ApplyInstrumentOverridesToSynth();
-			}
-			else
-			{
-				// 无循环：停止播放
-				// GD.Print("[MeltySynthPlayer] End of sequence, stopping playback (no loop)");
-				playing = false;
-				_audioOutput?.Stop();
-				EmitSignal(SignalName.finished);
-			}
-		}
 	}
 
 	public void play()
