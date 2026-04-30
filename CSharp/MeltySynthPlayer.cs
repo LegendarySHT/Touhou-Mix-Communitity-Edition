@@ -30,7 +30,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private sealed class FmodAudioOutputBridge : IAudioOutputBridge
 		{
 			// 单层缓冲架构配置（最小化延迟但保持稳定性）
-			private const int MIN_DECODE_FRAMES = 1024; 
+			private const int MIN_DECODE_FRAMES = 256; 
+			private const int MAX_DECODE_FRAMES = 4096;
 			
 			private FmodNative.FMOD_SOUND_PCMREAD_CALLBACK _pcmReadCallback;
 			private FmodNative.FMOD_SOUND_PCMSETPOS_CALLBACK _pcmSetPosCallback;
@@ -54,8 +55,9 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			// 配置
 			private int _sampleRate = 48000;
 			private int _decodeFrames = 0;
+			private int _targetDecodeFrames = 1024;  // 从配置获取的目标缓冲区大小
 			private float _volumeLinear = 1.0f;
-			private const float OUTPUT_GAIN = 1.0f;  // 降低输出增益避免削波
+			private const float OUTPUT_GAIN = 2.0f;  
 			
 			private bool _initialized = false;
 			private bool _playing = false;
@@ -74,6 +76,20 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		public FmodAudioOutputBridge(float bufferLengthSeconds)
 		{
 			// bufferLengthSeconds不再用于预渲染，而是直接影响decodeFrames
+			// 从bufferLengthSeconds计算目标缓冲区大小（如果提供）
+			if (bufferLengthSeconds > 0)
+			{
+				_targetDecodeFrames = (int)(bufferLengthSeconds * 48000);
+			}
+		}
+
+		/// <summary>
+		/// 设置目标解码缓冲区大小（帧）
+		/// </summary>
+		public void SetDecodeFrames(int frames)
+		{
+			_targetDecodeFrames = Math.Clamp(frames, MIN_DECODE_FRAMES, MAX_DECODE_FRAMES);
+			GD.Print($"[MeltySynthPlayer][FMOD] Target decode frames set to: {_targetDecodeFrames}");
 		}
 
 		/// <summary>
@@ -109,8 +125,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 					GD.PushWarning($"[MeltySynthPlayer][FMOD] Sample rate mismatch: requested={_sampleRate}, system={systemSampleRate}");
 				}
 
-				// 最小化decodeFrames以实现最低延迟
-				_decodeFrames = Math.Max(MIN_DECODE_FRAMES, Math.Min(512, (int)(_sampleRate * 0.010)));
+				// 使用配置的缓冲区大小
+				_decodeFrames = Math.Max(MIN_DECODE_FRAMES, Math.Min(MAX_DECODE_FRAMES, _targetDecodeFrames));
 				
 				// 分配并清零缓冲区，避免垃圾值产生噪声
 				_tempLeft = new float[_decodeFrames];
@@ -844,6 +860,9 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	// 目标排队帧（用于FMOD缓冲配置）
 	private int _targetQueuedFrames = 448;
+	
+	// 配置的音频缓冲区大小（帧）
+	private int _preferredDecodeFrames = 0;
 
 	private bool IsFmodAudioBackend()
 	{
@@ -922,7 +941,18 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private IAudioOutputBridge CreateAudioOutputBridge()
 	{
 		GD.Print("[MeltySynthPlayer] Creating FMOD audio bridge");
-		return new FmodAudioOutputBridge(GetPreferredBufferLengthSeconds());
+		var bridge = new FmodAudioOutputBridge(GetPreferredBufferLengthSeconds());
+		
+		// 设置配置的缓冲区大小
+		if (_preferredDecodeFrames > 0)
+		{
+			if (bridge is FmodAudioOutputBridge fmodBridge)
+			{
+				fmodBridge.SetDecodeFrames(_preferredDecodeFrames);
+			}
+		}
+		
+		return bridge;
 	}
 
 	private float GetPreferredBufferLengthSeconds()
@@ -938,6 +968,22 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		}
 
 		return bufferLengthSeconds;
+	}
+
+	/// <summary>
+	/// 设置音频缓冲区大小（帧）
+	/// 注意：此设置需要重新初始化音频后端才能生效
+	/// </summary>
+	public void SetAudioBufferFrames(int frames)
+	{
+		_preferredDecodeFrames = Math.Clamp(frames, 256, 4096);
+		GD.Print($"[MeltySynthPlayer] Preferred audio buffer frames set to: {_preferredDecodeFrames}");
+		
+		// 如果已经初始化，尝试更新FMOD桥接器
+		if (_audioOutput is FmodAudioOutputBridge fmodBridge && !fmodBridge.IsPlaying)
+		{
+			fmodBridge.SetDecodeFrames(_preferredDecodeFrames);
+		}
 	}
 
 	public override void _Ready()
@@ -1219,6 +1265,15 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	{
 		loop = enabled;
 		// GD.Print($"[MeltySynthPlayer] Loop set to: {enabled}");
+	}
+
+	public void set_max_polyphony(int value)
+	{
+		max_polyphony = Math.Max(16, Math.Min(256, value));
+		GD.Print($"[MeltySynthPlayer] Max polyphony set to: {max_polyphony}");
+		
+		// 注意：Synthesizer.MaximumPolyphony 是只读属性，只能在创建时设置
+		// 新设置将在下一次加载 SoundFont 时生效
 	}
 
 	public bool get_loop()

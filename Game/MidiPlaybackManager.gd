@@ -208,6 +208,46 @@ func _on_settings_changed(setting_name: String, value: Variant) -> void:
 		else:
 			print("[MidiPlaybackManager] Current backend does not support system stopwatch setting")
 
+	# 音频缓冲区大小或最大复音数改变（需要重新加载SoundFont才能生效）
+	if setting_name == "*" or setting_name == "audio_buffer_frames" or setting_name == "max_polyphony":
+		print("[MidiPlaybackManager] Audio buffer or polyphony setting changed, reloading soundfont")
+		
+		# 获取当前是否正在播放
+		var was_playing = is_playing
+		var current_pos = get_position_ms()
+		
+		# 停止播放
+		if was_playing:
+			stop()
+		
+		# 如果是MeltySynth后端，重新设置缓冲区大小并重新加载SoundFont
+		var backend = _get_active_backend()
+		if backend != null and midi_backend == "meltysynth":
+			# 设置新的缓冲区大小
+			if backend.has_method("SetAudioBufferFrames"):
+				# 从配置文件读取索引并转换为实际缓冲区大小：0->256, 1->512, 2->1024, 3->2048
+				var buffer_index = ConfigManager.instance.get_int("Playback", "audio_buffer_frames", 2)
+				var buffer_sizes = [256, 512, 1024, 2048]
+				buffer_index = clampi(buffer_index, 0, 3)
+				var audio_buffer_frames = buffer_sizes[buffer_index]
+				backend.call("SetAudioBufferFrames", audio_buffer_frames)
+				print("[MidiPlaybackManager] Updated audio buffer frames to: %d (index %d)" % [audio_buffer_frames, buffer_index])
+			
+			# 设置新的复音数
+			if backend.has_method("set_max_polyphony"):
+				var max_polyphony = ConfigManager.instance.get_int("Playback", "max_polyphony", 96)
+				backend.call("set_max_polyphony", max_polyphony)
+				print("[MidiPlaybackManager] Updated max polyphony to: %d" % max_polyphony)
+			
+			# 重新加载SoundFont使设置生效
+			_load_soundfont_from_config()
+			print("[MidiPlaybackManager] Soundfont reloaded with new audio settings")
+			
+			# 如果之前正在播放，恢复播放位置
+			if was_playing and current_midi_data != null:
+				seek(current_pos)
+				play()
+				print("[MidiPlaybackManager] Resumed playback at %.2fms" % current_pos)
 
 
 func _process(_delta: float) -> void:
@@ -897,6 +937,16 @@ func _initialize_meltysynth_backend() -> bool:
 		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
 		wrapper.call("set_use_system_stopwatch", use_system_stopwatch)
 		print("[MidiPlaybackManager] Set system stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"))
+
+	# 设置音频缓冲区大小
+	if wrapper.has_method("SetAudioBufferFrames"):
+		var audio_buffer_frames = ConfigManager.instance.get_int("Playback", "audio_buffer_frames", 1024)
+		wrapper.call("SetAudioBufferFrames", audio_buffer_frames)
+		print("[MidiPlaybackManager] Set audio buffer frames: %d" % audio_buffer_frames)
+
+	# 设置最大复音数
+	wrapper.set("max_polyphony", ConfigManager.instance.get_int("Playback", "max_polyphony", 96))
+	print("[MidiPlaybackManager] Set max polyphony: %d" % wrapper.max_polyphony)
 
 	# 连接信号
 	if wrapper.has_signal("finished"):
@@ -1648,29 +1698,71 @@ func reset_sync_state() -> void:
 
 ## 配置变更回调（新增）
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
-	# 只处理 Gameplay 部分的配置变更
-	if section != "Gameplay":
-		return
-	
-	# 处理音源文件配置变更
-	if key == "soundfont_file":
-		var soundfont_name = str(value).replace(".sf2", "").strip_edges()
-		if not soundfont_name.is_empty():
-			set_soundfont(soundfont_name)
-	
-	# 处理 MIDI 后端配置变更
-	elif key == "midi_backend":
-		var backend = str(value).to_lower().strip_edges()
+	# 处理 Gameplay 部分的配置变更
+	if section == "Gameplay":
+		# 处理音源文件配置变更
+		if key == "soundfont_file":
+			var soundfont_name = str(value).replace(".sf2", "").strip_edges()
+			if not soundfont_name.is_empty():
+				set_soundfont(soundfont_name)
 		
-		# 防御性检查：如果传入的是索引数字，转换为实际名称
-		if backend == "0" or backend == "addons":
-			backend = "addons"
-		elif backend == "1" or backend == "meltysynth":
-			backend = "meltysynth"
-		else:
-			push_warning("[MidiPlaybackManager] Invalid backend value: %s, ignoring" % backend)
+		# 处理 MIDI 后端配置变更
+		elif key == "midi_backend":
+			var backend = str(value).to_lower().strip_edges()
+			
+			# 防御性检查：如果传入的是索引数字，转换为实际名称
+			if backend == "0" or backend == "addons":
+				backend = "addons"
+			elif backend == "1" or backend == "meltysynth":
+				backend = "meltysynth"
+			else:
+				push_warning("[MidiPlaybackManager] Invalid backend value: %s, ignoring" % backend)
+				return
+			
+			if backend != midi_backend and not backend_switching:
+				set_backend(backend)
 			return
-		
-		if backend != midi_backend and not backend_switching:
-			set_backend(backend)
-		return
+	
+	# 处理 Playback 部分的配置变更
+	if section == "Playback":
+		# 音频缓冲区大小或最大复音数改变（需要重新加载SoundFont才能生效）
+		if key == "audio_buffer_frames" or key == "max_polyphony":
+			print("[MidiPlaybackManager] Audio buffer or polyphony setting changed via config: %s = %s" % [key, value])
+			
+			# 获取当前是否正在播放
+			var was_playing = is_playing
+			var current_pos = get_position_ms()
+			
+			# 停止播放
+			if was_playing:
+				stop()
+			
+			# 如果是MeltySynth后端，重新设置缓冲区大小并重新加载SoundFont
+			var backend = _get_active_backend()
+			if backend != null and midi_backend == "meltysynth":
+				# 设置新的缓冲区大小
+				if key == "audio_buffer_frames" and backend.has_method("SetAudioBufferFrames"):
+					# 将索引转换为实际缓冲区大小：0->256, 1->512, 2->1024, 3->2048
+					var buffer_index = int(value) if value is int else 2
+					var buffer_sizes = [256, 512, 1024, 2048]
+					buffer_index = clampi(buffer_index, 0, 3)
+					var audio_buffer_frames = buffer_sizes[buffer_index]
+					backend.call("SetAudioBufferFrames", audio_buffer_frames)
+					print("[MidiPlaybackManager] Updated audio buffer frames to: %d (index %d)" % [audio_buffer_frames, buffer_index])
+				
+				# 设置新的复音数
+				if key == "max_polyphony" and backend.has_method("set_max_polyphony"):
+					var max_polyphony = int(value) if value is int else ConfigManager.instance.get_int("Playback", "max_polyphony", 96)
+					backend.call("set_max_polyphony", max_polyphony)
+					print("[MidiPlaybackManager] Updated max polyphony to: %d" % max_polyphony)
+				
+				# 重新加载SoundFont使设置生效
+				_load_soundfont_from_config()
+				print("[MidiPlaybackManager] Soundfont reloaded with new audio settings")
+				
+				# 如果之前正在播放，恢复播放位置
+				if was_playing and current_midi_data != null:
+					seek(current_pos)
+					play()
+					print("[MidiPlaybackManager] Resumed playback at %.2fms" % current_pos)
+			return

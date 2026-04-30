@@ -138,6 +138,29 @@ var setting_groups = [
 				]
 			},
 			{
+				"id": "audio_buffer_frames",
+				"name_en": "Audio Buffer Size",
+				"name_zh": "音频缓冲区大小",
+				"description": "调整音频解码缓冲区帧数，较小的值可降低延迟但可能导致电流声，较大的值更稳定但延迟更高",
+				"type": "TYPE_OPTION",
+				"default_value": "2",
+				"options": [
+					{"text_en": "256 (最低延迟)", "text_zh": "256 (最低延迟)"},
+					{"text_en": "512 (低延迟)", "text_zh": "512 (低延迟)"},
+					{"text_en": "1024 (平衡)", "text_zh": "1024 (平衡)"},
+					{"text_en": "2048 (最高稳定)", "text_zh": "2048 (最高稳定)"}
+				]
+			},
+			{
+				"id": "max_polyphony",
+				"name_en": "Max Polyphony",
+				"name_zh": "最大复音数",
+				"description": "设置同时发声的最大音符数，较高的值音质更好但占用更多CPU资源，建议值：32/64/96/128",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "96",
+				"unit": "音符"
+			},
+			{
 				"id": "default_midi_volume",
 				"name_en": "Default MIDI Volume",
 				"name_zh": "默认MIDI音量",

@@ -19,6 +19,8 @@ static var mappings: Dictionary = {
 	"vibrate_on_touch": {"section": "Playback", "key": "vibrate_on_touch", "value_type": "int"},
 	"vibration_duration": {"section": "Playback", "key": "vibration_duration", "value_type": "int"},
 	"use_system_stopwatch": {"section": "Playback", "key": "use_system_stopwatch", "value_type": "int"},
+	"audio_buffer_frames": {"section": "Playback", "key": "audio_buffer_frames", "value_type": "int"},
+	"max_polyphony": {"section": "Playback", "key": "max_polyphony", "value_type": "int"},
 	
 	# ========== 音源设置 ==========
 	"soundfont_select": {"section": "Gameplay", "key": "soundfont_file", "value_type": "string"},

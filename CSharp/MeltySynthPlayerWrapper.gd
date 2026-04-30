@@ -8,6 +8,13 @@ class_name MeltySynthPlayerWrapper
 # FMOD模式下没有AudioStreamPlayer，返回空数组以避免错误
 var audio_stream_players: Array = []
 
+# 最大复音数
+var max_polyphony: int = 96:
+	set(value):
+		max_polyphony = value
+		if meltysynth_player != null and meltysynth_player.has_method("set_max_polyphony"):
+			meltysynth_player.call("set_max_polyphony", value)
+
 func _ready() -> void:
 	# 尽管 meltysynth_player 是 C# 对象，我们可以通过 call() 和方法名称与之交互
 	pass
@@ -189,5 +196,3 @@ func seek_ms(position_ms: float) -> void:
 	if meltysynth_player == null:
 		return
 	meltysynth_player.call("seek_ms", position_ms)
-
-
