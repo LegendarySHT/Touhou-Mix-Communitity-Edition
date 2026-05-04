@@ -504,7 +504,7 @@ var setting_groups = [
 				"id": "min_touch_cooldown_time",
 				"name_en": "Min Touch Cooldown Time",
 				"name_zh": "最小点击冷却时间",
-				"description": "在一段纵连之中，如果上下相邻的音符之间的间隔时间超过最小点击冷却时间",
+				"description": "手指从抬起到任意位置按下的最短时间（会限制上下音符之间的横向距离）",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "0.2",
 				"unit": "s"

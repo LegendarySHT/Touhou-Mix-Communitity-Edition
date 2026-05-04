@@ -421,8 +421,17 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowArea.N
 		# 确定车道 - 使用GameSequence的pitch字段
 		var lane = seq.pitch % lc
 		
-		# 将block_type转换为FlowArea.NoteType（值相同）
-		var note_type = seq.block_type  # 0=Block, 1=Slide, 2=Long
+		# BlockType 与 NoteType 语义不同，需要转换
+		# BlockType: INSTANT=滑块, SHORT=点块, LONG=长条
+		# NoteType: Block=点块, Slide=滑块, Long=长条
+		var note_type: int
+		match seq.block_type:
+			0:  # INSTANT = 滑块 → Slide
+				note_type = FlowArea.NoteType.Slide
+			1:  # SHORT = 点块 → Block
+				note_type = FlowArea.NoteType.Block
+			2:  # LONG = 长条 → Long
+				note_type = FlowArea.NoteType.Long
 		
 		# 创建FlowArea的Note对象
 		var flow_note = FlowArea.Note.new(

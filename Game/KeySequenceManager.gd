@@ -7,9 +7,9 @@ class_name KeySequenceManager
 
 ## 块类型枚举
 enum BlockType {
-	INSTANT = 0,  # 瞬间块（duration <= instant_block_threshold）
-	SHORT = 1,    # 短块（duration <= short_block_threshold）
-	LONG = 2      # 长块（duration > short_block_threshold，需按住）
+	INSTANT = 0,  # 滑块（duration <= instant_block_threshold）
+	SHORT = 1,    # 点块（duration <= short_block_threshold）
+	LONG = 2      # 长条（duration > short_block_threshold，需按住）
 }
 
 ## 单例实例
@@ -393,14 +393,11 @@ func _batch_notes_by_coalesce(sorted_notes: Array) -> Array:
 	for note in sorted_notes:
 		var note_time = note.start_time_ms
 		
-		# 初始化第一个批次
 		if current_batch_start_time < 0:
 			current_batch_start_time = note_time
 			current_batch.append(note)
-		# 如果Note在当前批次窗口内，添加到当前批次
 		elif note_time <= current_batch_start_time + (block_coalesce_seconds * 1000.0):
 			current_batch.append(note)
-		# 否则触发批次并开始新批次
 		else:
 			if not current_batch.is_empty():
 				batches.append(current_batch)
@@ -456,12 +453,11 @@ func _dedup_batch(batch: Array, bg_notes: Array, batch_idx: int) -> Array[BlockI
 	
 	# 第3步：按音高排序并移除超过maxTouchCount的块（与Unity版本一致）
 	if blocks.size() > max_touch_count:
-		blocks.sort_custom(func(a, b): return a.pitch_list[0] > b.pitch_list[0])  # 降序排序
+		blocks.sort_custom(func(a, b): return a.pitch_list[0] > b.pitch_list[0])
 		while blocks.size() > max_touch_count:
 			var removed_block = blocks.pop_back()
-			# 将移除的块的Note加入背景
-			for removed_note in removed_block.notes:
-				_append_note_to_background(removed_note, bg_notes)
+			if not removed_block.notes.is_empty():
+				_append_note_to_background(removed_block.notes[0], bg_notes)
 	
 	return blocks
 
@@ -584,14 +580,16 @@ func _assign_touches_and_judge_types(blocks: Array[BlockInfo]) -> void:
 			batch_blocks.append(b as BlockInfo)
 		_match_blocks_to_touches(batch_blocks, touches)
 
-		# Unity在批内按start顺序进行判型与状态推进
 		batch_blocks.sort_custom(func(a, b):
 			if a.start_time_ms == b.start_time_ms:
 				return a.lane < b.lane
 			return a.start_time_ms < b.start_time_ms
 		)
+		#GameLogger.instance.debug("Batch %d: processing %d blocks" % [batch_id, batch_blocks.size()], "KeySequenceManager")
 		for block in batch_blocks:
 			_judge_block_type(block, touches)
+			#GameLogger.instance.debug("  Block lane=%d start=%.3fs dur=%.3fs type=%d touch=%d x=%.1f" % [
+			#	block.lane, block.start_time_ms / 1000.0, block.duration_ms / 1000.0, block.type, block.touch_index, block.x], "KeySequenceManager")
 
 ## 虚拟触点匹配 - 递归回溯找成本最小的分配方案（Unity兼容版本）
 func _match_blocks_to_touches(blocks_in_group: Array[BlockInfo], touches: Array[VirtualTouch]) -> void:
@@ -712,13 +710,11 @@ func _judge_block_type(block: BlockInfo, touches: Array[VirtualTouch]) -> void:
 		else:
 			# ✅ 修正：触点仍被占用，连接到前一个块
 			block.prev_block = touch.last_press_block
-			# ✅ 修正：硬性限制移动速度
 			var time_delta_ms = block.start_time_ms - touch.last_press_time_ms
-			if time_delta_ms > 0:
-				var time_delta_sec = time_delta_ms / 1000.0
-				var max_offset = max_touch_move_velocity * time_delta_sec
-				var distance = abs(block.x - touch.last_press_x)
-				if distance > max_offset:
+			var time_delta_sec = time_delta_ms / 1000.0
+			var max_offset = max_touch_move_velocity * time_delta_sec
+			var distance = abs(block.x - touch.last_press_x)
+			if distance > max_offset:
 					# 限制块位置
 					if block.x > touch.last_press_x:
 						block.x = touch.last_press_x + max_offset
