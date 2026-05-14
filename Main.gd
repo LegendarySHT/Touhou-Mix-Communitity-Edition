@@ -136,7 +136,11 @@ func _initialize_core_systems() -> void:
 	config_loader.load_and_set_current()
 	if logger:
 		logger.info("Configuration pre-loaded before Manager initialization", "Main")
-	
+
+	# 2.75. ThemeManager 已通过 autoload 自动实例化
+	if ThemeManager.instance and ThemeManager.instance.is_loaded():
+		logger.info("ThemeManager initialized with theme: %s" % ThemeManager.instance.get_theme_name(), "Main")
+
 	# 3. 初始化文件系统管理器（单例，已自动管理）
 	filesystem_manager = FileSystemManager.new()
 	filesystem_manager.name = "FileSystemManager"
@@ -266,6 +270,10 @@ func _init_ui() -> void:
 	play_page.visible = false
 	play_page.z_index = 21
 	Main.add_child(play_page)
+
+	# 应用主题（Theme 资源 + 主界面组件 + 所有背景）
+	if ThemeManager.instance:
+		ThemeManager.instance.refresh_all()
 
 ## 连接核心系统信号
 func _connect_signals() -> void:
@@ -518,6 +526,3 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 				var hdr_on = value in [1, "1", "true", "True"]
 				get_tree().root.use_hdr_2d = hdr_on
 				logger.info("HDR 2D set to: %s" % ("enabled" if hdr_on else "disabled"), "Main")
-
-
-# 在 AspectRatioContainer 的父节点添加脚本

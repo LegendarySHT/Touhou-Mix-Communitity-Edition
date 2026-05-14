@@ -195,11 +195,10 @@ corner_radius_bottom_left = 24
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3b0ty"]
 bg_color = Color(0.4392157, 0.7294118, 0.98039216, 1)
-border_width_left = 5
+border_width_left = 8
 border_color = Color(1, 1, 1, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3rk5"]
-bg_color = Color(0.4392157, 0.7294118, 0.98039216, 1)
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_5mvff"]
 
 [sub_resource type="InputEventKey" id="InputEventKey_3b0ty"]
 device = -1
@@ -215,8 +214,7 @@ bg_color = Color(0.050980393, 0.5294118, 1, 1)
 border_width_right = 8
 border_color = Color(1, 1, 1, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xrxkg"]
-bg_color = Color(0, 0, 0, 0.18431373)
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_oye8v"]
 
 [sub_resource type="InputEventKey" id="InputEventKey_devvj"]
 pressed = true
@@ -760,7 +758,7 @@ offset_right = -1.0
 grow_horizontal = 2
 grow_vertical = 2
 focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxFlat_w3rk5")
+theme_override_styles/normal = SubResource("StyleBoxEmpty_5mvff")
 shortcut = SubResource("Shortcut_bg4s2")
 shortcut_in_tooltip = false
 icon_alignment = 1
@@ -851,7 +849,7 @@ offset_bottom = -0.70928955
 grow_horizontal = 2
 grow_vertical = 2
 focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxFlat_xrxkg")
+theme_override_styles/normal = SubResource("StyleBoxEmpty_oye8v")
 shortcut = SubResource("Shortcut_3b0ty")
 shortcut_in_tooltip = false
 metadata/_edit_lock_ = true

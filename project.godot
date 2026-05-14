@@ -25,6 +25,7 @@ UiStatMGR="*res://Core/UIStateManager.gd"
 AniMGR="*res://UI/Animations/AnimationManager.gd"
 GLogger="*res://Utilities/Logger.gd"
 FmodManager="*uid://cds10pm7hwn3p"
+ThemeMGR="*res://UI/ThemeManager.gd"
 
 [display]
 

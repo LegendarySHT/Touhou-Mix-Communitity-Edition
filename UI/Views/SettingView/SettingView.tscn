@@ -362,6 +362,34 @@ script = ExtResource("3_delview")
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
 
+[node name="TabBtn0" type="Button" parent="DelView/SideBar"]
+layout_mode = 2
+text = "MIDI 管理"
+toggle_mode = true
+button_pressed = true
+custom_minimum_size = Vector2(260, 80)
+
+[node name="TabBtn1" type="Button" parent="DelView/SideBar"]
+layout_mode = 2
+text = "音频管理"
+toggle_mode = true
+custom_minimum_size = Vector2(260, 80)
+
+[node name="TabBtn2" type="Button" parent="DelView/SideBar"]
+layout_mode = 2
+text = "SF2 管理"
+toggle_mode = true
+custom_minimum_size = Vector2(260, 80)
+
+[node name="SideSpacer" type="Control" parent="DelView/SideBar"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CloseBtn" type="Button" parent="DelView/SideBar"]
+layout_mode = 2
+text = "返回设置"
+custom_minimum_size = Vector2(260, 70)
+
 [node name="Content" type="PanelContainer" parent="DelView" unique_id=-1190680134]
 layout_mode = 2
 size_flags_horizontal = 3
