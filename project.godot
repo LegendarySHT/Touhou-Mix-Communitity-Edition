@@ -14,6 +14,7 @@ config/name="Touhou Mix Comunitity Edition"
 run/main_scene="uid://jvmwtrulpf5g"
 config/features=PackedStringArray("4.6", "C#", "Mobile")
 config/icon="uid://von2js75nk2a"
+config/quit_on_go_back=false
 
 [autoload]
 

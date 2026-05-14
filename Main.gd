@@ -58,6 +58,64 @@ func _process(_delta: float) -> void:
 			_orientation_reverse = _now_rot
 			DisplayServer.screen_set_orientation(DisplayServer.SCREEN_REVERSE_LANDSCAPE if _orientation_reverse else DisplayServer.SCREEN_LANDSCAPE)
 
+## Android 系统返回键
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_handle_back_request()
+
+## 桌面端 Esc 键（仅在无其他控件消费事件时触发）
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
+		_handle_back_request()
+
+## 统一的返回/退出处理
+var _back_debounce: bool = false
+
+func _handle_back_request() -> void:
+	if _back_debounce:
+		return
+	_back_debounce = true
+
+	var popup = PopupWindow.instance
+	# 弹窗已显示 → 关闭弹窗
+	if popup and popup.visible:
+		popup._on_cancel_pressed()
+		_back_debounce = false
+		return
+
+	if not state_manager:
+		_back_debounce = false
+		return
+
+	# 主界面 → 显示退出确认
+	if state_manager.current_state == UIStateManager.UIState.ALBUM_VIEW:
+		if popup:
+			popup.show_exit_confirm()
+			await popup.window_close
+			if popup.confirm:
+				get_tree().quit()
+		_back_debounce = false
+		return
+
+	# 打歌界面 → 先弹出暂停菜单（与桌面端 Esc 行为一致）
+	if state_manager.current_state == UIStateManager.UIState.PLAY_VIEW:
+		var play_view = get_node_or_null("PlayView")
+		if play_view and play_view.has_method("show_or_hide_menu"):
+			if play_view.is_pause:
+				# 已暂停 → 返回上一级
+				state_manager.go_back()
+			else:
+				# 游戏中 → 弹出暂停菜单
+				play_view.show_or_hide_menu()
+		else:
+			state_manager.go_back()
+		_back_debounce = false
+		return
+
+	# 其他层级 → 返回上一级
+	state_manager.go_back()
+	_back_debounce = false
+
 ## 初始化核心系统
 func _initialize_core_systems() -> void:
 	print("=== Initializing Core Systems ===")

@@ -19,9 +19,12 @@ var confirm: bool = false
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT:
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			_on_cancel_pressed()
 			accept_event()
+	elif event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
+		_on_cancel_pressed()
+		accept_event()
 
 func _ready() -> void:
 	instance = self
@@ -45,6 +48,12 @@ func show_del_selection():
 	content.text = "请选择要删除的内容"
 	option_btn.visible = true
 
+	cancel_btn.modulate.a = 1
+	popup()
+
+func show_exit_confirm(message: String = "确定要退出游戏吗？"):
+	content.text = message
+	option_btn.visible = false
 	cancel_btn.modulate.a = 1
 	popup()
 

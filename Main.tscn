@@ -27,6 +27,9 @@
 [ext_resource type="Script" uid="uid://bb04m122u3fvm" path="res://UI/Components/LeftTopBtn.gd" id="23_mxvw5"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 [ext_resource type="Script" uid="uid://c6mxoockmlm1a" path="res://UI/Components/FocusManager.gd" id="26_xrxkg"]
+[ext_resource type="Texture2D" uid="uid://ddy4iuv0wlfbq" path="res://Resources/Components/PopupWindow.png" id="27_hri7i"]
+[ext_resource type="Texture2D" uid="uid://bpgl1nsjuf8yf" path="res://Resources/Components/CancelBtn.png" id="28_5mvff"]
+[ext_resource type="Texture2D" uid="uid://1q15cy2pddpj" path="res://Resources/Components/ConfirmBtn.png" id="29_oye8v"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg4s2"]
 bg_color = Color(0.35644194, 0.4824527, 0.6469952, 1)
@@ -231,23 +234,12 @@ PopupMenu/styles/panel = SubResource("StyleBoxFlat_ny7u2")
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3b0ty"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_oye8v"]
-bg_color = Color(0.02643081, 0.37195656, 0.7135703, 0.81960785)
-border_width_top = 10
-border_width_bottom = 10
-border_color = Color(1, 1, 1, 0.9529412)
-corner_radius_top_left = 64
-corner_radius_top_right = 1
-corner_radius_bottom_right = 64
-corner_radius_bottom_left = 1
-corner_detail = 1
-shadow_color = Color(0, 0, 0, 0.68235296)
-shadow_size = 24
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_40n85"]
-draw_center = false
-corner_radius_bottom_right = 50
-corner_detail = 1
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_w3rk5"]
+texture = ExtResource("27_hri7i")
+expand_margin_left = 80.0
+expand_margin_top = 80.0
+expand_margin_right = 80.0
+expand_margin_bottom = 80.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x3yn0"]
 draw_center = false
@@ -261,61 +253,39 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sph85"]
-bg_color = Color(0.85952204, 0, 0.1479539, 1)
-border_width_left = 6
-border_width_right = 4
-border_color = Color(1, 1, 1, 0.69411767)
-border_blend = true
-corner_radius_top_left = 24
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 24
-corner_detail = 1
-shadow_size = 12
-shadow_offset = Vector2(-3, 5)
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_40n85"]
+texture = ExtResource("28_5mvff")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5mkgo"]
-bg_color = Color(0.72951126, 0, 0.12012387, 1)
-corner_radius_top_left = 24
-corner_radius_bottom_left = 24
-corner_detail = 1
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_5mvff"]
+load_path = "res://.godot/imported/CancelBtn.png-fb51b90adc315a392d0c0ce4d454cb7e.ctex"
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3ccbu"]
-bg_color = Color(0.72951126, 0, 0.12012387, 1)
-corner_radius_top_left = 24
-corner_radius_bottom_left = 24
-corner_detail = 1
-shadow_size = 12
-shadow_offset = Vector2(-3, 5)
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_oye8v"]
+texture = SubResource("CompressedTexture2D_5mvff")
+modulate_color = Color(0.8, 0.8, 0.8, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7g6l"]
-bg_color = Color(4.3317675e-07, 0.60644186, 0.20748785, 1)
-border_width_left = 4
-border_width_right = 6
-border_color = Color(1, 1, 1, 0.69411767)
-border_blend = true
-corner_radius_top_left = 3
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 3
-corner_detail = 1
-shadow_size = 12
-shadow_offset = Vector2(3, 5)
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_oye8v"]
+load_path = "res://.godot/imported/CancelBtn.png-fb51b90adc315a392d0c0ce4d454cb7e.ctex"
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gb15f"]
-bg_color = Color(1.3957917e-06, 0.504896, 0.16702056, 1)
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_detail = 1
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_sph85"]
+texture = SubResource("CompressedTexture2D_oye8v")
+modulate_color = Color(0.98039216, 0.98039216, 0.98039216, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vi5kq"]
-bg_color = Color(1.3957917e-06, 0.504896, 0.16702056, 1)
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_detail = 1
-shadow_size = 12
-shadow_offset = Vector2(3, 5)
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_gb15f"]
+texture = ExtResource("29_oye8v")
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_o7g6l"]
+load_path = "res://.godot/imported/ConfirmBtn.png-41e783e6bcfdb1e53346e617b6103b0d.ctex"
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_vi5kq"]
+texture = SubResource("CompressedTexture2D_o7g6l")
+modulate_color = Color(0.8, 0.8, 0.8, 1)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_5mkgo"]
+load_path = "res://.godot/imported/ConfirmBtn.png-41e783e6bcfdb1e53346e617b6103b0d.ctex"
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_3ccbu"]
+texture = SubResource("CompressedTexture2D_5mkgo")
+modulate_color = Color(0.98039216, 0.98039216, 0.98039216, 1)
 
 [node name="Main" type="Control" unique_id=1879436511]
 clip_contents = true
@@ -981,19 +951,14 @@ grow_vertical = 2
 pivot_offset_ratio = Vector2(0.5, 0.5)
 theme_override_styles/panel = SubResource("StyleBoxEmpty_3b0ty")
 
-[node name="Style" type="PanelContainer" parent="PopupWindowBG/Window" unique_id=1724784244]
+[node name="Style" type="PanelContainer" parent="PopupWindowBG/Window" unique_id=111139369]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_oye8v")
-
-[node name="PC" type="PanelContainer" parent="PopupWindowBG/Window/Style" unique_id=518236952]
-show_behind_parent = true
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_40n85")
+theme_override_styles/panel = SubResource("StyleBoxTexture_w3rk5")
 
 [node name="VBoxC" type="VBoxContainer" parent="PopupWindowBG/Window" unique_id=865508100]
 layout_mode = 1
@@ -1051,9 +1016,9 @@ layout_mode = 2
 focus_mode = 0
 theme_override_colors/font_color = Color(1, 1, 1, 0.61960787)
 theme_override_font_sizes/font_size = 48
-theme_override_styles/normal = SubResource("StyleBoxFlat_sph85")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_5mkgo")
-theme_override_styles/hover = SubResource("StyleBoxFlat_3ccbu")
+theme_override_styles/normal = SubResource("StyleBoxTexture_40n85")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_oye8v")
+theme_override_styles/hover = SubResource("StyleBoxTexture_sph85")
 text = "取消"
 
 [node name="Confirm" type="Button" parent="PopupWindowBG/Window/VBoxC/Btns" unique_id=6080086]
@@ -1062,9 +1027,9 @@ layout_mode = 2
 focus_mode = 0
 theme_override_colors/font_color = Color(1, 1, 1, 0.61960787)
 theme_override_font_sizes/font_size = 48
-theme_override_styles/normal = SubResource("StyleBoxFlat_o7g6l")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_gb15f")
-theme_override_styles/hover = SubResource("StyleBoxFlat_vi5kq")
+theme_override_styles/normal = SubResource("StyleBoxTexture_gb15f")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_vi5kq")
+theme_override_styles/hover = SubResource("StyleBoxTexture_3ccbu")
 text = "确定"
 
 [node name="FocusManager" type="Control" parent="." unique_id=1592088624]
