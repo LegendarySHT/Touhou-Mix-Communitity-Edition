@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingView/SettingView.gd" id="1_4walt"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="1_ys6ou"]
 [ext_resource type="Script" uid="uid://cgxt234w25s7r" path="res://UI/Views/SettingView/SettingList.gd" id="2_3x48f"]
+[ext_resource type="Script" uid="uid://dt5lx4f8bkgl0" path="res://UI/Views/SettingView/DelView.gd" id="3_delview"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fcfq2"]
 content_margin_left = 4.0
@@ -355,3 +356,13 @@ offset_left = -1920.0
 offset_right = -1920.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("3_delview")
+
+[node name="SideBar" type="VBoxContainer" parent="DelView" unique_id=-1190680135]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+
+[node name="Content" type="PanelContainer" parent="DelView" unique_id=-1190680134]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
