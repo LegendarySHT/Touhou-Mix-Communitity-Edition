@@ -268,6 +268,79 @@ func style_diag_gradient(node: TextureRect, from_key: String, to_key: String) ->
 	node.texture = tex
 	GameLogger.instance.debug("style_diag_gradient: %s ← %s→%s" % [node.name, from_key, to_key], "ThemeManager")
 
+# ============ 列表项样式 ============
+
+## 修改按钮已有 StyleBoxFlat 的颜色属性（不新建 StyleBox，保留 tscn 预设的圆角/边框等配置）
+## fancy_focus: true=同时修改 focus 的 shadow_color (Album/Song)
+func _modify_button_colors(btn: Button, pri_light: Color, fancy_focus: bool) -> void:
+	var sb := btn.get_theme_stylebox("pressed")
+	if sb is StyleBoxFlat:
+		sb.bg_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.25)
+
+	sb = btn.get_theme_stylebox("hover")
+	if sb is StyleBoxFlat:
+		sb.bg_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.15)
+
+	if fancy_focus:
+		sb = btn.get_theme_stylebox("focus")
+		if sb is StyleBoxFlat:
+			sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.6)
+
+## 修改 albumNode 的 item_instance 上的共享 StyleBoxFlat 和 self_modulate
+func _style_album_instance(item: Control, pri_light: Color) -> void:
+	# PN/Border — border_color + shadow_color
+	var border := item.get_node_or_null("PN/Border") as PanelContainer
+	if border:
+		var sb := border.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.border_color = pri_light
+			sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.57)
+
+	# PN/AlbumButton — pressed/hover/focus 的颜色
+	var btn := item.get_node_or_null("PN/AlbumButton") as Button
+	if btn:
+		_modify_button_colors(btn, pri_light, true)
+
+	# PN/CountBase — self_modulate 是属性非共享资源，设在 item_instance 上让 duplicate() 自动带过去
+	var count_base := item.get_node_or_null("PN/CountBase") as TextureRect
+	if count_base:
+		count_base.self_modulate = pri_light
+
+## 修改 songNode 的 item_instance
+func _style_song_instance(item: Control, pri_light: Color) -> void:
+	# PC/Border
+	var border := item.get_node_or_null("PC/Border") as PanelContainer
+	if border:
+		var sb := border.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.border_color = pri_light
+
+	# PC/HBoxC/CountBase — bg_color
+	var count_base := item.get_node_or_null("PC/HBoxC/CountBase") as PanelContainer
+	if count_base:
+		var sb := count_base.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.bg_color = pri_light
+
+	# PC/SongButton
+	var btn := item.get_node_or_null("PC/SongButton") as Button
+	if btn:
+		_modify_button_colors(btn, pri_light, true)
+
+## 修改 sortedMidiNode 的 item_instance
+func _style_sorted_midi_instance(item: Control, pri_light: Color) -> void:
+	# Panel/Border
+	var border := item.get_node_or_null("Panel/Border") as PanelContainer
+	if border:
+		var sb := border.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.border_color = pri_light
+
+	# Panel/Button（简洁焦点，不修改 shadow）
+	var btn := item.get_node_or_null("Panel/Button") as Button
+	if btn:
+		_modify_button_colors(btn, pri_light, false)
+
 # ============ DelView 主题 ============
 
 ## 对 DelView 的静态部分应用主题色（侧边栏、内容面板、按钮颜色）
@@ -420,6 +493,7 @@ func refresh_all() -> void:
 	_apply_main_theme(main)
 	_apply_delview_theme(main)
 	_apply_all_backgrounds(main)
+	_apply_list_theme(main)
 	GameLogger.instance.info("主题刷新完成: %s" % _theme_name, "ThemeManager")
 
 func _on_theme_changed(preset_name: String) -> void:
@@ -470,6 +544,28 @@ func _apply_main_theme(main: Node) -> void:
 	var info_panel := main.get_node_or_null("PlayerInfo/Info/Panel")
 	if info_panel:
 		style_panel(info_panel, "primary_dark")
+
+## 修改三个列表容器的 item_instance 共享 StyleBoxFlat，并刷新已有项的非共享属性
+func _apply_list_theme(main: Node) -> void:
+	var pri_light := get_color("primary_light")
+
+	# AlbumList — 修改 item_instance 共享样式 + 刷新已有项 self_modulate
+	var album_view := main.get_node_or_null("skew/C/AlbumList") as BaseScrollList
+	if album_view and album_view.item_instance:
+		_style_album_instance(album_view.item_instance, pri_light)
+		if album_view.has_method("refresh_item_colors"):
+			album_view.refresh_item_colors()
+
+	# SongList — 修改 item_instance 共享样式（全部在 StyleBox 中，无需逐项刷新）
+	var song_view := main.get_node_or_null("skew/C/SongList") as BaseScrollList
+	if song_view and song_view.item_instance:
+		_style_song_instance(song_view.item_instance, pri_light)
+
+	# SortedMidisList — 修改 item_instance 共享样式
+	var sorted_view := main.get_node_or_null("skew/C/SortedMidisList") as BaseScrollList
+	if sorted_view and sorted_view.item_instance:
+		_style_sorted_midi_instance(sorted_view.item_instance, pri_light)
+
 
 # ============ 内部：背景批量应用 ============
 

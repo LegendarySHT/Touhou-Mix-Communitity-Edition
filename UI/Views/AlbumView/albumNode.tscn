@@ -104,6 +104,7 @@ points = PackedVector2Array(-81.799, 777, 777, 777)
 joint_mode = 1
 
 [node name="CountBase" type="TextureRect" parent="PN" unique_id=465678710]
+self_modulate = Color(0.3647059, 0.6784314, 1, 1)
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
