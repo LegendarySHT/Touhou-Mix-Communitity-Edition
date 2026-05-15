@@ -341,6 +341,131 @@ func _style_sorted_midi_instance(item: Control, pri_light: Color) -> void:
 	if btn:
 		_modify_button_colors(btn, pri_light, false)
 
+
+# ============ 商店视图主题 ============
+
+## 修改 Previ / Next 按钮的已有 StyleBoxFlat 颜色（保留 tscn 的 skew/border/shadow 配置）
+func _style_store_nav_button(btn: Button) -> void:
+	var base := get_color("primary_dark")
+
+	var normal := btn.get_theme_stylebox("normal")
+	if normal is StyleBoxFlat:
+		normal.bg_color = base
+
+	var pressed := btn.get_theme_stylebox("pressed")
+	if pressed is StyleBoxFlat:
+		pressed.bg_color = base.darkened(0.2)
+
+	var hover := btn.get_theme_stylebox("hover")
+	if hover is StyleBoxFlat:
+		hover.bg_color = base.lightened(0.15)
+
+## 对 MidiStore.tscn 的静态组件应用主题色
+func _apply_store_theme(main: Node) -> void:
+	var store := main.get_node_or_null("Store")
+	if not store:
+		return
+
+	# TopBar — 垂直渐变 primary → primary_dark
+	var topbar := store.get_node_or_null("TopBar") as Panel
+	if topbar:
+		var sb := topbar.get_theme_stylebox("panel")
+		if sb is StyleBoxTexture:
+			var tex := sb.texture as GradientTexture2D
+			if tex and tex.gradient:
+				var g := tex.gradient
+				g.set_color(0, get_color("primary"))
+				g.set_color(1, get_color("primary_dark"))
+
+	# TopBar/C/Search/Base — 四点 vertex_colors，基于 primary 做细微调整
+	var search_base := store.get_node_or_null("TopBar/C/Search/Base") as Polygon2D
+	if search_base:
+		var p := get_color("primary")
+		var pd := get_color("primary_dark")
+		search_base.vertex_colors = PackedColorArray([
+			p.lightened(0.1),   # 左上 — 稍亮
+			p,                   # 左下 — 基准 primary
+			pd,                  # 右下 — primary_dark
+			p.lightened(0.2),   # 右上 — 左侧偏亮，产生水平过渡
+		])
+
+	# Bottom/Previ + Next — primary_dark 基调
+	var previ := store.get_node_or_null("Bottom/Previ") as Button
+	if previ:
+		_style_store_nav_button(previ)
+
+	var next_btn := store.get_node_or_null("Bottom/Next") as Button
+	if next_btn:
+		_style_store_nav_button(next_btn)
+
+
+	# Bottom/Indicate — 页码标签背景 primary_light
+	var indicate := store.get_node_or_null("Bottom/Indicate") as Label
+	if indicate:
+		var sb := indicate.get_theme_stylebox("normal")
+		if sb is StyleBoxFlat:
+			sb.bg_color = get_color("primary_light")
+
+# ============ 设置视图主题 ============
+
+## 修改 ShortCut 按钮内联 Theme 中的 StyleBoxFlat（normal/hover/pressed 的 bg_color）
+func _style_shortcut_theme(theme: Theme) -> void:
+	var p := get_color("primary")
+	var pl := get_color("primary_light")
+	var pd := get_color("primary_dark")
+
+	var normal := theme.get_stylebox("normal", "Button")
+	if normal is StyleBoxFlat:
+		normal.bg_color = p
+
+	var hover := theme.get_stylebox("hover", "Button")
+	if hover is StyleBoxFlat:
+		hover.bg_color = pl
+
+	var pressed := theme.get_stylebox("pressed", "Button")
+	if pressed is StyleBoxFlat:
+		pressed.bg_color = pd
+
+## 修改 SettingList 内联 Theme 中 Button 状态和 PopupMenu hover 的 StyleBoxFlat
+func _style_setting_list_theme(theme: Theme) -> void:
+	var p := get_color("primary")
+	var pl := get_color("primary_light")
+	var pd := get_color("primary_dark")
+
+	# Button 状态
+	var normal := theme.get_stylebox("normal", "Button")
+	if normal is StyleBoxFlat:
+		normal.bg_color = p
+
+	var hover := theme.get_stylebox("hover", "Button")
+	if hover is StyleBoxFlat:
+		hover.bg_color = pl
+
+	var pressed := theme.get_stylebox("pressed", "Button")
+	if pressed is StyleBoxFlat:
+		pressed.bg_color = pd
+
+	# PopupMenu hover
+	var popup_hover := theme.get_stylebox("hover", "PopupMenu")
+	if popup_hover is StyleBoxFlat:
+		popup_hover.bg_color = p
+
+## 对 SettingView 的 ShortCut 和 SettingList 内联 Theme 应用主题色
+func _apply_setting_theme(main: Node) -> void:
+	var setting := main.get_node_or_null("skew/C/SettingView")
+	if not setting:
+		return
+
+	# HBoxC/ShortCut — 内联 Theme_07r5k
+	var shortcut := setting.get_node_or_null("HBoxC/ShortCut") as VBoxContainer
+	if shortcut and shortcut.theme:
+		_style_shortcut_theme(shortcut.theme)
+
+	# HBoxC/SettingList — 内联 Theme_ys6ou
+	var setting_list := setting.get_node_or_null("HBoxC/SettingList") as ScrollContainer
+	if setting_list and setting_list.theme:
+		_style_setting_list_theme(setting_list.theme)
+
 # ============ DelView 主题 ============
 
 ## 对 DelView 的静态部分应用主题色（侧边栏、内容面板、按钮颜色）
@@ -494,6 +619,8 @@ func refresh_all() -> void:
 	_apply_delview_theme(main)
 	_apply_all_backgrounds(main)
 	_apply_list_theme(main)
+	_apply_store_theme(main)
+	_apply_setting_theme(main)
 	GameLogger.instance.info("主题刷新完成: %s" % _theme_name, "ThemeManager")
 
 func _on_theme_changed(preset_name: String) -> void:

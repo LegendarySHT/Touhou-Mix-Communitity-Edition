@@ -151,7 +151,7 @@ offset_bottom = 108.0
 grow_horizontal = 2
 theme_override_styles/panel = SubResource("StyleBoxTexture_77ghf")
 
-[node name="Left" type="HBoxContainer" parent="TopBar" unique_id=431206611]
+[node name="C" type="HBoxContainer" parent="TopBar" unique_id=431206611]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -161,7 +161,7 @@ grow_vertical = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 30
 
-[node name="FilterBtn" type="OptionButton" parent="TopBar/Left" unique_id=685507467]
+[node name="FilterBtn" type="OptionButton" parent="TopBar/C" unique_id=685507467]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 30
@@ -176,32 +176,32 @@ popup/item_1/text = "歌曲时长"
 popup/item_1/icon = ExtResource("4_6ial6")
 popup/item_1/id = 1
 
-[node name="Search" type="MarginContainer" parent="TopBar/Left" unique_id=802377483]
+[node name="Search" type="MarginContainer" parent="TopBar/C" unique_id=802377483]
 custom_minimum_size = Vector2(800, 0)
 layout_mode = 2
 theme_override_constants/margin_left = 60
 theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 60
 
-[node name="Base" type="Polygon2D" parent="TopBar/Left/Search" unique_id=1074993710]
+[node name="Base" type="Polygon2D" parent="TopBar/C/Search" unique_id=1074993710]
 position = Vector2(-578, 22)
 offset = Vector2(0, -30)
 polygon = PackedVector2Array(515, 0, 555, 150, 1350, 150, 1390, 0)
 vertex_colors = PackedColorArray(0.101961, 0.576471, 1, 1, 0.0666667, 0.556863, 1, 1, 0.0862745, 0.439216, 1, 1, 0.180392, 0.454902, 0.952941, 1)
 
-[node name="HBoxC" type="HBoxContainer" parent="TopBar/Left/Search" unique_id=249968099]
+[node name="HBoxC" type="HBoxContainer" parent="TopBar/C/Search" unique_id=249968099]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
 theme_override_constants/separation = 30
 alignment = 1
 
-[node name="LineEdit" type="LineEdit" parent="TopBar/Left/Search/HBoxC" unique_id=1750621200]
+[node name="LineEdit" type="LineEdit" parent="TopBar/C/Search/HBoxC" unique_id=1750621200]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 8.0
 
-[node name="Btn" type="TextureButton" parent="TopBar/Left/Search/HBoxC" unique_id=957020667]
+[node name="Btn" type="TextureButton" parent="TopBar/C/Search/HBoxC" unique_id=957020667]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -209,11 +209,11 @@ texture_normal = ExtResource("2_e4ark")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="HBoxC" type="HBoxContainer" parent="TopBar/Left" unique_id=1608466823]
+[node name="HBoxC" type="HBoxContainer" parent="TopBar/C" unique_id=1608466823]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="OrderBtn" type="TextureButton" parent="TopBar/Left/HBoxC" unique_id=93771349]
+[node name="OrderBtn" type="TextureButton" parent="TopBar/C/HBoxC" unique_id=93771349]
 self_modulate = Color(1, 1, 1, 0.768627)
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
