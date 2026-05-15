@@ -106,6 +106,9 @@ func _load_config_from_file() -> void:
 	
 	# 加载到 SettingList
 	setting_list.load_settings(settings_dict)
+
+	# 初始化主题预设选项
+	setting_list.update_theme_preset_options()
 	
 	print("[SettingView] Loaded %d settings from: %s" % [settings_dict.size(), config_path])
 	

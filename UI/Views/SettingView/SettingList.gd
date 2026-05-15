@@ -610,6 +610,15 @@ var setting_groups = [
 		"name": "外观设置",
 		"settings": [
 			{
+				"id": "theme_preset",
+				"name_en": "Theme Preset",
+				"name_zh": "主题色配置",
+				"description": "选择界面主题配色方案",
+				"type": "TYPE_OPTION",
+				"default_value": "",
+				"dynamic_options": true
+			},
+			{
 				"id": "randomize_block_color",
 				"name_en": "Randomize Block Color",
 				"name_zh": "随机音符顏色",
@@ -963,7 +972,7 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 			var option_texts = []
 			
 			# 检查是否为动态options（由SettingView在runtime填充）
-			if setting_data.get("dynamic_options", false) and setting_data.options.is_empty():
+			if setting_data.get("dynamic_options", false) and setting_data.get("options", []).is_empty():
 				# 动态options为空，先设置空列表，等SettingView调用update_soundfont_options()更新
 				option_texts = ["Loading..."]
 			elif setting_data.get("is_custom_easing", false):
@@ -1003,8 +1012,8 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 				default_index = int(initial_value)
 			elif initial_value is String:
 				var matched_index = -1
-				for i in range(setting_data.options.size()):
-					var option_data = setting_data.options[i]
+				for i in range(setting_data.get("options", []).size()):
+					var option_data = setting_data.get("options", [])[i]
 					if option_data.has("value") and str(option_data["value"]).to_lower() == initial_value.to_lower():
 						matched_index = i
 						break
@@ -1038,7 +1047,15 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 func _on_setting_value_changed(id: String, value: Variant):
 	# 设置项值改变时的处理
 	print("Setting '%s' changed to: %s" % [id, value])
-	
+
+	# 主题预设 — 直接交给 ThemeManager
+	if id == "theme_preset":
+		if ThemeManager.instance:
+			var presets := ThemeManager.instance.get_available_presets()
+			if value >= 0 and value < presets.size():
+				ThemeManager.instance.apply_preset(presets[value])
+		return
+
 	# 从SettingsMapper中查找该设置项对应的section和key
 	if id in SettingsMapper.mappings:
 		var setting_info = SettingsMapper.mappings[id]
@@ -1260,6 +1277,24 @@ func update_soundfont_options(soundfont_list: Array, current_selection: String =
 				setting_item.set_value(i)
 				break
 
+
+
+## 更新theme_preset的选项（由SettingView调用）
+func update_theme_preset_options() -> void:
+	if not ThemeManager.instance:
+		return
+	var item = setting_items.get("theme_preset")
+	if not item:
+		return
+
+	var presets := ThemeManager.instance.get_available_presets()
+	var texts: Array[String] = []
+	for p in presets:
+		texts.append(p)
+
+	var current := ThemeManager.instance.get_theme_name()
+	var idx = max(0, presets.find(current))
+	item.set_options(texts, idx)
 
 func update_background_image_options(image_files: Array, current_selection: String = "") -> void:
 	if not setting_items.has("play_background_image_file"):
