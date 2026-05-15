@@ -466,7 +466,183 @@ func _apply_setting_theme(main: Node) -> void:
 	if setting_list and setting_list.theme:
 		_style_setting_list_theme(setting_list.theme)
 
+# ============ MidiView 主题 ============
+
+## 修改 InfoUI 根 Theme (Theme_5hcss) 中的 Button/OptionButton/PopupMenu/TabContainer 样式
+func _style_info_ui_theme(theme: Theme) -> void:
+	var p := get_color("primary")
+	var pl := get_color("primary_light")
+	var pd := get_color("primary_dark")
+
+	# Button
+	var btn_normal := theme.get_stylebox("normal", "Button")
+	if btn_normal is StyleBoxFlat:
+		btn_normal.bg_color = p
+	var btn_hover := theme.get_stylebox("hover", "Button")
+	if btn_hover is StyleBoxFlat:
+		btn_hover.bg_color = pl
+	var btn_pressed := theme.get_stylebox("pressed", "Button")
+	if btn_pressed is StyleBoxFlat:
+		btn_pressed.bg_color = pd
+
+	# OptionButton
+	var opt_normal := theme.get_stylebox("normal", "OptionButton")
+	if opt_normal is StyleBoxFlat:
+		opt_normal.bg_color = p
+	var opt_hover := theme.get_stylebox("hover", "OptionButton")
+	if opt_hover is StyleBoxFlat:
+		opt_hover.bg_color = pl
+	var opt_pressed := theme.get_stylebox("pressed", "OptionButton")
+	if opt_pressed is StyleBoxFlat:
+		opt_pressed.bg_color = pd
+
+	# PopupMenu hover
+	var popup_hover := theme.get_stylebox("hover", "PopupMenu")
+	if popup_hover is StyleBoxFlat:
+		popup_hover.bg_color = p
+
+	# TabContainer
+	var tab_panel := theme.get_stylebox("panel", "TabContainer")
+	if tab_panel is StyleBoxFlat:
+		tab_panel.bg_color = pd
+	var tab_unselected := theme.get_stylebox("tab_unselected", "TabContainer")
+	if tab_unselected is StyleBoxFlat:
+		tab_unselected.bg_color = p
+	var tab_selected := theme.get_stylebox("tab_selected", "TabContainer")
+	if tab_selected is StyleBoxFlat:
+		tab_selected.bg_color = pd
+
+## 修改 TabBtn 子 Theme (Theme_n3ivs) 中的 Button 样式
+func _style_tab_btn_theme(theme: Theme) -> void:
+	var p := get_color("primary")
+	var pl := get_color("primary_light")
+	var pd := get_color("primary_dark")
+
+	var normal := theme.get_stylebox("normal", "Button")
+	if normal is StyleBoxFlat:
+		normal.bg_color = p
+	var hover := theme.get_stylebox("hover", "Button")
+	if hover is StyleBoxFlat:
+		hover.bg_color = pl
+	var pressed := theme.get_stylebox("pressed", "Button")
+	if pressed is StyleBoxFlat:
+		pressed.bg_color = pd
+
+## 修改 MidiView 中通过 theme_override_styles 单独设置的节点样式
+func _style_midi_individual_nodes(info_ui: Node) -> void:
+	var p := get_color("primary")
+	var pl := get_color("primary_light")
+	var pd := get_color("primary_dark")
+
+	# InfoWindow 边框
+	var info_window := info_ui.get_node_or_null("LeftArea/InfoWindow") as PanelContainer
+	if info_window:
+		var sb := info_window.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.border_color = pl
+
+	# Fold 面板（与 Center 共享同一 StyleBoxFlat_5h6qm）
+	var fold := info_ui.get_node_or_null("LeftArea/InfoWindow/HBoxC/Left/Fold") as Panel
+	if fold:
+		var sb := fold.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.bg_color = pl
+
+	# Fold/Btn — 只改 pressed（normal 透明，hover 暗色遮罩保留）
+	var fold_btn := info_ui.get_node_or_null("LeftArea/InfoWindow/HBoxC/Left/Fold/Btn") as Button
+	if fold_btn:
+		var sb := fold_btn.get_theme_stylebox("pressed")
+		if sb is StyleBoxFlat:
+			sb.bg_color = pd
+
+	# Description 背景
+	var desc := info_ui.get_node_or_null("LeftArea/InfoWindow/HBoxC/Description") as RichTextLabel
+	if desc:
+		var sb := desc.get_theme_stylebox("normal")
+		if sb is StyleBoxFlat:
+			sb.bg_color = Color(p.r, p.g, p.b, 0.5)
+			sb.border_color = Color(pd.r, pd.g, pd.b, 0.4)
+
+	# PlayBtn — 中间按钮比两边亮
+	var play_btn := info_ui.get_node_or_null("LeftArea/MainBtn/PlayBtn") as Button
+	if play_btn:
+		var sb_n := play_btn.get_theme_stylebox("normal")
+		if sb_n is StyleBoxFlat:
+			sb_n.bg_color = pl
+		var sb_h := play_btn.get_theme_stylebox("hover")
+		if sb_h is StyleBoxFlat:
+			sb_h.bg_color = pl.lightened(0.15)
+		var sb_p := play_btn.get_theme_stylebox("pressed")
+		if sb_p is StyleBoxFlat:
+			sb_p.bg_color = pd
+
+	# RedirectButtons/Button
+	var redirect_btn := info_ui.get_node_or_null("LeftArea/RedirectButtons/Button") as Button
+	if redirect_btn:
+		var sb_n := redirect_btn.get_theme_stylebox("normal")
+		if sb_n is StyleBoxFlat:
+			sb_n.bg_color = p
+		var sb_h := redirect_btn.get_theme_stylebox("hover")
+		if sb_h is StyleBoxFlat:
+			sb_h.bg_color = pl
+		var sb_p := redirect_btn.get_theme_stylebox("pressed")
+		if sb_p is StyleBoxFlat:
+			sb_p.bg_color = pd
+
+	# OptionPanel 背景
+	var option_panel := info_ui.get_node_or_null("RightArea/OptionPanel") as PanelContainer
+	if option_panel:
+		var sb := option_panel.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.bg_color = pd
+
+## 对 MidiView (InfoUI) 的所有组件应用主题色
+func _apply_midi_theme(main: Node) -> void:
+	var info_ui := main.get_node_or_null("skew/C/InfoUI")
+	if not info_ui:
+		return
+
+	# 根 Theme (Theme_5hcss) — Button/OptionButton/PopupMenu/TabContainer
+	if info_ui.theme:
+		_style_info_ui_theme(info_ui.theme)
+
+	# TabBtn 子 Theme (Theme_n3ivs) — Rank/Mode/Comment 按钮
+	var tab_btn := info_ui.get_node_or_null("RightArea/OptionPanel/VBoxC/TabBtn") as HBoxContainer
+	if tab_btn and tab_btn.theme:
+		_style_tab_btn_theme(tab_btn.theme)
+
+	# 单节点 theme_override_styles
+	_style_midi_individual_nodes(info_ui)
+
+
 # ============ DelView 主题 ============
+
+
+# ============ 结算界面主题 ============
+
+func _apply_score_theme(main: Node) -> void:
+	var score := main.get_node_or_null("ScoreView")
+	if not score:
+		return
+
+	# LevelingProgress — 透明 primary_dark
+	var leveling := score.get_node_or_null("LevelingProgress") as Panel
+	if leveling:
+		var sb := leveling.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			var a = sb.bg_color.a
+			var pd := get_color("primary_dark")
+			sb.bg_color = Color(pd.r, pd.g, pd.b, a)
+
+	# Btns — 透明 primary_light
+	var btns := score.get_node_or_null("Btns") as Panel
+	if btns:
+		var sb := btns.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			var a = sb.bg_color.a
+			var pl := get_color("primary_light")
+			sb.bg_color = Color(pl.r, pl.g, pl.b, a)
+
 
 ## 对 DelView 的静态部分应用主题色（侧边栏、内容面板、按钮颜色）
 ## 由 DelView._ready() 和 theme_changed 信号触发
@@ -621,6 +797,8 @@ func refresh_all() -> void:
 	_apply_list_theme(main)
 	_apply_store_theme(main)
 	_apply_setting_theme(main)
+	_apply_midi_theme(main)
+	_apply_score_theme(main)
 	GameLogger.instance.info("主题刷新完成: %s" % _theme_name, "ThemeManager")
 
 func _on_theme_changed(preset_name: String) -> void:

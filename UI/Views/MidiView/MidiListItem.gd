@@ -56,7 +56,7 @@ func _update_display() -> void:
 	author_label.text = midi_data.artist_name if not midi_data.artist_name.is_empty() else "Unknown"
 
 ## 从MidiData初始化显示
-func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg:ButtonGroup) -> void:
+func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg: ButtonGroup) -> void:
 	midi_data = midi
 	item_id = midi.id
 	item_type = "midi"
@@ -89,27 +89,30 @@ func _load_cover_image() -> void:
 	if not fs_manager:
 		print("[MidiListItem] FileSystemManager not found, using default cover")
 		return
-	cover.texture = fs_manager.get_cover_by_midiData(midi_data)	
+	cover.texture = fs_manager.get_cover_by_midiData(midi_data)
 
 ## 按钮切换回调
 func on_item_button_toggled(toggled_on: bool):
-	if not parent_node.current_midis.size() >1 and not toggled_on:
+	if not parent_node.current_midis.size() > 1 and not toggled_on:
 		return
-	expand_tween =create_tween()
+	expand_tween = create_tween()
 	expand_tween.set_ease(Tween.EASE_OUT)
 	expand_tween.set_trans(Tween.TRANS_QUINT)
 	expand_tween.set_parallel(true)
 	
-	var indicator=get_node(INDICATOR)
+	var indicator = get_node(INDICATOR)
 	var expa = 1 if toggled_on else 0
-	expand_tween.tween_property(self,"custom_minimum_size",Vector2(750,150 + 240*expa),0.35)
-	expand_tween.tween_property(get_node("VBoxC/MC"),"theme_override_constants/margin_bottom",20 * expa, 0.15)
+	expand_tween.tween_property(self , "custom_minimum_size", Vector2(750, 150 + 240 * expa), 0.35)
+	expand_tween.tween_property(get_node("VBoxC/MC"), "theme_override_constants/margin_bottom", 20 * expa, 0.15)
 	#文字
-	expand_tween.tween_property(midi_name_label,"theme_override_font_sizes/font_size",30 +10*expa,0.25)
-	expand_tween.tween_property(line,"position",Vector2(-50,12 - 5*expa),0.15)
+	expand_tween.tween_property(midi_name_label, "theme_override_font_sizes/font_size", 30 + 10 * expa, 0.25)
+	expand_tween.tween_property(line, "position", Vector2(-50, 12 - 5 * expa), 0.15)
 	#指示器
-	expand_tween.tween_property(indicator.get_child(item_index),"color",Color(0.129, 0.412, 0.702) if expa else Color(1, 1, 1) ,0.15)
-	expand_tween.tween_property(indicator,"position",Vector2(30,100 -item_index*24),0.35)
+	var primary_dark: Color = Color(0.129, 0.412, 0.702)
+	if ThemeManager.instance:
+		primary_dark = ThemeManager.instance.get_color("primary_dark")
+	expand_tween.tween_property(indicator.get_child(item_index), "color", primary_dark if expa else Color(1, 1, 1), 0.15)
+	expand_tween.tween_property(indicator, "position", Vector2(30, 100 - item_index * 24), 0.35)
 	
 	if toggled_on:
 		parent_node.selected_item = item_index
@@ -144,9 +147,9 @@ func _update_data_display() -> void:
 	var entry: Dictionary = _info_cache.get(midi_data.id, {})
 
 	info_node.get_node("Time/Label").text = entry.get("time_str", "...")
-	info_node.get_node("BPM/Label").text  = entry.get("bpm_str",  "...")
+	info_node.get_node("BPM/Label").text = entry.get("bpm_str", "...")
 	info_node.get_node("Note/Label").text = entry.get("note_str", "...")
-	info_node.get_node("MPP/Label").text  = entry.get("mpp_str",  "...")
+	info_node.get_node("MPP/Label").text = entry.get("mpp_str", "...")
 
 	# 如果缓存不完整，后台触发计算
 	if not entry.has("time_str") or not entry.has("note_str"):
@@ -285,16 +288,16 @@ func _fill_time_bpm_cache(midi: MidiData, entry: Dictionary) -> void:
 			var total_ms: float = midi.duration_ms if midi.duration_ms > 0 else 1.0
 			var weighted: float = 0.0
 			for i in range(timeline.size()):
-				var seg_bpm: float   = timeline[i].get("bpm", 120.0)
+				var seg_bpm: float = timeline[i].get("bpm", 120.0)
 				var seg_start: float = timeline[i].get("time_ms", 0.0)
-				var seg_end: float   = (timeline[i + 1].get("time_ms", total_ms)
+				var seg_end: float = (timeline[i + 1].get("time_ms", total_ms)
 						if i + 1 < timeline.size() else total_ms)
 				weighted += seg_bpm * (seg_end - seg_start)
 			entry["bpm_str"] = "~%.1f" % (weighted / total_ms)
 
 	# 缓存时间轴以供 Note 计算时传参
 	entry["bpm_timeline"] = timeline
-	entry["timebase"]     = midi.midi_timebase
+	entry["timebase"] = midi.midi_timebase
 
 
 ## 在主线程计算 Note / MPP 并写入缓存，完成后刷新显示
@@ -323,7 +326,7 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 	# 全部禁用时直接写 0，不需要走 generate_keys
 	if configs_initialized and enabled_pairs.is_empty():
 		entry["note_str"] = "0"
-		entry["mpp_str"]  = "—"
+		entry["mpp_str"] = "—"
 		_info_cache[midi.id] = entry
 		_apply_display()
 		return
@@ -342,36 +345,36 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 
 	if filtered.is_empty():
 		entry["note_str"] = "0"
-		entry["mpp_str"]  = "—"
+		entry["mpp_str"] = "—"
 		_info_cache[midi.id] = entry
 		_apply_display()
 		return
 
 	# 若 MidiPlaybackManager 当前加载的不是本 midi，暂时注入 bpm 参数供 generate_keys 使用
 	var pm := MidiPlaybackManager.instance
-	var saved_timeline: Array  = []
-	var saved_timebase: int    = 480
+	var saved_timeline: Array = []
+	var saved_timebase: int = 480
 	var need_restore := false
 	if pm != null and pm.current_midi_data != midi:
 		saved_timeline = pm.bpm_timeline.duplicate()
 		saved_timebase = pm.midi_timebase
-		pm.bpm_timeline  = entry.get("bpm_timeline", midi.bpm_timeline)
+		pm.bpm_timeline = entry.get("bpm_timeline", midi.bpm_timeline)
 		pm.midi_timebase = entry.get("timebase", midi.midi_timebase)
 		need_restore = true
 
 	ksm.generate_keys(filtered)
 
 	if need_restore:
-		pm.bpm_timeline  = saved_timeline
+		pm.bpm_timeline = saved_timeline
 		pm.midi_timebase = saved_timebase
 
 	var count: int = ksm.game_sequences.size()
 	if count > 0 and midi.duration_ms > 0:
 		entry["note_str"] = "%d" % count
-		entry["mpp_str"]  = "%.1f" % (count / (midi.duration_ms / 60000.0))
+		entry["mpp_str"] = "%.1f" % (count / (midi.duration_ms / 60000.0))
 	else:
 		entry["note_str"] = "%d" % count
-		entry["mpp_str"]  = "—"
+		entry["mpp_str"] = "—"
 
 	_info_cache[midi.id] = entry
 	_apply_display()
@@ -382,7 +385,7 @@ func _apply_display() -> void:
 	if not is_inside_tree() or midi_data == null:
 		return
 	if parent_node == null or parent_node.selected_item != item_index:
-		return  # 本 item 未展开，无需刷新共享面板
+		return # 本 item 未展开，无需刷新共享面板
 
 	var info_node: GridContainer = get_node_or_null("/root/Main/skew/C/InfoUI/LeftArea/DetailData")
 	if info_node == null:
@@ -390,9 +393,9 @@ func _apply_display() -> void:
 
 	var entry: Dictionary = _info_cache.get(midi_data.id, {})
 	info_node.get_node("Time/Label").text = entry.get("time_str", "...")
-	info_node.get_node("BPM/Label").text  = entry.get("bpm_str",  "...")
+	info_node.get_node("BPM/Label").text = entry.get("bpm_str", "...")
 	info_node.get_node("Note/Label").text = entry.get("note_str", "...")
-	info_node.get_node("MPP/Label").text  = entry.get("mpp_str",  "...")
+	info_node.get_node("MPP/Label").text = entry.get("mpp_str", "...")
 
 
 ## 配置变更：Generator / Lane / Appearance 相关设置影响 Note 数量，清除所有条目的 Note 缓存
@@ -408,7 +411,7 @@ func _on_config_changed(_key: String, section: String, _value: Variant) -> void:
 		var info_node = get_node_or_null("/root/Main/skew/C/InfoUI/LeftArea/DetailData")
 		if info_node:
 			info_node.get_node("Note/Label").text = "..."
-			info_node.get_node("MPP/Label").text  = "..."
+			info_node.get_node("MPP/Label").text = "..."
 		_start_midi_compute()
 
 
@@ -424,6 +427,6 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 			var info_node = get_node_or_null("/root/Main/skew/C/InfoUI/LeftArea/DetailData")
 			if info_node:
 				info_node.get_node("Note/Label").text = "..."
-				info_node.get_node("MPP/Label").text  = "..."
+				info_node.get_node("MPP/Label").text = "..."
 			# parsed_notes 已有，直接重算（不用启线程）
 			_start_midi_compute()
