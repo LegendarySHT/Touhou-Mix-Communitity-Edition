@@ -169,11 +169,16 @@ func _process(delta: float) -> void:
 			_update_debug_overlay()
 
 	if not is_pause:
-		# 如果正在播放MIDI，使用MIDI播放管理器的时间
-		current_time = playback_mgr.get_position_ms()
-		progress_bar.value = current_time
-		# 【方案C】同步时间到FlowArea，确保note判定与MIDI播放位置完全一致
-		flow_area.set_current_time(current_time)
+		if _is_finishing_game:
+			# 游戏结束阶段：用delta模拟时间推进，让剩余音符自然下落
+			current_time += delta * 1000.0
+			flow_area.set_current_time(current_time)
+		else:
+			# 如果正在播放MIDI，使用MIDI播放管理器的时间
+			current_time = playback_mgr.get_position_ms()
+			progress_bar.value = current_time
+			# 【方案C】同步时间到FlowArea，确保note判定与MIDI播放位置完全一致
+			flow_area.set_current_time(current_time)
 	
 func get_lane_count() -> int:
 	return lane_count if not keyboard_mode else key_map.size()
@@ -728,8 +733,20 @@ func _on_game_finished() -> void:
 	_is_finishing_game = true
 
 	print("[PlayView] Game finished!")
-	
-	# 从 ScoreCalculator 拿最终快照，填充结算数据
+
+	# 停止MIDI播放但不暂停FlowArea，让剩余音符继续自然下落
+	if playback_mgr:
+		playback_mgr.stop()
+	is_midi_playing = false
+
+	# 等待所有音符自然消除（被判定或落出屏幕），最长等待10秒
+	var safety_timer := get_tree().create_timer(10.0)
+	while flow_area.has_active_notes():
+		if safety_timer.time_left <= 0.0:
+			break
+		await get_tree().process_frame
+
+	# 音符全部消除后，从 ScoreCalculator 拿最终快照（包含自然Miss）
 	var snap = score_calc.get_snapshot()
 	play_result.score = snap["total_score"]
 	play_result.max_combo = snap["max_combo"]
@@ -742,20 +759,8 @@ func _on_game_finished() -> void:
 	play_result.count["Miss"] = snap["judge_counts"][ScoreCalculator.Judgment.MISS]
 	play_result.early_count = snap["early_count"]
 	play_result.late_count = snap["late_count"]
-	is_pause = true
-	is_midi_playing = false
 
-	# 结束后的等待：2秒 + 音符下落时间（秒）
-	var note_fall_time := ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
-	var setting_view = get_node_or_null("/root/Main/skew/C/SettingView")
-	if setting_view and setting_view.has_method("get_setting_value"):
-		var setting_note_fall_time = setting_view.get_setting_value("note_fall_time")
-		if setting_note_fall_time != null:
-			note_fall_time = float(setting_note_fall_time)
-	var end_buffer_seconds: float = 2.0 + float(max(0.0, note_fall_time))
-	await get_tree().create_timer(end_buffer_seconds).timeout
-
-	# 进入结算前强制清场，防止残留音符
+	# 安全清场
 	flow_area.clear_flow_area()
 
 	# 进入结算界面

@@ -329,6 +329,10 @@ func clear_flow_area():
 	pressed_keys.clear()
 	note_idx = 0
 
+## 检查是否还有活跃音符（用于游戏结束后等待音符自然消除）
+func has_active_notes() -> bool:
+	return active_notes.size() > 0
+
 
 var _note_max_size_y: float = 0
 var _note_fall_speed: float = 0
@@ -492,7 +496,7 @@ func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 
 	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
 		var window_y = get_viewport().get_visible_rect().size.y
-		if tail_top > window_y:
+		if tail_top >= window_y:
 			_remove_note(note)
 			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
 
