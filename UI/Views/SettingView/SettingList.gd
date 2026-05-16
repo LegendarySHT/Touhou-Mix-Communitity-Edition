@@ -776,15 +776,6 @@ var setting_groups = [
 				]
 			},
 			{
-				"id": "background_image_color",
-				"name_en": "Background Image Color",
-				"name_zh": "背景图像颜色",
-				"description": "设置叠在背景上的纯色图层的颜色和透明度",
-				"type": "TYPE_COLOR",
-				"edit_alpha": true,
-				"default_value": "#FFFFFFFF"
-			},
-			{
 				"id": "background_image_flash_color",
 				"name_en": "Background Image Flash Color",
 				"name_zh": "背景闪光颜色",
@@ -794,12 +785,25 @@ var setting_groups = [
 				"default_value": "#FFFFFF00"
 			},
 			{
-				"id": "background_dim_alpha",
-				"name_en": "Background Dim Alpha",
-				"name_zh": "背景最低亮度",
-				"description": "背景的不透明度会随着准度的变化而变化，准度越高不透明度越高",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "0.5"
+				"id": "background_dim_color",
+				"name_en": "Background Dim Color",
+				"name_zh": "背景遮罩颜色",
+				"description": "背景遮罩的颜色，与背景遮罩透明度配合使用来降低背景亮度",
+				"type": "TYPE_COLOR",
+				"edit_alpha": true,
+				"default_value": "#000000FF"
+			},
+			{
+				"id": "beam_width_mode",
+				"name_en": "Beam Width Mode",
+				"name_zh": "轨道光效宽度模式",
+				"description": "控制轨道光效的宽度依据：跟随音符宽度会在音符宽度基础上增加边距，跟随轨道间距会填满轨道间隔",
+				"type": "TYPE_OPTION",
+				"default_value": "0",
+				"options": [
+					{"text_en": "Note Width", "text_zh": "跟随音符宽度"},
+					{"text_en": "Lane Spacing", "text_zh": "跟随轨道间距"}
+				]
 			},
 			{
 				"id": "judge_line_thickness",
@@ -1108,11 +1112,13 @@ func _on_setting_value_changed(id: String, value: Variant):
 					"string":
 						converted_value = str(value)
 					"color":
-						# 颜色保持为Color类型
+						# 颜色保持为Color类型，先校验格式避免编辑过程中的报错
 						if value is Color:
 							converted_value = value
-						else:
+						elif str(value).is_valid_html_color():
 							converted_value = Color(str(value))
+						else:
+							return  # 颜色值不完整时静默跳过，等待用户输入完成
 
 			# 改为延迟提交：先缓存变更，退出SettingView时统一应用
 			var update_id = "%s::%s" % [section, key]

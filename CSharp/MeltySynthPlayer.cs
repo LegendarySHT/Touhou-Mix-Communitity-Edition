@@ -375,18 +375,19 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		if (_outputBuffer.Length < requiredBufferSize)
 			Array.Resize(ref _outputBuffer, requiredBufferSize);
 
-		if (_sequencer == null || _autoSynth == null)
-		{
-			FillWithSilenceAndCopy(data, framesRequested);
-			return FmodNative.RESULT.OK;
-		}
-
 		try
 		{
 			float scale = _volumeLinear * OUTPUT_GAIN * _autoGain;
 
 			lock (_synthLock)
 			{
+				// 在锁内检查，防止 FMOD 音频线程与主线程竞争导致 null 访问
+				if (_sequencer == null || _autoSynth == null)
+				{
+					FillWithSilenceAndCopy(data, framesRequested);
+					return FmodNative.RESULT.OK;
+				}
+
 				if (_useSeparateSynth && _manualSynth != null && _manualSynth != _autoSynth)
 				{
 					_sequencer.Render(_tempLeft.AsSpan(0, framesToRender), _tempRight.AsSpan(0, framesToRender));

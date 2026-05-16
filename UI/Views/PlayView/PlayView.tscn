@@ -85,11 +85,22 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("GradientTexture2D_uj6qe")
 
+[node name="DimOverlay" type="ColorRect" parent="." unique_id=1016560862]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.5)
+
 [node name="Lane" type="Control" parent="." unique_id=2025598350]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 pivot_offset = Vector2(78, 707)
+mouse_filter = 2
 script = ExtResource("3_kvdpo")
 
 [node name="AutoLabel" type="Label" parent="." unique_id=1190176837]
@@ -128,6 +139,7 @@ anchor_bottom = 1.0
 offset_top = -4.0
 grow_horizontal = 2
 grow_vertical = 0
+mouse_filter = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_uj6qe")
 
 [node name="SVP" type="CanvasLayer" parent="FlowArea" unique_id=610203907]
@@ -171,6 +183,7 @@ offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(225, 150)
+mouse_filter = 2
 alignment = 1
 
 [node name="up" type="Label" parent="Layer/Center" unique_id=1270257322]
@@ -284,6 +297,7 @@ offset_left = -225.0
 offset_right = 225.0
 offset_bottom = 200.0
 grow_horizontal = 2
+mouse_filter = 2
 alignment = 1
 
 [node name="count" type="Label" parent="Layer/Combo" unique_id=845915732]
@@ -308,6 +322,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 color = Color(0, 0, 0, 0.8784314)
 
 [node name="Menu" type="HBoxContainer" parent="Layer/CenterBackGround" unique_id=920842605]

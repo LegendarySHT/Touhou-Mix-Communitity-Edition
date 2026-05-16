@@ -4,6 +4,7 @@ extends Control
 @onready var flow_area: Panel = $FlowArea
 
 @onready var background: TextureRect = $Background
+@onready var dim_overlay: ColorRect = $DimOverlay
 @onready var menu_btn: TextureButton = $Layer/BackBtn
 @onready var progress_bar: ProgressBar = $Layer/TopProgressBar
 
@@ -217,6 +218,10 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		"play_background_color"
 	]:
 		_apply_play_background()
+		return
+
+	if section == "Appearance" and key == "background_dim_color":
+		_apply_background_dim()
 		return
 
 	if section == "Appearance" and key == "lane_effect_quality":
@@ -839,6 +844,8 @@ func _apply_play_background() -> void:
 	if background == null:
 		return
 
+	_apply_background_dim()
+
 	var mode = ConfigManager.instance.get_int("Appearance", "play_background_mode", PLAY_BG_MODE_COVER)
 	var size_mode = ConfigManager.instance.get_int("Appearance", "play_background_size_mode", PLAY_BG_SIZE_COVER)
 	var blur_strength = ConfigManager.instance.get_float("Appearance", "play_background_cover_blur", 0.35)
@@ -906,6 +913,15 @@ func _set_cover_blur_material(blur_strength: float) -> void:
 func _clear_cover_blur_material() -> void:
 	background.material = null
 
+
+func _apply_background_dim() -> void:
+	if dim_overlay == null:
+		return
+	var dim_color_html = ConfigManager.instance.get_string("Appearance", "background_dim_color", "#0000007F")
+	if dim_color_html.is_valid_html_color():
+		dim_overlay.color = Color(dim_color_html)
+	else:
+		dim_overlay.color = Color(0, 0, 0, 0.5)
 
 func _load_user_background_texture(file_name: String) -> Texture2D:
 	if file_name.is_empty():

@@ -154,6 +154,8 @@ func init_beam(lane_count: int, parent_node) -> void:
 	var padding: int      = play_view.lane_padding
 	var window            := get_viewport().get_visible_rect().size
 	var beam_h: float     = window.y - play_view.judge_line_offset_y
+	# 轨道光效宽度模式 (0=跟随音符宽度, 1=跟随轨道间距)
+	var beam_width_mode = ConfigManager.instance.get_int("Appearance", "beam_width_mode", 0)
 	var beam_w: float     = note_width + 20.0
 	var safe_width: float = max(1.0, window.x - 2.0 * float(padding))
 	var lane_step: float = 0.0
@@ -161,6 +163,10 @@ func init_beam(lane_count: int, parent_node) -> void:
 	if lane_count > 1:
 		lane_start_center_x = float(padding) + beam_w * 0.5
 		lane_step = max(0.0, (safe_width - beam_w) / float(lane_count - 1))
+
+	# 当光效宽度模式为跟随轨道间距时，使用轨道间距作为光效宽度
+	if beam_width_mode == 1 and lane_step > 0:
+		beam_w = lane_step
 
 	_beam_height     = beam_h
 	_beam_padding    = padding
@@ -206,6 +212,7 @@ func init_key_display(key_map: Array[Key]) -> void:
 	label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 42)
 	label.custom_minimum_size  = Vector2(beam_width, 100)
+	label.size = Vector2(beam_width, 100)
 
 	for i in range(key_map.size()):
 		var nl: Label = label if i == key_map.size() - 1 else label.duplicate()

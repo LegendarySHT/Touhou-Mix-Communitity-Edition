@@ -97,6 +97,7 @@ const _PRESS_DEDUP_MS: float = 5.0
 const _PRESS_DEDUP_DISTANCE: float = 6.0
 var _last_press_time_ms: float = -1000000.0
 var _last_press_pos: Vector2 = Vector2(-1000000.0, -1000000.0)
+var _last_press_was_mouse: bool = false
 
 var pressed_keys: Dictionary = {}
 
@@ -377,7 +378,9 @@ func _spawn_note(note_index: int) -> void:
 		nt.long_tail_height = 0.0
 
 	# 计算音符位置
-	var start_x = parent_node.lane_area.get_lane_by_idx(nt.lane).position.x + 10
+	var beam_node_for_note = parent_node.lane_area.get_lane_by_idx(nt.lane)
+	var beam_margin = max(0.0, (beam_node_for_note.beam_size.x - note_visual_width) / 2.0)
+	var start_x = beam_node_for_note.position.x + beam_margin
 	
 	var rect = _create_note(nt.type, start_x, nt.lane)
 	nt.set_rect(rect)
@@ -489,6 +492,7 @@ func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 
 	var tail_top = tail_center - tail_half
 	var tail_bottom = tail_center + tail_half
+	var tail_judge_y = tail_center  # 使用 tail 中心而非顶部判定，避免特效位置过低
 	var head_top = head_center - head_half
 
 	body.custom_minimum_size.y = max(0.0, head_top - tail_bottom)
@@ -496,7 +500,7 @@ func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 
 	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
 		var window_y = get_viewport().get_visible_rect().size.y
-		if tail_top >= window_y:
+		if tail_judge_y >= window_y:
 			_remove_note(note)
 			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
 
@@ -697,6 +701,9 @@ func _gui_input(event: InputEvent) -> void:
 			if event.index in touch_positions:
 				touch_positions.erase(event.index)
 				_handle_release(event.index, event_time_ms)
+			elif event.index >= 0:
+				# 诊断：收到释放事件但无对应按下记录（可能是极快轻触导致按下事件被丢弃）
+				push_warning("[FlowArea] Orphan touch release: index=%d, no corresponding press found" % event.index)
 	
 	# 处理触摸拖动
 	elif event is InputEventScreenDrag:
@@ -713,7 +720,8 @@ func _gui_input(event: InputEvent) -> void:
 		if -1 in active_holds:
 			_handle_touch_drag(-1, event.position)
 
-	if (event is InputEventScreenTouch or event is InputEventScreenDrag) and event.index in touch_positions:
+	# 仅在拖动时检查 slide 可判定状态，避免点按误标记同轨道其他 slide 为可判定
+	if event is InputEventScreenDrag and event.index in touch_positions:
 		_check_slides_at_touch_pos(event.index, touch_positions[event.index], event_time_ms)
 	elif event is InputEventMouseMotion and -1 in active_holds:
 		_check_slides_at_touch_pos(-1, event.position, event_time_ms)
@@ -754,11 +762,22 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	if judge_time_ms < 0.0:
 		judge_time_ms = _get_realtime_position_ms()
 
-	# 同一时刻同一位置的重复输入（常见于鼠标模拟触摸）只处理一次
-	if abs(judge_time_ms - _last_press_time_ms) <= _PRESS_DEDUP_MS and pos.distance_to(_last_press_pos) <= _PRESS_DEDUP_DISTANCE:
-		return
+	# 去重逻辑：部分 Android 设备单次触摸会同时发送鼠标+触摸双事件
+	# - 触摸事件间不互相去重（保留多指能力）
+	# - 触摸事件仅在前一次是鼠标事件时去重（处理 Android 模拟鼠标）
+	# - 鼠标事件始终去重（桌面端原生防重复）
+	var should_dedup := false
+	if touch_id == -1:
+		# 鼠标事件：始终检查去重
+		should_dedup = abs(judge_time_ms - _last_press_time_ms) <= _PRESS_DEDUP_MS and pos.distance_to(_last_press_pos) <= _PRESS_DEDUP_DISTANCE
+	else:
+		# 触摸事件：仅在前一次是鼠标事件时去重
+		should_dedup = _last_press_was_mouse and abs(judge_time_ms - _last_press_time_ms) <= _PRESS_DEDUP_MS and pos.distance_to(_last_press_pos) <= _PRESS_DEDUP_DISTANCE
+	_last_press_was_mouse = touch_id == -1
 	_last_press_time_ms = judge_time_ms
 	_last_press_pos = pos
+	if should_dedup:
+		return
 
 	var candidate_notes: Array = active_notes
 	if only_perfect_slides:
@@ -877,6 +896,8 @@ func _check_slide_stat(note: Note):
 		return
 
 	if note.lane in pressed_keys.values():
+		if parent_node.play_mode and note.game_sequence_ref:
+			_trigger_midi_notes_from_sequence(note.game_sequence_ref)
 		if only_perfect_slides:
 			_judge_note(note, false, note.start_time, -1, "Perfect")
 		else:
@@ -885,6 +906,8 @@ func _check_slide_stat(note: Note):
 		return
 
 	if note.can_judge:
+		if parent_node.play_mode and note.game_sequence_ref:
+			_trigger_midi_notes_from_sequence(note.game_sequence_ref)
 		if only_perfect_slides:
 			_judge_note(note, false, note.start_time, -1, "Perfect")
 		else:
@@ -911,6 +934,8 @@ func _judge_slides_on_release(touch_id: int, released_lane: int, judge_time_ms: 
 			pending_notes.append(note)
 
 	for note in pending_notes:
+		if parent_node.play_mode and note.game_sequence_ref:
+			_trigger_midi_notes_from_sequence(note.game_sequence_ref)
 		_judge_note(note, false, judge_time_ms, -1, "Perfect")
 
 ## 获取音符的代表 Y 坐标（屏幕坐标）

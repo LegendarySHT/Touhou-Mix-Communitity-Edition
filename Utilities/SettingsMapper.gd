@@ -90,9 +90,9 @@ static var mappings: Dictionary = {
 	"play_background_color": {"section": "Appearance", "key": "play_background_color", "value_type": "color"},
 	"block_size": {"section": "Appearance", "key": "block_size", "value_type": "int"},
 	"background_image_preset": {"section": "Appearance", "key": "background_image_preset", "value_type": "int"},
-	"background_image_color": {"section": "Appearance", "key": "background_image_color", "value_type": "color"},
 	"background_image_flash_color": {"section": "Appearance", "key": "background_image_flash_color", "value_type": "color"},
-	"background_dim_alpha": {"section": "Appearance", "key": "background_dim_alpha", "value_type": "float"},
+	"background_dim_color": {"section": "Appearance", "key": "background_dim_color", "value_type": "color"},
+		"beam_width_mode": {"section": "Appearance", "key": "beam_width_mode", "value_type": "int"},
 	"judge_line_thickness": {"section": "Appearance", "key": "judge_line_thickness", "value_type": "int"},
 	"generate_short_connect": {"section": "Appearance", "key": "generate_short_connect", "value_type": "int"},
 	"generate_instant_connect": {"section": "Appearance", "key": "generate_instant_connect", "value_type": "int"},
@@ -223,8 +223,6 @@ static func validate_value(setting_id: String, value: Variant) -> bool:
 			return float(value) >= 0.0 and float(value) <= 1.0
 		"play_background_size_mode":
 			return int(value) >= 0 and int(value) <= 1
-		"background_dim_alpha":
-			return float(value) >= 0.0 and float(value) <= 1.0
 		"vibration_duration":
 			return int(value) >= 0
 		"judge_line_position":
