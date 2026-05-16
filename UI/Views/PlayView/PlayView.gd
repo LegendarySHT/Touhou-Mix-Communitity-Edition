@@ -92,6 +92,7 @@ var judge_line_offset_y: int = 250
 
 # 光柱特效不透明度
 var beam_alpha: float = 0.5
+var flash_color: Color = Color.WHITE
 # 交错轨道颜色（启用时会覆盖音符颜色及轨道光效颜色）
 var intersect_lane_color: bool = true
 var intersect_color_set: Array = [Color.RED, Color.BLUE] # 这个颜色数量不能超过轨道数的一半
@@ -273,11 +274,11 @@ func _load_lane_effect_quality_setting() -> void:
 	if lane_area and lane_area.has_method("set_quality_mode"):
 		lane_area.set_quality_mode(ConfigManager.instance.get_int("Appearance", "lane_effect_quality", 1))
 
-func _set_debug_overlay_visible(is_visible: bool) -> void:
+func _set_debug_overlay_visible(_is_visible: bool) -> void:
 	if debug_info_label == null:
 		return
 
-	debug_info_label.visible = is_visible
+	debug_info_label.visible = _is_visible
 	debug_info_elapsed = debug_info_refresh_interval
 	if visible:
 		_update_debug_overlay()
@@ -585,6 +586,10 @@ func _load_lane_parameters() -> void:
 		[lane_count, lane_padding, str(keyboard_mode), key_map.size()],
 		"PlayView"
 	)
+	beam_alpha = config_mgr.get_float("Lane", "flash_alpha", 0.8)
+	if lane_area and lane_area.has_method("set_beam_alpha"):
+		lane_area.set_beam_alpha(beam_alpha)
+
 
 ## 处理 Lane/Judge 段配置变更（轨道数量、键位、左右安全区）
 func _on_lane_config_changed(key: String, section: String, value: Variant) -> void:
@@ -922,6 +927,21 @@ func _apply_background_dim() -> void:
 		dim_overlay.color = Color(dim_color_html)
 	else:
 		dim_overlay.color = Color(0, 0, 0, 0.5)
+	var flash_color_html = ConfigManager.instance.get_string("Appearance", "background_image_flash_color", "#FFFFFF00")
+	if flash_color_html.is_valid_html_color():
+		flash_color = Color(flash_color_html)
+	else:
+		flash_color = Color(1, 1, 1, 0)
+
+
+func _flash_background() -> void:
+	if dim_overlay == null or flash_color.a <= 0:
+		return
+	var original_color = dim_overlay.color
+	dim_overlay.color = flash_color
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(dim_overlay, "color", original_color, 0.3)
 
 func _load_user_background_texture(file_name: String) -> Texture2D:
 	if file_name.is_empty():

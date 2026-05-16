@@ -82,8 +82,8 @@ func _on_click_track_btn():
 	if not midi:
 		return
 	
-	EventBus.instance.enter_track_view_with.emit(midi)
 	UIStateManager.instance.change_state(UIStateManager.UIState.TRACK_VIEW)
+	EventBus.instance.enter_track_view_with.emit.call_deferred(midi)
 
 # 跳转到收藏夹
 func _on_click_favor_list_btn():

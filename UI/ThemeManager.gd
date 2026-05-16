@@ -985,8 +985,8 @@ func create_theme_resource() -> Theme:
 func _parse_theme_config(cfg: Dictionary) -> void:
 	for section in cfg:
 		if section is String and (section as String).begins_with("preset_"):
-			var name: String = (section as String).replace("preset_", "")
-			_presets[name] = cfg[section].duplicate()
+			var _name: String = (section as String).replace("preset_", "")
+			_presets[_name] = cfg[section].duplicate()
 
 	GameLogger.instance.info("加载了 %d 个主题预设" % _presets.size(), "ThemeManager")
 

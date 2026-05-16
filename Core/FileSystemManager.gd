@@ -533,23 +533,23 @@ func _scan_all_resources() -> void:
 	
 	is_scanning = true
 	GameLogger.instance.info("Scanning all resources...", "FileSystemMGR")
-	
-	var scan_thread = Thread.new()
-	scan_thread.start(func ():
-		scan_charts()
-		scan_skins()
-		scan_soundfonts()
-		scan_backgrounds()
-	)
-	scan_thread.wait_to_finish()
-	
+
+	scan_charts()
+	await get_tree().process_frame
+	scan_skins()
+	await get_tree().process_frame
+	scan_soundfonts()
+	await get_tree().process_frame
+	scan_backgrounds()
+	await get_tree().process_frame
+
 	is_scanning = false
 	resources_scanned = true
 	resources_ready.emit()
-	
+
 	is_initialized = true
 	initialization_complete.emit()
-	
+
 	GameLogger.instance.info("Directory structure initialized", "FileSystemMGR")
 
 ## 扫描谱面目录

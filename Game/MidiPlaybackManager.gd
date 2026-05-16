@@ -60,6 +60,7 @@ var default_soundfont_path: String = "res://Resources/Soundfont/GeneralUser-GS.s
 
 ## 当前使用的SoundFont路径
 var current_soundfont_path: String = ""
+var _soundfont_preloaded_to_backend: bool = false
 
 ## 人声偏移量（毫秒）
 var vocal_offset_ms: float = 0.0
@@ -138,6 +139,9 @@ func _ready() -> void:
 		EventBus.instance.settings_changed.connect(_on_settings_changed)
 		# 监听配置变更信号（新增，用于应对直接配置文件修改）
 		EventBus.instance.config_changed.connect(_on_config_changed)
+
+	# 启动后预加载 SoundFont 到后端
+	call_deferred("_preload_soundfont_to_backend")
 
 ## 处理设置改变信号回调（当退出SettingView时触发）
 ## @param setting_name: 改变的设置名 ("*" 表示所有设置)
@@ -405,8 +409,9 @@ func play() -> void:
 		return
 	
 	# 设置音源
-	if not current_soundfont_path.is_empty() and backend.has_method("set_soundfont"):
+	if not _soundfont_preloaded_to_backend and not current_soundfont_path.is_empty() and backend.has_method("set_soundfont"):
 		backend.set_soundfont(current_soundfont_path)
+		_soundfont_preloaded_to_backend = true
 
 	# 重置同步状态
 	reset_sync_state()
@@ -640,6 +645,18 @@ func set_selected_tracks(tracks_data) -> void:
 	
 	tracks_changed.emit(tracks_data)
 
+## 预加载 SoundFont 到后端（启动时延迟调用）
+func _preload_soundfont_to_backend() -> void:
+	if _soundfont_preloaded_to_backend:
+		return
+	if midi_player == null or current_soundfont_path.is_empty():
+		return
+	
+	print("[MidiPlaybackManager] Pre-loading SoundFont: %s" % current_soundfont_path)
+	midi_player.set_soundfont(current_soundfont_path)
+	_soundfont_preloaded_to_backend = true
+	print("[MidiPlaybackManager] SoundFont pre-loaded successfully")
+
 ## 设置音源文件
 func set_soundfont(soundfont_name: String) -> bool:
 	"""
@@ -678,6 +695,9 @@ func set_soundfont(soundfont_name: String) -> bool:
 	# 如果正在播放，立即切换音源
 	if is_playing and midi_player != null:
 		midi_player.set_soundfont(soundfont_path)
+		_soundfont_preloaded_to_backend = true
+	else:
+		_soundfont_preloaded_to_backend = false
 	
 	soundfont_changed.emit(soundfont_path)
 	print("[MidiPlaybackManager] Soundfont set to: %s" % soundfont_path)
@@ -732,7 +752,20 @@ func set_backend(backend_name: String) -> bool:
 			return false
 		
 		midi_backend = "addons"
+		_soundfont_preloaded_to_backend = false
 		print("[MidiPlaybackManager] Switched to addon MIDI backend (GDScript)")
+
+		# Pre-load current MIDI into addon backend
+		if current_midi_data != null and not current_midi_data.midi_file_path.is_empty():
+			var be = _get_active_backend()
+			if be.has_method("load_midi"):
+				be.load_midi(current_midi_data.midi_file_path)
+			elif be.has_method("set_file"):
+				be.set_file(current_midi_data.midi_file_path)
+			elif "file" in be:
+				be.file = current_midi_data.midi_file_path
+			print("[MidiPlaybackManager] Pre-loaded current MIDI into addon backend")
+
 		backend_switching = false
 		return true
 	
@@ -764,10 +797,14 @@ func set_backend(backend_name: String) -> bool:
 		# 【关键修复】设置 midi_player 指向 meltysynth_player，确保后续调用能正确转发
 		midi_player = meltysynth_player
 		midi_backend = "meltysynth"
+		_soundfont_preloaded_to_backend = false
 		print("[MidiPlaybackManager] Switched to MeltySynth MIDI backend (C#)")
-		print("[MidiPlaybackManager] midi_player set to: %s" % midi_player)
-		print("[MidiPlaybackManager] meltysynth_player set to: %s" % meltysynth_player)
-		print("[MidiPlaybackManager] midi_player == meltysynth_player: %s" % (midi_player == meltysynth_player))
+
+		# Pre-load current MIDI into new backend to avoid empty backend on play
+		if current_midi_data != null and not current_midi_data.midi_file_path.is_empty():
+			meltysynth_player.load_midi(current_midi_data.midi_file_path)
+			print("[MidiPlaybackManager] Pre-loaded current MIDI into MeltySynth backend")
+
 		backend_switching = false
 		return true
 	

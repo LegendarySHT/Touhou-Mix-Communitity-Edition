@@ -644,8 +644,6 @@ func _find_optimal_matching(
 				out_min_matching_touch_index[i] = current_assignment[i]
 		return
 	
-	var block = blocks[block_idx]
-	
 	# 与Unity一致：使用递增touch索引，避免同批次重复分配同一触点
 	for touch_idx in range(last_touch_idx, touches.size()):
 		# 尝试分配此块给此触点

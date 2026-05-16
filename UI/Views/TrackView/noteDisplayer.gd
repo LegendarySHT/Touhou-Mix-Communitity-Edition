@@ -27,6 +27,7 @@ var master_node: Node = null
 # 是否是主显示器
 var is_master: bool = false
 var enable_tracks: Array[int] = []
+var _midi_data_for_filter: Object = null  # 用于 channel 级别过滤
 
 var note_color: Color
 
@@ -127,7 +128,8 @@ func _process(_delta):
 		# 这样能避免 start_tick=0 的音符在播放开始时被错误计入
 		if not i.get_meta("is_passed") and ct > start_tick:
 			i.set_meta("is_passed", true)
-			note_count_passed.text = str(int(note_count_passed.text) + 1)
+			if i.self_modulate.a > 0 or not is_master:
+				note_count_passed.text = str(int(note_count_passed.text) + 1)
 
 	# 移除音符
 	for i in to_remove:
@@ -146,8 +148,14 @@ func _create_note(note: NoteEvent):
 	note_rect.size = Vector2(note_width, note_height)
 	note_rect.position = Vector2(-note_width, start_y)
 	note_rect.color = _get_color_by_track_idx(note.track_index)
-	if is_master and note.track_index not in enable_tracks:
-		note_rect.self_modulate.a = 0
+	if is_master:
+		var note_enabled = true
+		if _midi_data_for_filter:
+			note_enabled = _midi_data_for_filter.is_track_channel_selected(note.track_index, note.channel)
+		elif note.track_index not in enable_tracks:
+			note_enabled = false
+		if not note_enabled:
+			note_rect.self_modulate.a = 0
 
 	# 设置自定义属性
 	note_rect.set_meta("pitch", note.pitch)
@@ -192,6 +200,9 @@ func init_displayer(mn: Node, notes: Array[NoteEvent]):
 
 	# 如果是主显示器，初始化所有轨道通道的启用状态
 	if is_master:
+		# Clear stale filter to prevent cross-MIDI contamination
+		_midi_data_for_filter = null
+		enable_tracks.clear()
 		for i in notes:
 			if i.track_index not in enable_tracks:
 				enable_tracks.append(i.track_index)
@@ -321,6 +332,9 @@ func sync_from_midi_data(midi_data: MidiData) -> void:
 	if midi_data == null:
 		return
 	
+	# 保存引用，供 _create_note 使用 channel 级别过滤
+	_midi_data_for_filter = midi_data
+	
 	# 重建enable_tracks列表（保留向后兼容的track级别过滤）
 	enable_tracks.clear()
 	for track_idx in midi_data.selected_track_configs.keys():
@@ -334,3 +348,11 @@ func sync_from_midi_data(midi_data: MidiData) -> void:
 		# 检查该(track, channel)是否启用
 		var is_enabled = midi_data.is_track_channel_selected(track_idx, channel)
 		note_rect.self_modulate.a = 1.0 if is_enabled else 0.0
+
+	# Recalculate enabled note total for master displayer
+	if is_master:
+		var enabled_total = 0
+		for note in current_notes:
+			if midi_data.is_track_channel_selected(note.track_index, note.channel):
+				enabled_total += 1
+		note_count_total.text = str(enabled_total)

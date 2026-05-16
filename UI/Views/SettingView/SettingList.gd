@@ -260,8 +260,8 @@ var setting_groups = [
 				"type": "TYPE_OPTION",
 				"default_value": "0",
 				"options": [
-					{"text_en": "Default", "text_zh": "默认"},
-					{"text_en": "Simple", "text_zh": "简单"}
+					{"text_en": "None", "text_zh": "无"},
+					{"text_en": "Block", "text_zh": "方块"}
 				]
 			},
 			{
@@ -281,8 +281,8 @@ var setting_groups = [
 				"type": "TYPE_OPTION",
 				"default_value": "0",
 				"options": [
-					{"text_en": "Default", "text_zh": "默认"},
-					{"text_en": "Simple", "text_zh": "简单"}
+					{"text_en": "None", "text_zh": "无"},
+					{"text_en": "Block", "text_zh": "方块"}
 				]
 			},
 			{
@@ -302,8 +302,8 @@ var setting_groups = [
 				"type": "TYPE_OPTION",
 				"default_value": "0",
 				"options": [
-					{"text_en": "Default", "text_zh": "默认"},
-					{"text_en": "Simple", "text_zh": "简单"}
+					{"text_en": "None", "text_zh": "无"},
+					{"text_en": "Block", "text_zh": "方块"}
 				]
 			},
 			{
@@ -323,8 +323,8 @@ var setting_groups = [
 				"type": "TYPE_OPTION",
 				"default_value": "0",
 				"options": [
-					{"text_en": "Default", "text_zh": "默认"},
-					{"text_en": "Simple", "text_zh": "简单"}
+					{"text_en": "None", "text_zh": "无"},
+					{"text_en": "Block", "text_zh": "方块"}
 				]
 			},
 			{
@@ -686,8 +686,8 @@ var setting_groups = [
 				"type": "TYPE_OPTION",
 				"default_value": "0",
 				"options": [
-					{"text_en": "Default", "text_zh": "默认"},
-					{"text_en": "Simple", "text_zh": "简单"}
+					{"text_en": "None", "text_zh": "无"},
+					{"text_en": "Block", "text_zh": "方块"}
 				]
 			},
 			{
@@ -1178,10 +1178,10 @@ func _refresh_play_background_visibility() -> void:
 		if setting_items.has(setting_id):
 			var item = setting_items[setting_id]
 			if item:
-				var is_visible = visibility_rules[setting_id]
-				item.visible = is_visible
+				var _is_visible = visibility_rules[setting_id]
+				item.visible = _is_visible
 				if item.value_node:
-					item.value_node.visible = is_visible
+					item.value_node.visible = _is_visible
 
 
 

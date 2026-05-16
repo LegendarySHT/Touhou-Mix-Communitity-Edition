@@ -30,7 +30,6 @@ var file_dialog: FileDialog = null
 @onready var ui_stat_mgr: UIStateManager = UIStateManager.instance
 
 var current_midi_data: MidiData = null
-var is_auto_playing: bool = false
 var is_progress_dragging: bool = false
 
 var current_tick: int = 0
@@ -98,9 +97,6 @@ func _ready() -> void:
 	
 	if not midi_playback_manager.is_connected("midi_stopped", Callable(self, "_on_midi_stopped")):
 		midi_playback_manager.midi_stopped.connect(_on_midi_stopped)
-	
-	if not midi_playback_manager.is_connected("midi_finished", Callable(self, "_on_midi_finished")):
-		midi_playback_manager.midi_finished.connect(_on_midi_finished)
 
 	# 监听SoundFont变更信号（用于实时更新乐器列表）
 	if midi_playback_manager.midi_player and not midi_playback_manager.midi_player.is_connected("soundfont_changed", Callable(self, "_on_soundfont_changed")):
@@ -168,6 +164,7 @@ func _load_midi(midi: MidiData) -> void:
 	# 加载MIDI到播放管理器
 	if not midi_playback_manager.load_midi(midi):
 		push_error("Failed to load MIDI: " + midi.name)
+	await get_tree().process_frame
 
 	# 新增：从加载的 MIDI 和 SoundFont 提取可用乐器选项
 	_extract_instruments_from_midi()
@@ -199,9 +196,10 @@ func _load_midi(midi: MidiData) -> void:
 	# 初始化总览的音符显示器
 	_init_master_note_displayer()
 	master_note_displayer.is_master = true
+	await get_tree().process_frame
 
 	# 创建轨道UI
-	_create_track_views()
+	await _create_track_views()
 
 	# 初始化新MIDI的轨道音量为50%（如果没有保存过配置）
 	_initialize_track_volumes_for_new_midi()
@@ -215,7 +213,10 @@ func _load_midi(midi: MidiData) -> void:
 	# 初始化Latency输入框
 	_init_latency_edit()
 
-	# 等容器尺寸更新，再增加上下边距
+	# 启动播放（UI 已完全加载，避免 _prepare_to_play 阻塞 UI 渲染）
+	midi_playback_manager.play()
+	
+	# 等容器尺寸更新，再增加上下边距 （这个不是一定会触发，请勿在后面加总是需要执行的代码）
 	await container.resized
 	container.custom_minimum_size.y = container.size.y + 300
 
@@ -291,6 +292,7 @@ func _create_track_views() -> void:
 
 		# 初始化该(track, channel)对的音符显示
 		_init_track_note_displayer(track_scene, track_idx, channel, pair_notes)
+		await get_tree().process_frame
 
 	
 
@@ -320,14 +322,40 @@ func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
 	last_position_ms = target_ms
 	current_tick = int(midi_playback_manager.position)
 	
-	# 重置noteDisplayer状态
-	if master_note_displayer:
-		master_note_displayer.reset_playhead_position(target_ms)
-	
-	# 重置所有轨道的noteDisplayer
+	# Reset individual track displayers first
 	for track in list_items:
 		if track.note_display:
 			track.note_display.reset_playhead_position(target_ms)
+
+	# Reset individual track displayers first
+	for track in list_items:
+		if track.note_display:
+			track.note_display.reset_playhead_position(target_ms)
+
+	# Then reset master displayer
+	if master_note_displayer:
+		master_note_displayer.reset_playhead_position(target_ms)
+
+	# Sum passed count from enabled tracks
+	if master_note_displayer and current_midi_data:
+		var total_passed = 0
+		for track in list_items:
+			if track is MidiTrack:
+				var en = current_midi_data.is_track_channel_selected(track.track_index, track.track_channel)
+				if en and track.note_display:
+					total_passed += int(track.note_display.note_count_passed.text)
+		master_note_displayer.note_count_passed.text = str(total_passed)
+
+	# Sum passed count from enabled tracks for master displayer
+	if master_note_displayer and current_midi_data:
+		var total_passed = 0
+		for track in list_items:
+			if track is MidiTrack:
+				var is_enabled = current_midi_data.is_track_channel_selected(
+					track.track_index, track.track_channel)
+				if is_enabled and track.note_display:
+					total_passed += int(track.note_display.note_count_passed.text)
+		master_note_displayer.note_count_passed.text = str(total_passed)
 
 # 进度条值改变 - 预览时间
 func _on_progress_bar_value_changed(value: float) -> void:
@@ -377,16 +405,19 @@ func _on_expand_master_area_btn_toggled(is_expanded: bool) -> void:
 	var expd_y:int = int(get_viewport().get_visible_rect().size.y) - 50
 	
 	var tween: Tween = create_tween()
-	# node.custom_minimum_size.y = expd_y if is_expanded else 350
-	var finl_size = Vector2(node.custom_minimum_size.x, expd_y if is_expanded else 350)
+	tween.pause()
 	tween.set_parallel(true)
+	
+	var finl_size = Vector2(node.custom_minimum_size.x, expd_y if is_expanded else 350)
 	tween.tween_property(node, "custom_minimum_size", finl_size, 0.25)
 	
 	container.custom_minimum_size.y += expd_y if is_expanded else -expd_y
-	await container.resized
-	tween.tween_property(self, "scroll_vertical", node.position.y + (150 if is_expanded else -200), 0.2)
+	await get_tree().process_frame
+	
+	tween.tween_property(self, "scroll_vertical", 0, 0.2)
 	tween.tween_property(master_note_displayer, "lane_count", 88 if is_expanded else 24, 0.2)
-	# 更新音符显示
+	
+	tween.play()
 	await tween.finished
 	master_note_displayer.refresh_notes_lane(master_note_displayer.lane_count)
 
@@ -563,8 +594,17 @@ func _on_track_enable_toggled(is_checked: bool, track_index: int, channel: int) 
 	# 更新指定(track, channel)启用状态
 	current_midi_data.set_track_channel_enabled(track_index, channel, is_checked)
 
-	# 更新主音符显示器（独奏优先）
-	_update_master_note_displayer()
+	# 仅更新已有音符的可见性，不重建（性能优化）
+	master_note_displayer.sync_from_midi_data(current_midi_data)
+
+	# Recalculate passed count from enabled tracks
+	var total_passed = 0
+	for track in list_items:
+		if track is MidiTrack:
+			var en = current_midi_data.is_track_channel_selected(track.track_index, track.track_channel)
+			if en and track.note_display:
+				total_passed += int(track.note_display.note_count_passed.text)
+	master_note_displayer.note_count_passed.text = str(total_passed)
 
 # 轨道静音切换
 func _on_track_mute_toggled(is_muted: bool, track_index: int, channel: int) -> void:
@@ -735,10 +775,7 @@ func _on_track_instrument_reset(track_index: int, channel: int) -> void:
 	print("[TrackView] Track %d Channel %d: 已重置为原始乐器" % [track_index, channel])
 
 # 更新预览（当轨道或音源改变时）
-func _update_preview() -> void:
-	if not is_auto_playing:
-		return
-	
+func _update_preview() -> void:	
 	var current_pos = midi_playback_manager.position_ms
 	midi_playback_manager.load_midi(current_midi_data)
 	midi_playback_manager.seek(current_pos)
@@ -753,27 +790,11 @@ func _update_master_note_displayer() -> void:
 		push_warning("No notes found in MIDI")
 		return
 
-	var selected_configs = current_midi_data.selected_track_configs
-	if selected_configs.is_empty():
-		push_warning("No (track, channel) selected")
-		# 清空显示器中的所有音符
-		master_note_displayer.init_displayer(self, [])
-		return
+	# 传入全部音符（未过滤），由 sync_from_midi_data 控制可见性
+	master_note_displayer.init_displayer(self, All_Notes)
+	if not current_midi_data.selected_track_configs.is_empty():
+		master_note_displayer.sync_from_midi_data(current_midi_data)
 
-	var display_notes: Array[NoteDisplayer.NoteEvent] = []
-	# 过滤出启用的(track, channel)对应的音符
-	for note in All_Notes:
-		if selected_configs.has(note.track_index) and note.channel in selected_configs[note.track_index]:
-			display_notes.append(note)
-	
-	if display_notes.is_empty():
-		push_warning("No notes found in selected (track, channel) pairs")
-		return
-	
-	print("[TrackView] Updated master note displayer with %d notes from selected (track, channel) pairs" % display_notes.size())
-	
-	# 更新显示器的current_note数据
-	master_note_displayer.init_displayer(self, display_notes)
 
 func _make_pair_key(track_index: int, channel: int) -> String:
 	return "%d:%d" % [track_index, channel]
@@ -820,10 +841,8 @@ func _on_midi_loaded(midi_data: MidiData) -> void:
 	if midi_data.duration_ms > 0:
 		_set_display_total_time(midi_data.duration_ms)
 	
-	# 启用循环播放并自动开始播放
+	# 播放启动已延迟到 _load_midi 末尾，确保 UI 先完成加载
 	midi_playback_manager.set_loop(true)
-	midi_playback_manager.play()
-	is_auto_playing = true
 
 func _on_midi_started() -> void:
 	print("MIDI playback started")
@@ -835,10 +854,6 @@ func _on_midi_stopped() -> void:
 	set_process(false)
 	progress_bar.value = 0
 	current_time.text = "00:00"
-
-func _on_midi_finished() -> void:
-	print("MIDI playback finished")
-	is_auto_playing = false
 
 # ============== UI 显示函数 ========================
 
@@ -911,7 +926,7 @@ func _set_display_current_time(current_ms: float) -> void:
 		current_time.text = _format_time(current_ms)
 
 func _process(delta: float) -> void:
-	if is_auto_playing and midi_playback_manager:
+	if midi_playback_manager.is_playing:
 		var current_position = midi_playback_manager.position_ms
 		
 		# 检测循环播放重置（位置从大跳到小，说明循环了）
@@ -985,6 +1000,8 @@ func _init_master_note_displayer() -> void:
 	print("[TrackView] Master note displayer: %d total notes (time-sorted)" % All_Notes.size())
 	# 初始化主音符显示器（notes已按时间顺序排列）
 	master_note_displayer.init_displayer(self, All_Notes)
+	if not current_midi_data.selected_track_configs.is_empty():
+		master_note_displayer.sync_from_midi_data(current_midi_data)
 
 func _init_track_note_displayer(track_scene: MidiTrack, track_index: int, channel: int, track_notes: Array[NoteDisplayer.NoteEvent]) -> void:
 	if track_scene.note_display == null:
@@ -1039,31 +1056,26 @@ func _initialize_track_volumes_for_new_midi() -> void:
 
 # 页面状态回调
 func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
-	if old_state == work_state and new_state == ui_stat_mgr.UIState.MIDI_VIEW:
-		# 保存当前MIDI配置到JSON文件
-		if current_midi_data != null:
-			_save_midi_config()
-		
-		# 停止自动播放
-		if is_auto_playing and midi_playback_manager:
-			midi_playback_manager.stop()
-			# 禁用循环播放
-			midi_playback_manager.set_loop(false)
-			is_auto_playing = false
-			last_position_ms = 0.0
-		
+	# 保存当前MIDI配置到JSON文件
+	if current_midi_data != null:
+		call_deferred("_save_midi_config")
+
+	if old_state == work_state:
+		if midi_playback_manager:
+			if new_state == ui_stat_mgr.UIState.MIDI_VIEW:
+				midi_playback_manager.stop()
+			elif new_state == ui_stat_mgr.UIState.SETTINGS_VIEW:
+				midi_playback_manager.pause()
+			
 		# 收起主面板的展开状态
 		get_node("MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button").button_pressed = false
 
-		# 重置主音符显示器状态（防止残留数据影响重进后的显示）
-		if master_note_displayer:
-			master_note_displayer.init_displayer(null, [])
-		
-		# 重置播放位置追踪
-		current_tick = 0
-
-		# 清空轨道列表
-		clear_items()
+	# Reload MIDI when returning from settings (handles backend switch)
+	if old_state == ui_stat_mgr.UIState.SETTINGS_VIEW and new_state == work_state:
+		if current_midi_data:
+			midi_playback_manager.set_loop(true)
+			midi_playback_manager.resume()
+			print("[TrackView] Reloaded MIDI after returning from settings")
 
 ## 保存当前MIDI配置到JSON文件
 func _save_midi_config() -> void:

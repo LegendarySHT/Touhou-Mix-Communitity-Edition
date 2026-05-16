@@ -332,6 +332,7 @@ var drum_assign_groups:Dictionary = {
 var _midi_channel_prefix:int = 0
 ## 曲で使用中のプログラム番号を格納
 var _used_program_numbers:Array[int] = []
+var _track_prepared: bool = false
 ## MIDIチャンネルエフェクト
 var channel_audio_effects:Array[GodotMIDIPlayerChannelAudioEffect] = []
 ## パンの強さを定義
@@ -501,6 +502,9 @@ func _prepare_to_play( ) -> bool:
 			self.playing = false
 			return false
 
+	if _track_prepared:
+		return true
+
 	self.sys_ex.initialize( )
 	self._init_track( )
 	self._analyse_smf( )
@@ -510,6 +514,7 @@ func _prepare_to_play( ) -> bool:
 	if not self.load_all_voices_from_soundfont:
 		self.set_soundfont( self.soundfont )
 
+	_track_prepared = true
 	return true
 
 ## トラック初期化
@@ -747,6 +752,7 @@ func set_file( path:String ) -> void:
 	file = path
 	self.stop( )
 	self.smf_data = null
+	_track_prepared = false
 	# 清理旧的乐器覆盖配置，防止状态在不同 MIDI 之间错误延续
 	track_channel_instruments.clear()
 	print("[MidiPlayer] Cleared instrument overrides on file change")

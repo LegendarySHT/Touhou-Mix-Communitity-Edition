@@ -158,6 +158,8 @@ static func settings_to_ini(settings: Dictionary) -> Dictionary:
 	
 	for setting_id in settings.keys():
 		if not mappings.has(setting_id):
+			if setting_id in ["theme_preset"]:
+				continue
 			push_warning("[SettingsMapper] Unknown setting_id: %s" % setting_id)
 			continue
 		

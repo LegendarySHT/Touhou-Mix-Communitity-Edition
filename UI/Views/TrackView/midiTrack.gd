@@ -60,11 +60,11 @@ func _ready():
 		push_error("轨道 %d 初始化失败: 无可用乐器选项" % track_index)
 		return
 
-	# 在添加选项之前清空（防止重复）
-	instruments_option_btn.clear()
-
-	for i in instrument_options:
-		instruments_option_btn.add_item(i)
+	# 仅在setup_track未预填充时填充OptionButton
+	if instruments_option_btn.item_count == 0:
+		instruments_option_btn.clear()
+		for i in instrument_options:
+			instruments_option_btn.add_item(i)
 
 	print("[MidiTrack] Track %d initialized with %d instrument options" % [track_index, instruments_option_btn.item_count])
 
@@ -165,6 +165,14 @@ func setup_track(parent: Node, index: int, track_name: String, instruments: Arra
 		else:
 			instrument_options = instruments.duplicate()  # fallback
 
+
+	# 提前填充OptionButton（使用get_node因@onready在_ready之前未初始化）
+	if is_inside_tree():
+		var btn = get_node_or_null("HBoxC/MC/HBoxC/MC/ControlPanel/GridC/InstrumentBtn") as OptionButton
+		if btn:
+			btn.clear()
+			for option_text in instrument_options:
+				btn.add_item(option_text)
 	_init_fin.emit()
 
 func _on_mute_toggled(is_pressed: bool):

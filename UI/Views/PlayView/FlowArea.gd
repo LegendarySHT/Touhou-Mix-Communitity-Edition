@@ -45,6 +45,8 @@ var _note_cull_margin_top: float = 120.0
 var _note_cull_margin_bottom: float = 180.0
 # 音符特效缩放
 var particle_scale: float = 0.8
+var spark_presets: Dictionary = {}
+var spark_scalings: Dictionary = {}
 ###################################
 
 ## note_judged(result: String, offset: String, block_type: int, timing_sec: float, signed_offset_sec: float)
@@ -175,6 +177,14 @@ func init_flow_area():
 	jl.position.y = get_viewport().get_visible_rect().size.y - parent_node.judge_line_offset_y
 	
 	# 配置初始化
+	spark_presets["Perfect"] = ConfigManager.instance.get_int("Lane", "perfect_spark_preset", 0)
+	spark_scalings["Perfect"] = ConfigManager.instance.get_float("Lane", "perfect_spark_scaling", 50.0)
+	spark_presets["Great"] = ConfigManager.instance.get_int("Lane", "great_spark_preset", 0)
+	spark_scalings["Great"] = ConfigManager.instance.get_float("Lane", "great_spark_scaling", 50.0)
+	spark_presets["Good"] = ConfigManager.instance.get_int("Lane", "good_spark_preset", 0)
+	spark_scalings["Good"] = ConfigManager.instance.get_float("Lane", "good_spark_scaling", 50.0)
+	spark_presets["Bad"] = ConfigManager.instance.get_int("Lane", "bad_spark_preset", 0)
+	spark_scalings["Bad"] = ConfigManager.instance.get_float("Lane", "bad_spark_scaling", 50.0)
 	set_particle_scale(particle_scale)
 	_init_particle_pool()
 	_init_note_pool()
@@ -1058,9 +1068,10 @@ func _get_particle_from_pool() -> Node2D:
 		return ptc
 	return _particle_pool.pop_back()
 
-func _generate_particle(type: String, pos: Vector2) -> void:
+func _generate_particle(type: String, pos: Vector2, scl: float = 1.0) -> void:
 	var ptc := _get_particle_from_pool()
 	ptc.position = pos
+	ptc.set_particle_scale(scl)
 	ptc.visible = true
 	ptc.play(type)
 	
@@ -1120,8 +1131,9 @@ func _judge_note(judge_note: Note, trigger_vibration: bool = false, input_time_m
 	var light_color = note_color_short if judge_note.type == NoteType.Block else (note_color_slide if judge_note.type == NoteType.Slide else note_color_long)
 	get_parent().lane_area.light_lane(judge_note.lane, light_color)
 	
-	if judge_note.type != NoteType.Long and hit_pos != Vector2.ZERO:
-		_generate_particle(result, hit_pos)
+	var preset = spark_presets.get(result, 0)
+	if preset > 0 and judge_note.type != NoteType.Long and hit_pos != Vector2.ZERO:
+		_generate_particle(result, hit_pos, spark_scalings.get(result, 1.0))
 
 var _is_pause: bool = false
 func _process(delta: float) -> void:

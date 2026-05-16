@@ -64,6 +64,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			
 			private bool _initialized = false;
 			private bool _playing = false;
+			internal int _postSeekSilenceFrames = 0;
 			private StringName _bus = new StringName("Master");
 			
 			// 统计信息
@@ -384,6 +385,17 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				// 在锁内检查，防止 FMOD 音频线程与主线程竞争导致 null 访问
 				if (_sequencer == null || _autoSynth == null)
 				{
+					FillWithSilenceAndCopy(data, framesRequested);
+					return FmodNative.RESULT.OK;
+				}
+
+				// Post-seek silence: render to discard buffer to consume transients
+				if (_postSeekSilenceFrames > 0)
+				{
+					var discard = Math.Min(framesToRender, _postSeekSilenceFrames);
+					var discardSpan = _tempLeft.AsSpan(0, discard);
+					_sequencer.Render(discardSpan, discardSpan);
+					_postSeekSilenceFrames -= discard;
 					FillWithSilenceAndCopy(data, framesRequested);
 					return FmodNative.RESULT.OK;
 				}
@@ -851,7 +863,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private Synthesizer _manualSynth;      // 专用于手动触发的音符
 	private Synthesizer _autoSynth;        // 原有：用于MIDI自动播放（就是 _synth）
 	private bool _useSeparateSynthForManual = true;  // 启用独立合成器
-	private bool _preferNativeSequencerSeek = false;
+	private bool _preferNativeSequencerSeek = true;
 
 	private void RequestAudioOutputPlay()
 	{
@@ -997,6 +1009,11 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 					GD.PrintErr($"[MeltySynthPlayer] Native sequencer seek failed, fallback to legacy seek: {ex.Message}");
 					LegacySeekByFastForward(_pendingSeekMs);
 				}
+				// Schedule post-seek silence to consume transient note attacks.
+				// Rendered audio will be silently discarded for ~50ms instead of
+				// doing a synchronous flush that can crash the renderer.
+				if (_audioOutput is FmodAudioOutputBridge fmodBr)
+					fmodBr._postSeekSilenceFrames = (int)(_sampleRate * 0.25);
 			}
 			else
 			{
