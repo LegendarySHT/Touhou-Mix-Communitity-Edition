@@ -46,14 +46,5 @@ func has_studio_event_api() -> bool:
 		return false
 	return ClassDB.class_has_method(&"FmodServer", &"create_event_instance_with_guid")
 
-func get_melty_audio_output_backend() -> String:
-	return "fmod"  # 始终使用FMOD后端
-
 func should_use_fmod_audio_output() -> bool:
 	return has_runtime_fmod()  # 始终使用FMOD后端
-
-func has_melty_audio_output_preference() -> bool:
-	return true  # 始终使用FMOD后端
-
-func get_melty_audio_buffer_length_seconds() -> float:
-	return 0.025

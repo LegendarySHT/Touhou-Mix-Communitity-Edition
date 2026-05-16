@@ -938,11 +938,14 @@ func _initialize_meltysynth_backend() -> bool:
 		wrapper.call("set_use_system_stopwatch", use_system_stopwatch)
 		print("[MidiPlaybackManager] Set system stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"))
 
-	# 设置音频缓冲区大小
+	# 设置音频缓冲区大小（将配置索引转换为实际帧数：0->256, 1->512, 2->1024, 3->2048）
 	if wrapper.has_method("SetAudioBufferFrames"):
-		var audio_buffer_frames = ConfigManager.instance.get_int("Playback", "audio_buffer_frames", 1024)
+		var buffer_index = ConfigManager.instance.get_int("Playback", "audio_buffer_frames", 2)
+		var buffer_sizes = [256, 512, 1024, 2048]
+		buffer_index = clampi(buffer_index, 0, 3)
+		var audio_buffer_frames = buffer_sizes[buffer_index]
 		wrapper.call("SetAudioBufferFrames", audio_buffer_frames)
-		print("[MidiPlaybackManager] Set audio buffer frames: %d" % audio_buffer_frames)
+		print("[MidiPlaybackManager] Set audio buffer frames: %d (index %d)" % [audio_buffer_frames, buffer_index])
 
 	# 设置最大复音数
 	wrapper.set("max_polyphony", ConfigManager.instance.get_int("Playback", "max_polyphony", 96))
