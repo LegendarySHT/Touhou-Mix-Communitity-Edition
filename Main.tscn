@@ -694,6 +694,7 @@ alignment = 1
 
 [node name="SortedMidisList" type="ScrollContainer" parent="skew/C" unique_id=1679713169]
 physics_interpolation_mode = 1
+visible = false
 layout_mode = 1
 anchors_preset = -1
 anchor_bottom = 1.0

@@ -46,8 +46,8 @@ extends Control
 # 轨道光效及键位显示
 @onready var lane_area: Control = $Lane
 
-@onready var env: WorldEnvironment = $FlowArea/SVP/WorldEnvironment
-@onready var current_env: Environment = env.environment
+# @onready var env: WorldEnvironment = $FlowArea/SVP/WorldEnvironment
+# @onready var current_env: Environment = env.environment
 
 const PLAY_BG_MODE_COVER := 0
 const PLAY_BG_MODE_IMAGE := 1
@@ -55,6 +55,7 @@ const PLAY_BG_MODE_SOLID := 2
 const PLAY_BG_SIZE_COVER := 0
 const PLAY_BG_SIZE_STRETCH := 1
 const BG_BLUR_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundBlur.gdshader"
+const BG_FLASH_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundFlash.gdshader"
 
 # auto标识
 @onready var auto_label: Label = $AutoLabel
@@ -93,6 +94,7 @@ var judge_line_offset_y: int = 250
 # 光柱特效不透明度
 var beam_alpha: float = 0.5
 var flash_color: Color = Color.WHITE
+var _flash_tween: Tween = null
 # 交错轨道颜色（启用时会覆盖音符颜色及轨道光效颜色）
 var intersect_lane_color: bool = true
 var intersect_color_set: Array = [Color.RED, Color.BLUE] # 这个颜色数量不能超过轨道数的一半
@@ -149,7 +151,7 @@ func _ready() -> void:
 		EventBus.instance.config_changed.connect(_on_config_changed)
 	_set_debug_overlay_visible(show_debug_info)
 	
-	env.environment = null
+	# env.environment = null
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
@@ -197,7 +199,7 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
 	set_process(enable)
 	get_node("Layer").visible = enable
-	env.environment = current_env if enable else null
+	# env.environment = current_env if enable else null
 	
 	# 离开播放视图时停止MIDI播放
 	if _oldState == UIStateManager.UIState.PLAY_VIEW and state != UIStateManager.UIState.PLAY_VIEW:
@@ -225,10 +227,23 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		_apply_background_dim()
 		return
 
+	if section == "Appearance" and key == "background_image_flash_color":
+		var color_str = str(value)
+		if color_str.is_valid_html_color():
+			flash_color = Color(color_str)
+		return
+
 	if section == "Appearance" and key == "lane_effect_quality":
 		if lane_area and lane_area.has_method("set_quality_mode"):
 			lane_area.set_quality_mode(int(value))
 			lane_area.set_beam_alpha(beam_alpha)
+		return
+
+	if section == "Appearance" and key in ["note_glow_intensity", "note_glow_size"]:
+		var gi = ConfigManager.instance.get_float("Appearance", "note_glow_intensity", 0.5)
+		var gs = ConfigManager.instance.get_float("Appearance", "note_glow_size", 5.0)
+		if flow_area and flow_area.has_method("set_glow_params"):
+			flow_area.set_glow_params(gi, gs)
 		return
 
 	if section == "General" and key == "display_debug_info":
@@ -589,6 +604,10 @@ func _load_lane_parameters() -> void:
 	beam_alpha = config_mgr.get_float("Lane", "flash_alpha", 0.8)
 	if lane_area and lane_area.has_method("set_beam_alpha"):
 		lane_area.set_beam_alpha(beam_alpha)
+	var note_glow_intensity = config_mgr.get_float("Appearance", "note_glow_intensity", 0.5)
+	var note_glow_size = config_mgr.get_float("Appearance", "note_glow_size", 5.0)
+	if flow_area and flow_area.has_method("set_glow_params"):
+		flow_area.set_glow_params(note_glow_intensity, note_glow_size)
 
 
 ## 处理 Lane/Judge 段配置变更（轨道数量、键位、左右安全区）
@@ -633,6 +652,12 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 					if keyboard_mode:
 						should_reinit = true
 					GameLogger.instance.info("PlayView keyboard_mode_keys updated: %d keys" % key_map.size(), "PlayView")
+
+		"flash_alpha":
+			if section == "Lane":
+				beam_alpha = float(value)
+				if lane_area and lane_area.has_method("set_beam_alpha"):
+					lane_area.set_beam_alpha(beam_alpha)
 	
 	if should_reinit:
 		# 仅在游戏未开始或者允许的情况下重新初始化轨道
@@ -927,21 +952,44 @@ func _apply_background_dim() -> void:
 		dim_overlay.color = Color(dim_color_html)
 	else:
 		dim_overlay.color = Color(0, 0, 0, 0.5)
+	_setup_dim_overlay_shader()
 	var flash_color_html = ConfigManager.instance.get_string("Appearance", "background_image_flash_color", "#FFFFFF00")
 	if flash_color_html.is_valid_html_color():
 		flash_color = Color(flash_color_html)
 	else:
 		flash_color = Color(1, 1, 1, 0)
+	var mat := dim_overlay.material as ShaderMaterial
+	if mat:
+		mat.set_shader_parameter("flash_color", flash_color)
+
+func _setup_dim_overlay_shader() -> void:
+	if dim_overlay.material and dim_overlay.material is ShaderMaterial:
+		return
+	var shader := load(BG_FLASH_SHADER_PATH)
+	if shader == null:
+		return
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("flash_color", flash_color)
+	mat.set_shader_parameter("flash_progress", 0.0)
+	dim_overlay.material = mat
+
+func _set_flash_progress(value: float, mat: ShaderMaterial) -> void:
+	mat.set_shader_parameter("flash_progress", value)
 
 
 func _flash_background() -> void:
 	if dim_overlay == null or flash_color.a <= 0:
 		return
-	var original_color = dim_overlay.color
-	dim_overlay.color = flash_color
-	var tween := create_tween()
-	tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(dim_overlay, "color", original_color, 0.3)
+	var mat := dim_overlay.material as ShaderMaterial
+	if mat == null:
+		return
+	if _flash_tween and _flash_tween.is_valid():
+		_flash_tween.kill()
+	mat.set_shader_parameter("flash_progress", 1.0)
+	_flash_tween = create_tween()
+	_flash_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_flash_tween.tween_method(_set_flash_progress.bind(mat), 1.0, 0.0, 1)
 
 func _load_user_background_texture(file_name: String) -> Texture2D:
 	if file_name.is_empty():
@@ -1057,6 +1105,9 @@ func _on_note_judged(result: String, offset: String, block_type: int, timing_sec
 	center.modulate.a = 1
 	t.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	t.tween_property(center, "modulate:a", 0.0, 2)
+
+	if result != "Miss":
+		_flash_background()
 
 ## LONG 持续 tick 加分（已委托 ScoreCalculator）
 func _on_long_holding(long_instance_id: int):

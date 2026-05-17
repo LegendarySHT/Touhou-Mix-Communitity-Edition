@@ -1,6 +1,7 @@
 extends Panel
 
 class_name FlowArea
+const NOTE_GLOW_SHADER: Shader = preload("res://UI/Views/PlayView/Shaders/NoteGlow.gdshader")
 
 # 判定线
 @onready var jl: HSeparator = $JudgeLine
@@ -12,6 +13,8 @@ var auto_mode: bool = false
 var judge_mode: int = NoteJudger.JudgeMode.BEST_TIMING_FIFO  # 从 Judge/touch_judging_criteria 配置初始化
 var note_judge_width: int = 100  # 统一判定宽度，从 Judge/block_judging_width 配置读取
 var note_visual_width: int = 200  # 从 Appearance/block_size 配置读取
+var glow_intensity: float = 1.0
+var glow_size: float = 20.0
 var check_slide_when_finger_up: bool = true  # Judge/check_instant_blocks_when_finger_up
 var only_perfect_slides: bool = false  # Judge/only_perfect_instant_blocks_before_judge
 var note_judger: NoteJudger = NoteJudger.new()
@@ -368,6 +371,7 @@ func _create_note(tp: NoteType, x: float, lane_idx: int = -1) -> Node:
 				for i in note_rect.get_node("VBoxC").get_children():
 					i.get_node("core").modulate = cl
 	
+	_apply_note_glow(note_rect, cl)
 	note_rect.position = Vector2(x, -note_rect.size.y)
 
 	return note_rect
@@ -401,6 +405,7 @@ func _spawn_note(note_index: int) -> void:
 		await get_tree().process_frame
 		nt.long_tail_height = nt.rect.get_node("VBoxC/tail").size.y
 		nt.long_head_height = nt.rect.get_node("VBoxC/head").size.y
+		_apply_note_glow(nt.rect, parent_node.get_lane_color(nt.lane))
 		note_half = nt.long_tail_height / 2.0
 	
 	var target_pos_y = jl.position.y - note_half
@@ -616,6 +621,35 @@ func _reset_note_for_reuse(note: Node, note_type: NoteType) -> void:
 		child.visible = true
 		child.modulate = Color.WHITE
 
+func _apply_note_glow(note_root: Node, c: Color) -> void:
+	if glow_intensity <= 0.0:
+		return
+	if note_root is Panel:
+		var vbox = note_root.get_node_or_null("VBoxC")
+		if vbox:
+			for child in vbox.get_children():
+				if child is TextureRect and child.name != "body":
+					_ensure_glow_child(child, c)
+		return
+	_ensure_glow_child(note_root, c)
+
+func _ensure_glow_child(tr_: TextureRect, col: Color) -> void:
+	var glow: ColorRect = tr_.get_node_or_null("_glow")
+	if glow == null:
+		push_warning("[FlowArea] Glow node not found in note")
+	if glow.material == null:
+		var mat := ShaderMaterial.new()
+		mat.shader = NOTE_GLOW_SHADER
+		glow.material = mat
+	var mat2 := glow.material as ShaderMaterial
+	mat2.set_shader_parameter("glow_color", col)
+	mat2.set_shader_parameter("glow_intensity", glow_intensity)
+	mat2.set_shader_parameter("glow_size", glow_size)
+
+func set_glow_params(intensity: float, size_val: float) -> void:
+	glow_intensity = clampf(intensity, 0.0, 2.0)
+	glow_size = clampf(size_val, 1.0, 30.0)
+
 func _init_note_pool() -> void:
 	"""初始化音符对象池：预创建固定数量的节点并复用"""
 	# Block 音符池
@@ -638,6 +672,13 @@ func _init_note_pool() -> void:
 		note_node.visible = false
 		canvas.add_child(note_node)
 		_note_pool_long.append(note_node)
+
+	for note in _note_pool_block:
+		_apply_note_glow(note, note_color_short)
+	for note in _note_pool_slide:
+		_apply_note_glow(note, note_color_slide)
+	for note in _note_pool_long:
+		_apply_note_glow(note, note_color_long)
 
 func _get_note_from_pool(tp: NoteType) -> Node:
 	"""从池中获取一个音符节点，如果池空则创建新的"""

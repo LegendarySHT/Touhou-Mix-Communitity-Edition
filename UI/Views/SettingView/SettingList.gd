@@ -764,6 +764,24 @@ var setting_groups = [
 				"unit": "px"
 			},
 			{
+				"id": "note_glow_intensity",
+				"name_en": "Note Glow Intensity",
+				"name_zh": "音符发光强度",
+				"description": "控制音符周围的发光效果强度，[0, 2]",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "0.5",
+				"range": [0.0, 2.0, 0.1]
+			},
+			{
+				"id": "note_glow_size",
+				"name_en": "Note Glow Size",
+				"name_zh": "音符发光范围",
+				"description": "控制音符发光效果的范围大小，[0, 30]",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "5.0",
+				"range": [1.0, 12.0, 1.0]
+			},
+			{
 				"id": "background_image_preset",
 				"name_en": "Background Image Preset",
 				"name_zh": "背景图像设定",

@@ -721,6 +721,9 @@ func pause() -> void:
 func resume() -> void:
 	if self._use_system_stopwatch:
 		self._sync_system_clock_base(self.position)
+	if self.smf_data == null or not self._track_prepared:
+		if not self._prepare_to_play():
+			return
 	self.playing = true
 
 ## 设置是否启用系统时钟模式

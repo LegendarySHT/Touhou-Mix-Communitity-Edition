@@ -47,6 +47,19 @@ texture = ExtResource("2_fanli")
 expand_mode = 1
 stretch_mode = 5
 
+[node name="_glow" type="ColorRect" parent="VBoxC/tail" unique_id=370521889]
+z_index = -1
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -0.5
+anchor_top = -1.0
+anchor_right = 1.5
+anchor_bottom = 2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+
 [node name="body" type="TextureRect" parent="VBoxC" unique_id=2011043594]
 layout_mode = 2
 mouse_filter = 2
@@ -83,3 +96,16 @@ mouse_filter = 2
 texture = ExtResource("6_vlo64")
 expand_mode = 3
 stretch_mode = 5
+
+[node name="_glow" type="ColorRect" parent="VBoxC/head" unique_id=253231214]
+z_index = -1
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -0.5
+anchor_top = -1.0
+anchor_right = 1.5
+anchor_bottom = 2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)

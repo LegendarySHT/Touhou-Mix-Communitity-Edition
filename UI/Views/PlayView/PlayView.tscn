@@ -19,10 +19,6 @@ fill_to = Vector2(1, 1)
 color = Color(2, 2, 2, 1)
 thickness = 10
 
-[sub_resource type="Environment" id="Environment_jlvmc"]
-background_color = Color(1, 1, 1, 1)
-background_canvas_max_layer = 1
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kvdpo"]
 bg_color = Color(0.25336733, 0.36870298, 0.8464057, 1)
 corner_radius_top_left = 24
@@ -143,9 +139,6 @@ mouse_filter = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_uj6qe")
 
 [node name="SVP" type="CanvasLayer" parent="FlowArea" unique_id=610203907]
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="FlowArea/SVP" unique_id=1988334537]
-environment = SubResource("Environment_jlvmc")
 
 [node name="Layer" type="CanvasLayer" parent="." unique_id=1802311030]
 layer = 2

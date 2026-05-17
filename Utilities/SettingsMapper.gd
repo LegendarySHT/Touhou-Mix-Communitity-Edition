@@ -89,6 +89,8 @@ static var mappings: Dictionary = {
 	"play_background_image_file": {"section": "Appearance", "key": "play_background_image_file", "value_type": "string"},
 	"play_background_color": {"section": "Appearance", "key": "play_background_color", "value_type": "color"},
 	"block_size": {"section": "Appearance", "key": "block_size", "value_type": "int"},
+	"note_glow_intensity": {"section": "Appearance", "key": "note_glow_intensity", "value_type": "float"},
+	"note_glow_size": {"section": "Appearance", "key": "note_glow_size", "value_type": "float"},
 	"background_image_preset": {"section": "Appearance", "key": "background_image_preset", "value_type": "int"},
 	"background_image_flash_color": {"section": "Appearance", "key": "background_image_flash_color", "value_type": "color"},
 	"background_dim_color": {"section": "Appearance", "key": "background_dim_color", "value_type": "color"},
