@@ -46,8 +46,6 @@ var _note_fall_speed_after_judge_multiplier: float = 1.0
 # 渲染裁剪参数：仅影响可见性，不影响判定/时序
 var _note_cull_margin_top: float = 120.0
 var _note_cull_margin_bottom: float = 180.0
-# 音符特效缩放
-var particle_scale: float = 0.8
 var spark_presets: Dictionary = {}
 var spark_scalings: Dictionary = {}
 ###################################
@@ -181,14 +179,13 @@ func init_flow_area():
 	
 	# 配置初始化
 	spark_presets["Perfect"] = ConfigManager.instance.get_int("Lane", "perfect_spark_preset", 0)
-	spark_scalings["Perfect"] = ConfigManager.instance.get_float("Lane", "perfect_spark_scaling", 50.0)
+	spark_scalings["Perfect"] = ConfigManager.instance.get_float("Lane", "perfect_spark_scaling", 50)
 	spark_presets["Great"] = ConfigManager.instance.get_int("Lane", "great_spark_preset", 0)
-	spark_scalings["Great"] = ConfigManager.instance.get_float("Lane", "great_spark_scaling", 50.0)
+	spark_scalings["Great"] = ConfigManager.instance.get_float("Lane", "great_spark_scaling", 50)
 	spark_presets["Good"] = ConfigManager.instance.get_int("Lane", "good_spark_preset", 0)
-	spark_scalings["Good"] = ConfigManager.instance.get_float("Lane", "good_spark_scaling", 50.0)
+	spark_scalings["Good"] = ConfigManager.instance.get_float("Lane", "good_spark_scaling", 50)
 	spark_presets["Bad"] = ConfigManager.instance.get_int("Lane", "bad_spark_preset", 0)
-	spark_scalings["Bad"] = ConfigManager.instance.get_float("Lane", "bad_spark_scaling", 50.0)
-	set_particle_scale(particle_scale)
+	spark_scalings["Bad"] = ConfigManager.instance.get_float("Lane", "bad_spark_scaling", 50)
 	_init_particle_pool()
 	_init_note_pool()
 	set_note_color(NoteType.Block, note_color_short)
@@ -319,10 +316,6 @@ func set_note_width(wid: float):
 			_note_max_size_y = _note_max_size_y if _note_max_size_y > hd.size.y else hd.size.y
 		else:
 			_note_max_size_y = _note_max_size_y if _note_max_size_y > nt.size.y else nt.size.y
-
-# 修改特效大小
-func set_particle_scale(scl: float):
-	particle.set_particle_scale(scl)
 
 func clear_flow_area():
 	if notes_list:
@@ -1085,9 +1078,6 @@ func _trigger_touch_vibration() -> void:
 
 func _init_particle_pool() -> void:
 	if not _particle_pool.is_empty():
-		# 重新初始化时同步比例（重试场景）
-		for ptc in _particle_pool:
-			ptc.set_particle_scale(particle_scale)
 		return
 	for _i in _PARTICLE_POOL_SIZE:
 		var ptc = particle.duplicate()
@@ -1109,7 +1099,7 @@ func _get_particle_from_pool() -> Node2D:
 		return ptc
 	return _particle_pool.pop_back()
 
-func _generate_particle(type: String, pos: Vector2, scl: float = 1.0) -> void:
+func _generate_particle(type: String, pos: Vector2, scl: int = 200) -> void:
 	var ptc := _get_particle_from_pool()
 	ptc.position = pos
 	ptc.set_particle_scale(scl)
@@ -1174,7 +1164,7 @@ func _judge_note(judge_note: Note, trigger_vibration: bool = false, input_time_m
 	
 	var preset = spark_presets.get(result, 0)
 	if preset > 0 and judge_note.type != NoteType.Long and hit_pos != Vector2.ZERO:
-		_generate_particle(result, hit_pos, spark_scalings.get(result, 1.0))
+		_generate_particle(result, hit_pos, spark_scalings.get(result, 200))
 
 var _is_pause: bool = false
 func _process(delta: float) -> void:
