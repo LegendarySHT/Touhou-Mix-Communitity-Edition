@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://sdxdtvdsllvp" path="res://UI/Views/ScoreView/ScoreView.gd" id="1_xn8wu"]
 [ext_resource type="Texture2D" uid="uid://bf7nd5qojdcla" path="res://Resources/icon/lily-white.png" id="2_iqsw5"]
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="3_y1cb1"]
-[ext_resource type="Texture2D" uid="uid://boaosvxm4ii76" path="res://Resources/icon/TrackView/reset.png" id="6_cb58l"]
 
 [sub_resource type="Gradient" id="Gradient_01xql"]
 interpolation_mode = 2
@@ -109,21 +108,6 @@ expand_margin_bottom = 6.0
 shadow_color = Color(0, 0, 0, 0.24313726)
 shadow_size = 12
 shadow_offset = Vector2(2, 2)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_caw07"]
-bg_color = Color(0.050980393, 0.5294118, 1, 1)
-border_width_right = 8
-border_color = Color(1, 1, 1, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s7c7h"]
-bg_color = Color(0, 0, 0, 0.18431373)
-
-[sub_resource type="InputEventKey" id="InputEventKey_devvj"]
-pressed = true
-keycode = 85
-
-[sub_resource type="Shortcut" id="Shortcut_wl8a2"]
-events = [SubResource("InputEventKey_devvj")]
 
 [node name="ScoreView" type="Control" unique_id=1631264327]
 clip_contents = true
@@ -682,42 +666,6 @@ vertical_alignment = 2
 [node name="ProgressBar" type="ProgressBar" parent="LevelingProgress/Data" unique_id=103941392]
 layout_mode = 2
 
-[node name="LT_Btn" type="Panel" parent="." unique_id=1059179666]
-layout_mode = 0
-offset_left = 25.999996
-offset_top = -73.999985
-offset_right = 235.52328
-offset_bottom = 588.7093
-rotation = 0.34906584
-theme_override_styles/panel = SubResource("StyleBoxFlat_caw07")
-
-[node name="Button" type="Button" parent="LT_Btn" unique_id=1734683105]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_right = -7.9132843
-offset_bottom = -0.70928955
-grow_horizontal = 2
-grow_vertical = 2
-focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxFlat_s7c7h")
-shortcut = SubResource("Shortcut_wl8a2")
-shortcut_in_tooltip = false
-
-[node name="Retry" type="TextureRect" parent="LT_Btn" unique_id=1696084290]
-custom_minimum_size = Vector2(140, 140)
-layout_mode = 1
-offset_left = 25.0
-offset_top = 90.0
-offset_right = 165.0
-offset_bottom = 230.0
-rotation = -0.34906584
-mouse_filter = 2
-texture = ExtResource("6_cb58l")
-stretch_mode = 5
-
 [connection signal="pressed" from="Btns/VBoxC/LikeBtn" to="." method="_on_like_btn_pressed"]
 [connection signal="pressed" from="Btns/VBoxC/DislikeBtn" to="." method="_on_dislike_btn_pressed"]
 [connection signal="pressed" from="Btns/VBoxC/LoveBtn" to="." method="_on_love_btn_pressed"]
-[connection signal="pressed" from="LT_Btn/Button" to="." method="_on_retry_btn_pressed"]

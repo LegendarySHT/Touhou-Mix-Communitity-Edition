@@ -1,4 +1,4 @@
-﻿extends Control
+extends Control
 
 class_name ScoreView
 
@@ -92,11 +92,6 @@ func _on_dislike_btn_pressed():
 func _on_love_btn_pressed():
 	pass
 
-func _on_retry_btn_pressed():
-	UIStateManager.instance.change_state(UIStateManager.UIState.PLAY_VIEW, false)
-	await get_tree().create_timer(0.5).timeout
-	get_node("/root/Main/PlayView").retry_btn.pressed.emit()
-
 ############################# 动画 ###############################
 @onready var ani: AnimationManager = AnimationManager.instance
 var _loop_ani_chara: Tween = null
@@ -132,9 +127,6 @@ func ani_out():
 	await get_tree().create_timer(0.05).timeout
 	nd = get_node("Accuracy")
 	ani.animate_position(nd, Vector2(nd.position.x, wh), 0.5, "sv_acc")
-
-	nd = get_node("LT_Btn")
-	ani.animate_position(nd, Vector2(-nd.size.x - 100, nd.position.y), 0.5, "sv_lt")
 
 	_kill_loop_ani()
 
@@ -176,9 +168,6 @@ func ani_in():
 	await get_tree().create_timer(0.05).timeout
 	nd = get_node("Accuracy")
 	ani.animate_position(nd, Vector2(nd.position.x, 427), 0.8, "sv_acc")
-
-	nd = get_node("LT_Btn")
-	ani.animate_position(nd, Vector2(26, nd.position.y), 0.8, "sv_lt")
 
 	await get_tree().create_timer(0.8).timeout
 	_kill_loop_ani()

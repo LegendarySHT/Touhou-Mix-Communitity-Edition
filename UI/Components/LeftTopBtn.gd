@@ -9,6 +9,7 @@ enum ShowStat {
 	SETTING_BTN,
 	ARROW_LEFT,
 	ARROW_RIGHT,
+	RETRY_BTN
 }
 
 @onready var ani: AnimationManager = AniMGR.instance
@@ -31,6 +32,8 @@ func _on_state_change(_old_state, new_state: UIStateManager.UIState):
 		switch_display(ShowStat.ARROW_LEFT)
 	elif new_state in [ui.UIState.STORE_VIEW, ui.UIState.PLAY_VIEW]:
 		switch_display(ShowStat.NONE)
+	elif new_state in [ui.UIState.SCORE_VIEW]:
+		switch_display(ShowStat.RETRY_BTN)
 	else:
 		switch_display(ShowStat.SETTING_BTN)
 
@@ -57,17 +60,20 @@ func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 	var event = InputEventKey.new()
 	# 控制内容显示
 	match content_to_show:
-		ShowStat.SETTING_BTN:
+		ShowStat.RETRY_BTN:
 			ani.animate_position(vboxc, Vector2(vboxc.position.x, 55), 0.35, "LT_ICON")
+			event.keycode = KEY_R
+		ShowStat.SETTING_BTN:
+			ani.animate_position(vboxc, Vector2(vboxc.position.x, -390), 0.35, "LT_ICON")
 			event.keycode = KEY_U
 		ShowStat.ARROW_RIGHT:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, -390), 0.35, "LT_ICON")
+			ani.animate_position(vboxc, Vector2(vboxc.position.x, -835), 0.35, "LT_ICON")
 			if _arrow_left:
 				_rot_tween = ani.animate_rotation(arrow, arrow.rotation + PI, 0.2, "LT_ARROW_ROT")
 				_arrow_left = false
 			event.keycode = KEY_E
 		ShowStat.ARROW_LEFT:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, -390), 0.35, "LT_ICON")
+			ani.animate_position(vboxc, Vector2(vboxc.position.x, -835), 0.35, "LT_ICON")
 			if not _arrow_left:
 				_rot_tween = ani.animate_rotation(arrow, arrow.rotation + PI, 0.2, "LT_ARROW_ROT")
 				_arrow_left = true
@@ -94,5 +100,9 @@ func _on_button_pressed() -> void:
 				rb.switch_display(rb.ShowStat.BACK_BTN)
 				switch_display(ShowStat.ARROW_LEFT)
 				eb.page_right.emit()
+		ui.UIState.SCORE_VIEW:
+			ui.change_state(ui.UIState.PLAY_VIEW, false)
+			#await get_tree().create_timer(0.3).timeout
+			get_node("/root/Main/PlayView").retry_btn.pressed.emit()
 		_:
 			ui.change_state(ui.UIState.SETTINGS_VIEW)
