@@ -29,6 +29,11 @@ var note_color_short: Color = Color.DEEP_PINK
 var note_color_slide: Color = Color.CYAN
 var note_color_long: Color = Color.DARK_ORANGE
 
+# 皮肤core贴图标记：用于决定是否显示光晕
+var _skin_has_short_core: bool = true
+var _skin_has_instant_core: bool = true
+var _skin_has_long_core: bool = true
+
 # 判定参数（毫秒）- 与 ScoreCalculator.JUDGE_WINDOWS（秒）对应
 var judge_windows: Dictionary = {
 	"perfect": 50,    # < 0.05s
@@ -362,6 +367,11 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 	if FileSystemManager.instance:
 		skin_textures = FileSystemManager.instance.get_skin_textures(skin_name)
 	
+	# 更新core贴图标记
+	_skin_has_short_core = skin_textures.has("short_core")
+	_skin_has_instant_core = skin_textures.has("instant_core")
+	_skin_has_long_core = skin_textures.has("long_b_core") or skin_textures.has("long_f_core") or skin_textures.has("long_t_core")
+	
 	# 构建纹理数组，按顺序: short, short_core, instant, instant_core, long_b, long_b_core, long_f, long_f_core, long_t, long_t_core
 	var texture_array = [
 		skin_textures.get("short"),
@@ -379,7 +389,7 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 	# 应用贴图
 	set_note_texture(texture_array)
 	
-	print("[FlowArea] Loaded note skin: %s" % skin_name)
+	print("[FlowArea] Loaded note skin: %s, core flags: short=%s, instant=%s, long=%s" % [skin_name, _skin_has_short_core, _skin_has_instant_core, _skin_has_long_core])
 
 # 修改音符宽度
 func set_note_width(wid: float):
@@ -442,7 +452,7 @@ func _create_note(tp: NoteType, x: float, lane_idx: int = -1) -> Node:
 				for i in note_rect.get_node("VBoxC").get_children():
 					i.get_node("core").modulate = cl
 	
-	_apply_note_glow(note_rect, cl)
+	_apply_note_glow(note_rect, cl, tp)
 	note_rect.position = Vector2(x, -note_rect.size.y)
 
 	return note_rect
@@ -476,7 +486,7 @@ func _spawn_note(note_index: int) -> void:
 		await get_tree().process_frame
 		nt.long_tail_height = nt.rect.get_node("VBoxC/tail").size.y
 		nt.long_head_height = nt.rect.get_node("VBoxC/head").size.y
-		_apply_note_glow(nt.rect, parent_node.get_lane_color(nt.lane))
+		_apply_note_glow(nt.rect, parent_node.get_lane_color(nt.lane), NoteType.Long)
 		note_half = nt.long_tail_height / 2.0
 	
 	var target_pos_y = jl.position.y - note_half
@@ -692,9 +702,24 @@ func _reset_note_for_reuse(note: Node, note_type: NoteType) -> void:
 		child.visible = true
 		child.modulate = Color.WHITE
 
-func _apply_note_glow(note_root: Node, c: Color) -> void:
+func _apply_note_glow(note_root: Node, c: Color, note_type: NoteType = NoteType.Block) -> void:
 	if glow_intensity <= 0.0:
 		return
+	
+	var has_core: bool
+	match note_type:
+		NoteType.Block:
+			has_core = _skin_has_short_core
+		NoteType.Slide:
+			has_core = _skin_has_instant_core
+		NoteType.Long:
+			has_core = _skin_has_long_core
+		_:
+			has_core = true
+	
+	if not has_core:
+		return
+	
 	if note_root is Panel:
 		var vbox = note_root.get_node_or_null("VBoxC")
 		if vbox:
@@ -745,11 +770,11 @@ func _init_note_pool() -> void:
 		_note_pool_long.append(note_node)
 
 	for note in _note_pool_block:
-		_apply_note_glow(note, note_color_short)
+		_apply_note_glow(note, note_color_short, NoteType.Block)
 	for note in _note_pool_slide:
-		_apply_note_glow(note, note_color_slide)
+		_apply_note_glow(note, note_color_slide, NoteType.Slide)
 	for note in _note_pool_long:
-		_apply_note_glow(note, note_color_long)
+		_apply_note_glow(note, note_color_long, NoteType.Long)
 
 func _get_note_from_pool(tp: NoteType) -> Node:
 	"""从池中获取一个音符节点，如果池空则创建新的"""
