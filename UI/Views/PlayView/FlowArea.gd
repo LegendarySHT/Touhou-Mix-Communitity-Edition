@@ -288,20 +288,98 @@ func set_note_color(type: NoteType, cl: Color):
 			for i in nt_l.get_node("VBoxC").get_children():
 				i.get_node("core").modulate = cl
 
+# 创建完全透明的纹理用于缺失贴图回退
+func _create_transparent_texture(width: int = 64, height: int = 64) -> Texture2D:
+	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	var texture = ImageTexture.create_from_image(image)
+	return texture
+
 # 修改音符皮肤 数组顺序[短块图片，短块上色区图片，滑块。。。，长条（从头到尾）]
 func set_note_texture(texture_array: Array):
-	nt_b.texture = texture_array[0]
-	nt_b.get_node("core").texture = texture_array[1]
+	# 创建透明纹理作为回退
+	var transparent_texture = _create_transparent_texture()
 	
-	nt_s.texture = texture_array[2]
-	nt_s.get_node("core").texture = texture_array[3]
+	# 短块
+	if texture_array.size() > 0 and texture_array[0]:
+		nt_b.texture = texture_array[0]
+	else:
+		nt_b.texture = transparent_texture
 	
-	nt_l.get_node("VBoxC/head").texture = texture_array[4]
-	nt_l.get_node("VBoxC/head/core").texture = texture_array[5]
-	nt_l.get_node("VBoxC/body").texture = texture_array[6]
-	nt_l.get_node("VBoxC/body/core").texture = texture_array[7]
-	nt_l.get_node("VBoxC/tail").texture = texture_array[8]
-	nt_l.get_node("VBoxC/tail/core").texture = texture_array[9]
+	if texture_array.size() > 1 and texture_array[1]:
+		nt_b.get_node("core").texture = texture_array[1]
+	else:
+		nt_b.get_node("core").texture = transparent_texture
+	
+	# 滑块
+	if texture_array.size() > 2 and texture_array[2]:
+		nt_s.texture = texture_array[2]
+	else:
+		nt_s.texture = transparent_texture
+	
+	if texture_array.size() > 3 and texture_array[3]:
+		nt_s.get_node("core").texture = texture_array[3]
+	else:
+		nt_s.get_node("core").texture = transparent_texture
+	
+	# 长条头部
+	if texture_array.size() > 4 and texture_array[4]:
+		nt_l.get_node("VBoxC/head").texture = texture_array[4]
+	else:
+		nt_l.get_node("VBoxC/head").texture = transparent_texture
+	
+	if texture_array.size() > 5 and texture_array[5]:
+		nt_l.get_node("VBoxC/head/core").texture = texture_array[5]
+	else:
+		nt_l.get_node("VBoxC/head/core").texture = transparent_texture
+	
+	# 长条身体
+	if texture_array.size() > 6 and texture_array[6]:
+		nt_l.get_node("VBoxC/body").texture = texture_array[6]
+	else:
+		nt_l.get_node("VBoxC/body").texture = transparent_texture
+	
+	if texture_array.size() > 7 and texture_array[7]:
+		nt_l.get_node("VBoxC/body/core").texture = texture_array[7]
+	else:
+		nt_l.get_node("VBoxC/body/core").texture = transparent_texture
+	
+	# 长条尾部
+	if texture_array.size() > 8 and texture_array[8]:
+		nt_l.get_node("VBoxC/tail").texture = texture_array[8]
+	else:
+		nt_l.get_node("VBoxC/tail").texture = transparent_texture
+	
+	if texture_array.size() > 9 and texture_array[9]:
+		nt_l.get_node("VBoxC/tail/core").texture = texture_array[9]
+	else:
+		nt_l.get_node("VBoxC/tail/core").texture = transparent_texture
+
+# 加载并应用指定皮肤的贴图
+func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
+	# 获取皮肤贴图字典
+	var skin_textures = {}
+	if FileSystemManager.instance:
+		skin_textures = FileSystemManager.instance.get_skin_textures(skin_name)
+	
+	# 构建纹理数组，按顺序: short, short_core, instant, instant_core, long_b, long_b_core, long_f, long_f_core, long_t, long_t_core
+	var texture_array = [
+		skin_textures.get("short"),
+		skin_textures.get("short_core"),
+		skin_textures.get("instant"),
+		skin_textures.get("instant_core"),
+		skin_textures.get("long_b"),
+		skin_textures.get("long_b_core"),
+		skin_textures.get("long_f"),
+		skin_textures.get("long_f_core"),
+		skin_textures.get("long_t"),
+		skin_textures.get("long_t_core")
+	]
+	
+	# 应用贴图
+	set_note_texture(texture_array)
+	
+	print("[FlowArea] Loaded note skin: %s" % skin_name)
 
 # 修改音符宽度
 func set_note_width(wid: float):
@@ -1199,7 +1277,7 @@ func _process(delta: float) -> void:
 	# 自动按长条
 	if auto_mode:
 		for long in active_notes.filter(func(nt):
-			if nt.type == NoteType.Long and not nt.is_held:
+			if nt.type == NoteType.Long and not nt.is_held and nt.rect:
 				var head = nt.rect.get_node("VBoxC/head")
 				return abs(head.global_position.y + head.size.y/2 - jl.position.y) < 12
 			return false):
