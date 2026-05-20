@@ -115,6 +115,7 @@ func _load_config_from_file() -> void:
 	# 初始化SoundFont列表
 	_initialize_soundfont_options(settings_dict)
 	_initialize_background_image_options(settings_dict)
+	_initialize_note_skin_options(settings_dict)
 
 	# 初始化下落模式和缓动选项可见性
 	var note_fall_mode = settings_dict.get("note_fall_mode", "0")
@@ -191,6 +192,17 @@ func save_config_to_file() -> bool:
 		if actual_name.ends_with(".sf2"):
 			actual_name = actual_name.get_basename()
 		settings_dict["soundfont_select"] = actual_name
+
+	# 特殊处理 block_skin_preset：将选项索引转换为皮肤名称（保留 [内置] 标记）
+	if settings_dict.has("block_skin_preset"):
+		var skin_raw_value = settings_dict["block_skin_preset"]
+		var skin_name = ""
+		if skin_raw_value is int or (skin_raw_value is String and skin_raw_value.is_valid_int()):
+			var index = int(skin_raw_value)
+			skin_name = setting_list.get_option_text("block_skin_preset", index)
+		else:
+			skin_name = str(skin_raw_value)
+		settings_dict["block_skin_preset"] = skin_name
 
 	# 特殊处理 play_background_image_file：将选项索引转换为文件名
 	if settings_dict.has("play_background_image_file"):
@@ -302,6 +314,52 @@ func _initialize_background_image_options(loaded_settings: Dictionary) -> void:
 	var image_files = _scan_background_images()
 	var current_selection = str(loaded_settings.get("play_background_image_file", ""))
 	setting_list.update_background_image_options(image_files, current_selection)
+
+## 初始化音符皮肤选项
+func _initialize_note_skin_options(loaded_settings: Dictionary) -> void:
+	"""
+	扫描并初始化音符皮肤选项
+	
+	Args:
+		loaded_settings: 从配置文件加载的设置字典
+	"""
+	# 如果 FileSystemManager 还未完成资源扫描，等待扫描完成
+	if FileSystemManager.instance and not FileSystemManager.instance.resources_scanned:
+		print("[SettingView] Waiting for FileSystemManager to scan resources...")
+		# 连接信号，等待扫描完成
+		var fs_mgr = FileSystemManager.instance
+		if not fs_mgr.resources_ready.is_connected(_on_skin_resources_ready):
+			fs_mgr.resources_ready.connect(_on_skin_resources_ready.bind(loaded_settings))
+		return
+	
+	_load_note_skin_options(loaded_settings)
+
+func _on_skin_resources_ready(loaded_settings: Dictionary) -> void:
+	_load_note_skin_options(loaded_settings)
+
+func _load_note_skin_options(loaded_settings: Dictionary) -> void:
+	"""
+	实际加载音符皮肤选项
+	
+	Args:
+		loaded_settings: 从配置文件加载的设置字典
+	"""
+	# 从 FileSystemManager 获取可用皮肤列表
+	var skin_list = []
+	if FileSystemManager.instance:
+		skin_list = FileSystemManager.instance.get_available_skins()
+	
+	if skin_list.is_empty():
+		print("[SettingView] No note skins found, using default")
+		skin_list = ["旧版2 [内置]"]
+	
+	# 获取当前应该选中的皮肤
+	var current_selection = loaded_settings.get("block_skin_preset", "旧版2 [内置]")
+	
+	# 更新SettingList中的选项
+	setting_list.update_note_skin_options(skin_list, current_selection)
+	
+	print("[SettingView] Initialized %d note skin options" % skin_list.size())
 
 
 func _scan_background_images() -> Array[String]:

@@ -680,15 +680,13 @@ var setting_groups = [
 			},
 			{
 				"id": "block_skin_preset",
-				"name_en": "Block Skin Preset",
+				"name_en": "Note Skin",
 				"name_zh": "音符外观设定",
 				"description": "直接选择已导入的或内置的音符皮肤的名称即可更换皮肤",
 				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "None", "text_zh": "无"},
-					{"text_en": "Block", "text_zh": "方块"}
-				]
+				"default_value": "旧版2 [内置]",
+				"options": [],
+				"dynamic_options": true
 			},
 			{
 				"id": "custom_background_image_size_mode",
@@ -1110,6 +1108,11 @@ func _on_setting_value_changed(id: String, value: Variant):
 					actual_name = actual_name.get_basename()
 				converted_value = actual_name
 				print("[SettingList] Converting soundfont_select index %d to '%s'" % [value, converted_value])
+			# 特殊处理：block_skin_preset 需要将索引转换为皮肤名称（保留 [内置] 标记）
+			elif id == "block_skin_preset" and value is int:
+				var display_text = get_option_text(id, value)
+				converted_value = display_text
+				print("[SettingList] Converting block_skin_preset index %d to '%s'" % [value, converted_value])
 			elif id == "play_background_image_file" and value is int:
 				converted_value = get_option_text(id, value)
 				print("[SettingList] Converting play_background_image_file index %d to '%s'" % [value, converted_value])
@@ -1339,6 +1342,36 @@ func update_background_image_options(image_files: Array, current_selection: Stri
 		if target_index >= 0:
 			setting_item.set_value(target_index)
 
+
+## 更新音符皮肤选项
+func update_note_skin_options(skin_list: Array, current_selection: String = "") -> void:
+	"""
+	更新音符皮肤选择器的选项列表
+	
+	Args:
+		skin_list: 皮肤名称列表
+		current_selection: 当前选中的皮肤名称
+	"""
+	if not setting_items.has("block_skin_preset"):
+		push_warning("[SettingList] block_skin_preset setting item not found")
+		return
+	
+	var setting_item = setting_items["block_skin_preset"]
+	if setting_item == null:
+		return
+	
+	# 更新选项
+	if skin_list.is_empty():
+		setting_item.set_options(["旧版2 [内置]"], 0)
+		return
+	
+	setting_item.set_options(skin_list, 0)
+	
+	# 尝试选中当前选择
+	if not current_selection.is_empty():
+		var target_index = skin_list.find(current_selection)
+		if target_index >= 0:
+			setting_item.set_value(target_index)
 
 ## 设置下落模式和控制自定义缓动选项的可见性
 func set_note_fall_mode_and_show_custom_options(mode: int) -> void:

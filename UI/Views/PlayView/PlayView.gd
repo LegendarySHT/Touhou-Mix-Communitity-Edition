@@ -110,6 +110,7 @@ func _ready() -> void:
 	_load_lane_parameters()
 	_load_debug_display_setting()
 	_load_lane_effect_quality_setting()
+	_load_note_skin_setting()
 	
 	# 窗口大小变化
 	get_window().size_changed.connect(_init_lane_display)
@@ -245,6 +246,12 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		if flow_area and flow_area.has_method("set_glow_params"):
 			flow_area.set_glow_params(gi, gs)
 		return
+	
+	if section == "Appearance" and key == "block_skin_preset":
+		var skin_name = str(value)
+		if flow_area and flow_area.has_method("load_note_skin"):
+			flow_area.load_note_skin(skin_name)
+		return
 
 	if section == "General" and key == "display_debug_info":
 		show_debug_info = int(value) == 1
@@ -288,6 +295,28 @@ func _load_debug_display_setting() -> void:
 func _load_lane_effect_quality_setting() -> void:
 	if lane_area and lane_area.has_method("set_quality_mode"):
 		lane_area.set_quality_mode(ConfigManager.instance.get_int("Appearance", "lane_effect_quality", 1))
+
+func _load_note_skin_setting() -> void:
+	# 如果 FileSystemManager 还未完成资源扫描，等待扫描完成
+	if FileSystemManager.instance and not FileSystemManager.instance.resources_scanned:
+		print("[PlayView] Waiting for FileSystemManager to scan resources...")
+		if not FileSystemManager.instance.resources_ready.is_connected(_on_skin_resources_ready):
+			FileSystemManager.instance.resources_ready.connect(_on_skin_resources_ready)
+		return
+	
+	_do_load_note_skin()
+
+func _on_skin_resources_ready() -> void:
+	_do_load_note_skin()
+
+func _do_load_note_skin() -> void:
+	# 从配置加载皮肤设置
+	var skin_name = ConfigManager.instance.get_string("Appearance", "block_skin_preset", "旧版2 [内置]")
+	
+	# 应用皮肤
+	if flow_area and flow_area.has_method("load_note_skin"):
+		flow_area.load_note_skin(skin_name)
+		print("[PlayView] Loaded note skin: %s" % skin_name)
 
 func _set_debug_overlay_visible(_is_visible: bool) -> void:
 	if debug_info_label == null:

@@ -668,64 +668,132 @@ func _load_chart_from_json(json_path: String, chart_id: String) -> Dictionary:
 		"is_complete": false
 	}
 
-## 扫描皮肤目录
+## 扫描皮肤目录 - 同时扫描内置和用户皮肤
 func scan_skins() -> void:
 	# await get_tree().process_frame
 	skins_index.clear()
 	
-	var dir = DirAccess.open(SKINS_DIR)
+	# 先扫描内置皮肤
+	var builtin_skins_dir = DEFAULT_SKINS_SRC
+	_scan_skins_from_dir(builtin_skins_dir, true)
+	
+	# 再扫描用户皮肤
+	_scan_skins_from_dir(SKINS_DIR, false)
+	
+	call_deferred("emit_scan_completed","skins",skins_index.size())
+	GameLogger.instance.info("Scanned %d skins" % skins_index.size(), "FileSystemMGR")
+
+## 从指定目录扫描皮肤
+func _scan_skins_from_dir(dir_path: String, is_builtin: bool) -> void:
+	var dir = DirAccess.open(dir_path)
 	if dir == null:
-		GameLogger.instance.warning("Failed to open skins directory", "FileSystemMGR")
+		if is_builtin:
+			GameLogger.instance.warning("Failed to open built-in skins directory: %s" % dir_path, "FileSystemMGR")
 		return
 	
 	dir.list_dir_begin()
 	var folder_name = dir.get_next()
-	var count = 0
 	
 	while folder_name != "":
-		if dir.current_is_dir() and not folder_name.begins_with("."):
-			var skin_path = SKINS_DIR.path_join(folder_name)
-			var metadata = _load_skin_metadata(skin_path, folder_name)
+		if not dir.current_is_dir() or folder_name.begins_with("."):
+			folder_name = dir.get_next()
+			continue
+		
+		if dir.current_is_dir():
+			var skin_path = dir_path.path_join(folder_name)
+			var skin_key = folder_name
+			
+			# 如果是内置皮肤，添加 [内置] 标记
+			if is_builtin:
+				skin_key = "%s [内置]" % folder_name
+			
+			var metadata = _load_skin_metadata(skin_path, skin_key, is_builtin)
 			
 			if metadata != null and not metadata.is_empty():
-				skins_index[folder_name] = metadata
-				count += 1
+				skins_index[skin_key] = metadata
 		
 		folder_name = dir.get_next()
-		# await get_tree().process_frame
 	
 	dir.list_dir_end()
-	call_deferred("emit_scan_completed","skins",count)
-	GameLogger.instance.info("Scanned %d skins" % count, "FileSystemMGR")
 
 ## 加载皮肤元数据
-func _load_skin_metadata(skin_path: String, skin_name: String) -> Dictionary:
-	# 检查必需的皮肤文件
-	var required_files = [
-		"instant.png",
-		"short.png",
-		"long-f.png",
-		"long-t.png",
-		"long-b.png"
-	]
-	
+func _load_skin_metadata(skin_path: String, skin_name: String, is_builtin: bool = false) -> Dictionary:
+	# 不再检查必需文件，允许部分贴图缺失
 	var metadata = {
 		"name": skin_name,
 		"path": skin_path,
+		"is_builtin": is_builtin,
 		"is_complete": true,
 		"missing_files": []
 	}
 	
-	for file_name in required_files:
-		var file_path = skin_path.path_join(file_name)
-		if not FileAccess.file_exists(file_path):
-			metadata["is_complete"] = false
-			metadata["missing_files"].append(file_name)
-	
-	if not metadata["is_complete"]:
-		GameLogger.instance.warning("Skin %s is incomplete, missing: %s" % [skin_name, metadata["missing_files"]], "FileSystemMGR")
-	
 	return metadata
+
+## 获取所有可用皮肤列表
+func get_available_skins() -> Array:
+	var result: Array = []
+	
+	for skin_name in skins_index.keys():
+		result.append(skin_name)
+	
+	return result
+
+## 获取皮肤贴图文件映射
+const SKIN_TEXTURES = {
+	"short": "short.png",
+	"short_core": "short-core.png",
+	"instant": "instant.png",
+	"instant_core": "instant-core.png",
+	"long_t": "long-t.png",
+	"long_t_core": "long-t-core.png",
+	"long_f": "long-f.png",
+	"long_f_core": "long-f-core.png",
+	"long_b": "long-b.png",
+	"long_b_core": "long-b-core.png"
+}
+
+## 获取指定皮肤的贴图字典
+func get_skin_textures(skin_name: String) -> Dictionary:
+	var result: Dictionary = {}
+	
+	# 获取皮肤数据
+	var skin_data = skins_index.get(skin_name, {})
+	if skin_data.is_empty():
+		# 尝试移除 [内置] 标记查找（用于内置皮肤）
+		if skin_name.ends_with(" [内置]"):
+			var pure_name = skin_name.substr(0, skin_name.length() - 8)
+			skin_data = skins_index.get(pure_name, {})
+		
+		if skin_data.is_empty():
+			GameLogger.instance.warning("Skin not found: %s" % skin_name, "FileSystemMGR")
+			return result
+	
+	var skin_path = skin_data.get("path", "")
+	if skin_path.is_empty():
+		return result
+	
+	# 加载所有贴图
+	for texture_key in SKIN_TEXTURES:
+		var file_name = SKIN_TEXTURES[texture_key]
+		var file_path = skin_path.path_join(file_name)
+		
+		if file_path.begins_with("res://"):
+			# 内置资源直接加载
+			if ResourceLoader.exists(file_path):
+				result[texture_key] = load(file_path)
+		else:
+			# 用户目录资源动态加载 - 先检查文件是否存在
+			if FileAccess.file_exists(file_path):
+				var image = Image.load_from_file(file_path)
+				if image:
+					var texture = ImageTexture.create_from_image(image)
+					result[texture_key] = texture
+	
+	return result
+
+## 获取默认皮肤的贴图
+func get_default_skin_textures() -> Dictionary:
+	return get_skin_textures("旧版2 [内置]")
 
 ## 扫描音源目录
 func scan_soundfonts() -> void:

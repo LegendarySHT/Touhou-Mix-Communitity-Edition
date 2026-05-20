@@ -29,6 +29,11 @@ var note_color_short: Color = Color.DEEP_PINK
 var note_color_slide: Color = Color.CYAN
 var note_color_long: Color = Color.DARK_ORANGE
 
+# 皮肤core贴图标记：用于决定是否显示光晕
+var _skin_has_short_core: bool = true
+var _skin_has_instant_core: bool = true
+var _skin_has_long_core: bool = true
+
 # 判定参数（毫秒）- 与 ScoreCalculator.JUDGE_WINDOWS（秒）对应
 var judge_windows: Dictionary = {
 	"perfect": 50,    # < 0.05s
@@ -288,20 +293,103 @@ func set_note_color(type: NoteType, cl: Color):
 			for i in nt_l.get_node("VBoxC").get_children():
 				i.get_node("core").modulate = cl
 
+# 创建完全透明的纹理用于缺失贴图回退
+func _create_transparent_texture(width: int = 64, height: int = 64) -> Texture2D:
+	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	var texture = ImageTexture.create_from_image(image)
+	return texture
+
 # 修改音符皮肤 数组顺序[短块图片，短块上色区图片，滑块。。。，长条（从头到尾）]
 func set_note_texture(texture_array: Array):
-	nt_b.texture = texture_array[0]
-	nt_b.get_node("core").texture = texture_array[1]
+	# 创建透明纹理作为回退
+	var transparent_texture = _create_transparent_texture()
 	
-	nt_s.texture = texture_array[2]
-	nt_s.get_node("core").texture = texture_array[3]
+	# 短块
+	if texture_array.size() > 0 and texture_array[0]:
+		nt_b.texture = texture_array[0]
+	else:
+		nt_b.texture = transparent_texture
 	
-	nt_l.get_node("VBoxC/head").texture = texture_array[4]
-	nt_l.get_node("VBoxC/head/core").texture = texture_array[5]
-	nt_l.get_node("VBoxC/body").texture = texture_array[6]
-	nt_l.get_node("VBoxC/body/core").texture = texture_array[7]
-	nt_l.get_node("VBoxC/tail").texture = texture_array[8]
-	nt_l.get_node("VBoxC/tail/core").texture = texture_array[9]
+	if texture_array.size() > 1 and texture_array[1]:
+		nt_b.get_node("core").texture = texture_array[1]
+	else:
+		nt_b.get_node("core").texture = transparent_texture
+	
+	# 滑块
+	if texture_array.size() > 2 and texture_array[2]:
+		nt_s.texture = texture_array[2]
+	else:
+		nt_s.texture = transparent_texture
+	
+	if texture_array.size() > 3 and texture_array[3]:
+		nt_s.get_node("core").texture = texture_array[3]
+	else:
+		nt_s.get_node("core").texture = transparent_texture
+	
+	# 长条头部
+	if texture_array.size() > 4 and texture_array[4]:
+		nt_l.get_node("VBoxC/head").texture = texture_array[4]
+	else:
+		nt_l.get_node("VBoxC/head").texture = transparent_texture
+	
+	if texture_array.size() > 5 and texture_array[5]:
+		nt_l.get_node("VBoxC/head/core").texture = texture_array[5]
+	else:
+		nt_l.get_node("VBoxC/head/core").texture = transparent_texture
+	
+	# 长条身体
+	if texture_array.size() > 6 and texture_array[6]:
+		nt_l.get_node("VBoxC/body").texture = texture_array[6]
+	else:
+		nt_l.get_node("VBoxC/body").texture = transparent_texture
+	
+	if texture_array.size() > 7 and texture_array[7]:
+		nt_l.get_node("VBoxC/body/core").texture = texture_array[7]
+	else:
+		nt_l.get_node("VBoxC/body/core").texture = transparent_texture
+	
+	# 长条尾部
+	if texture_array.size() > 8 and texture_array[8]:
+		nt_l.get_node("VBoxC/tail").texture = texture_array[8]
+	else:
+		nt_l.get_node("VBoxC/tail").texture = transparent_texture
+	
+	if texture_array.size() > 9 and texture_array[9]:
+		nt_l.get_node("VBoxC/tail/core").texture = texture_array[9]
+	else:
+		nt_l.get_node("VBoxC/tail/core").texture = transparent_texture
+
+# 加载并应用指定皮肤的贴图
+func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
+	# 获取皮肤贴图字典
+	var skin_textures = {}
+	if FileSystemManager.instance:
+		skin_textures = FileSystemManager.instance.get_skin_textures(skin_name)
+	
+	# 更新core贴图标记
+	_skin_has_short_core = skin_textures.has("short_core")
+	_skin_has_instant_core = skin_textures.has("instant_core")
+	_skin_has_long_core = skin_textures.has("long_b_core") or skin_textures.has("long_f_core") or skin_textures.has("long_t_core")
+	
+	# 构建纹理数组，按顺序: short, short_core, instant, instant_core, long_b, long_b_core, long_f, long_f_core, long_t, long_t_core
+	var texture_array = [
+		skin_textures.get("short"),
+		skin_textures.get("short_core"),
+		skin_textures.get("instant"),
+		skin_textures.get("instant_core"),
+		skin_textures.get("long_b"),
+		skin_textures.get("long_b_core"),
+		skin_textures.get("long_f"),
+		skin_textures.get("long_f_core"),
+		skin_textures.get("long_t"),
+		skin_textures.get("long_t_core")
+	]
+	
+	# 应用贴图
+	set_note_texture(texture_array)
+	
+	print("[FlowArea] Loaded note skin: %s, core flags: short=%s, instant=%s, long=%s" % [skin_name, _skin_has_short_core, _skin_has_instant_core, _skin_has_long_core])
 
 # 修改音符宽度
 func set_note_width(wid: float):
@@ -364,7 +452,7 @@ func _create_note(tp: NoteType, x: float, lane_idx: int = -1) -> Node:
 				for i in note_rect.get_node("VBoxC").get_children():
 					i.get_node("core").modulate = cl
 	
-	_apply_note_glow(note_rect, cl)
+	_apply_note_glow(note_rect, cl, tp)
 	note_rect.position = Vector2(x, -note_rect.size.y)
 
 	return note_rect
@@ -398,7 +486,7 @@ func _spawn_note(note_index: int) -> void:
 		await get_tree().process_frame
 		nt.long_tail_height = nt.rect.get_node("VBoxC/tail").size.y
 		nt.long_head_height = nt.rect.get_node("VBoxC/head").size.y
-		_apply_note_glow(nt.rect, parent_node.get_lane_color(nt.lane))
+		_apply_note_glow(nt.rect, parent_node.get_lane_color(nt.lane), NoteType.Long)
 		note_half = nt.long_tail_height / 2.0
 	
 	var target_pos_y = jl.position.y - note_half
@@ -614,9 +702,24 @@ func _reset_note_for_reuse(note: Node, note_type: NoteType) -> void:
 		child.visible = true
 		child.modulate = Color.WHITE
 
-func _apply_note_glow(note_root: Node, c: Color) -> void:
+func _apply_note_glow(note_root: Node, c: Color, note_type: NoteType = NoteType.Block) -> void:
 	if glow_intensity <= 0.0:
 		return
+	
+	var has_core: bool
+	match note_type:
+		NoteType.Block:
+			has_core = _skin_has_short_core
+		NoteType.Slide:
+			has_core = _skin_has_instant_core
+		NoteType.Long:
+			has_core = _skin_has_long_core
+		_:
+			has_core = true
+	
+	if not has_core:
+		return
+	
 	if note_root is Panel:
 		var vbox = note_root.get_node_or_null("VBoxC")
 		if vbox:
@@ -667,11 +770,11 @@ func _init_note_pool() -> void:
 		_note_pool_long.append(note_node)
 
 	for note in _note_pool_block:
-		_apply_note_glow(note, note_color_short)
+		_apply_note_glow(note, note_color_short, NoteType.Block)
 	for note in _note_pool_slide:
-		_apply_note_glow(note, note_color_slide)
+		_apply_note_glow(note, note_color_slide, NoteType.Slide)
 	for note in _note_pool_long:
-		_apply_note_glow(note, note_color_long)
+		_apply_note_glow(note, note_color_long, NoteType.Long)
 
 func _get_note_from_pool(tp: NoteType) -> Node:
 	"""从池中获取一个音符节点，如果池空则创建新的"""
@@ -1199,7 +1302,7 @@ func _process(delta: float) -> void:
 	# 自动按长条
 	if auto_mode:
 		for long in active_notes.filter(func(nt):
-			if nt.type == NoteType.Long and not nt.is_held:
+			if nt.type == NoteType.Long and not nt.is_held and nt.rect:
 				var head = nt.rect.get_node("VBoxC/head")
 				return abs(head.global_position.y + head.size.y/2 - jl.position.y) < 12
 			return false):

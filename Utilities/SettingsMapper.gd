@@ -81,7 +81,7 @@ static var mappings: Dictionary = {
 	"short_block_color": {"section": "Appearance", "key": "short_block_color", "value_type": "color"},
 	"long_block_color": {"section": "Appearance", "key": "long_block_color", "value_type": "color"},
 	"custom_block_skin_texture_filter_mode": {"section": "Appearance", "key": "custom_block_skin_texture_filter_mode", "value_type": "int"},
-	"block_skin_preset": {"section": "Appearance", "key": "block_skin_preset", "value_type": "int"},
+	"block_skin_preset": {"section": "Appearance", "key": "block_skin_preset", "value_type": "string"},
 	"custom_background_image_size_mode": {"section": "Appearance", "key": "custom_background_image_size_mode", "value_type": "int"},
 	"play_background_mode": {"section": "Appearance", "key": "play_background_mode", "value_type": "int"},
 	"play_background_cover_blur": {"section": "Appearance", "key": "play_background_cover_blur", "value_type": "float"},
