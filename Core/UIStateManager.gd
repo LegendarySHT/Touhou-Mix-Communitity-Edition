@@ -40,6 +40,8 @@ const MAX_HISTORY_DEPTH: int = 10
 
 var signal_conn:bool = false
 
+var transition_version: int = 0
+
 func _ready() -> void:
 	if instance == null:
 		instance = self
@@ -61,6 +63,9 @@ func change_state(new_state: UIState, stash_state: bool = true) -> void:
 		print("can not change state")
 		return
 	
+	if DataMGR.instance and DataMGR.instance.is_loading:
+		return
+	
 	var old_state = current_state
 	
 	# 发出状态退出信号)
@@ -74,6 +79,7 @@ func change_state(new_state: UIState, stash_state: bool = true) -> void:
 	# 更新状态
 	previous_state = old_state
 	current_state = new_state
+	transition_version += 1
 
 	state_changed.emit(old_state, new_state)
 
@@ -87,19 +93,24 @@ func change_state(new_state: UIState, stash_state: bool = true) -> void:
 func go_back() -> bool:
 	if state_history.is_empty():
 		return false
+	if DataMGR.instance and DataMGR.instance.is_loading:
+		return false
 	var back_state = state_history.pop_back()
 	# 检查历史栈是否还有元素，有则更新previous_state
+	var old_state = current_state
 	if not state_history.is_empty():
 		previous_state = state_history.back()
-	
-	state_changed.emit(current_state, back_state)
+	transition_version += 1
 	current_state = back_state
+	state_changed.emit(old_state, back_state)
 	return true
 
 ## 直接返回到目标状态，跳过中间层级，只发一次 state_changed 信号
 ## 用于级联删除等需要跳过多级 UI 的场景
 func go_back_to(target_state: UIState) -> bool:
 	if current_state == target_state:
+		return false
+	if DataMGR.instance and DataMGR.instance.is_loading:
 		return false
 	# 弹出历史栈直到找到目标状态，或清空为止
 	while not state_history.is_empty() and state_history.back() != target_state:
@@ -110,6 +121,7 @@ func go_back_to(target_state: UIState) -> bool:
 		previous_state = state_history.back()
 	var old_state = current_state
 	current_state = target_state
+	transition_version += 1
 	state_changed.emit(old_state, target_state)
 	return true
 

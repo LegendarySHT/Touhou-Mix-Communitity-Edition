@@ -14,6 +14,8 @@ enum ShowStat {
 @onready var ui:UIStateManager = UIStateManager.instance
 @onready var eb: EventBus = EventBus.instance
 
+@onready var _base_position: Vector2 = position
+
 @onready var vboxc: VBoxContainer = $VBoxC
 @onready var btn: Button = $Button
 
@@ -47,11 +49,13 @@ func switch_display(content_to_show: ShowStat = ShowStat.NONE):
 	# 控制按钮框架是否可见
 	if content_to_show == ShowStat.NONE:
 		if _visible:
-			ani.animate_position(self, position + Vector2(500, 134), 0.5, "RB_VISBLE")
+			self.position = _base_position
+			ani.animate_position(self, _base_position + Vector2(500, 134), 0.5, "RB_VISBLE")
 			_visible = false
 	else:
 		if not _visible:
-			ani.animate_position(self, position - Vector2(500, 134), 0.5, "RB_VISBLE")
+			self.position = _base_position + Vector2(500, 134)
+			ani.animate_position(self, _base_position, 0.5, "RB_VISBLE")
 			_visible = true
 
 	var event = InputEventKey.new()
