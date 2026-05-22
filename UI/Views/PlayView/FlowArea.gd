@@ -1339,9 +1339,11 @@ func _process(delta: float) -> void:
 
 		var long_end_time = note.start_time + max(0.0, note.duration)
 		if _synced_current_time >= long_end_time:
-			var head = note._cached_head as Control
-			var n_half = head.size.y * 0.5
-			_generate_particle("Perfect", head.global_position + Vector2(float(note_visual_width) * 0.5, n_half))
+			var tail = note._cached_tail as Control
+			var t_half = tail.size.y * 0.5
+			var preset = spark_presets.get("Perfect", 0)
+			if preset > 0:
+				_generate_particle("Perfect", tail.global_position + Vector2(float(note_visual_width) * 0.5, t_half), spark_scalings.get("Perfect", 200))
 			_remove_note(note)
 			active_holds.erase(touch_id)
 			continue

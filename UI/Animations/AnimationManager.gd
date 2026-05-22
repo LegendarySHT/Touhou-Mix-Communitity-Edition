@@ -300,6 +300,15 @@ func _kill_scene_transition_tweens() -> void:
 	if is_instance_valid(score_view) and score_view.has_method("_kill_loop_ani"):
 		score_view._kill_loop_ani()
 
+	# 强制隐藏所有已标记为不存在的组件，防止动画被打断导致组件卡在屏幕上
+	for key in ui_exist.keys():
+		if not ui_exist[key]:
+			var comp := get_comp(key)
+			if is_instance_valid(comp):
+				comp.visible = false
+				if comp is CanvasItem:
+					comp.modulate.a = 0.0
+
 
 ############################## 页面切换动画 #######################################
 
@@ -536,6 +545,8 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 	var song_list:SongView = get_comp("Song_List")
 	var skew = get_node_or_null("/root/Main/skew")
 	var ani_comp = get_comp(ui_name)
+	if is_instance_valid(ani_comp) and ani_comp is CanvasItem:
+		ani_comp.modulate.a = 1.0
 
 	match ui_name:
 		"Album_List":

@@ -82,6 +82,10 @@ var game_sequences: Array[KeySequenceManager.GameSequence] = []
 var is_midi_playing: bool = false
 var _is_finishing_game: bool = false
 
+var _blur_bake_viewport: SubViewport = null
+var _blur_bake_texture_rect: TextureRect = null
+var _blur_bake_id: int = 0
+
 ########## 配置参数 #############
 # 有一部分配置参数在flow_area里面
 var lane_count: int = 12
@@ -208,6 +212,7 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 			playback_mgr.stop()
 			# 清除手动控制notes标记，恢复TrackView等场景的自动播放
 			playback_mgr.clear_manual_control_notes()
+		_teardown_blur_bake_viewport()
 	
 	if enable:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
@@ -954,23 +959,74 @@ func _apply_background_solid(color_html: String) -> void:
 
 
 func _set_cover_blur_material(blur_strength: float) -> void:
-	var shader = load(BG_BLUR_SHADER_PATH)
-	if shader == null:
+	background.material = null
+	var tex = background.texture
+	if tex == null:
 		return
-
-	var mat: ShaderMaterial = null
-	if background.material and background.material is ShaderMaterial:
-		mat = background.material as ShaderMaterial
-	if mat == null or mat.shader != shader:
-		mat = ShaderMaterial.new()
-		mat.shader = shader
-
-	mat.set_shader_parameter("blur_strength", clampf(blur_strength, 0.0, 1.0))
-	background.material = mat
+	_bake_blurred_background(tex, blur_strength)
 
 
 func _clear_cover_blur_material() -> void:
 	background.material = null
+	_teardown_blur_bake_viewport()
+
+
+func _bake_blurred_background(cover_texture: Texture2D, blur_strength: float) -> void:
+	_blur_bake_id += 1
+	var my_id = _blur_bake_id
+
+	if _blur_bake_viewport:
+		_blur_bake_viewport.queue_free()
+		_blur_bake_viewport = null
+		_blur_bake_texture_rect = null
+
+	if blur_strength <= 0.001:
+		background.material = null
+		return
+
+	var window_size = DisplayServer.window_get_size()
+	var bake_size := Vector2i(window_size)
+	if bake_size.x > 1920 or bake_size.y > 1080:
+		var s = min(1920.0 / bake_size.x, 1080.0 / bake_size.y)
+		bake_size = Vector2i(bake_size * s)
+
+	_blur_bake_viewport = SubViewport.new()
+	_blur_bake_viewport.size = bake_size
+	_blur_bake_viewport.transparent_bg = true
+	_blur_bake_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(_blur_bake_viewport)
+
+	_blur_bake_texture_rect = TextureRect.new()
+	_blur_bake_texture_rect.texture = cover_texture
+	_blur_bake_texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_blur_bake_texture_rect.stretch_mode = background.stretch_mode
+	_blur_bake_texture_rect.position = Vector2.ZERO
+	_blur_bake_texture_rect.size = bake_size
+	_blur_bake_texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_blur_bake_viewport.add_child(_blur_bake_texture_rect)
+
+	var shader = load(BG_BLUR_SHADER_PATH)
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("blur_strength", clampf(blur_strength, 0.0, 1.0))
+	_blur_bake_texture_rect.material = mat
+
+	await RenderingServer.frame_post_draw
+
+	if my_id != _blur_bake_id or _blur_bake_viewport == null:
+		return
+
+	background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	background.texture = _blur_bake_viewport.get_texture()
+	background.material = null
+
+
+func _teardown_blur_bake_viewport() -> void:
+	if _blur_bake_viewport:
+		_blur_bake_viewport.queue_free()
+		_blur_bake_viewport = null
+		_blur_bake_texture_rect = null
+	_blur_bake_id += 1
 
 
 func _apply_background_dim() -> void:
