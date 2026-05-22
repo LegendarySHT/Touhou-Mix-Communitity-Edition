@@ -733,11 +733,12 @@ func _apply_note_glow(note_root: Node, c: Color, note_type: NoteType = NoteType.
 		if vbox:
 			for child in vbox.get_children():
 				if child is TextureRect and child.name != "body":
-					_ensure_glow_child(child, c, NoteType.Long)
+					var uv_center := Vector2(0.5, 0.60) if child.name == "head" else Vector2(0.5, 0.40)
+					_ensure_glow_child(child, c, NoteType.Long, uv_center)
 		return
 	_ensure_glow_child(note_root, c, note_type)
 
-func _ensure_glow_child(tr_: TextureRect, col: Color, note_type: NoteType = NoteType.Block) -> void:
+func _ensure_glow_child(tr_: TextureRect, col: Color, note_type: NoteType = NoteType.Block, uv_center: Vector2 = Vector2(0.5, 0.5)) -> void:
 	var glow: ColorRect = tr_.get_node_or_null("_glow")
 	if glow == null:
 		push_warning("[FlowArea] Glow node not found in note")
@@ -749,9 +750,8 @@ func _ensure_glow_child(tr_: TextureRect, col: Color, note_type: NoteType = Note
 	var mat2 := glow.material as ShaderMaterial
 	mat2.set_shader_parameter("glow_color", col)
 	mat2.set_shader_parameter("glow_intensity", glow_intensity)
-	# mat2.set_shader_parameter("note_uv_center", Vector2(0.5, 0.5))
+	mat2.set_shader_parameter("note_uv_center", uv_center)
 
-	var note_sz: Vector2 = tr_.size
 	match note_type:
 		NoteType.Long:
 			mat2.set_shader_parameter("glow_stretch", 0.6)
@@ -760,7 +760,6 @@ func _ensure_glow_child(tr_: TextureRect, col: Color, note_type: NoteType = Note
 		_:
 			mat2.set_shader_parameter("glow_stretch", 1.0)
 			mat2.set_shader_parameter("glow_size", glow_size)
-			# mat2.set_shader_parameter("note_uv_center", Vector2(0.5, 0.5))
 			mat2.set_shader_parameter("note_uv_half", Vector2(0.1667, 0.1667))
 
 func set_glow_params(intensity: float, size_val: float) -> void:

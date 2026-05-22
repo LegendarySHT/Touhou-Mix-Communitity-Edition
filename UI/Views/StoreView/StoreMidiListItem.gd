@@ -36,8 +36,8 @@ func set_display(midi: MidiData = null) -> void:
 		title_text.text = midi.name
 		author_text.text = midi.artist_name
 		uploader.text = midi.uploader_name
-		album_name.text = midi.album_data.name
-		song_name.text = midi.song_data.name
+		album_name.text = "null" if not midi.album_data else midi.album_data.name
+		song_name.text = "null" if not midi.song_data else midi.song_data.name
 	init_finished.emit()
 
 # 封面加载

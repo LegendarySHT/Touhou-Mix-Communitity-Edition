@@ -544,3 +544,10 @@ func switch_page(direction: int = 0):
 
 	setting_page.visible = op
 	delete_page.visible = not op
+
+func has_pending_changes() -> bool:
+	return setting_list and setting_list.has_pending_changes()
+
+func switch_page_instant() -> void:
+	setting_page.visible = true
+	delete_page.visible = false

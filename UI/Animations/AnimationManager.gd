@@ -497,11 +497,14 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 		"Play_View":
 			tween = animate_fade_out(ani_comp, 0.45, tween_id)
 		"Setting_View":
-			# 在退出动画开始前保存配置
-			_save_settings_on_exit(ani_comp)
+			if ani_comp.has_method("has_pending_changes") and ani_comp.has_pending_changes():
+				_save_settings_on_exit(ani_comp)
 			
 			tween = animate_fade_out(ani_comp, 0.35, tween_id)
-			ani_comp.switch_page()
+			if ani_comp.has_method("switch_page_instant"):
+				ani_comp.switch_page_instant()
+			else:
+				ani_comp.switch_page()
 		"Score_View":
 			ani_comp.ani_out()
 			if new_state!= UIStateManager.UIState.PLAY_VIEW:
@@ -546,6 +549,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 	var skew = get_node_or_null("/root/Main/skew")
 	var ani_comp = get_comp(ui_name)
 	if is_instance_valid(ani_comp) and ani_comp is CanvasItem:
+		ani_comp.visible = true
 		ani_comp.modulate.a = 1.0
 
 	match ui_name:
@@ -567,7 +571,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 				await create_tween().tween_property(border.get_theme_stylebox("panel"), "shadow_size", 0, 0.2).finished
 				SS.queue_free()
 			
-			song_list.clear_items()
+			song_list.clear_items.call_deferred()
 		"Song_List":
 			if old_state == UIStateManager.UIState.ALBUM_VIEW:
 				animate_position(SS, skew.to_local(Vector2(280, 10)), 0.15, "SSPosition")

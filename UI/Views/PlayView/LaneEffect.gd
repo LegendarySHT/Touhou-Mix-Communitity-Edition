@@ -102,7 +102,7 @@ class BeamNode extends Node2D:
 		_shader_material.set_shader_parameter("beam_alpha", beam_alpha_scale)
 		_shader_material.set_shader_parameter("trigger_time", trigger_time_sec)
 		_shader_material.set_shader_parameter("current_time", float(Time.get_ticks_msec()) / 1000.0)
-		_shader_material.set_shader_parameter("fade_duration", fade_duration_sec)
+		_shader_material.set_shader_parameter("inv_fade_duration", 1.0 / fade_duration_sec)
 		_shader_material.set_shader_parameter("discard_threshold", discard_threshold)
 		_shader_material.set_shader_parameter("beam_width", beam_size.x)
 		_shader_material.set_shader_parameter("beam_height", beam_size.y)

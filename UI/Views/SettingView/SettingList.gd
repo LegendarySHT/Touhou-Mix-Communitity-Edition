@@ -1173,6 +1173,8 @@ func apply_pending_config_updates() -> int:
 	pending_config_updates.clear()
 	return emitted_count
 
+func has_pending_changes() -> bool:
+	return not pending_config_updates.is_empty()
 
 
 
