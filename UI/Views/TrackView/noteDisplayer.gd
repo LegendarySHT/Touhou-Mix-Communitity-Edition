@@ -76,16 +76,16 @@ func _process(_delta):
 	if master_node == null or current_notes.is_empty():
 		return
 	
-	# 【修复】直接从MidiPlaybackManager获取tick，确保与实际播放位置同步
 	var midi_mgr = MidiPlaybackManager.instance
+	if midi_mgr == null or not midi_mgr.is_playing:
+		set_process(false)
+		return
+
+	# 【修复】直接从MidiPlaybackManager获取tick，确保与实际播放位置同步
+	var midi_mgr_ref = midi_mgr
 	var ct: float = 0.0
 	
-	if midi_mgr != null and midi_mgr.is_playing:
-		# 优先使用MidiPlaybackManager的position（已校准的tick值）
-		ct = midi_mgr.position
-	else:
-		# 回退到master_node的current_tick
-		ct = float(master_node.current_tick)
+	ct = midi_mgr_ref.position
 	
 	# 【诊断日志】每60帧输出一次tick対比信息
 	#_diagnostic_frame_count += 1

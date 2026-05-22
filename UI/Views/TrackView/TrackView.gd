@@ -844,14 +844,23 @@ func _on_midi_loaded(midi_data: MidiData) -> void:
 	# 播放启动已延迟到 _load_midi 末尾，确保 UI 先完成加载
 	midi_playback_manager.set_loop(true)
 
+func _set_note_displayers_process(enable: bool) -> void:
+	if master_note_displayer:
+		master_note_displayer.set_process(enable)
+	for item in list_items:
+		if item is MidiTrack and item.note_display:
+			item.note_display.set_process(enable)
+
 func _on_midi_started() -> void:
 	print("MIDI playback started")
 	# 开始更新进度条
 	set_process(true)
+	_set_note_displayers_process(true)
 
 func _on_midi_stopped() -> void:
 	print("MIDI playback stopped")
 	set_process(false)
+	_set_note_displayers_process(false)
 	progress_bar.value = 0
 	current_time.text = "00:00"
 
@@ -1067,6 +1076,7 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 			elif new_state == ui_stat_mgr.UIState.SETTINGS_VIEW:
 				midi_playback_manager.pause()
 			
+		_set_note_displayers_process(false)
 		# 收起主面板的展开状态
 		get_node("MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button").button_pressed = false
 
@@ -1075,6 +1085,7 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 		if current_midi_data:
 			midi_playback_manager.set_loop(true)
 			midi_playback_manager.resume()
+			_set_note_displayers_process(true)
 			print("[TrackView] Reloaded MIDI after returning from settings")
 
 ## 保存当前MIDI配置到JSON文件

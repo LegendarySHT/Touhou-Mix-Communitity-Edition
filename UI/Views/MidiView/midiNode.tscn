@@ -9,7 +9,6 @@
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yxlt8"]
 
 [node name="MidiNode" type="Panel" unique_id=1462937211]
-clip_children = 2
 clip_contents = true
 custom_minimum_size = Vector2(750, 150)
 anchors_preset = -1
@@ -58,8 +57,8 @@ layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 8
 mouse_filter = 1
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 5
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_outline_size = 5
 theme_override_fonts/font = ExtResource("3_jdrqc")
 theme_override_font_sizes/font_size = 30
 text = "Midi Name"
@@ -81,8 +80,8 @@ size_flags_horizontal = 3
 size_flags_vertical = 8
 mouse_filter = 1
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 5
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_outline_size = 5
 theme_override_fonts/font = ExtResource("3_jdrqc")
 theme_override_font_sizes/font_size = 30
 text = "Midi Author"
@@ -94,8 +93,8 @@ layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
 mouse_filter = 1
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 5
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_outline_size = 5
 theme_override_font_sizes/font_size = 30
 text = "Pending"
 horizontal_alignment = 2

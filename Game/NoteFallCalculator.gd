@@ -34,6 +34,8 @@ func compute_after_line_duration_seconds(distance_px: float, base_speed_px_per_m
 ## @return 归一化位移（0~1）
 func evaluate_curve_progress(progress: float, trans: int, ease_: int) -> float:
 	var safe_progress = clamp(progress, 0.0, 1.0)
+	if trans == Tween.TRANS_LINEAR:
+		return safe_progress
 	var value = Tween.interpolate_value(0.0, 1.0, safe_progress, 1.0, trans, ease_)
 	return clamp(float(value), 0.0, 1.0)
 

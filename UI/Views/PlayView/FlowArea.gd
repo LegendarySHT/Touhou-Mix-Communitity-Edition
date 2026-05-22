@@ -137,7 +137,11 @@ class Note:
 	var long_instance_id: int = -1  # 同一长条的唯一 ID（用于 ScoreCalculator 衰减链）
 	var long_head_height: float = 0.0
 	var long_tail_height: float = 0.0
-	
+	var _cached_head: Control = null
+	var _cached_tail: Control = null
+	var _cached_body: Control = null
+	var _cached_vbox: Control = null
+
 	static var _next_long_id: int = 0
 	static func _gen_long_id() -> int:
 		_next_long_id += 1
@@ -486,6 +490,10 @@ func _spawn_note(note_index: int) -> void:
 		await get_tree().process_frame
 		nt.long_tail_height = nt.rect.get_node("VBoxC/tail").size.y
 		nt.long_head_height = nt.rect.get_node("VBoxC/head").size.y
+		nt._cached_vbox = nt.rect.get_node("VBoxC")
+		nt._cached_head = nt.rect.get_node("VBoxC/head")
+		nt._cached_tail = nt.rect.get_node("VBoxC/tail")
+		nt._cached_body = nt.rect.get_node("VBoxC/body")
 		_apply_note_glow(nt.rect, parent_node.get_lane_color(nt.lane), NoteType.Long)
 		note_half = nt.long_tail_height / 2.0
 	
@@ -568,10 +576,10 @@ func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 	if not note.rect:
 		return
 
-	var box := note.rect.get_node("VBoxC") as Control
-	var head := box.get_node("head") as Control
-	var tail := box.get_node("tail") as Control
-	var body := box.get_node("body") as Control
+	var box := note._cached_vbox as Control
+	var head := note._cached_head as Control
+	var tail := note._cached_tail as Control
+	var body := note._cached_body as Control
 
 	if note.long_head_height <= 0.0:
 		note.long_head_height = head.size.y
@@ -595,7 +603,7 @@ func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 	note.rect.position.y = tail_top
 
 	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
-		var window_y = get_viewport().get_visible_rect().size.y
+		var window_y = _cached_viewport_height
 		if tail_judge_y >= window_y:
 			_remove_note(note)
 			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
@@ -613,12 +621,12 @@ func _update_note_visibility(note: Note) -> void:
 	var visual_height := rect_ctrl.size.y
 
 	if note.type == NoteType.Long and rect_ctrl.has_node("VBoxC"):
-		var vbox := rect_ctrl.get_node("VBoxC") as Control
+		var vbox := note._cached_vbox as Control
 		if vbox:
 			visual_height = max(visual_height, vbox.size.y)
 
 	var bottom_y = top_y + max(1.0, visual_height)
-	var view_h := get_viewport().get_visible_rect().size.y
+	var view_h := _cached_viewport_height
 	var visible_top := -_note_cull_margin_top
 	var visible_bottom := view_h + _note_cull_margin_bottom
 
@@ -741,15 +749,18 @@ func _ensure_glow_child(tr_: TextureRect, col: Color, note_type: NoteType = Note
 	var mat2 := glow.material as ShaderMaterial
 	mat2.set_shader_parameter("glow_color", col)
 	mat2.set_shader_parameter("glow_intensity", glow_intensity)
-	mat2.set_shader_parameter("glow_size", glow_size)
-	var aspect: float = tr_.size.x / max(tr_.size.y, 1.0)
-	mat2.set_shader_parameter("note_aspect", aspect)
+	# mat2.set_shader_parameter("note_uv_center", Vector2(0.5, 0.5))
+
+	var note_sz: Vector2 = tr_.size
 	match note_type:
 		NoteType.Long:
-			mat2.set_shader_parameter("note_uv_center", Vector2(0.5, 0.5))
+			mat2.set_shader_parameter("glow_stretch", 0.6)
+			mat2.set_shader_parameter("glow_size", glow_size + 3)
 			mat2.set_shader_parameter("note_uv_half", Vector2(0.25, 0.1667))
 		_:
-			mat2.set_shader_parameter("note_uv_center", Vector2(0.5, 0.5))
+			mat2.set_shader_parameter("glow_stretch", 1.0)
+			mat2.set_shader_parameter("glow_size", glow_size)
+			# mat2.set_shader_parameter("note_uv_center", Vector2(0.5, 0.5))
 			mat2.set_shader_parameter("note_uv_half", Vector2(0.1667, 0.1667))
 
 func set_glow_params(intensity: float, size_val: float) -> void:
@@ -1280,7 +1291,9 @@ func _judge_note(judge_note: Note, trigger_vibration: bool = false, input_time_m
 		_generate_particle(result, hit_pos, spark_scalings.get(result, 200))
 
 var _is_pause: bool = false
+var _cached_viewport_height: float = 0.0
 func _process(delta: float) -> void:
+	_cached_viewport_height = get_viewport().get_visible_rect().size.y
 	if not parent_node:
 		return
 
@@ -1313,7 +1326,7 @@ func _process(delta: float) -> void:
 	if auto_mode:
 		for long in active_notes.filter(func(nt):
 			if nt.type == NoteType.Long and not nt.is_held and nt.rect:
-				var head = nt.rect.get_node("VBoxC/head")
+				var head = nt._cached_head
 				return abs(head.global_position.y + head.size.y/2 - jl.position.y) < 12
 			return false):
 			_auto_click(long)
@@ -1326,7 +1339,7 @@ func _process(delta: float) -> void:
 
 		var long_end_time = note.start_time + max(0.0, note.duration)
 		if _synced_current_time >= long_end_time:
-			var head = note.rect.get_node("VBoxC/head") as Control
+			var head = note._cached_head as Control
 			var n_half = head.size.y * 0.5
 			_generate_particle("Perfect", head.global_position + Vector2(float(note_visual_width) * 0.5, n_half))
 			_remove_note(note)

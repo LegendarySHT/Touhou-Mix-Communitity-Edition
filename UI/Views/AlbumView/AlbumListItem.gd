@@ -12,6 +12,7 @@ var album_data: AlbumData
 
 ## 展开动画补间
 var expand_tween: Tween
+var _last_cover_offset: float = 0.0
 
 var ALBUMBUTTON = "PN/AlbumButton"
 signal _init_fin
@@ -41,7 +42,10 @@ func _process(_delta: float) -> void:
 	var view_bottom: float = view_top + parent_ctrl.size.y
 	if item_bottom < view_top or item_top > view_bottom:
 		return
-	process_item_cover_move()
+	var new_offset: float = -(global_position.y / max(parent_ctrl.size.y, 1.0)) * max(cover_texture.size.y - size.y, 0.0)
+	if not is_equal_approx(new_offset, _last_cover_offset):
+		cover_texture.position.y = new_offset
+		_last_cover_offset = new_offset
 
 ## 从AlbumData初始化显示
 func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: ButtonGroup) -> void:
@@ -85,7 +89,7 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 	
 	var expa: int = 1 if toggled_on else 0
 	expand_tween.tween_property(self.get_node("PN"),"custom_minimum_size",Vector2(600 + expa*350, 150 + 250*expa),0.15)
-	expand_tween.tween_property(self.get_node("PN/PN/cover"),"size", Vector2.ONE *( 600 + expa*350),0.15)
+	expand_tween.tween_property(self.get_node("PN/PN/cover"),"size", Vector2.ONE *( 600 + expa*345),0.15)
 	expand_tween.tween_property(album_name_label,"theme_override_font_sizes/font_size",25 + 20*expa,0.15)
 
 	if toggled_on:

@@ -67,6 +67,7 @@ const LONG_DECAY_FACTOR: float = 0.6
 # ============================================================
 #  单例
 # ============================================================
+static var _score_regex: RegEx = null
 static var instance: ScoreCalculator
 
 # ============================================================
@@ -216,11 +217,10 @@ func get_rank() -> String:
 ## 获取格式化分数字符串（千分位逗号）
 func get_formatted_score() -> String:
 	var s = str(int(total_score))
-	var regex = RegEx.new()
-	regex.compile("(\\d)(?=(\\d{3})+(?!\\d))")
-	return regex.sub(s, "$1,", true)
-
-## 获取完整快照（供 UI 消费）
+	if _score_regex == null:
+		_score_regex = RegEx.new()
+		_score_regex.compile("(\\d)(?=(\\d{3})+(?!\\d))")
+	return _score_regex.sub(s, "$1,", true)
 func get_snapshot() -> Dictionary:
 	return {
 		"total_score": int(total_score),

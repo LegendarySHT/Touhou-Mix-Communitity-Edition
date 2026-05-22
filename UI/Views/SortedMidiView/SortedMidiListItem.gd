@@ -16,6 +16,7 @@ var midi_data: MidiData
 
 ## 选择动画补间
 var select_tween: Tween
+var _last_cover_offset: float = 0.0
 
 signal _init_fin
 
@@ -33,7 +34,14 @@ func _ready() -> void:
 	cover_texture.texture = fs_mgr.get_cover_by_midiData(midi_data)
 
 func _process(_delta: float) -> void:
-	process_item_cover_move()
+	if parent_node == null:
+		return
+	if parent_node.scroll_velocity == 0 and parent_node.snap_tween == null:
+		return
+	var new_offset: float = -(global_position.y / max(parent_node.size.y, 1.0)) * max(cover_texture.size.y - size.y, 0.0)
+	if not is_equal_approx(new_offset, _last_cover_offset):
+		cover_texture.position.y = new_offset
+		_last_cover_offset = new_offset
 
 ## 从MidiData初始化显示
 func setup_with_midi(midi: MidiData, index: int, bg:ButtonGroup) -> void:

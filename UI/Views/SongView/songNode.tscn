@@ -36,8 +36,6 @@ expand_margin_left = 3.0
 expand_margin_top = 3.0
 expand_margin_right = 3.0
 expand_margin_bottom = 3.0
-shadow_color = Color(0.18791977, 0.63770854, 0.86234844, 0.6)
-shadow_size = 10
 
 [node name="SongNode" type="MarginContainer" unique_id=1629036043]
 custom_minimum_size = Vector2(900, 140)
