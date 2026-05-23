@@ -553,48 +553,20 @@ func _apply_delview_theme(main: Node) -> void:
 	var delview := main.get_node_or_null("skew/C/SettingView/DelView")
 	if not delview:
 		return
-	var sidebar :VBoxContainer = delview.get_node_or_null("SideBar")
-	var content :PanelContainer = delview.get_node_or_null("Content")
-
-	# 侧边栏背景 — SIDEBAR_BG 固定色，不跟随预设
+	var sidebar: VBoxContainer = delview.get_node_or_null("SideBar")
 	if sidebar:
 		_theme_button_set_color(sidebar.theme, get_color("primary"))
-		sidebar.theme.get_stylebox("pressed", "Button").bg_color = get_color("primary_dark").darkened(0.5)
+		var pressed := sidebar.theme.get_stylebox("pressed", "Button")
+		if pressed:
+			pressed.bg_color = get_color("primary_dark").darkened(0.5)
 
-	# 内容面板
-	content.get_theme_stylebox("panel").bg_color = get_color("primary_dark", PANEL_BG).darkened(0.5)
+	var top_panel: PanelContainer = delview.get_node_or_null("Content/PC")
+	if top_panel:
+		var sb := top_panel.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.bg_color = get_color("primary_dark")
 
 	GameLogger.instance.debug("DelView theme applied", "ThemeManager")
-
-## 删除按钮（CARD_BG 底，红色字）
-func style_delview_delete_button(btn: Button) -> void:
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = CARD_BG
-	normal.corner_radius_top_left = 6
-	normal.corner_radius_top_right = 6
-	normal.corner_radius_bottom_left = 6
-	normal.corner_radius_bottom_right = 6
-	normal.content_margin_left = 12
-	normal.content_margin_right = 12
-	btn.add_theme_stylebox_override("normal", normal)
-
-	var hover := normal.duplicate() as StyleBoxFlat
-	hover.bg_color = CARD_BG.lightened(0.15)
-	btn.add_theme_stylebox_override("hover", hover)
-
-	var pressed := normal.duplicate() as StyleBoxFlat
-	pressed.bg_color = CARD_BG.darkened(0.2)
-	btn.add_theme_stylebox_override("pressed", pressed)
-
-	btn.add_theme_font_size_override("font_size", get_font_size("body", 28))
-	btn.add_theme_color_override("font_color", DANGER_COLOR)
-	btn.add_theme_color_override("font_hover_color", Color.WHITE)
-	btn.add_theme_color_override("font_pressed_color", Color.WHITE)
-
-## 次要文本标签（文件体积、来源等提示信息）
-func style_delview_info_label(label: Label) -> void:
-	label.add_theme_font_size_override("font_size", get_font_size("small", 22))
-	label.add_theme_color_override("font_color", get_color("text_secondary"))
 
 # ============ 全局刷新 ============
 
@@ -749,6 +721,12 @@ func _refresh_theme_colors(thm: Theme) -> void:
 	if sb_ts is StyleBoxFlat: sb_ts.bg_color = pd
 	var sb_tp := thm.get_stylebox("panel", "TabContainer")
 	if sb_tp is StyleBoxFlat: sb_tp.bg_color = pd
+
+	# Tree
+	thm.set_font_size("font_size", "Tree", get_font_size("body", 32))
+	thm.set_constant("item_margin", "Tree", 48)
+	thm.set_constant("button_margin", "Tree", 10)
+	thm.set_constant("h_separation", "Tree", 6)
 
 # ============ 内部方法 ============
 

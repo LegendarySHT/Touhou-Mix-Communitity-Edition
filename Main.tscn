@@ -208,6 +208,36 @@ bg_color = Color(1, 1, 1, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 
+[sub_resource type="DPITexture" id="DPITexture_w3rk5"]
+_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect width=\"14\" height=\"14\" x=\"1\" y=\"1\" fill=\"#fff\" fill-opacity=\".75\" rx=\"2.333\"/><path fill=\"#1a1a1a\" d=\"m11.5 3.75-5.6 5.6-1.7-1.7-1.5 1.5 3.2 3.2 7.1-7.1z\"/></svg>
+"
+base_scale = 3.0
+
+[sub_resource type="DPITexture" id="DPITexture_5mvff"]
+_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect width=\"14\" height=\"14\" x=\"1\" y=\"1\" fill=\"#fff\" fill-opacity=\".37\" rx=\"2.333\"/><path fill=\"#1a1a1a\" fill-opacity=\".5\" d=\"m11.5 3.75-5.6 5.6-1.7-1.7-1.5 1.5 3.2 3.2 7.1-7.1z\"/></svg>
+"
+base_scale = 3.0
+
+[sub_resource type="DPITexture" id="DPITexture_oye8v"]
+_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect width=\"14\" height=\"14\" x=\"1\" y=\"1\" fill=\"#fff\" fill-opacity=\".75\" rx=\"2.333\"/><path fill=\"#1a1a1a\" d=\"m3 7h10v2h-10z\"/></svg>
+"
+base_scale = 3.0
+
+[sub_resource type="DPITexture" id="DPITexture_40n85"]
+_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect width=\"14\" height=\"14\" x=\"1\" y=\"1\" fill=\"#fff\" fill-opacity=\".37\" rx=\"2.333\"/><path fill=\"#1a1a1a\" fill-opacity=\".5\" d=\"m3 7h10v2h-10z\"/></svg>
+"
+base_scale = 3.0
+
+[sub_resource type="DPITexture" id="DPITexture_gb15f"]
+_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect width=\"14\" height=\"14\" x=\"1\" y=\"1\" fill=\"#1a1a1a\" fill-opacity=\".5\" rx=\"2.333\"/></svg>
+"
+base_scale = 3.0
+
+[sub_resource type="DPITexture" id="DPITexture_sph85"]
+_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect width=\"14\" height=\"14\" x=\"1\" y=\"1\" fill=\"#1a1a1a\" fill-opacity=\".25\" rx=\"2.333\"/></svg>
+"
+base_scale = 3.0
+
 [sub_resource type="Theme" id="Theme_5mvff"]
 Button/colors/font_color = Color(0.875, 0.875, 0.875, 1)
 Button/colors/font_disabled_color = Color(0.875, 0.875, 0.875, 0.5)
@@ -269,6 +299,12 @@ TabContainer/font_sizes/font_size = 16
 TabContainer/styles/panel = SubResource("StyleBoxFlat_tab_panel")
 TabContainer/styles/tab_selected = SubResource("StyleBoxFlat_tab_selected")
 TabContainer/styles/tab_unselected = SubResource("StyleBoxFlat_tab_unselected")
+Tree/icons/checked = SubResource("DPITexture_w3rk5")
+Tree/icons/checked_disabled = SubResource("DPITexture_5mvff")
+Tree/icons/indeterminate = SubResource("DPITexture_oye8v")
+Tree/icons/indeterminate_disabled = SubResource("DPITexture_40n85")
+Tree/icons/unchecked = SubResource("DPITexture_gb15f")
+Tree/icons/unchecked_disabled = SubResource("DPITexture_sph85")
 VScrollBar/styles/grabber = SubResource("StyleBoxFlat_grabber")
 VScrollBar/styles/grabber_highlight = SubResource("StyleBoxFlat_grabber_hl")
 VScrollBar/styles/scroll = SubResource("StyleBoxFlat_scroll")
