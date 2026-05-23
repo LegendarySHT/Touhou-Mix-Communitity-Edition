@@ -178,10 +178,10 @@ func setup_track(parent: Node, index: int, track_name: String, instruments: Arra
 func _on_mute_toggled(is_pressed: bool):
 	# 注意：MidiData的修改由TrackView._on_track_mute_toggled通过MidiPlaybackManager处理
 	# 这里仅负责UI状态更新
-	mute_btn.modulate = Color(1, 0.5, 0.5, 1) if is_pressed else Color(1, 1, 1, 1)
+	mute_btn.modulate = Color(ThemeManager.DANGER_COLOR.r, ThemeManager.DANGER_COLOR.g, ThemeManager.DANGER_COLOR.b, 0.6) if is_pressed else Color(1, 1, 1, 1)
 
 func _on_solo_toggled(is_pressed: bool):
-	solo_btn.modulate = Color(1, 1, 0.5, 1) if is_pressed else Color(1, 1, 1, 1)
+	solo_btn.modulate = Color(ThemeManager.WARNING_COLOR.r, ThemeManager.WARNING_COLOR.g, ThemeManager.WARNING_COLOR.b, 0.7) if is_pressed else Color(1, 1, 1, 1)
 
 func _on_enable_toggled(toggle_on: bool):
 	if midi_data:

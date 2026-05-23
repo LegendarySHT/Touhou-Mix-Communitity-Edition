@@ -7,26 +7,6 @@
 [ext_resource type="Texture2D" uid="uid://df7u4t3bhlafy" path="res://Resources/icon/TrackView/microphone.png" id="3_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://boaosvxm4ii76" path="res://Resources/icon/TrackView/reset.png" id="6_r0ui6"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kpleu"]
-bg_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ewgot"]
-bg_color = Color(0.9832937, 0.8700297, 0.68702245, 1)
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_width_bottom = 5
-
-[sub_resource type="Theme" id="Theme_7rc5s"]
-HSlider/styles/grabber_area = SubResource("StyleBoxFlat_kpleu")
-HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_ewgot")
-HSlider/styles/slider = null
-PopupMenu/font_sizes/font_size = 32
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_31lmn"]
 bg_color = Color(0.59, 0.59, 0.59, 0.54509807)
 corner_radius_top_left = 12
@@ -149,6 +129,41 @@ thickness = 4
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3ket"]
 draw_center = false
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kpleu"]
+bg_color = Color(0.13725491, 0.13725491, 0.13725491, 0.21568628)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ewgot"]
+bg_color = Color(0.13725491, 0.13725491, 0.13725491, 0.3019608)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j6yb4"]
+bg_color = Color(0.13725491, 0.13725491, 0.13725491, 0.3019608)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wvkbu"]
+bg_color = Color(0, 0, 0, 0.44705883)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 6
+
+[sub_resource type="Theme" id="Theme_wvkbu"]
+OptionButton/styles/hover = SubResource("StyleBoxFlat_kpleu")
+OptionButton/styles/normal = SubResource("StyleBoxFlat_ewgot")
+OptionButton/styles/pressed = SubResource("StyleBoxFlat_j6yb4")
+PopupMenu/styles/panel = SubResource("StyleBoxFlat_wvkbu")
+
 [node name="MidiTrack" type="Panel" unique_id=1103190500]
 custom_minimum_size = Vector2(1600, 220)
 anchors_preset = 15
@@ -159,7 +174,6 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 mouse_filter = 1
-theme = SubResource("Theme_7rc5s")
 theme_override_styles/panel = SubResource("StyleBoxFlat_31lmn")
 script = ExtResource("1_7rc5s")
 
@@ -406,6 +420,7 @@ offset_right = 5.0
 offset_bottom = 15.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = SubResource("Theme_wvkbu")
 theme_override_constants/h_separation = 40
 theme_override_constants/v_separation = 20
 columns = 3

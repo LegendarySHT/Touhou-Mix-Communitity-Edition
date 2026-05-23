@@ -52,7 +52,6 @@ func setup_with_midi(midi: MidiData, index: int, bg:ButtonGroup) -> void:
 
 	# 初始化按钮
 	button = get_node("Panel/Button")
-	button.text = midi.name	
 	button.button_group = bg
 
 	enable_selected_animation(button, get_parent().get_parent())

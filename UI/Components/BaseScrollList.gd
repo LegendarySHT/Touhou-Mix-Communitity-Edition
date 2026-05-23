@@ -90,6 +90,7 @@ func _ready() -> void:
 
 	get_v_scroll_bar().gui_input.connect(_on_v_scrollbar_gui_input)
 	get_v_scroll_bar().value_changed.connect(_on_v_scrollbar_changed)
+	get_v_scroll_bar().custom_minimum_size.x = 18
 
 func _stop_scroll():
 	scroll_velocity = 0.0

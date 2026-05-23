@@ -1,14 +1,13 @@
 extends HBoxContainer
 class_name DelView
 
-enum Tab { MIDI = 0, AUDIO = 1, SF2 = 2 }
+enum Tab {MIDI = 0, AUDIO = 1, SF2 = 2}
 
 @onready var sidebar: VBoxContainer = $SideBar
 @onready var content: PanelContainer = $Content
 @onready var tab_btn_0: Button = $SideBar/TabBtn0
 @onready var tab_btn_1: Button = $SideBar/TabBtn1
 @onready var tab_btn_2: Button = $SideBar/TabBtn2
-@onready var close_btn: Button = $SideBar/CloseBtn
 
 var _current_tab: Tab = Tab.MIDI
 var _tab_buttons: Array[Button] = []
@@ -16,31 +15,19 @@ var _midi_items: Array[Dictionary] = []
 var _audio_items: Array[Dictionary] = []
 var _sf2_items: Array[Dictionary] = []
 
-
 func _ready() -> void:
 	_init_sidebar()
 	_switch_tab(Tab.MIDI)
-
 
 func _init_sidebar() -> void:
 	_tab_buttons = [tab_btn_0, tab_btn_1, tab_btn_2]
 	for i in _tab_buttons.size():
 		_tab_buttons[i].pressed.connect(_on_tab_button_pressed.bind(i))
 
-	close_btn.pressed.connect(_on_close_pressed)
-
-
 func _on_tab_button_pressed(idx: int) -> void:
 	for i in _tab_buttons.size():
 		_tab_buttons[i].button_pressed = (i == idx)
-	for i in _tab_buttons.size():
-		ThemeManager.instance.style_delview_sidebar_tab(_tab_buttons[i], i == idx)
 	_switch_tab(idx as Tab)
-
-
-func _on_close_pressed() -> void:
-	EventBus.instance.page_right.emit(1)
-
 
 func _switch_tab(tab: Tab) -> void:
 	_current_tab = tab
@@ -88,7 +75,6 @@ func _build_midi_tab() -> void:
 
 	content.add_child(vbox)
 
-
 func _scan_midi_charts() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 
@@ -123,7 +109,6 @@ func _scan_midi_charts() -> Array[Dictionary]:
 	result.sort_custom(func(a, b): return a["display_name"] < b["display_name"])
 	return result
 
-
 func _parse_difficulty(dir_name: String) -> String:
 	if "_Easy" in dir_name or "_easy" in dir_name:
 		return "Easy"
@@ -133,19 +118,16 @@ func _parse_difficulty(dir_name: String) -> String:
 		return "Hard"
 	return "?"
 
-
 func _make_midi_row(item: Dictionary, idx: int) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 
 	var cb := CheckBox.new()
-	ThemeManager.instance.style_delview_body_size(cb)
 	cb.toggled.connect(func(on): _midi_items[idx]["selected"] = on)
 	row.add_child(cb)
 
 	var name_label := Label.new()
 	name_label.text = "%s  [%s]" % [item["display_name"], item["difficulty"]]
-	ThemeManager.instance.style_delview_body_size(name_label)
 	name_label.size_flags_horizontal = SIZE_EXPAND_FILL
 	row.add_child(name_label)
 
@@ -155,7 +137,6 @@ func _make_midi_row(item: Dictionary, idx: int) -> HBoxContainer:
 	row.add_child(info_label)
 
 	return row
-
 
 func _make_bottom_bar_midi() -> HBoxContainer:
 	var bar := HBoxContainer.new()
@@ -183,27 +164,22 @@ func _make_bottom_bar_midi() -> HBoxContainer:
 
 	return bar
 
-
 func _make_action_button(text: String, min_width: float, callback: Callable) -> Button:
 	var btn := Button.new()
 	btn.text = text
 	btn.custom_minimum_size = Vector2(min_width, 50)
 	btn.pressed.connect(callback)
-	ThemeManager.instance.style_delview_action_button(btn)
 	return btn
-
 
 func _on_midi_select_all() -> void:
 	for i in _midi_items.size():
 		_midi_items[i]["selected"] = true
 	_refresh_current_tab()
 
-
 func _on_midi_deselect_all() -> void:
 	for i in _midi_items.size():
 		_midi_items[i]["selected"] = false
 	_refresh_current_tab()
-
 
 func _on_midi_delete_selected() -> void:
 	var to_delete: Array[Dictionary] = []
@@ -221,7 +197,6 @@ func _on_midi_delete_selected() -> void:
 			push_error("[DelView] 删除失败: %s" % item["path"])
 
 	_refresh_current_tab()
-
 
 func _on_midi_reload_default() -> void:
 	var res_dir := "res://Resources/Charts/"
@@ -251,7 +226,6 @@ func _on_midi_reload_default() -> void:
 
 	print("[DelView] 已恢复 %d 首默认歌曲到 %s" % [copied, charts_dir])
 	_refresh_current_tab()
-
 
 # ============================================================
 # 音频管理
@@ -285,7 +259,6 @@ func _build_audio_tab() -> void:
 
 	content.add_child(vbox)
 
-
 func _scan_audio_files() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	var charts_dir := PathHelper.get_charts_dir()
@@ -316,19 +289,16 @@ func _scan_audio_files() -> Array[Dictionary]:
 	result.sort_custom(func(a, b): return a["file_name"] < b["file_name"])
 	return result
 
-
 func _make_audio_row(item: Dictionary, idx: int) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 
 	var cb := CheckBox.new()
-	ThemeManager.instance.style_delview_body_size(cb)
 	cb.toggled.connect(func(on): _audio_items[idx]["selected"] = on)
 	row.add_child(cb)
 
 	var name_label := Label.new()
 	name_label.text = item["file_name"]
-	ThemeManager.instance.style_delview_body_size(name_label)
 	name_label.size_flags_horizontal = SIZE_EXPAND_FILL
 	row.add_child(name_label)
 
@@ -338,7 +308,6 @@ func _make_audio_row(item: Dictionary, idx: int) -> HBoxContainer:
 	row.add_child(info_label)
 
 	return row
-
 
 func _make_bottom_bar_audio() -> HBoxContainer:
 	var bar := HBoxContainer.new()
@@ -363,18 +332,15 @@ func _make_bottom_bar_audio() -> HBoxContainer:
 
 	return bar
 
-
 func _on_audio_select_all() -> void:
 	for i in _audio_items.size():
 		_audio_items[i]["selected"] = true
 	_refresh_current_tab()
 
-
 func _on_audio_deselect_all() -> void:
 	for i in _audio_items.size():
 		_audio_items[i]["selected"] = false
 	_refresh_current_tab()
-
 
 func _on_audio_delete_selected() -> void:
 	var to_delete: Array[Dictionary] = []
@@ -392,7 +358,6 @@ func _on_audio_delete_selected() -> void:
 			push_error("[DelView] 删除失败: %s (错误码 %d)" % [item["path"], err])
 
 	_refresh_current_tab()
-
 
 # ============================================================
 # SF2 管理
@@ -427,7 +392,6 @@ func _build_sf2_tab() -> void:
 
 	vbox.add_child(scroll)
 	content.add_child(vbox)
-
 
 func _scan_sf2_files() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -485,7 +449,6 @@ func _scan_sf2_files() -> Array[Dictionary]:
 	)
 	return result
 
-
 func _make_sf2_row(item: Dictionary, idx: int) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
@@ -494,7 +457,6 @@ func _make_sf2_row(item: Dictionary, idx: int) -> HBoxContainer:
 	name_label.text = item["file_name"]
 	if item["is_builtin"]:
 		name_label.text += " [内置]"
-	ThemeManager.instance.style_delview_body_size(name_label)
 	name_label.size_flags_horizontal = SIZE_EXPAND_FILL
 	row.add_child(name_label)
 
@@ -513,7 +475,6 @@ func _make_sf2_row(item: Dictionary, idx: int) -> HBoxContainer:
 
 	return row
 
-
 func _on_sf2_delete(idx: int) -> void:
 	var item := _sf2_items[idx]
 	var err := DirAccess.remove_absolute(item["path"])
@@ -522,7 +483,6 @@ func _on_sf2_delete(idx: int) -> void:
 	else:
 		push_error("[DelView] 删除失败: %s" % item["path"])
 	_refresh_current_tab()
-
 
 # ============================================================
 # 通用工具
@@ -546,7 +506,7 @@ func _make_top_bar(title: String, subtitle: String) -> HBoxContainer:
 
 	var title_label := Label.new()
 	title_label.text = title
-	ThemeManager.instance.style_delview_large_size(title_label)
+	title_label.add_theme_font_size_override("font_size", 40)
 	top.add_child(title_label)
 
 	var info_label := Label.new()
@@ -556,7 +516,6 @@ func _make_top_bar(title: String, subtitle: String) -> HBoxContainer:
 	top.add_child(info_label)
 
 	return top
-
 
 func _find_file_in_dir(dir_path: String, pattern: String) -> String:
 	var d := DirAccess.open(dir_path)
@@ -573,7 +532,6 @@ func _find_file_in_dir(dir_path: String, pattern: String) -> String:
 	d.list_dir_end()
 	return ""
 
-
 func _find_files_in_dir(dir_path: String, pattern: String) -> PackedStringArray:
 	var result: PackedStringArray = []
 	var d := DirAccess.open(dir_path)
@@ -588,7 +546,6 @@ func _find_files_in_dir(dir_path: String, pattern: String) -> PackedStringArray:
 		fn = d.get_next()
 	d.list_dir_end()
 	return result
-
 
 func _remove_dir_recursive(dir_path: String) -> bool:
 	var d := DirAccess.open(dir_path)
@@ -608,7 +565,6 @@ func _remove_dir_recursive(dir_path: String) -> bool:
 		fn = d.get_next()
 	d.list_dir_end()
 	return DirAccess.remove_absolute(dir_path) == OK
-
 
 func _copy_dir_recursive(src_dir: String, dst_dir: String) -> bool:
 	PathHelper.ensure_dir_exists(dst_dir)

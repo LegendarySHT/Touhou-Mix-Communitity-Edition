@@ -576,7 +576,6 @@ func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 	if not note.rect:
 		return
 
-	var box := note._cached_vbox as Control
 	var head := note._cached_head as Control
 	var tail := note._cached_tail as Control
 	var body := note._cached_body as Control

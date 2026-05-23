@@ -4,9 +4,15 @@
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_jdrqc"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_jdrqc"]
 
-[sub_resource type="Theme" id="Theme_yxlt8"]
-
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yxlt8"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yxlt8"]
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_blend = true
 
 [node name="MidiNode" type="Panel" unique_id=1462937211]
 clip_contents = true
@@ -22,7 +28,6 @@ grow_vertical = 2
 pivot_offset = Vector2(0, 75)
 size_flags_vertical = 0
 mouse_filter = 1
-theme = SubResource("Theme_yxlt8")
 theme_override_styles/panel = SubResource("StyleBoxEmpty_yxlt8")
 script = ExtResource("1_t5w3i")
 metadata/index = 0
@@ -112,6 +117,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
+theme_override_styles/focus = SubResource("StyleBoxFlat_yxlt8")
 toggle_mode = true
 flat = true
 metadata/index = 0

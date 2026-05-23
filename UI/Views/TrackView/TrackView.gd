@@ -371,7 +371,8 @@ func _on_volume_btn_toggled(toggle_on: bool, btn: TextureButton) -> void:
 	elif btn == vocal_vol_btn:
 		vocal_vol_slider.editable = not toggle_on
 
-	btn.modulate = Color(1, 0.5, 0.5, 1) if toggle_on else Color(1, 1, 1, 1)
+	var mute_clr := ThemeManager.DANGER_COLOR
+	btn.modulate = Color(mute_clr.r, mute_clr.g, mute_clr.b, 0.6) if toggle_on else Color(1, 1, 1, 1)
 
 # MIDI音量改变回调
 func _on_midi_volume_changed(value: float) -> void:
@@ -1260,7 +1261,7 @@ func _restore_midi_ui_config() -> void:
 				track_item.mute_btn.set_block_signals(true)
 				track_item.mute_btn.button_pressed = is_muted
 				track_item.mute_btn.set_block_signals(false)
-				track_item.mute_btn.modulate = Color(1, 0.5, 0.5, 1) if is_muted else Color(1, 1, 1, 1)
+				track_item.mute_btn.modulate = Color(ThemeManager.DANGER_COLOR.r, ThemeManager.DANGER_COLOR.g, ThemeManager.DANGER_COLOR.b, 0.6) if is_muted else Color(1, 1, 1, 1)
 			
 			# 更新独奏按钮状态
 			var is_soloed = solo_pairs.has("%d:%d" % [track_idx, channel])
@@ -1268,7 +1269,7 @@ func _restore_midi_ui_config() -> void:
 				track_item.solo_btn.set_block_signals(true)
 				track_item.solo_btn.button_pressed = is_soloed
 				track_item.solo_btn.set_block_signals(false)
-				track_item.solo_btn.modulate = Color(1, 1, 0.5, 1) if is_soloed else Color(1, 1, 1, 1)
+				track_item.solo_btn.modulate = Color(ThemeManager.WARNING_COLOR.r, ThemeManager.WARNING_COLOR.g, ThemeManager.WARNING_COLOR.b, 0.7) if is_soloed else Color(1, 1, 1, 1)
 			
 			# 更新音量滑块和标签
 			if track_item.volume_slider:

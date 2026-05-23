@@ -1,247 +1,55 @@
 [gd_scene format=3 uid="uid://c2kvbawgs74cy"]
 
 [ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingView/SettingView.gd" id="1_4walt"]
-[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="1_ys6ou"]
 [ext_resource type="Script" uid="uid://cgxt234w25s7r" path="res://UI/Views/SettingView/SettingList.gd" id="2_3x48f"]
 [ext_resource type="Script" uid="uid://dt5lx4f8bkgl0" path="res://UI/Views/SettingView/DelView.gd" id="3_delview"]
 
+[sub_resource type="ButtonGroup" id="ButtonGroup_tf36t"]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fcfq2"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.1, 0.1, 0.1, 0.3)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_bottom_left = 16
+expand_margin_right = 6.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s6epo"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-draw_center = false
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_bottom_left = 16
+expand_margin_right = 6.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s2knr"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.20130768, 0.31950632, 0.6217632, 0.8392157)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_bottom_left = 16
+expand_margin_right = 6.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2qp01"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.3205259, 0.46004725, 0.80010235, 0.8392157)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_bottom_left = 16
+expand_margin_right = 6.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_d4kk1"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.19032225, 0.3085766, 0.606311, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_bottom_left = 16
+expand_margin_right = 6.0
 
 [sub_resource type="Theme" id="Theme_07r5k"]
-Button/colors/font_color = Color(0.875, 0.875, 0.875, 1)
-Button/colors/font_disabled_color = Color(0.875, 0.875, 0.875, 0.5)
-Button/colors/font_focus_color = Color(0.95, 0.95, 0.95, 1)
-Button/colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
-Button/colors/font_hover_pressed_color = Color(1, 1, 1, 1)
-Button/colors/font_outline_color = Color(0, 0, 0, 1)
-Button/colors/font_pressed_color = Color(1, 1, 1, 1)
-Button/colors/icon_disabled_color = Color(1, 1, 1, 0.4)
-Button/colors/icon_focus_color = Color(1, 1, 1, 1)
-Button/colors/icon_hover_color = Color(1, 1, 1, 1)
-Button/colors/icon_hover_pressed_color = Color(1, 1, 1, 1)
-Button/colors/icon_normal_color = Color(1, 1, 1, 1)
-Button/colors/icon_pressed_color = Color(1, 1, 1, 1)
-Button/constants/align_to_largest_stylebox = 0
-Button/constants/h_separation = 4
-Button/constants/icon_max_width = 0
-Button/constants/outline_size = 0
-Button/font_sizes/font_size = 16
-Button/fonts/font = ExtResource("1_ys6ou")
 Button/styles/disabled = SubResource("StyleBoxFlat_fcfq2")
 Button/styles/focus = SubResource("StyleBoxFlat_s6epo")
 Button/styles/hover = SubResource("StyleBoxFlat_s2knr")
 Button/styles/normal = SubResource("StyleBoxFlat_2qp01")
 Button/styles/pressed = SubResource("StyleBoxFlat_d4kk1")
 
-[sub_resource type="ButtonGroup" id="ButtonGroup_tf36t"]
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ys6ou"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.1, 0.1, 0.1, 0.3)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_07r5k"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(1, 1, 1, 0.75)
-draw_center = false
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
-border_blend = true
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
-expand_margin_left = 2.0
-expand_margin_top = 2.0
-expand_margin_right = 2.0
-expand_margin_bottom = 2.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7ape6"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.18479998, 0.5092267, 0.88, 0.3882353)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3c2ja"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.18479998, 0.5092267, 0.88, 0.8901961)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ow8mw"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.0566203, 0.25306588, 0.4609906, 0.92156863)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0ogo3"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.1512, 0.17471999, 0.21, 0.6784314)
-border_width_bottom = 3
-border_color = Color(0.9691369, 0.9691369, 0.9691368, 0.6)
-border_blend = true
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l717p"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.1, 0.1, 0.1, 0.3)
-border_width_bottom = 2
-border_color = Color(0, 0, 0, 0.3)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dy1ft"]
-bg_color = Color(0, 0.30751842, 0.6604121, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nilp6"]
-content_margin_left = 20.0
-content_margin_top = 15.0
-content_margin_right = 20.0
-content_margin_bottom = 15.0
-bg_color = Color(0.119, 0.13939999, 0.17, 0.69803923)
-corner_radius_top_left = 12
+content_margin_left = 24.0
+content_margin_top = 16.0
+content_margin_right = 24.0
+content_margin_bottom = 16.0
 corner_radius_top_right = 12
 corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-
-[sub_resource type="Theme" id="Theme_ys6ou"]
-Button/colors/font_color = Color(0.875, 0.875, 0.875, 1)
-Button/colors/font_disabled_color = Color(0.875, 0.875, 0.875, 0.5)
-Button/colors/font_focus_color = Color(0.95, 0.95, 0.95, 1)
-Button/colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
-Button/colors/font_hover_pressed_color = Color(1, 1, 1, 1)
-Button/colors/font_outline_color = Color(0, 0, 0, 1)
-Button/colors/font_pressed_color = Color(1, 1, 1, 1)
-Button/colors/icon_disabled_color = Color(1, 1, 1, 0.4)
-Button/colors/icon_focus_color = Color(1, 1, 1, 1)
-Button/colors/icon_hover_color = Color(1, 1, 1, 1)
-Button/colors/icon_hover_pressed_color = Color(1, 1, 1, 1)
-Button/colors/icon_normal_color = Color(1, 1, 1, 1)
-Button/colors/icon_pressed_color = Color(1, 1, 1, 1)
-Button/constants/align_to_largest_stylebox = 0
-Button/constants/h_separation = 4
-Button/constants/icon_max_width = 0
-Button/constants/outline_size = 0
-Button/font_sizes/font_size = 32
-Button/fonts/font = ExtResource("1_ys6ou")
-Button/styles/disabled = SubResource("StyleBoxFlat_ys6ou")
-Button/styles/focus = SubResource("StyleBoxFlat_07r5k")
-Button/styles/hover = SubResource("StyleBoxFlat_7ape6")
-Button/styles/normal = SubResource("StyleBoxFlat_3c2ja")
-Button/styles/pressed = SubResource("StyleBoxFlat_ow8mw")
-ColorPicker/constants/sv_height = 400
-ColorPicker/constants/sv_width = 400
-LineEdit/font_sizes/font_size = 32
-LineEdit/styles/focus = SubResource("StyleBoxFlat_07r5k")
-LineEdit/styles/normal = SubResource("StyleBoxFlat_0ogo3")
-LineEdit/styles/read_only = SubResource("StyleBoxFlat_l717p")
-OptionButton/font_sizes/font_size = 32
-PopupMenu/constants/item_end_padding = 10
-PopupMenu/constants/item_start_padding = 10
-PopupMenu/font_sizes/font_size = 48
-PopupMenu/styles/hover = SubResource("StyleBoxFlat_dy1ft")
-PopupMenu/styles/panel = SubResource("StyleBoxFlat_nilp6")
 
 [node name="SettingView" type="Control" unique_id=151413608]
 layout_mode = 3
@@ -266,7 +74,6 @@ z_index = 2
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 focus_mode = 1
-theme = SubResource("Theme_07r5k")
 alignment = 1
 
 [node name="Btn1" type="Button" parent="HBoxC/ShortCut" unique_id=156541801]
@@ -274,7 +81,6 @@ custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
 focus_previous = NodePath("../Btn6")
-theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "常规"
@@ -283,7 +89,6 @@ text = "常规"
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
-theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "播放"
@@ -292,7 +97,6 @@ text = "播放"
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
-theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "轨道"
@@ -301,7 +105,6 @@ text = "轨道"
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
-theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "判定"
@@ -310,7 +113,6 @@ text = "判定"
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
-theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "生成"
@@ -320,7 +122,6 @@ custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_neighbor_right = NodePath("../../SettingList/GridC")
 focus_next = NodePath("../Btn1")
-theme_override_font_sizes/font_size = 48
 toggle_mode = true
 button_group = SubResource("ButtonGroup_tf36t")
 text = "外观"
@@ -332,7 +133,6 @@ custom_minimum_size = Vector2(1300, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 0
-theme = SubResource("Theme_ys6ou")
 follow_focus = true
 horizontal_scroll_mode = 0
 script = ExtResource("2_3x48f")
@@ -347,7 +147,6 @@ theme_override_constants/v_separation = 20
 columns = 2
 
 [node name="DelView" type="HBoxContainer" parent="." unique_id=2038911108]
-visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -361,36 +160,33 @@ script = ExtResource("3_delview")
 [node name="SideBar" type="VBoxContainer" parent="DelView" unique_id=-1190680135]
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
+theme = SubResource("Theme_07r5k")
 
-[node name="TabBtn0" type="Button" parent="DelView/SideBar"]
+[node name="TabBtn0" type="Button" parent="DelView/SideBar" unique_id=1370265103]
+custom_minimum_size = Vector2(260, 80)
 layout_mode = 2
-text = "MIDI 管理"
 toggle_mode = true
 button_pressed = true
-custom_minimum_size = Vector2(260, 80)
+text = "MIDI 管理"
 
-[node name="TabBtn1" type="Button" parent="DelView/SideBar"]
+[node name="TabBtn1" type="Button" parent="DelView/SideBar" unique_id=1954873307]
+custom_minimum_size = Vector2(260, 80)
 layout_mode = 2
+toggle_mode = true
 text = "音频管理"
-toggle_mode = true
-custom_minimum_size = Vector2(260, 80)
 
-[node name="TabBtn2" type="Button" parent="DelView/SideBar"]
+[node name="TabBtn2" type="Button" parent="DelView/SideBar" unique_id=1090196020]
+custom_minimum_size = Vector2(260, 80)
 layout_mode = 2
-text = "SF2 管理"
 toggle_mode = true
-custom_minimum_size = Vector2(260, 80)
+text = "SF2 管理"
 
-[node name="SideSpacer" type="Control" parent="DelView/SideBar"]
+[node name="SideSpacer" type="Control" parent="DelView/SideBar" unique_id=1702271966]
 layout_mode = 2
 size_flags_vertical = 3
-
-[node name="CloseBtn" type="Button" parent="DelView/SideBar"]
-layout_mode = 2
-text = "返回设置"
-custom_minimum_size = Vector2(260, 70)
 
 [node name="Content" type="PanelContainer" parent="DelView" unique_id=-1190680134]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_ys6ou")
