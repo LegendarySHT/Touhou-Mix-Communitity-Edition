@@ -373,17 +373,23 @@ func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStat
 	_current_transition_version = UiStatMGR.instance.transition_version
 	_kill_scene_transition_tweens()
 
-	# 修复 ui_exist：确保 old_state 组件都标记为存在
+	# 修复 ui_exist 并重置位置（包括被杀死补间破坏的子节点）
 	for key in ui_part.get(old_state, []):
+		var comp := get_comp(key)
 		if not ui_exist.get(key, false):
 			ui_exist[key] = true
-			var comp := get_comp(key)
 			if is_instance_valid(comp):
 				comp.visible = true
 				if comp is CanvasItem:
 					comp.modulate.a = 1.0
-			if _base_positions.has(key):
-				comp.position = _base_positions[key]
+		# 无条件重置位置（即使 ui_exist 已为 true），防止补间被杀后位置损坏
+		if is_instance_valid(comp) and _base_positions.has(key):
+			comp.position = _base_positions[key]
+		# 同时重置 Chara 子节点
+		if key == "Player_Info" and is_instance_valid(comp):
+			var chara := comp.get_node_or_null("Chara")
+			if chara and _base_positions.has("Player_Info/Chara"):
+				chara.position = _base_positions["Player_Info/Chara"]
 
 	for key in ui_exist.keys():
 		if ui_exist[key] and (key in ui_part[old_state]) and (key not in ui_part[new_state]):
@@ -393,6 +399,17 @@ func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStat
 func _scene_transition_enter(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	if UiStatMGR.instance.transition_version != _current_transition_version:
 		return
+	# 共享组件：在两个状态中都存在，无入场动画，但需确保位置正确
+	for key in ui_exist.keys():
+		if ui_exist[key] and key in ui_part.get(new_state, []):
+			var comp := get_comp(key)
+			if is_instance_valid(comp) and _base_positions.has(key):
+				comp.position = _base_positions[key]
+			if key == "Player_Info" and is_instance_valid(comp):
+				var chara := comp.get_node_or_null("Chara")
+				if chara and _base_positions.has("Player_Info/Chara"):
+					chara.position = _base_positions["Player_Info/Chara"]
+	# 新组件：播放入场动画
 	for key in ui_exist.keys():
 		if not ui_exist[key] and key in ui_part.get(new_state, []):
 			animate_ui_in(key, old_state)
