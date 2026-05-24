@@ -30,6 +30,41 @@ static func _get_str(dict: Dictionary, key: String, fallback: String) -> String:
 	return fallback
 
 
+## 从 author 字段提取名称字符串（兼容 String / Dictionary / Array 三种格式）
+static func _extract_author_name(author_val) -> String:
+	if author_val is String:
+		var s := author_val as String
+		if not s.is_empty() and s != "Anonymous":
+			return s
+		return ""
+
+	if author_val is Dictionary:
+		var name_val = author_val.get("name", "")
+		if name_val is String:
+			var ns := name_val as String
+			if not ns.is_empty() and ns != "Anonymous":
+				return ns
+		return ""
+
+	if author_val is Array:
+		var result := ""
+		for item in (author_val as Array):
+			var name_str := ""
+			if item is Dictionary:
+				var nv = item.get("name", "")
+				if nv is String:
+					name_str = nv as String
+			elif item is String:
+				name_str = item as String
+			if not name_str.is_empty() and name_str != "Anonymous":
+				if not result.is_empty():
+					result += ", "
+				result += name_str
+		return result
+
+	return ""
+
+
 ## 对已解析的 chart JSON 字典执行就地规范化
 ## 返回 true 表示有修改（调用方可决定是否写回磁盘）
 static func normalize_chart_json(data: Dictionary) -> bool:
@@ -83,13 +118,11 @@ static func normalize_chart_json(data: Dictionary) -> bool:
 		changed = true
 
 	# ── author ──
-	# 优先 sourceArtistName → author.name（排除 "Anonymous"）→ 空
+	# 优先 sourceArtistName → author（兼容 String/Dict/Array）→ 空
 	var new_author := _safe_str(data.get("sourceArtistName", ""), "")
 	if new_author.is_empty():
-		if data.has("author") and data["author"] is Dictionary:
-			var aname := _get_str(data["author"] as Dictionary, "name", "")
-			if not aname.is_empty() and aname != "Anonymous":
-				new_author = aname
+		if data.has("author"):
+			new_author = _extract_author_name(data["author"])
 
 	if not data.has("author") or not data["author"] is String or data["author"] != new_author:
 		data["author"] = new_author

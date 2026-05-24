@@ -874,10 +874,9 @@ func _init_display():
 	_apply_play_background()
 
 	ani.animate_fade_in(center_bg, 0.2, "_show_bg")
-
 	album.text = current_midi.artist_name
 	song.text = current_midi.song_data.name
-	artist.text = current_midi.author_name
+	artist.text = current_midi.author_name if current_midi.author_name else "Unknow"
 	var s := int(current_midi.duration_ms / 1000.0)
 	@warning_ignore("integer_division")
 	midi_duration.text = "%02d:%02d" % [s / 60, s % 60]
