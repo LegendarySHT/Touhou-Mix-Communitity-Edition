@@ -72,13 +72,15 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 		current_midis = se.get_midis()
 	
 	_is_loading = true
+	var counter = 0
 	for midi in current_midis:
 		if not _is_loading:
 			_load_abort.emit()
 			break
 		
 		var node = create_and_add_item(midi.id, "midi")
-		node.setup_with_midi(midi, 0, item_bg)
+		node.setup_with_midi(midi, counter, item_bg)
+		counter += 1
 		
 		await get_tree().process_frame
 	

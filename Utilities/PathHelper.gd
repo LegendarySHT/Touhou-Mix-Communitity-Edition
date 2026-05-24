@@ -35,10 +35,13 @@ static func get_base_dir() -> String:
 		return "user://"
 
 ## 获取 files 子目录（所有用户数据的根）
-## Android: /storage/emulated/0/Android/data/com.touhoumix.ce/files/files/
+## Android: /storage/emulated/0/Android/data/com.touhoumix.ce/files/
 ## 其他平台: user://files/
 static func get_files_dir() -> String:
-	return get_base_dir().path_join("files") + "/"
+	if is_android():
+		return get_base_dir()
+	else:
+		return get_base_dir().path_join("files") + "/"
 
 # ============ 各资源目录 ============
 

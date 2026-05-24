@@ -15,7 +15,7 @@ const IMPORT_DIR_NAME := "THMIX_Import"
 ## 检查并转换外部游戏数据
 ## 返回转换的谱面数量，0 表示无需转换
 static func check_and_convert() -> int:
-	var files_dir := _get_files_dir()
+	var files_dir := PathHelper.get_files_dir()
 	if files_dir.is_empty():
 		return 0
 
@@ -50,7 +50,7 @@ static func check_and_convert() -> int:
 	if json_entries.is_empty():
 		return 0
 
-	var charts_dir := _get_charts_dir()
+	var charts_dir := PathHelper.get_charts_dir()
 	var converted := 0
 
 	for entry in json_entries:
@@ -96,7 +96,7 @@ static func check_and_convert() -> int:
 				DirAccess.copy_absolute(cover_src, chart_dir.path_join(cover_filename))
 
 		# 复制音频文件
-		for ext in [".ogg", ".mp3"]:
+		for ext in [".ogg", ".mp3", ".wav", ".flac"]:
 			var audio_src := import_dir.path_join(hash_val + ext)
 			if FileAccess.file_exists(audio_src):
 				DirAccess.copy_absolute(audio_src, chart_dir.path_join(hash_val + ext))
@@ -168,14 +168,3 @@ static func _sanitize_filename(nm: String) -> String:
 	while result.find("  ") >= 0:
 		result = result.replace("  ", " ")
 	return result
-
-
-static func _get_files_dir() -> String:
-	if PathHelper.is_android():
-		return "/storage/emulated/0/Android/data/%s/files/" % PathHelper.PACKAGE_NAME
-	else:
-		return "user://files"
-
-
-static func _get_charts_dir() -> String:
-	return _get_files_dir().path_join("Charts") + "/"

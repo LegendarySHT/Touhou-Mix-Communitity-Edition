@@ -65,7 +65,7 @@ func _ready() -> void:
 		file_dialog = FileDialog.new()
 		file_dialog.name = "VocalFileDialog"
 		add_child(file_dialog)
-		file_dialog.filters = PackedStringArray(["*.mp3 ; MP3 Audio", "*.wav ; WAV Audio", "*.ogg ; OGG Audio", "*.flac ; FLAC Audio"])
+		file_dialog.filters = PackedStringArray(["Audio Files (*.mp3,*.wav,*.ogg,*.flac) ; *.mp3,*.wav,*.ogg,*.flac", "All Files ; *"])
 		file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 		file_dialog.access = FileDialog.ACCESS_FILESYSTEM
 		file_dialog.use_native_dialog = true
@@ -446,7 +446,7 @@ func _on_vocal_import_btn_pressed() -> void:
 	file_dialog.current_dir = chart_folder
 	file_dialog.current_file = ""
 	file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	file_dialog.filters = PackedStringArray(["Audio Files (*.mp3, *.wav, *.flac, *.ogg)", "*.mp3;*.wav;*.flac;*.ogg"])
+	file_dialog.filters = PackedStringArray(["Audio Files (*.mp3,*.wav,*.ogg,*.flac) ; *.mp3,*.wav,*.ogg,*.flac", "All Files ; *"])
 	
 	# 显示对话框（对于原生对话框，直接调用popup_centered_clamped）
 	file_dialog.popup_centered_clamped(Vector2(1024, 768), 0.7)
@@ -454,17 +454,34 @@ func _on_vocal_import_btn_pressed() -> void:
 	GameLogger.instance.info("Opening vocal import dialog at: %s" % chart_folder, "TrackView")
 
 ## 处理文件选择完成
+
+## 检查文件名扩展名是否为有效音频格式
+## 根据文件头部 magic bytes 检测音频格式，返回扩展名
+func _detect_audio_format(buffer: PackedByteArray) -> String:
+	# OGG: "OggS"
+	if buffer.size() >= 4 and buffer[0] == 0x4F and buffer[1] == 0x67 and buffer[2] == 0x67 and buffer[3] == 0x53:
+		return "ogg"
+	# WAV: "RIFF"
+	if buffer.size() >= 4 and buffer[0] == 0x52 and buffer[1] == 0x49 and buffer[2] == 0x46 and buffer[3] == 0x46:
+		return "wav"
+	# FLAC: "fLaC"
+	if buffer.size() >= 4 and buffer[0] == 0x66 and buffer[1] == 0x4C and buffer[2] == 0x61 and buffer[3] == 0x43:
+		return "flac"
+	# MP3: 0xFF 0xFB or 0xFF 0xFA or 0xFF 0xF3 or ID3 tag
+	if buffer.size() >= 3:
+		if (buffer[0] == 0xFF and (buffer[1] & 0xE0) == 0xE0):
+			return "mp3"
+		# ID3v2 tag: "ID3"
+		if buffer[0] == 0x49 and buffer[1] == 0x44 and buffer[2] == 0x33:
+			return "mp3"
+	return ""
+
 func _on_vocal_file_selected(file_path: String) -> void:
 	if file_path.is_empty():
 		return
 	
 	var selected_file = file_path
-	
-	# 验证文件有效性
-	if not FileSystemManager.instance.is_valid_audio_file(selected_file):
-		push_warning("[TrackView] Invalid audio file: %s" % selected_file)
-		GameLogger.instance.warning("Selected file is not a valid audio file: %s" % selected_file, "TrackView")
-		return
+	var is_content_uri := selected_file.begins_with("content://")
 	
 	if not current_midi_data:
 		push_warning("[TrackView] No MIDI data loaded, cannot import vocal file")
@@ -488,24 +505,47 @@ func _on_vocal_file_selected(file_path: String) -> void:
 			GameLogger.instance.error("Failed to create chart folder: %s" % chart_folder, "TrackView")
 			return
 	
-	# 获取源文件名并构建目标路径
-	var source_file_name = selected_file.get_file()
+	# 读取源文件
+	var src_file = FileAccess.open(selected_file, FileAccess.READ)
+	if src_file == null:
+		push_error("[TrackView] Failed to open file: %s" % selected_file)
+		GameLogger.instance.error("Failed to open audio file: %s" % selected_file, "TrackView")
+		return
+	
+	var file_size = src_file.get_length()
+	if file_size < 1024:
+		push_error("[TrackView] Audio file too small: %d bytes" % file_size)
+		src_file.close()
+		return
+	
+	var buffer = src_file.get_buffer(file_size)
+	src_file.close()
+	
+	# 确定目标文件名
+	var source_file_name: String
+	if not is_content_uri:
+		source_file_name = selected_file.get_file()
+	else:
+		# Android SAF 无法直接拿到文件名，用 magic bytes 检测格式
+		var ext := _detect_audio_format(buffer)
+		if ext.is_empty():
+			push_warning("[TrackView] Cannot detect audio format from content: %s" % selected_file)
+			GameLogger.instance.warning("Cannot detect audio format from content URI", "TrackView")
+			return
+		source_file_name = chart_id + "_vocal." + ext
+	
 	var destination_path = chart_folder.path_join(source_file_name)
 	
-	# 复制文件到目标文件夹
-	var copy_error = DirAccess.copy_absolute(selected_file, destination_path)
-	if copy_error != OK:
-		push_error("[TrackView] Failed to copy audio file from %s to %s (error code: %d)" % [selected_file, destination_path, copy_error])
-		GameLogger.instance.error("Failed to copy audio file: %s" % destination_path, "TrackView")
+	# 写入本地文件
+	var dst_file = FileAccess.open(destination_path, FileAccess.WRITE)
+	if dst_file == null:
+		push_error("[TrackView] Failed to create destination file: %s" % destination_path)
 		return
 	
-	# 验证复制成功
-	if not FileAccess.file_exists(destination_path):
-		push_error("[TrackView] File was copied but verification failed: %s" % destination_path)
-		GameLogger.instance.error("File copy verification failed: %s" % destination_path, "TrackView")
-		return
+	dst_file.store_buffer(buffer)
+	dst_file.close()
 	
-	# 保存新的路径到 MidiData 和本地变量
+	# 保存路径到 MidiData
 	vocal_file_path = destination_path
 	if current_midi_data:
 		current_midi_data.vocal_file_path = destination_path
@@ -517,17 +557,20 @@ func _on_vocal_file_selected(file_path: String) -> void:
 	if midi_playback_manager and midi_playback_manager.is_playing:
 		midi_playback_manager.start_vocal_playback()
 	
-	GameLogger.instance.info("Vocal file imported and copied successfully: %s -> %s" % [selected_file, destination_path], "TrackView")
-	print("[TrackView] Vocal file copied to: %s" % destination_path)
+	GameLogger.instance.info("Vocal file imported successfully: %s -> %s" % [selected_file, destination_path], "TrackView")
+	print("[TrackView] Vocal file imported to: %s" % destination_path)
 
 ## 人声启用/禁用按钮回调
 func _on_vocal_enable_btn_toggled(toggle_on: bool) -> void:
 	vocal_enable_btn.text = "人声已启用" if not toggle_on else "人声已关闭"
 	
 	if current_midi_data:
-		# toggle_on=true 表示按钮被按下（关闭状态），toggle_on=false 表示未按下（启用状态）
-		var is_enabled = not toggle_on
-		print("[TrackView] Vocal %s" % ("enabled" if is_enabled else "disabled"))
+		current_midi_data.vocal_enabled = not toggle_on
+		if midi_playback_manager and midi_playback_manager.is_playing:
+			if current_midi_data.vocal_enabled:
+				midi_playback_manager.start_vocal_playback()
+			else:
+				midi_playback_manager.stop_vocal_playback()
 
 ## 检测并定位人声文件
 ## 优先级：1. MidiData.vocal_file_path（已保存的路径）
@@ -886,8 +929,8 @@ func _init_vocal_btn_display() -> void:
 	if enable and current_midi_data:
 		vocal_vol_slider.value = current_midi_data.vocal_volume
 		_set_display_vocal_volume(current_midi_data.vocal_volume)
-		vocal_enable_btn.button_pressed = false  # 默认启用状态
-		vocal_enable_btn.text = "人声已启用"
+		vocal_enable_btn.button_pressed = not current_midi_data.vocal_enabled
+		vocal_enable_btn.text = "人声已启用" if current_midi_data.vocal_enabled else "人声已关闭"
 
 # 更新MIDI音量标签
 func _set_display_midi_volume(value: float) -> void:

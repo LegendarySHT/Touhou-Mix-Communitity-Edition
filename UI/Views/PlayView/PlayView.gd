@@ -787,6 +787,9 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 				if playback_mgr.has_method("set_track_channel_program"):
 					playback_mgr.set_track_channel_program(track_index, channel, bank, program)
 	
+	# 应用人声偏移量
+	playback_mgr.set_vocal_offset_ms(midi_data.vocal_offset_ms)
+	
 	GameLogger.instance.info("MIDI runtime config applied: volume=%d, mute_states=%d, solo_pairs=%d" % 
 		[midi_data.midi_volume, midi_data.track_channel_mute_state.size(), midi_data.solo_pairs.size()], "PlayView")
 

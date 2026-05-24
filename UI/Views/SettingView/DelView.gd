@@ -969,8 +969,8 @@ func _apply_list_filter(list_container: VBoxContainer, items: Array, name_key: S
 	for i in items.size():
 		if i >= rows.size():
 			break
-		var name: String = items[i].get(name_key, "")
-		var matches := query_lower in name.to_lower()
+		var _name: String = items[i].get(name_key, "")
+		var matches := query_lower in _name.to_lower()
 		rows[i].visible = matches
 		if matches:
 			visible_count += 1

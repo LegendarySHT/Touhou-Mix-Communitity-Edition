@@ -65,6 +65,9 @@ var _soundfont_preloaded_to_backend: bool = false
 ## 人声偏移量（毫秒）
 var vocal_offset_ms: float = 0.0
 
+## 人声是否已初始化（预卷支持）
+var _vocal_initialized: bool = false
+
 ## 音频不同步阈值（毫秒）
 var sync_threshold_ms: float = 200.0
 
@@ -484,10 +487,14 @@ func resume() -> void:
 	is_playing = true
 	is_paused = false
 
-	# 恢复人声播放
-	var audio_manager = AudioManager.instance
-	if current_midi_data and audio_manager and current_midi_data.vocal_file_path:
-		audio_manager.set_vocal_playing(true)
+	# 恢复或启动人声播放
+	if current_midi_data and not current_midi_data.vocal_file_path.is_empty() and current_midi_data.vocal_enabled:
+		if not _vocal_initialized:
+			start_vocal_playback()
+		else:
+			var audio_manager = AudioManager.instance
+			if audio_manager:
+				audio_manager.set_vocal_playing(true)
 
 	midi_started.emit()
 
@@ -1649,6 +1656,8 @@ func apply_vocal_offset() -> void:
 func start_vocal_playback() -> void:
 	if current_midi_data == null or current_midi_data.vocal_file_path.is_empty():
 		return
+	if not current_midi_data.vocal_enabled:
+		return
 
 	var audio_manager = AudioManager.instance
 	if audio_manager == null:
@@ -1694,9 +1703,15 @@ func start_vocal_playback() -> void:
 	# 设置人声声音
 	audio_manager.set_vocal_volume_db(linear_to_db(current_midi_data.vocal_volume / 100.0))
 	audio_manager.play_vocal(vocal_stream, start_position_ms)
+	_vocal_initialized = true
+	
+	# 如果 MIDI 处于预卷阶段（负位置），暂停人声等待 MIDI 追赶
+	if position_ms < 0.0:
+		audio_manager.set_vocal_playing(false)
 
 ## 停止人声播放
 func stop_vocal_playback() -> void:
+	_vocal_initialized = false
 	var audio_manager = AudioManager.instance
 	if audio_manager != null:
 		audio_manager.stop_vocal()
@@ -1704,7 +1719,17 @@ func stop_vocal_playback() -> void:
 ## 自动同步人声与MIDI（在_process中每帧调用）
 func _sync_vocal_with_midi() -> void:
 	var audio_manager = AudioManager.instance
-	if audio_manager == null or not audio_manager.is_vocal_playing():
+	if audio_manager == null:
+		return
+	
+	# 如果人声已初始化但在预卷期间被暂停，等 MIDI 到达正位置后恢复
+	if _vocal_initialized and not audio_manager.is_vocal_playing():
+		if position_ms >= 0.0:
+			audio_manager.set_vocal_playing(true)
+			audio_manager.seek_vocal(0.0)
+		return
+	
+	if not audio_manager.is_vocal_playing():
 		return
 
 	# 检查是否需要同步（时间间隔 > 100ms）
