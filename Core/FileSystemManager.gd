@@ -181,6 +181,9 @@ func _check_and_copy_default_resources_async() -> void:
 		await _copy_directory_contents_async(DEFAULT_BACKGROUND_SRC, BACKGROUND_DIR, "jpg,jpeg,png,webp")
 	
 	# 所有复制完成后扫描资源
+	# Convert external game data (THMIX) if present
+	ExternalGameConverter.check_and_convert()
+	
 	call_deferred("_scan_all_resources")
 
 ## 异步复制所有默认谱面（在每个文件夹复制后让步）
@@ -660,6 +663,13 @@ func _load_chart_from_json(json_path: String, chart_id: String) -> Dictionary:
 	if json == null:
 		GameLogger.instance.warning("Failed to parse chart JSON: %s" % json_path, "FileSystemMGR")
 		return {}
+	
+	# Normalize JSON format (merge song/album/author + source* into 3 fields)
+	if ChartNormalizer.normalize_chart_json(json):
+		var wf = FileAccess.open(json_path, FileAccess.WRITE)
+		if wf:
+			wf.store_string(JSON.stringify(json, "\t", false))
+			wf.close()
 	
 	return {
 		"id": chart_id,

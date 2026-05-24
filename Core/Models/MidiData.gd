@@ -21,7 +21,10 @@ var artist_name: String
 ## 上传者名字
 var uploader_name: String
 
-## 上传时间戳
+## 原曲作者
+var author_name: String
+
+## 上传日期
 var uploaded_date: String
 
 ## 所属歌曲信息
@@ -141,6 +144,13 @@ func from_json(json_data: Dictionary) -> void:
 	status = json_data.get("status", "PENDING")
 	artist_name = json_data.get("artistName", "")
 	uploader_name = json_data.get("uploaderName", "")
+
+	var author_val = json_data.get("author", "")
+	if author_val is String:
+		author_name = author_val
+	elif author_val is Dictionary:
+		author_name = author_val.get("name", "")
+
 	uploaded_date = json_data.get("uploadedDate", "")
 	
 	# 处理两种格式的字段名
@@ -281,6 +291,7 @@ func to_dict() -> Dictionary:
 		"status": status,
 		"artist_name": artist_name,
 		"uploader_name": uploader_name,
+		"author_name": author_name,
 		"uploaded_date": uploaded_date,
 		"trial_count": trial_count,
 		"download_count": download_count,
