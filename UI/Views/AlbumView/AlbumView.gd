@@ -35,7 +35,6 @@ func _load_albums() -> void:
 	current_albums = data_manager.get_all_albums()
 	_refresh_display()
 
-	container.custom_minimum_size.y = (item_height + item_spacing) * current_albums.size() - 200
 
 ## 刷新显示
 func _refresh_display() -> void:
