@@ -8,6 +8,37 @@ var pending_config_updates: Dictionary = {}  # 待提交配置，键为 "section
 # 设置项分组数据
 var setting_groups = [
 	{
+		"name": "浏览设置",
+		"settings": [
+			{
+				"id": "album_sort_method",
+				"name_en": "Album Sort Method",
+				"name_zh": "专辑排序方式",
+				"description": "选择专辑列表的默认排序方式",
+				"type": "TYPE_OPTION",
+				"default_value": "creation_time",
+				"options": [
+					{"text_en": "By Creation Time", "text_zh": "按创建时间"},
+					{"text_en": "By Download Time", "text_zh": "按下载时间"}
+				],
+				"option_values": ["creation_time", "download_time"]
+			},
+			{
+				"id": "album_sort_direction",
+				"name_en": "Album Sort Direction",
+				"name_zh": "专辑排序方向",
+				"description": "选择专辑列表的正序或倒序排列",
+				"type": "TYPE_OPTION",
+				"default_value": "asc",
+				"options": [
+					{"text_en": "Oldest First", "text_zh": "从旧到新"},
+					{"text_en": "Newest First", "text_zh": "从新到旧"}
+				],
+				"option_values": ["asc", "desc"]
+			}
+		]
+	},
+	{
 		"name": "常规设置",
 		"settings": [
 			{

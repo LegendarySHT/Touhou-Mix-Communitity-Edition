@@ -32,6 +32,28 @@ enum SortStatField {
 	DEAD
 }
 
+## 专辑排序方式枚举
+enum AlbumSortMethod {
+	BY_CREATION_TIME,  # 按创建时间（album.date / release_date，空的 fallback 到下载时间）
+	BY_DOWNLOAD_TIME   # 按下载时间（= uploadedDate，空日期排最上）
+}
+
+## 从字符串解析专辑排序方式（用于 ConfigManager 读回）
+static func parse_album_sort_method(method_str: String) -> AlbumSortMethod:
+	match method_str:
+		"download_time":
+			return AlbumSortMethod.BY_DOWNLOAD_TIME
+		_:
+			return AlbumSortMethod.BY_CREATION_TIME
+
+## 将专辑排序方式转为字符串（用于 ConfigManager 写入）
+static func album_sort_method_to_str(method: AlbumSortMethod) -> String:
+	match method:
+		AlbumSortMethod.BY_DOWNLOAD_TIME:
+			return "download_time"
+		_:
+			return "creation_time"
+
 ## 初始化函数
 func _ready() -> void:
 	if instance == null:
@@ -285,6 +307,63 @@ func search_midis(midis: Array[MidiData], query: String) -> Array[MidiData]:
 			result.append(midi)
 	
 	return result
+
+## ========== 专辑级排序 ==========
+
+## 对专辑列表排序（专辑级，与 MIDI 排序独立）
+## Unknown 专辑（id 含 "__unknown"）始终排在最后
+func sort_albums(albums: Array[AlbumData], method: AlbumSortMethod, direction: SortDirection) -> Array[AlbumData]:
+	if albums.is_empty():
+		return albums
+	
+	var sorted := albums.duplicate()
+	var ascending := direction == SortDirection.ASCENDING
+	
+	# 分离 Unknown 专辑
+	var unknown_albums: Array[AlbumData] = []
+	var normal_albums: Array[AlbumData] = []
+	for a in sorted:
+		if a is AlbumData and a.id.begins_with("__unknown"):
+			unknown_albums.append(a)
+		else:
+			normal_albums.append(a)
+	
+	# 对普通专辑排序
+	normal_albums.sort_custom(func(a: AlbumData, b: AlbumData) -> bool:
+		return _compare_albums(a, b, method, ascending)
+	)
+	
+	# Unknown 拼接到最后
+	normal_albums.append_array(unknown_albums)
+	return normal_albums
+
+## 专辑比较函数（预计算字段已在数据加载时准备好）
+## 倒序通过交换 a/b 实现，避免空字符串时 not(a<b) 违反严格弱序
+func _compare_albums(a: AlbumData, b: AlbumData, method: AlbumSortMethod, ascending: bool) -> bool:
+	if not ascending:
+		var tmp := a
+		a = b
+		b = tmp
+	
+	match method:
+		AlbumSortMethod.BY_CREATION_TIME:
+			return _compare_dates(a.release_date, b.release_date, a.earliest_uploaded_date, b.earliest_uploaded_date, false)
+		AlbumSortMethod.BY_DOWNLOAD_TIME:
+			return _compare_dates(a.earliest_uploaded_date, b.earliest_uploaded_date, "", "", true)
+	return false
+
+## 日期比较：primary 优先，primary 为空时用 fallback；empty_to_top 控制空值排最上还是最下
+func _compare_dates(a_primary: String, b_primary: String, a_fallback: String, b_fallback: String, empty_to_top: bool) -> bool:
+	var a_date := a_primary if not a_primary.is_empty() else a_fallback
+	var b_date := b_primary if not b_primary.is_empty() else b_fallback
+	
+	if a_date.is_empty() and b_date.is_empty():
+		return false
+	if a_date.is_empty():
+		return empty_to_top   # 下载时间：空→最上；创建时间：空→最下
+	if b_date.is_empty():
+		return not empty_to_top
+	return a_date < b_date
 
 ## 场景退出时的清理
 func _exit_tree() -> void:

@@ -1,8 +1,12 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# IDE specific ignores
 .vscode/
 .trae/
 .claude/
-CLAUDE.md
+.reasonix/
 .mcp.json
+CLAUDE.md
+REASONIX.md

@@ -24,16 +24,22 @@ func _ready() -> void:
 	# 连接事件
 	data_manager.data_loaded.connect(_load_albums)
 	event_bus.midi_deleted.connect(func(_id): _load_albums())
+	event_bus.config_changed.connect(_on_config_changed)
 
 	super._ready()
 
-## 加载专辑数据
+## 加载专辑数据（使用新的排序方法）
 func _load_albums() -> void:
 	if not data_manager:
 		return
 	
-	current_albums = data_manager.get_all_albums()
+	current_albums = data_manager.get_sorted_albums()
 	_refresh_display()
+
+## 配置变更时重新排序（仅 Browse 分组触发）
+func _on_config_changed(key: String, section: String, _value: Variant) -> void:
+	if section == "Browse":
+		_load_albums()
 
 
 ## 刷新显示

@@ -27,6 +27,11 @@ var song_ids: Array[String] = []
 ## 该专辑的所有MIDI数量
 var total_midi_count: int = 0
 
+## ========== 排序预计算字段 ==========
+
+## 专辑下所有 MIDI 的最早上传日期（用于按上传时间排序）
+var earliest_uploaded_date: String = ""
+
 func json_get(json, key, default):
 	var intermediate = json.get(key,default)
 	if not json or not intermediate:

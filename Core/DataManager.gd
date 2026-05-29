@@ -87,6 +87,9 @@ func _load_midis() -> void:
 	print("[DataMGR] Finished processing %d charts, now emitting signal..." % processed_count)
 	print("[DataMGR] Midis in dictionary: %d" % midis.size())
 
+	# 为无专辑/歌曲的 MIDI 合成 Unknown 分组
+	_ensure_unknown_grouping()
+
 	_emit_data_loaded()
 
 func _emit_data_loaded():
@@ -205,6 +208,11 @@ func _process_nested_format(json_data: Dictionary, midi: MidiData, midi_id: Stri
 		currentAlbum.total_midi_count += 1
 		midi.album_data = currentAlbum
 		
+		# 更新专辑的最早上传日期
+		if not midi.uploaded_date.is_empty():
+			if currentAlbum.earliest_uploaded_date.is_empty() or midi.uploaded_date < currentAlbum.earliest_uploaded_date:
+				currentAlbum.earliest_uploaded_date = midi.uploaded_date
+		
 		# 构建树结构
 		_add_to_midi_tree(album_id, song_id, midi_id)
 
@@ -220,18 +228,84 @@ func _add_to_midi_tree(album_id: String, song_id: String, midi_id: String) -> vo
 	
 	(midi_tree[album_id][song_id] as Array).append(midi_id)
 
-## 获取所有专辑列表（按发布日期排序）
-func get_all_albums() -> Array[AlbumData]:
-	var result: Array[AlbumData] = []
+## ========== Unknown 分组合成 ==========
+
+const UNKNOWN_ALBUM_ID := "__unknown_album__"
+const UNKNOWN_SONG_ID  := "__unknown_song__"
+
+## 为没有专辑/歌曲的 MIDI 合成 Unknown 分组（在 _load_midis 末尾调用）
+func _ensure_unknown_grouping() -> void:
+	# 先清理上一次可能残留的 Unknown 条目
+	_cleanup_unknown_grouping()
+	
+	var orphan_midis: Array[MidiData] = []
+	for midi in midis.values():
+		if midi.album_data == null or midi.song_data == null:
+			orphan_midis.append(midi)
+	
+	if orphan_midis.is_empty():
+		return
+	
+	# 创建 Unknown 专辑
+	var unknown_album := AlbumData.new()
+	unknown_album.id = UNKNOWN_ALBUM_ID
+	unknown_album.name = "Unknown"
+	albums[UNKNOWN_ALBUM_ID] = unknown_album
+	
+	# 创建 Unknown 歌曲
+	var unknown_song := SongData.new()
+	unknown_song.id = UNKNOWN_SONG_ID
+	unknown_song.name = "Unknown"
+	songs[UNKNOWN_SONG_ID] = unknown_song
+	
+	unknown_album.add_song_id(UNKNOWN_SONG_ID)
+	
+	# 初始化 midi_tree 条目
+	if not midi_tree.has(UNKNOWN_ALBUM_ID):
+		midi_tree[UNKNOWN_ALBUM_ID] = {}
+	midi_tree[UNKNOWN_ALBUM_ID][UNKNOWN_SONG_ID] = []
+	
+	for midi in orphan_midis:
+		midi.album_data = unknown_album
+		midi.song_data = unknown_song
+		unknown_album.total_midi_count += 1
+		(midi_tree[UNKNOWN_ALBUM_ID][UNKNOWN_SONG_ID] as Array).append(midi.id)
+		
+		# 更新 Unknown 专辑的最早上传日期
+		if not midi.uploaded_date.is_empty():
+			if unknown_album.earliest_uploaded_date.is_empty() or midi.uploaded_date < unknown_album.earliest_uploaded_date:
+				unknown_album.earliest_uploaded_date = midi.uploaded_date
+	
+	print("[DataMGR] Created Unknown album with %d orphan MIDIs" % orphan_midis.size())
+
+## 清理之前合成的 Unknown 条目（避免重复）
+func _cleanup_unknown_grouping() -> void:
+	# 从 midi_tree 移除 Unknown 条目
+	if midi_tree.has(UNKNOWN_ALBUM_ID):
+		midi_tree.erase(UNKNOWN_ALBUM_ID)
+	albums.erase(UNKNOWN_ALBUM_ID)
+	songs.erase(UNKNOWN_SONG_ID)
+
+## ========== 专辑排序查询 ==========
+
+## 获取排序后的专辑列表（按 ConfigManager [Browse] 设置排序）
+func get_sorted_albums() -> Array[AlbumData]:
+	var album_array: Array[AlbumData] = []
 	for album in albums.values():
-		result.append(album)
+		album_array.append(album)
 	
-	# 按发布日期排序
-	result.sort_custom(func(a: AlbumData, b: AlbumData) -> bool:
-		return a.release_date < b.release_date
-	)
+	# 读取排序配置
+	var method_str := ConfigManager.instance.get_string("Browse", "album_sort_method", "creation_time")
+	var dir_str := ConfigManager.instance.get_string("Browse", "album_sort_direction", "asc")
 	
-	return result
+	var method := SortingEngine.parse_album_sort_method(method_str)
+	var direction := SortingEngine.SortDirection.ASCENDING if dir_str == "asc" else SortingEngine.SortDirection.DESCENDING
+	
+	return SortingEngine.instance.sort_albums(album_array, method, direction)
+
+## 获取所有专辑列表（委托到 get_sorted_albums）
+func get_all_albums() -> Array[AlbumData]:
+	return get_sorted_albums()
 
 ## 获取专辑下的所有歌曲
 func get_songs_by_album(album_id: String) -> Array[SongData]:

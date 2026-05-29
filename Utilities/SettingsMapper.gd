@@ -5,6 +5,10 @@ class_name SettingsMapper
 ## 配置映射表：setting_id → {section, key, default_value, value_type}
 ## value_type: "int", "float", "bool", "string", "color"
 static var mappings: Dictionary = {
+	# ========== 浏览设置 ==========
+	"album_sort_method": {"section": "Browse", "key": "album_sort_method", "value_type": "string"},
+	"album_sort_direction": {"section": "Browse", "key": "album_sort_direction", "value_type": "string"},
+	
 	# ========== 常规设置 ==========
 	"online_mode": {"section": "General", "key": "online_mode", "value_type": "int"},
 	"display_debug_info": {"section": "General", "key": "display_debug_info", "value_type": "int"},
@@ -149,6 +153,16 @@ static func ini_to_settings(config: Dictionary) -> Dictionary:
 			result["midi_backend"] = "0"
 		elif backend_value == "meltysynth":
 			result["midi_backend"] = "1"
+	
+	# 特殊处理：Browse 设置从字符串值转换为选项索引（顺序: creation_time=0, download_time=1）
+	if result.has("album_sort_method"):
+		if result["album_sort_method"] == "download_time":
+			result["album_sort_method"] = "1"
+		else:
+			result["album_sort_method"] = "0"
+	
+	if result.has("album_sort_direction"):
+		result["album_sort_direction"] = "0" if result["album_sort_direction"] == "asc" else "1"
 
 	return result
 
@@ -201,6 +215,16 @@ static func settings_to_ini(settings: Dictionary) -> Dictionary:
 					result[section][key] = value.to_html()
 			"string":
 				result[section][key] = str(value)
+	
+	# 特殊处理：Browse 设置从选项索引转换为字符串值
+	if result.has("Browse") and result["Browse"] is Dictionary:
+		var browse: Dictionary = result["Browse"]
+		if browse.has("album_sort_method"):
+			var idx = int(browse["album_sort_method"])
+			browse["album_sort_method"] = ["creation_time", "download_time"][clamp(idx, 0, 1)]
+		if browse.has("album_sort_direction"):
+			var idx = int(browse["album_sort_direction"])
+			browse["album_sort_direction"] = "asc" if idx == 0 else "desc"
 	
 	return result
 
