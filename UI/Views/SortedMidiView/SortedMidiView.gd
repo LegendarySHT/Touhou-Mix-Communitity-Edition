@@ -13,6 +13,9 @@ var current_midis: Array[MidiData] = []
 @onready var eb: EventBus = EventBus.instance
 @onready var se: SortingEngine = SortingEngine.instance
 
+## 空结果提示节点
+@onready var no_items_node: Label = get_node_or_null("/root/Main/skew/C/NoItems")
+
 ## 是否正在加载
 var _is_loading: bool = false
 
@@ -30,6 +33,7 @@ func _ready() -> void:
 	# 连接事件
 	eb.search_query_changed.connect(_on_search_query_changed)
 	eb.sort_finished.connect(_load_sorted_midis)
+	sm.state_changed.connect(_hide_label)
 
 	super._ready()
 
@@ -70,6 +74,8 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 	
 	if refectch:
 		current_midis = se.get_midis()
+
+	no_items_node.visible = current_midis.size() == 0
 	
 	_is_loading = true
 	var counter = 0
@@ -105,3 +111,7 @@ func _on_search_query_changed(query: String) -> void:
 		print("过滤后midi数量：%d" % current_midis.size())
 	
 	_load_sorted_midis(false)
+
+func _hide_label(_old,_new):
+	if no_items_node.visible:
+		no_items_node.visible = false

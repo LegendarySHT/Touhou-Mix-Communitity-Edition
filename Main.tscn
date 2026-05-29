@@ -937,6 +937,18 @@ expand_mode = 1
 stretch_mode = 5
 script = ExtResource("19_hri7i")
 
+[node name="NoItems" type="Label" parent="skew/C" unique_id=756567896]
+visible = false
+layout_mode = 0
+offset_left = 350.0
+offset_top = 420.0
+offset_right = 580.0
+offset_bottom = 600.0
+theme_override_font_sizes/font_size = 52
+text = "列表为空"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="RB_Btn" type="Panel" parent="." unique_id=334519352]
 clip_contents = true
 layout_mode = 1
