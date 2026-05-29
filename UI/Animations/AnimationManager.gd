@@ -578,7 +578,11 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			if sIndex < 0:
 				return
 			
-			album_list.get_node("VBox").get_child(sIndex).modulate = Color(1, 1, 1, 1)
+			var vbox := album_list.get_node("VBox")
+			if sIndex >= vbox.get_child_count():
+				return
+			
+			vbox.get_child(sIndex).modulate = Color(1, 1, 1, 1)
 			var tindex = sIndex if old_state == UIStateManager.UIState.SONG_VIEW else -1
 			tween = animate_list_item_horizontal(album_list, sIndex, tindex, 0, tween_id)
 			
