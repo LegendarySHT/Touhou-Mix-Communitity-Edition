@@ -79,16 +79,15 @@ func _load_midis() -> void:
 		_process_new_format_chart(metadata)
 		processed_count += 1
 		
-		# 每处理 100 个谱面打印一次进度
-		if processed_count % 100 == 0:
-			print("[DataMGR] Processing charts: %d/%d" % [processed_count, charts.size()])
+		# 每处理 10 个谱面释放一帧，保持 Loading 动画流畅
+		if processed_count % 10 == 0:
 			await get_tree().process_frame
 	
 	print("[DataMGR] Finished processing %d charts, now emitting signal..." % processed_count)
 	print("[DataMGR] Midis in dictionary: %d" % midis.size())
 
 	# 为无专辑/歌曲的 MIDI 合成 Unknown 分组
-	_ensure_unknown_grouping()
+	await _ensure_unknown_grouping()
 
 	_emit_data_loaded()
 
@@ -239,9 +238,13 @@ func _ensure_unknown_grouping() -> void:
 	_cleanup_unknown_grouping()
 	
 	var orphan_midis: Array[MidiData] = []
+	var scan_count := 0
 	for midi in midis.values():
 		if midi.album_data == null or midi.song_data == null:
 			orphan_midis.append(midi)
+		scan_count += 1
+		if scan_count % 500 == 0:
+			await get_tree().process_frame
 	
 	if orphan_midis.is_empty():
 		return
