@@ -238,7 +238,7 @@ static func validate_value(setting_id: String, value: Variant) -> bool:
 		"lane_count":
 			return int(value) > 0 and int(value) <= 24
 		"audio_sync_threshold":
-			return int(value) >= 1 and int(value) <= 1000
+			return int(value) >= 1 and int(value) <= 100000
 		"playback_speed_scaling":
 			return float(value) > 0.0 and float(value) <= 3.0
 		"flash_alpha":

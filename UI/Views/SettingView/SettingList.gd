@@ -213,7 +213,7 @@ var setting_groups = [
 			"id": "audio_sync_threshold",
 			"name_en": "Audio Sync Threshold",
 			"name_zh": "音频不同步阈值",
-			"description": "MIDI与人声进度差值超过此阈值时自动对齐，范围50-500毫秒",
+			"description": "MIDI与人声进度差值超过此阈值时自动对齐",
 			"type": "TYPE_LINE_EDIT",
 			"default_value": "200",
 			"unit": "ms"
