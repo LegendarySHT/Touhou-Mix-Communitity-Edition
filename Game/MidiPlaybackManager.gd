@@ -1755,7 +1755,7 @@ func _sync_vocal_with_midi() -> void:
 
 ## 设置音频同步阈值（毫秒）
 func set_sync_threshold(threshold_ms: float) -> void:
-	sync_threshold_ms = clamp(threshold_ms, 50.0, 500.0)
+	sync_threshold_ms = clamp(threshold_ms, 1.0, 100000.0)
 
 ## 重置同步检查位置（在开始新播放时调用）
 func reset_sync_state() -> void:
