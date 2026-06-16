@@ -948,6 +948,7 @@ func load_settings(setting: Dictionary = {}):
 	clear_items()
 	setting_items.clear()
 	pending_config_updates.clear()
+	separators.clear()
 	
 	# 遍历所有分组
 	for group in setting_groups:
