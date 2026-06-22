@@ -423,10 +423,10 @@ var setting_groups = [
 				"id": "block_judging_width",
 				"name_en": "Block Judging Width",
 				"name_zh": "音符判定宽度",
-				"description": "调整音符的判定范围的宽度，不影响判定范围的高度",
+				"description": "设置判定宽度占音符宽度的倍数。例如：设置为1.0表示判定宽度等于音符宽度，设置为2.0表示判定宽度为音符宽度的2倍。",
 				"type": "TYPE_LINE_EDIT",
-				"default_value": "100",
-				"unit": "px"
+				"default_value": "1.0",
+				"unit": "倍音符宽度"
 			},
 			{
 				"id": "min_block_spacing",
@@ -787,10 +787,10 @@ var setting_groups = [
 				"id": "block_size",
 				"name_en": "Block Size",
 				"name_zh": "音符尺寸大小",
-				"description": "调整音符的显示宽度，音符判定区域大小不受其影响",
+				"description": "设置可游玩区域容纳的音符数量，数值越大音符越小。例如：设置为6.5表示可游玩区域宽度正好为6.5个音符宽度。",
 				"type": "TYPE_LINE_EDIT",
-				"default_value": "150",
-				"unit": "px"
+				"default_value": "6.5",
+				"unit": "个音符"
 			},
 			{
 				"id": "note_glow_intensity",

@@ -1125,6 +1125,9 @@ func _has_cover_for_current_midi() -> bool:
 	return false
 
 func _init_lane_display():
+	# 窗口大小变化时重新计算音符尺寸
+	if flow_area and flow_area.has_method("_recalculate_note_dimensions"):
+		flow_area._recalculate_note_dimensions()
 	lane_area.init_beam(get_lane_count(), self)
 	lane_area.set_beam_alpha(beam_alpha)
 	if keyboard_mode:

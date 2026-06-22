@@ -168,16 +168,26 @@ func init_flow_area():
 
 	auto_mode = ConfigManager.instance.get_int("Playback", "auto_mode", 0) == 1
 	
-	# 从配置读取判定模式和判定宽度
+	# 从配置读取判定模式
 	judge_mode = ConfigManager.instance.get_int("Judge", "touch_judging_criteria", NoteJudger.JudgeMode.BEST_TIMING_FIFO)
-	note_judge_width = ConfigManager.instance.get_int("Judge", "block_judging_width", 100)
 	check_slide_when_finger_up = ConfigManager.instance.get_int("Judge", "check_instant_blocks_when_finger_up", 1) == 1
 	only_perfect_slides = ConfigManager.instance.get_int("Judge", "only_perfect_instant_blocks_before_judge", 0) == 1
-	note_visual_width = ConfigManager.instance.get_int("Appearance", "block_size", note_visual_width)
+	
+	# 从配置读取比例系数
+	var block_size_ratio = ConfigManager.instance.get_float("Appearance", "block_size", 6.5)
+	var block_judge_ratio = ConfigManager.instance.get_float("Judge", "block_judging_width", 1.0)
+	
 	_apply_note_fall_config_from_settings()
 	var lc = parent_node.get_lane_count()
-	# 初始化轨道步长（考虑左右安全区，效果对齐 Unity 的中心点分布）
+	
+	# 计算可游玩区域宽度
 	var safe_width: float = max(1.0, get_viewport().get_visible_rect().size.x - 2.0 * float(parent_node.lane_padding))
+	
+	# 根据比例计算音符宽度（最小10px防止过小）
+	note_visual_width = max(10.0, safe_width / block_size_ratio)
+	note_judge_width = max(10.0, note_visual_width * block_judge_ratio)
+	
+	# 计算轨道间距
 	if lc <= 1:
 		lane_width = safe_width
 	else:
@@ -260,7 +270,8 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			judge_mode = int(value)
 			return
 		if key == "block_judging_width":
-			note_judge_width = int(value)
+			# 需要重新计算音符尺寸
+			_recalculate_note_dimensions()
 			return
 		if key == "check_instant_blocks_when_finger_up":
 			check_slide_when_finger_up = int(value) == 1
@@ -268,6 +279,11 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		if key == "only_perfect_instant_blocks_before_judge":
 			only_perfect_slides = int(value) == 1
 			return
+
+	if section == "Appearance" and key == "block_size":
+		# 需要重新计算音符尺寸
+		_recalculate_note_dimensions()
+		return
 
 	if section != "Generator":
 		return
@@ -285,6 +301,18 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		_note_fall_distance = jl.position.y + _note_max_size_y
 		_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
 		GameLogger.instance.info("Note fall config hot-reloaded: [%s] %s=%s" % [section, key, str(value)], "FlowArea")
+
+## 重新计算音符尺寸（根据比例系数）
+func _recalculate_note_dimensions() -> void:
+	var block_size_ratio = ConfigManager.instance.get_float("Appearance", "block_size", 6.5)
+	var block_judge_ratio = ConfigManager.instance.get_float("Judge", "block_judging_width", 1.0)
+	var safe_width: float = max(1.0, get_viewport().get_visible_rect().size.x - 2.0 * float(parent_node.lane_padding))
+	
+	note_visual_width = max(10.0, safe_width / block_size_ratio)
+	note_judge_width = max(10.0, note_visual_width * block_judge_ratio)
+	
+	set_note_width(note_visual_width)
+	GameLogger.instance.info("Note dimensions recalculated: visual_width=%d, judge_width=%d" % [int(note_visual_width), int(note_judge_width)], "FlowArea")
 
 # 修改音符颜色
 func set_note_color(type: NoteType, cl: Color):
