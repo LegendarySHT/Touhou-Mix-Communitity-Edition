@@ -928,7 +928,11 @@ func _ready() -> void:
 	super._ready()
 	get_v_scroll_bar().value_changed.connect(func (_v):
 		var btns = get_parent().get_parent().short_cut_btn.get_children()
-		var tBtn: Button = btns[_get_current_para_sepa_idx()]
+		var idx = _get_current_para_sepa_idx()
+		# 边界检查：btns 只有 6 个按钮，跳过"浏览设置"分组（索引 6）
+		if idx < 0 or idx >= btns.size():
+			return
+		var tBtn: Button = btns[idx]
 		# await get_tree().process_frame
 		if tBtn.get_parent().has_meta("snaping"):
 			return
