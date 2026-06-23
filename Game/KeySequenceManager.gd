@@ -124,16 +124,16 @@ var min_note_spacing_ms: float = 10.0
 
 ## ========== 键生成配置参数 ==========
 var lane_count: int = 12  # 轨道数量
-var block_coalesce_seconds: float = 0.1  # 批次合并时间窗口（秒）
-var instant_block_threshold: float = 0.1  # INSTANT块时长阈值（秒）
-var short_block_threshold: float = 0.5  # SHORT块时长阈值（秒）
-var min_tap_interval: float = 0.2  # 最小敲击间隔（秒）
-var cooldown_seconds: float = 0.2  # 触点冷却时间（秒）
-var max_touch_move_velocity: float = 400.0  # 最大触点移动速度（像素/秒）
+var block_coalesce_seconds: float = 0.25  # 批次合并时间窗口（秒）
+var instant_block_threshold: float = 0.2  # INSTANT块时长阈值（秒）
+var short_block_threshold: float = 1.0  # SHORT块时长阈值（秒）
+var min_tap_interval: float = 1.0  # 最小敲击间隔（秒）
+var cooldown_seconds: float = 2.0  # 触点冷却时间（秒）
+var max_touch_move_velocity: float = 300.0  # 最大触点移动速度（像素/秒）
 var max_touch_count: int = 2  # 最大同时活跃键数
 var generate_instant_connect: bool = true  # 是否生成INSTANT连块
 var generate_short_connect: bool = true  # 是否生成SHORT连块
-var max_instant_connect_seconds: float = 0.5  # INSTANT连块最大间隔（秒）
+var max_instant_connect_seconds: float = 1.0  # INSTANT连块最大间隔（秒）
 
 ## 信号：序列分类完成
 signal sequences_classified(game_seq_count: int, bg_seq_count: int)
@@ -227,19 +227,19 @@ func _load_config_parameters() -> void:
 	
 	# 从Generator段读取生成相关参数
 	var gen_cfg = "Generator"
-	instant_block_threshold = config_manager.get_float(gen_cfg, "instant_block_max_time", 0.1)
-	short_block_threshold = config_manager.get_float(gen_cfg, "short_block_max_time", 0.5)
+	instant_block_threshold = config_manager.get_float(gen_cfg, "instant_block_max_time", 0.2)
+	short_block_threshold = config_manager.get_float(gen_cfg, "short_block_max_time", 1.0)
 	max_touch_count = config_manager.get_int(gen_cfg, "max_simultaneous_blocks", 2)
-	min_tap_interval = config_manager.get_float(gen_cfg, "min_tap_interval", 0.2)
-	cooldown_seconds = config_manager.get_float(gen_cfg, "min_touch_cooldown_time", 0.2)
-	max_touch_move_velocity = config_manager.get_float(gen_cfg, "max_touch_move_speed", 400.0)
-	block_coalesce_seconds = config_manager.get_float(gen_cfg, "max_block_coalesce_time", 0.1)
+	min_tap_interval = config_manager.get_float(gen_cfg, "min_tap_interval", 1.0)
+	cooldown_seconds = config_manager.get_float(gen_cfg, "min_touch_cooldown_time", 2.0)
+	max_touch_move_velocity = config_manager.get_float(gen_cfg, "max_touch_move_speed", 300.0)
+	block_coalesce_seconds = config_manager.get_float(gen_cfg, "max_block_coalesce_time", 0.25)
 	
 	# 从Appearance段读取连块参数
 	var app_cfg = "Appearance"
 	generate_short_connect = config_manager.get_bool(app_cfg, "generate_short_connect", true)
 	generate_instant_connect = config_manager.get_bool(app_cfg, "generate_instant_connect", true)
-	max_instant_connect_seconds = config_manager.get_float(app_cfg, "instant_connect_max_time", 0.5)
+	max_instant_connect_seconds = config_manager.get_float(app_cfg, "instant_connect_max_time", 1.0)
 	key_width = config_manager.get_float(app_cfg, "block_size", key_width)
 	
 	# 键盘模式特殊处理：禁用触摸移动速度限制
@@ -581,8 +581,6 @@ func _assign_touches_and_judge_types(blocks: Array[BlockInfo]) -> void:
 		_match_blocks_to_touches(batch_blocks, touches)
 
 		batch_blocks.sort_custom(func(a, b):
-			if a.start_time_ms == b.start_time_ms:
-				return a.lane < b.lane
 			return a.start_time_ms < b.start_time_ms
 		)
 		#GameLogger.instance.debug("Batch %d: processing %d blocks" % [batch_id, batch_blocks.size()], "KeySequenceManager")
@@ -608,6 +606,13 @@ func _match_blocks_to_touches(blocks_in_group: Array[BlockInfo], touches: Array[
 	# 递归回溯：找最小成本分配
 	var min_cost_holder = [INF]  # 使用数组以便在递归中修改
 	_find_optimal_matching(sorted_blocks, touches, 0, 0, [], min_matching_touch_index, min_cost_holder)
+	
+	# Unity bug: 匹配结果按start_time顺序应用（而非x顺序）
+	# 这会导致当批次中有2个块且x顺序与start_time顺序不一致时，
+	# touch_index被错误地分配给不同的块
+	sorted_blocks.sort_custom(func(a, b):
+		return a.start_time_ms < b.start_time_ms
+	)
 	
 	# 应用最优分配
 	for i in range(sorted_blocks.size()):
