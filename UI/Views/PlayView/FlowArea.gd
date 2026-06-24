@@ -65,6 +65,7 @@ signal long_holding(long_instance_id: int)
 # 音符相关
 var lane_width: float = 0
 var active_notes: Array = []  # 存储活跃的音符
+var _notes_by_lane: Dictionary = {}  # 按轨道分组索引：{lane: Array[Note]}，加速音符判定查找
 
 @onready var nt_b = load("res://UI/Views/PlayView/note_block.tscn").instantiate()
 @onready var nt_s = load("res://UI/Views/PlayView/note_slide.tscn").instantiate()
@@ -451,6 +452,7 @@ func clear_flow_area():
 			note.rect = null
 
 	active_notes.clear()
+	_clear_lane_index()
 	active_holds.clear()
 	touch_positions.clear()
 	pressed_keys.clear()
@@ -530,6 +532,7 @@ func _spawn_note(note_index: int) -> void:
 
 	if nt.type == NoteType.Long:
 		active_notes.append(nt)
+		_add_note_to_lane_index(nt)
 		nt.tween = null
 		_update_long_note_fall(nt, _synced_current_time)
 		return
@@ -541,6 +544,7 @@ func _spawn_note(note_index: int) -> void:
 
 	tween.tween_property(rect, "position:y", target_pos_y, fall_time).set_trans(trans_before_line).set_ease(ease_before_line)
 	active_notes.append(nt)
+	_add_note_to_lane_index(nt)
 	nt.tween = tween
 	# 关键：保存 Tween 引用用于复用前清理（修复 Tween lambda 被释放错误）
 	rect.set_meta("_last_tween", tween)
@@ -872,12 +876,47 @@ func _remove_note(note: Note) -> void:
 		note.rect = null
 		call_deferred("_delay_free", active_notes, note)
 	
+	_remove_note_from_lane_index(note)
+	
 	if note.tween:
 		note.tween.kill()
 	
 	# 如果是被按住的长条音符，清理触摸点
 	if note.is_held and note.held_by_touch_id in active_holds:
 		call_deferred("_delay_free", active_holds, note.held_by_touch_id)
+
+# ========== 轨道索引维护（用于加速音符判定） ==========
+func _add_note_to_lane_index(note: Note) -> void:
+	if not _notes_by_lane.has(note.lane):
+		_notes_by_lane[note.lane] = []
+	_notes_by_lane[note.lane].append(note)
+
+func _remove_note_from_lane_index(note: Note) -> void:
+	if _notes_by_lane.has(note.lane):
+		var lane_notes: Array = _notes_by_lane[note.lane]
+		lane_notes.erase(note)
+
+func _clear_lane_index() -> void:
+	_notes_by_lane.clear()
+
+## 获取触摸位置附近的轨道音符列表（当前轨道 ± 相邻轨道）
+func _get_notes_near_lane(lane: int) -> Array:
+	var result: Array = []
+	for offset in [-1, 0, 1]:
+		var check_lane = lane + offset
+		if _notes_by_lane.has(check_lane):
+			result.append_array(_notes_by_lane[check_lane])
+	return result
+
+## 根据触摸X坐标估算轨道索引
+func _estimate_lane_from_x(x: float) -> int:
+	var lc = parent_node.get_lane_count()
+	if lc <= 1:
+		return 0
+	var safe_start = float(parent_node.lane_padding)
+	var relative_x = x - safe_start
+	var lane = int(relative_x / lane_width)
+	return clampi(lane, 0, lc - 1)
 
 func _gui_input(event: InputEvent) -> void:
 	if parent_node.is_pause:
@@ -973,12 +1012,17 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	if should_dedup:
 		return
 
-	var candidate_notes: Array = active_notes
+	var estimated_lane := _estimate_lane_from_x(pos.x)
+	var candidate_notes: Array = _get_notes_near_lane(estimated_lane)
+	if candidate_notes.is_empty():
+		return
 	if only_perfect_slides:
 		# 仅判定完美滑块开启时，点击/按键选音符阶段直接忽略滑块
-		candidate_notes = active_notes.filter(func(n):
+		candidate_notes = candidate_notes.filter(func(n):
 			return n.type != NoteType.Slide
 		)
+		if candidate_notes.is_empty():
+			return
 
 	var note = note_judger.find_best_note(pos, candidate_notes, jl.position.y, note_judge_width, judge_mode)
 	if note == null:
@@ -1146,8 +1190,14 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 	var best_note: Note = null
 	var best_score: float = INF
 
-	for note in active_notes:
-		if note.lane < lane_l or note.lane > lane_r or note.is_held:
+	# 使用轨道索引加速：只遍历目标轨道范围内的音符
+	var candidate_notes: Array = []
+	for lane in range(lane_l, lane_r + 1):
+		if _notes_by_lane.has(lane):
+			candidate_notes.append_array(_notes_by_lane[lane])
+
+	for note in candidate_notes:
+		if note.is_held:
 			continue
 		if only_perfect_slides and note.type == NoteType.Slide:
 			continue

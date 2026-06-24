@@ -196,3 +196,9 @@ func seek_ms(position_ms: float) -> void:
 	if meltysynth_player == null:
 		return
 	meltysynth_player.call("seek_ms", position_ms)
+
+## 设置音频缓冲区大小（帧）
+func SetAudioBufferFrames(frames: int) -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("SetAudioBufferFrames", frames)
