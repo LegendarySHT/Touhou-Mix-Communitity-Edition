@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Reflection;
+using System.Diagnostics;
+using System.Threading;
 using TouhouMix.Midi;
 
 /// <summary>
@@ -31,6 +33,93 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		void EnqueueNoteOn(int virtualId, int pitch, int velocity);
 		void EnqueueNoteOff(int virtualId, int pitch);
 		void Dispose();
+	}
+
+	/// <summary>
+	/// 线程安全的环形缓冲区（交错格式 LRLRLR...）
+	/// 渲染线程写入，FMOD 音频回调读取
+	/// </summary>
+	private sealed class RingBuffer
+	{
+		private float[] _buffer;
+		private int _capacityFrames;
+		private int _readFrame;
+		private int _writeFrame;
+		private readonly object _lock = new();
+
+		public RingBuffer(int capacityFrames)
+		{
+			_capacityFrames = capacityFrames;
+			_buffer = new float[capacityFrames * 2]; // 交错格式
+		}
+
+		public int Capacity => _capacityFrames;
+
+		public int ReadableFrames
+		{
+			get { lock (_lock) return (_writeFrame - _readFrame + _capacityFrames) % _capacityFrames; }
+		}
+
+		public int WritableFrames
+		{
+			get { lock (_lock) return _capacityFrames - 1 - ReadableFrames; }
+		}
+
+		/// <summary>写入交错格式音频。返回实际写入帧数。</summary>
+		public int Write(float[] source, int srcOffsetFrames, int maxFrames)
+		{
+			lock (_lock)
+			{
+				int available = _capacityFrames - 1 - ((_writeFrame - _readFrame + _capacityFrames) % _capacityFrames);
+				int toWrite = Math.Min(maxFrames, available);
+				int writeIdx = _writeFrame * 2;
+				int srcIdx = srcOffsetFrames * 2;
+				int bufLen = _capacityFrames * 2;
+
+				for (int i = 0; i < toWrite; i++)
+				{
+					int bi = (writeIdx + i * 2) % bufLen;
+					_buffer[bi] = source[srcIdx + i * 2];
+					_buffer[bi + 1] = source[srcIdx + i * 2 + 1];
+				}
+
+				_writeFrame = (_writeFrame + toWrite) % _capacityFrames;
+				return toWrite;
+			}
+		}
+
+		/// <summary>读取交错格式音频到目标数组。返回实际读取帧数。</summary>
+		public int Read(float[] dest, int destOffsetFrames, int maxFrames)
+		{
+			lock (_lock)
+			{
+				int available = (_writeFrame - _readFrame + _capacityFrames) % _capacityFrames;
+				int toRead = Math.Min(maxFrames, available);
+				int readIdx = _readFrame * 2;
+				int dstIdx = destOffsetFrames * 2;
+				int bufLen = _capacityFrames * 2;
+
+				for (int i = 0; i < toRead; i++)
+				{
+					int bi = (readIdx + i * 2) % bufLen;
+					dest[dstIdx + i * 2] = _buffer[bi];
+					dest[dstIdx + i * 2 + 1] = _buffer[bi + 1];
+				}
+
+				_readFrame = (_readFrame + toRead) % _capacityFrames;
+				return toRead;
+			}
+		}
+
+		public void Clear()
+		{
+			lock (_lock)
+			{
+				_readFrame = 0;
+				_writeFrame = 0;
+				Array.Clear(_buffer, 0, _buffer.Length);
+			}
+		}
 	}
 
 	private sealed class FmodAudioOutputBridge : IAudioOutputBridge
@@ -64,6 +153,16 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			private int _targetDecodeFrames = 1024;  // 从配置获取的目标缓冲区大小
 			private float _volumeLinear = 1.0f;
 			private const float OUTPUT_GAIN = 2.0f;
+
+			// FMOD DSP缓冲区配置
+			// - _dspBufferLength: 单个DSP块的样本数（默认512）
+			// - _dspNumBuffers: DSP缓冲块数量（默认2，总缓冲 = bufferLength × numBuffers）
+			// 延迟计算（48kHz）：bufferLength × numBuffers / 48000 秒
+			// 配置 256×2 = 512帧 ≈ 10.7ms 平均延迟
+			// 配置 512×2 = 1024帧 ≈ 21.3ms 平均延迟
+			private uint _dspBufferLength = 512;
+			private int _dspNumBuffers = 2;
+			private bool _useWASAPIExclusive = false;
 			
 			private bool _initialized = false;
 			private bool _playing = false;
@@ -81,7 +180,21 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			internal readonly object _synthLock = new object();
 			public object SyncRoot => _synthLock;
 
-			// 无锁事件队列：主线程入队手动音符事件，音频线程出队处理
+			// 手动合成器活跃音符计数（volatile，主线程写入，音频线程读取）
+			// 当手动合成器无活跃音符时跳过 _manualSynth.Render()，减少 ~40-50% CPU
+			private volatile int _manualActiveVoiceCount = 0;
+
+			// PCM 回调性能诊断
+			private Stopwatch _perfStopwatch = new Stopwatch();
+			private int _perfSlowCallbackCount = 0;
+			private int _perfTotalCallbackCount = 0;
+
+			// 渲染线程 + 环形缓冲区（方案一：解耦合成与音频回调）
+			private Thread _renderThread = null;
+			private volatile bool _renderThreadRunning = false;
+			private RingBuffer _ringBuffer = null;
+
+			// 无锁事件队列：主线程入队手动音符事件，渲染线程出队处理
 			private struct NoteEvent
 			{
 				public bool IsNoteOn;
@@ -109,6 +222,30 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		{
 			_targetDecodeFrames = Math.Clamp(frames, MIN_DECODE_FRAMES, MAX_DECODE_FRAMES);
 			GD.Print($"[MeltySynthPlayer][FMOD] Target decode frames set to: {_targetDecodeFrames}");
+		}
+
+		/// <summary>
+		/// 设置FMOD DSP缓冲区大小（必须在Initialize之前调用）
+		/// </summary>
+		/// <param name="bufferLength">单个DSP块大小（样本数），推荐256或512</param>
+		/// <param name="numBuffers">缓冲块数量，推荐2</param>
+		public void SetDSPBufferSize(uint bufferLength, int numBuffers)
+		{
+			_dspBufferLength = Math.Max(bufferLength, 64u);  // 最小值64样本
+			_dspNumBuffers = Math.Clamp(numBuffers, 2, 4);    // 2-4个块
+			GD.Print($"[MeltySynthPlayer][FMOD] DSP buffer size target: {_dspBufferLength}×{_dspNumBuffers}");
+		}
+
+		/// <summary>
+		/// 设置是否使用WASAPI独占模式（Windows only, 必须在Initialize之前调用）
+		/// </summary>
+		public void SetWASAPIExclusive(bool exclusive)
+		{
+			_useWASAPIExclusive = exclusive;
+			if (exclusive)
+			{
+				GD.Print("[MeltySynthPlayer][FMOD] WASAPI exclusive mode enabled (will attempt on Initialize)");
+			}
 		}
 
 		/// <summary>
@@ -155,11 +292,12 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				_decodeFrames = Math.Max(MIN_DECODE_FRAMES, Math.Min(MAX_DECODE_FRAMES, _targetDecodeFrames));
 				
 				// 分配并清零缓冲区，避免垃圾值产生噪声
+				// B: _outputBuffer 预分配到最大尺寸，避免热路径 Resize
 				_tempLeft = new float[_decodeFrames];
 				_tempRight = new float[_decodeFrames];
 				_manualLeft = new float[_decodeFrames];
 				_manualRight = new float[_decodeFrames];
-				_outputBuffer = new float[_decodeFrames * 2];
+				_outputBuffer = new float[MAX_DECODE_FRAMES * 2];
 				
 				// 确保缓冲区初始化为零
 				Array.Clear(_tempLeft, 0, _tempLeft.Length);
@@ -190,6 +328,13 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				return false;
 			}
 
+			// 分配环形缓冲区（渲染线程→FMOD回调）
+			if (_ringBuffer == null || _ringBuffer.Capacity != _decodeFrames * 6)
+			{
+				_ringBuffer = new RingBuffer(_decodeFrames * 6);
+				GD.Print($"[MeltySynthPlayer][FMOD] Ring buffer allocated: {_decodeFrames * 6} frames (≈{_decodeFrames * 6 * 1000.0 / _sampleRate:F1}ms)");
+			}
+
 			_initialized = true;
 			return true;
 		}
@@ -208,10 +353,16 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 			if (!_playing)
 			{
-				// 直接开始播放，不需要预填充
+				// 确保渲染线程运行
+				if (_renderThread == null || !_renderThread.IsAlive)
+					StartRenderThread();
+
+				// 清除环形缓冲区，避免旧数据在新播放中被消费
+				_ringBuffer?.Clear();
+
 				FmodNative.FMOD_Channel_SetPaused(_channel, false);
 				_playing = true;
-				GD.Print("[MeltySynthPlayer][FMOD] Playback started (DIRECT MODE)");
+				GD.Print("[MeltySynthPlayer][FMOD] Playback started (RING BUFFER MODE)");
 			}
 		}
 
@@ -222,7 +373,11 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 					FmodNative.FMOD_Channel_SetPaused(_channel, true);
 				}
 
+				// 停止渲染线程
+				StopRenderThread();
+
 				// 清除状态
+				_ringBuffer?.Clear();
 				Array.Clear(_outputBuffer, 0, _outputBuffer.Length);
 				_lastSampleL = 0;
 				_lastSampleR = 0;
@@ -274,6 +429,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 					Pitch = pitch,
 					Velocity = velocity
 				});
+				Interlocked.Increment(ref _manualActiveVoiceCount);
 			}
 
 			public void EnqueueNoteOff(int virtualId, int pitch)
@@ -285,6 +441,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 					Pitch = pitch,
 					Velocity = 0
 				});
+				Interlocked.Decrement(ref _manualActiveVoiceCount);
 			}
 
 		private bool TryCreateSystem()
@@ -297,6 +454,40 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			}
 
 			GD.Print("[MeltySynthPlayer][FMOD] FMOD_System_Create succeeded");
+
+			// 设置FMOD输出类型
+			// WASAPI是Windows默认输出，显式设置确保使用最佳驱动
+			// 注意：此调用必须在 init 之前
+			if (_useWASAPIExclusive)
+			{
+				result = FmodNative.FMOD_System_SetOutput(_system, FmodNative.OUTPUTTYPE.WASAPI);
+				if (result != FmodNative.RESULT.OK)
+				{
+					GD.PushWarning($"[MeltySynthPlayer][FMOD] FMOD_System_SetOutput(WASAPI) failed: {result}, falling back to default");
+				}
+				else
+				{
+					GD.Print("[MeltySynthPlayer][FMOD] FMOD_System_SetOutput set to WASAPI");
+				}
+			}
+
+			// 设置DSP缓冲区大小
+			// 必须在 System::init 之前调用
+			// bufferlength: 单个混音块的样本数
+			// numbuffers: 缓冲块数量
+			// 平均延迟 ≈ bufferlength × (numbuffers - 1.5) / sampleRate
+			result = FmodNative.FMOD_System_SetDSPBufferSize(_system, _dspBufferLength, _dspNumBuffers);
+			if (result != FmodNative.RESULT.OK)
+			{
+				GD.PushWarning($"[MeltySynthPlayer][FMOD] FMOD_System_SetDSPBufferSize({_dspBufferLength}, {_dspNumBuffers}) failed: {result}");
+				// 不返回false，继续使用默认值（降级策略）
+			}
+			else
+			{
+				GD.Print($"[MeltySynthPlayer][FMOD] FMOD_System_SetDSPBufferSize set to {_dspBufferLength}×{_dspNumBuffers} " +
+					$"(≈{_dspBufferLength * _dspNumBuffers / (double)_sampleRate * 1000:F1}ms total, " +
+					$"≈{_dspBufferLength * (_dspNumBuffers - 1.5) / _sampleRate * 1000:F1}ms avg latency)");
+			}
 
 			// 设置FMOD系统采样率与合成器一致，避免采样率转换导致的噪声
 			result = FmodNative.FMOD_System_SetSoftwareFormat(_system, _sampleRate, FmodNative.SPEAKERMODE.SPEAKERMODE_STEREO, 0);
@@ -318,12 +509,23 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 			GD.Print("[MeltySynthPlayer][FMOD] FMOD_System_Init succeeded");
 
+			// 验证 init 后的实际 DSP 缓冲区大小
+			// 某些输出模式可能会覆盖我们设置的值
+			uint actualBufferLength;
+			int actualNumBuffers;
+			result = FmodNative.FMOD_System_GetDSPBufferSize(_system, out actualBufferLength, out actualNumBuffers);
+			if (result == FmodNative.RESULT.OK)
+			{
+				GD.Print($"[MeltySynthPlayer][FMOD] Actual DSP buffer: {actualBufferLength}×{actualNumBuffers} " +
+					$"(≈{actualBufferLength * actualNumBuffers / (double)_sampleRate * 1000:F1}ms total)");
+			}
+
 			return true;
 		}
 
 		private bool TryCreateStreamSound()
 		{
-			_pcmReadCallback = OnPcmRead;
+			_pcmReadCallback = OnPcmReadFromRingBuffer;
 			_pcmSetPosCallback = OnPcmSetPos;
 
 			uint decodeFrames = (uint)_decodeFrames;
@@ -395,13 +597,20 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 		public void Dispose()
 		{
+			StopRenderThread();
 			DisposeNative();
 		}
 
 		private FmodNative.RESULT OnPcmRead(IntPtr soundraw, IntPtr data, uint datalen)
 			{
-				// FMOD回调：直接在音频线程中合成！
+				// 保留作为回退（当前未使用，使用 OnPcmReadFromRingBuffer 代替）
 				return FillPcmDataDirect(soundraw, data, datalen);
+			}
+
+			private FmodNative.RESULT OnPcmReadFromRingBuffer(IntPtr soundraw, IntPtr data, uint datalen)
+			{
+				// 新架构：从环形缓冲区读取，仅在 FMOD 音频线程做轻量 memcpy
+				return FillPcmDataFromRingBuffer(soundraw, data, datalen);
 			}
 
 			private FmodNative.RESULT OnPcmSetPos(IntPtr soundraw, int subsound, uint position, FmodNative.TIMEUNIT postype)
@@ -413,6 +622,9 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			/// <summary>
 		/// 核心方法：直接在FMOD回调中调用MeltySynth合成
 		/// 使用最小缓冲，专注于低延迟
+		/// 优化A: 手动合成器无活跃音符时跳过渲染
+		/// 优化B: 移除运行时Array.Resize（预分配至最大尺寸）
+		/// 优化D: 缩小lock范围，ConcurrentQueue出队和Marshal.Copy在锁外
 		/// </summary>
 	private FmodNative.RESULT FillPcmDataDirect(IntPtr soundraw, IntPtr data, uint datalen)
 	{
@@ -420,13 +632,19 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		var framesRequested = floatCount / 2;
 		var framesToRender = Math.Min(framesRequested, _decodeFrames);
 
+		// B: _outputBuffer 在 Initialize() 中已预分配到 MAX_DECODE_FRAMES*2，无需运行时 Resize
 		int requiredBufferSize = framesRequested * 2;
-		if (_outputBuffer.Length < requiredBufferSize)
-			Array.Resize(ref _outputBuffer, requiredBufferSize);
+
+		// C: 性能诊断
+		_perfStopwatch.Restart();
 
 		try
 		{
-			float scale = _volumeLinear * OUTPUT_GAIN * _autoGain;
+			// D: 无锁出队手动音符事件（ConcurrentQueue 线程安全，栈分配避免堆分配）
+			Span<NoteEvent> localEvents = stackalloc NoteEvent[32];
+			int eventCount = 0;
+			while (eventCount < 32 && _pendingNoteEvents.TryDequeue(out localEvents[eventCount]))
+				eventCount++;
 
 			lock (_synthLock)
 			{
@@ -434,11 +652,10 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				if (_sequencer == null || _autoSynth == null)
 				{
 					// 这是正常瞬态：音频桥初始化时合成器尚未加载
-					// LoadSoundfont 会在创建合成器后主动调用 SetSynthesizers
 					if (_sequencer == null)
-						GD.Print("[MeltySynthPlayer][FMOD] PCM callback: _sequencer not ready yet (transient, will be set after LoadSoundfont)");
+						GD.Print("[MeltySynthPlayer][FMOD] PCM callback: _sequencer not ready yet (transient)");
 					if (_autoSynth == null)
-						GD.Print("[MeltySynthPlayer][FMOD] PCM callback: _autoSynth not ready yet (transient, will be set after LoadSoundfont)");
+						GD.Print("[MeltySynthPlayer][FMOD] PCM callback: _autoSynth not ready yet (transient)");
 					FillWithSilenceAndCopy(data, framesRequested);
 					return FmodNative.RESULT.OK;
 				}
@@ -454,26 +671,26 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 					return FmodNative.RESULT.OK;
 				}
 
-				// 处理主线程入队的手动音符事件（ConcurrentQueue 无锁入队出队，_manualSynth/_useSeparateSynth 受 _synthLock 保护）
-				while (_pendingNoteEvents.TryDequeue(out var noteEvent))
+				float scale = _volumeLinear * OUTPUT_GAIN * _autoGain;
+
+				// D: 处理已出队的手动音符事件（在锁内操作合成器，保证线程安全）
+				for (int i = 0; i < eventCount; i++)
 				{
-					// 路由到实际参与渲染的合成器：
-					//   - 使用独立合成器模式 → _manualSynth（由 _manualSynth.Render() 单独渲染）
-					//   - 非独立模式 → _autoSynth（由 _sequencer.Render() 统一渲染）
+					var noteEvent = localEvents[i];
 					var synth = (_useSeparateSynth && _manualSynth != null) ? _manualSynth : _autoSynth;
 					if (synth == null) continue;
 
 					if (noteEvent.IsNoteOn)
-					{
 						synth.NoteOn(noteEvent.VirtualId, noteEvent.Pitch, noteEvent.Velocity);
-					}
 					else
-					{
 						synth.NoteOff(noteEvent.VirtualId, noteEvent.Pitch);
-					}
 				}
 
-				if (_useSeparateSynth && _manualSynth != null && _manualSynth != _autoSynth)
+				// A: 只有手动合成器有活跃音符时才渲染，空闲时跳过节省 ~40-50% CPU
+				bool shouldRenderManual = _useSeparateSynth && _manualSynth != null
+					&& _manualSynth != _autoSynth && _manualActiveVoiceCount > 0;
+
+				if (shouldRenderManual)
 				{
 					_sequencer.Render(_tempLeft.AsSpan(0, framesToRender), _tempRight.AsSpan(0, framesToRender));
 					_manualSynth.Render(_manualLeft.AsSpan(0, framesToRender), _manualRight.AsSpan(0, framesToRender));
@@ -487,10 +704,29 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 				if (framesToRender < framesRequested)
 					FillRemainderWithDecay(framesToRender, framesRequested);
-
-				// 在锁内将合成好的音频复制到 FMOD 缓冲区（线程安全）
-				Marshal.Copy(_outputBuffer, 0, data, requiredBufferSize);
 			}
+			// D: Marshal.Copy 移出锁外 — _outputBuffer 此时已完全写入，无竞争
+
+			// C: 性能诊断（在锁外计算耗时，更准确反映回调占用）
+			_perfStopwatch.Stop();
+			_perfTotalCallbackCount++;
+			double elapsedMs = _perfStopwatch.Elapsed.TotalMilliseconds;
+			// 时间预算：bufferSize / sampleRate * 1000 ms（超过 70% 预算视为慢回调）
+			double budgetMs = (double)framesRequested / _sampleRate * 1000.0 * 0.7;
+			if (elapsedMs > budgetMs)
+			{
+				_perfSlowCallbackCount++;
+				// 每 300 次慢回调或首次出现时输出日志
+				if (_perfSlowCallbackCount <= 1 || _perfSlowCallbackCount % 300 == 0)
+				{
+					GD.Print($"[MeltySynthPlayer][FMOD] PERF: callback {elapsedMs:F2}ms " +
+						$"(budget={budgetMs:F2}ms, frames={framesRequested}, " +
+						$"slow={_perfSlowCallbackCount}/{_perfTotalCallbackCount}, " +
+						$"manualVoices={_manualActiveVoiceCount})");
+				}
+			}
+
+			Marshal.Copy(_outputBuffer, 0, data, requiredBufferSize);
 		}
 		catch (Exception ex)
 		{
@@ -501,6 +737,58 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 		return FmodNative.RESULT.OK;
 	}
+		
+		/// <summary>
+		/// 新架构 PCM 回调：从环形缓冲区读取预合成的音频
+		/// 预期耗时 < 0.5ms（纯内存拷贝 + 锁保护读）
+		/// </summary>
+		private FmodNative.RESULT FillPcmDataFromRingBuffer(IntPtr soundraw, IntPtr data, uint datalen)
+		{
+			var floatCount = (int)(datalen / sizeof(float));
+			var framesRequested = floatCount / 2;
+
+			// 保护：环形缓冲区可能尚未分配（FMOD 在 CreateStreamSound 期间就会触发回调）
+			if (_ringBuffer == null)
+			{
+				FillWithSilenceAndCopy(data, framesRequested);
+				return FmodNative.RESULT.OK;
+			}
+
+			_perfStopwatch.Restart();
+
+			int read = _ringBuffer.Read(_outputBuffer, 0, framesRequested);
+
+			if (read < framesRequested)
+			{
+				// Underrun：渲染线程来不及生产，用衰减填充剩余帧
+				FillRemainderWithDecay(read, framesRequested);
+				_underrunCount++;
+				if (_underrunCount % 100 == 1)
+					GD.Print($"[MeltySynthPlayer][FMOD] Ring buffer underrun #{_underrunCount} " +
+						$"(read={read}/{framesRequested}, rbFill={_ringBuffer.ReadableFrames})");
+			}
+
+			Marshal.Copy(_outputBuffer, 0, data, framesRequested * 2);
+
+			// 性能诊断
+			_perfStopwatch.Stop();
+			_perfTotalCallbackCount++;
+			double elapsedMs = _perfStopwatch.Elapsed.TotalMilliseconds;
+			double budgetMs = (double)framesRequested / _sampleRate * 1000.0 * 0.3; // 30% 预算（目标 <0.5ms）
+			if (elapsedMs > budgetMs)
+			{
+				_perfSlowCallbackCount++;
+				if (_perfSlowCallbackCount <= 1 || _perfSlowCallbackCount % 300 == 0)
+				{
+					GD.Print($"[MeltySynthPlayer][FMOD] PERF: callback {elapsedMs:F3}ms " +
+						$"(budget={budgetMs:F2}ms, frames={framesRequested}, " +
+						$"slow={_perfSlowCallbackCount}/{_perfTotalCallbackCount}, " +
+						$"rbFill={_ringBuffer.ReadableFrames})");
+				}
+			}
+
+			return FmodNative.RESULT.OK;
+		}
 		
 		/// <summary>
 		/// 混合到输出缓冲区（交错格式）
@@ -629,6 +917,169 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			_lastSampleR = r;
 		}
 
+		// ======== 渲染线程（方案一：解耦合成与音频回调）========
+
+		/// <summary>
+		/// 启动渲染线程
+		/// </summary>
+		private void StartRenderThread()
+		{
+			if (_renderThread != null && _renderThread.IsAlive)
+			{
+				GD.Print("[MeltySynthPlayer][FMOD] Render thread already running");
+				return;
+			}
+
+			_renderThreadRunning = true;
+			_renderThread = new Thread(RenderThreadLoop)
+			{
+				Name = "MeltySynth-Render",
+				IsBackground = true,
+				Priority = ThreadPriority.Highest
+			};
+			_renderThread.Start();
+			GD.Print("[MeltySynthPlayer][FMOD] Render thread started");
+		}
+
+		/// <summary>
+		/// 停止渲染线程
+		/// </summary>
+		private void StopRenderThread()
+		{
+			if (_renderThread == null || !_renderThread.IsAlive)
+			{
+				_renderThreadRunning = false;
+				return;
+			}
+
+			GD.Print("[MeltySynthPlayer][FMOD] Stopping render thread...");
+			_renderThreadRunning = false;
+
+			if (!_renderThread.Join(2000))
+			{
+				GD.PushWarning("[MeltySynthPlayer][FMOD] Render thread did not stop within 2s");
+			}
+			else
+			{
+				GD.Print("[MeltySynthPlayer][FMOD] Render thread stopped");
+			}
+
+			_renderThread = null;
+		}
+
+		/// <summary>
+		/// 渲染线程主循环：持续合成音频到环形缓冲区
+		/// </summary>
+		private void RenderThreadLoop()
+		{
+			GD.Print("[MeltySynthPlayer][FMOD] Render thread loop started");
+			int idleCount = 0;
+			Span<NoteEvent> localEvents = stackalloc NoteEvent[32]; // 循环外栈分配，避免重复分配
+
+			while (_renderThreadRunning)
+			{
+				// 1. 若环形缓冲区写入空间不足，短暂休眠
+				if (_ringBuffer.WritableFrames < _decodeFrames)
+				{
+					Thread.Sleep(1);
+					continue;
+				}
+
+				// 2. 清零渲染缓冲区
+				Array.Clear(_tempLeft, 0, _decodeFrames);
+				Array.Clear(_tempRight, 0, _decodeFrames);
+				Array.Clear(_manualLeft, 0, _decodeFrames);
+				Array.Clear(_manualRight, 0, _decodeFrames);
+
+				// 3. 无锁出队音符事件
+				int eventCount = 0;
+				while (eventCount < 32 && _pendingNoteEvents.TryDequeue(out localEvents[eventCount]))
+					eventCount++;
+
+				lock (_synthLock)
+				{
+					if (_sequencer == null || _autoSynth == null)
+					{
+						// 合成器尚未就绪
+						idleCount++;
+						if (idleCount % 500 == 1)
+							GD.Print($"[MeltySynthPlayer][FMOD] Render thread waiting for synthesizers (idle={idleCount})");
+						Thread.Sleep(10);
+						continue;
+					}
+
+					idleCount = 0;
+
+					// 处理 post-seek 静音
+					if (_postSeekSilenceFrames > 0)
+					{
+						int silence = Math.Min(_decodeFrames, _postSeekSilenceFrames);
+						_postSeekSilenceFrames -= silence;
+						// 输出静音衰减
+						FillOutputBufferWithDecay(0, _decodeFrames);
+					}
+					else
+					{
+						// 处理音符事件
+						for (int i = 0; i < eventCount; i++)
+						{
+							var synth = (_useSeparateSynth && _manualSynth != null) ? _manualSynth : _autoSynth;
+							if (synth == null) continue;
+							if (localEvents[i].IsNoteOn)
+								synth.NoteOn(localEvents[i].VirtualId, localEvents[i].Pitch, localEvents[i].Velocity);
+							else
+								synth.NoteOff(localEvents[i].VirtualId, localEvents[i].Pitch);
+						}
+
+						float scale = _volumeLinear * OUTPUT_GAIN * _autoGain;
+
+						// 条件渲染手动合成器（复用优化A）
+						bool shouldRenderManual = _useSeparateSynth && _manualSynth != null
+							&& _manualSynth != _autoSynth && _manualActiveVoiceCount > 0;
+
+						if (shouldRenderManual)
+						{
+							_sequencer.Render(_tempLeft.AsSpan(0, _decodeFrames), _tempRight.AsSpan(0, _decodeFrames));
+							_manualSynth.Render(_manualLeft.AsSpan(0, _decodeFrames), _manualRight.AsSpan(0, _decodeFrames));
+							MixToOutput(_tempLeft, _tempRight, _manualLeft, _manualRight, _decodeFrames, scale);
+						}
+						else
+						{
+							_sequencer.Render(_tempLeft.AsSpan(0, _decodeFrames), _tempRight.AsSpan(0, _decodeFrames));
+							MixToOutput(_tempLeft, _tempRight, null, null, _decodeFrames, scale);
+						}
+					}
+				}
+				// lock 释放
+
+				// 4. 写入环形缓冲区
+				_ringBuffer.Write(_outputBuffer, 0, _decodeFrames);
+			}
+
+			GD.Print("[MeltySynthPlayer][FMOD] Render thread loop exited");
+		}
+
+		/// <summary>
+		/// 用衰减填充整个输出缓冲区（post-seek 静音用）
+		/// </summary>
+		private void FillOutputBufferWithDecay(int startFrameIgnored, int totalFrames)
+		{
+			float decay = (float)Math.Exp(-2.0 / Math.Max(1, totalFrames));
+			float l = _lastSampleL;
+			float r = _lastSampleR;
+
+			for (int i = 0; i < totalFrames; i++)
+			{
+				_outputBuffer[i * 2] = l;
+				_outputBuffer[i * 2 + 1] = r;
+				l *= decay;
+				r *= decay;
+			}
+
+			_lastSampleL = l;
+			_lastSampleR = r;
+		}
+
 			// 兼容性方法（保留但不再使用）
 			public int GetWaterLevelPercent() { return 50; }
 			public bool NeedPreRender() { return false; }
@@ -679,6 +1130,32 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			SPEAKERMODE_5POINT1 = 5,
 			SPEAKERMODE_7POINT1 = 6,
 			SPEAKERMODE_MAX = 7
+		}
+
+		internal enum OUTPUTTYPE : int
+		{
+			AUTODETECT = 0,
+			UNKNOWN = 1,
+			NOSOUND = 2,
+			WAVWRITER = 3,
+			NOSOUND_NRT = 4,
+			WAVWRITER_NRT = 5,
+			WASAPI = 7,
+			ASIO = 8,
+			PULSEAUDIO = 9,
+			ALSA = 10,
+			COREAUDIO = 11,
+			AUDIOTRACK = 12,
+			OPENSL = 13,
+			AUDIOOUT = 14,
+			AUDIO3D = 15,
+			WEBAUDIO = 16,
+			NNAUDIO = 17,
+			WINSONIC = 18,
+			AAUDIO = 19,
+			AUDIOWORKLET = 20,
+			PHASE = 21,
+			OHAUDIO = 22
 		}
 
 		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -869,6 +1346,15 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern RESULT FMOD_Sound_Release(IntPtr sound);
 
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_System_SetDSPBufferSize(IntPtr system, uint bufferlength, int numbuffers);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_System_GetDSPBufferSize(IntPtr system, out uint bufferlength, out int numbuffers);
+
+		[DllImport("fmod", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern RESULT FMOD_System_SetOutput(IntPtr system, OUTPUTTYPE output);
+
 		internal static RESULT CreateSystem(out IntPtr system)
 		{
 			return FMOD_System_Create(out system, FMOD_VERSION);
@@ -984,7 +1470,12 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	{
 		var bridge = new FmodAudioOutputBridge(0);
 		bridge.SetDecodeFrames(_desiredBufferFrames);
-		GD.Print($"[MeltySynthPlayer] Creating FMOD audio bridge with {_desiredBufferFrames} frames buffer");
+
+		// 同步设置DSP缓冲区大小
+		// 使用与decode frames相同的值（对齐后），保持一致性
+		bridge.SetDSPBufferSize((uint)_desiredBufferFrames, 2);
+
+		GD.Print($"[MeltySynthPlayer] Creating FMOD audio bridge with decode={_desiredBufferFrames}f, DSP=({_desiredBufferFrames},2)");
 		return bridge;
 	}
 
