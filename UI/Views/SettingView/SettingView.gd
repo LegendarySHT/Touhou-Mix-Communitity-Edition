@@ -141,6 +141,15 @@ func save_config_to_file() -> bool:
 			print("[SettingView] Converting midi_backend index %d to '%s'" % [index, converted])
 			settings_dict["midi_backend"] = converted
 
+	# 特殊处理 audio_backend：将选项索引转换为实际值 (0=fmod, 1=miniaudio)
+	if settings_dict.has("audio_backend"):
+		var audio_raw_value = settings_dict["audio_backend"]
+		if audio_raw_value is int or (audio_raw_value is String and audio_raw_value.is_valid_int()):
+			var audio_index = int(audio_raw_value)
+			var audio_converted = "miniaudio" if audio_index == 1 else "fmod"
+			print("[SettingView] Converting audio_backend index %d to '%s'" % [audio_index, audio_converted])
+			settings_dict["audio_backend"] = audio_converted
+
 	# 特殊处理 melty_audio_output_backend：将选项索引转换为实际值
 	if settings_dict.has("melty_audio_output_backend"):
 		var raw_output_value = settings_dict["melty_audio_output_backend"]

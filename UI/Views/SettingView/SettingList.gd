@@ -229,17 +229,29 @@ var setting_groups = [
 			"dynamic_options": true
 		},
 		{
-			"id": "midi_backend",
-			"name_en": "MIDI Backend",
-			"name_zh": "MIDI合成器",
-			"description": "选择MIDI合成器后端以进行音质对比。",
-			"type": "TYPE_OPTION",
-			"default_value": "0",
-			"options": [
-				{"text_en": "Addon (GDScript)", "text_zh": "插件合成器", "value": "addons"},
-				{"text_en": "MeltySynth (C#)", "text_zh": "MeltySynth", "value": "meltysynth"}
-			]
-		},
+		"id": "midi_backend",
+		"name_en": "MIDI Backend",
+		"name_zh": "MIDI合成器",
+		"description": "选择MIDI合成器后端以进行音质对比。",
+		"type": "TYPE_OPTION",
+		"default_value": "0",
+		"options": [
+			{"text_en": "Addon (GDScript)", "text_zh": "插件合成器", "value": "addons"},
+			{"text_en": "MeltySynth (C#)", "text_zh": "MeltySynth", "value": "meltysynth"}
+		]
+	},
+	{
+		"id": "audio_backend",
+		"name_en": "Audio Output Backend",
+		"name_zh": "音频输出后端",
+		"description": "选择音频输出后端。FMOD 兼容性好；miniaudio 延迟更低(需配合MeltySynth使用)。切换后可能需要重启游戏。",
+		"type": "TYPE_OPTION",
+		"default_value": "0",
+		"options": [
+			{"text_en": "FMOD (Compatible)", "text_zh": "FMOD (兼容)", "value": "fmod"},
+			{"text_en": "miniaudio (Low Latency)", "text_zh": "miniaudio (低延迟)", "value": "miniaudio"}
+		]
+	},
 
 	]
 	},
@@ -1128,6 +1140,11 @@ func _on_setting_value_changed(id: String, value: Variant):
 				# 0 -> "addons", 1 -> "meltysynth"
 				converted_value = "addons" if value == 0 else "meltysynth"
 				print("[SettingList] Converting midi_backend index %d to '%s'" % [value, converted_value])
+			# 特殊处理：audio_backend 需要将索引转换为实际值
+			elif id == "audio_backend" and value is int:
+				# 0 -> "fmod", 1 -> "miniaudio"
+				converted_value = "miniaudio" if value == 1 else "fmod"
+				print("[SettingList] Converting audio_backend index %d to '%s'" % [value, converted_value])
 			elif id == "play_background_mode" and value is int:
 				converted_value = value
 				_refresh_play_background_visibility()

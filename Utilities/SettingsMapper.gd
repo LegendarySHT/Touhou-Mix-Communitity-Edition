@@ -29,6 +29,7 @@ static var mappings: Dictionary = {
 	# ========== 音源设置 ==========
 	"soundfont_select": {"section": "Gameplay", "key": "soundfont_file", "value_type": "string"},
 	"midi_backend": {"section": "Gameplay", "key": "midi_backend", "value_type": "string"},
+	"audio_backend": {"section": "Gameplay", "key": "audio_backend", "value_type": "string"},
 	"default_midi_volume": {"section": "Gameplay", "key": "default_midi_volume", "value_type": "int"},
 	"default_vocal_volume": {"section": "Gameplay", "key": "default_vocal_volume", "value_type": "int"},
 	"audio_sync_threshold": {"section": "Gameplay", "key": "audio_sync_threshold", "value_type": "int"},
@@ -153,6 +154,14 @@ static func ini_to_settings(config: Dictionary) -> Dictionary:
 			result["midi_backend"] = "0"
 		elif backend_value == "meltysynth":
 			result["midi_backend"] = "1"
+
+	# 特殊处理：audio_backend 从字符串值转换为选项索引 (0=fmod, 1=miniaudio)
+	if result.has("audio_backend"):
+		var audio_backend_value = result["audio_backend"]
+		if audio_backend_value == "miniaudio":
+			result["audio_backend"] = "1"
+		else:
+			result["audio_backend"] = "0"
 	
 	# 特殊处理：Browse 设置从字符串值转换为选项索引（顺序: creation_time=0, download_time=1）
 	if result.has("album_sort_method"):

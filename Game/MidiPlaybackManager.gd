@@ -215,6 +215,21 @@ func _on_settings_changed(setting_name: String, value: Variant) -> void:
 		else:
 			print("[MidiPlaybackManager] Current backend does not support system stopwatch setting")
 
+	# 音频输出后端切换 (fmod / miniaudio)
+	if setting_name == "*" or setting_name == "audio_backend":
+		print("[MidiPlaybackManager] Audio backend setting changed")
+		var backend_value = ConfigManager.instance.get_value("Gameplay", "audio_backend", "fmod")
+		print("[MidiPlaybackManager] audio_backend = %s" % str(backend_value))
+		# 仅对 meltysynth 后端生效 (addons 后端不使用此设置)
+		if midi_backend == "meltysynth":
+			var wrapper = _get_active_backend()
+			if wrapper != null and wrapper.has_method("SetAudioBackend"):
+				# 兼容字符串值("miniaudio")和索引值("1"/1)
+				var backend_str = str(backend_value).to_lower()
+				var backend_index = 1 if (backend_str == "miniaudio" or backend_str == "1") else 0
+				wrapper.call("SetAudioBackend", backend_index)
+				print("[MidiPlaybackManager] Audio backend set to: %s (index %d)" % [backend_value, backend_index])
+
 	# 音频缓冲区大小或最大复音数改变（需要重新加载SoundFont才能生效）
 	if setting_name == "*" or setting_name == "audio_buffer_frames" or setting_name == "max_polyphony":
 		print("[MidiPlaybackManager] Audio buffer or polyphony setting changed, reloading soundfont")
@@ -990,6 +1005,16 @@ func _initialize_meltysynth_backend() -> bool:
 		var audio_buffer_frames = buffer_sizes[buffer_index]
 		wrapper.call("SetAudioBufferFrames", audio_buffer_frames)
 		print("[MidiPlaybackManager] Set audio buffer frames: %d (index %d)" % [audio_buffer_frames, buffer_index])
+
+	# 设置音频输出后端 (0=FMOD, 1=miniaudio)
+	# 必须在 SetAudioBufferFrames 之后调用, 因为后者会触发后端重建
+	if wrapper.has_method("SetAudioBackend"):
+		var audio_backend_value = ConfigManager.instance.get_value("Gameplay", "audio_backend", "fmod")
+		# 兼容字符串值("miniaudio")和索引值("1"/1)
+		var audio_backend_str = str(audio_backend_value).to_lower()
+		var audio_backend_index = 1 if (audio_backend_str == "miniaudio" or audio_backend_str == "1") else 0
+		wrapper.call("SetAudioBackend", audio_backend_index)
+		print("[MidiPlaybackManager] Set audio backend: %s (index %d)" % [audio_backend_value, audio_backend_index])
 
 	# 设置最大复音数
 	wrapper.set("max_polyphony", ConfigManager.instance.get_int("Playback", "max_polyphony", 96))

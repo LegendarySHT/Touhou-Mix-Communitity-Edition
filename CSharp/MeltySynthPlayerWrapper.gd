@@ -202,3 +202,13 @@ func SetAudioBufferFrames(frames: int) -> void:
 	if meltysynth_player == null:
 		return
 	meltysynth_player.call("SetAudioBufferFrames", frames)
+
+## 设置音频输出后端
+## backend: 0 = FMOD (兼容), 1 = miniaudio (低延迟)
+func SetAudioBackend(backend: int) -> void:
+	if meltysynth_player == null:
+		return
+	if meltysynth_player.has_method("SetAudioBackend"):
+		meltysynth_player.call("SetAudioBackend", backend)
+	else:
+		push_warning("[MeltySynthPlayerWrapper] C# MeltySynthPlayer does not expose SetAudioBackend (可能版本过旧)")

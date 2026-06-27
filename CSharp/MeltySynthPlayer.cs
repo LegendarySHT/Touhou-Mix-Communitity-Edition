@@ -16,7 +16,9 @@ using TouhouMix.Midi;
 /// </summary>
 public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 {
-	private interface IAudioOutputBridge
+	// 可见性: internal 以便 partial 文件 (MeltySynthPlayer.MiniaudioBridge.cs) 中的
+	// MiniaudioAudioOutputBridge 实现此接口
+	internal interface IAudioOutputBridge
 	{
 		bool Initialize(Node owner, StringName bus, int sampleRate);
 		void SetBus(StringName bus);
@@ -33,6 +35,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		void EnqueueNoteOn(int virtualId, int pitch, int velocity);
 		void EnqueueNoteOff(int virtualId, int pitch);
 		void Dispose();
+		/// <summary>设置 post-seek 后需要静音渲染丢弃的帧数 (用于消耗 seek 瞬态).</summary>
+		int PostSeekSilenceFrames { get; set; }
 	}
 
 	/// <summary>
@@ -167,6 +171,12 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			private bool _initialized = false;
 			private bool _playing = false;
 			internal int _postSeekSilenceFrames = 0;
+			/// <summary>暴露给 IAudioOutputBridge 接口的 post-seek 静音帧数</summary>
+			int IAudioOutputBridge.PostSeekSilenceFrames
+			{
+				get => _postSeekSilenceFrames;
+				set => _postSeekSilenceFrames = value;
+			}
 			private StringName _bus = new StringName("Master");
 			
 			// 统计信息
@@ -1468,15 +1478,30 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	private IAudioOutputBridge CreateAudioOutputBridge()
 	{
-		var bridge = new FmodAudioOutputBridge(0);
-		bridge.SetDecodeFrames(_desiredBufferFrames);
+		// 根据 _audioBackend 选择后端
+		// miniaudio: 优先低延迟, RingBuffer 容量 ×2, period 256×2
+		// fmod:      兼容回退, RingBuffer 容量 ×6, DSP 1024×2
+		if (_audioBackend == AudioBackend.Miniaudio)
+		{
+			var maBridge = new MiniaudioAudioOutputBridge(0);
+			maBridge.SetDecodeFrames(_desiredBufferFrames);
+			// miniaudio period 与 decode frames 对齐, 但可以更小 (256 而非 1024)
+			// 这里用 min(decodeFrames, 512) 作为 period 以获得更低延迟
+			uint maPeriod = (uint)Math.Min(_desiredBufferFrames, 512);
+			maBridge.SetPeriodSize(maPeriod, 2);
 
-		// 同步设置DSP缓冲区大小
-		// 使用与decode frames相同的值（对齐后），保持一致性
-		bridge.SetDSPBufferSize((uint)_desiredBufferFrames, 2);
+			GD.Print($"[MeltySynthPlayer] Creating miniaudio bridge: decode={_desiredBufferFrames}f, period=({maPeriod},2)");
+			return maBridge;
+		}
+		else
+		{
+			var bridge = new FmodAudioOutputBridge(0);
+			bridge.SetDecodeFrames(_desiredBufferFrames);
+			bridge.SetDSPBufferSize((uint)_desiredBufferFrames, 2);
 
-		GD.Print($"[MeltySynthPlayer] Creating FMOD audio bridge with decode={_desiredBufferFrames}f, DSP=({_desiredBufferFrames},2)");
-		return bridge;
+			GD.Print($"[MeltySynthPlayer] Creating FMOD bridge: decode={_desiredBufferFrames}f, DSP=({_desiredBufferFrames},2)");
+			return bridge;
+		}
 	}
 
 	/// <summary>
@@ -1630,8 +1655,9 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 				// Schedule post-seek silence to consume transient note attacks.
 				// Rendered audio will be silently discarded for ~50ms instead of
 				// doing a synchronous flush that can crash the renderer.
-				if (_audioOutput is FmodAudioOutputBridge fmodBr)
-					fmodBr._postSeekSilenceFrames = (int)(_sampleRate * 0.25);
+				// 通过接口访问, 同时支持 FMOD 和 miniaudio 后端
+				if (_audioOutput != null)
+					_audioOutput.PostSeekSilenceFrames = (int)(_sampleRate * 0.25);
 			}
 			else
 			{
