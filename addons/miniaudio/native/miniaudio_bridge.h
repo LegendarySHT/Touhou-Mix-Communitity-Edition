@@ -123,6 +123,12 @@ MA_BRIDGE_API ma_bridge_result ma_bridge_get_period_size(void* pBridge,
 // 获取设备实际采样率
 MA_BRIDGE_API ma_bridge_result ma_bridge_get_sample_rate(void* pBridge, uint32_t* pSampleRate);
 
+// 获取设备报告的内部延迟 (帧数)
+// 这是 miniaudio 设备从内部缓冲区到实际发声的延迟, 不含应用层 RingBuffer
+// 某些后端可能不支持 (返回 MA_BRIDGE_ERR_UNSUPPORTED)
+// 传 NULL 到 pLatencyInFrames 可查询是否支持 (仅检查返回值)
+MA_BRIDGE_API ma_bridge_result ma_bridge_get_latency(void* pBridge, uint32_t* pLatencyInFrames);
+
 // 获取当前后端名称 (用于日志, 返回静态字符串, 无需释放)
 MA_BRIDGE_API const char* ma_bridge_get_backend_name(void* pBridge);
 

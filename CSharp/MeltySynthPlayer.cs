@@ -1565,6 +1565,28 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		}
 	}
 
+	/// <summary>
+	/// 获取当前音频延迟 (毫秒).
+	/// miniaudio 后端: 设备内部延迟 (ma_device_get_latency) + RingBuffer 延迟
+	/// FMOD 后端: 缓冲区估算延迟
+	/// </summary>
+	public float GetAudioLatencyMs()
+	{
+		if (_audioOutput is MiniaudioAudioOutputBridge maBridge)
+		{
+			return maBridge.GetLatencyMs();
+		}
+		// FMOD 或其他后端: 用缓冲区信息估算
+		if (_audioOutput != null && _audioOutput.IsPlaying)
+		{
+			int totalBufferFrames = _audioOutput.GetTotalBufferFrames();
+			int framesAvailable = _audioOutput.GetFramesAvailable();
+			int bufferedFrames = totalBufferFrames - framesAvailable;
+			return (float)bufferedFrames / _sampleRate * 1000.0f;
+		}
+		return 0f;
+	}
+
 	public override void _Ready()
 	{
 		GD.Print("[MeltySynthPlayer] _Ready() called");

@@ -264,6 +264,24 @@ ma_bridge_result ma_bridge_get_sample_rate(void* pBridge, uint32_t* pSampleRate)
     return MA_BRIDGE_OK;
 }
 
+ma_bridge_result ma_bridge_get_latency(void* pBridge, uint32_t* pLatencyInFrames)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return MA_BRIDGE_ERR_NOT_INITIALIZED;
+    }
+    // ma_device_get_latency 在某些后端可能返回 MA_NOT_IMPLEMENTED
+    ma_uint32 latencyFrames = 0;
+    ma_result mr = ma_device_get_latency(&p->device, &latencyFrames);
+    if (mr != MA_SUCCESS) {
+        return MA_BRIDGE_ERR_UNSUPPORTED;
+    }
+    if (pLatencyInFrames != NULL) {
+        *pLatencyInFrames = latencyFrames;
+    }
+    return MA_BRIDGE_OK;
+}
+
 const char* ma_bridge_get_backend_name(void* pBridge)
 {
     ma_bridge* p = (ma_bridge*)pBridge;

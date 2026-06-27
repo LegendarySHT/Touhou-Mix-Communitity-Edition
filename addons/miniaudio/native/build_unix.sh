@@ -64,15 +64,44 @@ case "$TARGET" in
             exit 1
         fi
         API="${ANDROID_API:-24}"
-        TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
+        # 兼容 linux-x86_64 和 darwin-x86_64 (macOS 主机)
+        HOST_TAG="linux-x86_64"
+        if [ "$(uname -s)" = "Darwin" ]; then
+            HOST_TAG="darwin-x86_64"
+        fi
+        TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/$HOST_TAG"
         CC="$TOOLCHAIN/bin/aarch64-linux-android$API-clang"
 
-        echo "[1/2] Compiling for Android arm64 (API $API)..."
+        echo "[1/3] Compiling for Android arm64 (API $API)..."
         $CC $CFLAGS -shared miniaudio_bridge.c \
             -o libminiaudio_bridge.so \
             -lOpenSLES
+
+        echo "[2/3] Packaging AAR..."
+        # AAR 结构: jni/arm64-v8a/libminiaudio_bridge.so + AndroidManifest.xml
+        AAR_DIR="_aar_tmp"
+        rm -rf "$AAR_DIR"
+        mkdir -p "$AAR_DIR/jni/arm64-v8a"
+        cp libminiaudio_bridge.so "$AAR_DIR/jni/arm64-v8a/"
+        # 最小化 AndroidManifest.xml (AAR 必需)
+        cat > "$AAR_DIR/AndroidManifest.xml" << 'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.godot.miniaudio">
+</manifest>
+XML
+        mkdir -p ../libs/android
+        # 生成 debug 和 release 两个 AAR (内容相同, 只是文件名不同)
+        (cd "$AAR_DIR" && zip -q -r "../miniaudio_bridge-debug.aar" .)
+        cp ../libs/android/miniaudio_bridge-debug.aar ../libs/android/miniaudio_bridge-release.aar
+        rm -rf "$AAR_DIR"
+
+        echo "[3/3] Copying .so to arm64/ (备用, 供直接使用)..."
         mkdir -p ../libs/android/arm64
         cp libminiaudio_bridge.so ../libs/android/arm64/
+
+        echo "[SUCCESS] → ../libs/android/miniaudio_bridge-debug.aar"
+        echo "[SUCCESS] → ../libs/android/miniaudio_bridge-release.aar"
         echo "[SUCCESS] → ../libs/android/arm64/libminiaudio_bridge.so"
         ;;
     *)

@@ -136,7 +136,10 @@ namespace TouhouMix.Midi
                 var libraryPath = ResolveLibraryPath();
                 if (string.IsNullOrEmpty(libraryPath))
                 {
-                    GD.PushWarning("[MiniaudioNative] No library path resolved for current platform.");
+                    var osName = OS.GetName();
+                    var arch = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture;
+                    GD.PushWarning($"[MiniaudioNative] No library path resolved for platform: {osName} ({arch}). " +
+                        $"Ensure the native library is compiled and placed in addons/miniaudio/libs/<platform>/.");
                     return false;
                 }
 
@@ -148,11 +151,23 @@ namespace TouhouMix.Midi
                     {
                         GD.Print($"[MiniaudioNative] Loaded native library: {libraryPath}");
                     }
+                    else
+                    {
+                        GD.PushWarning($"[MiniaudioNative] NativeLibrary.Load returned zero handle for: {libraryPath}");
+                    }
                     return _loadSucceeded;
                 }
                 catch (Exception ex)
                 {
-                    GD.PushWarning($"[MiniaudioNative] Failed to load '{libraryPath}': {ex.Message}");
+                    var osName = OS.GetName();
+                    GD.PushWarning($"[MiniaudioNative] Failed to load '{libraryPath}' on {osName}: {ex.GetType().Name}: {ex.Message}");
+                    if (osName == "Android")
+                    {
+                        GD.PushWarning("[MiniaudioNative] Android 提示: " +
+                            "确保已通过 miniaudio Android 导出插件将 libminiaudio_bridge.so 打包进 APK. " +
+                            "运行 addons/miniaudio/native/build_unix.sh android (需 NDK) 生成 AAR, " +
+                            "然后在编辑器中启用 miniaudio 插件并重新导出 APK.");
+                    }
                     return false;
                 }
             }
@@ -237,6 +252,10 @@ namespace TouhouMix.Midi
 
         [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
         internal static extern Result ma_bridge_get_sample_rate(IntPtr pBridge, out uint pSampleRate);
+
+        // 获取设备报告的内部延迟 (帧数). 旧版 DLL 可能没有此导出, 调用方需 try/catch
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern Result ma_bridge_get_latency(IntPtr pBridge, out uint pLatencyInFrames);
 
         [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr ma_bridge_get_backend_name(IntPtr pBridge);

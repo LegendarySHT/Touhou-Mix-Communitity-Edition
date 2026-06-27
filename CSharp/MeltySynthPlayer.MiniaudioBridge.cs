@@ -121,6 +121,11 @@ public partial class MeltySynthPlayer
             private float _lastSampleL = 0;
             private float _lastSampleR = 0;
 
+            // ---- 延迟查询 ----
+            private uint _actualPeriod = 0;       // 设备实际 period (TryCreateDevice 后填充)
+            private uint _actualPeriodCount = 0;  // 设备实际 period 数量
+            private bool _nativeGetLatencyAvailable = true;  // 旧 DLL 无此导出时设为 false
+
             // ---- 线程同步 ----
             internal readonly object _synthLock = new object();
             public object SyncRoot => _synthLock;
@@ -248,7 +253,7 @@ public partial class MeltySynthPlayer
 
                 _decodeFrames = Math.Max(MIN_DECODE_FRAMES, Math.Min(MAX_DECODE_FRAMES, _targetDecodeFrames));
 
-                // 分配渲染缓冲区
+                // 分配渲染缓冲区 (先用 _decodeFrames, TryCreateDevice 后可能根据实际 period 上调)
                 _tempLeft = new float[_decodeFrames];
                 _tempRight = new float[_decodeFrames];
                 _manualLeft = new float[_decodeFrames];
@@ -278,13 +283,37 @@ public partial class MeltySynthPlayer
                     return false;
                 }
 
-                // 关键: RingBuffer 容量 ×2 (而非 FMOD 版本的 ×6)
-                // 这是最重要的延迟优化: 减少缓冲堆积, 让音频回调更接近渲染线程最新输出
-                int ringCapacity = _decodeFrames * 2;
+                // 根据实际 period 动态调整 _decodeFrames
+                // WASAPI 共享模式可能强制 period=480 或 528, 远大于请求的 256
+                // 如果 _decodeFrames < actualPeriod, 一次回调就会抽空 RingBuffer
+                var qPeriod = MiniaudioNative.ma_bridge_get_period_size(_bridgeHandle, out uint actualPeriod, out uint actualCount);
+                if (qPeriod == MiniaudioNative.Result.Ok && actualPeriod > 0)
+                {
+                    int newDecodeFrames = (int)Math.Max(_decodeFrames, actualPeriod);
+                    newDecodeFrames = Math.Min(newDecodeFrames, MAX_DECODE_FRAMES);
+                    if (newDecodeFrames != _decodeFrames)
+                    {
+                        GD.Print($"[MeltySynthPlayer][miniaudio] Adjusting decode frames: {_decodeFrames} → {newDecodeFrames} " +
+                            $"(actualPeriod={actualPeriod})");
+                        _decodeFrames = newDecodeFrames;
+                        // 重新分配渲染缓冲区
+                        _tempLeft = new float[_decodeFrames];
+                        _tempRight = new float[_decodeFrames];
+                        _manualLeft = new float[_decodeFrames];
+                        _manualRight = new float[_decodeFrames];
+                    }
+                }
+
+                // RingBuffer 容量: max(_decodeFrames, actualPeriod) × 6
+                // ×6 而非 ×2: WASAPI 共享模式 period 不可控 (通常 ~10ms),
+                // 需要足够缓冲来吸收渲染线程的调度抖动和 _sequencer.Render() 的耗时波动
+                int effectivePeriod = (int)Math.Max(_decodeFrames, actualPeriod);
+                int ringCapacity = effectivePeriod * 6;
                 if (_ringBuffer == null || _ringBuffer.Capacity != ringCapacity)
                 {
                     _ringBuffer = new RingBuffer(ringCapacity);
-                    GD.Print($"[MeltySynthPlayer][miniaudio] Ring buffer: {ringCapacity} frames (≈{ringCapacity * 1000.0 / _sampleRate:F1}ms)");
+                    GD.Print($"[MeltySynthPlayer][miniaudio] Ring buffer: {ringCapacity} frames (≈{ringCapacity * 1000.0 / _sampleRate:F1}ms) " +
+                        $"[capacity = {effectivePeriod}×6]");
                 }
 
                 _initialized = true;
@@ -320,6 +349,8 @@ public partial class MeltySynthPlayer
                 var qResult = MiniaudioNative.ma_bridge_get_period_size(_bridgeHandle, out uint actualPeriod, out uint actualCount);
                 if (qResult == MiniaudioNative.Result.Ok)
                 {
+                    _actualPeriod = actualPeriod;
+                    _actualPeriodCount = actualCount;
                     GD.Print($"[MeltySynthPlayer][miniaudio] Actual period: {actualPeriod}×{actualCount} " +
                         $"(≈{actualPeriod * actualCount / (double)_sampleRate * 1000:F1}ms total, " +
                         $"≈{actualPeriod * (actualCount - 1.5) / _sampleRate * 1000:F1}ms avg latency)");
@@ -356,6 +387,18 @@ public partial class MeltySynthPlayer
                         StartRenderThread();
 
                     _ringBuffer?.Clear();
+
+                    // 预填充 RingBuffer: 在启动音频设备前, 先填充到 50% 容量
+                    // 避免设备启动后第一次回调就 underrun (rbFill=0 问题)
+                    int targetFill = _ringBuffer.Capacity / 2;
+                    int fillTimeoutMs = 0;
+                    while (_ringBuffer.ReadableFrames < targetFill && fillTimeoutMs < 500)
+                    {
+                        Thread.Sleep(2);
+                        fillTimeoutMs += 2;
+                    }
+                    GD.Print($"[MeltySynthPlayer][miniaudio] Pre-fill: {_ringBuffer.ReadableFrames}/{targetFill} frames " +
+                        $"(waited {fillTimeoutMs}ms)");
 
                     var r = MiniaudioNative.ma_bridge_start(_bridgeHandle);
                     if (r != MiniaudioNative.Result.Ok)
@@ -467,10 +510,12 @@ public partial class MeltySynthPlayer
                     // Underrun
                     FillRemainderWithDecay(read, framesRequested);
                     _underrunCount++;
-                    if (_underrunCount % 100 == 1)
+                    // 前 10 次每次都打印, 之后每 100 次打印一次
+                    if (_underrunCount <= 10 || _underrunCount % 100 == 1)
                     {
                         GD.Print($"[MeltySynthPlayer][miniaudio] Underrun #{_underrunCount} " +
-                            $"(read={read}/{framesRequested}, rbFill={_ringBuffer.ReadableFrames})");
+                            $"(read={read}/{framesRequested}, rbFill={_ringBuffer.ReadableFrames}, " +
+                            $"rbCap={_ringBuffer.Capacity}, decode={_decodeFrames})");
                     }
                 }
 
@@ -541,8 +586,13 @@ public partial class MeltySynthPlayer
                 while (_renderThreadRunning)
                 {
                     // 1. 等待可写空间
-                    if (_ringBuffer.WritableFrames < _decodeFrames)
+                    // 使用 _decodeFrames 作为最小可写阈值: 渲染线程每次写 _decodeFrames 帧
+                    // 当 RingBuffer 接近满时, 等待音频回调消耗数据
+                    int writable = _ringBuffer.WritableFrames;
+                    if (writable < _decodeFrames)
                     {
+                        // 可写空间不足, 短暂等待让音频回调消耗数据
+                        // Sleep(1) 足够让 WASAPI 音频线程执行一次回调 (period ~10ms)
                         Thread.Sleep(1);
                         continue;
                     }
@@ -730,5 +780,62 @@ public partial class MeltySynthPlayer
 
             // 兼容性方法
             public int GetUnderrunCount() => System.Threading.Interlocked.CompareExchange(ref _underrunCount, 0, 0);
+
+            /// <summary>
+            /// 获取当前总音频延迟 (毫秒)
+            /// = 设备内部延迟 (ma_device_get_latency 或 period 估算) + RingBuffer 延迟
+            /// </summary>
+            public float GetLatencyMs()
+            {
+                float deviceLatencyMs = 0f;
+
+                // 1. 尝试获取 native 设备延迟 (真实值)
+                if (_nativeGetLatencyAvailable && _bridgeHandle != IntPtr.Zero)
+                {
+                    try
+                    {
+                        var r = MiniaudioNative.ma_bridge_get_latency(_bridgeHandle, out uint latencyFrames);
+                        if (r == MiniaudioNative.Result.Ok)
+                        {
+                            deviceLatencyMs = latencyFrames * 1000.0f / _sampleRate;
+                        }
+                        else
+                        {
+                            // 后端不支持 ma_device_get_latency, 用 period 估算
+                            deviceLatencyMs = EstimateDeviceLatencyMs();
+                        }
+                    }
+                    catch (EntryPointNotFoundException)
+                    {
+                        // 旧版 DLL 无此导出, 不再尝试
+                        _nativeGetLatencyAvailable = false;
+                        GD.Print("[MeltySynthPlayer][miniaudio] ma_bridge_get_latency not found in DLL, using estimate");
+                        deviceLatencyMs = EstimateDeviceLatencyMs();
+                    }
+                }
+                else
+                {
+                    deviceLatencyMs = EstimateDeviceLatencyMs();
+                }
+
+                // 2. RingBuffer 延迟 (应用层缓冲, 尚未进入设备)
+                float ringLatencyMs = 0f;
+                if (_ringBuffer != null)
+                {
+                    ringLatencyMs = _ringBuffer.ReadableFrames * 1000.0f / _sampleRate;
+                }
+
+                return deviceLatencyMs + ringLatencyMs;
+            }
+
+            /// <summary>用 period size × count 估算设备延迟 (fallback)</summary>
+            private float EstimateDeviceLatencyMs()
+            {
+                if (_actualPeriod > 0 && _actualPeriodCount > 0)
+                {
+                    return _actualPeriod * _actualPeriodCount * 1000.0f / _sampleRate;
+                }
+                return 0f;
+            }
         }
 }
