@@ -1452,28 +1452,60 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	private void EnsureAudioInitialized()
 	{
-		// WASAPI 采样率策略:
-		// - 独占模式: 设备使用原生采样率 (通常 48000Hz), miniaudio 不做 SRC, 必须匹配.
-		// - 共享模式 + IAudioClient3 低延迟: 启用 noAutoConvertSRC 后, WASAPI 不做 SRC.
-		//   如果合成器采样率 ≠ 设备原生采样率, miniaudio 用内部重采样器做 SRC (有开销).
-		//   为避免重采样开销, 强制用 48000Hz (设备原生), 直接匹配.
-		// - Godot AudioServer.GetMixRate() 在 Dummy driver 下返回 44100, 不代表设备原生采样率.
-		// 注意: 每次调用都重新评估, 因为后端可能在运行时切换 (Fmod → Miniaudio).
+		// WASAPI 采样率策略 (借鉴 TouhouMix Unity 项目技巧, 仅 Windows 适用):
+		// Realtek 驱动限制 WASAPI 共享模式 min period=480 帧.
+		// - 480 帧 @ 48000Hz = 10ms (不达标)
+		// - 480 帧 @ 96000Hz = 5ms  (达标 <10ms)
+		// 提高采样率让同样帧数对应更短时间, 突破 Realtek 的 period 限制.
+		// 如果设备原生支持 96000Hz, IAudioClient3 会用 96000Hz, period 降为 5ms.
+		// 如果设备只支持 48000Hz, miniaudio 用内部重采样器做 96k→48k SRC.
+		//
+		// 【注意】96000Hz 技巧仅 Windows/WASAPI 需要. Android/iOS 的 AAudio/OpenSL
+		// 后端本身就支持低延迟 (AAUDIO_CONTENT_TYPE_MEDIA, framesPerBurst 通常 192-240),
+		// 无需高采样率技巧. 强制 96000Hz 会导致:
+		//   - Android: AAudio 后端初始化失败 (noAutoConvertSRC 是 WASAPI 专用)
+		//   - iOS: 类似不兼容
+		// 因此非 Windows 平台直接使用 AudioServer.GetMixRate() (通常 48000Hz).
+		//
+		// 环境变量 MINIAUDIO_SAMPLE_RATE 可覆盖默认采样率 (方便测试).
+		// 独占模式必须用设备原生采样率 (通常 48000Hz), 不能强制 96000Hz.
+		int oldSampleRate = _sampleRate;
 		bool useExclusive = System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1";
 		bool useMiniaudio = useExclusive || (_audioBackend == AudioBackend.Miniaudio);
 		if (useMiniaudio)
 		{
-			int oldRate = _sampleRate;
 			_sampleRate = (int)AudioServer.GetMixRate();  // 重新读取 (可能 44100)
-			if (_sampleRate != 48000)
+			int targetRate = _sampleRate;  // 默认使用系统采样率
+			// 仅 Windows 需要高采样率技巧突破 WASAPI period 限制
+			if (OS.GetName() == "Windows")
 			{
-				GD.Print($"[MeltySynthPlayer] miniaudio: adjusting sample rate {_sampleRate} → 48000 (device native rate)");
-				_sampleRate = 48000;
+				targetRate = useExclusive ? 48000 : 96000;
+			}
+			var envRate = System.Environment.GetEnvironmentVariable("MINIAUDIO_SAMPLE_RATE");
+			if (!string.IsNullOrEmpty(envRate) && int.TryParse(envRate, out int envRateVal) && envRateVal > 0)
+			{
+				targetRate = envRateVal;
+			}
+			if (_sampleRate != targetRate)
+			{
+				GD.Print($"[MeltySynthPlayer] miniaudio: adjusting sample rate {_sampleRate} → {targetRate} " +
+					$"({(useExclusive ? "exclusive mode" : (OS.GetName() == "Windows" ? "high sample rate for lower latency" : "env override"))})");
+				_sampleRate = targetRate;
 			}
 		}
 		else if (_audioOutput == null)
 		{
 			_sampleRate = (int)AudioServer.GetMixRate();
+		}
+
+		// 【关键修复】采样率变化时必须重建合成器, 否则合成器仍用旧采样率渲染.
+		// 例: 合成器 44100Hz + 设备 96000Hz → 音高偏高 2.18x (尖锐声) + 序列器加速
+		//     → 音符触发频率翻倍 → CPU 过载 → 大量 underrun.
+		// _midiFile 对象独立于合成器, 重建后 play() 会用新 sequencer 重新加载它.
+		if (_sampleRate != oldSampleRate && _autoSynth != null && !string.IsNullOrEmpty(_soundfont))
+		{
+			GD.Print($"[MeltySynthPlayer] Sample rate changed {oldSampleRate}→{_sampleRate}, rebuilding synthesizers");
+			LoadSoundfont(_soundfont);
 		}
 
 		if (_audioOutput != null)
@@ -1670,14 +1702,25 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	public override void _Ready()
 	{
-		// 如果启用独占模式, 直接用 miniaudio 后端, 避免初始化 FMOD 占用 WASAPI 端点.
-		// FMOD 即使 Dispose 后, WASAPI 会话状态可能残留, 导致独占模式端点异常 (无声音).
+		// 后端自动选择策略:
+		// 1. 独占模式 (MINIAUDIO_EXCLUSIVE=1): 直接用 miniaudio, 避免 FMOD 占用 WASAPI 端点.
+		//    FMOD 即使 Dispose 后, WASAPI 会话状态可能残留, 导致独占模式端点异常 (无声音).
+		// 2. Android/iOS: 默认 miniaudio. FMOD 在这些平台需要额外的 GDExtension/库,
+		//    且本项目的 fmod.gdextension 已被禁用 (重命名), FMOD 初始化会失败.
+		//    miniaudio 的 AAudio/OpenSL 后端原生支持低延迟, 无需额外配置.
 		// 必须在 EnsureAudioInitialized 之前设置, 否则 FMOD 系统已被创建.
-		if (_audioBackend == AudioBackend.Fmod &&
-			System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1")
+		if (_audioBackend == AudioBackend.Fmod)
 		{
-			_audioBackend = AudioBackend.Miniaudio;
-			GD.Print("[MeltySynthPlayer] MINIAUDIO_EXCLUSIVE=1 detected, using miniaudio backend from start (skip FMOD init)");
+			var osName = OS.GetName();
+			bool useMiniaudioFromStart =
+				System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1" ||
+				osName == "Android" || osName == "iOS";
+			if (useMiniaudioFromStart)
+			{
+				_audioBackend = AudioBackend.Miniaudio;
+				GD.Print($"[MeltySynthPlayer] Using miniaudio backend from start (os={osName}, " +
+					$"exclusive={(System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1")})");
+			}
 		}
 		GD.Print("[MeltySynthPlayer] _Ready() called");
 		EnsureAudioInitialized();
