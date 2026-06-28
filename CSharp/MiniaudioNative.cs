@@ -10,10 +10,10 @@ namespace TouhouMix.Midi
     /// miniaudio C 桥接层的 P/Invoke 声明
     /// 对应 addons/miniaudio/native/miniaudio_bridge.h
     ///
-    /// 库加载策略 (与 FmodNative 一致):
+    /// 库加载策略:
     ///   1. 通过 NativeLibrary.SetDllImportResolver 拦截 "miniaudio_bridge" 的加载
     ///   2. 按平台和构建类型 (debug/release) 解析到 addons/miniaudio/libs/{platform}/ 下的具体文件
-    ///   3. 失败时返回 IntPtr.Zero, 上层回退到 FMOD
+    ///   3. 失败时返回 IntPtr.Zero
     ///
     /// 线程安全:
     ///   - ma_bridge_init / uninit / start / stop: 仅从主线程调用
@@ -98,7 +98,7 @@ namespace TouhouMix.Midi
         }
 
         // ====================================================================
-        // 库加载逻辑 (镜像 FmodNative)
+        // 库加载逻辑
         // ====================================================================
         private static readonly object _loadLock = new object();
         private static IntPtr _libraryHandle = IntPtr.Zero;
@@ -120,7 +120,7 @@ namespace TouhouMix.Midi
             }
             catch (InvalidOperationException)
             {
-                // 已有 resolver 被安装 (例如 FmodNative 已为同一 assembly 注册过).
+                // 已有 resolver 被安装.
                 // 这是正常情况 - 我们的 ResolveLibrary 不会被调用, 但 NativeLibrary.Load
                 // 直接通过路径加载的方式仍可工作, 不影响功能.
             }
@@ -129,7 +129,7 @@ namespace TouhouMix.Midi
 
         /// <summary>
         /// 尝试加载 native 库. 成功后所有 DllImport 都会自动解析到该库.
-        /// 调用方应在 Initialize 前调用此方法, 失败则回退到 FMOD.
+        /// 调用方应在 Initialize 前调用此方法.
         /// </summary>
         internal static bool TryLoadNativeLibrary()
         {
@@ -180,7 +180,7 @@ namespace TouhouMix.Midi
             }
         }
 
-        /// <summary>是否已成功加载 native 库 (供 MeltySynthPlayer 决定是否回退 FMOD).</summary>
+        /// <summary>是否已成功加载 native 库.</summary>
         internal static bool IsAvailable => _loadSucceeded;
 
         private static IntPtr ResolveLibrary(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)

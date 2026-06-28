@@ -8,88 +8,24 @@ using System.Threading;
 using TouhouMix.Midi;
 
 // 此文件是 MeltySynthPlayer 的 partial 实现 (全局命名空间, 与 MeltySynthPlayer.cs 一致)
-// 包含 miniaudio 音频输出后端 (作为 FMOD 的低延迟替代)
+// 包含 miniaudio 音频输出后端 (低延迟, 跨平台一致)
 // 注意: 必须与 MeltySynthPlayer.cs 同命名空间才能合并为同一个 partial class
 public partial class MeltySynthPlayer
 {
-		/// <summary>
-		/// 音频后端选择
-		/// </summary>
-		public enum AudioBackend
-		{
-			/// <summary>使用 FMOD (原有后端, 兼容性好)</summary>
-			Fmod = 0,
-			/// <summary>使用 miniaudio (低延迟优先, 跨平台一致)</summary>
-			Miniaudio = 1,
-		}
-
-		/// <summary>当前选择的音频后端 (默认 FMOD, 保持向后兼容)</summary>
-		private AudioBackend _audioBackend = AudioBackend.Fmod;
-
-		/// <summary>
-		/// 设置音频后端. 需要在 EnsureAudioInitialized 之前调用, 或触发后端重建.
-		/// </summary>
-		public void SetAudioBackend(AudioBackend backend)
-		{
-			// Android/iOS 平台保护: FMOD 在这些平台不可用 (fmod.gdextension 已禁用,
-			// FMOD native 库未打包), 强制使用 miniaudio 后端.
-			// 即使配置文件或 GDScript 请求 FMOD, 也自动修正为 miniaudio.
-			var osName = OS.GetName();
-			if (backend == AudioBackend.Fmod && (osName == "Android" || osName == "iOS"))
-			{
-				GD.Print($"[MeltySynthPlayer] Ignored FMOD backend request on {osName}, using miniaudio instead");
-				backend = AudioBackend.Miniaudio;
-			}
-
-			if (_audioBackend == backend)
-			{
-				GD.Print($"[MeltySynthPlayer] Audio backend already set to {backend}");
-				return;
-			}
-
-			GD.Print($"[MeltySynthPlayer] Switching audio backend: {_audioBackend} → {backend}");
-			_audioBackend = backend;
-
-			// 如果音频桥已存在, 需要重建以应用新后端
-			if (_audioOutput != null)
-			{
-				bool wasPlaying = _audioOutput.IsPlaying;
-				_audioOutput.Dispose();
-				_audioOutput = null;
-
-				// 释放旧后端后立即初始化新后端.
-				// WASAPI 独占模式: 如果 FMOD Godot 插件或 Godot AudioServer 仍占用 WASAPI,
-				// 独占会自动回退到共享模式 (C#/C 层双重回退), 无需手动等待.
-				// 要启用独占: 禁用 FMOD 插件 + 设 Godot audio driver="Dummy".
-				EnsureAudioInitialized();
-
-				if (_sequencer != null && _autoSynth != null && _audioOutput != null)
-				{
-					_audioOutput.SetSynthesizers(_sequencer, _autoSynth, _manualSynth, _useSeparateSynthForManual);
-					_audioOutput.SetVolume(_volumeLinear);
-				}
-
-				if (wasPlaying && _audioOutput != null)
-				{
-					_audioOutput.Play();
-				}
-			}
-		}
-
-		/// <summary>
-		/// miniaudio 音频输出桥
-		/// 架构与 FmodAudioOutputBridge 平行, 共享 RingBuffer / 双合成器 / 渲染线程设计
-		///
-		/// 关键延迟优化 (相对 FMOD 版本):
-		///   1. RingBuffer 容量: _decodeFrames × 2 (而非 ×6), 减少缓冲堆积
-		///   2. 默认 periodSize=256, periodCount=2 (对应 FMOD 256×2 ≈ 5.3ms 平均延迟)
-		///   3. miniaudio 回调直接提供 pOutput 缓冲区, 无需 FMOD 的 Sound/Channel 中间层
-		///   4. 可选 WASAPI exclusive 模式, 绕开 Windows 音频引擎 ~10ms 延迟
-		/// </summary>
-		internal sealed class MiniaudioAudioOutputBridge : IAudioOutputBridge
-		{
-			// ---- 缓冲区限制 ----
-			private const int MIN_DECODE_FRAMES = 128;   // miniaudio 可比 FMOD 更小
+	/// <summary>
+	/// miniaudio 音频输出桥
+	/// 架构: 直接渲染模式 + RingBuffer (备选) + 双合成器
+	///
+	/// 关键延迟优化:
+	///   1. 直接渲染模式: 回调中直接合成, 无 RingBuffer 中间层, 延迟 = 设备延迟
+	///   2. 默认 periodSize=256, periodCount=2 (256×2 ≈ 5.3ms 平均延迟)
+	///   3. miniaudio 回调直接提供 pOutput 缓冲区
+	///   4. 可选 WASAPI exclusive 模式, 绕开 Windows 音频引擎 ~10ms 延迟
+	/// </summary>
+	internal sealed class MiniaudioAudioOutputBridge : IAudioOutputBridge
+	{
+		// ---- 缓冲区限制 ----
+		private const int MIN_DECODE_FRAMES = 128;
 			private const int MAX_DECODE_FRAMES = 4096;
 
 			// ---- miniaudio 句柄 ----
@@ -100,7 +36,7 @@ public partial class MeltySynthPlayer
 			// 设备枚举回调委托 (必须存储防 GC)
 			private MiniaudioNative.DeviceEnumProc _deviceEnumCallback;
 
-			// ---- 合成器引用 (与 FmodAudioOutputBridge 相同) ----
+			// ---- 合成器引用 ----
 			private MidiFileSequencer _sequencer = null;
 			private Synthesizer _autoSynth = null;
 			private Synthesizer _manualSynth = null;
@@ -120,7 +56,7 @@ public partial class MeltySynthPlayer
 			private float _volumeLinear = 1.0f;
 			private const float OUTPUT_GAIN = 2.0f;
 
-			// miniaudio period 配置 (对应 FMOD DSP buffer)
+			// miniaudio period 配置
 			private uint _periodSizeInFrames = 256;
 			private uint _periodCount = 2;
 			private MiniaudioNative.Backend _backend = MiniaudioNative.Backend.Default;
@@ -198,7 +134,7 @@ public partial class MeltySynthPlayer
 			}
 
 			/// <summary>
-			/// 设置 miniaudio period 大小 (类似 FMOD SetDSPBufferSize)
+			/// 设置 miniaudio period 大小
 			/// 必须在 Initialize 之前调用
 			/// </summary>
 			public void SetPeriodSize(uint periodSizeInFrames, uint periodCount)
@@ -566,7 +502,7 @@ public partial class MeltySynthPlayer
 
 			public void Update()
 			{
-				// miniaudio 不需要像 FMOD_System_Update 那样的轮询
+				// miniaudio 不需要轮询更新
 			}
 
 			public bool IsPlaying => _playing;
@@ -622,7 +558,7 @@ public partial class MeltySynthPlayer
 
 			/// <summary>
 			/// 直接在 miniaudio 回调中渲染音频 (无 RingBuffer, 无渲染线程).
-			/// 效仿 FmodAudioOutputBridge.FillPcmDataDirect 的设计:
+			/// 设计:
 			///   - 回调线程直接调用 _sequencer.Render 和 _manualSynth.Render
 			///   - 用 ConcurrentQueue 传递手动音符事件 (无锁)
 			///   - lock _synthLock 保护合成器引用 (仅在 SetSynthesizers/SetVolume 时短暂竞争)
@@ -765,7 +701,7 @@ public partial class MeltySynthPlayer
 			}
 
 			// ====================================================================
-			// 渲染线程 (与 FmodAudioOutputBridge 几乎相同)
+			// 渲染线程 (备选模式, 当前未使用)
 			// ====================================================================
 			private void StartRenderThread()
 			{
@@ -870,7 +806,7 @@ public partial class MeltySynthPlayer
 
 						if (_postSeekSilenceFrames > 0)
 						{
-							// 与 FmodAudioOutputBridge 一致: 渲染到 discard 缓冲区以推进 sequencer,
+							// 渲染到 discard 缓冲区以推进 sequencer,
 							// 但输出静音衰减, 丢弃瞬态音符攻击
 							int silence = Math.Min(_decodeFrames, _postSeekSilenceFrames);
 							var discardSpan = _tempLeft.AsSpan(0, silence);
@@ -934,7 +870,7 @@ public partial class MeltySynthPlayer
 			}
 
 			// ====================================================================
-			// 辅助方法 (与 FmodAudioOutputBridge 相同, 独立副本以避免跨类访问)
+			// 辅助方法
 			// ====================================================================
 			private void MixToOutput(float[] autoLeft, float[] autoRight, float[] manualLeft, float[] manualRight, int frames, float scale)
 			{

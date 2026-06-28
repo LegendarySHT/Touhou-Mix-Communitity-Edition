@@ -5,7 +5,7 @@ class_name MeltySynthPlayerWrapper
 
 @export var meltysynth_player: Node
 
-# FMOD模式下没有AudioStreamPlayer，返回空数组以避免错误
+# 没有AudioStreamPlayer，返回空数组以避免错误
 var audio_stream_players: Array = []
 
 # 最大复音数
@@ -202,13 +202,3 @@ func SetAudioBufferFrames(frames: int) -> void:
 	if meltysynth_player == null:
 		return
 	meltysynth_player.call("SetAudioBufferFrames", frames)
-
-## 设置音频输出后端
-## backend: 0 = FMOD (兼容), 1 = miniaudio (低延迟)
-func SetAudioBackend(backend: int) -> void:
-	if meltysynth_player == null:
-		return
-	if meltysynth_player.has_method("SetAudioBackend"):
-		meltysynth_player.call("SetAudioBackend", backend)
-	else:
-		push_warning("[MeltySynthPlayerWrapper] C# MeltySynthPlayer does not expose SetAudioBackend (可能版本过旧)")

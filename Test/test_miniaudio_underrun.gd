@@ -81,15 +81,11 @@ func _ready() -> void:
 	get_tree().quit(0)
 
 func _run_single_test(buffer_frames: int) -> void:
-	# 设置 miniaudio 后端
-	_player.call("SetAudioBackend", 1)  # 1 = miniaudio
-	await get_tree().process_frame
-
 	# 设置缓冲区大小
 	_player.call("SetAudioBufferFrames", buffer_frames)
 	await get_tree().process_frame
 
-	# 切换后端后重新设置 SoundFont (会触发 EnsureAudioInitialized 和合成器重建)
+	# 重新设置 SoundFont (会触发 EnsureAudioInitialized 和合成器重建)
 	_player.call("set_soundfont", SOUNDFONT_PATH)
 	await get_tree().process_frame
 
