@@ -88,6 +88,8 @@ typedef struct {
     int      noPreSilencedInputBuffer; // 兼容字段, 默认 0
     int      noClip;                 // miniaudio 默认会 clip, 0 = 启用 clip, 1 = 禁用 (本项目自己 SoftLimit)
     int      noDeviceStateChangedCallback; // 性能优化: 不监听设备插拔
+    int      noAutoConvertSRC;       // WASAPI: 1 = 禁用 WASAPI 内部 SRC, 改用 miniaudio 重采样器.
+                                      // 启用 IAudioClient3 低延迟共享模式的前提条件.
 } ma_bridge_config;
 
 // 数据回调: 由 miniaudio 音频线程调用, C# 侧实现
@@ -97,6 +99,12 @@ typedef struct {
 //   - 调用 ma_bridge_start / ma_bridge_stop
 //   - 文件 I/O
 typedef void (*ma_bridge_data_proc)(void* pUserData, float* pOutput, uint32_t frameCount);
+
+// 设备枚举回调 (主线程调用, 可安全做 I/O)
+// name: 设备名称 (UTF-8)
+// isDefault: 1 = 系统默认设备, 0 = 非默认
+// 返回 1 继续枚举, 0 停止
+typedef int (*ma_bridge_device_enum_proc)(void* pUserData, const char* name, int isDefault);
 
 // 默认配置 (periodSize=256, periodCount=2, 48kHz, stereo, f32, 共享模式)
 MA_BRIDGE_API ma_bridge_config ma_bridge_config_init_default(void);
@@ -140,6 +148,36 @@ MA_BRIDGE_API void ma_bridge_uninit(void* pBridge);
 
 // 获取 miniaudio 版本字符串 (用于日志)
 MA_BRIDGE_API const char* ma_bridge_get_version(void);
+
+// ---------------------------------------------------------------------------
+// 设备枚举与选择 (用于独占模式选择正确的设备端点)
+// ---------------------------------------------------------------------------
+
+// 设置下次 ma_bridge_init 使用的设备名称 (UTF-8).
+// 传入 NULL 或空字符串恢复为默认设备.
+// 名称需匹配 ma_bridge_enumerate_devices 返回的 name 字段.
+// 注意: 此函数设置全局状态, 在 ma_bridge_init 前调用.
+MA_BRIDGE_API void ma_bridge_set_device_name(const char* pName);
+
+// 枚举播放设备, 对每个设备调用 callback.
+// 返回设备数量, -1 = 错误 (bridge 未初始化).
+// 必须在 ma_bridge_init 后调用 (需要 context).
+MA_BRIDGE_API int ma_bridge_enumerate_devices(void* pBridge,
+                                               ma_bridge_device_enum_proc callback,
+                                               void* pUserData);
+
+// ---------------------------------------------------------------------------
+// 诊断函数 (用于排查独占模式无声音问题)
+// ---------------------------------------------------------------------------
+
+// 获取设备运行时状态: -1=未初始化, 0=uninitialized, 1=stopped, 2=starting, 3=started, 4=stopping
+MA_BRIDGE_API int ma_bridge_get_device_state(void* pBridge);
+
+// 获取 shareMode: -1=未初始化, 0=shared, 1=exclusive
+MA_BRIDGE_API int ma_bridge_get_share_mode(void* pBridge);
+
+// 获取是否指定了 pDeviceID: -1=未初始化, 1=指定了具体设备, 0=用默认设备
+MA_BRIDGE_API int ma_bridge_has_device_id(void* pBridge);
 
 #ifdef __cplusplus
 } // extern "C"

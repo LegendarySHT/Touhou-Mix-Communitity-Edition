@@ -47,6 +47,10 @@ public partial class MeltySynthPlayer
                 _audioOutput.Dispose();
                 _audioOutput = null;
 
+                // 释放旧后端后立即初始化新后端.
+                // WASAPI 独占模式: 如果 FMOD Godot 插件或 Godot AudioServer 仍占用 WASAPI,
+                // 独占会自动回退到共享模式 (C#/C 层双重回退), 无需手动等待.
+                // 要启用独占: 禁用 FMOD 插件 + 设 Godot audio driver="Dummy".
                 EnsureAudioInitialized();
 
                 if (_sequencer != null && _autoSynth != null && _audioOutput != null)
@@ -83,6 +87,8 @@ public partial class MeltySynthPlayer
             private MiniaudioNative.DataProc _dataCallback;
             // GCHandle 用于将 this 指针传给 native 回调, 避免 delegate 被 GC
             private GCHandle _selfHandle;
+            // 设备枚举回调委托 (必须存储防 GC)
+            private MiniaudioNative.DeviceEnumProc _deviceEnumCallback;
 
             // ---- 合成器引用 (与 FmodAudioOutputBridge 相同) ----
             private MidiFileSequencer _sequencer = null;
@@ -125,6 +131,16 @@ public partial class MeltySynthPlayer
             private uint _actualPeriod = 0;       // 设备实际 period (TryCreateDevice 后填充)
             private uint _actualPeriodCount = 0;  // 设备实际 period 数量
             private bool _nativeGetLatencyAvailable = true;  // 旧 DLL 无此导出时设为 false
+
+            /// <summary>设备实际 period (帧数), 供外部诊断用</summary>
+            internal uint ActualPeriod => _actualPeriod;
+            /// <summary>设备实际 period 数量, 供外部诊断用</summary>
+            internal uint ActualPeriodCount => _actualPeriodCount;
+
+            // ---- 延迟守护 ----
+            // RingBuffer 可读帧超过此阈值时, 渲染线程主动让出 CPU, 防止数据堆积.
+            // 设为 1.5×effectivePeriod, 稳态延迟上限 ≈ period×1.5 + deviceLatency.
+            private int _maxRingFillFrames = 0;
 
             // ---- 线程同步 ----
             internal readonly object _synthLock = new object();
@@ -283,38 +299,41 @@ public partial class MeltySynthPlayer
                     return false;
                 }
 
-                // 根据实际 period 动态调整 _decodeFrames
-                // WASAPI 共享模式可能强制 period=480 或 528, 远大于请求的 256
-                // 如果 _decodeFrames < actualPeriod, 一次回调就会抽空 RingBuffer
-                var qPeriod = MiniaudioNative.ma_bridge_get_period_size(_bridgeHandle, out uint actualPeriod, out uint actualCount);
+                // 查询设备实际 period (WASAPI 共享模式可能强制为 480, 独占模式为请求值)
+                uint actualPeriod = 0, actualCount = 0;
+                var qPeriod = MiniaudioNative.ma_bridge_get_period_size(_bridgeHandle, out actualPeriod, out actualCount);
                 if (qPeriod == MiniaudioNative.Result.Ok && actualPeriod > 0)
                 {
-                    int newDecodeFrames = (int)Math.Max(_decodeFrames, actualPeriod);
-                    newDecodeFrames = Math.Min(newDecodeFrames, MAX_DECODE_FRAMES);
-                    if (newDecodeFrames != _decodeFrames)
-                    {
-                        GD.Print($"[MeltySynthPlayer][miniaudio] Adjusting decode frames: {_decodeFrames} → {newDecodeFrames} " +
-                            $"(actualPeriod={actualPeriod})");
-                        _decodeFrames = newDecodeFrames;
-                        // 重新分配渲染缓冲区
-                        _tempLeft = new float[_decodeFrames];
-                        _tempRight = new float[_decodeFrames];
-                        _manualLeft = new float[_decodeFrames];
-                        _manualRight = new float[_decodeFrames];
-                    }
+                    // _decodeFrames 不上调到 actualPeriod, 保持小批量渲染以降低 RingBuffer 稳态延迟.
+                    // 之前的 underrun 根因是 Thread.Sleep(1) (Windows 定时器 1-15ms),
+                    // 现在 SpinWait 唤醒延迟 <0.1ms, 渲染线程生产速率远高于回调消耗速率,
+                    // 即使 _decodeFrames < actualPeriod 也不会 underrun.
+                    //
+                    // 渲染线程是 SpinWait 循环, 只要总生产速率 >= 消耗速率即可, 与每次生产量无关.
+                    // 小批量渲染 (如 128 帧) 让 RingBuffer 填充更平滑, 稳态延迟更低.
+                    GD.Print($"[MeltySynthPlayer][miniaudio] Decode frames: {_decodeFrames} (actualPeriod={actualPeriod}, not adjusted up)");
                 }
 
-                // RingBuffer 容量: max(_decodeFrames, actualPeriod) × 6
-                // ×6 而非 ×2: WASAPI 共享模式 period 不可控 (通常 ~10ms),
-                // 需要足够缓冲来吸收渲染线程的调度抖动和 _sequencer.Render() 的耗时波动
-                int effectivePeriod = (int)Math.Max(_decodeFrames, actualPeriod);
-                int ringCapacity = effectivePeriod * 6;
+                // RingBuffer 容量: actualPeriod × 6
+                // ×6 给渲染线程更多缓冲空间, 吸收 MeltySynth 渲染时间波动.
+                // 独占模式 period=128, 容量=768 (17.4ms) — 足够吸收 2-3 个 period 的渲染延迟.
+                // 共享模式 period=518, 容量=3108 (70.5ms) — 大缓冲, 但守护阈值限制稳态延迟.
+                int ringCapacity = (int)(actualPeriod > 0 ? actualPeriod : (uint)_decodeFrames) * 6;
                 if (_ringBuffer == null || _ringBuffer.Capacity != ringCapacity)
                 {
                     _ringBuffer = new RingBuffer(ringCapacity);
                     GD.Print($"[MeltySynthPlayer][miniaudio] Ring buffer: {ringCapacity} frames (≈{ringCapacity * 1000.0 / _sampleRate:F1}ms) " +
-                        $"[capacity = {effectivePeriod}×6]");
+                        $"[capacity = actualPeriod×6]");
                 }
+
+                // 延迟守护阈值: actualPeriod × 1.0
+                // 当 RingBuffer 可读帧 >= actualPeriod 时, 渲染线程 SpinWait.SpinOnce() 让出 CPU.
+                // 之前 0.5×period 太低, 导致回调消耗后渲染线程来不及补充, 产生 underrun + 电流声.
+                // ×1.0 保证稳态 readable 在 0~actualPeriod 之间波动, 平均 0.5×period.
+                // 独占模式: 1.0×128=128 帧 (2.67ms) — 总延迟 ≈ 4.0+2.67 = 6.67ms
+                // 共享模式: 1.0×518=518 帧 (10.79ms) — 总延迟 ≈ 17.62+10.79 = 28.4ms
+                int periodForGuard = (int)(actualPeriod > 0 ? actualPeriod : (uint)_decodeFrames);
+                _maxRingFillFrames = periodForGuard;
 
                 _initialized = true;
                 return true;
@@ -332,6 +351,36 @@ public partial class MeltySynthPlayer
                 cfg.AaudioExclusive = _aaudioExclusive ? 1 : 0;
                 cfg.NoClip = 1;  // C# 侧 SoftLimit
 
+                // WASAPI 低延迟共享模式: 启用 noAutoConvertSRC + 强制 48000Hz.
+                // 这启用 IAudioClient3 低延迟共享模式, 可让共享模式使用小 period (如 128 帧),
+                // 达到接近独占模式的延迟, 但不需要独占设备.
+                // IAudioClient3 要求: 不能有 AUTOCONVERTPCM 标志.
+                // 启用 noAutoConvertSRC 后, miniaudio 用内部重采样器做 SRC (如需).
+                // 由于 _sampleRate 已被 EnsureAudioInitialized 强制为 48000 (设备原生),
+                // 不需要 SRC, 直接匹配.
+                if (!_wasapiExclusive)
+                {
+                    cfg.NoAutoConvertSRC = 1;
+                    GD.Print("[MeltySynthPlayer][miniaudio] Low-latency shared mode: noAutoConvertSRC=true " +
+                        "(enables IAudioClient3, target period=" + _periodSizeInFrames + "×" + _periodCount + ")");
+                }
+
+                // 设置设备名称 (用于独占模式选择正确的端点)
+                // 通过环境变量 MINIAUDIO_DEVICE_NAME 指定设备名称 (UTF-8).
+                // 独占模式下 WASAPI 直接绑定设备, 不会自动路由, 必须选择正确的端点.
+                // 如果不设置, 使用系统默认设备 (可能导致独占模式打开 HDMI 等错误设备).
+                string deviceName = System.Environment.GetEnvironmentVariable("MINIAUDIO_DEVICE_NAME");
+                if (!string.IsNullOrEmpty(deviceName))
+                {
+                    GD.Print($"[MeltySynthPlayer][miniaudio] Setting device name: {deviceName}");
+                    MiniaudioNative.ma_bridge_set_device_name(MiniaudioNative.StringToUtf8NullTerminated(deviceName));
+                }
+                else
+                {
+                    // 清除之前可能设置的设备名称
+                    MiniaudioNative.ma_bridge_set_device_name(null);
+                }
+
                 // 固定 GCHandle 防止 this 被 GC, 同时获得稳定指针传给 native
                 _selfHandle = GCHandle.Alloc(this, GCHandleType.Normal);
                 _dataCallback = OnDataCallback;  // 必须存储委托引用防 GC
@@ -340,9 +389,21 @@ public partial class MeltySynthPlayer
                 var result = MiniaudioNative.ma_bridge_init(ref cfg, _dataCallback, userData, out _bridgeHandle);
                 if (result != MiniaudioNative.Result.Ok || _bridgeHandle == IntPtr.Zero)
                 {
-                    GD.PushWarning($"[MeltySynthPlayer][miniaudio] ma_bridge_init failed: {result}");
-                    _selfHandle.Free();
-                    return false;
+                    // C# 层回退: 如果启用了 WASAPI 独占模式且初始化失败, 尝试共享模式
+                    // (旧版 DLL 可能没有 C 层回退逻辑, 这里作为双保险)
+                    if (_wasapiExclusive)
+                    {
+                        GD.PushWarning($"[MeltySynthPlayer][miniaudio] ma_bridge_init failed with WASAPI exclusive: {result}, retrying shared mode");
+                        _wasapiExclusive = false;
+                        cfg.WasapiExclusive = 0;
+                        result = MiniaudioNative.ma_bridge_init(ref cfg, _dataCallback, userData, out _bridgeHandle);
+                    }
+                    if (result != MiniaudioNative.Result.Ok || _bridgeHandle == IntPtr.Zero)
+                    {
+                        GD.PushWarning($"[MeltySynthPlayer][miniaudio] ma_bridge_init failed: {result}");
+                        _selfHandle.Free();
+                        return false;
+                    }
                 }
 
                 // 查询实际参数 (驱动可能调整请求值)
@@ -353,13 +414,22 @@ public partial class MeltySynthPlayer
                     _actualPeriodCount = actualCount;
                     GD.Print($"[MeltySynthPlayer][miniaudio] Actual period: {actualPeriod}×{actualCount} " +
                         $"(≈{actualPeriod * actualCount / (double)_sampleRate * 1000:F1}ms total, " +
-                        $"≈{actualPeriod * (actualCount - 1.5) / _sampleRate * 1000:F1}ms avg latency)");
+                        $"≈{actualPeriod * (actualCount - 0.5) / _sampleRate * 1000:F1}ms avg latency)");
                 }
 
                 var qSr = MiniaudioNative.ma_bridge_get_sample_rate(_bridgeHandle, out uint actualSr);
                 if (qSr == MiniaudioNative.Result.Ok)
                 {
                     GD.Print($"[MeltySynthPlayer][miniaudio] Actual sample rate: {actualSr}Hz");
+                    // 独占模式: 设备使用原生采样率 (可能是 48000Hz), 而合成器用 _sampleRate (44100Hz).
+                    // 如果两者不匹配, 会导致音高偏高/偏低.
+                    // 此处记录实际采样率, 供上层决定是否重建合成器.
+                    if (_wasapiExclusive && actualSr != (uint)_sampleRate)
+                    {
+                        GD.PushWarning($"[MeltySynthPlayer][miniaudio] Sample rate mismatch in exclusive mode: " +
+                            $"synth={_sampleRate}Hz, device={actualSr}Hz. " +
+                            $"Pitch will be off. Need to recreate synthesizer at device sample rate.");
+                    }
                 }
 
                 IntPtr namePtr = MiniaudioNative.ma_bridge_get_backend_name(_bridgeHandle);
@@ -370,7 +440,38 @@ public partial class MeltySynthPlayer
                 string ver = MiniaudioNative.PtrToStringAnsiSafe(verPtr);
                 GD.Print($"[MeltySynthPlayer][miniaudio] miniaudio version: {ver}");
 
+                // 枚举可用播放设备 (用于诊断独占模式无声音问题)
+                // 独占模式可能打开错误的端点 (如 HDMI), 通过设备列表可以确认.
+                EnumerateAndLogDevices();
+
                 return true;
+            }
+
+            /// <summary>
+            /// 枚举可用播放设备并打印日志 (用于诊断独占模式无声音问题).
+            /// 独占模式直接绑定设备端点, 不会自动路由.
+            /// 如果默认设备是 HDMI 而用户使用扬声器, 独占模式会打开 HDMI 导致无声音.
+            /// </summary>
+            private void EnumerateAndLogDevices()
+            {
+                if (_bridgeHandle == IntPtr.Zero) return;
+
+                _deviceEnumCallback = (userData, namePtr, isDefault) =>
+                {
+                    string name = MiniaudioNative.PtrToStringUtf8Safe(namePtr);
+                    GD.Print($"[MeltySynthPlayer][miniaudio]   Device: {name}{(isDefault != 0 ? " (DEFAULT)" : "")}");
+                    return 1; // 继续枚举
+                };
+
+                GD.Print("[MeltySynthPlayer][miniaudio] Available playback devices:");
+                int count = MiniaudioNative.ma_bridge_enumerate_devices(_bridgeHandle, _deviceEnumCallback, IntPtr.Zero);
+                GD.Print($"[MeltySynthPlayer][miniaudio] Total: {count} device(s)");
+
+                if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("MINIAUDIO_DEVICE_NAME")))
+                {
+                    GD.Print("[MeltySynthPlayer][miniaudio] Tip: If exclusive mode has no sound, " +
+                        "set MINIAUDIO_DEVICE_NAME env var to the correct device name above.");
+                }
             }
 
             // ====================================================================
@@ -388,9 +489,11 @@ public partial class MeltySynthPlayer
 
                     _ringBuffer?.Clear();
 
-                    // 预填充 RingBuffer: 在启动音频设备前, 先填充到 50% 容量
-                    // 避免设备启动后第一次回调就 underrun (rbFill=0 问题)
-                    int targetFill = _ringBuffer.Capacity / 2;
+                    // 预填充 RingBuffer: 启动音频设备前, 先填充 1 个 actualPeriod.
+                    // 不关闭守护: 守护阈值 = 1×actualPeriod, 预填充到 1×actualPeriod 后渲染线程自然停止.
+                    // 之前关闭守护 (_maxRingFillFrames=0) 导致渲染线程无限制生产,
+                    // 预填充过量 (独占 640/128, 共享 3072/518), 启动延迟过高.
+                    int targetFill = (int)_actualPeriod > 0 ? (int)_actualPeriod : _decodeFrames;
                     int fillTimeoutMs = 0;
                     while (_ringBuffer.ReadableFrames < targetFill && fillTimeoutMs < 500)
                     {
@@ -398,7 +501,7 @@ public partial class MeltySynthPlayer
                         fillTimeoutMs += 2;
                     }
                     GD.Print($"[MeltySynthPlayer][miniaudio] Pre-fill: {_ringBuffer.ReadableFrames}/{targetFill} frames " +
-                        $"(waited {fillTimeoutMs}ms)");
+                        $"(≈{_ringBuffer.ReadableFrames * 1000.0 / _sampleRate:F1}ms, waited {fillTimeoutMs}ms)");
 
                     var r = MiniaudioNative.ma_bridge_start(_bridgeHandle);
                     if (r != MiniaudioNative.Result.Ok)
@@ -407,6 +510,40 @@ public partial class MeltySynthPlayer
                         return;
                     }
                     _playing = true;
+
+                    // 设备启动后诊断: 查询 state, shareMode, hasDeviceId
+                    // 排查独占模式无声音问题 (数据正确但无声音)
+                    // ma_device_start 是异步的, 返回后状态可能是 starting.
+                    // 延迟 200ms 后再次查询, 确认设备是否进入 started 状态.
+                    // 如果停留在 starting 或变成 stopped, 说明设备启动失败.
+                    {
+                        int state0 = MiniaudioNative.ma_bridge_get_device_state(_bridgeHandle);
+                        int shareMode = MiniaudioNative.ma_bridge_get_share_mode(_bridgeHandle);
+                        int hasDevId = MiniaudioNative.ma_bridge_has_device_id(_bridgeHandle);
+                        string stateStr0 = state0 switch
+                        {
+                            0 => "uninitialized", 1 => "stopped", 2 => "starting",
+                            3 => "started", 4 => "stopping", _ => $"unknown({state0})"
+                        };
+                        string shareStr = shareMode switch
+                        {
+                            0 => "shared", 1 => "exclusive", _ => $"unknown({shareMode})"
+                        };
+                        GD.Print($"[MeltySynthPlayer][miniaudio] Device diagnostic (immediate): state={stateStr0}, " +
+                            $"shareMode={shareStr}, hasDeviceId={hasDevId}, " +
+                            $"period={_actualPeriod}×{_actualPeriodCount}, sampleRate={_sampleRate}Hz");
+
+                        // 延迟 200ms 后再次查询状态
+                        Thread.Sleep(200);
+                        int state1 = MiniaudioNative.ma_bridge_get_device_state(_bridgeHandle);
+                        string stateStr1 = state1 switch
+                        {
+                            0 => "uninitialized", 1 => "stopped", 2 => "starting",
+                            3 => "started", 4 => "stopping", _ => $"unknown({state1})"
+                        };
+                        GD.Print($"[MeltySynthPlayer][miniaudio] Device diagnostic (after 200ms): state={stateStr1}");
+                    }
+
                     GD.Print("[MeltySynthPlayer][miniaudio] Playback started");
                 }
             }
@@ -501,6 +638,13 @@ public partial class MeltySynthPlayer
                     framesRequested = MAX_DECODE_FRAMES;
                 }
 
+                // 首次回调诊断: 记录 frameCount vs actualPeriod, 理解 miniaudio 回调行为
+                if (_perfTotalCallbackCount == 0)
+                {
+                    GD.Print($"[MeltySynthPlayer][miniaudio] First callback: framesRequested={framesRequested}, " +
+                        $"actualPeriod={_actualPeriod}, decode={_decodeFrames}, rbFill={_ringBuffer.ReadableFrames}");
+                }
+
                 _perfStopwatch.Restart();
 
                 int read = _ringBuffer.Read(_outputBuffer, 0, framesRequested);
@@ -510,8 +654,10 @@ public partial class MeltySynthPlayer
                     // Underrun
                     FillRemainderWithDecay(read, framesRequested);
                     _underrunCount++;
-                    // 前 10 次每次都打印, 之后每 100 次打印一次
-                    if (_underrunCount <= 10 || _underrunCount % 100 == 1)
+                    // 前 3 次每次打印, 之后每 1000 次打印一次.
+                    // 频繁的 GD.Print 在音频回调线程执行 IO, 会拖慢回调,
+                    // 在独占模式 (period=2.9ms) 下导致回调超时 → 恶性循环.
+                    if (_underrunCount <= 3 || _underrunCount % 1000 == 1)
                     {
                         GD.Print($"[MeltySynthPlayer][miniaudio] Underrun #{_underrunCount} " +
                             $"(read={read}/{framesRequested}, rbFill={_ringBuffer.ReadableFrames}, " +
@@ -523,6 +669,24 @@ public partial class MeltySynthPlayer
 
                 _perfStopwatch.Stop();
                 _perfTotalCallbackCount++;
+
+                // 非零数据诊断: 前 5 次回调 + 之后每 1000 次, 检查 _outputBuffer 是否有非零数据.
+                // 如果 pOutput 全零但 RingBuffer 有数据, 说明数据通路有问题.
+                if (_perfTotalCallbackCount <= 5 || _perfTotalCallbackCount % 1000 == 0)
+                {
+                    float maxAbs = 0f;
+                    int checkLen = Math.Min(framesRequested * 2, 64);
+                    for (int i = 0; i < checkLen; i++)
+                    {
+                        float a = Math.Abs(_outputBuffer[i]);
+                        if (a > maxAbs) maxAbs = a;
+                    }
+                    GD.Print($"[MeltySynthPlayer][miniaudio] Callback #{_perfTotalCallbackCount}: " +
+                        $"frames={framesRequested}, read={read}, " +
+                        $"maxAbs={maxAbs:F4} (first {checkLen} samples), " +
+                        $"rbFill={_ringBuffer.ReadableFrames}");
+                }
+
                 double elapsedMs = _perfStopwatch.Elapsed.TotalMilliseconds;
                 double budgetMs = (double)framesRequested / _sampleRate * 1000.0 * 0.3;
                 if (elapsedMs > budgetMs)
@@ -583,27 +747,45 @@ public partial class MeltySynthPlayer
                 int idleCount = 0;
                 Span<NoteEvent> localEvents = stackalloc NoteEvent[32];
 
+                // 渲染时间诊断
+                var renderSw = new Stopwatch();
+                int renderCount = 0;
+                long renderTotalTicks = 0;
+                long renderMaxTicks = 0;
+
+                // SpinWait 在循环外创建, 让它逐步退让 (自旋 → Yield → Sleep).
+                // 每次成功渲染后重置, 保持低唤醒延迟.
+                // 之前用 Thread.Yield() 唤醒延迟高 (Windows 调度器可能延迟数 ms),
+                // 导致回调消耗 RingBuffer 后渲染线程来不及补充, 产生 underrun + 电流声.
+                var spinWait = new SpinWait();
+
                 while (_renderThreadRunning)
                 {
-                    // 1. 等待可写空间
-                    // 使用 _decodeFrames 作为最小可写阈值: 渲染线程每次写 _decodeFrames 帧
-                    // 当 RingBuffer 接近满时, 等待音频回调消耗数据
-                    int writable = _ringBuffer.WritableFrames;
-                    if (writable < _decodeFrames)
+                    // 1. 延迟守护: 若 RingBuffer 可读帧已超过 _maxRingFillFrames,
+                    //    说明渲染速度 > 消耗速度, 主动让出 CPU 等待音频回调消耗数据.
+                    //    这能保证稳态延迟有上限, 避免数据持续堆积.
+                    int readable = _ringBuffer.ReadableFrames;
+                    if (_maxRingFillFrames > 0 && readable >= _maxRingFillFrames)
                     {
-                        // 可写空间不足, 短暂等待让音频回调消耗数据
-                        // Sleep(1) 足够让 WASAPI 音频线程执行一次回调 (period ~10ms)
-                        Thread.Sleep(1);
+                        spinWait.SpinOnce();
                         continue;
                     }
 
-                    // 2. 清零渲染缓冲区
+                    // 2. 等待可写空间
+                    int writable = _ringBuffer.WritableFrames;
+                    if (writable < _decodeFrames)
+                    {
+                        spinWait.SpinOnce();
+                        continue;
+                    }
+
+                    // 3. 清零渲染缓冲区
                     Array.Clear(_tempLeft, 0, _decodeFrames);
                     Array.Clear(_tempRight, 0, _decodeFrames);
                     Array.Clear(_manualLeft, 0, _decodeFrames);
                     Array.Clear(_manualRight, 0, _decodeFrames);
 
-                    // 3. 无锁出队
+                    // 4. 无锁出队
                     int eventCount = 0;
                     while (eventCount < 32 && _pendingNoteEvents.TryDequeue(out localEvents[eventCount]))
                         eventCount++;
@@ -619,6 +801,8 @@ public partial class MeltySynthPlayer
                             continue;
                         }
                         idleCount = 0;
+
+                        renderSw.Restart();
 
                         if (_postSeekSilenceFrames > 0)
                         {
@@ -660,10 +844,27 @@ public partial class MeltySynthPlayer
                                 MixToOutput(_tempLeft, _tempRight, null, null, _decodeFrames, scale);
                             }
                         }
+
+                        renderSw.Stop();
+                        long ticks = renderSw.ElapsedTicks;
+                        renderTotalTicks += ticks;
+                        if (ticks > renderMaxTicks) renderMaxTicks = ticks;
+                        renderCount++;
+                        if (renderCount % 500 == 0)
+                        {
+                            double avgMs = renderTotalTicks / (double)renderCount / Stopwatch.Frequency * 1000.0;
+                            double maxMs = renderMaxTicks / (double)Stopwatch.Frequency * 1000.0;
+                            GD.Print($"[MeltySynthPlayer][miniaudio] Render perf: {renderCount} batches, " +
+                                $"avg={avgMs:F3}ms, max={maxMs:F3}ms (per {_decodeFrames} frames), " +
+                                $"rbFill={_ringBuffer.ReadableFrames}");
+                        }
                     }
 
-                    // 4. 写入环形缓冲区
+                    // 5. 写入环形缓冲区
                     _ringBuffer.Write(_outputBuffer, 0, _decodeFrames);
+
+                    // 渲染成功, 重置 spinWait 保持低唤醒延迟 (避免退让到 Sleep(1))
+                    spinWait = new SpinWait();
                 }
 
                 GD.Print("[MeltySynthPlayer][miniaudio] Render thread loop exited");
@@ -787,6 +988,16 @@ public partial class MeltySynthPlayer
             /// </summary>
             public float GetLatencyMs()
             {
+                var (deviceMs, ringMs) = GetLatencyBreakdown();
+                return deviceMs + ringMs;
+            }
+
+            /// <summary>
+            /// 获取延迟分解: (设备延迟 ms, RingBuffer 延迟 ms)
+            /// 用于诊断延迟来源
+            /// </summary>
+            public (float deviceMs, float ringMs) GetLatencyBreakdown()
+            {
                 float deviceLatencyMs = 0f;
 
                 // 1. 尝试获取 native 设备延迟 (真实值)
@@ -825,15 +1036,18 @@ public partial class MeltySynthPlayer
                     ringLatencyMs = _ringBuffer.ReadableFrames * 1000.0f / _sampleRate;
                 }
 
-                return deviceLatencyMs + ringLatencyMs;
+                return (deviceLatencyMs, ringLatencyMs);
             }
 
-            /// <summary>用 period size × count 估算设备延迟 (fallback)</summary>
+            /// <summary>用 period size × (count - 0.5) 估算设备延迟 (fallback)</summary>
             private float EstimateDeviceLatencyMs()
             {
                 if (_actualPeriod > 0 && _actualPeriodCount > 0)
                 {
-                    return _actualPeriod * _actualPeriodCount * 1000.0f / _sampleRate;
+                    // WASAPI 回调触发时: 1 个 period 正在播放, (count-1) 个已排队
+                    // 平均延迟 = periodSize × (count - 0.5)
+                    float latencyPeriods = _actualPeriodCount >= 2 ? (_actualPeriodCount - 0.5f) : 0.5f;
+                    return _actualPeriod * latencyPeriods * 1000.0f / _sampleRate;
                 }
                 return 0f;
             }

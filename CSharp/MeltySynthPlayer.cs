@@ -1452,10 +1452,33 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	private void EnsureAudioInitialized()
 	{
+		// WASAPI 采样率策略:
+		// - 独占模式: 设备使用原生采样率 (通常 48000Hz), miniaudio 不做 SRC, 必须匹配.
+		// - 共享模式 + IAudioClient3 低延迟: 启用 noAutoConvertSRC 后, WASAPI 不做 SRC.
+		//   如果合成器采样率 ≠ 设备原生采样率, miniaudio 用内部重采样器做 SRC (有开销).
+		//   为避免重采样开销, 强制用 48000Hz (设备原生), 直接匹配.
+		// - Godot AudioServer.GetMixRate() 在 Dummy driver 下返回 44100, 不代表设备原生采样率.
+		// 注意: 每次调用都重新评估, 因为后端可能在运行时切换 (Fmod → Miniaudio).
+		bool useExclusive = System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1";
+		bool useMiniaudio = useExclusive || (_audioBackend == AudioBackend.Miniaudio);
+		if (useMiniaudio)
+		{
+			int oldRate = _sampleRate;
+			_sampleRate = (int)AudioServer.GetMixRate();  // 重新读取 (可能 44100)
+			if (_sampleRate != 48000)
+			{
+				GD.Print($"[MeltySynthPlayer] miniaudio: adjusting sample rate {_sampleRate} → 48000 (device native rate)");
+				_sampleRate = 48000;
+			}
+		}
+		else if (_audioOutput == null)
+		{
+			_sampleRate = (int)AudioServer.GetMixRate();
+		}
+
 		if (_audioOutput != null)
 			return;
 
-		_sampleRate = (int)AudioServer.GetMixRate();
 		var bridge = CreateAudioOutputBridge();
 
 		// 【关键】在 Initialize() 创建 FMOD 流之前先设置合成器引用
@@ -1479,18 +1502,48 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private IAudioOutputBridge CreateAudioOutputBridge()
 	{
 		// 根据 _audioBackend 选择后端
-		// miniaudio: 优先低延迟, RingBuffer 容量 ×2, period 256×2
+		// miniaudio: 优先低延迟, RingBuffer 容量 ×3
 		// fmod:      兼容回退, RingBuffer 容量 ×6, DSP 1024×2
 		if (_audioBackend == AudioBackend.Miniaudio)
 		{
 			var maBridge = new MiniaudioAudioOutputBridge(0);
-			maBridge.SetDecodeFrames(_desiredBufferFrames);
-			// miniaudio period 与 decode frames 对齐, 但可以更小 (256 而非 1024)
-			// 这里用 min(decodeFrames, 512) 作为 period 以获得更低延迟
-			uint maPeriod = (uint)Math.Min(_desiredBufferFrames, 512);
+
+			var osName = OS.GetName();
+			uint maPeriod;
+
+			if (osName == "Windows")
+			{
+				// WASAPI 共享模式 (默认): period 被强制为 480 (≈10ms), 设备延迟 ~15ms.
+				// 可与 FMOD/Godot AudioServer 共存, 无冲突.
+				//
+				// WASAPI 独占模式: period 可设到 128 (≈2.7ms), 设备延迟 ~4ms.
+				// 但独占模式与 FMOD/Godot AudioServer 冲突, 会导致:
+				//   1. FMOD "Device was unplugged" 警告刷屏
+				//   2. 独占模式虽然 period=128 成功, 但可能无声音 (设备端点被 invalidate)
+				// 要启用独占模式, 必须完全禁用 FMOD (不只是 Godot 插件, 而是 FMOD 系统本身)
+				// + 设 Godot audio/driver/driver="Dummy".
+				// 通过环境变量 MINIAUDIO_EXCLUSIVE=1 启用独占模式.
+				maBridge.SetBackend(MiniaudioNative.Backend.Wasapi);
+				bool useExclusive = System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1";
+				maBridge.SetWASAPIExclusive(useExclusive);
+				maPeriod = useExclusive ? 128u : 256u;
+			}
+			else if (osName == "Android")
+			{
+				maBridge.SetBackend(MiniaudioNative.Backend.Aaudio);
+				maBridge.SetAAudioExclusive(true);
+				maPeriod = (uint)Math.Min(_desiredBufferFrames, 256);
+			}
+			else
+			{
+				maPeriod = (uint)Math.Min(_desiredBufferFrames, 256);
+			}
+
+			// _decodeFrames 初始设为 period, Initialize 后会根据 actualPeriod 上调
+			maBridge.SetDecodeFrames((int)maPeriod);
 			maBridge.SetPeriodSize(maPeriod, 2);
 
-			GD.Print($"[MeltySynthPlayer] Creating miniaudio bridge: decode={_desiredBufferFrames}f, period=({maPeriod},2)");
+			GD.Print($"[MeltySynthPlayer] Creating miniaudio bridge: decode={maPeriod}f, period=({maPeriod},2), os={osName}, exclusive={(osName == "Windows" ? (System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1" ? "yes" : "no") : "n/a")}");
 			return maBridge;
 		}
 		else
@@ -1587,8 +1640,45 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		return 0f;
 	}
 
+	/// <summary>
+	/// 获取音频延迟分解 (设备延迟 ms, RingBuffer 延迟 ms).
+	/// 仅 miniaudio 后端支持, 其他后端返回 (total, 0).
+	/// 用于诊断延迟来源
+	/// </summary>
+	public Godot.Collections.Dictionary GetAudioLatencyBreakdown()
+	{
+		var result = new Godot.Collections.Dictionary();
+		if (_audioOutput is MiniaudioAudioOutputBridge maBridge)
+		{
+			var (deviceMs, ringMs) = maBridge.GetLatencyBreakdown();
+			result["device_ms"] = deviceMs;
+			result["ring_ms"] = ringMs;
+			result["total_ms"] = deviceMs + ringMs;
+			result["actual_period"] = (int)maBridge.ActualPeriod;
+			result["actual_period_count"] = (int)maBridge.ActualPeriodCount;
+		}
+		else
+		{
+			result["device_ms"] = GetAudioLatencyMs();
+			result["ring_ms"] = 0f;
+			result["total_ms"] = GetAudioLatencyMs();
+			result["actual_period"] = 0;
+			result["actual_period_count"] = 0;
+		}
+		return result;
+	}
+
 	public override void _Ready()
 	{
+		// 如果启用独占模式, 直接用 miniaudio 后端, 避免初始化 FMOD 占用 WASAPI 端点.
+		// FMOD 即使 Dispose 后, WASAPI 会话状态可能残留, 导致独占模式端点异常 (无声音).
+		// 必须在 EnsureAudioInitialized 之前设置, 否则 FMOD 系统已被创建.
+		if (_audioBackend == AudioBackend.Fmod &&
+			System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1")
+		{
+			_audioBackend = AudioBackend.Miniaudio;
+			GD.Print("[MeltySynthPlayer] MINIAUDIO_EXCLUSIVE=1 detected, using miniaudio backend from start (skip FMOD init)");
+		}
 		GD.Print("[MeltySynthPlayer] _Ready() called");
 		EnsureAudioInitialized();
 		GD.Print($"[MeltySynthPlayer] _Ready() complete: _audioOutput={( _audioOutput != null ? _audioOutput.GetType().Name : "null" )}");

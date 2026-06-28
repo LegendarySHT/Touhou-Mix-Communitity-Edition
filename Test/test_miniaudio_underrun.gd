@@ -135,7 +135,16 @@ func _run_single_test(buffer_frames: int) -> void:
 				_latency_max = latency_ms
 			_latency_sum += latency_ms
 			_latency_count += 1
-			print("[Test] 第 %d 秒 | 延迟 %.2f ms" % [elapsed_int, latency_ms])
+			# 输出延迟分解 (前 5 秒 + 每 5 秒)
+			if elapsed_int <= 5 or elapsed_int % 5 == 0:
+				var breakdown: Dictionary = _player.call("GetAudioLatencyBreakdown")
+				print("[Test] 第 %d 秒 | 总延迟 %.2f ms (设备 %.2f + RingBuffer %.2f) | period=%dx%d" % [
+					elapsed_int, latency_ms,
+					breakdown.get("device_ms", 0.0),
+					breakdown.get("ring_ms", 0.0),
+					breakdown.get("actual_period", 0),
+					breakdown.get("actual_period_count", 0)
+				])
 
 		# 每 5 秒输出一次状态
 		if elapsed_int > 0 and elapsed_int % 5 == 0 and elapsed_int != last_underrun_check:
@@ -183,10 +192,11 @@ func _print_summary() -> void:
 	print("")
 	print("说明:")
 	print("  - 理论延迟 = buffer_frames / 48000 × 1000 (仅缓冲区, 不含设备/RingBuffer)")
-	print("  - 实测延迟 = ma_device_get_latency + RingBuffer 可读帧数 / 采样率")
-	print("  - 若 C# 日志显示 'using estimate', 说明旧版 DLL 缺少 ma_bridge_get_latency,")
-	print("    此时设备延迟用 period×count 估算, 重新编译 DLL 可获取精确值")
-	print("  - 实测延迟 > 理论延迟是正常的 (含设备内部缓冲 + RingBuffer 预填充)")
+	print("  - 实测延迟 = 设备延迟 periodSize×(count-0.5) + RingBuffer 可读帧 / 采样率")
+	print("  - WASAPI 独占模式: period 可设到 128 (≈2.67ms), 绕过 Windows 音频引擎")
+	print("  - WASAPI 共享模式: period 被强制为 480 (≈10ms), 不可控")
+	print("  - RingBuffer 容量 = effectivePeriod × 3, 延迟守护阈值 = 1.0×period")
+	print("  - 优化目标: ≤ 10ms (periodSize=128 独占模式: 设备 4ms + RingBuffer 2.67ms)")
 
 	# ---- underrun 汇总 ----
 	print("\n--- Underrun 诊断 ---")

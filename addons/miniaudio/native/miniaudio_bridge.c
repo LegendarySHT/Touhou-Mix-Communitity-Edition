@@ -32,8 +32,66 @@ typedef struct {
     void*          pUserData;
     int            initialized;
     int            started;
+    int            hasDeviceId;    // 1=指定了具体设备, 0=用默认设备 (诊断用)
     char           backendName[64];
 } ma_bridge;
+
+// 全局设备名称 (由 ma_bridge_set_device_name 设置, ma_bridge_init 读取)
+// 独占模式下用于指定正确的设备端点 (避免打开 HDMI 等错误设备).
+// 空字符串 = 使用系统默认设备.
+static char g_deviceName[256] = {0};
+
+// ---------------------------------------------------------------------------
+// 设备查找: 按名称查找设备 ID
+// ---------------------------------------------------------------------------
+
+// 枚举回调上下文
+typedef struct {
+    const char*    targetName;     // 要查找的设备名称
+    ma_device_id*  pDeviceId;      // 找到后写入设备 ID
+    int            found;          // 0 = 未找到, 1 = 找到
+} FindDeviceContext;
+
+static ma_bool32 find_device_callback(ma_context* pContext,
+                                       ma_device_type deviceType,
+                                       const ma_device_info* pInfo,
+                                       void* pUserData)
+{
+    if (deviceType != ma_device_type_playback) return MA_TRUE;
+    FindDeviceContext* pCtx = (FindDeviceContext*)pUserData;
+    if (pInfo == NULL || pCtx == NULL) return MA_TRUE;
+
+    if (strcmp(pCtx->targetName, pInfo->name) == 0) {
+        if (pCtx->pDeviceId != NULL) {
+            *pCtx->pDeviceId = pInfo->id;
+        }
+        pCtx->found = 1;
+        return MA_FALSE; // 找到了, 停止枚举
+    }
+    return MA_TRUE; // 继续枚举
+}
+
+// 设备枚举回调上下文 (用于 ma_bridge_enumerate_devices)
+typedef struct {
+    ma_bridge_device_enum_proc userCallback;
+    void*                      pUserData;
+    int                        count;
+} EnumDevicesContext;
+
+static ma_bool32 enum_devices_callback(ma_context* pContext,
+                                        ma_device_type deviceType,
+                                        const ma_device_info* pInfo,
+                                        void* pUserData)
+{
+    if (deviceType != ma_device_type_playback) return MA_TRUE;
+    EnumDevicesContext* pCtx = (EnumDevicesContext*)pUserData;
+    if (pCtx == NULL || pCtx->userCallback == NULL || pInfo == NULL) return MA_TRUE;
+
+    int isDefault = (pInfo->isDefault == MA_TRUE) ? 1 : 0;
+    int cont = pCtx->userCallback(pCtx->pUserData, pInfo->name, isDefault);
+    pCtx->count++;
+    return (cont != 0) ? MA_TRUE : MA_FALSE;
+}
 
 // ---------------------------------------------------------------------------
 // 默认配置
@@ -53,6 +111,7 @@ ma_bridge_config ma_bridge_config_init_default(void)
     cfg.noPreSilencedInputBuffer = 0;
     cfg.noClip = 1;                 // 本项目在 C# 侧用 SoftLimit, 禁用 miniaudio 内部 clip
     cfg.noDeviceStateChangedCallback = 1; // 性能优化
+    cfg.noAutoConvertSRC = 0;       // 默认禁用, 仅在需要 IAudioClient3 时启用
     return cfg;
 }
 
@@ -135,6 +194,9 @@ ma_bridge_result ma_bridge_init(const ma_bridge_config* pConfig,
     }
     // 否则: 不创建显式 context, 让 ma_device_init 内部用 NULL context (自动)
 
+    // 确定 context 指针 (显式后端用 &pBridge->context, 否则 NULL 让 miniaudio 内部创建)
+    ma_context* pCtx = (pConfig->backend != MA_BRIDGE_BACKEND_DEFAULT) ? &pBridge->context : NULL;
+
     // ---- 2. 设备配置 ----
     ma_device_config devCfg = ma_device_config_init(ma_device_type_playback);
     devCfg.playback.format   = ma_format_f32;
@@ -151,12 +213,79 @@ ma_bridge_result ma_bridge_init(const ma_bridge_config* pConfig,
     // noClip: 本项目在 C# 侧用 SoftLimit 做软限幅, 禁用 miniaudio 内部硬 clip
     devCfg.noClip            = (ma_bool8)(pConfig->noClip ? MA_TRUE : MA_FALSE);
 
+    // WASAPI: noAutoConvertSRC
+    // 禁用 WASAPI 内部 SRC (AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM), 改用 miniaudio 重采样器.
+    // 这是启用 IAudioClient3 低延迟共享模式的前提条件.
+    // IAudioClient3 可以让共享模式使用小 period (如 128 帧), 达到接近独占模式的延迟,
+    // 但不需要独占设备, 避免了 Realtek 等驱动独占模式的兼容性问题.
+    // 注意: 启用 noAutoConvertSRC 后, 如果请求采样率 ≠ 设备原生采样率,
+    // miniaudio 会用内部重采样器做 SRC. 为避免重采样开销, 建议请求采样率 = 设备原生采样率.
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    if (pConfig->noAutoConvertSRC) {
+        devCfg.wasapi.noAutoConvertSRC = MA_TRUE;
+        fprintf(stderr, "[miniaudio_bridge] noAutoConvertSRC=true (enable IAudioClient3 low-latency shared mode)\n");
+        fflush(stderr);
+    }
+#endif
+
+    // 按名称选择设备 (用于独占模式选择正确的端点)
+    // g_deviceName 由 ma_bridge_set_device_name 设置, 通常从环境变量 MINIAUDIO_DEVICE_NAME 读取.
+    // 如果未设置或找不到匹配设备, 使用系统默认设备 (pDeviceID = NULL).
+    // 独占模式下 WASAPI 直接绑定设备, 不会自动路由, 因此必须选择正确的端点.
+    // 共享模式下 Windows 音频引擎会自动路由, 不需要指定设备.
+    //
+    // 注意: 即使 pCtx==NULL (默认后端), 也要创建临时 context 用于设备枚举.
+    // 设备 ID 在同一后端内跨 context 稳定, 可用于 pCtx=NULL 的 ma_device_init.
+    // 之前的 bug: pCtx!=NULL 条件导致默认后端时设备查找被跳过,
+    // 独占模式可能打开错误端点 (如 Steam Streaming Speakers) 导致无声音.
+    ma_device_id deviceId;
+    int hasDeviceId = 0;
+    if (g_deviceName[0] != '\0') {
+        ma_context* pEnumCtx = pCtx;
+        ma_context tempCtx;
+        int tempCtxCreated = 0;
+        if (pEnumCtx == NULL) {
+            if (ma_context_init(NULL, 0, NULL, &tempCtx) == MA_SUCCESS) {
+                pEnumCtx = &tempCtx;
+                tempCtxCreated = 1;
+            }
+        }
+        if (pEnumCtx != NULL) {
+            FindDeviceContext findCtx;
+            findCtx.targetName = g_deviceName;
+            findCtx.pDeviceId  = &deviceId;
+            findCtx.found      = 0;
+            ma_context_enumerate_devices(pEnumCtx, find_device_callback, &findCtx);
+            if (findCtx.found) {
+                devCfg.playback.pDeviceID = &deviceId;
+                hasDeviceId = 1;
+            }
+        }
+        if (tempCtxCreated) {
+            ma_context_uninit(&tempCtx);
+        }
+    }
+
     // WASAPI 独占模式 (仅 Windows + WASAPI 后端生效)
     // 独占模式通过 shareMode 字段控制, 不是 wasapi.usage
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     if (pConfig->wasapiExclusive) {
         devCfg.playback.shareMode = ma_share_mode_exclusive;
         devCfg.wasapi.usage       = ma_wasapi_usage_pro_audio;  // 提高线程优先级
+        // 独占模式必须使用设备原生采样率, miniaudio 不做 SRC.
+        // 如果请求采样率 ≠ 设备原生采样率, 设备初始化"成功"但实际无声音.
+        // 设 sampleRate=0 让 miniaudio 自动选择设备原生采样率.
+        fprintf(stderr, "[miniaudio_bridge] Exclusive mode: setting sampleRate=0 (device native rate)\n");
+        fflush(stderr);
+        devCfg.sampleRate = 0;
+
+        // 独占模式: 强制 periodCount=1.
+        // WASAPI 独占模式要求 hnsBufferDuration = hnsPeriodicity, 即缓冲区 = 1 个 period.
+        // 某些 Realtek 驱动在 periodCount=2 时初始化"成功"但实际无声音.
+        // periodCount=1 确保缓冲区 = period, 符合独占模式规范.
+        fprintf(stderr, "[miniaudio_bridge] Exclusive mode: forcing periodCount=1\n");
+        fflush(stderr);
+        devCfg.periods = 1;
     }
 #endif
 
@@ -169,24 +298,49 @@ ma_bridge_result ma_bridge_init(const ma_bridge_config* pConfig,
 #endif
 
     // ---- 3. 设备初始化 ----
-    ma_context* pCtx = (pConfig->backend != MA_BRIDGE_BACKEND_DEFAULT) ? &pBridge->context : NULL;
+    fprintf(stderr, "[miniaudio_bridge] Before ma_device_init: sampleRate=%u, periodSize=%u, periods=%u, channels=%u, shareMode=%d\n",
+            devCfg.sampleRate, devCfg.periodSizeInFrames, devCfg.periods, devCfg.playback.channels, (int)devCfg.playback.shareMode);
+    fflush(stderr);
+
     mr = ma_device_init(pCtx, &devCfg, &pBridge->device);
+    fprintf(stderr, "[miniaudio_bridge] ma_device_init result=%d, device.sampleRate=%u, internalPeriodSize=%u, internalPeriods=%u, shareMode=%d, channels=%u\n",
+            (int)mr,
+            pBridge->device.sampleRate,
+            pBridge->device.playback.internalPeriodSizeInFrames,
+            pBridge->device.playback.internalPeriods,
+            (int)pBridge->device.playback.shareMode,
+            pBridge->device.playback.channels);
+    fflush(stderr);
+
     if (mr != MA_SUCCESS) {
-        // 如果显式后端失败, 尝试自动后端
-        if (pConfig->backend != MA_BRIDGE_BACKEND_DEFAULT) {
-            ma_context_uninit(&pBridge->context);
-            mr = ma_device_init(NULL, &devCfg, &pBridge->device);
-            if (mr != MA_SUCCESS) {
-                free(pBridge);
-                return MA_BRIDGE_ERR_DEVICE;
+        // 回退 1: 如果启用了 WASAPI 独占模式, 尝试回退到共享模式
+        // (独占模式在某些设备/驱动上不可用, 或设备已被其他应用占用)
+        int wasExclusive = 0;
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+        if (pConfig->wasapiExclusive) {
+            wasExclusive = 1;
+            devCfg.playback.shareMode = ma_share_mode_shared;
+            devCfg.wasapi.usage       = ma_wasapi_usage_default;
+            mr = ma_device_init(pCtx, &devCfg, &pBridge->device);
+        }
+#endif
+        // 回退 2: 如果显式 WASAPI 后端失败, 不回退到 DirectSound (period=1440, 30ms 延迟).
+        // DirectSound 延迟极高, 回退到它毫无意义. 直接报错让上层处理.
+        // (之前会自动回退, 导致 period=1440×2=60ms, 比 FMOD 还差)
+        if (mr != MA_SUCCESS) {
+            if (pCtx != NULL) {
+                ma_context_uninit(&pBridge->context);
             }
-        } else {
             free(pBridge);
             return MA_BRIDGE_ERR_DEVICE;
+        }
+        if (wasExclusive) {
+            strncpy(pBridge->backendName, "wasapi (shared fallback)", sizeof(pBridge->backendName) - 1);
         }
     }
 
     pBridge->initialized = 1;
+    pBridge->hasDeviceId = hasDeviceId;  // 保存诊断标志
 
     // 记录后端名称
     const char* name = ma_get_backend_name(pBridge->device.pContext->backend);
@@ -218,6 +372,39 @@ ma_bridge_result ma_bridge_start(void* pBridge)
         return MA_BRIDGE_ERR_DEVICE;
     }
     p->started = 1;
+
+    // 设备启动状态诊断 (排查独占模式无声音问题)
+    // 使用 stderr + Godot 的 print 可见性更好
+    {
+        ma_device_state state = ma_device_get_state(&p->device);
+        const char* stateStr = "unknown";
+        switch (state) {
+            case ma_device_state_uninitialized: stateStr = "uninitialized"; break;
+            case ma_device_state_stopped:       stateStr = "stopped"; break;
+            case ma_device_state_starting:      stateStr = "starting"; break;
+            case ma_device_state_started:       stateStr = "started"; break;
+            case ma_device_state_stopping:      stateStr = "stopping"; break;
+            default: break;
+        }
+        const char* shareStr = "unknown";
+        switch ((int)p->device.playback.shareMode) {
+            case 0: shareStr = "shared"; break;
+            case 1: shareStr = "exclusive"; break;
+            case 2: shareStr = "loopback"; break;
+            default: break;
+        }
+        fprintf(stderr, "[miniaudio_bridge] Device started: state=%s, sampleRate=%u, "
+               "periodSize=%u, periods=%u, shareMode=%d(%s), channels=%u\n",
+               stateStr,
+               p->device.sampleRate,
+               p->device.playback.internalPeriodSizeInFrames,
+               p->device.playback.internalPeriods,
+               (int)p->device.playback.shareMode,
+               shareStr,
+               p->device.playback.channels);
+        fflush(stderr);
+    }
+
     return MA_BRIDGE_OK;
 }
 
@@ -270,12 +457,18 @@ ma_bridge_result ma_bridge_get_latency(void* pBridge, uint32_t* pLatencyInFrames
     if (p == NULL || !p->initialized) {
         return MA_BRIDGE_ERR_NOT_INITIALIZED;
     }
-    // ma_device_get_latency 在某些后端可能返回 MA_NOT_IMPLEMENTED
-    ma_uint32 latencyFrames = 0;
-    ma_result mr = ma_device_get_latency(&p->device, &latencyFrames);
-    if (mr != MA_SUCCESS) {
+    // 此版本 miniaudio 没有 ma_device_get_latency, 用内部 buffer 大小估算延迟.
+    // WASAPI 独占模式回调触发时: 1 个 period 正在播放, (periodCount-1) 个已排队.
+    // 实际设备延迟 = periodSize × (periodCount - 0.5) (平均延迟).
+    // 之前用 periodSize × periodCount 偏高 (把整个缓冲区算作延迟).
+    ma_uint32 periodSize = p->device.playback.internalPeriodSizeInFrames;
+    ma_uint32 periods = (ma_uint32)p->device.playback.internalPeriods;
+    if (periodSize == 0 || periods == 0) {
         return MA_BRIDGE_ERR_UNSUPPORTED;
     }
+    // periods >= 2 时用 (periods - 0.5), periods == 1 时用 0.5 (至少半个 period 延迟)
+    double latencyPeriods = (periods >= 2) ? ((double)periods - 0.5) : 0.5;
+    ma_uint32 latencyFrames = (ma_uint32)(periodSize * latencyPeriods);
     if (pLatencyInFrames != NULL) {
         *pLatencyInFrames = latencyFrames;
     }
@@ -331,4 +524,79 @@ void ma_bridge_uninit(void* pBridge)
 const char* ma_bridge_get_version(void)
 {
     return MA_VERSION_STRING;
+}
+
+// ---------------------------------------------------------------------------
+// 设备枚举与选择
+// ---------------------------------------------------------------------------
+
+void ma_bridge_set_device_name(const char* pName)
+{
+    if (pName == NULL || pName[0] == '\0') {
+        g_deviceName[0] = '\0';
+        return;
+    }
+    strncpy(g_deviceName, pName, sizeof(g_deviceName) - 1);
+    g_deviceName[sizeof(g_deviceName) - 1] = '\0';
+}
+
+int ma_bridge_enumerate_devices(void* pBridge,
+                                 ma_bridge_device_enum_proc callback,
+                                 void* pUserData)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized || callback == NULL) {
+        return -1;
+    }
+
+    ma_context* pCtx = p->device.pContext;
+    if (pCtx == NULL) {
+        return -1;
+    }
+
+    EnumDevicesContext ctx;
+    ctx.userCallback = callback;
+    ctx.pUserData    = pUserData;
+    ctx.count        = 0;
+
+    ma_result mr = ma_context_enumerate_devices(pCtx, enum_devices_callback, &ctx);
+    if (mr != MA_SUCCESS) {
+        return -1;
+    }
+    return ctx.count;
+}
+
+// ---------------------------------------------------------------------------
+// 诊断: 获取设备运行时状态 (用于排查独占模式无声音问题)
+// 返回值:
+//   -1 = bridge 未初始化
+//   ma_device_state 枚举值: 0=uninitialized, 1=stopped, 2=starting, 3=started, 4=stopping
+// ---------------------------------------------------------------------------
+int ma_bridge_get_device_state(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return -1;
+    }
+    return (int)ma_device_get_state(&p->device);
+}
+
+// 诊断: 获取 shareMode (0=shared, 1=exclusive)
+int ma_bridge_get_share_mode(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return -1;
+    }
+    return (int)p->device.playback.shareMode;
+}
+
+// 诊断: 获取是否指定了 pDeviceID (1=指定了具体设备, 0=用默认设备)
+int ma_bridge_has_device_id(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return -1;
+    }
+    return p->hasDeviceId;
 }

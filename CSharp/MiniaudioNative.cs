@@ -63,6 +63,7 @@ namespace TouhouMix.Midi
             public int  NoPreSilencedInputBuffer;
             public int  NoClip;
             public int  NoDeviceStateChangedCallback;
+            public int  NoAutoConvertSRC;
         }
 
         // ---- 数据回调委托 ----
@@ -70,6 +71,11 @@ namespace TouhouMix.Midi
         // 且委托实例必须被 GC 引用 (本桥中存储在 _dataCallback 字段, 防止被回收)
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void DataProc(IntPtr pUserData, IntPtr pOutput, uint frameCount);
+
+        // ---- 设备枚举回调委托 (主线程调用) ----
+        // 返回 1 继续枚举, 0 停止
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate int DeviceEnumProc(IntPtr pUserData, IntPtr name, int isDefault);
 
         // ---- 默认配置 ----
         internal static Config ConfigInitDefault()
@@ -87,6 +93,7 @@ namespace TouhouMix.Midi
                 NoPreSilencedInputBuffer = 0,
                 NoClip = 1,
                 NoDeviceStateChangedCallback = 1,
+                NoAutoConvertSRC = 0,
             };
         }
 
@@ -269,6 +276,25 @@ namespace TouhouMix.Midi
         [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr ma_bridge_get_version();
 
+        // 设备枚举与选择 (用于独占模式选择正确的设备端点)
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ma_bridge_set_device_name(byte[] pName);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ma_bridge_enumerate_devices(IntPtr pBridge,
+                                                                DeviceEnumProc callback,
+                                                                IntPtr pUserData);
+
+        // 诊断函数 (用于排查独占模式无声音问题)
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ma_bridge_get_device_state(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ma_bridge_get_share_mode(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ma_bridge_has_device_id(IntPtr pBridge);
+
         // ====================================================================
         // 辅助: 安全读取 IntPtr 返回的 C 字符串
         // ====================================================================
@@ -276,6 +302,43 @@ namespace TouhouMix.Midi
         {
             if (ptr == IntPtr.Zero) return string.Empty;
             return Marshal.PtrToStringAnsi(ptr) ?? string.Empty;
+        }
+
+        /// <summary>
+        /// 安全读取 IntPtr 返回的 UTF-8 C 字符串.
+        /// miniaudio 的设备名称是 UTF-8 编码, 用 PtrToStringAnsi (ANSI/CP_ACP) 解码会乱码.
+        /// </summary>
+        internal static string PtrToStringUtf8Safe(IntPtr ptr)
+        {
+            if (ptr == IntPtr.Zero) return string.Empty;
+            // 先用 Ansi 读取字节 (C 字符串以 null 结尾), 再用 UTF-8 解码
+            string ansi = Marshal.PtrToStringAnsi(ptr) ?? string.Empty;
+            // Marshal.PtrToStringAnsi 会用 CP_ACP 解码, 对于 UTF-8 字节会产生错误字符.
+            // 我们需要原始字节. 用 unsafe 方式读取.
+            // 但为了简单, 这里用 PtrToStringUTF8 (如果可用) 或手动读取.
+            // .NET 6+ 有 Marshal.PtrToStringUTF8.
+            try
+            {
+                return Marshal.PtrToStringUTF8(ptr) ?? string.Empty;
+            }
+            catch
+            {
+                // 旧运行时没有 PtrToStringUTF8, 回退到 Ansi
+                return ansi;
+            }
+        }
+
+        /// <summary>
+        /// 将 C# string 转换为 UTF-8 byte 数组 (含 null 终止符), 用于传递给 C 函数.
+        /// </summary>
+        internal static byte[] StringToUtf8NullTerminated(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return new byte[] { 0 };
+            int byteCount = System.Text.Encoding.UTF8.GetByteCount(s);
+            byte[] bytes = new byte[byteCount + 1];
+            System.Text.Encoding.UTF8.GetBytes(s, 0, s.Length, bytes, 0);
+            // bytes[byteCount] = 0 (自动, 数组初始化为 0)
+            return bytes;
         }
     }
 }
