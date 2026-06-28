@@ -169,20 +169,6 @@ var setting_groups = [
 				]
 			},
 			{
-				"id": "audio_buffer_frames",
-				"name_en": "Audio Buffer Size",
-				"name_zh": "音频缓冲区大小",
-				"description": "调整音频解码缓冲区帧数，较小的值可降低延迟但可能导致电流声，较大的值更稳定但延迟更高",
-				"type": "TYPE_OPTION",
-				"default_value": "2",
-				"options": [
-					{"text_en": "256 (最低延迟)", "text_zh": "256 (最低延迟)"},
-					{"text_en": "512 (低延迟)", "text_zh": "512 (低延迟)"},
-					{"text_en": "1024 (平衡)", "text_zh": "1024 (平衡)"},
-					{"text_en": "2048 (最高稳定)", "text_zh": "2048 (最高稳定)"}
-				]
-			},
-			{
 				"id": "max_polyphony",
 				"name_en": "Max Polyphony",
 				"name_zh": "最大复音数",
@@ -229,17 +215,17 @@ var setting_groups = [
 			"dynamic_options": true
 		},
 		{
-			"id": "midi_backend",
-			"name_en": "MIDI Backend",
-			"name_zh": "MIDI合成器",
-			"description": "选择MIDI合成器后端以进行音质对比。",
-			"type": "TYPE_OPTION",
-			"default_value": "0",
-			"options": [
-				{"text_en": "Addon (GDScript)", "text_zh": "插件合成器", "value": "addons"},
-				{"text_en": "MeltySynth (C#)", "text_zh": "MeltySynth", "value": "meltysynth"}
-			]
-		},
+		"id": "midi_backend",
+		"name_en": "MIDI Backend",
+		"name_zh": "MIDI合成器",
+		"description": "选择MIDI合成器后端以进行音质对比。",
+		"type": "TYPE_OPTION",
+		"default_value": "0",
+		"options": [
+			{"text_en": "Addon (GDScript)", "text_zh": "插件合成器", "value": "addons"},
+			{"text_en": "MeltySynth (C#)", "text_zh": "MeltySynth", "value": "meltysynth"}
+		]
+	},
 
 	]
 	},

@@ -23,7 +23,6 @@ static var mappings: Dictionary = {
 	"vibrate_on_touch": {"section": "Playback", "key": "vibrate_on_touch", "value_type": "int"},
 	"vibration_duration": {"section": "Playback", "key": "vibration_duration", "value_type": "int"},
 	"use_system_stopwatch": {"section": "Playback", "key": "use_system_stopwatch", "value_type": "int"},
-	"audio_buffer_frames": {"section": "Playback", "key": "audio_buffer_frames", "value_type": "int"},
 	"max_polyphony": {"section": "Playback", "key": "max_polyphony", "value_type": "int"},
 	
 	# ========== 音源设置 ==========
@@ -153,7 +152,7 @@ static func ini_to_settings(config: Dictionary) -> Dictionary:
 			result["midi_backend"] = "0"
 		elif backend_value == "meltysynth":
 			result["midi_backend"] = "1"
-	
+
 	# 特殊处理：Browse 设置从字符串值转换为选项索引（顺序: creation_time=0, download_time=1）
 	if result.has("album_sort_method"):
 		if result["album_sort_method"] == "download_time":

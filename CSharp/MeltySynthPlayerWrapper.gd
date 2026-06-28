@@ -5,7 +5,7 @@ class_name MeltySynthPlayerWrapper
 
 @export var meltysynth_player: Node
 
-# FMOD模式下没有AudioStreamPlayer，返回空数组以避免错误
+# 没有AudioStreamPlayer，返回空数组以避免错误
 var audio_stream_players: Array = []
 
 # 最大复音数
@@ -196,3 +196,9 @@ func seek_ms(position_ms: float) -> void:
 	if meltysynth_player == null:
 		return
 	meltysynth_player.call("seek_ms", position_ms)
+
+## 设置音频缓冲区大小（帧）
+func SetAudioBufferFrames(frames: int) -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("SetAudioBufferFrames", frames)

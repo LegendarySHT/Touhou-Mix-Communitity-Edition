@@ -16,6 +16,10 @@ config/quit_on_go_back=false
 config/features=PackedStringArray("4.6", "C#", "Mobile")
 config/icon="uid://von2js75nk2a"
 
+[audio]
+
+driver/driver="Dummy"
+
 [autoload]
 
 DataMGR="*res://Core/DataManager.gd"
@@ -24,7 +28,6 @@ SortEngine="*res://Core/SortingEngine.gd"
 UiStatMGR="*res://Core/UIStateManager.gd"
 AniMGR="*res://UI/Animations/AnimationManager.gd"
 GLogger="*res://Utilities/Logger.gd"
-FmodManager="*uid://cds10pm7hwn3p"
 ThemeMGR="*res://UI/ThemeManager.gd"
 
 [display]
@@ -40,7 +43,7 @@ project/assembly_name="Touhou Mix Comunitity Edition"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/fmod/plugin.cfg", "res://addons/midi/plugin.cfg")
+enabled=PackedStringArray("res://addons/midi/plugin.cfg", "res://addons/miniaudio/plugin.cfg")
 
 [gui]
 

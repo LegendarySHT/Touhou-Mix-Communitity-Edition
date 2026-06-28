@@ -141,15 +141,6 @@ func save_config_to_file() -> bool:
 			print("[SettingView] Converting midi_backend index %d to '%s'" % [index, converted])
 			settings_dict["midi_backend"] = converted
 
-	# 特殊处理 melty_audio_output_backend：将选项索引转换为实际值
-	if settings_dict.has("melty_audio_output_backend"):
-		var raw_output_value = settings_dict["melty_audio_output_backend"]
-		if raw_output_value is int or (raw_output_value is String and raw_output_value.is_valid_int()):
-			var output_index = clamp(int(raw_output_value), 0, 2)
-			var converted_output = ["auto", "godot", "fmod"][output_index]
-			print("[SettingView] Converting melty_audio_output_backend index %d to '%s'" % [output_index, converted_output])
-			settings_dict["melty_audio_output_backend"] = converted_output
-
 	# 特殊处理缓动选项：将选项索引转换为缓动函数/相位的名称
 	var easing_options_to_convert = [
 		"note_fall_easing_before_func",
