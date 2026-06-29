@@ -119,12 +119,24 @@ func _process_new_format_chart(metadata: Dictionary) -> void:
 	# 创建MIDI数据对象
 	var midi = MidiData.new()
 	midi.from_json(json_data)
-	
+
 	# 验证是否成功设置了 id
 	if midi.id.is_empty():
 		print("[DataMGR] WARN: Failed to set MIDI id for chart %s" % chart_id)
 		return
-	
+
+	# 初始化人声配置：若曲包存在人声音频文件则默认启用，否则禁用
+	# 仅对未保存过 vocal_enabled 配置的新 MIDI 生效，已保存的配置尊重用户选择
+	var runtime_config = json_data.get("_runtime", {})
+	var has_saved_vocal_enabled = runtime_config is Dictionary and runtime_config.has("vocal_enabled")
+	if not has_saved_vocal_enabled:
+		var audio_path = metadata.get("audio_path", "")
+		if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
+			midi.vocal_enabled = true
+			midi.vocal_file_path = audio_path
+		else:
+			midi.vocal_enabled = false
+
 	# print("[DataMGR] DEBUG: Adding MIDI %s (from folder %s) to dictionary" % [chart_id, folder_name])
 	midis[chart_id] = midi
 	# print("[DataMGR] DEBUG: MIDI added. Current midis count: %d" % midis.size())

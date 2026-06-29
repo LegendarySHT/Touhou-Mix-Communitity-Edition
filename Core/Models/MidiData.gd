@@ -120,8 +120,8 @@ var vocal_file_path: String = ""
 ## 人声音频偏移量（毫秒）
 var vocal_offset_ms: int = 0
 
-## 人声启用/禁用状态
-var vocal_enabled: bool = true
+## 人声启用/禁用状态（默认禁用，需在TrackView中手动启用）
+var vocal_enabled: bool = false
 
 ## 轨道-通道音量配置 {track_idx: {ch_idx: float(0.0-1.0)}}
 var track_channel_volume_config: Dictionary = {}
@@ -185,7 +185,7 @@ func from_json(json_data: Dictionary) -> void:
 	if runtime_config is Dictionary:
 		midi_volume = runtime_config.get("midi_volume", 50)
 		vocal_volume = runtime_config.get("vocal_volume", 50)
-		vocal_enabled = runtime_config.get("vocal_enabled", true)
+		vocal_enabled = runtime_config.get("vocal_enabled", false)
 		
 		# 恢复轨道选择配置
 		var saved_track_indices = runtime_config.get("selected_track_indices", [])
