@@ -82,6 +82,13 @@ var game_sequences: Array[KeySequenceManager.GameSequence] = []
 var is_midi_playing: bool = false
 var _is_finishing_game: bool = false
 
+## position stall 检测：当 loop=false 时 MIDI 播放结束后 position 被 clamp 到 midiFile.Length
+## 若 duration_ms 与 midiFile.Length 不一致，进度条可能永远无法达到 max_value
+## 通过检测 position 停止增长来触发游戏结束
+var _last_playback_position: float = -1.0
+var _position_stall_frames: int = 0
+const _PLAYBACK_STALL_THRESHOLD := 30  # 30帧 ≈ 0.5秒
+
 var _blur_bake_viewport: SubViewport = null
 var _blur_bake_texture_rect: TextureRect = null
 var _blur_bake_id: int = 0
@@ -188,6 +195,18 @@ func _process(delta: float) -> void:
 			progress_bar.value = current_time
 			# 【方案C】同步时间到FlowArea，确保note判定与MIDI播放位置完全一致
 			flow_area.set_current_time(current_time)
+
+			# 检测MIDI播放结束：position连续多帧不增长说明已被clamp到midiFile.Length
+			# 当 duration_ms 与 midiFile.Length 不一致时，进度条可能永远无法达到 max_value
+			if current_time > 0 and abs(current_time - _last_playback_position) < 0.5:
+				_position_stall_frames += 1
+				if _position_stall_frames >= _PLAYBACK_STALL_THRESHOLD:
+					_position_stall_frames = 0
+					print("[PlayView] Playback position stalled at %.1fms, triggering game finished" % current_time)
+					_on_game_finished()
+			else:
+				_position_stall_frames = 0
+			_last_playback_position = current_time
 	
 func get_lane_count() -> int:
 	return lane_count if not keyboard_mode else key_map.size()
@@ -394,6 +413,8 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	current_midi = midi
 	play_result = ScoreView.ScoreData.new()
 	_is_finishing_game = false
+	_last_playback_position = -1.0
+	_position_stall_frames = 0
 
 	# 重置 ScoreCalculator
 	if score_calc:
@@ -405,11 +426,11 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	
 	await get_tree().create_timer(0.8).timeout
 
-	# 确保游戏模式下不循环播放（TrackView预览可能设置了loop=true）
-	playback_mgr.set_loop(false)
-
 	# 加载MIDI并转换为FlowArea音符
 	_load_and_convert_midi_notes(midi)
+
+	# 确保游戏模式下不循环播放（load_midi会触发midi_loaded信号，需在加载后覆盖以确保loop=false）
+	playback_mgr.set_loop(false)
 	
 	# 新增：从配置读取演奏模式
 	var performing_mode = ConfigManager.instance.get_int("Playback", "performing_mode", 1)

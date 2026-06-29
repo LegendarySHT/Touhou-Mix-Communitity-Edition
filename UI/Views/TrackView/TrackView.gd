@@ -884,9 +884,10 @@ func _on_midi_loaded(midi_data: MidiData) -> void:
 	# 更新进度条最大范围
 	if midi_data.duration_ms > 0:
 		_set_display_total_time(midi_data.duration_ms)
-	
-	# 播放启动已延迟到 _load_midi 末尾，确保 UI 先完成加载
-	midi_playback_manager.set_loop(true)
+
+	# 只有TrackView活跃时才设置循环播放（避免干扰PlayView等其他视图）
+	if ui_stat_mgr.current_state == work_state:
+		midi_playback_manager.set_loop(true)
 
 func _set_note_displayers_process(enable: bool) -> void:
 	if master_note_displayer:
@@ -897,9 +898,10 @@ func _set_note_displayers_process(enable: bool) -> void:
 
 func _on_midi_started() -> void:
 	print("MIDI playback started")
-	# 开始更新进度条
-	set_process(true)
-	_set_note_displayers_process(true)
+	# 只有TrackView活跃时才启动进度更新（避免在PlayView中运行TrackView的_process）
+	if ui_stat_mgr.current_state == work_state:
+		set_process(true)
+		_set_note_displayers_process(true)
 
 func _on_midi_stopped() -> void:
 	print("MIDI playback stopped")
