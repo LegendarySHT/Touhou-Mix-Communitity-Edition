@@ -18,7 +18,7 @@ config/icon="uid://von2js75nk2a"
 
 [audio]
 
-driver/driver="Dummy"
+driver/driver="WASAPI"
 
 [autoload]
 

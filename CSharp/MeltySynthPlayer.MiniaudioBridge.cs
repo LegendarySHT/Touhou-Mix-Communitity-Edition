@@ -672,8 +672,8 @@ public partial class MeltySynthPlayer
 				_perfStopwatch.Stop();
 				_perfTotalCallbackCount++;
 
-				// 非零数据诊断: 前 5 次回调 + 之后每 1000 次
-				if (_perfTotalCallbackCount <= 5 || _perfTotalCallbackCount % 1000 == 0)
+				// 非零数据诊断: 前 3 次回调 + 之后每 10000 次
+				if (_perfTotalCallbackCount <= 3 || _perfTotalCallbackCount % 10000 == 0)
 				{
 					float maxAbs = 0f;
 					int checkLen = Math.Min(framesRequested * 2, 64);
