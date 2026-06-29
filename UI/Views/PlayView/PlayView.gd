@@ -405,6 +405,9 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	
 	await get_tree().create_timer(0.8).timeout
 
+	# 确保游戏模式下不循环播放（TrackView预览可能设置了loop=true）
+	playback_mgr.set_loop(false)
+
 	# 加载MIDI并转换为FlowArea音符
 	_load_and_convert_midi_notes(midi)
 	
