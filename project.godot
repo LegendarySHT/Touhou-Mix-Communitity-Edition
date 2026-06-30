@@ -16,10 +16,6 @@ config/quit_on_go_back=false
 config/features=PackedStringArray("4.6", "C#", "Mobile")
 config/icon="uid://von2js75nk2a"
 
-[audio]
-
-driver/driver="WASAPI"
-
 [autoload]
 
 DataMGR="*res://Core/DataManager.gd"

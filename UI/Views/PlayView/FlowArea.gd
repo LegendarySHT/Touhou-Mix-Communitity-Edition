@@ -2,6 +2,7 @@ extends Panel
 
 class_name FlowArea
 const NOTE_GLOW_SHADER: Shader = preload("res://UI/Views/PlayView/Shaders/NoteGlow.gdshader")
+const LONG_BODY_REPEAT_SHADER: Shader = preload("res://UI/Views/PlayView/Shaders/LongBodyRepeat.gdshader")
 
 # 判定线
 @onready var jl: HSeparator = $JudgeLine
@@ -33,6 +34,13 @@ var note_color_long: Color = Color.DARK_ORANGE
 var _skin_has_short_core: bool = true
 var _skin_has_instant_core: bool = true
 var _skin_has_long_core: bool = true
+
+# 当前皮肤的光晕配置（来自 skin.ini）
+# 结构: {short:{glow_use_custom_color,glow_custom_color,glow_size}, instant:{...}, long:{...,long_f_mode}}
+var _skin_config: Dictionary = {}
+
+# long-f 中部贴图应用方式："repeat"（水平拉伸+垂直重复）或 "stretch"（竖直拉伸）
+var _long_f_mode: String = "repeat"
 
 # 判定参数（毫秒）- 与 ScoreCalculator.JUDGE_WINDOWS（秒）对应
 var judge_windows: Dictionary = {
@@ -399,12 +407,14 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 	var skin_textures = {}
 	if FileSystemManager.instance:
 		skin_textures = FileSystemManager.instance.get_skin_textures(skin_name)
-	
+		# 加载皮肤级配置（光晕颜色/大小、long-f 应用方式）
+		_skin_config = FileSystemManager.instance.get_skin_config(skin_name)
+
 	# 更新core贴图标记
 	_skin_has_short_core = skin_textures.has("short_core")
 	_skin_has_instant_core = skin_textures.has("instant_core")
 	_skin_has_long_core = skin_textures.has("long_b_core") or skin_textures.has("long_f_core") or skin_textures.has("long_t_core")
-	
+
 	# 构建纹理数组，按顺序: short, short_core, instant, instant_core, long_b, long_b_core, long_f, long_f_core, long_t, long_t_core
 	var texture_array = [
 		skin_textures.get("short"),
@@ -418,11 +428,77 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 		skin_textures.get("long_t"),
 		skin_textures.get("long_t_core")
 	]
-	
+
 	# 应用贴图
 	set_note_texture(texture_array)
-	
+
+	# 应用 long-f 中部贴图模式（repeat / stretch）
+	_apply_long_f_mode()
+
 	print("[FlowArea] Loaded note skin: %s, core flags: short=%s, instant=%s, long=%s" % [skin_name, _skin_has_short_core, _skin_has_instant_core, _skin_has_long_core])
+
+# 根据皮肤配置设置 long-f 中部贴图的应用方式
+# repeat → 水平拉伸+垂直重复（用 shader 实现）；stretch → 竖直拉伸（默认 STRETCH_SCALE）
+func _apply_long_f_mode() -> void:
+	var mode = "repeat"
+	if _skin_config.has("long") and _skin_config["long"].has("long_f_mode"):
+		mode = _skin_config["long"]["long_f_mode"]
+	_long_f_mode = mode
+	# 应用到模板
+	_apply_long_f_mode_to_body(nt_l.get_node_or_null("VBoxC/body"))
+	_apply_long_f_mode_to_body(nt_l.get_node_or_null("VBoxC/body/core"))
+	# 应用到池中所有 long note（皮肤热切换时同步更新）
+	for note_node in _note_pool_long:
+		if is_instance_valid(note_node):
+			_apply_long_f_mode_to_body(note_node.get_node_or_null("VBoxC/body"))
+			_apply_long_f_mode_to_body(note_node.get_node_or_null("VBoxC/body/core"))
+
+# 设置单个 body 节点的 long-f 贴图模式
+# repeat 模式：附加 LongBodyRepeat shader（水平 UV 0-1 拉伸，垂直 UV 重复）
+# stretch 模式：移除 material，恢复默认 STRETCH_SCALE 行为
+func _apply_long_f_mode_to_body(tr) -> void:
+	if not (tr is TextureRect):
+		return
+	if _long_f_mode == "repeat":
+		var mat = tr.material
+		if mat == null or not (mat is ShaderMaterial) or (mat as ShaderMaterial).shader != LONG_BODY_REPEAT_SHADER:
+			var new_mat := ShaderMaterial.new()
+			new_mat.shader = LONG_BODY_REPEAT_SHADER
+			tr.material = new_mat
+	else:
+		tr.material = null
+
+# 确保节点持有独立的 repeat shader material 副本（避免多 note 共享同一 material）
+func _ensure_independent_repeat_material(tr) -> void:
+	if not (tr is TextureRect):
+		return
+	var mat = tr.material
+	if mat is ShaderMaterial and (mat as ShaderMaterial).shader == LONG_BODY_REPEAT_SHADER:
+		tr.material = (mat as ShaderMaterial).duplicate()
+
+# 更新长条 body 的垂直重复次数（每帧调用，因 body 高度动态变化）
+# v_repeat = body 高度 / 贴图原始高度；body 比贴图短时至少重复 1 次（拉伸显示）
+func _update_long_body_v_repeat(note: Note, body_height: float) -> void:
+	if _long_f_mode != "repeat" or body_height <= 0.0:
+		return
+	_set_v_repeat_for(note._cached_body, body_height)
+	var body_core = note.rect.get_node_or_null("VBoxC/body/core")
+	_set_v_repeat_for(body_core, body_height)
+
+func _set_v_repeat_for(tr, body_height: float) -> void:
+	if not (tr is TextureRect):
+		return
+	var mat = tr.material
+	if not (mat is ShaderMaterial):
+		return
+	if (mat as ShaderMaterial).shader != LONG_BODY_REPEAT_SHADER:
+		return
+	var tex = tr.texture
+	var tex_h = 1.0
+	if tex and tex.get_height() > 0:
+		tex_h = float(tex.get_height())
+	var v_repeat = max(1.0, body_height / tex_h)
+	(mat as ShaderMaterial).set_shader_parameter("v_repeat", v_repeat)
 
 # 修改音符宽度
 func set_note_width(wid: float):
@@ -524,6 +600,11 @@ func _spawn_note(note_index: int) -> void:
 		nt._cached_head = nt.rect.get_node("VBoxC/head")
 		nt._cached_tail = nt.rect.get_node("VBoxC/tail")
 		nt._cached_body = nt.rect.get_node("VBoxC/body")
+		# repeat 模式下，确保每个 note 实例的 body material 是独立副本
+		# （否则多根长条共享同一 material，v_repeat 会互相覆盖）
+		if _long_f_mode == "repeat":
+			_ensure_independent_repeat_material(nt._cached_body)
+			_ensure_independent_repeat_material(nt.rect.get_node_or_null("VBoxC/body/core"))
 		_apply_note_glow(nt.rect, parent_node.get_lane_color(nt.lane), NoteType.Long)
 		note_half = nt.long_tail_height / 2.0
 	
@@ -631,6 +712,8 @@ func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 	var head_top = head_center - head_half
 
 	body.custom_minimum_size.y = max(0.0, head_top - tail_bottom)
+	# repeat 模式下，按 body 高度更新垂直重复次数
+	_update_long_body_v_repeat(note, body.custom_minimum_size.y)
 	note.rect.position.y = tail_top
 
 	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
@@ -744,30 +827,45 @@ func _reset_note_for_reuse(note: Node, note_type: NoteType) -> void:
 func _apply_note_glow(note_root: Node, c: Color, note_type: NoteType = NoteType.Block) -> void:
 	if glow_intensity <= 0.0:
 		return
-	
-	var has_core: bool
-	match note_type:
-		NoteType.Block:
-			has_core = _skin_has_short_core
-		NoteType.Slide:
-			has_core = _skin_has_instant_core
-		NoteType.Long:
-			has_core = _skin_has_long_core
-		_:
-			has_core = true
-	
-	if not has_core:
+
+	# 读取当前键型的皮肤配置
+	var section = _get_skin_glow_section(note_type)
+	# glow_use_custom_size=true 时使用皮肤配置的 glow_size；=false 时使用全局 glow_size
+	var use_custom_size: bool = bool(section.get("glow_use_custom_size", false))
+	var skin_glow_size: float = float(section.get("glow_size", 0.0))
+	# 仅在自定义模式下，glow_size<=0 表示关闭光晕（用户显式禁用）
+	if use_custom_size and skin_glow_size <= 0.0:
 		return
-	
+	# 若使用自定义颜色，则替换光晕颜色（不影响 core 染色）
+	var glow_color = c
+	if section.get("glow_use_custom_color", false) and section.has("glow_custom_color"):
+		glow_color = section["glow_custom_color"]
+
 	if note_root is Panel:
 		var vbox = note_root.get_node_or_null("VBoxC")
 		if vbox:
 			for child in vbox.get_children():
 				if child is TextureRect and child.name != "body":
 					var uv_center := Vector2(0.5, 0.60) if child.name == "head" else Vector2(0.5, 0.40)
-					_ensure_glow_child(child, c, NoteType.Long, uv_center)
+					_ensure_glow_child(child, glow_color, NoteType.Long, uv_center)
 		return
-	_ensure_glow_child(note_root, c, note_type)
+	_ensure_glow_child(note_root, glow_color, note_type)
+
+# 根据键型获取皮肤配置中对应的光晕配置节
+func _get_skin_glow_section(note_type: NoteType) -> Dictionary:
+	var key = "short"
+	match note_type:
+		NoteType.Block:
+			key = "short"
+		NoteType.Slide:
+			key = "instant"
+		NoteType.Long:
+			key = "long"
+		_:
+			key = "short"
+	if _skin_config.has(key):
+		return _skin_config[key]
+	return {}
 
 func _ensure_glow_child(tr_: TextureRect, col: Color, note_type: NoteType = NoteType.Block, uv_center: Vector2 = Vector2(0.5, 0.5)) -> void:
 	var glow: ColorRect = tr_.get_node_or_null("_glow")
@@ -783,14 +881,21 @@ func _ensure_glow_child(tr_: TextureRect, col: Color, note_type: NoteType = Note
 	mat2.set_shader_parameter("glow_intensity", glow_intensity)
 	mat2.set_shader_parameter("note_uv_center", uv_center)
 
+	# 光晕大小：glow_use_custom_size=true 用皮肤配置 glow_size；=false 用全局 glow_size（long 保留 +3 偏移）
+	var section = _get_skin_glow_section(note_type)
+	var use_custom_size: bool = bool(section.get("glow_use_custom_size", false))
+	var skin_glow_size: float = float(section.get("glow_size", 0.0))
+
 	match note_type:
 		NoteType.Long:
 			mat2.set_shader_parameter("glow_stretch", 0.6)
-			mat2.set_shader_parameter("glow_size", glow_size + 3)
+			var size_val = skin_glow_size if use_custom_size else (glow_size + 3)
+			mat2.set_shader_parameter("glow_size", size_val)
 			mat2.set_shader_parameter("note_uv_half", Vector2(0.25, 0.1667))
 		_:
 			mat2.set_shader_parameter("glow_stretch", 1.0)
-			mat2.set_shader_parameter("glow_size", glow_size)
+			var size_val = skin_glow_size if use_custom_size else glow_size
+			mat2.set_shader_parameter("glow_size", size_val)
 			mat2.set_shader_parameter("note_uv_half", Vector2(0.1667, 0.1667))
 
 func set_glow_params(intensity: float, size_val: float) -> void:
