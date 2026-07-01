@@ -68,6 +68,10 @@ var vocal_offset_ms: float = 0.0
 ## 人声是否已初始化（预卷支持）
 var _vocal_initialized: bool = false
 
+## 人声文件预加载缓存（在 load_midi 后异步预载，消除 is_pause=false 时的解码卡顿）
+var _preloaded_vocal_stream: AudioStream = null
+var _vocal_preload_path: String = ""
+
 ## 音频不同步阈值（毫秒）
 var sync_threshold_ms: float = 200.0
 
@@ -307,34 +311,46 @@ func load_midi(midi_data: MidiData) -> bool:
 	# 存储路径
 	current_midi_data.midi_file_path = midi_file_path
 	
-	# 解析MIDI文件
-	var parse_result = MidiParser.load_and_parse_midi(midi_file_path)
-	if not parse_result["success"]:
-		push_error("Failed to parse MIDI file: %s" % midi_file_path)
-		return false
-	
-	# 保存解析结果
-	current_notes = parse_result["notes"]
-	bpm_timeline = parse_result.get("bpm_timeline", [])  # 获取BPM时间线
-	midi_timebase = parse_result.get("timebase", 480)  # 保存timebase
-	
-	# 对notes按start_time排序（确保时间递增）
-	current_notes.sort_custom(func(a, b) -> bool:
-		var a_time = a.event.start_time if a is MidiParser.Note and a.event else 0
-		var b_time = b.event.start_time if b is MidiParser.Note and b.event else 0
-		return a_time < b_time
-	)
-	
-	current_midi_data.parsed_notes = current_notes
-	current_midi_data.track_count = parse_result["track_infos"].size()
-	current_midi_data.bpm = parse_result["bpm"]
-	current_midi_data.duration_ms = parse_result["duration"]
-	current_midi_data.bpm_timeline = bpm_timeline.duplicate()
-	current_midi_data.midi_timebase = midi_timebase
-	duration_ms = parse_result["duration"]
-	
+	# 解析MIDI文件（带缓存：retry 场景跳过重复解析）
+	var track_infos: Array
+	if not midi_data.parsed_notes.is_empty() and midi_data.midi_file_path == midi_file_path and not midi_data._runtime_track_infos.is_empty():
+		# 缓存命中：跳过昂贵的 MIDI 解析
+		current_notes = midi_data.parsed_notes
+		bpm_timeline = midi_data.bpm_timeline.duplicate()
+		midi_timebase = midi_data.midi_timebase
+		track_infos = midi_data._runtime_track_infos
+		duration_ms = midi_data.duration_ms
+		GameLogger.instance.info("MIDI parse cache hit, skipping re-parse", "MidiPlaybackManager")
+	else:
+		var parse_result = MidiParser.load_and_parse_midi(midi_file_path)
+		if not parse_result["success"]:
+			push_error("Failed to parse MIDI file: %s" % midi_file_path)
+			return false
+
+		# 保存解析结果
+		current_notes = parse_result["notes"]
+		bpm_timeline = parse_result.get("bpm_timeline", [])  # 获取BPM时间线
+		midi_timebase = parse_result.get("timebase", 480)  # 保存timebase
+		track_infos = parse_result["track_infos"]
+
+		# 对notes按start_time排序（确保时间递增）
+		current_notes.sort_custom(func(a, b) -> bool:
+			var a_time = a.event.start_time if a is MidiParser.Note and a.event else 0
+			var b_time = b.event.start_time if b is MidiParser.Note and b.event else 0
+			return a_time < b_time
+		)
+
+		current_midi_data.parsed_notes = current_notes
+		current_midi_data.track_count = track_infos.size()
+		current_midi_data.bpm = parse_result["bpm"]
+		current_midi_data.duration_ms = parse_result["duration"]
+		current_midi_data.bpm_timeline = bpm_timeline.duplicate()
+		current_midi_data.midi_timebase = midi_timebase
+		current_midi_data._runtime_track_infos = track_infos
+		duration_ms = parse_result["duration"]
+
 	# 从 track_infos 中提取乐器信息（用于不维护此信息的后端，如 MeltySynth）
-	_extract_track_channel_instruments(parse_result["track_infos"])
+	_extract_track_channel_instruments(track_infos)
 	
 	# 如果未选择轨道，则默认选择所有轨道
 	if current_midi_data.selected_track_indices.is_empty():
@@ -397,8 +413,36 @@ func load_midi(midi_data: MidiData) -> bool:
 	
 	# 发出信号
 	midi_loaded.emit(current_midi_data)
-	
+
+	# 预载人声文件（利用 PlayView 后续 0.8s+1s await 的空闲时间，消除 is_pause=false 时的解码卡顿）
+	_preload_vocal_async()
+
 	return true
+
+## 异步预载人声文件（call_deferred 避免阻塞当前帧，AudioStream 须在主线程创建）
+func _preload_vocal_async() -> void:
+	if current_midi_data == null or current_midi_data.vocal_file_path.is_empty():
+		return
+	if not current_midi_data.vocal_enabled:
+		return
+	var path = current_midi_data.vocal_file_path
+	if path == _vocal_preload_path and _preloaded_vocal_stream != null:
+		return  # 已预加载
+	_vocal_preload_path = path
+	_preloaded_vocal_stream = null
+	_do_load_vocal.call_deferred(path)
+
+func _do_load_vocal(path: String) -> void:
+	if not FileAccess.file_exists(path):
+		return
+	var ext = path.get_extension().to_lower()
+	match ext:
+		"mp3":
+			_preloaded_vocal_stream = AudioStreamMP3.load_from_file(path)
+		"ogg":
+			_preloaded_vocal_stream = AudioStreamOggVorbis.load_from_file(path)
+		"wav":
+			_preloaded_vocal_stream = AudioStreamWAV.load_from_file(path)
 
 ## 播放MIDI
 func play() -> void:
@@ -1658,32 +1702,38 @@ func start_vocal_playback() -> void:
 	var vocal_file_path = current_midi_data.vocal_file_path
 	var vocal_stream: AudioStream = null
 
-	# 首先检查文件是否存在（使用FileAccess，支持user://目录）
-	if not FileAccess.file_exists(vocal_file_path):
-		GameLogger.instance.warning("Vocal file does not exist, skipping vocal playback: %s" % vocal_file_path, "MidiPlaybackMGR")
-		return
-
-	# 根据文件扩展名加载对应的AudioStream类型
-	var file_ext = vocal_file_path.get_extension().to_lower()
-
-	match file_ext:
-		"ogg":
-			vocal_stream = AudioStreamOggVorbis.load_from_file(vocal_file_path)
-			print("[MidiPlaybackManager] Loading OGG vocal file: %s" % vocal_file_path)
-		"mp3":
-			vocal_stream = AudioStreamMP3.load_from_file(vocal_file_path)
-			print("[MidiPlaybackManager] Loading MP3 vocal file: %s" % vocal_file_path)
-		"wav":
-			vocal_stream = AudioStreamWAV.load_from_file(vocal_file_path)
-			print("[MidiPlaybackManager] Loading WAV vocal file: %s" % vocal_file_path)
-		_:
-			push_error("Unsupported audio format: %s (file: %s)" % [file_ext, vocal_file_path])
+	# 优先使用预加载的 stream（消除 is_pause=false 时的解码卡顿）
+	if _preloaded_vocal_stream != null and _vocal_preload_path == vocal_file_path:
+		vocal_stream = _preloaded_vocal_stream
+		print("[MidiPlaybackManager] Using preloaded vocal file: %s" % vocal_file_path)
+	else:
+		# 预加载未完成或路径不匹配，回退到同步加载
+		# 首先检查文件是否存在（使用FileAccess，支持user://目录）
+		if not FileAccess.file_exists(vocal_file_path):
+			GameLogger.instance.warning("Vocal file does not exist, skipping vocal playback: %s" % vocal_file_path, "MidiPlaybackMGR")
 			return
 
-	# 检查加载结果
-	if vocal_stream == null:
-		push_error("Failed to load vocal file: %s" % vocal_file_path)
-		return
+		# 根据文件扩展名加载对应的AudioStream类型
+		var file_ext = vocal_file_path.get_extension().to_lower()
+
+		match file_ext:
+			"ogg":
+				vocal_stream = AudioStreamOggVorbis.load_from_file(vocal_file_path)
+				print("[MidiPlaybackManager] Loading OGG vocal file: %s" % vocal_file_path)
+			"mp3":
+				vocal_stream = AudioStreamMP3.load_from_file(vocal_file_path)
+				print("[MidiPlaybackManager] Loading MP3 vocal file: %s" % vocal_file_path)
+			"wav":
+				vocal_stream = AudioStreamWAV.load_from_file(vocal_file_path)
+				print("[MidiPlaybackManager] Loading WAV vocal file: %s" % vocal_file_path)
+			_:
+				push_error("Unsupported audio format: %s (file: %s)" % [file_ext, vocal_file_path])
+				return
+
+		# 检查加载结果
+		if vocal_stream == null:
+			push_error("Failed to load vocal file: %s" % vocal_file_path)
+			return
 
 	print("[MidiPlaybackManager] Successfully loaded vocal file: %s" % vocal_file_path)
 

@@ -93,6 +93,10 @@ var use_soundfont: String = ""
 ## 已解析的MIDI音符列表（未分类）
 var parsed_notes: Array = []
 
+## 缓存的 track_infos（运行时缓存，不持久化；与 parsed_notes 同生命周期）
+## 用于 retry 场景跳过重复的 MIDI 解析
+var _runtime_track_infos: Array = []
+
 ## MIDI每分钟节拍数（BPM）
 var bpm: float = 120.0
 

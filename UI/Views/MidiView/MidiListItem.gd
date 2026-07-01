@@ -362,7 +362,7 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 		pm.midi_timebase = entry.get("timebase", midi.midi_timebase)
 		need_restore = true
 
-	ksm.generate_keys(filtered)
+	ksm.generate_keys(filtered, midi.id, enabled_pairs)
 
 	if need_restore:
 		pm.bpm_timeline = saved_timeline

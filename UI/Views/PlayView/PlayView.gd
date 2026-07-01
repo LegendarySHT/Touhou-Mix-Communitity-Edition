@@ -420,33 +420,28 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	if score_calc:
 		score_calc.reset()
 
-	_init_display()
-	flow_area.init_flow_area()
-	auto_label.visible = flow_area.auto_mode
-	
-	await get_tree().create_timer(0.8).timeout
-
-	# 加载MIDI并转换为FlowArea音符
+	# 【优化】先启动 MIDI 加载（含人声预加载），与显示初始化并行执行
+	# 原代码中 await 0.8s 在 MIDI 加载之前，这段 0.8s 是纯空闲等待
 	_load_and_convert_midi_notes(midi)
 
 	# 确保游戏模式下不循环播放（load_midi会触发midi_loaded信号，需在加载后覆盖以确保loop=false）
 	playback_mgr.set_loop(false)
-	
+
 	# 新增：从配置读取演奏模式
 	var performing_mode = ConfigManager.instance.get_int("Playback", "performing_mode", 1)
 	play_mode = (performing_mode == 1)
 	GameLogger.instance.info("Performing mode: %s" % ("ON" if play_mode else "OFF"), "PlayView")
-	
+
 	# 新增：连接配置变更信号
 	if not EventBus.instance.config_changed.is_connected(_on_config_changed):
 		EventBus.instance.config_changed.connect(_on_config_changed)
-	
+
 	# 计算初始seek位置：-1000ms（固定：给予UI准备时间）- 音符下落时间（配置项）
 	var note_fall_time = ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
 	var seek_position = -(1000 + note_fall_time * 1000)
 	playback_mgr.seek(seek_position)
 	is_pause = true
-	
+
 	# 读取并设置音频同步阈值
 	var setting_view = get_node_or_null("/root/Main/skew/C/SettingView")
 	if setting_view and setting_view.has_method("get_setting_value"):
@@ -454,11 +449,18 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 		if sync_threshold != null:
 			playback_mgr.set_sync_threshold(float(sync_threshold))
 			print("[PlayView] Audio sync threshold set to %.0f ms" % float(sync_threshold))
-	
-	# 生成游戏键序列（无论演奏模式开启或关闭都生成，只是演奏模式决定是否响应键盘输入）
+
+	_init_display()
+	flow_area.init_flow_area()
+	auto_label.visible = flow_area.auto_mode
+
+	# 此 0.8s await 期间 MIDI 已加载完毕、人声预载已由 call_deferred 启动
+	await get_tree().create_timer(0.8).timeout
+
+	# 生成游戏键序列（若缓存命中，此处很快）
 	_generate_game_sequences(midi)
 	print("[PlayView] After _generate_game_sequences, game_sequences.size() = %d" % game_sequences.size())
-	
+
 	# 将生成的游戏序列转换为FlowArea所需的音符格式
 	var flow_notes = _convert_game_sequences_to_flow_notes(game_sequences)
 	print("[PlayView] After _convert_game_sequences_to_flow_notes, flow_notes.size() = %d" % flow_notes.size())
@@ -471,10 +473,10 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 设置进度条最大值
 	progress_bar.max_value = current_midi.duration_ms
 
-	# 等待3秒显示准备界面
+	# 等待显示准备界面
 	await get_tree().create_timer(1).timeout
 	await AnimationManager.instance.animate_fade_out(center_bg, 1).finished
-	
+
 	# 开始播放MIDI
 	is_pause = false
 
@@ -559,8 +561,8 @@ func _generate_game_sequences(midi_data: MidiData) -> void:
 		GameLogger.instance.warning("No notes in enabled (track, channel) pairs", "PlayView")
 		return
 	
-	# 调用键序列管理器生成游戏键
-	var success = key_sequence_mgr.generate_keys(enabled_notes)
+	# 调用键序列管理器生成游戏键（传入 midi_id 和 enabled_pairs 以启用缓存命中）
+	var success = key_sequence_mgr.generate_keys(enabled_notes, current_midi.id, current_midi.selected_track_configs)
 	if not success:
 		GameLogger.instance.warning("Failed to generate game keys", "PlayView")
 		return
@@ -1128,10 +1130,17 @@ func _prepare_background_texture(source_texture: Texture2D) -> Texture2D:
 		return source_texture
 
 	if not image.has_mipmaps():
-		image.generate_mipmaps()
-		return ImageTexture.create_from_image(image)
+		# 异步生成 mipmap：先返回原图避免阻塞当前帧，下一帧再替换为 mipmap 版本
+		_generate_mipmaps_deferred(image)
+		return source_texture
 
 	return source_texture
+
+func _generate_mipmaps_deferred(image: Image) -> void:
+	await RenderingServer.frame_post_draw
+	if is_instance_valid(self) and image != null and not image.is_empty():
+		image.generate_mipmaps()
+		background.texture = ImageTexture.create_from_image(image)
 
 
 func _has_cover_for_current_midi() -> bool:

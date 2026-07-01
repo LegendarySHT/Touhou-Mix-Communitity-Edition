@@ -113,6 +113,13 @@ var last_auto_play_notes: Array = []
 ## 键ID计数器
 var next_key_id: int = 0
 
+## 键序列生成缓存（避免选歌预览与 PlayView 重复生成）
+var _cache_key: String = ""
+var _cached_sequences: Array[GameSequence] = []
+var _cached_background_sequences: Array[BackgroundSequence] = []
+var _cached_manual_notes: Array = []
+var _cached_auto_notes: Array = []
+
 ## 屏幕宽度（用于键位映射）
 var screen_width: float = 1920.0
 
@@ -295,25 +302,40 @@ func classify_sequences(midi_data: MidiData, all_midi_notes: Array) -> bool:
 ## 实现完整的批次合并、去重、虚拟触点匹配、块类型判定、连块生成算法
 ## 注意：传入的game_notes应该已经被筛选为只包含启用的音轨的音符
 ## PlayView会根据TrackView中的selected_track_configs筛选出启用的音轨，然后传入这里
-func generate_keys(game_notes: Array) -> bool:
+func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> bool:
+	# 构造缓存键（midi_id + 启用轨道对哈希 + 屏幕宽度）
+	var pairs_hash := ""
+	for k in enabled_pairs.keys():
+		pairs_hash += str(k) + ","
+	var cache_key := "%s|%s|%d" % [midi_id, pairs_hash.hash(), int(screen_width)]
+	if cache_key == _cache_key and not _cached_sequences.is_empty():
+		# 命中缓存，直接复用（选歌预览与 PlayView 重复生成时命中）
+		game_sequences = _cached_sequences.duplicate()
+		background_sequences = _cached_background_sequences.duplicate()
+		last_manual_control_notes = _cached_manual_notes.duplicate()
+		last_auto_play_notes = _cached_auto_notes.duplicate()
+		print("Generating keys from %d game notes... (cached)" % game_notes.size())
+		keys_generated.emit(game_sequences.size())
+		sequences_classified.emit(game_sequences.size(), background_sequences.size())
+		return true
 	print("Generating keys from %d game notes..." % game_notes.size())
 	if game_notes.is_empty():
 		game_sequences.clear()
 		keys_generated.emit(0)
 		return true
-	
+
 	game_sequences.clear()
 	background_sequences.clear()
 	next_key_id = 0
-	
+
 	# 从MidiPlaybackManager获取时间参数
 	var midi_mgr = MidiPlaybackManager.instance
 	if midi_mgr != null:
 		set_midi_time_parameters(midi_mgr.midi_timebase, midi_mgr.bpm_timeline)
-	
+
 	# Step 1: 转换Note对象为统一格式（确保start_time_ms和duration_ms为毫秒）
 	var converted_notes = _convert_notes_to_internal_format(game_notes)
-	
+
 	# Step 2: 按时间排序Note
 	var sorted_notes = converted_notes.duplicate()
 	sorted_notes.sort_custom(func(a, b):
@@ -321,29 +343,29 @@ func generate_keys(game_notes: Array) -> bool:
 			return a.get("channel", 0) < b.get("channel", 0)
 		return a["start_time_ms"] < b["start_time_ms"]
 	)
-	
+
 	# Step 3: 执行批次合并（Step A）
 	var batches := _batch_notes_by_coalesce(sorted_notes)
 	GameLogger.instance.info("Batch merge: created %d batches from %d notes" % [batches.size(), sorted_notes.size()], "KeySequenceManager")
-	
+
 	# Step 4: 为每个批次执行去重（Step B）
 	var all_blocks: Array[BlockInfo] = []
 	var bg_notes: Array = []
 	for batch_idx in range(batches.size()):
 		var deduped_blocks = _dedup_batch(batches[batch_idx], bg_notes, batch_idx)
 		all_blocks.append_array(deduped_blocks)
-	
+
 	GameLogger.instance.info("Dedup: generated %d blocks, %d background notes" % [all_blocks.size(), bg_notes.size()], "KeySequenceManager")
-	
+
 	# Step 5: 虚拟触点匹配和块类型判定（Step C + Step D）
 	_assign_touches_and_judge_types(all_blocks)
-	
+
 	# Step 6: 连块生成（Step E）
 	_generate_connects(all_blocks)
-	
+
 	# Step 7: 转换为GameSequence集合
 	_convert_blocks_to_game_sequences(all_blocks)
-	
+
 	# Step 8: 添加背景序列（与Unity一致：输出单一背景序列）
 	bg_notes.sort_custom(func(a, b):
 		var a_start = _get_note_start_time_ms(a)
@@ -355,10 +377,17 @@ func generate_keys(game_notes: Array) -> bool:
 	var bg_seq = BackgroundSequence.new(0)
 	bg_seq.notes = bg_notes
 	background_sequences.append(bg_seq)
-	
+
 	# 在generate_keys完成后立即进行分类统计
 	_finalize_notes_classification()
-	
+
+	# 写入缓存
+	_cache_key = cache_key
+	_cached_sequences = game_sequences.duplicate()
+	_cached_background_sequences = background_sequences.duplicate()
+	_cached_manual_notes = last_manual_control_notes.duplicate()
+	_cached_auto_notes = last_auto_play_notes.duplicate()
+
 	keys_generated.emit(game_sequences.size())
 	return true
 

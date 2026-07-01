@@ -904,6 +904,9 @@ func set_glow_params(intensity: float, size_val: float) -> void:
 
 func _init_note_pool() -> void:
 	"""初始化音符对象池：预创建固定数量的节点并复用"""
+	# 池已初始化则复用（clear_flow_area 回池而非释放，池不会被清空）
+	if not _note_pool_block.is_empty() or not _note_pool_slide.is_empty() or not _note_pool_long.is_empty():
+		return
 	# Block 音符池
 	for _i in _NOTE_POOL_BLOCK_SIZE:
 		var note_node = nt_b.duplicate()
