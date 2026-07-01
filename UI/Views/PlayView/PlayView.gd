@@ -504,8 +504,13 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowArea.N
 	print("[PlayView] Lane count: %d" % lc)
 
 	for seq in sequences:
-		# 确定车道 - 使用GameSequence的pitch字段
-		var lane = seq.pitch % lc
+		# 确定车道：优先使用 KeySequenceManager 计算的 lane（可能因速度限制而偏移），
+		# 后备使用 pitch % lc（向后兼容未设置 lane 的旧序列）
+		var lane: int
+		if seq.lane >= 0:
+			lane = seq.lane
+		else:
+			lane = seq.pitch % lc
 		
 		# BlockType 与 NoteType 语义不同，需要转换
 		# BlockType: INSTANT=滑块, SHORT=点块, LONG=长条

@@ -30,6 +30,7 @@ class GameSequence:
 	var connected_prev: bool = false  # 是否与前一块连接
 	var original_notes: Array[MidiParser.Note] = []  # 保留该块包含的原始Note列表
 	var flow_note_ref: Object = null  # 新增：指向对应的FlowArea.Note（演奏模式使用）
+	var lane: int = -1  # 视觉轨道索引（可能因 max_touch_move_velocity 限制而偏离 pitch % lane_count）
 	
 	func _init(idx: int, key: int, p: int, start: float, dur: float, x: float, oct: int, vel: int) -> void:
 		note_index = idx
@@ -358,7 +359,7 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	GameLogger.instance.info("Dedup: generated %d blocks, %d background notes" % [all_blocks.size(), bg_notes.size()], "KeySequenceManager")
 
 	# Step 5: 虚拟触点匹配和块类型判定（Step C + Step D）
-	_assign_touches_and_judge_types(all_blocks)
+	_assign_touches_and_judge_types(all_blocks, bg_notes)
 
 	# Step 6: 连块生成（Step E）
 	_generate_connects(all_blocks)
@@ -535,6 +536,41 @@ func _enforce_min_lane_spacing(blocks: Array[BlockInfo], bg_notes: Array) -> Arr
 
 	return kept
 
+## 钳制后重新校验 min_block_spacing（后置修复）
+## _judge_block_type 的速度限制会将 block.lane 钳制到触点附近，可能使其与同批次
+## 其他块的 lane 过近，破坏 _enforce_min_lane_spacing 在去重阶段已保证的间距。
+## 此函数按批次分组，对已钳制的 lane 重新执行间距校验，将冲突块移入背景。
+func _reconcile_spacing_after_clamp(blocks: Array[BlockInfo], bg_notes: Array) -> void:
+	if blocks.size() <= 1 or min_block_spacing <= 0:
+		return
+
+	# 按批次分组（min_block_spacing 仅约束同一批次内的并排音符）
+	var by_batch: Dictionary = {}
+	for block in blocks:
+		if not by_batch.has(block.batch):
+			by_batch[block.batch] = []
+		by_batch[block.batch].append(block)
+
+	# 逐批次重新校验，收集需移除的块
+	var to_remove: Array[BlockInfo] = []
+	for batch_id in by_batch.keys():
+		var batch_blocks: Array = by_batch[batch_id]
+		if batch_blocks.size() <= 1:
+			continue
+		# 转换为类型数组以匹配 _enforce_min_lane_spacing 签名
+		var typed_blocks: Array[BlockInfo] = []
+		for b in batch_blocks:
+			typed_blocks.append(b as BlockInfo)
+		var kept = _enforce_min_lane_spacing(typed_blocks, bg_notes)
+		# 收集被移入背景的块（不在 kept 列表中的）
+		for block in typed_blocks:
+			if not kept.has(block):
+				to_remove.append(block)
+
+	# 从主列表中移除冲突块
+	for block in to_remove:
+		blocks.erase(block)
+
 ## 将各种中间格式的note统一追加到背景列表
 ## 优先保留 MidiParser.Note（便于后续精确分类）；其次使用 NoteEvent；最后兜底字典
 func _append_note_to_background(note_data: Variant, bg_notes: Array) -> void:
@@ -628,7 +664,7 @@ func _get_note_pitch(note_data: Variant) -> int:
 	return 0
 
 ## Step C/D: 虚拟触点匹配和块类型判定
-func _assign_touches_and_judge_types(blocks: Array[BlockInfo]) -> void:
+func _assign_touches_and_judge_types(blocks: Array[BlockInfo], bg_notes: Array) -> void:
 	if blocks.is_empty():
 		return
 	
@@ -657,11 +693,13 @@ func _assign_touches_and_judge_types(blocks: Array[BlockInfo]) -> void:
 		batch_blocks.sort_custom(func(a, b):
 			return a.start_time_ms < b.start_time_ms
 		)
-		#GameLogger.instance.debug("Batch %d: processing %d blocks" % [batch_id, batch_blocks.size()], "KeySequenceManager")
 		for block in batch_blocks:
 			_judge_block_type(block, touches)
-			#GameLogger.instance.debug("  Block lane=%d start=%.3fs dur=%.3fs type=%d touch=%d x=%.1f" % [
-			#	block.lane, block.start_time_ms / 1000.0, block.duration_ms / 1000.0, block.type, block.touch_index, block.x], "KeySequenceManager")
+
+	# 钳制后重新校验 min_block_spacing：_judge_block_type 的速度限制可能将
+	# 音符移动到与同批次其他音符过近的位置，违反 min_block_spacing 约束。
+	# 按批次分组重新执行间距校验，将冲突块移入背景（优先保留高音，与去重逻辑一致）
+	_reconcile_spacing_after_clamp(blocks, bg_notes)
 
 ## 虚拟触点匹配 - 递归回溯找成本最小的分配方案（Unity兼容版本）
 func _match_blocks_to_touches(blocks_in_group: Array[BlockInfo], touches: Array[VirtualTouch]) -> void:
@@ -707,15 +745,23 @@ func _find_optimal_matching(
 ) -> void:
 	# 基础情况：已分配所有块
 	if block_idx >= blocks.size():
-		# 计算当前分配方案的总成本（仅为移动距离）
+		# 计算当前分配方案的总成本（移动距离 + 速度违规惩罚）
 		var total_cost = 0.0
 		for i in range(blocks.size()):
 			if current_assignment[i] >= 0:
 				var blk = blocks[i]
 				var touch = touches[current_assignment[i]]
-				# ✅ 修正：成本函数仅为移动距离（与Unity版本一致）
-				total_cost += abs(touch.last_press_x - blk.x)
-		
+				var move_distance = abs(touch.last_press_x - blk.x)
+				total_cost += move_distance
+				# 速度违规惩罚：使匹配优先选择不超速的分配方案
+				# 惩罚 = 超出限速的距离 × 惩罚系数，确保超速方案成本远高于可行方案
+				if touch.last_press_time_ms >= 0:
+					var time_delta_sec = (blk.start_time_ms - touch.last_press_time_ms) / 1000.0
+					if time_delta_sec > 0:
+						var max_feasible = max_touch_move_velocity * time_delta_sec
+						if move_distance > max_feasible:
+							total_cost += (move_distance - max_feasible) * 10.0
+
 		# 更新最小成本和对应的分配
 		if total_cost < inout_min_cost[0]:
 			inout_min_cost[0] = total_cost
@@ -792,11 +838,14 @@ func _judge_block_type(block: BlockInfo, touches: Array[VirtualTouch]) -> void:
 			var max_offset = max_touch_move_velocity * time_delta_sec
 			var distance = abs(block.x - touch.last_press_x)
 			if distance > max_offset:
-					# 限制块位置
+					# 限制块位置：先按最大偏移钳制 x，再吸附到最近轨道中心
 					if block.x > touch.last_press_x:
 						block.x = touch.last_press_x + max_offset
 					else:
 						block.x = touch.last_press_x - max_offset
+					# 同步更新 lane，使速度约束真正影响最终音符轨道
+					block.lane = _calculate_lane_from_x(block.x)
+					block.x = _calculate_lane_position(block.lane)
 	
 	# ========== 第3步：检查是否在LONG块内 ==========
 	if touch.holding_block != null:
@@ -894,6 +943,7 @@ func _convert_blocks_to_game_sequences(blocks: Array[BlockInfo]) -> void:
 		game_seq.pitch_list = block.pitch_list.duplicate()
 		game_seq.connected_prev = block.connected_prev
 		game_seq.original_notes = block.notes.duplicate()
+		game_seq.lane = block.lane
 		
 		game_sequences.append(game_seq)
 		next_key_id += 1
@@ -907,6 +957,17 @@ func _calculate_lane_position(lane: int) -> float:
 	var lane_start = key_width * 0.5
 	var lane_spacing = (screen_width - key_width) / float(lane_count - 1)
 	return lane_start + float(lane) * lane_spacing
+
+## 根据屏幕X位置反推最近的lane索引（_calculate_lane_position 的逆运算）
+func _calculate_lane_from_x(x: float) -> int:
+	if lane_count <= 1:
+		return 0
+	var lane_start = key_width * 0.5
+	var lane_spacing = (screen_width - key_width) / float(lane_count - 1)
+	if lane_spacing <= 0.0:
+		return 0
+	var lane = int(round((x - lane_start) / lane_spacing))
+	return clampi(lane, 0, lane_count - 1)
 
 ## 优化生成的键
 ## 实现难度自适应过滤、重叠消除等优化
@@ -1039,6 +1100,9 @@ func _count_background_notes() -> int:
 
 ## 配置变更回调（新增）
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	# 任何影响音符生成的配置变更都应清除缓存，避免返回旧结果
+	_cache_key = ""
+
 	# 处理 Lane 相关配置变更
 	if section == "Lane":
 		match key:
