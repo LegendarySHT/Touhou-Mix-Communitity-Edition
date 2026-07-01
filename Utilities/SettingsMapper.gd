@@ -50,7 +50,7 @@ static var mappings: Dictionary = {
 	"check_instant_blocks_when_finger_up": {"section": "Judge", "key": "check_instant_blocks_when_finger_up", "value_type": "int"},
 	"only_perfect_instant_blocks_before_judge": {"section": "Judge", "key": "only_perfect_instant_blocks_before_judge", "value_type": "int"},
 	"judge_line_position": {"section": "Judge", "key": "judge_line_position", "value_type": "int"},
-	"block_judging_width": {"section": "Judge", "key": "block_judging_width", "value_type": "int"},
+	"block_judging_width": {"section": "Judge", "key": "block_judging_width", "value_type": "float"},
 	"min_block_spacing": {"section": "Judge", "key": "min_block_spacing", "value_type": "int"},
 	"canvas_horizontal_padding": {"section": "Judge", "key": "canvas_horizontal_padding", "value_type": "int"},
 	"judge_time_offset": {"section": "Judge", "key": "judge_time_offset", "value_type": "int"},
@@ -91,7 +91,7 @@ static var mappings: Dictionary = {
 	"play_background_size_mode": {"section": "Appearance", "key": "play_background_size_mode", "value_type": "int"},
 	"play_background_image_file": {"section": "Appearance", "key": "play_background_image_file", "value_type": "string"},
 	"play_background_color": {"section": "Appearance", "key": "play_background_color", "value_type": "color"},
-	"block_size": {"section": "Appearance", "key": "block_size", "value_type": "int"},
+	"block_size": {"section": "Appearance", "key": "block_size", "value_type": "float"},
 	"note_glow_intensity": {"section": "Appearance", "key": "note_glow_intensity", "value_type": "float"},
 	"note_glow_size": {"section": "Appearance", "key": "note_glow_size", "value_type": "float"},
 	"background_image_preset": {"section": "Appearance", "key": "background_image_preset", "value_type": "int"},
@@ -255,7 +255,7 @@ static func validate_value(setting_id: String, value: Variant) -> bool:
 		"judge_line_position":
 			return int(value) >= 0
 		"block_judging_width":
-			return int(value) > 0
+			return float(value) > 0.0
 		"perfect_time", "great_time", "good_time", "bad_time":
 			return float(value) > 0.0
 	
