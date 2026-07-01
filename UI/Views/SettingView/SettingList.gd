@@ -418,10 +418,10 @@ var setting_groups = [
 				"id": "min_block_spacing",
 				"name_en": "Min Block Spacing",
 				"name_zh": "最小横向音符间距",
-				"description": "控制音符间的水平最小距离，数值太大会导致没有音符下落",
+				"description": "控制并排音符间的最小轨道间隔。值为1时，任意两个并排音符的轨道号差必须大于1（至少相隔一个空轨道）。数值太大会导致没有音符下落",
 				"type": "TYPE_LINE_EDIT",
-				"default_value": "50",
-				"unit": "px"
+				"default_value": "1",
+				"unit": "轨道"
 			},
 			{
 				"id": "canvas_horizontal_padding",

@@ -134,6 +134,7 @@ var max_touch_count: int = 2  # 最大同时活跃键数
 var generate_instant_connect: bool = true  # 是否生成INSTANT连块
 var generate_short_connect: bool = true  # 是否生成SHORT连块
 var max_instant_connect_seconds: float = 1.0  # INSTANT连块最大间隔（秒）
+var min_block_spacing: int = 1  # 并排音符最小横向间距（轨道数，0=关闭）
 
 ## 信号：序列分类完成
 signal sequences_classified(game_seq_count: int, bg_seq_count: int)
@@ -234,6 +235,12 @@ func _load_config_parameters() -> void:
 	cooldown_seconds = config_manager.get_float(gen_cfg, "min_touch_cooldown_time", 2.0)
 	max_touch_move_velocity = config_manager.get_float(gen_cfg, "max_touch_move_speed", 300.0)
 	block_coalesce_seconds = config_manager.get_float(gen_cfg, "max_block_coalesce_time", 0.25)
+
+	# 从Judge段读取并排音符最小横向间距（单位：轨道数）
+	# 兼容旧版未实装的像素单位值：超出合理范围（>= lane_count）则重置为默认值1
+	min_block_spacing = _validate_min_block_spacing(
+		config_manager.get_int("Judge", "min_block_spacing", 1)
+	)
 	
 	# 从Appearance段读取连块参数
 	var app_cfg = "Appearance"
@@ -252,8 +259,8 @@ func _load_config_parameters() -> void:
 		)
 	
 	GameLogger.instance.info(
-		"KeyGeneration config loaded: block_coalesce=%.2fs, instant=%.2fs, short=%.2fs, maxTouch=%d, max_touch_velocity=%.1f" % 
-		[block_coalesce_seconds, instant_block_threshold, short_block_threshold, max_touch_count, max_touch_move_velocity],
+		"KeyGeneration config loaded: block_coalesce=%.2fs, instant=%.2fs, short=%.2fs, maxTouch=%d, max_touch_velocity=%.1f, min_block_spacing=%d" %
+		[block_coalesce_seconds, instant_block_threshold, short_block_threshold, max_touch_count, max_touch_move_velocity, min_block_spacing],
 		"KeySequenceManager"
 	)
 func classify_sequences(midi_data: MidiData, all_midi_notes: Array) -> bool:
@@ -451,15 +458,53 @@ func _dedup_batch(batch: Array, bg_notes: Array, batch_idx: int) -> Array[BlockI
 		block.x = _calculate_lane_position(lane)
 		blocks.append(block)
 	
-	# 第3步：按音高排序并移除超过maxTouchCount的块（与Unity版本一致）
+	# 第3步：执行最小横向间距约束（并排音符轨道间距）
+	blocks = _enforce_min_lane_spacing(blocks, bg_notes)
+
+	# 第4步：按音高排序并移除超过maxTouchCount的块（与Unity版本一致）
 	if blocks.size() > max_touch_count:
 		blocks.sort_custom(func(a, b): return a.pitch_list[0] > b.pitch_list[0])
 		while blocks.size() > max_touch_count:
 			var removed_block = blocks.pop_back()
 			if not removed_block.notes.is_empty():
 				_append_note_to_background(removed_block.notes[0], bg_notes)
-	
+
 	return blocks
+
+## 校验并排音符最小横向间距取值
+## min_block_spacing 为轨道数：0 表示关闭约束；负数或 >= lane_count 属于无效/旧版像素残留，重置为默认值1
+func _validate_min_block_spacing(value: int) -> int:
+	if value < 0 or value >= lane_count:
+		return 1
+	return value
+
+## 强制并排音符的最小横向间距约束
+## 当两个块的轨道号差绝对值 <= min_block_spacing 时，移除音高较低的块到背景
+## 与同 lane 去重逻辑一致：优先保留高音
+func _enforce_min_lane_spacing(blocks: Array[BlockInfo], bg_notes: Array) -> Array[BlockInfo]:
+	if blocks.size() <= 1 or min_block_spacing <= 0:
+		return blocks
+
+	# 按音高降序排序，优先保留高音（与现有去重逻辑一致）
+	var sorted_blocks: Array[BlockInfo] = []
+	sorted_blocks.append_array(blocks)
+	sorted_blocks.sort_custom(func(a, b): return a.pitch_list[0] > b.pitch_list[0])
+
+	var kept: Array[BlockInfo] = []
+	for block in sorted_blocks:
+		var conflict := false
+		for kept_block in kept:
+			if abs(block.lane - kept_block.lane) <= min_block_spacing:
+				conflict = true
+				break
+		if conflict:
+			# 移入背景（与现有去重/超限逻辑一致）
+			if not block.notes.is_empty():
+				_append_note_to_background(block.notes[0], bg_notes)
+		else:
+			kept.append(block)
+
+	return kept
 
 ## 将各种中间格式的note统一追加到背景列表
 ## 优先保留 MidiParser.Note（便于后续精确分类）；其次使用 NoteEvent；最后兜底字典
@@ -789,7 +834,7 @@ func _generate_connects(blocks: Array[BlockInfo]) -> void:
 
 			if min_block != max_block:
 				max_block.connected_prev = true
-				max_block.prev_block = min_block
+			
 
 ## 转换BlockInfo到GameSequence
 func _convert_blocks_to_game_sequences(blocks: Array[BlockInfo]) -> void:
@@ -1020,3 +1065,10 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 				max_instant_connect_seconds = float(value)
 			"block_size":
 				key_width = float(value)
+
+	# 处理 Judge 相关配置变更
+	elif section == "Judge":
+		match key:
+			"min_block_spacing":
+				min_block_spacing = _validate_min_block_spacing(int(value))
+				GameLogger.instance.info("Min block spacing changed to: %d" % min_block_spacing, "KeySequenceManager")
