@@ -88,6 +88,11 @@ var midi_player_config: Dictionary = {
 ## Android 平台标志（用于降级音频复杂度）
 var _is_android: bool = false
 
+# 实时位置的同帧缓存: 避免同一帧多次调用后端导致 GetLatencyMs() 波动
+# 使去重逻辑 (基于 judge_time_ms 差值) 失效
+var _realtime_pos_cache: float = 0.0
+var _realtime_pos_cache_frame: int = -1
+
 ## 信号：MIDI加载完成
 signal midi_loaded(midi_data: MidiData)
 
@@ -1643,6 +1648,22 @@ func tick_to_ms(tick: float) -> float:
 ## 这是对position_ms的替代方法，更明确地表示返回值的单位
 func get_position_ms() -> float:
 	return position_ms
+
+## 实时获取当前播放位置（毫秒），绕过 _process 缓存
+## 用于触摸判定等对时效性敏感的场景，消除帧级输入延迟
+## 同帧缓存: 同一帧内多次调用返回相同值, 避免 GetLatencyMs() 动态波动
+## 导致去重逻辑失效 (如 Android 触摸+鼠标模拟事件对)
+func get_realtime_position_ms() -> float:
+	var current_frame = Engine.get_process_frames()
+	if current_frame == _realtime_pos_cache_frame:
+		return _realtime_pos_cache
+	_realtime_pos_cache_frame = current_frame
+	var backend = _get_active_backend()
+	if backend != null:
+		_realtime_pos_cache = backend.get_position_ms()
+	else:
+		_realtime_pos_cache = position_ms
+	return _realtime_pos_cache
 
 ## 获取当前播放位置（tick）
 ## 这是对position的替代方法，更明确地表示返回值的单位

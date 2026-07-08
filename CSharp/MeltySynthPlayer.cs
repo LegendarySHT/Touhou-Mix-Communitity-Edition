@@ -37,6 +37,8 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		void Dispose();
 		/// <summary>设置 post-seek 后需要静音渲染丢弃的帧数 (用于消耗 seek 瞬态).</summary>
 		int PostSeekSilenceFrames { get; set; }
+		/// <summary>获取当前音频输出延迟(毫秒), 包含设备内部延迟 + RingBuffer 延迟.</summary>
+		float GetLatencyMs();
 	}
 
 	/// <summary>
@@ -743,13 +745,15 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 			}
 
 			double resultMs = _sequencer.Position.TotalMilliseconds;
-			
-			if (Engine.GetProcessFrames() % 30 == 0)
+
+			// 补偿设备缓冲延迟: Position 是墙钟时间, 比实际音频输出领先一个设备缓冲周期
+			// 玩家根据听到的音频触摸, 判定必须用实际音频位置而非墙钟位置
+			if (_audioOutput != null && _audioOutput.IsPlaying)
 			{
-				// GD.Print($"[MeltySynthPlayer] get_position_ms (sequencer system clock): result={resultMs:F1}ms, " +
-				// 	$"drift=({_sequencer.GetDiagnosticsSnapshot()})");
+				float deviceLatencyMs = _audioOutput.GetLatencyMs();
+				resultMs = Math.Max(0.0, resultMs - deviceLatencyMs);
 			}
-			
+
 			return resultMs;
 		}
 
@@ -758,28 +762,12 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 		var sequencerMs = _sequencer.Position.TotalMilliseconds;
 
-		// 补偿 AudioStreamGenerator 缓冲延迟
-		// Sequencer.Position 是"已生成到缓冲区的位置"，缓冲区中尚有未播放的数据
-		// 实际播放位置 = Sequencer位置 - 缓冲区中未播放的时长
+		// 补偿设备缓冲延迟: 用 GetLatencyMs() 获取真实延迟(设备内部 + RingBuffer)
+		// 替代原先 GetTotalBufferFrames - GetFramesAvailable 的计算(后者在直接渲染模式下返回占位值导致负数)
 		if (_audioOutput != null && _audioOutput.IsPlaying)
 		{
-			int totalBufferFrames = _audioOutput.GetTotalBufferFrames();
-			int framesAvailable = _audioOutput.GetFramesAvailable();
-			int bufferedFrames = totalBufferFrames - framesAvailable;
-			double bufferLatencyMs = (double)bufferedFrames / _sampleRate * 1000.0;
-			var compensatedMs = Math.Max(0.0, sequencerMs - bufferLatencyMs);
-			
-			if (Engine.GetProcessFrames() % 30 == 0)
-			{
-				// GD.Print($"[MeltySynthPlayer] get_position_ms debug: " +
-				// 	$"sequencer={sequencerMs:F1}ms, " +
-				// 	$"bufferLatency={bufferLatencyMs:F1}ms, " +
-				// 	$"framesAvailable={framesAvailable}/{totalBufferFrames}, " +
-				// 	$"result={compensatedMs:F1}ms");
-			}
-			
-			
-			return compensatedMs;
+			float latencyMs = _audioOutput.GetLatencyMs();
+			return Math.Max(0.0, sequencerMs - latencyMs);
 		}
 
 		return sequencerMs;

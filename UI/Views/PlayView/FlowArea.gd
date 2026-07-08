@@ -140,6 +140,9 @@ class Note:
 	# 防止重复判定标志
 	var is_judged: bool = false  # 已被判定过，防止同一note重复记录combo
 
+	# Block/Slide 是否已过判定线 (synced time 驱动下用于触发过线回调)
+	var judge_line_passed: bool = false
+
 	# 用于长条
 	var is_held: bool = false    	# 是否被按住
 	var cooldown: float = 0      	# 长按时的触发计时器
@@ -578,6 +581,7 @@ func _spawn_note(note_index: int) -> void:
 	nt.is_held = false
 	nt.held_by_touch_id = -1
 	nt.cooldown = 0
+	nt.judge_line_passed = false
 	if nt.type == NoteType.Long:
 		nt.long_head_height = 0.0
 		nt.long_tail_height = 0.0
@@ -618,49 +622,12 @@ func _spawn_note(note_index: int) -> void:
 		_update_long_note_fall(nt, _synced_current_time)
 		return
 
-	var fall_time = _note_fall_calculator.compute_duration_seconds(target_pos_y - nt.rect.position.y, _note_fall_speed)
-
-	# 使用Tween创建下落动画
-	var tween = create_tween()
-
-	tween.tween_property(rect, "position:y", target_pos_y, fall_time).set_trans(trans_before_line).set_ease(ease_before_line)
+	# Block/Slide: 使用 synced time 驱动 (与 Long 一致), 不再使用 Tween
+	# 消除 Tween 墙钟时间与判定 MIDI 时间之间的漂移
 	active_notes.append(nt)
 	_add_note_to_lane_index(nt)
-	nt.tween = tween
-	# 关键：保存 Tween 引用用于复用前清理（修复 Tween lambda 被释放错误）
-	rect.set_meta("_last_tween", tween)
-
-	tween.finished.connect(func():
-		if nt.is_judged or nt.rect == null:
-			return
-
-		if nt.type == NoteType.Slide:
-			_check_slide_stat(nt)
-
-		if auto_mode and nt.type != NoteType.Long:
-			_auto_click(nt)
-			if nt.is_judged or nt.rect == null:
-				return
-
-		var t = create_tween()
-		var window_y = get_viewport().get_visible_rect().size.y
-		var after_line_distance = max(1.0, window_y - target_pos_y)
-		var after_line_time = _note_fall_calculator.compute_after_line_duration_seconds(after_line_distance, _note_fall_speed, _note_fall_speed_after_judge_multiplier)
-		t.tween_property(rect, "position:y", window_y , after_line_time).set_trans(trans_after_line).set_ease(ease_after_line)
-
-		# 创建Note对象并添加到活跃列表	
-		nt.tween = t
-		# 关键：保存第二个 Tween 引用用于复用前清理
-		rect.set_meta("_last_tween", t)
-
-		# 动画结束后回收音符
-		t.finished.connect(func():
-			if nt.rect and not nt.is_judged:
-				_remove_note(nt)
-				# 只有在音符播放完毕但未被击打时才判定为Miss
-				note_judged.emit("Miss", "", nt.type, 1.0, 0.0)
-		)
-	)
+	nt.tween = null
+	_update_block_note_fall(nt, _synced_current_time)
 
 func _compute_center_y_by_judge_time(judge_time_ms: float, current_time_ms: float, half_height: float) -> float:
 	var pre_ms = max(1.0, _note_fall_time_seconds * 1000.0)
@@ -684,6 +651,37 @@ func _compute_center_y_by_judge_time(judge_time_ms: float, current_time_ms: floa
 	var after_progress = clamp((current_time_ms - judge_time_ms) / after_time_ms, 0.0, 1.0)
 	var eased_after = _note_fall_calculator.evaluate_curve_progress(after_progress, trans_after_line, ease_after_line)
 	return jl.position.y + eased_after * after_distance
+
+## Block/Slide 音符的 synced time 驱动位置更新 (替代 Tween)
+## 每帧由 _process 调用, 根据 _synced_current_time 计算音符位置
+## 同时处理过线回调 (Slide 检查/auto_mode) 和 Miss 判定
+func _update_block_note_fall(note: Note, current_time_ms: float) -> void:
+	if not note.rect:
+		return
+
+	var rect_ctrl := note.rect as Control
+	var half_height = rect_ctrl.size.y * 0.5
+	var center_y = _compute_center_y_by_judge_time(note.start_time, current_time_ms, half_height)
+	rect_ctrl.position.y = center_y - half_height
+
+	# 过线回调: 音符首次到达/超过判定线时触发 (原 Tween.finished 逻辑)
+	if not note.judge_line_passed and current_time_ms >= note.start_time:
+		note.judge_line_passed = true
+		if note.is_judged or note.rect == null:
+			return
+		if note.type == NoteType.Slide:
+			_check_slide_stat(note)
+		if note.is_judged or note.rect == null:
+			return
+		if auto_mode:
+			_auto_click(note)
+
+	# Miss 判定: 音符超出窗口底部且未被击打 (原第二 Tween.finished 逻辑)
+	if not note.is_judged and note.rect != null:
+		var window_y = _cached_viewport_height
+		if center_y >= window_y:
+			_remove_note(note)
+			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
 
 func _update_long_note_fall(note: Note, current_time_ms: float) -> void:
 	if not note.rect:
@@ -1241,7 +1239,20 @@ func _check_slide_stat(note: Note):
 	if note.is_judged:
 		return
 
-	if note.lane in pressed_keys.values():
+	# 检查是否有按键或触摸手指在该音符的判定范围内
+	var has_input_on_lane = note.lane in pressed_keys.values()
+	if not has_input_on_lane and note.rect != null:
+		# 触摸模式: 实时检查是否有手指在 slide 音符的判定宽度内
+		# 与 _check_slides_at_touch_pos 的 distance_to_touch < note_judge_width 逻辑一致
+		# 这样即使手指按下后未拖动( can_judge 未被设置), 也能在过线时自动判定
+		var rect_ctrl := note.rect as Control
+		var note_x = rect_ctrl.position.x + rect_ctrl.size.x / 2
+		for touch_pos in touch_positions.values():
+			if abs(touch_pos.x - note_x) < note_judge_width:
+				has_input_on_lane = true
+				break
+
+	if has_input_on_lane:
 		if parent_node.play_mode and note.game_sequence_ref:
 			_trigger_midi_notes_from_sequence(note.game_sequence_ref)
 		if only_perfect_slides:
@@ -1422,7 +1433,7 @@ func set_current_time(time_ms: float) -> void:
 func _get_realtime_position_ms() -> float:
 	var playback_mgr = MidiPlaybackManager.instance
 	if playback_mgr:
-		return playback_mgr.get_position_ms()
+		return playback_mgr.get_realtime_position_ms()
 	return _synced_current_time
 
 func _judge_note(judge_note: Note, trigger_vibration: bool = false, input_time_ms: float = -1.0,
@@ -1504,6 +1515,8 @@ func _process(delta: float) -> void:
 	for note in active_notes:
 		if note.type == NoteType.Long:
 			_update_long_note_fall(note, _synced_current_time)
+		elif note.type == NoteType.Block or note.type == NoteType.Slide:
+			_update_block_note_fall(note, _synced_current_time)
 		_update_note_visibility(note)
 	
 	# 自动按长条
