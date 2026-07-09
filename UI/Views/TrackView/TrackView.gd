@@ -89,15 +89,6 @@ func _ready() -> void:
 	if not ui_stat_mgr.is_connected("state_changed", Callable(self, "_on_ui_state_changed")):
 		ui_stat_mgr.state_changed.connect(_on_ui_state_changed)
 
-	if not midi_playback_manager.is_connected("midi_loaded", Callable(self, "_on_midi_loaded")):
-		midi_playback_manager.midi_loaded.connect(_on_midi_loaded)
-	
-	if not midi_playback_manager.is_connected("midi_started", Callable(self, "_on_midi_started")):
-		midi_playback_manager.midi_started.connect(_on_midi_started)
-	
-	if not midi_playback_manager.is_connected("midi_stopped", Callable(self, "_on_midi_stopped")):
-		midi_playback_manager.midi_stopped.connect(_on_midi_stopped)
-
 	# 监听SoundFont变更信号（用于实时更新乐器列表）
 	if midi_playback_manager.midi_player and not midi_playback_manager.midi_player.is_connected("soundfont_changed", Callable(self, "_on_soundfont_changed")):
 		midi_playback_manager.midi_player.soundfont_changed.connect(_on_soundfont_changed)
@@ -166,6 +157,12 @@ func _load_midi(midi: MidiData) -> void:
 		push_error("Failed to load MIDI: " + midi.name)
 	await get_tree().process_frame
 
+	# 更新进度条最大范围
+	if midi.duration_ms > 0:
+		_set_display_total_time(midi.duration_ms)
+	# TrackView 加载时设置循环播放
+	midi_playback_manager.set_loop(true)
+
 	# 新增：从加载的 MIDI 和 SoundFont 提取可用乐器选项
 	_extract_instruments_from_midi()
 
@@ -215,7 +212,11 @@ func _load_midi(midi: MidiData) -> void:
 
 	# 启动播放（UI 已完全加载，避免 _prepare_to_play 阻塞 UI 渲染）
 	midi_playback_manager.play()
-	
+
+	# 启用 TrackView 进度更新和音符显示器
+	set_process(true)
+	_set_note_displayers_process(true)
+
 	# 等容器尺寸更新，再增加上下边距 （这个不是一定会触发，请勿在后面加总是需要执行的代码）
 	await container.resized
 	container.custom_minimum_size.y = container.size.y + 300
@@ -879,36 +880,12 @@ func _apply_solo_state() -> void:
 
 # =============== MIDI播放器信号回调 ====================
 
-func _on_midi_loaded(midi_data: MidiData) -> void:
-	print("MIDI loaded: " + midi_data.name)
-	# 更新进度条最大范围
-	if midi_data.duration_ms > 0:
-		_set_display_total_time(midi_data.duration_ms)
-
-	# 只有TrackView活跃时才设置循环播放（避免干扰PlayView等其他视图）
-	if ui_stat_mgr.current_state == work_state:
-		midi_playback_manager.set_loop(true)
-
 func _set_note_displayers_process(enable: bool) -> void:
 	if master_note_displayer:
 		master_note_displayer.set_process(enable)
 	for item in list_items:
 		if item is MidiTrack and item.note_display:
 			item.note_display.set_process(enable)
-
-func _on_midi_started() -> void:
-	print("MIDI playback started")
-	# 只有TrackView活跃时才启动进度更新（避免在PlayView中运行TrackView的_process）
-	if ui_stat_mgr.current_state == work_state:
-		set_process(true)
-		_set_note_displayers_process(true)
-
-func _on_midi_stopped() -> void:
-	print("MIDI playback stopped")
-	set_process(false)
-	_set_note_displayers_process(false)
-	progress_bar.value = 0
-	current_time.text = "00:00"
 
 # ============== UI 显示函数 ========================
 

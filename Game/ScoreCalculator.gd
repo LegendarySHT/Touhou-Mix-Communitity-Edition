@@ -108,11 +108,6 @@ var _short_current_multiplier: float = SHORT_INITIAL_MULTIPLIER
 var _long_multipliers: Dictionary = {}
 
 # ============================================================
-#  信号
-# ============================================================
-signal score_changed(snapshot: Dictionary)
-
-# ============================================================
 #  生命周期
 # ============================================================
 
@@ -183,7 +178,6 @@ func record_judgment(judgment: Judgment, block_type: int, timing_sec: float,
 	# 6. 发射快照
 	var snap = get_snapshot()
 	snap["last_score_add"] = note_score
-	score_changed.emit(snap)
 	return snap
 
 ## 记录 Miss（未击打，简化入口）

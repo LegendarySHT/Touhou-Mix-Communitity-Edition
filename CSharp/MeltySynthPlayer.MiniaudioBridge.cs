@@ -69,7 +69,6 @@ public partial class MeltySynthPlayer
 			private StringName _bus = new StringName("Master");
 
 			// ---- 统计 ----
-			private int _underrunCount = 0;
 			private float _lastSampleL = 0;
 			private float _lastSampleR = 0;
 
@@ -83,11 +82,6 @@ public partial class MeltySynthPlayer
 			/// <summary>设备实际 period 数量, 供外部诊断用</summary>
 			internal uint ActualPeriodCount => _actualPeriodCount;
 
-			// ---- 延迟守护 ----
-			// RingBuffer 可读帧超过此阈值时, 渲染线程主动让出 CPU, 防止数据堆积.
-			// 设为 1.5×effectivePeriod, 稳态延迟上限 ≈ period×1.5 + deviceLatency.
-			private int _maxRingFillFrames = 0;
-
 			// ---- 线程同步 ----
 			internal readonly object _synthLock = new object();
 			public object SyncRoot => _synthLock;
@@ -99,11 +93,6 @@ public partial class MeltySynthPlayer
 			private Stopwatch _perfStopwatch = new Stopwatch();
 			private int _perfSlowCallbackCount = 0;
 			private int _perfTotalCallbackCount = 0;
-
-			// ---- 渲染线程 + 环形缓冲区 ----
-			private Thread _renderThread = null;
-			private volatile bool _renderThreadRunning = false;
-			private RingBuffer _ringBuffer = null;
 
 			// ---- 无锁事件队列 ----
 			private struct NoteEvent
@@ -259,27 +248,6 @@ public partial class MeltySynthPlayer
 					// 小批量渲染 (如 128 帧) 让 RingBuffer 填充更平滑, 稳态延迟更低.
 					GD.Print($"[MeltySynthPlayer][miniaudio] Decode frames: {_decodeFrames} (actualPeriod={actualPeriod}, not adjusted up)");
 				}
-
-				// RingBuffer 容量: actualPeriod × 6
-				// ×6 给渲染线程更多缓冲空间, 吸收 MeltySynth 渲染时间波动.
-				// 96000Hz 共享模式: period=480, 容量=2880 (30ms).
-				// 守护阈值 (1×period) 限制稳态延迟, 大容量只用于吸收尖峰.
-				int ringCapacity = (int)(actualPeriod > 0 ? actualPeriod : (uint)_decodeFrames) * 6;
-				if (_ringBuffer == null || _ringBuffer.Capacity != ringCapacity)
-				{
-					_ringBuffer = new RingBuffer(ringCapacity);
-					GD.Print($"[MeltySynthPlayer][miniaudio] Ring buffer: {ringCapacity} frames (≈{ringCapacity * 1000.0 / _sampleRate:F1}ms) " +
-						$"[capacity = actualPeriod×6]");
-				}
-
-				// 延迟守护阈值: _decodeFrames (而非 actualPeriod)
-				// 96000Hz 高采样率下回调频率 375次/秒 (2.67ms间隔).
-				// 守护阈值 = actualPeriod (480) 会让渲染线程 spin 太久 (5ms+),
-				// 即使 Thread.SpinWait 不退化, 长时间 spin 也浪费 CPU 且增加功耗.
-				// 守护阈值 = _decodeFrames (256), spin 时间 ≈ 2.67ms (一个回调周期),
-				// 稳态 rbFill 在 0~256 之间波动, 平均 128 帧 (1.33ms).
-				// 总延迟 = 设备延迟 + RingBuffer 延迟 ≈ 7.5 + 1.33 = 8.83ms (达标 <10ms).
-				_maxRingFillFrames = _decodeFrames;
 
 				_initialized = true;
 				return true;
@@ -439,7 +407,6 @@ public partial class MeltySynthPlayer
 					// 重置性能计数器
 					_perfTotalCallbackCount = 0;
 					_perfSlowCallbackCount = 0;
-					_underrunCount = 0;
 
 					var r = MiniaudioNative.ma_bridge_start(_bridgeHandle);
 					if (r != MiniaudioNative.Result.Ok)
@@ -492,8 +459,6 @@ public partial class MeltySynthPlayer
 				{
 					MiniaudioNative.ma_bridge_stop(_bridgeHandle);
 				}
-				// 直接渲染模式: 无渲染线程需要停止
-				StopRenderThread();  // 安全调用 (如果线程未启动则 no-op)
 				Array.Clear(_outputBuffer, 0, _outputBuffer.Length);
 				_lastSampleL = 0;
 				_lastSampleR = 0;
@@ -506,12 +471,6 @@ public partial class MeltySynthPlayer
 			}
 
 			public bool IsPlaying => _playing;
-
-			public int GetFramesAvailable() => 1024;  // 兼容性占位
-
-			public int GetTotalBufferFrames() => _decodeFrames;
-
-			public void PushFrame(Vector2 frame) { /* 兼容性空实现 */ }
 
 			// ====================================================================
 			// 音符事件
@@ -701,175 +660,6 @@ public partial class MeltySynthPlayer
 			}
 
 			// ====================================================================
-			// 渲染线程 (备选模式, 当前未使用)
-			// ====================================================================
-			private void StartRenderThread()
-			{
-				if (_renderThread != null && _renderThread.IsAlive) return;
-
-				_renderThreadRunning = true;
-				_renderThread = new Thread(RenderThreadLoop)
-				{
-					Name = "MeltySynth-MA-Render",
-					IsBackground = true,
-					Priority = ThreadPriority.Highest
-				};
-				_renderThread.Start();
-				GD.Print("[MeltySynthPlayer][miniaudio] Render thread started");
-			}
-
-			private void StopRenderThread()
-			{
-				if (_renderThread == null || !_renderThread.IsAlive)
-				{
-					_renderThreadRunning = false;
-					return;
-				}
-
-				GD.Print("[MeltySynthPlayer][miniaudio] Stopping render thread...");
-				_renderThreadRunning = false;
-				if (!_renderThread.Join(2000))
-				{
-					GD.PushWarning("[MeltySynthPlayer][miniaudio] Render thread did not stop within 2s");
-				}
-				else
-				{
-					GD.Print("[MeltySynthPlayer][miniaudio] Render thread stopped");
-				}
-				_renderThread = null;
-			}
-
-			private void RenderThreadLoop()
-			{
-				GD.Print("[MeltySynthPlayer][miniaudio] Render thread loop started");
-				int idleCount = 0;
-				Span<NoteEvent> localEvents = stackalloc NoteEvent[32];
-
-				// 渲染时间诊断
-				var renderSw = new Stopwatch();
-				int renderCount = 0;
-				long renderTotalTicks = 0;
-				long renderMaxTicks = 0;
-
-				// 【关键】用 Thread.SpinWait(N) 代替 SpinWait.SpinOnce().
-				// SpinWait.SpinOnce() 在长时间 spin (如 Pre-fill 后等待回调消耗 480 帧 ≈ 5ms)
-				// 后退化为 Sleep(1) (Windows 实际 1-15ms 唤醒延迟),
-				// 远超 96000Hz 的 2.67ms 回调间隔, 导致渲染线程无法及时唤醒 → underrun.
-				// Thread.SpinWait(N) 是纯 CPU 自旋, 唤醒延迟 = 0, 不退化.
-				// 代价: 单核 100% CPU, 但 96000Hz 渲染 avg=0.16ms, 实际 CPU 负载低.
-				// 移动端可考虑改用条件变量唤醒, 但 Windows 低延迟场景必须纯 spin.
-
-				while (_renderThreadRunning)
-				{
-					// 1. 延迟守护: 若 RingBuffer 可读帧已超过 _maxRingFillFrames,
-					//    说明渲染速度 > 消耗速度, 主动让出 CPU 等待音频回调消耗数据.
-					//    这能保证稳态延迟有上限, 避免数据持续堆积.
-					int readable = _ringBuffer.ReadableFrames;
-					if (_maxRingFillFrames > 0 && readable >= _maxRingFillFrames)
-					{
-						Thread.SpinWait(16);
-						continue;
-					}
-
-					// 2. 等待可写空间
-					int writable = _ringBuffer.WritableFrames;
-					if (writable < _decodeFrames)
-					{
-						Thread.SpinWait(16);
-						continue;
-					}
-
-					// 3. 清零渲染缓冲区
-					Array.Clear(_tempLeft, 0, _decodeFrames);
-					Array.Clear(_tempRight, 0, _decodeFrames);
-					Array.Clear(_manualLeft, 0, _decodeFrames);
-					Array.Clear(_manualRight, 0, _decodeFrames);
-
-					// 4. 无锁出队
-					int eventCount = 0;
-					while (eventCount < 32 && _pendingNoteEvents.TryDequeue(out localEvents[eventCount]))
-						eventCount++;
-
-					lock (_synthLock)
-					{
-						if (_sequencer == null || _autoSynth == null)
-						{
-							idleCount++;
-							if (idleCount % 500 == 1)
-								GD.Print($"[MeltySynthPlayer][miniaudio] Render waiting for synthesizers (idle={idleCount})");
-							Thread.Sleep(10);
-							continue;
-						}
-						idleCount = 0;
-
-						renderSw.Restart();
-
-						if (_postSeekSilenceFrames > 0)
-						{
-							// 渲染到 discard 缓冲区以推进 sequencer,
-							// 但输出静音衰减, 丢弃瞬态音符攻击
-							int silence = Math.Min(_decodeFrames, _postSeekSilenceFrames);
-							var discardSpan = _tempLeft.AsSpan(0, silence);
-							_sequencer.Render(discardSpan, discardSpan);
-							_postSeekSilenceFrames -= silence;
-							FillOutputBufferWithDecay(0, _decodeFrames);
-						}
-						else
-						{
-							// 处理音符事件
-							for (int i = 0; i < eventCount; i++)
-							{
-								var synth = (_useSeparateSynth && _manualSynth != null) ? _manualSynth : _autoSynth;
-								if (synth == null) continue;
-								if (localEvents[i].IsNoteOn)
-									synth.NoteOn(localEvents[i].VirtualId, localEvents[i].Pitch, localEvents[i].Velocity);
-								else
-									synth.NoteOff(localEvents[i].VirtualId, localEvents[i].Pitch);
-							}
-
-							float scale = _volumeLinear * OUTPUT_GAIN;
-
-							bool shouldRenderManual = _useSeparateSynth && _manualSynth != null
-								&& _manualSynth != _autoSynth && _manualActiveVoiceCount > 0;
-
-							if (shouldRenderManual)
-							{
-								_sequencer.Render(_tempLeft.AsSpan(0, _decodeFrames), _tempRight.AsSpan(0, _decodeFrames));
-								_manualSynth.Render(_manualLeft.AsSpan(0, _decodeFrames), _manualRight.AsSpan(0, _decodeFrames));
-								MixToOutput(_tempLeft, _tempRight, _manualLeft, _manualRight, _decodeFrames, scale);
-							}
-							else
-							{
-								_sequencer.Render(_tempLeft.AsSpan(0, _decodeFrames), _tempRight.AsSpan(0, _decodeFrames));
-								MixToOutput(_tempLeft, _tempRight, null, null, _decodeFrames, scale);
-							}
-						}
-
-						renderSw.Stop();
-						long ticks = renderSw.ElapsedTicks;
-						renderTotalTicks += ticks;
-						if (ticks > renderMaxTicks) renderMaxTicks = ticks;
-						renderCount++;
-						if (renderCount % 500 == 0)
-						{
-							double avgMs = renderTotalTicks / (double)renderCount / Stopwatch.Frequency * 1000.0;
-							double maxMs = renderMaxTicks / (double)Stopwatch.Frequency * 1000.0;
-							GD.Print($"[MeltySynthPlayer][miniaudio] Render perf: {renderCount} batches, " +
-								$"avg={avgMs:F3}ms, max={maxMs:F3}ms (per {_decodeFrames} frames), " +
-								$"rbFill={_ringBuffer.ReadableFrames}");
-						}
-					}
-
-					// 5. 写入环形缓冲区
-					_ringBuffer.Write(_outputBuffer, 0, _decodeFrames);
-
-					// Thread.SpinWait 不退化, 无需重置
-				}
-
-				GD.Print("[MeltySynthPlayer][miniaudio] Render thread loop exited");
-			}
-
-			// ====================================================================
 			// 辅助方法
 			// ====================================================================
 			private void MixToOutput(float[] autoLeft, float[] autoRight, float[] manualLeft, float[] manualRight, int frames, float scale)
@@ -938,22 +728,6 @@ public partial class MeltySynthPlayer
 				_lastSampleR = r;
 			}
 
-			private void FillOutputBufferWithDecay(int startFrameIgnored, int totalFrames)
-			{
-				float decay = (float)Math.Exp(-2.0 / Math.Max(1, totalFrames));
-				float l = _lastSampleL;
-				float r = _lastSampleR;
-				for (int i = 0; i < totalFrames; i++)
-				{
-					_outputBuffer[i * 2] = l;
-					_outputBuffer[i * 2 + 1] = r;
-					l *= decay;
-					r *= decay;
-				}
-				_lastSampleL = l;
-				_lastSampleR = r;
-			}
-
 			// ====================================================================
 			// 销毁
 			// ====================================================================
@@ -973,15 +747,11 @@ public partial class MeltySynthPlayer
 			}
 
 			public void Dispose()
-			{
-				StopRenderThread();
-				DisposeNative();
-			}
+		{
+			DisposeNative();
+		}
 
-			// 兼容性方法
-			public int GetUnderrunCount() => System.Threading.Interlocked.CompareExchange(ref _underrunCount, 0, 0);
-
-			/// <summary>
+		/// <summary>
 			/// 获取当前总音频延迟 (毫秒)
 			/// = 设备内部延迟 (ma_device_get_latency 或 period 估算) + RingBuffer 延迟
 			/// </summary>
@@ -1029,13 +799,10 @@ public partial class MeltySynthPlayer
 				}
 
 				// 2. RingBuffer 延迟 (应用层缓冲, 尚未进入设备)
-				float ringLatencyMs = 0f;
-				if (_ringBuffer != null)
-				{
-					ringLatencyMs = _ringBuffer.ReadableFrames * 1000.0f / _sampleRate;
-				}
+			// RingBuffer 已删除, 直接渲染模式下无应用层缓冲延迟
+			float ringLatencyMs = 0f;
 
-				return (deviceLatencyMs, ringLatencyMs);
+			return (deviceLatencyMs, ringLatencyMs);
 			}
 
 			/// <summary>用 period size × (count - 0.5) 估算设备延迟 (fallback)</summary>

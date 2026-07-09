@@ -93,29 +93,8 @@ var _is_android: bool = false
 var _realtime_pos_cache: float = 0.0
 var _realtime_pos_cache_frame: int = -1
 
-## 信号：MIDI加载完成
-signal midi_loaded(midi_data: MidiData)
-
-## 信号：MIDI开始播放
-signal midi_started
-
-## 信号：MIDI暂停
-signal midi_paused
-
-## 信号：MIDI停止
-signal midi_stopped
-
 ## 信号：MIDI播放完成
 signal midi_finished
-
-## 信号：轨道选择改变
-signal tracks_changed(selected_indices: Array[int])
-
-## 信号：音源改变
-signal soundfont_changed(soundfont_path: String)
-
-## 信号：(track, channel) 的静音状态改变
-signal channel_mute_state_changed(track_index: int, channel: int, muted: bool)
 
 func _ready() -> void:
 	if instance == null:
@@ -417,7 +396,6 @@ func load_midi(midi_data: MidiData) -> bool:
 		GameLogger.instance.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
 	
 	# 发出信号
-	midi_loaded.emit(current_midi_data)
 
 	# 预载人声文件（利用 PlayView 后续 0.8s+1s await 的空闲时间，消除 is_pause=false 时的解码卡顿）
 	_preload_vocal_async()
@@ -490,8 +468,6 @@ func play() -> void:
 	else:
 		print("[MidiPlaybackManager] No vocal file configured (path: '%s')" % current_midi_data.vocal_file_path)
 
-	midi_started.emit()
-
 ## 停止播放
 func stop() -> void:
 	var backend = _get_active_backend()
@@ -507,8 +483,6 @@ func stop() -> void:
 	# 停止人声播放
 	stop_vocal_playback()
 
-	midi_stopped.emit()
-
 ## 暂停播放
 func pause() -> void:
 	var backend = _get_active_backend()
@@ -523,8 +497,6 @@ func pause() -> void:
 	var audio_manager = AudioManager.instance
 	if current_midi_data and audio_manager:
 		audio_manager.set_vocal_playing(false)
-
-	midi_paused.emit()
 
 ## 继续播放
 func resume() -> void:
@@ -544,8 +516,6 @@ func resume() -> void:
 			var audio_manager = AudioManager.instance
 			if audio_manager:
 				audio_manager.set_vocal_playing(true)
-
-	midi_started.emit()
 
 ## 设置循环播放
 func set_loop(enabled: bool) -> void:
@@ -698,8 +668,6 @@ func set_selected_tracks(tracks_data) -> void:
 			# 仅用于向后兼容，不推荐使用
 			var track_indices = tracks_data as Array[int]
 			current_midi_data.selected_track_indices = track_indices
-	
-	tracks_changed.emit(tracks_data)
 
 ## 预加载 SoundFont 到后端（启动时延迟调用）
 func _preload_soundfont_to_backend() -> void:
@@ -754,8 +722,7 @@ func set_soundfont(soundfont_name: String) -> bool:
 		_soundfont_preloaded_to_backend = true
 	else:
 		_soundfont_preloaded_to_backend = false
-	
-	soundfont_changed.emit(soundfont_path)
+
 	print("[MidiPlaybackManager] Soundfont set to: %s" % soundfont_path)
 	return true
 
@@ -1245,9 +1212,6 @@ func set_track_channel_mute(track_index: int, channel: int, muted: bool) -> void
 	var backend = _get_active_backend()
 	if backend != null and backend.has_method("set_track_channel_mute"):
 		backend.set_track_channel_mute(track_index, channel, muted)
-	
-	# 4. 发射信号
-	channel_mute_state_changed.emit(track_index, channel, muted)
 
 ## 仅在运行时设置 (track, channel) 的静音状态（不写入MidiData）
 ## 用于独奏或临时静音
@@ -1264,8 +1228,6 @@ func set_track_channel_mute_runtime(track_index: int, channel: int, muted: bool)
 	var backend = _get_active_backend()
 	if backend != null and backend.has_method("set_track_channel_mute"):
 		backend.set_track_channel_mute(track_index, channel, muted)
-
-	channel_mute_state_changed.emit(track_index, channel, muted)
 
 ## 查询 (track, channel) 对的静音状态
 func is_track_channel_muted(track_index: int, channel: int) -> bool:
@@ -1688,7 +1650,6 @@ func _load_soundfont_from_config() -> void:
 	# 使用硬编码的默认值（如果加载失败）
 	print("[MidiPlaybackManager] Using hardcoded default soundfont")
 	current_soundfont_path = default_soundfont_path
-	soundfont_changed.emit(current_soundfont_path)
 
 ## ========== 人声同步相关方法 ==========
 

@@ -127,9 +127,6 @@ var screen_width: float = 1920.0
 ## 每个键的宽度
 var key_width: float = 40.0
 
-## 最小音符间距（毫秒，防止键位重叠）
-var min_note_spacing_ms: float = 10.0
-
 ## ========== 键生成配置参数 ==========
 var lane_count: int = 12  # 轨道数量
 var block_coalesce_seconds: float = 0.25  # 批次合并时间窗口（秒）
@@ -143,15 +140,6 @@ var generate_instant_connect: bool = true  # 是否生成INSTANT连块
 var generate_short_connect: bool = true  # 是否生成SHORT连块
 var max_instant_connect_seconds: float = 1.0  # INSTANT连块最大间隔（秒）
 var min_block_spacing: int = 1  # 并排音符最小横向间距（轨道数，0=关闭）
-
-## 信号：序列分类完成
-signal sequences_classified(game_seq_count: int, bg_seq_count: int)
-
-## 信号：键位生成完成
-signal keys_generated(key_count: int)
-
-## 信号：键位优化完成
-signal keys_optimized(key_count: int)
 
 func _ready() -> void:
 	if instance == null:
@@ -295,8 +283,7 @@ func classify_sequences(midi_data: MidiData, all_midi_notes: Array) -> bool:
 			background_sequences[note.track_index].notes.append(note)
 	
 	# 发出分类完成信号
-	sequences_classified.emit(game_sequences.size(), background_sequences.size())
-	
+
 	return true
 
 ## 生成游戏使用的键
@@ -316,13 +303,10 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 		last_manual_control_notes = _cached_manual_notes.duplicate()
 		last_auto_play_notes = _cached_auto_notes.duplicate()
 		print("Generating keys from %d game notes... (cached)" % game_notes.size())
-		keys_generated.emit(game_sequences.size())
-		sequences_classified.emit(game_sequences.size(), background_sequences.size())
 		return true
 	print("Generating keys from %d game notes..." % game_notes.size())
 	if game_notes.is_empty():
 		game_sequences.clear()
-		keys_generated.emit(0)
 		return true
 
 	game_sequences.clear()
@@ -389,7 +373,6 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	_cached_manual_notes = last_manual_control_notes.duplicate()
 	_cached_auto_notes = last_auto_play_notes.duplicate()
 
-	keys_generated.emit(game_sequences.size())
 	return true
 
 ## 将Note对象转换为内部格式（确保使用毫秒单位）
@@ -969,32 +952,6 @@ func _calculate_lane_from_x(x: float) -> int:
 	var lane = int(round((x - lane_start) / lane_spacing))
 	return clampi(lane, 0, lane_count - 1)
 
-## 优化生成的键
-## 实现难度自适应过滤、重叠消除等优化
-func optimize_keys() -> bool:
-	if game_sequences.is_empty():
-		keys_optimized.emit(0)
-		return true
-	
-	# 可选优化1：根据maxTouchCount过滤同时活跃块数过多的部分
-	# （当前默认在虚拟触点匹配中已处理）
-	
-	# 可选优化2：LONG块冷却期验证
-	for i in range(game_sequences.size() - 1):
-		var current = game_sequences[i]
-		var next_seq = game_sequences[i + 1]
-		
-		if current.block_type == BlockType.LONG and next_seq.block_type == BlockType.LONG:
-			# 验证冷却期
-			var gap = (next_seq.start_time_ms - current.start_time_ms - current.duration_ms) / 1000.0
-			if gap < cooldown_seconds:
-				# 可选：转换为INSTANT处理
-				pass
-	
-	GameLogger.instance.info("Optimization complete: %d sequences" % game_sequences.size(), "KeySequenceManager")
-	keys_optimized.emit(game_sequences.size())
-	return true
-
 
 ## 获取游戏序列列表
 func get_game_sequences() -> Array[GameSequence]:
@@ -1064,23 +1021,6 @@ func clear_sequences() -> void:
 	all_notes.clear()
 	next_key_id = 0
 	current_midi_data = null
-
-## 从配置中应用键优化参数
-## 此方法待后续完善，用于接收GameplayManager或ConfigLoader的设置
-func apply_optimization_config(config: Dictionary) -> void:
-	# 框架：接收配置参数
-	# 示例配置:
-	# {
-	#   "difficulty": "normal",  # easy/normal/hard
-	#   "auto_filter": true,
-	#   "min_note_spacing": 10,
-	#   "clustering_threshold": 100
-	# }
-	
-	if config.has("min_note_spacing_ms"):
-		min_note_spacing_ms = config["min_note_spacing_ms"]
-	
-	# 待后续实现具体的优化逻辑
 
 ## 统计信息
 func get_statistics() -> Dictionary:

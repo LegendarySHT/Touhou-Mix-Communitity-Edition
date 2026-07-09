@@ -138,12 +138,12 @@ func get_track_channel_volume(track_index: int, channel: int) -> float:
 	var result = meltysynth_player.call("get_track_channel_volume", track_index, channel)
 	return result if result is float else 1.0
 
-## 获取轨道/通道的乐器信息（C# 后端不维护此信息，返回空值让上层处理）
-func get_track_channel_instrument(_track_index: int, _channel: int) -> Dictionary:
-	# MeltySynth C# 后端不维护 MIDI 文件的乐器映射
-	# 这个信息由 MidiPlaybackManager 维护
-	# 此处返回空字典会导致上层使用默认值或 MIDI 原始配置
-	return {}
+## 获取轨道/通道的乐器信息
+func get_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
+	if meltysynth_player == null:
+		return {}
+	var result = meltysynth_player.call("get_track_channel_instrument", track_index, channel)
+	return result if result is Dictionary else {}
 
 ## 获取当前位置（tick 单位）
 func get_position_tick() -> float:

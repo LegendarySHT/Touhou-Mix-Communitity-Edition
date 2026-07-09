@@ -236,7 +236,7 @@ func set_quality_mode(mode: int) -> void:
 	if clamped_mode == _beam_quality:
 		return
 	_beam_quality = clamped_mode
-	if play_view and _lane_count > 0 and not play_view.is_midi_playing:
+	if play_view and _lane_count > 0 and not play_view.playback_mgr.is_playing:
 		init_beam(_lane_count, play_view)
 
 

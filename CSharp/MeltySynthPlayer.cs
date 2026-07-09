@@ -5,16 +5,15 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Reflection;
 using System.Diagnostics;
 using System.Threading;
 using TouhouMix.Midi;
 
 /// <summary>
 /// Meltysynth MIDI 播放器后端
-/// 实现 IMidiPlaybackInterface 接口，提供与 GDScript 后端一致的 API
+/// 提供与 GDScript 后端一致的 API
 /// </summary>
-public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
+public partial class MeltySynthPlayer : Node
 {
 	// 可见性: internal 以便 partial 文件 (MeltySynthPlayer.MiniaudioBridge.cs) 中的
 	// MiniaudioAudioOutputBridge 实现此接口
@@ -26,9 +25,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		void Stop();
 		void Update();
 		bool IsPlaying { get; }
-		int GetFramesAvailable();
-		int GetTotalBufferFrames();
-		void PushFrame(Vector2 frame);
 		object SyncRoot { get; }
 		void SetSynthesizers(MidiFileSequencer sequencer, Synthesizer autoSynth, Synthesizer manualSynth, bool useSeparateSynth);
 		void SetVolume(float volumeLinear);
@@ -40,94 +36,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		/// <summary>获取当前音频输出延迟(毫秒), 包含设备内部延迟 + RingBuffer 延迟.</summary>
 		float GetLatencyMs();
 	}
-
-	/// <summary>
-	/// 线程安全的环形缓冲区（交错格式 LRLRLR...）
-	/// 渲染线程写入，音频回调读取
-	/// </summary>
-	private sealed class RingBuffer
-	{
-		private float[] _buffer;
-		private int _capacityFrames;
-		private int _readFrame;
-		private int _writeFrame;
-		private readonly object _lock = new();
-
-		public RingBuffer(int capacityFrames)
-		{
-			_capacityFrames = capacityFrames;
-			_buffer = new float[capacityFrames * 2]; // 交错格式
-		}
-
-		public int Capacity => _capacityFrames;
-
-		public int ReadableFrames
-		{
-			get { lock (_lock) return (_writeFrame - _readFrame + _capacityFrames) % _capacityFrames; }
-		}
-
-		public int WritableFrames
-		{
-			get { lock (_lock) return _capacityFrames - 1 - ReadableFrames; }
-		}
-
-		/// <summary>写入交错格式音频。返回实际写入帧数。</summary>
-		public int Write(float[] source, int srcOffsetFrames, int maxFrames)
-		{
-			lock (_lock)
-			{
-				int available = _capacityFrames - 1 - ((_writeFrame - _readFrame + _capacityFrames) % _capacityFrames);
-				int toWrite = Math.Min(maxFrames, available);
-				int writeIdx = _writeFrame * 2;
-				int srcIdx = srcOffsetFrames * 2;
-				int bufLen = _capacityFrames * 2;
-
-				for (int i = 0; i < toWrite; i++)
-				{
-					int bi = (writeIdx + i * 2) % bufLen;
-					_buffer[bi] = source[srcIdx + i * 2];
-					_buffer[bi + 1] = source[srcIdx + i * 2 + 1];
-				}
-
-				_writeFrame = (_writeFrame + toWrite) % _capacityFrames;
-				return toWrite;
-			}
-		}
-
-		/// <summary>读取交错格式音频到目标数组。返回实际读取帧数。</summary>
-		public int Read(float[] dest, int destOffsetFrames, int maxFrames)
-		{
-			lock (_lock)
-			{
-				int available = (_writeFrame - _readFrame + _capacityFrames) % _capacityFrames;
-				int toRead = Math.Min(maxFrames, available);
-				int readIdx = _readFrame * 2;
-				int dstIdx = destOffsetFrames * 2;
-				int bufLen = _capacityFrames * 2;
-
-				for (int i = 0; i < toRead; i++)
-				{
-					int bi = (readIdx + i * 2) % bufLen;
-					dest[dstIdx + i * 2] = _buffer[bi];
-					dest[dstIdx + i * 2 + 1] = _buffer[bi + 1];
-				}
-
-				_readFrame = (_readFrame + toRead) % _capacityFrames;
-				return toRead;
-			}
-		}
-
-		public void Clear()
-		{
-			lock (_lock)
-			{
-				_readFrame = 0;
-				_writeFrame = 0;
-				Array.Clear(_buffer, 0, _buffer.Length);
-			}
-		}
-	}
-
 	[Signal]
 	public delegate void finishedEventHandler();
 
@@ -143,7 +51,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private StringName _bus = new StringName("Master");
 
 	public Godot.Collections.Dictionary track_channel_instruments = new Godot.Collections.Dictionary();
-	public Godot.Collections.Dictionary _track_channel_instruments = new Godot.Collections.Dictionary();
 
 	private IAudioOutputBridge _audioOutput;
 
@@ -154,7 +61,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	private int _sampleRate;
 	private float _volumeLinear = 1.0f;
-	private const float MELTYSYNTH_OUTPUT_GAIN = 1.0f; //音量增益，整体调整meltySynth整体音量
 	private bool _sequencerStarted = false;  // 追踪 sequencer 是否已启动
 	private double _pendingSeekMs = double.NaN;  // 待处理的 seek 位置（NaN 表示无待处理的 seek）
 	private double _currentOffsetMs = 0.0;  // 当前相对于 sequencer 的时间偏移（支持负数 pre-roll）
@@ -162,8 +68,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 
 	// 系统时钟模式的时间追踪
 	private bool _useSystemStopwatch = false;      // 是否启用系统时钟模式
-	private ulong _playStartTime = 0;              // 播放开始时的系统时间（毫秒）
-	private double _playStartPositionMs = 0.0;     // 播放开始时的MIDI位置
 	private bool _previousPlaying = false;         // 上一帧的播放状态
 
 	private readonly Dictionary<int, float> _virtualChannelVolumes = new Dictionary<int, float>();
@@ -183,9 +87,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 	private readonly Dictionary<long, ManualFilterState> _manualNoteFilters = new Dictionary<long, ManualFilterState>();
 	private const int MANUAL_WILDCARD_TICK = -1;
 	private readonly HashSet<int> _mutedVirtualChannels = new HashSet<int>();
-
-	private float[] _leftBuffer = Array.Empty<float>();
-	private float[] _rightBuffer = Array.Empty<float>();
 
 	// ============ 选项 A：独立合成器用于低延迟手动音符 ============
 	private Synthesizer _manualSynth;      // 专用于手动触发的音符
@@ -440,13 +341,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		// 【修复D-1】记录播放开始的时刻（用于系统时钟模式）
 		if (playing && !_previousPlaying)
 		{
-			_playStartTime = Time.GetTicksMsec();
-			_playStartPositionMs = 0.0;
 			_previousPlaying = true;
-			if (_useSystemStopwatch)
-			{
-				// GD.Print($"[MeltySynthPlayer] Play started at system time {_playStartTime}ms");
-			}
 		}
 		else if (!playing && _previousPlaying)
 		{
@@ -581,6 +476,22 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		RequestAudioOutputPlay();
 	}
 
+	public override void _ExitTree()
+	{
+		GD.Print("[MeltySynthPlayer] _ExitTree() called, disposing audio resources");
+		if (_audioOutput != null)
+		{
+			_audioOutput.Dispose();
+			_audioOutput = null;
+		}
+		_sequencer = null;
+		_synth = null;
+		_autoSynth = null;
+		_manualSynth = null;
+		_soundFont = null;
+		_midiFile = null;
+	}
+
 	public void play()
 	{
 		EnsureAudioInitialized();
@@ -642,14 +553,7 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		// 【修复】允许负数 seek，设置待处理的 seek 标志
 		// _Process 会在下一帧处理这个 seek，确保不会阻塞音频线程
 		_pendingSeekMs = positionMs;  // 负数值会被接受
-		
-		// 【修复D-2】同时更新系统时钟基准点
-		if (_useSystemStopwatch)
-		{
-			_playStartPositionMs = positionMs;
-			_playStartTime = Time.GetTicksMsec();
-		}
-		
+
 		// GD.Print($"[MeltySynthPlayer] Queued seek to {positionMs} ms");
 	}
 
@@ -1293,27 +1197,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		seek_ms((double)positionMs);
 	}
 
-	/// <summary>设置 SoundFont (接口版本 - 返回 bool)</summary>
-	bool IMidiPlaybackInterface.set_soundfont(string soundfontPath)
-	{
-		try
-		{
-			set_soundfont(soundfontPath);
-			return _soundFont != null;
-		}
-		catch (Exception ex)
-		{
-			GD.PrintErr($"[MeltySynthPlayer] Failed to load SoundFont: {ex.Message}");
-			return false;
-		}
-	}
-
-	/// <summary>获取播放位置 (接口版本 - 返回 float)</summary>
-	float IMidiPlaybackInterface.get_position_ms()
-	{
-		return (float)get_position_ms();
-	}
-
 	/// <summary>获取播放位置 tick (接口方法)</summary>
 	public float get_position_tick()
 	{
@@ -1477,15 +1360,6 @@ public partial class MeltySynthPlayer : Node, IMidiPlaybackInterface
 		// 注意：不在这里调用 Play()，而是等待明确的 play() 调用
 		// 这样可以与 MidiPlayer (Addon) 的行为保持一致
 		// _sequencer.Play(_midiFile, loop);  // 移除自动播放
-	}
-
-	private void EnsureBuffers(int length)
-	{
-		if (_leftBuffer.Length < length)
-		{
-			_leftBuffer = new float[length];
-			_rightBuffer = new float[length];
-		}
 	}
 
 	private void LegacySeekByFastForward(double targetMs)

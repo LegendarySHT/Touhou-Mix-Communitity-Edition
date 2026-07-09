@@ -78,8 +78,6 @@ var play_mode: bool = true
 ## 生成的游戏键序列（演奏模式使用）
 var game_sequences: Array[KeySequenceManager.GameSequence] = []
 
-## MIDI播放中标志
-var is_midi_playing: bool = false
 var _is_finishing_game: bool = false
 
 ## position stall 检测：当 loop=false 时 MIDI 播放结束后 position 被 clamp 到 midiFile.Length
@@ -149,9 +147,6 @@ func _ready() -> void:
 	if playback_mgr == null:
 		push_error("MidiPlaybackManager not initialized!")
 		return
-	
-	# 连接MIDI播放信号
-	playback_mgr.midi_started.connect(_on_midi_started)
 	
 	# 从配置加载演奏模式设置
 	_load_play_mode_setting()
@@ -401,7 +396,7 @@ func _on_window_focus_exited() -> void:
 func _auto_pause_on_background(reason: String) -> void:
 	if UIStateManager.instance.current_state != UIStateManager.UIState.PLAY_VIEW:
 		return
-	if not is_midi_playing:
+	if playback_mgr and not playback_mgr.is_playing:
 		return
 	if is_pause:
 		return
@@ -424,7 +419,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 原代码中 await 0.8s 在 MIDI 加载之前，这段 0.8s 是纯空闲等待
 	_load_and_convert_midi_notes(midi)
 
-	# 确保游戏模式下不循环播放（load_midi会触发midi_loaded信号，需在加载后覆盖以确保loop=false）
+	# 确保游戏模式下不循环播放
 	playback_mgr.set_loop(false)
 
 	# 新增：从配置读取演奏模式
@@ -726,7 +721,7 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 	
 	if should_reinit:
 		# 仅在游戏未开始或者允许的情况下重新初始化轨道
-		if not is_midi_playing:
+		if not (playback_mgr and playback_mgr.is_playing):
 			_reinit_lane_display()
 
 ## 比较两个KeyCode数组是否不同
@@ -824,11 +819,6 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 	GameLogger.instance.info("MIDI runtime config applied: volume=%d, mute_states=%d, solo_pairs=%d" % 
 		[midi_data.midi_volume, midi_data.track_channel_mute_state.size(), midi_data.solo_pairs.size()], "PlayView")
 
-## MIDI播放开始回调
-func _on_midi_started() -> void:
-	print("[PlayView] MIDI playback started")
-	is_midi_playing = true
-
 ## 游戏结束回调
 func _on_game_finished() -> void:
 	if _is_finishing_game:
@@ -840,7 +830,6 @@ func _on_game_finished() -> void:
 	# 停止MIDI播放但不暂停FlowArea，让剩余音符继续自然下落
 	if playback_mgr:
 		playback_mgr.stop()
-	is_midi_playing = false
 
 	# 等待所有音符自然消除（被判定或落出屏幕），最长等待10秒
 	var safety_timer := get_tree().create_timer(10.0)

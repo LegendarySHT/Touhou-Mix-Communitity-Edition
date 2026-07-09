@@ -282,10 +282,7 @@ func _connect_signals() -> void:
 	
 	# 状态改变信号
 	state_manager.state_changed.connect(_on_state_changed)
-	
-	# 错误处理
-	event_bus.error_occurred.connect(_on_error_occurred)
-	
+
 	# 设置变化信号
 	event_bus.settings_changed.connect(_on_settings_changed)
 	
@@ -382,10 +379,6 @@ func _on_state_changed(old_state: int, new_state: int) -> void:
 	var old_name = state_manager.get_state_name(old_state)
 	var new_name = state_manager.get_state_name(new_state)
 	logger.debug("UI State changed: %s -> %s" % [old_name, new_name], "Main")
-
-## 错误处理回调
-func _on_error_occurred(error_code: int, error_message: String) -> void:
-	logger.error("Error %d: %s" % [error_code, error_message], "Main")
 
 ## 设置变化回调
 func _on_settings_changed(setting_name: String, value: Variant) -> void:

@@ -46,7 +46,6 @@ const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 ## .import 文件后缀（Godot 导出后，res:// 中的图片以 xxx.jpg.import 形式存在）
 const IMPORT_SUFFIX = ".import"
 
-@warning_ignore_start("unused_signal")
 ## ========== 资源索引 ==========
 ## 谱面索引 {chart_id: ChartMetadata}
 var charts_index: Dictionary = {}
@@ -66,14 +65,7 @@ var is_scanning: bool = false
 var resources_scanned: bool = false  ## 标记资源扫描是否已完成
 
 ## ========== 信号 ==========
-signal initialization_complete
 signal resources_ready
-signal chart_added(chart_id: String, metadata: Dictionary)
-signal skin_installed(skin_name: String)
-signal resource_scan_completed(resource_type: String, count: int)
-signal resource_error(error_message: String)
-
-@warning_ignore_restore("unused_signal")
 
 func _ready() -> void:
 	if instance == null:
@@ -164,7 +156,6 @@ func _ensure_directory_exists(dir_path: String) -> bool:
 		return true
 	else:
 		GameLogger.instance.error("Failed to create directory: %s (Error: %d)" % [dir_path, error], "FileSystemMGR")
-		resource_error.emit("Failed to create directory: %s" % dir_path)
 		return false
 
 ## 异步检查并复制默认资源
@@ -559,7 +550,6 @@ func _scan_all_resources() -> void:
 	resources_ready.emit()
 
 	is_initialized = true
-	initialization_complete.emit()
 
 	GameLogger.instance.info("Directory structure initialized", "FileSystemMGR")
 
@@ -592,13 +582,8 @@ func scan_charts() -> void:
 		# 	await get_tree().process_frame
 	
 	dir.list_dir_end()
-	
-	call_deferred("emit_scan_completed","charts",count)
-	
-	GameLogger.instance.info("Scanned %d charts" % count, "FileSystemMGR")
 
-func emit_scan_completed(p_str, ctn):
-	resource_scan_completed.emit(p_str, ctn)
+	GameLogger.instance.info("Scanned %d charts" % count, "FileSystemMGR")
 
 ## 加载谱面元数据（从谱面文件夹）
 ## 文件夹命名格式：{hash}_{song_name}_{difficulty}/
@@ -697,8 +682,7 @@ func scan_skins() -> void:
 	
 	# 再扫描用户皮肤
 	_scan_skins_from_dir(SKINS_DIR, false)
-	
-	call_deferred("emit_scan_completed","skins",skins_index.size())
+
 	GameLogger.instance.info("Scanned %d skins" % skins_index.size(), "FileSystemMGR")
 
 ## 从指定目录扫描皮肤
@@ -1036,7 +1020,6 @@ func scan_soundfonts() -> void:
 		# await get_tree().process_frame
 	
 	dir.list_dir_end()
-	call_deferred("emit_scan_completed","soundfonts",count)
 	GameLogger.instance.info("Scanned %d soundfonts" % count, "FileSystemMGR")
 
 ## 扫描背景图目录
@@ -1064,7 +1047,6 @@ func scan_backgrounds() -> void:
 		file_name = dir.get_next()
 	
 	dir.list_dir_end()
-	call_deferred("emit_scan_completed","backgrounds",count)
 	GameLogger.instance.info("Scanned %d backgrounds" % count, "FileSystemMGR")
 
 ## ========== 公共查询接口 ==========
