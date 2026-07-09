@@ -4,9 +4,6 @@ extends Node
 
 class_name SortingEngine
 
-## 单例实例
-static var instance: SortingEngine
-
 ## 排序方向枚举
 enum SortDirection {
 	ASCENDING,  # 升序
@@ -56,11 +53,7 @@ static func album_sort_method_to_str(method: AlbumSortMethod) -> String:
 
 ## 初始化函数
 func _ready() -> void:
-	if instance == null:
-		instance = self
-		add_to_group("singleton")
-	else:
-		queue_free()
+	add_to_group("singleton")
 
 ## 排序配置
 var current_sort_field: SortDataField = SortDataField.DEFAULT
@@ -219,17 +212,18 @@ func _filter_midis_by_status(
 
 ## 给UI获取Midi列表用
 func get_midis() -> Array[MidiData]:
-	print("当前midi数量:", current_midis.size())
+	GLogger.info("当前midi数量: %d" % current_midis.size(), "SortEngine")
 	return current_midis
 
 ## 设置排序模式
 func set_sort_mode(status: SortStatField = SortStatField.ALL,
 					sort_field: SortDataField = SortDataField.DEFAULT,
-					sort_direction: SortDirection = SortDirection.DESCENDING):
+					sort_direction: SortDirection = SortDirection.DESCENDING,
+					midis = null):
 	_sort_request_id += 1
 	var request_id := _sort_request_id
 	is_sorting_active = true
-	_sort_mode_task(request_id, status, sort_field, sort_direction)
+	_sort_mode_task(request_id, status, sort_field, sort_direction, midis)
 
 ## 排序任务收尾
 func _finish_sort_task(request_id: int, should_emit_signal: bool) -> void:
@@ -245,24 +239,26 @@ func _sort_mode_task(
 	request_id: int,
 	status: SortStatField = SortStatField.ALL,
 	sort_field: SortDataField = SortDataField.DEFAULT,
-	sort_direction: SortDirection = SortDirection.DESCENDING
+	sort_direction: SortDirection = SortDirection.DESCENDING,
+	midis = null
 ) -> void:
-	print("开始排序任务: 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction])
+	GLogger.info("开始排序任务: 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction], "SortEngine")
 
-	var midis = DataMGR.midis.values().duplicate()
+	# 若未传入 midis，则从 DataMGR 读取（保持向后兼容）
+	var source_midis = midis if midis != null else DataMGR.midis.values().duplicate()
 	current_sort_field = sort_field
 	current_sort_direction = sort_direction
 	current_sort_stat_field = status
-	print("排序前midi数量", midis.size())
+	GLogger.info("排序前midi数量: %d" % source_midis.size(), "SortEngine")
 
 	if await _yield_for_sort_step(request_id):
 		return
 
-	var temp_list = await _filter_midis_by_status(midis, status, request_id)
+	var temp_list = await _filter_midis_by_status(source_midis, status, request_id)
 	if _is_sort_cancelled(request_id):
 		return
 
-	print("过滤后midi数量", temp_list.size())
+	GLogger.info("过滤后midi数量: %d" % temp_list.size(), "SortEngine")
 	temp_list = _sort_midis(temp_list, sort_field, sort_direction)
 	if _is_sort_cancelled(request_id):
 		return
@@ -272,7 +268,7 @@ func _sort_mode_task(
 
 ## 发射排序完成信号
 func _emit_sort_finished() -> void:
-	print("排序完成")
+	GLogger.info("排序完成", "SortEngine")
 	EvtBus.sort_finished.emit()
 
 ## 清空缓存

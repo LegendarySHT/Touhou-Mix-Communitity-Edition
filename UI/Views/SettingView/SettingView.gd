@@ -20,8 +20,8 @@ func _ready() -> void:
 		idx += 1
 
 	# 页面切换
-	EventBus.instance.page_left.connect(switch_page.bind(-1))
-	EventBus.instance.page_right.connect(switch_page.bind(1))
+	EvtBus.page_left.connect(switch_page.bind(-1))
+	EvtBus.page_right.connect(switch_page.bind(1))
 
 	# 转移焦点至导航按钮
 	short_cut_btn.focus_entered.connect(func():
@@ -335,10 +335,10 @@ func _load_note_skin_options(loaded_settings: Dictionary) -> void:
 	Args:
 		loaded_settings: 从配置文件加载的设置字典
 	"""
-	# 从 FileSystemManager 获取可用皮肤列表
+	# 从 SkinManager 获取可用皮肤列表
 	var skin_list = []
-	if FileSystemManager.instance:
-		skin_list = FileSystemManager.instance.get_available_skins()
+	if SkinMGR:
+		skin_list = SkinMGR.get_available_skins()
 	
 	if skin_list.is_empty():
 		print("[SettingView] No note skins found, using default")
@@ -520,7 +520,7 @@ func get_setting_value(setting_id: String) -> Variant:
 
 @onready var setting_page = $HBoxC
 @onready var delete_page = $DelView
-@onready var ani: AnimationManager = AnimationManager.instance
+@onready var ani: AnimationManager = AniMGR
 func switch_page(direction: int = 0):
 	var op: bool = true
 	if direction == -1:

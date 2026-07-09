@@ -10,9 +10,9 @@ enum ShowStat {
 	ARROW_RIGHT,
 }
 
-@onready var ani:AnimationManager = AniMGR.instance
-@onready var ui:UIStateManager = UIStateManager.instance
-@onready var eb: EventBus = EventBus.instance
+@onready var ani:AnimationManager = AniMGR
+@onready var ui:UIStateManager = UiStatMGR
+@onready var eb: EventBus = EvtBus
 
 @onready var _base_position: Vector2 = position
 

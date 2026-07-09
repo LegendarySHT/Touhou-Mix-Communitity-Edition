@@ -56,9 +56,9 @@ func _on_mode_selected(index: int) -> void:
 	ConfigManager.instance.set_value_and_notify("Playback", "auto_mode", value)
 	var save_ok := ConfigManager.instance.save_config(ConfigManager.USER_CONFIG_PATH)
 	if not save_ok:
-		GameLogger.instance.warning("Failed to persist Playback.auto_mode to user config", "OptionUI")
+		GLogger.warning("Failed to persist Playback.auto_mode to user config", "OptionUI")
 	else:
-		GameLogger.instance.info("Playback.auto_mode set to %d" % value, "OptionUI")
+		GLogger.info("Playback.auto_mode set to %d" % value, "OptionUI")
 
 # 修改popupmenu的弹出位置
 func _on_popup_menu_popup(popup_menu: PopupMenu) -> void:
@@ -74,4 +74,4 @@ func _on_button_toggled(toggle_on, button):
 		if t_page.visible:
 			return
 		t_page.visible = true
-		AnimationManager.instance.animate_fade_in(t_page, 0.2, "tabSwitch")
+		AniMGR.animate_fade_in(t_page, 0.2, "tabSwitch")

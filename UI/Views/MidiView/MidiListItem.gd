@@ -29,17 +29,17 @@ var _compute_thread: Thread = null
 var _thread_target_midi: MidiData = null
 
 func _ready() -> void:
-	if EventBus.instance:
-		EventBus.instance.config_changed.connect(_on_config_changed)
-	if UIStateManager.instance:
-		UIStateManager.instance.state_changed.connect(_on_ui_state_changed)
+	if EvtBus:
+		EvtBus.config_changed.connect(_on_config_changed)
+	if UiStatMGR:
+		UiStatMGR.state_changed.connect(_on_ui_state_changed)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_EXIT_TREE:
-		if EventBus.instance and EventBus.instance.config_changed.is_connected(_on_config_changed):
-			EventBus.instance.config_changed.disconnect(_on_config_changed)
-		if UIStateManager.instance and UIStateManager.instance.state_changed.is_connected(_on_ui_state_changed):
-			UIStateManager.instance.state_changed.disconnect(_on_ui_state_changed)
+		if EvtBus and EvtBus.config_changed.is_connected(_on_config_changed):
+			EvtBus.config_changed.disconnect(_on_config_changed)
+		if UiStatMGR and UiStatMGR.state_changed.is_connected(_on_ui_state_changed):
+			UiStatMGR.state_changed.disconnect(_on_ui_state_changed)
 		if _compute_thread != null and _compute_thread.is_alive():
 			_compute_thread.wait_to_finish()
 
@@ -109,8 +109,8 @@ func on_item_button_toggled(toggled_on: bool):
 	expand_tween.tween_property(line, "position", Vector2(-50, 12 - 5 * expa), 0.15)
 	#指示器
 	var primary_dark: Color = Color(0.129, 0.412, 0.702)
-	if ThemeManager.instance:
-		primary_dark = ThemeManager.instance.get_color("primary_dark")
+	if ThemeMGR:
+		primary_dark = ThemeMGR.get_color("primary_dark")
 	expand_tween.tween_property(indicator.get_child(item_index), "color", primary_dark if expa else Color(1, 1, 1), 0.15)
 	expand_tween.tween_property(indicator, "position", Vector2(30, 100 - item_index * 24), 0.35)
 	

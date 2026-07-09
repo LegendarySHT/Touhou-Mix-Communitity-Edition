@@ -28,17 +28,8 @@ static var SETTINGS_DIR: String:
 
 ## 默认资源源目录
 const DEFAULT_CHARTS_SRC = "res://Resources/Charts/"
-const DEFAULT_SKINS_SRC = "res://Resources/Skins/"
 const DEFAULT_SOUNDFONT_SRC = "res://Resources/Soundfont/"
 const DEFAULT_BACKGROUND_SRC = "res://Resources/BackgroundImage/"
-
-## 皮肤配置文件名（放置在皮肤包目录下）
-const SKIN_CONFIG_FILE = "skin.ini"
-
-## 皮肤配置默认光晕大小（与 config.ini 中的全局默认值对齐：short/instant=5.0，long=5.0+3=8.0）
-const SKIN_GLOW_SIZE_DEFAULT_SHORT = 5.0
-const SKIN_GLOW_SIZE_DEFAULT_INSTANT = 5.0
-const SKIN_GLOW_SIZE_DEFAULT_LONG = 8.0
 
 ## 图片文件扩展名列表（Godot 导出时会被转换为 .ctex，无法通过 FileAccess 直接读取）
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
@@ -49,9 +40,6 @@ const IMPORT_SUFFIX = ".import"
 ## ========== 资源索引 ==========
 ## 谱面索引 {chart_id: ChartMetadata}
 var charts_index: Dictionary = {}
-
-## 皮肤索引 {skin_name: SkinMetadata}
-var skins_index: Dictionary = {}
 
 ## 音源索引 {soundfont_name: String(path)}
 var soundfonts_index: Dictionary = {}
@@ -78,25 +66,25 @@ func _ready() -> void:
 	# 输出平台信息以便调试
 	var platform = OS.get_name()
 	var user_data_dir = OS.get_user_data_dir()
-	GameLogger.instance.info("Platform: %s" % platform, "FileSystemMGR")
-	GameLogger.instance.info("User data directory: %s" % user_data_dir, "FileSystemMGR")
-	GameLogger.instance.info("Base directory: %s" % BASE_DIR, "FileSystemMGR")
-	GameLogger.instance.info("Charts directory: %s" % CHARTS_DIR, "FileSystemMGR")
+	GLogger.info("Platform: %s" % platform, "FileSystemMGR")
+	GLogger.info("User data directory: %s" % user_data_dir, "FileSystemMGR")
+	GLogger.info("Base directory: %s" % BASE_DIR, "FileSystemMGR")
+	GLogger.info("Charts directory: %s" % CHARTS_DIR, "FileSystemMGR")
 	if PathHelper.is_android():
-		GameLogger.instance.info("Android external storage enabled", "FileSystemMGR")
-		GameLogger.instance.info(PathHelper.get_debug_info(), "FileSystemMGR")
-	GameLogger.instance.info("FileSystemManager initialized", "FileSystemMGR")
+		GLogger.info("Android external storage enabled", "FileSystemMGR")
+		GLogger.info(PathHelper.get_debug_info(), "FileSystemMGR")
+	GLogger.info("FileSystemManager initialized", "FileSystemMGR")
 
 ## 检查关键 res:// 资源是否在导出包中存在（Android 调试用）
 func check_critical_resources() -> void:
-	GameLogger.instance.info("=== Checking critical resources in PCK ===", "FileSystemMGR")
+	GLogger.info("=== Checking critical resources in PCK ===", "FileSystemMGR")
 	
 	var critical_resources = {
 		"Config": "res://Resources/Config/config.ini",
 		"Charts Directory": DEFAULT_CHARTS_SRC,
 		"Soundfont Directory": DEFAULT_SOUNDFONT_SRC,
 		"Background Directory": DEFAULT_BACKGROUND_SRC,
-		"Skins Directory": DEFAULT_SKINS_SRC
+		"Skins Directory": SkinManager.DEFAULT_SKINS_SRC
 	}
 	
 	for resource_name in critical_resources.keys():
@@ -110,20 +98,20 @@ func check_critical_resources() -> void:
 			exists = FileAccess.file_exists(resource_path)
 		
 		var status = "✓ FOUND" if exists else "✗ MISSING"
-		GameLogger.instance.info("%s: %s [%s]" % [resource_name, status, resource_path], "FileSystemMGR")
+		GLogger.info("%s: %s [%s]" % [resource_name, status, resource_path], "FileSystemMGR")
 		
 		if not exists:
-			GameLogger.instance.error("Critical resource missing: %s - Check export settings!" % resource_name, "FileSystemMGR")
+			GLogger.error("Critical resource missing: %s - Check export settings!" % resource_name, "FileSystemMGR")
 	
-	GameLogger.instance.info("=== Resource check complete ===", "FileSystemMGR")
+	GLogger.info("=== Resource check complete ===", "FileSystemMGR")
 
 ## 初始化目录结构（修改为异步等待资源复制完成）
 func initialize_directory_structure() -> void:
 	if is_initialized:
-		GameLogger.instance.warning("FileSystemManager already initialized", "FileSystemMGR")
+		GLogger.warning("FileSystemManager already initialized", "FileSystemMGR")
 		return
 	
-	GameLogger.instance.info("Initializing directory structure...", "FileSystemMGR")
+	GLogger.info("Initializing directory structure...", "FileSystemMGR")
 	
 	# Android 平台：首先检查关键资源是否被正确导出
 	check_critical_resources()
@@ -152,31 +140,31 @@ func _ensure_directory_exists(dir_path: String) -> bool:
 	
 	var error = DirAccess.make_dir_recursive_absolute(dir_path)
 	if error == OK:
-		GameLogger.instance.info("Created directory: %s" % dir_path, "FileSystemMGR")
+		GLogger.info("Created directory: %s" % dir_path, "FileSystemMGR")
 		return true
 	else:
-		GameLogger.instance.error("Failed to create directory: %s (Error: %d)" % [dir_path, error], "FileSystemMGR")
+		GLogger.error("Failed to create directory: %s (Error: %d)" % [dir_path, error], "FileSystemMGR")
 		return false
 
 ## 异步检查并复制默认资源
 func _check_and_copy_default_resources_async() -> void:
 	# 复制谱面（若目录为空）
 	if _is_directory_empty(CHARTS_DIR):
-		GameLogger.instance.info("Charts directory is empty, copying default charts...", "FileSystemMGR")
+		GLogger.info("Charts directory is empty, copying default charts...", "FileSystemMGR")
 		await _copy_default_charts_async()   # 改为异步版本
 	
 	# 复制皮肤（若目录为空）
 	if _is_directory_empty(SKINS_DIR):
-		GameLogger.instance.info("Skins directory is empty, copying default skins...", "FileSystemMGR")
-		await _copy_directory_recursive_async(DEFAULT_SKINS_SRC, SKINS_DIR)
+		GLogger.info("Skins directory is empty, copying default skins...", "FileSystemMGR")
+		await _copy_directory_recursive_async(SkinManager.DEFAULT_SKINS_SRC, SKINS_DIR)
 	
 	# 音源目录：仅创建目录，不复制默认资源
 	_ensure_directory_exists(SOUNDFONT_DIR)
-	GameLogger.instance.info("Soundfont directory ready (no default resources copied)", "FileSystemMGR")
+	GLogger.info("Soundfont directory ready (no default resources copied)", "FileSystemMGR")
 	
 	# 复制背景图（若目录为空）
 	if _is_directory_empty(BACKGROUND_DIR):
-		GameLogger.instance.info("Background directory is empty, copying default backgrounds...", "FileSystemMGR")
+		GLogger.info("Background directory is empty, copying default backgrounds...", "FileSystemMGR")
 		await _copy_directory_contents_async(DEFAULT_BACKGROUND_SRC, BACKGROUND_DIR, "jpg,jpeg,png,webp")
 	
 	# 所有复制完成后扫描资源
@@ -191,14 +179,14 @@ func _copy_default_charts_async() -> void:
 	var dest_base = CHARTS_DIR
 	
 	if not DirAccess.dir_exists_absolute(source_base):
-		GameLogger.instance.warning("Charts source directory not found in PCK", "FileSystemMGR")
+		GLogger.warning("Charts source directory not found in PCK", "FileSystemMGR")
 		return
 	
-	GameLogger.instance.info("Starting to copy default charts from PCK...", "FileSystemMGR")
+	GLogger.info("Starting to copy default charts from PCK...", "FileSystemMGR")
 	
 	var source_dir = DirAccess.open(source_base)
 	if not source_dir:
-		GameLogger.instance.error("Failed to open source charts directory", "FileSystemMGR")
+		GLogger.error("Failed to open source charts directory", "FileSystemMGR")
 		return
 	
 	source_dir.list_dir_begin()
@@ -223,13 +211,13 @@ func _copy_default_charts_async() -> void:
 		chart_folder = source_dir.get_next()
 	
 	source_dir.list_dir_end()
-	GameLogger.instance.info("Copied %d chart folders from PCK" % copied_count, "FileSystemMGR")
+	GLogger.info("Copied %d chart folders from PCK" % copied_count, "FileSystemMGR")
 
 ## 异步复制单个 chart 文件夹的所有文件（内部处理图片时使用资源加载器）
 func _copy_chart_files_from_pck_async(source_path: String, dest_path: String) -> bool:
 	var source_dir = DirAccess.open(source_path)
 	if not source_dir:
-		GameLogger.instance.warning("Failed to open chart folder: %s" % source_path, "FileSystemMGR")
+		GLogger.warning("Failed to open chart folder: %s" % source_path, "FileSystemMGR")
 		return false
 	
 	var success = false
@@ -285,21 +273,21 @@ static func _strip_import_suffix(file_name: String) -> String:
 ## 因此需要通过 ResourceLoader 加载纹理资源，再从 Image 对象重新保存为原始格式
 func _copy_image_via_resource_loader(src_path: String, dest_path: String) -> bool:
 	if not ResourceLoader.exists(src_path):
-		GameLogger.instance.warning(
+		GLogger.warning(
 			"Image resource not found in PCK: %s" % src_path, "FileSystemMGR"
 		)
 		return false
 	
 	var texture = ResourceLoader.load(src_path, "Texture2D")
 	if texture == null or not (texture is Texture2D):
-		GameLogger.instance.warning(
+		GLogger.warning(
 			"Failed to load image as Texture2D: %s" % src_path, "FileSystemMGR"
 		)
 		return false
 	
 	var image: Image = (texture as Texture2D).get_image()
 	if image == null:
-		GameLogger.instance.warning(
+		GLogger.warning(
 			"Failed to get Image from texture: %s" % src_path, "FileSystemMGR"
 		)
 		return false
@@ -320,12 +308,12 @@ func _copy_image_via_resource_loader(src_path: String, dest_path: String) -> boo
 			error = image.save_png(dest_path)
 	
 	if error != OK:
-		GameLogger.instance.error(
+		GLogger.error(
 			"Failed to save image: %s (Error: %d)" % [dest_path, error], "FileSystemMGR"
 		)
 		return false
 	
-	#GameLogger.instance.info(
+	#GLogger.info(
 		#"Copied image via resource loader: %s" % dest_path.get_file(), "FileSystemMGR"
 	#)
 	return true
@@ -350,13 +338,13 @@ func _copy_file_from_pck(source_path: String, dest_path: String) -> bool:
 	
 	# 非图片文件：使用 FileAccess 直接复制
 	if not FileAccess.file_exists(source_path):
-		GameLogger.instance.warning("Source file not found in PCK: %s" % source_path, "FileSystemMGR")
+		GLogger.warning("Source file not found in PCK: %s" % source_path, "FileSystemMGR")
 		return false
 	
 	var source_file = FileAccess.open(source_path, FileAccess.READ)
 	if not source_file:
 		var error = FileAccess.get_open_error()
-		GameLogger.instance.warning(
+		GLogger.warning(
 			"Failed to read from PCK [%s], error code: %d" % [source_path, error],
 			"FileSystemMGR"
 		)
@@ -365,7 +353,7 @@ func _copy_file_from_pck(source_path: String, dest_path: String) -> bool:
 	var dest_file = FileAccess.open(dest_path, FileAccess.WRITE)
 	if not dest_file:
 		var error = FileAccess.get_open_error()
-		GameLogger.instance.error(
+		GLogger.error(
 			"Failed to write to user:// [%s], error code: %d" % [dest_path, error],
 			"FileSystemMGR"
 		)
@@ -404,12 +392,12 @@ func _is_directory_empty(dir_path: String) -> bool:
 func _copy_directory_contents_async(src_dir: String, dest_dir: String, extensions: String) -> void:
 	if src_dir.begins_with("res://"):
 		if not DirAccess.dir_exists_absolute(src_dir):
-			GameLogger.instance.warning("Source directory not found in PCK: %s" % src_dir, "FileSystemMGR")
+			GLogger.warning("Source directory not found in PCK: %s" % src_dir, "FileSystemMGR")
 			return
 	
 	var dir = DirAccess.open(src_dir)
 	if dir == null:
-		GameLogger.instance.warning("Failed to open source directory: %s" % src_dir, "FileSystemMGR")
+		GLogger.warning("Failed to open source directory: %s" % src_dir, "FileSystemMGR")
 		return
 	
 	var ext_list = extensions.split(",")
@@ -432,7 +420,7 @@ func _copy_directory_contents_async(src_dir: String, dest_dir: String, extension
 				if ext_list.has(file_ext):
 					var src_path = src_dir.path_join(file_name)
 					var dest_path = dest_dir.path_join(file_name)
-					if _copy_file(src_path, dest_path):
+					if _copy_file_from_pck(src_path, dest_path):
 						copied_count += 1
 			
 			# 每复制一个文件后让步
@@ -441,18 +429,18 @@ func _copy_directory_contents_async(src_dir: String, dest_dir: String, extension
 		file_name = dir.get_next()
 	
 	dir.list_dir_end()
-	GameLogger.instance.info("Copied %d files from %s to %s" % [copied_count, src_dir, dest_dir], "FileSystemMGR")
+	GLogger.info("Copied %d files from %s to %s" % [copied_count, src_dir, dest_dir], "FileSystemMGR")
 
 ## 异步递归复制整个目录（在文件循环中让步）
 func _copy_directory_recursive_async(src_dir: String, dest_dir: String) -> void:
 	if src_dir.begins_with("res://"):
 		if not DirAccess.dir_exists_absolute(src_dir):
-			GameLogger.instance.warning("Source directory not found in PCK: %s" % src_dir, "FileSystemMGR")
+			GLogger.warning("Source directory not found in PCK: %s" % src_dir, "FileSystemMGR")
 			return
 	
 	var dir = DirAccess.open(src_dir)
 	if dir == null:
-		GameLogger.instance.warning("Failed to open source directory: %s" % src_dir, "FileSystemMGR")
+		GLogger.warning("Failed to open source directory: %s" % src_dir, "FileSystemMGR")
 		return
 	
 	dir.list_dir_begin()
@@ -475,7 +463,7 @@ func _copy_directory_recursive_async(src_dir: String, dest_dir: String) -> void:
 			else:
 				var src_path = src_dir.path_join(file_name)
 				var dest_path = dest_dir.path_join(file_name)
-				if _copy_file(src_path, dest_path):
+				if _copy_file_from_pck(src_path, dest_path):
 					copied_count += 1
 			
 			# 每处理一个文件后让步
@@ -484,49 +472,8 @@ func _copy_directory_recursive_async(src_dir: String, dest_dir: String) -> void:
 		file_name = dir.get_next()
 	
 	dir.list_dir_end()
-	GameLogger.instance.info("Recursively copied %d files from %s" % [copied_count, src_dir], "FileSystemMGR")
+	GLogger.info("Recursively copied %d files from %s" % [copied_count, src_dir], "FileSystemMGR")
 
-
-## 复制单个文件
-## Android 兼容：处理 res:// 和 user:// 路径
-## 图片文件（JPG/PNG/WebP）从 res:// 复制时使用资源加载器，避免 .ctex 转换问题
-func _copy_file(src_path: String, dest_path: String) -> bool:
-	# 跳过 .import 文件（应在目录遍历层处理，此处为防御性回退）
-	if src_path.ends_with(IMPORT_SUFFIX):
-		if _is_image_import_file(src_path.get_file()):
-			var original_src = _strip_import_suffix(src_path)
-			var original_dest = _strip_import_suffix(dest_path)
-			return _copy_image_via_resource_loader(original_src, original_dest)
-		return false
-	
-	# Android/导出兼容：res:// 下的图片文件需要通过资源加载器复制
-	if src_path.begins_with("res://") and _is_image_file(src_path):
-		return _copy_image_via_resource_loader(src_path, dest_path)
-	
-	# 非图片文件或非 res:// 路径：使用 FileAccess 直接复制
-	if not FileAccess.file_exists(src_path):
-		GameLogger.instance.warning("Source file not found: %s" % src_path, "FileSystemMGR")
-		return false
-	
-	var src_file = FileAccess.open(src_path, FileAccess.READ)
-	if src_file == null:
-		var error_code = FileAccess.get_open_error()
-		GameLogger.instance.warning("Failed to open source file: %s (Error: %d)" % [src_path, error_code], "FileSystemMGR")
-		return false
-	
-	var content = src_file.get_buffer(src_file.get_length())
-	src_file.close()
-	
-	var dest_file = FileAccess.open(dest_path, FileAccess.WRITE)
-	if dest_file == null:
-		var error_code = FileAccess.get_open_error()
-		GameLogger.instance.error("Failed to create destination file: %s (Error: %d)" % [dest_path, error_code], "FileSystemMGR")
-		return false
-	
-	dest_file.store_buffer(content)
-	dest_file.close()
-	
-	return true
 
 ## 扫描所有资源
 func _scan_all_resources() -> void:
@@ -534,11 +481,11 @@ func _scan_all_resources() -> void:
 		return
 	
 	is_scanning = true
-	GameLogger.instance.info("Scanning all resources...", "FileSystemMGR")
+	GLogger.info("Scanning all resources...", "FileSystemMGR")
 
 	scan_charts()
 	await get_tree().process_frame
-	scan_skins()
+	SkinMGR.scan_skins()
 	await get_tree().process_frame
 	scan_soundfonts()
 	await get_tree().process_frame
@@ -551,7 +498,7 @@ func _scan_all_resources() -> void:
 
 	is_initialized = true
 
-	GameLogger.instance.info("Directory structure initialized", "FileSystemMGR")
+	GLogger.info("Directory structure initialized", "FileSystemMGR")
 
 ## 扫描谱面目录
 ## 仅扫描新的谱面文件夹格式（每个文件夹一个谱面）
@@ -561,7 +508,7 @@ func scan_charts() -> void:
 	
 	var dir = DirAccess.open(CHARTS_DIR)
 	if dir == null:
-		GameLogger.instance.warning("Failed to open charts directory", "FileSystemMGR")
+		GLogger.warning("Failed to open charts directory", "FileSystemMGR")
 		return
 	
 	dir.list_dir_begin()
@@ -572,9 +519,9 @@ func scan_charts() -> void:
 		if dir.current_is_dir() and not folder_name.begins_with("."):
 			var chart_path = CHARTS_DIR.path_join(folder_name)
 			var metadata = _load_chart_metadata(chart_path, folder_name)
-			
+
 			if metadata != null and not metadata.is_empty():
-				charts_index[folder_name] = metadata
+				charts_index[folder_name] = ChartMetadata.from_dict(metadata)
 				count += 1
 		
 		folder_name = dir.get_next()
@@ -583,7 +530,7 @@ func scan_charts() -> void:
 	
 	dir.list_dir_end()
 
-	GameLogger.instance.info("Scanned %d charts" % count, "FileSystemMGR")
+	GLogger.info("Scanned %d charts" % count, "FileSystemMGR")
 
 ## 加载谱面元数据（从谱面文件夹）
 ## 文件夹命名格式：{hash}_{song_name}_{difficulty}/
@@ -595,7 +542,7 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 	
 	# 检查必需文件是否存在
 	if not FileAccess.file_exists(json_path):
-		GameLogger.instance.warning("Chart folder %s missing JSON file: %s" % [folder_name, json_path], "FileSystemMGR")
+		GLogger.warning("Chart folder %s missing JSON file: %s" % [folder_name, json_path], "FileSystemMGR")
 		return {}
 	
 	# 读取 JSON 元数据
@@ -606,7 +553,7 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 	# 验证谱面完整性（检查 .mid 文件）
 	var mid_path = chart_path.path_join(chart_id + ".mid")
 	if not FileAccess.file_exists(mid_path):
-		GameLogger.instance.warning("Chart %s missing MIDI file: %s" % [chart_id, mid_path], "FileSystemMGR")
+		GLogger.warning("Chart %s missing MIDI file: %s" % [chart_id, mid_path], "FileSystemMGR")
 		metadata["is_complete"] = false
 		return metadata
 	
@@ -646,7 +593,7 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 func _load_chart_from_json(json_path: String, chart_id: String) -> Dictionary:
 	var file = FileAccess.open(json_path, FileAccess.READ)
 	if file == null:
-		GameLogger.instance.warning("Failed to open chart JSON: %s" % json_path, "FileSystemMGR")
+		GLogger.warning("Failed to open chart JSON: %s" % json_path, "FileSystemMGR")
 		return {}
 	
 	var content = file.get_as_text()
@@ -654,7 +601,7 @@ func _load_chart_from_json(json_path: String, chart_id: String) -> Dictionary:
 	file.close()
 	
 	if json == null:
-		GameLogger.instance.warning("Failed to parse chart JSON: %s" % json_path, "FileSystemMGR")
+		GLogger.warning("Failed to parse chart JSON: %s" % json_path, "FileSystemMGR")
 		return {}
 	
 	# Normalize JSON format (merge song/album/author + source* into 3 fields)
@@ -671,330 +618,6 @@ func _load_chart_from_json(json_path: String, chart_id: String) -> Dictionary:
 		"is_complete": false
 	}
 
-## 扫描皮肤目录 - 同时扫描内置和用户皮肤
-func scan_skins() -> void:
-	# await get_tree().process_frame
-	skins_index.clear()
-	
-	# 先扫描内置皮肤
-	var builtin_skins_dir = DEFAULT_SKINS_SRC
-	_scan_skins_from_dir(builtin_skins_dir, true)
-	
-	# 再扫描用户皮肤
-	_scan_skins_from_dir(SKINS_DIR, false)
-
-	GameLogger.instance.info("Scanned %d skins" % skins_index.size(), "FileSystemMGR")
-
-## 从指定目录扫描皮肤
-func _scan_skins_from_dir(dir_path: String, is_builtin: bool) -> void:
-	var dir = DirAccess.open(dir_path)
-	if dir == null:
-		if is_builtin:
-			GameLogger.instance.warning("Failed to open built-in skins directory: %s" % dir_path, "FileSystemMGR")
-		return
-	
-	dir.list_dir_begin()
-	var folder_name = dir.get_next()
-	
-	while folder_name != "":
-		if not dir.current_is_dir() or folder_name.begins_with("."):
-			folder_name = dir.get_next()
-			continue
-		
-		if dir.current_is_dir():
-			var skin_path = dir_path.path_join(folder_name)
-			var skin_key = folder_name
-			
-			# 如果是内置皮肤，添加 [内置] 标记
-			if is_builtin:
-				skin_key = "%s [内置]" % folder_name
-			
-			var metadata = _load_skin_metadata(skin_path, skin_key, is_builtin)
-			
-			if metadata != null and not metadata.is_empty():
-				skins_index[skin_key] = metadata
-		
-		folder_name = dir.get_next()
-	
-	dir.list_dir_end()
-
-## 加载皮肤元数据
-func _load_skin_metadata(skin_path: String, skin_name: String, is_builtin: bool = false) -> Dictionary:
-	# 不再检查必需文件，允许部分贴图缺失
-	var metadata = {
-		"name": skin_name,
-		"path": skin_path,
-		"is_builtin": is_builtin,
-		"is_complete": true,
-		"missing_files": [],
-		# 皮肤级配置（光晕颜色/大小、long-f 贴图应用方式等）
-		"config": _load_or_generate_skin_config(skin_path, is_builtin)
-	}
-	
-	return metadata
-
-## 加载或自动生成皮肤配置
-## 用户皮肤（user://）若缺失 skin.ini 会自动写入磁盘；内置皮肤（res://）仅返回内存配置
-func _load_or_generate_skin_config(skin_path: String, is_builtin: bool) -> Dictionary:
-	var config_path = skin_path.path_join(SKIN_CONFIG_FILE)
-	
-	# 1. 尝试加载已存在的 skin.ini
-	if FileAccess.file_exists(config_path):
-		var loaded = _load_skin_config_from_file(config_path)
-		if not loaded.is_empty():
-			return loaded
-		# 加载失败（文件损坏等）：回退到自动生成，并打印警告
-		GameLogger.instance.warning("Skin config corrupted, regenerating: %s" % config_path, "FileSystemMGR")
-	
-	# 2. 自动生成默认配置
-	var config = _generate_default_skin_config(skin_path)
-	
-	# 3. 用户皮肤写入磁盘；内置皮肤跳过（res:// 在导出后为只读）
-	if not is_builtin:
-		_save_skin_config_to_file(config_path, config)
-		GameLogger.instance.info("Generated skin config: %s" % config_path, "FileSystemMGR")
-	
-	return config
-
-## 从文件加载皮肤配置并解析为结构化 Dictionary
-## 返回空 Dictionary 表示加载/解析失败
-func _load_skin_config_from_file(config_path: String) -> Dictionary:
-	var file = FileAccess.open(config_path, FileAccess.READ)
-	if file == null:
-		return {}
-	var content = file.get_as_text()
-	file.close()
-	
-	# 复用项目通用的 INI 解析逻辑（段→键→字符串值）
-	var raw = _parse_skin_ini(content)
-	if raw.is_empty():
-		return {}
-	
-	return _normalize_skin_config(raw)
-
-## 解析 skin.ini 文本为 {section: {key: value_string}} 形式
-## 与 ConfigManager._parse_ini 行为一致，但独立维护以避免缓存耦合
-func _parse_skin_ini(content: String) -> Dictionary:
-	var result: Dictionary = {}
-	var current_section: String = ""
-	for line in content.split("\n"):
-		line = line.strip_edges()
-		if line.is_empty() or line.begins_with("#"):
-			continue
-		if line.begins_with("[") and line.ends_with("]"):
-			current_section = line.substr(1, line.length() - 2)
-			result[current_section] = {}
-			continue
-		if "=" in line:
-			var parts = line.split("=", true, 1)
-			var key = parts[0].strip_edges()
-			var value = parts[1].strip_edges()
-			if value.begins_with("\"") and value.ends_with("\""):
-				value = value.substr(1, value.length() - 2)
-			if not current_section.is_empty():
-				result[current_section][key] = value
-	return result
-
-## 根据皮肤目录中的 core 贴图存在情况生成默认配置
-## 规则：
-##   有 core 贴图 → glow_use_custom_size=false（光晕大小跟随全局设置），glow_size 写入全局默认值作为参考
-##   无 core 贴图 → glow_use_custom_size=true，glow_size=0（用自定义 0 禁用光晕）
-func _generate_default_skin_config(skin_path: String) -> Dictionary:
-	var has_short_core = _skin_file_exists(skin_path, SKIN_TEXTURES["short_core"])
-	var has_instant_core = _skin_file_exists(skin_path, SKIN_TEXTURES["instant_core"])
-	var has_long_core = _skin_file_exists(skin_path, SKIN_TEXTURES["long_b_core"]) \
-		or _skin_file_exists(skin_path, SKIN_TEXTURES["long_f_core"]) \
-		or _skin_file_exists(skin_path, SKIN_TEXTURES["long_t_core"])
-
-	return {
-		"short": {
-			"glow_use_custom_color": false,
-			"glow_custom_color": Color.WHITE,
-			"glow_use_custom_size": (not has_short_core),
-			"glow_size": SKIN_GLOW_SIZE_DEFAULT_SHORT if has_short_core else 0.0
-		},
-		"instant": {
-			"glow_use_custom_color": false,
-			"glow_custom_color": Color.WHITE,
-			"glow_use_custom_size": (not has_instant_core),
-			"glow_size": SKIN_GLOW_SIZE_DEFAULT_INSTANT if has_instant_core else 0.0
-		},
-		"long": {
-			"glow_use_custom_color": false,
-			"glow_custom_color": Color.WHITE,
-			"glow_use_custom_size": (not has_long_core),
-			"glow_size": SKIN_GLOW_SIZE_DEFAULT_LONG if has_long_core else 0.0,
-			"long_f_mode": "repeat"
-		}
-	}
-
-## 检查皮肤目录下某个贴图文件是否存在
-## 兼容 res://（ResourceLoader.exists）与 user://（FileAccess.file_exists）
-func _skin_file_exists(skin_path: String, file_name: String) -> bool:
-	var file_path = skin_path.path_join(file_name)
-	if file_path.begins_with("res://"):
-		return ResourceLoader.exists(file_path)
-	return FileAccess.file_exists(file_path)
-
-## 将解析得到的 {section: {key: str}} 规范化为带类型的结构化 Dictionary
-## 缺失的键使用默认值补全，确保下游可以安全读取
-func _normalize_skin_config(raw: Dictionary) -> Dictionary:
-	return {
-		"short": _normalize_note_section(raw.get("short", {}), SKIN_GLOW_SIZE_DEFAULT_SHORT, false),
-		"instant": _normalize_note_section(raw.get("instant", {}), SKIN_GLOW_SIZE_DEFAULT_INSTANT, false),
-		"long": _normalize_note_section(raw.get("long", {}), SKIN_GLOW_SIZE_DEFAULT_LONG, true)
-	}
-
-## 规范化单个键型的配置节
-func _normalize_note_section(section_raw: Dictionary, default_size: float, is_long: bool) -> Dictionary:
-	var result: Dictionary = {
-		"glow_use_custom_color": _parse_bool(section_raw.get("glow_use_custom_color", "false")),
-		"glow_custom_color": _parse_color(section_raw.get("glow_custom_color", "#ffffff")),
-		"glow_use_custom_size": _parse_bool(section_raw.get("glow_use_custom_size", "false")),
-		"glow_size": _parse_float(section_raw.get("glow_size", str(default_size)))
-	}
-	if is_long:
-		var mode = section_raw.get("long_f_mode", "repeat")
-		result["long_f_mode"] = "stretch" if mode == "stretch" else "repeat"
-	return result
-
-## 将字符串解析为 bool（接受 "true"/"false"/"1"/"0"）
-func _parse_bool(value) -> bool:
-	if value is bool:
-		return value
-	var s = str(value).to_lower()
-	return s == "true" or s == "1"
-
-## 将字符串解析为 float（无效输入返回 0.0）
-func _parse_float(value) -> float:
-	if value is float:
-		return value
-	if value is int:
-		return float(value)
-	return str(value).to_float()
-
-## 将字符串解析为 Color（接受 "#RRGGBB" / "#RRGGBBAA" / 颜色名）
-func _parse_color(value) -> Color:
-	if value is Color:
-		return value
-	var s = str(value).strip_edges()
-	if s.is_empty():
-		return Color.WHITE
-	# Color.html 安全解析 hex；失败时返回 Color.MAGENTA 作为可见错误标记，这里回退到 WHITE
-	var col = Color.from_string(s, Color.WHITE)
-	return col
-
-## 将结构化配置 Dictionary 写入 skin.ini 文件
-func _save_skin_config_to_file(config_path: String, config: Dictionary) -> void:
-	var content = _serialize_skin_config(config)
-	var file = FileAccess.open(config_path, FileAccess.WRITE)
-	if file == null:
-		GameLogger.instance.warning("Failed to write skin config: %s" % config_path, "FileSystemMGR")
-		return
-	file.store_string(content)
-	file.close()
-
-## 将配置 Dictionary 序列化为 INI 文本
-func _serialize_skin_config(config: Dictionary) -> String:
-	var lines: Array = ["# 自动生成的皮肤配置文件 - 可手动编辑", ""]
-	for section in ["short", "instant", "long"]:
-		if not config.has(section):
-			continue
-		lines.append("[%s]" % section)
-		var sec = config[section]
-		lines.append("glow_use_custom_color=%s" % str(sec.get("glow_use_custom_color", false)).to_lower())
-		lines.append("glow_custom_color=%s" % _color_to_hex(sec.get("glow_custom_color", Color.WHITE)))
-		lines.append("glow_use_custom_size=%s" % str(sec.get("glow_use_custom_size", false)).to_lower())
-		lines.append("glow_size=%s" % str(sec.get("glow_size", 0.0)))
-		if section == "long":
-			lines.append("long_f_mode=%s" % str(sec.get("long_f_mode", "repeat")))
-		lines.append("")
-	return "\n".join(lines)
-
-## 将 Color 转换为 #RRGGBB 字符串
-func _color_to_hex(col: Color) -> String:
-	return "#%02x%02x%02x" % [int(round(col.r * 255)), int(round(col.g * 255)), int(round(col.b * 255))]
-
-## 获取指定皮肤的配置 Dictionary
-## 返回结构：{short:{...}, instant:{...}, long:{...}}；查找不到时返回空 Dictionary
-func get_skin_config(skin_name: String) -> Dictionary:
-	var skin_data = skins_index.get(skin_name, {})
-	if skin_data.is_empty():
-		# 尝试移除 [内置] 标记查找
-		if skin_name.ends_with(" [内置]"):
-			var pure_name = skin_name.substr(0, skin_name.length() - 8)
-			skin_data = skins_index.get(pure_name, {})
-		if skin_data.is_empty():
-			GameLogger.instance.warning("Skin config not found: %s" % skin_name, "FileSystemMGR")
-			return {}
-	return skin_data.get("config", {})
-
-## 获取所有可用皮肤列表
-func get_available_skins() -> Array:
-	var result: Array = []
-	
-	for skin_name in skins_index.keys():
-		result.append(skin_name)
-	
-	return result
-
-## 获取皮肤贴图文件映射
-const SKIN_TEXTURES = {
-	"short": "short.png",
-	"short_core": "short-core.png",
-	"instant": "instant.png",
-	"instant_core": "instant-core.png",
-	"long_t": "long-t.png",
-	"long_t_core": "long-t-core.png",
-	"long_f": "long-f.png",
-	"long_f_core": "long-f-core.png",
-	"long_b": "long-b.png",
-	"long_b_core": "long-b-core.png"
-}
-
-## 获取指定皮肤的贴图字典
-func get_skin_textures(skin_name: String) -> Dictionary:
-	var result: Dictionary = {}
-	
-	# 获取皮肤数据
-	var skin_data = skins_index.get(skin_name, {})
-	if skin_data.is_empty():
-		# 尝试移除 [内置] 标记查找（用于内置皮肤）
-		if skin_name.ends_with(" [内置]"):
-			var pure_name = skin_name.substr(0, skin_name.length() - 8)
-			skin_data = skins_index.get(pure_name, {})
-		
-		if skin_data.is_empty():
-			GameLogger.instance.warning("Skin not found: %s" % skin_name, "FileSystemMGR")
-			return result
-	
-	var skin_path = skin_data.get("path", "")
-	if skin_path.is_empty():
-		return result
-	
-	# 加载所有贴图
-	for texture_key in SKIN_TEXTURES:
-		var file_name = SKIN_TEXTURES[texture_key]
-		var file_path = skin_path.path_join(file_name)
-		
-		if file_path.begins_with("res://"):
-			# 内置资源直接加载
-			if ResourceLoader.exists(file_path):
-				result[texture_key] = load(file_path)
-		else:
-			# 用户目录资源动态加载 - 先检查文件是否存在
-			if FileAccess.file_exists(file_path):
-				var image = Image.load_from_file(file_path)
-				if image:
-					var texture = ImageTexture.create_from_image(image)
-					result[texture_key] = texture
-	
-	return result
-
-## 获取默认皮肤的贴图
-func get_default_skin_textures() -> Dictionary:
-	return get_skin_textures("旧版2 [内置]")
-
 ## 扫描音源目录
 func scan_soundfonts() -> void:
 	# await get_tree().process_frame
@@ -1002,7 +625,7 @@ func scan_soundfonts() -> void:
 	
 	var dir = DirAccess.open(SOUNDFONT_DIR)
 	if dir == null:
-		GameLogger.instance.warning("Failed to open soundfont directory", "FileSystemMGR")
+		GLogger.warning("Failed to open soundfont directory", "FileSystemMGR")
 		return
 	
 	dir.list_dir_begin()
@@ -1020,7 +643,7 @@ func scan_soundfonts() -> void:
 		# await get_tree().process_frame
 	
 	dir.list_dir_end()
-	GameLogger.instance.info("Scanned %d soundfonts" % count, "FileSystemMGR")
+	GLogger.info("Scanned %d soundfonts" % count, "FileSystemMGR")
 
 ## 扫描背景图目录
 func scan_backgrounds() -> void:
@@ -1029,7 +652,7 @@ func scan_backgrounds() -> void:
 	
 	var dir = DirAccess.open(BACKGROUND_DIR)
 	if dir == null:
-		GameLogger.instance.warning("Failed to open background directory", "FileSystemMGR")
+		GLogger.warning("Failed to open background directory", "FileSystemMGR")
 		return
 	
 	dir.list_dir_begin()
@@ -1047,17 +670,13 @@ func scan_backgrounds() -> void:
 		file_name = dir.get_next()
 	
 	dir.list_dir_end()
-	GameLogger.instance.info("Scanned %d backgrounds" % count, "FileSystemMGR")
+	GLogger.info("Scanned %d backgrounds" % count, "FileSystemMGR")
 
 ## ========== 公共查询接口 ==========
 
 ## 获取谱面索引
 func get_charts_index() -> Dictionary:
 	return charts_index
-
-## 获取皮肤索引
-func get_skins_index() -> Dictionary:
-	return skins_index
 
 ## 获取音源索引
 func get_soundfonts_index() -> Dictionary:
@@ -1085,30 +704,30 @@ func get_settings_directory() -> String:
 func get_chart_folder_path(chart_id: String) -> String:
 	# 事先检查 charts_index 是否已初始化
 	if charts_index.is_empty():
-		GameLogger.instance.warning("charts_index is empty, cannot locate chart folder", "FileSystemMGR")
+		GLogger.warning("charts_index is empty, cannot locate chart folder", "FileSystemMGR")
 		return ""
 	
 	# 遍历 charts_index 查找匹配的 chart_id
 	for folder_name in charts_index.keys():
-		var metadata = charts_index[folder_name]
-		var metadata_id = metadata.get("id", "")
-		
+		var metadata: ChartMetadata = charts_index[folder_name]
+		var metadata_id = metadata.id
+
 		# 匹配方式1：通过 metadata 中的 id 字段匹配
 		if metadata_id == chart_id:
-			var folder_path = metadata.get("path", "")
+			var folder_path = metadata.path
 			if not folder_path.is_empty():
 				return folder_path
-		
+
 		# 匹配方式2：通过 JSON 数据中的 hash 字段匹配
-		var json_data = metadata.get("data", {})
+		var json_data = metadata.data
 		if json_data is Dictionary and json_data.has("hash"):
 			if json_data.get("hash", "") == chart_id:
-				var folder_path = metadata.get("path", "")
+				var folder_path = metadata.path
 				if not folder_path.is_empty():
 					return folder_path
 	
 	# 未找到，打印调试信息并返回空字符串
-	GameLogger.instance.warning("Chart folder path not found for ID: %s" % chart_id, "FileSystemMGR")
+	GLogger.warning("Chart folder path not found for ID: %s" % chart_id, "FileSystemMGR")
 	return ""
 
 ## 验证文件是否为有效的音频文件
@@ -1122,7 +741,7 @@ func is_valid_audio_file(file_path: String) -> bool:
 	# 检查文件是否不是空文件
 	var file = FileAccess.open(file_path, FileAccess.READ)
 	if file == null:
-		GameLogger.instance.warning("Cannot access audio file: %s" % file_path, "FileSystemMGR")
+		GLogger.warning("Cannot access audio file: %s" % file_path, "FileSystemMGR")
 		return false
 	
 	var file_size = file.get_length()
@@ -1139,7 +758,7 @@ func is_valid_audio_file(file_path: String) -> bool:
 
 ## 重新扫描资源（热重载）
 func rescan_resources() -> void:
-	GameLogger.instance.info("Rescanning resources...", "FileSystemMGR")
+	GLogger.info("Rescanning resources...", "FileSystemMGR")
 	_scan_all_resources()
 
 ## 验证谱面完整性
@@ -1147,38 +766,30 @@ func validate_chart(chart_id: String) -> bool:
 	if not charts_index.has(chart_id):
 		return false
 	
-	var metadata = charts_index[chart_id]
-	return metadata.get("is_complete", false)
+	var metadata: ChartMetadata = charts_index[chart_id]
+	return metadata.is_complete
 
 ## 获取谱面路径
 func get_chart_path(chart_id: String) -> String:
 	if not charts_index.has(chart_id):
 		return ""
 	
-	var metadata = charts_index[chart_id]
-	return metadata.get("path", "")
-
-## 获取皮肤路径
-func get_skin_path(skin_name: String) -> String:
-	if not skins_index.has(skin_name):
-		return ""
-	
-	var metadata = skins_index[skin_name]
-	return metadata.get("path", "")
+	var metadata: ChartMetadata = charts_index[chart_id]
+	return metadata.path
 
 func get_cover_by_midiData(midi: MidiData) -> ImageTexture:
 	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	var fs_mgr := FileSystemManager.instance
-	var data_mgr := DataManager.instance
+	var data_mgr := DataMGR
 	if not fs_mgr or not data_mgr:
-		print("Failed to access FileSystemManager or DataManager")
+		GLogger.warning("Failed to access FileSystemManager or DataManager", "FileMGR")
 		return load(DEFAULT_COVER_PATH)
 
 	for folder_name in charts_index.keys():
-		var metadata: Dictionary = charts_index[folder_name]
-		var chart_id: String = metadata.get("id", "")
-		if chart_id == midi.file_hash or metadata.get("data", {}).get("_id", "") == midi.id:
-			var path: String = metadata.get("cover_path", "")
+		var metadata: ChartMetadata = charts_index[folder_name]
+		var chart_id: String = metadata.id
+		if chart_id == midi.file_hash or metadata.data.get("_id", "") == midi.id:
+			var path: String = metadata.cover_path
 			if not path.is_empty() and FileAccess.file_exists(path):
 				# 区分 res:// 和 user:// 路径
 				if path.begins_with("res://"):
@@ -1189,7 +800,7 @@ func get_cover_by_midiData(midi: MidiData) -> ImageTexture:
 					if image:
 						return ImageTexture.create_from_image(image)
 					else:
-						GameLogger.instance.warning("Failed to load cover image: %s" % path, "FileSystemMGR")
+						GLogger.warning("Failed to load cover image: %s" % path, "FileSystemMGR")
 
 	return load(DEFAULT_COVER_PATH)
 
@@ -1199,36 +810,36 @@ func get_cover_by_midiData(midi: MidiData) -> ImageTexture:
 func get_chart_json_path(chart_id: String) -> String:
 	# 在charts_index中查找该chart_id对应的folder_name
 	for folder_name in charts_index.keys():
-		var metadata = charts_index[folder_name]
-		var metadata_id = metadata.get("id", "")
-		
+		var metadata: ChartMetadata = charts_index[folder_name]
+		var metadata_id = metadata.id
+
 		# 匹配方式1：通过metadata中的id字段匹配
 		if metadata_id == chart_id:
 			# 优先使用已缓存的json_path
-			var cached_json_path = metadata.get("json_path", "")
+			var cached_json_path = metadata.json_path
 			if not cached_json_path.is_empty():
 				return cached_json_path
-			
+
 			# 备选方案：从路径重新构造（如果缓存不存在）
-			var chart_path = metadata.get("path", "")
+			var chart_path = metadata.path
 			if not chart_path.is_empty():
 				return chart_path.path_join(metadata_id + ".json")
-		
+
 		# 匹配方式2：通过JSON数据中的file_hash字段匹配（MidiData中保存的file_hash）
-		var json_data = metadata.get("data", {})
+		var json_data = metadata.data
 		if json_data is Dictionary and json_data.has("file_hash"):
 			if json_data.get("file_hash", "") == chart_id:
 				# 找到了对应的谱面
-				var cached_json_path = metadata.get("json_path", "")
+				var cached_json_path = metadata.json_path
 				if not cached_json_path.is_empty():
 					return cached_json_path
-				
-				var chart_path = metadata.get("path", "")
+
+				var chart_path = metadata.path
 				if not chart_path.is_empty():
 					return chart_path.path_join(metadata_id + ".json")
 	
 	# 如果未找到，打印调试信息并返回空字符串
-	GameLogger.instance.warning("Chart JSON path not found for ID: %s (charts_index has %d entries)" % [chart_id, charts_index.size()], "FileSystemMGR")
+	GLogger.warning("Chart JSON path not found for ID: %s (charts_index has %d entries)" % [chart_id, charts_index.size()], "FileSystemMGR")
 	return ""
 
 ## 删除单个文件
@@ -1236,16 +847,16 @@ func get_chart_json_path(chart_id: String) -> String:
 ## 返回: 是否成功删除
 func delete_file(absolute_path: String) -> bool:
 	if absolute_path.is_empty():
-		GameLogger.instance.warning("delete_file: path is empty", "FileSystemMGR")
+		GLogger.warning("delete_file: path is empty", "FileSystemMGR")
 		return false
 	if not FileAccess.file_exists(absolute_path):
-		GameLogger.instance.warning("delete_file: file not found: %s" % absolute_path, "FileSystemMGR")
+		GLogger.warning("delete_file: file not found: %s" % absolute_path, "FileSystemMGR")
 		return false
 	var err = DirAccess.remove_absolute(absolute_path)
 	if err != OK:
-		GameLogger.instance.error("delete_file: failed to delete %s (err %d)" % [absolute_path, err], "FileSystemMGR")
+		GLogger.error("delete_file: failed to delete %s (err %d)" % [absolute_path, err], "FileSystemMGR")
 		return false
-	GameLogger.instance.info("Deleted file: %s" % absolute_path, "FileSystemMGR")
+	GLogger.info("Deleted file: %s" % absolute_path, "FileSystemMGR")
 	return true
 
 ## 递归删除整个目录及其所有内容
@@ -1253,11 +864,11 @@ func delete_file(absolute_path: String) -> bool:
 ## 返回: 是否成功删除
 func delete_directory_recursive(absolute_path: String) -> bool:
 	if absolute_path.is_empty():
-		GameLogger.instance.warning("delete_directory_recursive: path is empty", "FileSystemMGR")
+		GLogger.warning("delete_directory_recursive: path is empty", "FileSystemMGR")
 		return false
 	var dir = DirAccess.open(absolute_path)
 	if dir == null:
-		GameLogger.instance.warning("delete_directory_recursive: cannot open dir: %s" % absolute_path, "FileSystemMGR")
+		GLogger.warning("delete_directory_recursive: cannot open dir: %s" % absolute_path, "FileSystemMGR")
 		return false
 	# 先递归删除所有子内容
 	dir.list_dir_begin()
@@ -1274,22 +885,22 @@ func delete_directory_recursive(absolute_path: String) -> bool:
 	# 删除已空的目录本身
 	var err = DirAccess.remove_absolute(absolute_path)
 	if err != OK:
-		GameLogger.instance.error("delete_directory_recursive: failed to remove dir %s (err %d)" % [absolute_path, err], "FileSystemMGR")
+		GLogger.error("delete_directory_recursive: failed to remove dir %s (err %d)" % [absolute_path, err], "FileSystemMGR")
 		return false
-	GameLogger.instance.info("Deleted directory: %s" % absolute_path, "FileSystemMGR")
+	GLogger.info("Deleted directory: %s" % absolute_path, "FileSystemMGR")
 	return true
 
 ## 从 charts_index 中移除指定 chart_id 对应的条目
 ## 参数: chart_id - MidiData 中的 file_hash 或 id
 func remove_from_charts_index(chart_id: String) -> void:
 	for folder_name in charts_index.keys():
-		var metadata: Dictionary = charts_index[folder_name]
-		var metadata_id: String = metadata.get("id", "")
-		var json_data = metadata.get("data", {})
+		var metadata: ChartMetadata = charts_index[folder_name]
+		var metadata_id: String = metadata.id
+		var json_data = metadata.data
 		if metadata_id == chart_id \
 				or json_data.get("hash", "") == chart_id \
 				or json_data.get("file_hash", "") == chart_id:
 			charts_index.erase(folder_name)
-			GameLogger.instance.info("Removed chart from index: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
+			GLogger.info("Removed chart from index: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
 			return
-	GameLogger.instance.warning("remove_from_charts_index: chart_id not found: %s" % chart_id, "FileSystemMGR")
+	GLogger.warning("remove_from_charts_index: chart_id not found: %s" % chart_id, "FileSystemMGR")

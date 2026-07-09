@@ -65,7 +65,7 @@ var current_midi: MidiData = null
 ## play_result 仅作为传递给 ScoreView 的展示数据容器
 var play_result: ScoreView.ScoreData = null
 
-@onready var ani: AnimationManager = AnimationManager.instance
+@onready var ani: AnimationManager = AniMGR
 @onready var playback_mgr: MidiPlaybackManager = MidiPlaybackManager.instance
 @onready var key_sequence_mgr: KeySequenceManager = KeySequenceManager.instance
 @onready var score_calc: ScoreCalculator = ScoreCalculator.instance
@@ -126,9 +126,9 @@ func _ready() -> void:
 	if not get_window().focus_exited.is_connected(_on_window_focus_exited):
 		get_window().focus_exited.connect(_on_window_focus_exited)
 
-	EventBus.instance.start_game_with.connect(_prepare_game)
-	UIStateManager.instance.state_changed.connect(_on_state_changed)
-	_on_state_changed(UIStateManager.instance.UIState.NONE, UIStateManager.instance.current_state)
+	EvtBus.start_game_with.connect(_prepare_game)
+	UiStatMGR.state_changed.connect(_on_state_changed)
+	_on_state_changed(UiStatMGR.UIState.NONE, UiStatMGR.current_state)
 
 	progress_bar.value_changed.connect(_on_top_progress_bar_value_changed)
 
@@ -152,10 +152,10 @@ func _ready() -> void:
 	_load_play_mode_setting()
 	
 	# 连接配置变更信号
-	if not EventBus.instance.config_changed.is_connected(_on_lane_config_changed):
-		EventBus.instance.config_changed.connect(_on_lane_config_changed)
-	if not EventBus.instance.config_changed.is_connected(_on_config_changed):
-		EventBus.instance.config_changed.connect(_on_config_changed)
+	if not EvtBus.config_changed.is_connected(_on_lane_config_changed):
+		EvtBus.config_changed.connect(_on_lane_config_changed)
+	if not EvtBus.config_changed.is_connected(_on_config_changed):
+		EvtBus.config_changed.connect(_on_config_changed)
 	_set_debug_overlay_visible(show_debug_info)
 	
 	# env.environment = null
@@ -282,7 +282,7 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		if flow_area:
 			flow_area.auto_mode = auto_enabled
 		auto_label.visible = auto_enabled
-		GameLogger.instance.info("PlayView auto mode changed: %s" % ("ON" if auto_enabled else "OFF"), "PlayView")
+		GLogger.info("PlayView auto mode changed: %s" % ("ON" if auto_enabled else "OFF"), "PlayView")
 		return
 
 	if section == "Playback" and key == "performing_mode":
@@ -300,12 +300,12 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 				var classification = key_sequence_mgr.get_last_notes_classification()
 				var manual_control_notes = classification["manual_control_notes"]
 				playback_mgr.set_manual_control_notes(manual_control_notes)
-				GameLogger.instance.info("Performing mode ON: reapplied manual control notes (%d)" % manual_control_notes.size(), "PlayView")
+				GLogger.info("Performing mode ON: reapplied manual control notes (%d)" % manual_control_notes.size(), "PlayView")
 		else:
 			# 演奏模式关闭：清除手动控制notes标记，恢复全自动播放
 			if playback_mgr:
 				playback_mgr.clear_manual_control_notes()
-				GameLogger.instance.info("Performing mode OFF: cleared manual control notes", "PlayView")
+				GLogger.info("Performing mode OFF: cleared manual control notes", "PlayView")
 
 func _load_debug_display_setting() -> void:
 	show_debug_info = ConfigManager.instance.get_int("General", "display_debug_info", 0) == 1
@@ -394,7 +394,7 @@ func _on_window_focus_exited() -> void:
 	_auto_pause_on_background("window_focus_exited")
 
 func _auto_pause_on_background(reason: String) -> void:
-	if UIStateManager.instance.current_state != UIStateManager.UIState.PLAY_VIEW:
+	if UiStatMGR.current_state != UIStateManager.UIState.PLAY_VIEW:
 		return
 	if playback_mgr and not playback_mgr.is_playing:
 		return
@@ -402,7 +402,7 @@ func _auto_pause_on_background(reason: String) -> void:
 		return
 
 	_show_pause_menu()
-	GameLogger.instance.info("Auto pause triggered by background event: %s" % reason, "PlayView")
+	GLogger.info("Auto pause triggered by background event: %s" % reason, "PlayView")
 
 func _prepare_game(midi:MidiData = current_midi) -> void:
 	current_midi = midi
@@ -425,11 +425,11 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 新增：从配置读取演奏模式
 	var performing_mode = ConfigManager.instance.get_int("Playback", "performing_mode", 1)
 	play_mode = (performing_mode == 1)
-	GameLogger.instance.info("Performing mode: %s" % ("ON" if play_mode else "OFF"), "PlayView")
+	GLogger.info("Performing mode: %s" % ("ON" if play_mode else "OFF"), "PlayView")
 
 	# 新增：连接配置变更信号
-	if not EventBus.instance.config_changed.is_connected(_on_config_changed):
-		EventBus.instance.config_changed.connect(_on_config_changed)
+	if not EvtBus.config_changed.is_connected(_on_config_changed):
+		EvtBus.config_changed.connect(_on_config_changed)
 
 	# 计算初始seek位置：-1000ms（固定：给予UI准备时间）- 音符下落时间（配置项）
 	var note_fall_time = ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
@@ -470,7 +470,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 
 	# 等待显示准备界面
 	await get_tree().create_timer(1).timeout
-	await AnimationManager.instance.animate_fade_out(center_bg, 1).finished
+	await AniMGR.animate_fade_out(center_bg, 1).finished
 
 	# 开始播放MIDI
 	is_pause = false
@@ -542,11 +542,11 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowArea.N
 ## 生成游戏序列
 func _generate_game_sequences(midi_data: MidiData) -> void:
 	if key_sequence_mgr == null:
-		GameLogger.instance.warning("KeySequenceManager not available", "PlayView")
+		GLogger.warning("KeySequenceManager not available", "PlayView")
 		return
 	
 	if midi_data.parsed_notes.is_empty():
-		GameLogger.instance.warning("No parsed notes available for key generation", "PlayView")
+		GLogger.warning("No parsed notes available for key generation", "PlayView")
 		return
 	
 	# 设置MIDI时间参数
@@ -558,13 +558,13 @@ func _generate_game_sequences(midi_data: MidiData) -> void:
 	var enabled_notes = _filter_notes_by_enabled_track_channels(midi_data.parsed_notes, midi_data)
 	
 	if enabled_notes.is_empty():
-		GameLogger.instance.warning("No notes in enabled (track, channel) pairs", "PlayView")
+		GLogger.warning("No notes in enabled (track, channel) pairs", "PlayView")
 		return
 	
 	# 调用键序列管理器生成游戏键（传入 midi_id 和 enabled_pairs 以启用缓存命中）
 	var success = key_sequence_mgr.generate_keys(enabled_notes, current_midi.id, current_midi.selected_track_configs)
 	if not success:
-		GameLogger.instance.warning("Failed to generate game keys", "PlayView")
+		GLogger.warning("Failed to generate game keys", "PlayView")
 		return
 	
 	# 新增：获取KeySequenceManager统计的真实分类结果
@@ -577,14 +577,14 @@ func _generate_game_sequences(midi_data: MidiData) -> void:
 	if playback_mgr:
 		if play_mode:
 			playback_mgr.set_manual_control_notes(manual_control_notes)
-			GameLogger.instance.info(
+			GLogger.info(
 				"[Performing ON] Submitted notes classification: %d manual, %d auto" %
 				[manual_control_notes.size(), auto_play_notes.size()],
 				"PlayView"
 			)
 		else:
 			playback_mgr.clear_manual_control_notes()
-			GameLogger.instance.info(
+			GLogger.info(
 				"[Performing OFF] Cleared manual control notes: all notes will auto-play (manual=%d, auto=%d)" %
 				[manual_control_notes.size(), auto_play_notes.size()],
 				"PlayView"
@@ -596,14 +596,14 @@ func _generate_game_sequences(midi_data: MidiData) -> void:
 	game_sequences = raw_sequences
 	print("[PlayView] game_sequences assigned, size = %d" % game_sequences.size())
 	
-	GameLogger.instance.info("Generated %d game sequences for play mode" % game_sequences.size(), "PlayView")
+	GLogger.info("Generated %d game sequences for play mode" % game_sequences.size(), "PlayView")
 
 ## 按启用的(track, channel)筛选音符
 func _filter_notes_by_enabled_track_channels(all_notes: Array, midi_data: MidiData) -> Array:
 	var filtered: Array = []
 	
 	if midi_data == null:
-		GameLogger.instance.warning("midi_data is null when filtering notes", "PlayView")
+		GLogger.warning("midi_data is null when filtering notes", "PlayView")
 		return filtered
 
 	# selected_track_configs 是 Dictionary，格式: {track_idx: [channel1, channel2, ...]}
@@ -614,8 +614,8 @@ func _filter_notes_by_enabled_track_channels(all_notes: Array, midi_data: MidiDa
 			push_error("[PlayView] No (track, channel) configuration found and no default configuration applied!")
 		return filtered
 
-	GameLogger.instance.info("selected_track_configs: %s" % str(midi_data.selected_track_configs), "PlayView")
-	GameLogger.instance.info("Filtering %d notes by enabled (track, channel) pairs" % all_notes.size(), "PlayView")
+	GLogger.info("selected_track_configs: %s" % str(midi_data.selected_track_configs), "PlayView")
+	GLogger.info("Filtering %d notes by enabled (track, channel) pairs" % all_notes.size(), "PlayView")
 	
 	# 筛选音符
 	var pair_stats = {}  # 统计每个(track, channel)对的音符数
@@ -635,8 +635,8 @@ func _filter_notes_by_enabled_track_channels(all_notes: Array, midi_data: MidiDa
 			if midi_data.is_track_channel_selected(track_idx, channel):
 				filtered.append(note)
 	
-	GameLogger.instance.info("Track-channel note stats: %s" % str(pair_stats), "PlayView")
-	GameLogger.instance.info("Filtered result by (track,channel): %d notes out of %d" % [filtered.size(), all_notes.size()], "PlayView")
+	GLogger.info("Track-channel note stats: %s" % str(pair_stats), "PlayView")
+	GLogger.info("Filtered result by (track,channel): %d notes out of %d" % [filtered.size(), all_notes.size()], "PlayView")
 	
 	return filtered
 
@@ -656,7 +656,7 @@ func _load_lane_parameters() -> void:
 	var keyboard_keys_str = config_mgr.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")
 	key_map = ConfigParser.parse_keyboard_keys(keyboard_keys_str)
 	
-	GameLogger.instance.info(
+	GLogger.info(
 		"PlayView lane parameters loaded: lane_count=%d, lane_padding=%d, keyboard_mode=%s, key_map_size=%d" % 
 		[lane_count, lane_padding, str(keyboard_mode), key_map.size()],
 		"PlayView"
@@ -682,7 +682,7 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 		if new_lane_padding != lane_padding:
 			lane_padding = new_lane_padding
 			should_reinit = true
-			GameLogger.instance.info("PlayView lane_padding updated: %d" % lane_padding, "PlayView")
+			GLogger.info("PlayView lane_padding updated: %d" % lane_padding, "PlayView")
 	
 	match key:
 		"lane_count":
@@ -693,7 +693,7 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 					# 仅在非键盘模式时需要重初始化轨道显示
 					if not keyboard_mode:
 						should_reinit = true
-					GameLogger.instance.info("PlayView lane_count updated: %d" % lane_count, "PlayView")
+					GLogger.info("PlayView lane_count updated: %d" % lane_count, "PlayView")
 		
 		"keyboard_mode":
 			if section == "Lane":
@@ -701,7 +701,7 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 				if new_mode != keyboard_mode:
 					keyboard_mode = new_mode
 					should_reinit = true
-					GameLogger.instance.info("PlayView keyboard_mode updated: %s" % str(keyboard_mode), "PlayView")
+					GLogger.info("PlayView keyboard_mode updated: %s" % str(keyboard_mode), "PlayView")
 		
 		"keyboard_mode_keys":
 			if section == "Lane":
@@ -711,7 +711,7 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 					# 仅在键盘模式时需要重初始化
 					if keyboard_mode:
 						should_reinit = true
-					GameLogger.instance.info("PlayView keyboard_mode_keys updated: %d keys" % key_map.size(), "PlayView")
+					GLogger.info("PlayView keyboard_mode_keys updated: %d keys" % key_map.size(), "PlayView")
 
 		"flash_alpha":
 			if section == "Lane":
@@ -750,14 +750,14 @@ func _reinit_lane_display() -> void:
 	if keyboard_mode and key_map.size() > 0:
 		lane_area.init_key_display(key_map)
 	
-	GameLogger.instance.info("PlayView lane display reinitialized", "PlayView")
+	GLogger.info("PlayView lane display reinitialized", "PlayView")
 
 ## 从配置加载演奏模式设置
 func _load_play_mode_setting() -> void:
 	# 可以从配置文件读取演奏模式设置
 	# 临时使用默认值 true（演奏模式开启）
 	play_mode = true
-	GameLogger.instance.info("PlayView play mode: %s" % ("ON" if play_mode else "OFF"), "PlayView")
+	GLogger.info("PlayView play mode: %s" % ("ON" if play_mode else "OFF"), "PlayView")
 
 ## 应用TrackView中保存的MIDI运行时配置（音量、静音、独奏等）
 func _apply_midi_runtime_config(midi_data: MidiData) -> void:
@@ -816,7 +816,7 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 	# 应用人声偏移量
 	playback_mgr.set_vocal_offset_ms(midi_data.vocal_offset_ms)
 	
-	GameLogger.instance.info("MIDI runtime config applied: volume=%d, mute_states=%d, solo_pairs=%d" % 
+	GLogger.info("MIDI runtime config applied: volume=%d, mute_states=%d, solo_pairs=%d" % 
 		[midi_data.midi_volume, midi_data.track_channel_mute_state.size(), midi_data.solo_pairs.size()], "PlayView")
 
 ## 游戏结束回调
@@ -857,7 +857,7 @@ func _on_game_finished() -> void:
 
 	# 进入结算界面
 	get_node("/root/Main/ScoreView").set_display(play_result)
-	UIStateManager.instance.change_state(UIStateManager.UIState.SCORE_VIEW, false)
+	UiStatMGR.change_state(UIStateManager.UIState.SCORE_VIEW, false)
 	await get_tree().create_timer(0.8).timeout
 	is_pause = true
 	_init_display()
@@ -874,7 +874,7 @@ func _on_quit_pressed() -> void:
 	game_sequences.clear()  # 清空游戏序列
 	
 	# 返回主菜单或上一级界面
-	UIStateManager.instance.go_back()
+	UiStatMGR.go_back()
 
 # 初始化分数等内容的显示
 func _init_display():
@@ -1143,11 +1143,9 @@ func _has_cover_for_current_midi() -> bool:
 
 	var charts = FileSystemManager.instance.get_charts_index()
 	for folder_name in charts.keys():
-		var metadata: Dictionary = charts[folder_name]
-		var chart_id: String = metadata.get("id", "")
-		if chart_id == current_midi.file_hash or metadata.get("data", {}).get("_id", "") == current_midi.id:
-			var cover_path = str(metadata.get("cover_path", ""))
-			return not cover_path.is_empty() and FileAccess.file_exists(cover_path)
+		var metadata: ChartMetadata = charts[folder_name]
+		if metadata.id == current_midi.file_hash or metadata.data.get("_id", "") == current_midi.id:
+			return not metadata.cover_path.is_empty() and FileAccess.file_exists(metadata.cover_path)
 
 	return false
 

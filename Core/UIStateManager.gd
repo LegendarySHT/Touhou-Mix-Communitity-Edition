@@ -4,9 +4,6 @@ extends Node
 
 class_name UIStateManager
 
-## 单例实例
-static var instance: UIStateManager
-
 ## UI状态枚举
 enum UIState {
 	NONE = -1,           # 无状态
@@ -42,17 +39,23 @@ var signal_conn:bool = false
 
 var transition_version: int = 0
 
+var _data_ready: bool = false  ## 数据是否已加载完成（替代 is_loading 轮询）
+
 func _ready() -> void:
-	if instance == null:
-		instance = self
-	else:
-		queue_free()
 	add_to_group("singleton")
+	# 监听 DataManager 加载完成信号
+	DataMGR.data_loaded.connect(_on_data_loaded)
+	# 防止 data_loaded 在 _ready 之前已发射：一次性检查
+	if not DataMGR.is_loading:
+		_data_ready = true
+
+func _on_data_loaded() -> void:
+	_data_ready = true
 
 # func _process(delta: float) -> void:
 # 	# 连接场景退出信号
 # 	if not signal_conn:
-# 		var ANI: AnimationManager = AniMGR.instance
+# 		var ANI: AnimationManager = AniMGR
 # 		if ANI:
 # 			ANI.scene_transition_fin.connect(_scene_transition_exit)
 # 			signal_conn = true
@@ -60,10 +63,10 @@ func _ready() -> void:
 ## 转换状态
 func change_state(new_state: UIState, stash_state: bool = true) -> void:
 	if new_state == current_state:
-		print("can not change state")
+		GLogger.warning("can not change state", "UiStatMGR")
 		return
 	
-	if DataMGR.instance and DataMGR.instance.is_loading:
+	if not _data_ready:
 		return
 	
 	var old_state = current_state
@@ -93,7 +96,7 @@ func change_state(new_state: UIState, stash_state: bool = true) -> void:
 func go_back() -> bool:
 	if state_history.is_empty():
 		return false
-	if DataMGR.instance and DataMGR.instance.is_loading:
+	if not _data_ready:
 		return false
 	var back_state = state_history.pop_back()
 	# 检查历史栈是否还有元素，有则更新previous_state
@@ -110,7 +113,7 @@ func go_back() -> bool:
 func go_back_to(target_state: UIState) -> bool:
 	if current_state == target_state:
 		return false
-	if DataMGR.instance and DataMGR.instance.is_loading:
+	if not _data_ready:
 		return false
 	# 弹出历史栈直到找到目标状态，或清空为止
 	while not state_history.is_empty() and state_history.back() != target_state:
@@ -159,6 +162,6 @@ func get_state_name(state: UIState) -> String:
 
 ## 打印当前状态（调试）
 func print_state_info() -> void:
-	print("Current State: %s (%d)" % [get_state_name(current_state), current_state])
-	print("Previous State: %s (%d)" % [get_state_name(previous_state), previous_state])
-	print("History Depth: %d" % state_history.size())
+	GLogger.info("Current State: %s (%d)" % [get_state_name(current_state), current_state], "UiStatMGR")
+	GLogger.info("Previous State: %s (%d)" % [get_state_name(previous_state), previous_state], "UiStatMGR")
+	GLogger.info("History Depth: %d" % state_history.size(), "UiStatMGR")

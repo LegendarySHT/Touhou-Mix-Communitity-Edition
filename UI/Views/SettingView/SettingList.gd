@@ -1092,10 +1092,10 @@ func _on_setting_value_changed(id: String, value: Variant):
 
 	# 主题预设 — 直接交给 ThemeManager
 	if id == "theme_preset":
-		if ThemeManager.instance:
-			var presets := ThemeManager.instance.get_available_presets()
+		if ThemeMGR:
+			var presets := ThemeMGR.get_available_presets()
 			if value >= 0 and value < presets.size():
-				ThemeManager.instance.apply_preset(presets[value])
+				ThemeMGR.apply_preset(presets[value])
 		return
 
 	# 从SettingsMapper中查找该设置项对应的section和key
@@ -1177,7 +1177,7 @@ func apply_pending_config_updates() -> int:
 	if pending_config_updates.is_empty():
 		return emitted_count
 
-	if EventBus.instance == null:
+	if EvtBus == null:
 		push_warning("[SettingList] EventBus is null, skip applying pending config updates")
 		pending_config_updates.clear()
 		return emitted_count
@@ -1189,7 +1189,7 @@ func apply_pending_config_updates() -> int:
 			var key = update.get("key", "")
 			if section.is_empty() or key.is_empty():
 				continue
-			EventBus.instance.config_changed.emit(key, section, update.get("value", null))
+			EvtBus.config_changed.emit(key, section, update.get("value", null))
 			emitted_count += 1
 
 	pending_config_updates.clear()
@@ -1332,18 +1332,18 @@ func update_soundfont_options(soundfont_list: Array, current_selection: String =
 
 ## 更新theme_preset的选项（由SettingView调用）
 func update_theme_preset_options() -> void:
-	if not ThemeManager.instance:
+	if not ThemeMGR:
 		return
 	var item = setting_items.get("theme_preset")
 	if not item:
 		return
 
-	var presets := ThemeManager.instance.get_available_presets()
+	var presets := ThemeMGR.get_available_presets()
 	var texts: Array[String] = []
 	for p in presets:
 		texts.append(p)
 
-	var current := ThemeManager.instance.get_theme_name()
+	var current := ThemeMGR.get_theme_name()
 	var idx = max(0, presets.find(current))
 	item.set_options(texts, idx)
 

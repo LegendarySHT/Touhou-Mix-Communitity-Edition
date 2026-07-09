@@ -6,7 +6,7 @@ const LONG_BODY_REPEAT_SHADER: Shader = preload("res://UI/Views/PlayView/Shaders
 
 # 判定线
 @onready var jl: HSeparator = $JudgeLine
-@onready var ui: UIStateManager = UIStateManager.instance
+@onready var ui: UIStateManager = UiStatMGR
 @onready var canvas: CanvasLayer = $SVP
 
 ########## 配置参数 #############
@@ -175,8 +175,8 @@ func init_flow_area():
 	notes_list = saved_notes
 	note_idx = 0
 
-	if EventBus.instance and not EventBus.instance.config_changed.is_connected(_on_config_changed):
-		EventBus.instance.config_changed.connect(_on_config_changed)
+	if EvtBus and not EvtBus.config_changed.is_connected(_on_config_changed):
+		EvtBus.config_changed.connect(_on_config_changed)
 
 	auto_mode = ConfigManager.instance.get_int("Playback", "auto_mode", 0) == 1
 	
@@ -274,7 +274,7 @@ func _apply_note_fall_config_from_settings() -> void:
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	if section == "Playback" and key == "auto_mode":
 		auto_mode = int(value) == 1
-		GameLogger.instance.info("FlowArea auto_mode updated: %s" % ("ON" if auto_mode else "OFF"), "FlowArea")
+		GLogger.info("FlowArea auto_mode updated: %s" % ("ON" if auto_mode else "OFF"), "FlowArea")
 		return
 
 	if section == "Judge":
@@ -312,7 +312,7 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		_apply_note_fall_config_from_settings()
 		_note_fall_distance = jl.position.y + _note_max_size_y
 		_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
-		GameLogger.instance.info("Note fall config hot-reloaded: [%s] %s=%s" % [section, key, str(value)], "FlowArea")
+		GLogger.info("Note fall config hot-reloaded: [%s] %s=%s" % [section, key, str(value)], "FlowArea")
 
 ## 重新计算音符尺寸（根据比例系数）
 func _recalculate_note_dimensions() -> void:
@@ -324,7 +324,7 @@ func _recalculate_note_dimensions() -> void:
 	note_judge_width = max(10.0, note_visual_width * block_judge_ratio)
 	
 	set_note_width(note_visual_width)
-	GameLogger.instance.info("Note dimensions recalculated: visual_width=%d, judge_width=%d" % [int(note_visual_width), int(note_judge_width)], "FlowArea")
+	GLogger.info("Note dimensions recalculated: visual_width=%d, judge_width=%d" % [int(note_visual_width), int(note_judge_width)], "FlowArea")
 
 # 修改音符颜色
 func set_note_color(type: NoteType, cl: Color):
@@ -408,10 +408,10 @@ func set_note_texture(texture_array: Array):
 func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 	# 获取皮肤贴图字典
 	var skin_textures = {}
-	if FileSystemManager.instance:
-		skin_textures = FileSystemManager.instance.get_skin_textures(skin_name)
+	if SkinMGR:
+		skin_textures = SkinMGR.get_skin_textures(skin_name)
 		# 加载皮肤级配置（光晕颜色/大小、long-f 应用方式）
-		_skin_config = FileSystemManager.instance.get_skin_config(skin_name)
+		_skin_config = SkinMGR.get_skin_config(skin_name)
 
 	# 更新core贴图标记
 	_skin_has_short_core = skin_textures.has("short_core")
@@ -947,7 +947,7 @@ func _get_note_from_pool(tp: NoteType) -> Node:
 		# 否则继续弹出下一个（跳过已释放的节点）
 	
 	# 池空或所有节点都已释放：发出警告并创建新节点作为临时扩容
-	GameLogger.instance.warning("Note pool overflow for type %d, creating new node" % tp, "FlowArea")
+	GLogger.warning("Note pool overflow for type %d, creating new node" % tp, "FlowArea")
 	var new_node = null
 	match tp:
 		NoteType.Block:

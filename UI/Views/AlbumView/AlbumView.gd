@@ -8,8 +8,8 @@ class_name AlbumView
 var current_albums: Array[AlbumData] = []
 
 ## 排序引擎引用
-@onready var data_manager: DataManager = DataMGR.instance
-@onready var event_bus: EventBus = EvtBus.instance
+@onready var data_manager: DataManager = DataMGR
+@onready var event_bus: EventBus = EvtBus
 
 ## 列表刷新控制
 var _refresh_id: int = 0

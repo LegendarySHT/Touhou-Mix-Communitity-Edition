@@ -153,14 +153,14 @@ func _ready() -> void:
 	_load_config_parameters()
 	
 	# 监听配置变更信号（新增）
-	if EventBus.instance:
-		EventBus.instance.config_changed.connect(_on_config_changed)
+	if EvtBus:
+		EvtBus.config_changed.connect(_on_config_changed)
 
 ## 设置MIDI时间参数（用于tick到毫秒的转换）
 func set_midi_time_parameters(timebase: int, bpm_timeline_data: Array = []) -> void:
 	midi_timebase = timebase if timebase > 0 else 480
 	bpm_timeline = bpm_timeline_data.duplicate()
-	GameLogger.instance.info("MIDI time parameters set: timebase=%d, bpm_timeline_size=%d" % [midi_timebase, bpm_timeline.size()], "KeySequenceManager")
+	GLogger.info("MIDI time parameters set: timebase=%d, bpm_timeline_size=%d" % [midi_timebase, bpm_timeline.size()], "KeySequenceManager")
 
 ## 将MIDI tick转换为毫秒
 func _tick_to_ms(tick: float) -> float:
@@ -249,12 +249,12 @@ func _load_config_parameters() -> void:
 	var keyboard_mode_enabled = config_manager.get_int("Lane", "keyboard_mode", 0) == 1
 	if keyboard_mode_enabled:
 		max_touch_move_velocity = 999999.0
-		GameLogger.instance.info(
+		GLogger.info(
 			"Keyboard mode enabled: max_touch_move_velocity set to unlimited (999999.0)",
 			"KeySequenceManager"
 		)
 	
-	GameLogger.instance.info(
+	GLogger.info(
 		"KeyGeneration config loaded: block_coalesce=%.2fs, instant=%.2fs, short=%.2fs, maxTouch=%d, max_touch_velocity=%.1f, min_block_spacing=%d" %
 		[block_coalesce_seconds, instant_block_threshold, short_block_threshold, max_touch_count, max_touch_move_velocity, min_block_spacing],
 		"KeySequenceManager"
@@ -331,7 +331,7 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 
 	# Step 3: 执行批次合并（Step A）
 	var batches := _batch_notes_by_coalesce(sorted_notes)
-	GameLogger.instance.info("Batch merge: created %d batches from %d notes" % [batches.size(), sorted_notes.size()], "KeySequenceManager")
+	GLogger.info("Batch merge: created %d batches from %d notes" % [batches.size(), sorted_notes.size()], "KeySequenceManager")
 
 	# Step 4: 为每个批次执行去重（Step B）
 	var all_blocks: Array[BlockInfo] = []
@@ -340,7 +340,7 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 		var deduped_blocks = _dedup_batch(batches[batch_idx], bg_notes, batch_idx)
 		all_blocks.append_array(deduped_blocks)
 
-	GameLogger.instance.info("Dedup: generated %d blocks, %d background notes" % [all_blocks.size(), bg_notes.size()], "KeySequenceManager")
+	GLogger.info("Dedup: generated %d blocks, %d background notes" % [all_blocks.size(), bg_notes.size()], "KeySequenceManager")
 
 	# Step 5: 虚拟触点匹配和块类型判定（Step C + Step D）
 	_assign_touches_and_judge_types(all_blocks, bg_notes)
@@ -1001,7 +1001,7 @@ func _finalize_notes_classification() -> void:
 				if note not in last_auto_play_notes:
 					last_auto_play_notes.append(note)
 	
-	GameLogger.instance.info(
+	GLogger.info(
 		"Notes classification finalized: %d manual-control, %d auto-play" % 
 		[last_manual_control_notes.size(), last_auto_play_notes.size()],
 		"KeySequenceManager"
@@ -1048,22 +1048,22 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		match key:
 			"lane_count":
 				lane_count = int(value)
-				GameLogger.instance.info("Lane count changed to: %d" % lane_count, "KeySequenceManager")
+				GLogger.info("Lane count changed to: %d" % lane_count, "KeySequenceManager")
 				# 如果已经有生成的键，需要重新生成
 				if not game_sequences.is_empty():
-					GameLogger.instance.warning("Lane count changed while sequences exist, regeneration may be needed", "KeySequenceManager")
+					GLogger.warning("Lane count changed while sequences exist, regeneration may be needed", "KeySequenceManager")
 			
 			"keyboard_mode":
 				var keyboard_mode_enabled = int(value) == 1
 				# 更新触摸移动速度限制
 				if keyboard_mode_enabled:
 					max_touch_move_velocity = 999999.0
-					GameLogger.instance.info("Keyboard mode enabled: max_touch_move_velocity set to unlimited", "KeySequenceManager")
+					GLogger.info("Keyboard mode enabled: max_touch_move_velocity set to unlimited", "KeySequenceManager")
 				else:
 					# 恢复到配置中的值
 					var config_manager = ConfigManager.instance
 					max_touch_move_velocity = config_manager.get_float("Generator", "max_touch_move_speed", 500.0)
-					GameLogger.instance.info("Keyboard mode disabled: max_touch_move_velocity restored to %.1f" % max_touch_move_velocity, "KeySequenceManager")
+					GLogger.info("Keyboard mode disabled: max_touch_move_velocity restored to %.1f" % max_touch_move_velocity, "KeySequenceManager")
 	
 	# 处理 Generator 相关配置变更
 	elif section == "Generator":
@@ -1083,7 +1083,7 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 				if ConfigManager.instance.get_int("Lane", "keyboard_mode", 0) == 0:
 					max_touch_move_velocity = float(value)
 				else:
-					GameLogger.instance.info("Ignored max_touch_move_speed change (keyboard mode active)", "KeySequenceManager")
+					GLogger.info("Ignored max_touch_move_speed change (keyboard mode active)", "KeySequenceManager")
 			"max_block_coalesce_time":
 				block_coalesce_seconds = float(value)
 	
@@ -1104,4 +1104,4 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		match key:
 			"min_block_spacing":
 				min_block_spacing = _validate_min_block_spacing(int(value))
-				GameLogger.instance.info("Min block spacing changed to: %d" % min_block_spacing, "KeySequenceManager")
+				GLogger.info("Min block spacing changed to: %d" % min_block_spacing, "KeySequenceManager")

@@ -3,9 +3,6 @@
 class_name GameLogger
 extends Node
 
-## 单例实例
-static var instance: GameLogger
-
 ## 日志级别
 enum LogLevel {
 	DEBUG = 0,
@@ -43,12 +40,8 @@ var level_colors = {
 }
 
 func _ready() -> void:
-	if instance == null:
-		instance = self
-	else:
-		queue_free()
 	add_to_group("singleton")
-	
+
 	# 初始化日志文件路径（包含日期）
 	var date = Time.get_date_string_from_system()
 	var logs_dir = PathHelper.get_logs_dir()  # 通过 PathHelper 获取平台自适应路径

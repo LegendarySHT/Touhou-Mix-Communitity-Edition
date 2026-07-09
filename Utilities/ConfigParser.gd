@@ -71,7 +71,7 @@ const KEY_NAME_MAP: Dictionary = {
 ##   Array[Key]: 解析后的 KeyCode 数组，无法识别的键会被跳过
 static func parse_keyboard_keys(key_string: String) -> Array[Key]:
 	if key_string.is_empty():
-		GameLogger.instance.warning("Keyboard keys string is empty, using default", "ConfigParser")
+		GLogger.warning("Keyboard keys string is empty, using default", "ConfigParser")
 		return _get_default_keyboard_keys()
 	
 	var keys: Array[Key] = []
@@ -97,14 +97,14 @@ static func parse_keyboard_keys(key_string: String) -> Array[Key]:
 			continue
 		
 		# 无法识别，记录警告
-		GameLogger.instance.warning(
+		GLogger.warning(
 			"Cannot parse keyboard key: '%s'" % key_part_stripped,
 			"ConfigParser"
 		)
 	
 	# 如果解析失败（结果为空），返回默认值
 	if keys.is_empty():
-		GameLogger.instance.warning(
+		GLogger.warning(
 			"Failed to parse any keys from '%s', using default" % key_string,
 			"ConfigParser"
 		)

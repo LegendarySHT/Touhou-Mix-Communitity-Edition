@@ -10,9 +10,9 @@ var current_songs: Array[SongData] = []
 var current_album_id: String = ""
 
 ## 管理器引用
-@onready var data_manager: DataManager = DataManager.instance
-@onready var event_bus: EventBus = EvtBus.instance
-@onready var state_manager = UIStateManager.instance
+@onready var data_manager: DataManager = DataMGR
+@onready var event_bus: EventBus = EvtBus
+@onready var state_manager = UiStatMGR
 
 func _ready() -> void:
 	# 获取管理器引用

@@ -2,8 +2,8 @@ extends Control
 
 class_name FocusManager
 
-@onready var ui: UIStateManager = UIStateManager.instance
-@onready var ani: AnimationManager = AnimationManager.instance
+@onready var ui: UIStateManager = UiStatMGR
+@onready var ani: AnimationManager = AniMGR
 
 var _last_input_was_keyboard := false
 

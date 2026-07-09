@@ -1,6 +1,6 @@
 extends Control
 
-@onready var ani: AnimationManager = AnimationManager.instance
+@onready var ani: AnimationManager = AniMGR
 
 const BEAM_SHADER: Shader = preload("res://UI/Views/PlayView/LaneEffectBeam.gdshader")
 

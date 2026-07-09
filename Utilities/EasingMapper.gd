@@ -87,7 +87,7 @@ static func string_to_trans(name: String) -> int:
 	if upper_name in func_names:
 		return func_names[upper_name]
 	
-	GameLogger.instance.warning("Unknown easing function: %s, using LINEAR as fallback" % name, "EasingMapper")
+	GLogger.warning("Unknown easing function: %s, using LINEAR as fallback" % name, "EasingMapper")
 	return EasingFunc.LINEAR
 
 ## 将缓动相位名称字符串转换为Tween.EASE_*常量
@@ -98,7 +98,7 @@ static func string_to_ease(name: String) -> int:
 	if upper_name in phase_names:
 		return phase_names[upper_name]
 	
-	GameLogger.instance.warning("Unknown easing phase: %s, using OUT as fallback" % name, "EasingMapper")
+	GLogger.warning("Unknown easing phase: %s, using OUT as fallback" % name, "EasingMapper")
 	return EasingPhase.OUT
 
 ## 将Tween.TRANS_*常量转换为缓动函数名称
@@ -108,7 +108,7 @@ static func trans_to_string(trans: int) -> String:
 	if trans in trans_int_to_name:
 		return trans_int_to_name[trans]
 	
-	GameLogger.instance.warning("Unknown trans constant: %d, using LINEAR as fallback" % trans, "EasingMapper")
+	GLogger.warning("Unknown trans constant: %d, using LINEAR as fallback" % trans, "EasingMapper")
 	return "LINEAR"
 
 ## 将Tween.EASE_*常量转换为缓动相位名称
@@ -118,7 +118,7 @@ static func ease_to_string(ease_type: int) -> String:
 	if ease_type in ease_int_to_name:
 		return ease_int_to_name[ease_type]
 	
-	GameLogger.instance.warning("Unknown ease constant: %d, using OUT as fallback" % ease_type, "EasingMapper")
+	GLogger.warning("Unknown ease constant: %d, using OUT as fallback" % ease_type, "EasingMapper")
 	return "OUT"
 
 ## 生成组合的缓动名称字符串（func + phase）

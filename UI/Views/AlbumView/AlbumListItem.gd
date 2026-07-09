@@ -68,7 +68,7 @@ func _load_cover_image() -> void:
 		return
 
 	var fs_mgr := FileSystemManager.instance
-	var data_mgr := DataManager.instance
+	var data_mgr := DataMGR
 	if not fs_mgr or not data_mgr:
 		push_error("FileSystemManager or DataManager not found.")
 		return

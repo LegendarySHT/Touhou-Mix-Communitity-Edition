@@ -11,7 +11,7 @@ static var instance: PopupWindow
 @onready var cancel_btn: Button = $Window/VBoxC/Btns/Cancel
 @onready var confirm_btn: Button = $Window/VBoxC/Btns/Confirm
 
-@onready var ani: AnimationManager = AnimationManager.instance
+@onready var ani: AnimationManager = AniMGR
 
 signal window_close
 

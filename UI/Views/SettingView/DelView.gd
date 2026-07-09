@@ -220,8 +220,8 @@ func _build_midi_tree() -> void:
 	var charts_index := FileSystemManager.instance.get_charts_index()
 	print("[DelView] charts_index entries: %d" % charts_index.size())
 	for folder_name in charts_index:
-		var meta: Dictionary = charts_index[folder_name]
-		_midi_path_map[meta["id"]] = meta["path"]
+		var meta: ChartMetadata = charts_index[folder_name]
+		_midi_path_map[meta.id] = meta.path
 
 	var dm := DataMGR
 	print("[DelView] DataMGR midis: %d, midi_tree albums: %d, albums: %d" % [dm.midis.size(), dm.midi_tree.size(), dm.albums.size()])
@@ -362,9 +362,9 @@ func _get_node_path_chain(node: Node) -> String:
 func _get_midi_difficulty(midi_id: String) -> String:
 	var charts_index := FileSystemManager.instance.get_charts_index()
 	for folder_name in charts_index:
-		var meta: Dictionary = charts_index[folder_name]
-		if meta["id"] == midi_id:
-			return _parse_difficulty(meta.get("folder_name", ""))
+		var meta: ChartMetadata = charts_index[folder_name]
+		if meta.id == midi_id:
+			return _parse_difficulty(meta.folder_name)
 	return "?"
 
 
@@ -763,15 +763,15 @@ func _build_skin_list() -> void:
 	for child in _skin_list.get_children():
 		child.queue_free()
 
-	var skins_index := FileSystemManager.instance.get_skins_index()
+	var skins_index := SkinMGR.get_skins_index()
 	_skin_items.clear()
 
 	for skin_name in skins_index:
-		var meta: Dictionary = skins_index[skin_name]
+		var meta: SkinMetadata = skins_index[skin_name]
 		_skin_items.append({
 			"name": skin_name,
-			"path": meta["path"],
-			"is_builtin": meta["is_builtin"],
+			"path": meta.path,
+			"is_builtin": meta.is_builtin,
 			"selected": false,
 		})
 

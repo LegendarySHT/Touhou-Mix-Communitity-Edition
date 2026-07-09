@@ -136,4 +136,4 @@ func remove_selected_midi():
 	_refresh_display()
 
 	if not list_items.size():
-		UIStateManager.instance.go_back()
+		UiStatMGR.go_back()

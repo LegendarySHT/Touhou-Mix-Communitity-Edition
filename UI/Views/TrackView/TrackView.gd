@@ -27,7 +27,7 @@ var file_dialog: FileDialog = null
 # MIDI播放相关
 
 @onready var midi_playback_manager: MidiPlaybackManager = MidiPlaybackManager.instance
-@onready var ui_stat_mgr: UIStateManager = UIStateManager.instance
+@onready var ui_stat_mgr: UIStateManager = UiStatMGR
 
 var current_midi_data: MidiData = null
 var is_progress_dragging: bool = false
@@ -83,8 +83,8 @@ func _ready() -> void:
 	_set_display_midi_volume(midi_vol_slider.value)
 	
 	# 连接信号（检查防止重复连接）
-	if not EventBus.instance.is_connected("enter_track_view_with", Callable(self, "_load_midi")):
-		EventBus.instance.enter_track_view_with.connect(_load_midi)
+	if not EvtBus.is_connected("enter_track_view_with", Callable(self, "_load_midi")):
+		EvtBus.enter_track_view_with.connect(_load_midi)
 	
 	if not ui_stat_mgr.is_connected("state_changed", Callable(self, "_on_ui_state_changed")):
 		ui_stat_mgr.state_changed.connect(_on_ui_state_changed)
@@ -328,11 +328,6 @@ func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
 		if track.note_display:
 			track.note_display.reset_playhead_position(target_ms)
 
-	# Reset individual track displayers first
-	for track in list_items:
-		if track.note_display:
-			track.note_display.reset_playhead_position(target_ms)
-
 	# Then reset master displayer
 	if master_note_displayer:
 		master_note_displayer.reset_playhead_position(target_ms)
@@ -344,17 +339,6 @@ func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
 			if track is MidiTrack:
 				var en = current_midi_data.is_track_channel_selected(track.track_index, track.track_channel)
 				if en and track.note_display:
-					total_passed += int(track.note_display.note_count_passed.text)
-		master_note_displayer.note_count_passed.text = str(total_passed)
-
-	# Sum passed count from enabled tracks for master displayer
-	if master_note_displayer and current_midi_data:
-		var total_passed = 0
-		for track in list_items:
-			if track is MidiTrack:
-				var is_enabled = current_midi_data.is_track_channel_selected(
-					track.track_index, track.track_channel)
-				if is_enabled and track.note_display:
 					total_passed += int(track.note_display.note_count_passed.text)
 		master_note_displayer.note_count_passed.text = str(total_passed)
 
@@ -452,7 +436,7 @@ func _on_vocal_import_btn_pressed() -> void:
 	# 显示对话框（对于原生对话框，直接调用popup_centered_clamped）
 	file_dialog.popup_centered_clamped(Vector2(1024, 768), 0.7)
 	
-	GameLogger.instance.info("Opening vocal import dialog at: %s" % chart_folder, "TrackView")
+	GLogger.info("Opening vocal import dialog at: %s" % chart_folder, "TrackView")
 
 ## 处理文件选择完成
 
@@ -495,7 +479,7 @@ func _on_vocal_file_selected(file_path: String) -> void:
 	
 	if chart_folder.is_empty():
 		push_warning("[TrackView] Cannot locate chart folder for MIDI: %s" % chart_id)
-		GameLogger.instance.warning("Cannot locate chart folder for MIDI: %s" % chart_id, "TrackView")
+		GLogger.warning("Cannot locate chart folder for MIDI: %s" % chart_id, "TrackView")
 		return
 	
 	# 确保目标文件夹存在
@@ -503,14 +487,14 @@ func _on_vocal_file_selected(file_path: String) -> void:
 		var error = DirAccess.make_dir_absolute(chart_folder)
 		if error != OK:
 			push_error("[TrackView] Failed to create chart folder: %s (error code: %d)" % [chart_folder, error])
-			GameLogger.instance.error("Failed to create chart folder: %s" % chart_folder, "TrackView")
+			GLogger.error("Failed to create chart folder: %s" % chart_folder, "TrackView")
 			return
 	
 	# 读取源文件
 	var src_file = FileAccess.open(selected_file, FileAccess.READ)
 	if src_file == null:
 		push_error("[TrackView] Failed to open file: %s" % selected_file)
-		GameLogger.instance.error("Failed to open audio file: %s" % selected_file, "TrackView")
+		GLogger.error("Failed to open audio file: %s" % selected_file, "TrackView")
 		return
 	
 	var file_size = src_file.get_length()
@@ -531,7 +515,7 @@ func _on_vocal_file_selected(file_path: String) -> void:
 		var ext := _detect_audio_format(buffer)
 		if ext.is_empty():
 			push_warning("[TrackView] Cannot detect audio format from content: %s" % selected_file)
-			GameLogger.instance.warning("Cannot detect audio format from content URI", "TrackView")
+			GLogger.warning("Cannot detect audio format from content URI", "TrackView")
 			return
 		source_file_name = chart_id + "_vocal." + ext
 	
@@ -558,7 +542,7 @@ func _on_vocal_file_selected(file_path: String) -> void:
 	if midi_playback_manager and midi_playback_manager.is_playing:
 		midi_playback_manager.start_vocal_playback()
 	
-	GameLogger.instance.info("Vocal file imported successfully: %s -> %s" % [selected_file, destination_path], "TrackView")
+	GLogger.info("Vocal file imported successfully: %s -> %s" % [selected_file, destination_path], "TrackView")
 	print("[TrackView] Vocal file imported to: %s" % destination_path)
 
 ## 人声启用/禁用按钮回调
@@ -586,10 +570,10 @@ func _detect_vocal_file(midi_data: MidiData) -> void:
 	if not midi_data.vocal_file_path.is_empty():
 		if FileAccess.file_exists(midi_data.vocal_file_path):
 			vocal_file_path = midi_data.vocal_file_path
-			GameLogger.instance.info("Vocal file restored from saved config: %s" % vocal_file_path, "TrackView")
+			GLogger.info("Vocal file restored from saved config: %s" % vocal_file_path, "TrackView")
 			return
 		# 如果保存的路径已不存在，继续扫描
-		GameLogger.instance.warning("Saved vocal file no longer exists: %s" % midi_data.vocal_file_path, "TrackView")
+		GLogger.warning("Saved vocal file no longer exists: %s" % midi_data.vocal_file_path, "TrackView")
 		midi_data.vocal_file_path = ""
 	
 	# 从 FileSystemManager 的 charts_index 中查找音频文件
@@ -599,35 +583,35 @@ func _detect_vocal_file(midi_data: MidiData) -> void:
 	
 	# 遍历 charts_index 查找对应的 metadata
 	for folder_name in charts_index.keys():
-		var metadata = charts_index[folder_name]
-		var metadata_id = metadata.get("id", "")
-		
+		var metadata: ChartMetadata = charts_index[folder_name]
+		var metadata_id = metadata.id
+
 		# 匹配方式1：metadata 的 id
 		if metadata_id == chart_id:
-			var audio_path = metadata.get("audio_path", "")
+			var audio_path = metadata.audio_path
 			if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
 				vocal_file_path = audio_path
 				midi_data.vocal_file_path = audio_path
-				GameLogger.instance.info("Vocal file detected from chart metadata: %s" % audio_path, "TrackView")
+				GLogger.info("Vocal file detected from chart metadata: %s" % audio_path, "TrackView")
 				return
 			elif not audio_path.is_empty():
-				GameLogger.instance.warning("Vocal file in chart metadata no longer exists: %s" % audio_path, "TrackView")
+				GLogger.warning("Vocal file in chart metadata no longer exists: %s" % audio_path, "TrackView")
 		
 		# 匹配方式2：JSON 数据中的 hash 字段
-		var json_data = metadata.get("data", {})
+		var json_data = metadata.data
 		if json_data is Dictionary and json_data.has("hash"):
 			if json_data.get("hash", "") == chart_id:
-				var audio_path = metadata.get("audio_path", "")
+				var audio_path = metadata.audio_path
 				if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
 					vocal_file_path = audio_path
 					midi_data.vocal_file_path = audio_path
-					GameLogger.instance.info("Vocal file detected from JSON hash match: %s" % audio_path, "TrackView")
+					GLogger.info("Vocal file detected from JSON hash match: %s" % audio_path, "TrackView")
 					return
 				elif not audio_path.is_empty():
-					GameLogger.instance.warning("Vocal file in JSON hash metadata no longer exists: %s" % audio_path, "TrackView")
+					GLogger.warning("Vocal file in JSON hash metadata no longer exists: %s" % audio_path, "TrackView")
 	
 	# 未找到人声文件
-	GameLogger.instance.info("No vocal file found for MIDI: %s" % chart_id, "TrackView")
+	GLogger.info("No vocal file found for MIDI: %s" % chart_id, "TrackView")
 
 # ============= 音轨信号回调 =======================
 
@@ -1371,7 +1355,7 @@ func _extract_instruments_from_midi() -> void:
 	var presets_list = midi_playback_manager.get_presets_list()
 
 	if presets_list.is_empty():
-		GameLogger.instance.warning("No presets available from SoundFont", "TrackView")
+		GLogger.warning("No presets available from SoundFont", "TrackView")
 		instrument_options = ["Unknown (B0:P0)"]
 		regular_instruments = instrument_options.duplicate()
 		drum_instruments = []

@@ -257,7 +257,7 @@ func from_json(json_data: Dictionary) -> void:
 			# 第一次加载此MIDI，没有保存过配置，使用默认值
 			if not _track_config_initialized:
 				selected_track_configs[0] = [0]
-				#GameLogger.instance.info("First load: No track config found, using default: track 0, channel 0", "MidiData")
+				#GLogger.info("First load: No track config found, using default: track 0, channel 0", "MidiData")
 		
 		# 恢复人声文件路径
 		var saved_vocal_path = runtime_config.get("vocal_file_path", "")
@@ -289,35 +289,6 @@ func from_json(json_data: Dictionary) -> void:
 								"program": instr_data.get("program", 0),
 								"name": instr_data.get("name", "")
 							}
-
-## 转换为字典格式（用于导出或缓存）
-func to_dict() -> Dictionary:
-	return {
-		"id": id,
-		"name": name,
-		"description": description,
-		"status": status,
-		"artist_name": artist_name,
-		"uploader_name": uploader_name,
-		"author_name": author_name,
-		"uploaded_date": uploaded_date,
-		"trial_count": trial_count,
-		"download_count": download_count,
-		"love_count": love_count,
-		"up_count": up_count,
-		"down_count": down_count,
-		"avg_accuracy": avg_accuracy,
-		"pass_count": pass_count,
-		"fail_count": fail_count,
-		"rank_distribution": rank_distribution,
-		"file_hash": file_hash,
-		"midi_file_path": midi_file_path,
-		"track_count": track_count,
-		"selected_track_indices": selected_track_indices,
-		"use_soundfont": use_soundfont,
-		"bpm": bpm,
-		"duration_ms": duration_ms
-	}
 
 ## 设置选中的轨道
 func set_selected_tracks(track_indices: Array[int]) -> void:
@@ -358,7 +329,7 @@ func set_track_channel_mute(track_index: int, channel: int, muted: bool) -> void
 	if not track_channel_mute_state.has(track_index):
 		track_channel_mute_state[track_index] = {}
 	track_channel_mute_state[track_index][channel] = muted
-	print("[MidiData] Track %d Channel %d: %s" % [track_index, channel, "muted" if muted else "unmuted"])
+	GLogger.info("Track %d Channel %d: %s" % [track_index, channel, "muted" if muted else "unmuted"], "MidiData")
 
 ## 查询 (track, channel) 对是否被静音
 func get_track_channel_mute(track_index: int, channel: int) -> bool:
@@ -426,7 +397,7 @@ func set_track_channel_instrument_override(track_idx: int, channel: int, bank: i
 		"program": program,
 		"name": nm
 	}
-	print("[MidiData] Track %d Channel %d: 覆盖乐器 %s (Bank %d Program %d)" % [track_idx, channel, name, bank, program])
+	GLogger.info("Track %d Channel %d: 覆盖乐器 %s (Bank %d Program %d)" % [track_idx, channel, name, bank, program], "MidiData")
 
 ## 获取用户自定义的轨道-通道乐器覆盖
 func get_track_channel_instrument_override(track_idx: int, channel: int) -> Dictionary:
@@ -441,9 +412,9 @@ func clear_track_channel_instrument_override(track_idx: int, channel: int) -> vo
 		track_channel_instrument_overrides[track_idx].erase(channel)
 		if track_channel_instrument_overrides[track_idx].is_empty():
 			track_channel_instrument_overrides.erase(track_idx)
-	print("[MidiData] Track %d Channel %d: 已清除乐器覆盖" % [track_idx, channel])
+	GLogger.info("Track %d Channel %d: 已清除乐器覆盖" % [track_idx, channel], "MidiData")
 
 ## 清除所有乐器覆盖
 func clear_all_instrument_overrides() -> void:
 	track_channel_instrument_overrides.clear()
-	print("[MidiData] 已清除所有乐器覆盖")
+	GLogger.info("已清除所有乐器覆盖", "MidiData")

@@ -11,7 +11,7 @@
 ##   var lane_count = ConfigManager.instance.get_int("Lane", "lane_count", 12, config)
 ##
 ## 配置变更通知：
-##   EventBus.instance.config_changed.connect(_on_config_changed)
+##   EvtBus.config_changed.connect(_on_config_changed)
 ##   func _on_config_changed(key: String, section: String, value: Variant):
 ##       print("配置已更改: [%s] %s = %s" % [section, key, value])
 
@@ -76,52 +76,52 @@ func load_config(file_path: String) -> Dictionary:
 		# 检查资源是否存在于 PCK 包中
 		if not FileAccess.file_exists(file_path):
 			push_error("Config file not found in PCK: %s" % file_path)
-			GameLogger.instance.error("Config file not found in PCK: %s [Check export settings]" % file_path, "ConfigManager")
+			GLogger.error("Config file not found in PCK: %s [Check export settings]" % file_path, "ConfigManager")
 			return {}
 		
 		var file = FileAccess.open(file_path, FileAccess.READ)
 		if file == null:
 			var error_code = FileAccess.get_open_error()
 			push_error("Failed to open config from PCK: %s (Error: %d)" % [file_path, error_code])
-			GameLogger.instance.error("Failed to open PCK config [%s] with error code %d" % [file_path, error_code], "ConfigManager")
+			GLogger.error("Failed to open PCK config [%s] with error code %d" % [file_path, error_code], "ConfigManager")
 			if file:
 				file.close()
 			return {}
 		
 		if file.get_length() == 0:
-			GameLogger.instance.warning("Config file in PCK is empty: %s" % file_path, "ConfigManager")
+			GLogger.warning("Config file in PCK is empty: %s" % file_path, "ConfigManager")
 			file.close()
 			return {}
 		
 		content = file.get_as_text()
 		file.close()
-		GameLogger.instance.info("Config loaded from PCK: %s (size: %d bytes)" % [file_path, content.length()], "ConfigManager")
+		GLogger.info("Config loaded from PCK: %s (size: %d bytes)" % [file_path, content.length()], "ConfigManager")
 	else:
 		# user:// 路径的常规加载
 		if not FileAccess.file_exists(file_path):
-			GameLogger.instance.warning("Config file not found in user://: %s" % file_path, "ConfigManager")
+			GLogger.warning("Config file not found in user://: %s" % file_path, "ConfigManager")
 			return {}
 		
 		var file = FileAccess.open(file_path, FileAccess.READ)
 		if file == null:
 			var error_code = FileAccess.get_open_error()
 			push_error("Failed to load config: %s (Error: %d)" % [file_path, error_code])
-			GameLogger.instance.error("Failed to open user config [%s] with error code %d" % [file_path, error_code], "ConfigManager")
+			GLogger.error("Failed to open user config [%s] with error code %d" % [file_path, error_code], "ConfigManager")
 			return {}
 		
 		content = file.get_as_text()
 		file.close()
-		GameLogger.instance.info("Config loaded from user://: %s" % file_path, "ConfigManager")
+		GLogger.info("Config loaded from user://: %s" % file_path, "ConfigManager")
 	
 	if content.is_empty():
 		push_error("Config content is empty: %s" % file_path)
-		GameLogger.instance.error("Config file is empty: %s" % file_path, "ConfigManager")
+		GLogger.error("Config file is empty: %s" % file_path, "ConfigManager")
 		return {}
 	
-	var result = _parse_ini(content)
+	var result = IniParser.parse(content)
 	
 	if result.is_empty():
-		GameLogger.instance.warning("Config parsed to empty dictionary: %s" % file_path, "ConfigManager")
+		GLogger.warning("Config parsed to empty dictionary: %s" % file_path, "ConfigManager")
 	
 	# 缓存结果
 	configs[file_path] = result
@@ -142,11 +142,11 @@ func load_and_set_current(_file_path: String = "") -> Dictionary:
 	if FileAccess.file_exists(USER_CONFIG_PATH):
 		user_config = load_config(USER_CONFIG_PATH)
 		if not user_config.is_empty():
-			GameLogger.instance.info("User configuration loaded from %s" % USER_CONFIG_PATH, "ConfigManager")
+			GLogger.info("User configuration loaded from %s" % USER_CONFIG_PATH, "ConfigManager")
 		else:
-			GameLogger.instance.warning("User configuration file is empty, will use default", "ConfigManager")
+			GLogger.warning("User configuration file is empty, will use default", "ConfigManager")
 	else:
-		GameLogger.instance.info("User configuration file not found at %s, will use default" % USER_CONFIG_PATH, "ConfigManager")
+		GLogger.info("User configuration file not found at %s, will use default" % USER_CONFIG_PATH, "ConfigManager")
 	
 	# 加载默认配置用于补充
 	default_config = load_config(DEFAULT_CONFIG_PATH)
@@ -159,42 +159,9 @@ func load_and_set_current(_file_path: String = "") -> Dictionary:
 	
 	# 调试：打印当前配置的部分内容
 	var section_count = _current_config.size()
-	GameLogger.instance.info("Current configuration initialized with %d sections" % section_count, "ConfigManager")
+	GLogger.info("Current configuration initialized with %d sections" % section_count, "ConfigManager")
 	
 	return _current_config
-
-## 解析INI格式
-func _parse_ini(content: String) -> Dictionary:
-	var result: Dictionary = {}
-	var current_section: String = ""
-	
-	for line in content.split("\n"):
-		line = line.strip_edges()
-		
-		# 跳过空行和注释
-		if line.is_empty() or line.begins_with("#"):
-			continue
-		
-		# 处理段标题
-		if line.begins_with("[") and line.ends_with("]"):
-			current_section = line.substr(1, line.length() - 2)
-			result[current_section] = {}
-			continue
-		
-		# 处理键值对
-		if "=" in line:
-			var parts = line.split("=", true, 1)
-			var key = parts[0].strip_edges()
-			var value = parts[1].strip_edges()
-			
-			# 移除引号
-			if value.begins_with("\"") and value.ends_with("\""):
-				value = value.substr(1, value.length() - 2)
-			
-			if not current_section.is_empty():
-				result[current_section][key] = value
-	
-	return result
 
 # ============ 配置读取方法 ============
 
@@ -208,7 +175,7 @@ func get_value(section: String, key: String, default: Variant = "", config: Vari
 	if config.has(section) and config[section].has(key):
 		return config[section][key]
 	
-	GameLogger.instance.warning("Config key not found: [%s] %s, using default value: %s" % [section, key, str(default)], "ConfigManager")
+	GLogger.warning("Config key not found: [%s] %s, using default value: %s" % [section, key, str(default)], "ConfigManager")
 	return default
 
 ## 获取整数值
@@ -250,9 +217,9 @@ func set_value_and_notify(section: String, key: String, value: Variant, config: 
 	var new_value_str = str(value)
 	
 	if old_value_str != new_value_str:
-		if EventBus.instance != null:
-			EventBus.instance.config_changed.emit(key, section, value)
-		GameLogger.instance.info("Config changed: [%s] %s = %s" % [section, key, str(value)], "ConfigManager")
+		if EvtBus != null:
+			EvtBus.config_changed.emit(key, section, value)
+		GLogger.info("Config changed: [%s] %s = %s" % [section, key, str(value)], "ConfigManager")
 
 ## 设置单个配置值（不发送通知）
 ## 用于批量修改配置后再统一保存，避免发送过多信号
@@ -289,7 +256,7 @@ func save_config(file_path: String, config: Variant = null) -> bool:
 	if file_path == USER_CONFIG_PATH:
 		_current_config = config
 	
-	GameLogger.instance.info("Config saved to: %s" % file_path, "ConfigManager")
+	GLogger.info("Config saved to: %s" % file_path, "ConfigManager")
 	return true
 
 ## 序列化配置字典为INI格式
@@ -335,7 +302,7 @@ func merge_with_defaults(user_config: Dictionary, default_config: Dictionary) ->
 ## 清空缓存
 func clear_cache() -> void:
 	configs.clear()
-	GameLogger.instance.info("Config cache cleared", "ConfigManager")
+	GLogger.info("Config cache cleared", "ConfigManager")
 
 ## 获取当前活跃配置
 func get_current_config() -> Dictionary:
@@ -352,11 +319,11 @@ func reload_config() -> bool:
 	if FileAccess.file_exists(USER_CONFIG_PATH):
 		user_config = load_config(USER_CONFIG_PATH)
 		if not user_config.is_empty():
-			GameLogger.instance.info("User configuration reloaded from %s" % USER_CONFIG_PATH, "ConfigManager")
+			GLogger.info("User configuration reloaded from %s" % USER_CONFIG_PATH, "ConfigManager")
 		else:
-			GameLogger.instance.warning("User configuration file is empty, using default", "ConfigManager")
+			GLogger.warning("User configuration file is empty, using default", "ConfigManager")
 	else:
-		GameLogger.instance.warning("User configuration file not found at %s, using default" % USER_CONFIG_PATH, "ConfigManager")
+		GLogger.warning("User configuration file not found at %s, using default" % USER_CONFIG_PATH, "ConfigManager")
 	
 	# 加载默认配置来补充缺失部分
 	var default_config = load_config(DEFAULT_CONFIG_PATH)
@@ -368,10 +335,10 @@ func reload_config() -> bool:
 	_current_config = merge_with_defaults(user_config, default_config)
 	
 	# 发送批量变更通知
-	if EventBus.instance != null:
-		EventBus.instance.config_changed.emit("*", "all", null)  # 通配符表示全量变更
+	if EvtBus != null:
+		EvtBus.config_changed.emit("*", "all", null)  # 通配符表示全量变更
 	
-	GameLogger.instance.info("Configuration reload complete with user priority", "ConfigManager")
+	GLogger.info("Configuration reload complete with user priority", "ConfigManager")
 	return true
 
 ## 检查并迁移配置版本
@@ -383,11 +350,11 @@ func check_and_migrate(config: Variant = null, file_path: String = "") -> Dictio
 	var version = get_value("Game", "config_version", "0.0.0", config)
 	
 	if version == CONFIG_VERSION:
-		GameLogger.instance.debug("Configuration version is current", "ConfigManager")
+		GLogger.debug("Configuration version is current", "ConfigManager")
 		return config
 	
 	# 版本不匹配，进行迁移
-	GameLogger.instance.info("Migrating config from version %s to %s" % [version, CONFIG_VERSION], "ConfigManager")
+	GLogger.info("Migrating config from version %s to %s" % [version, CONFIG_VERSION], "ConfigManager")
 	
 	# 加载默认配置以获取新增部分
 	var default_config = load_config(DEFAULT_CONFIG_PATH)
@@ -404,9 +371,9 @@ func check_and_migrate(config: Variant = null, file_path: String = "") -> Dictio
 	# 保存迁移后的配置到用户配置文件
 	var save_path = USER_CONFIG_PATH if file_path.is_empty() else file_path
 	if save_config(save_path, migrated):
-		GameLogger.instance.info("Configuration migrated and saved to %s" % save_path, "ConfigManager")
+		GLogger.info("Configuration migrated and saved to %s" % save_path, "ConfigManager")
 	else:
-		GameLogger.instance.warning("Failed to save migrated configuration", "ConfigManager")
+		GLogger.warning("Failed to save migrated configuration", "ConfigManager")
 	
 	# 更新当前活跃配置
 	_current_config = migrated
@@ -422,14 +389,14 @@ func load_json_file(file_path: String) -> Dictionary:
 	
 	var file = FileAccess.open(file_path, FileAccess.READ)
 	if file == null:
-		GameLogger.instance.warning("Failed to open JSON file: %s" % file_path, "ConfigManager")
+		GLogger.warning("Failed to open JSON file: %s" % file_path, "ConfigManager")
 		return {}
 	
 	var content = file.get_as_text()
 	var json = JSON.parse_string(content)
 	
 	if json == null:
-		GameLogger.instance.warning("Failed to parse JSON file: %s" % file_path, "ConfigManager")
+		GLogger.warning("Failed to parse JSON file: %s" % file_path, "ConfigManager")
 		return {}
 	
 	return json if json is Dictionary else {}
@@ -459,5 +426,5 @@ func save_json_file(file_path: String, data: Dictionary, merge_existing: bool = 
 	file.store_string(json_str)
 	file.close()
 	
-	GameLogger.instance.info("JSON file saved to: %s" % file_path, "ConfigManager")
+	GLogger.info("JSON file saved to: %s" % file_path, "ConfigManager")
 	return true

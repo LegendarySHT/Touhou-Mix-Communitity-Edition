@@ -24,8 +24,8 @@ extends Control
 @onready var redirect_btns: FlowContainer = $LeftArea/RedirectButtons
 
 # 管理器
-@onready var data_manager: DataManager = DataManager.instance
-@onready var event_bus: EventBus = EventBus.instance
+@onready var data_manager: DataManager = DataMGR
+@onready var event_bus: EventBus = EvtBus
 
 var showing_info: bool = false
 
@@ -74,16 +74,16 @@ func _on_click_start_btn() -> void:
 		return
 	print("选择歌曲： %s" % midi.name)
 
-	EventBus.instance.start_game_with.emit(midi)
-	UIStateManager.instance.change_state(UIStateManager.UIState.PLAY_VIEW)
+	EvtBus.start_game_with.emit(midi)
+	UiStatMGR.change_state(UIStateManager.UIState.PLAY_VIEW)
 
 func _on_click_track_btn():
 	var midi:MidiData = midi_list.get_selection()
 	if not midi:
 		return
 	
-	UIStateManager.instance.change_state(UIStateManager.UIState.TRACK_VIEW)
-	EventBus.instance.enter_track_view_with.emit.call_deferred(midi)
+	UiStatMGR.change_state(UIStateManager.UIState.TRACK_VIEW)
+	EvtBus.enter_track_view_with.emit.call_deferred(midi)
 
 # 跳转到收藏夹
 func _on_click_favor_list_btn():
@@ -155,7 +155,7 @@ func _on_del_btn_pressed():
 					"vocal_volume": 50
 				}
 				ConfigManager.instance.save_json_file(json_path, {"_runtime": runtime_patch}, true)
-			GameLogger.instance.info("已删除人声音频: %s" % vocal_path, "MidiView")
+			GLogger.info("已删除人声音频: %s" % vocal_path, "MidiView")
 
 		1: # 重置设定：清除音轨/音量/静音/独奏配置，保留人声路径
 			# 更新内存
@@ -171,7 +171,7 @@ func _on_del_btn_pressed():
 				var json_dict: Dictionary = ConfigManager.instance.load_json_file(json_path)
 				json_dict.erase("_runtime")
 				ConfigManager.instance.save_json_file(json_path, json_dict, false)
-			GameLogger.instance.info("已重置谱面设定: %s" % midi_to_del.name, "MidiView")
+			GLogger.info("已重置谱面设定: %s" % midi_to_del.name, "MidiView")
 
 		2: # 删除曲包：删除整个文件夹，并从内存中移除
 			var folder_path: String = FileSystemManager.instance.get_chart_folder_path(chart_id)
@@ -186,10 +186,10 @@ func _on_del_btn_pressed():
 			var song_id_before: String = midi_to_del.song_data.id if midi_to_del.song_data else ""
 			var album_id_before: String = midi_to_del.album_data.id if midi_to_del.album_data else ""
 			var deleted_id: String = midi_to_del.id
-			DataManager.instance.remove_midi(chart_id)
+			DataMGR.remove_midi(chart_id)
 			# 判断 Song 和 Album 是否被级联删除
-			var song_still_exists: bool = not song_id_before.is_empty() and DataManager.instance.songs.has(song_id_before)
-			var album_still_exists: bool = not album_id_before.is_empty() and DataManager.instance.albums.has(album_id_before)
+			var song_still_exists: bool = not song_id_before.is_empty() and DataMGR.songs.has(song_id_before)
+			var album_still_exists: bool = not album_id_before.is_empty() and DataMGR.albums.has(album_id_before)
 			
 			if song_still_exists:
 				# Song 仍存在，正常返回 SongView
@@ -198,10 +198,10 @@ func _on_del_btn_pressed():
 				# Song 被删除但 Album 仍存在，重新加载该 Album 的 SongView（空列表）
 				midi_list.current_midis.erase(midi_to_del)
 				midi_list._refresh_display()
-				EventBus.instance.album_selected.emit(album_id_before)
-				UIStateManager.instance.go_back()
+				EvtBus.album_selected.emit(album_id_before)
+				UiStatMGR.go_back()
 			else:
 				# Song 和 Album 都被删除，直接跳回 AlbumView
-				UIStateManager.instance.go_back_to(UIStateManager.UIState.ALBUM_VIEW)
-			EventBus.instance.midi_deleted.emit(deleted_id)
-			GameLogger.instance.info("已删除曲包: %s" % midi_to_del.name, "MidiView")
+				UiStatMGR.go_back_to(UIStateManager.UIState.ALBUM_VIEW)
+			EvtBus.midi_deleted.emit(deleted_id)
+			GLogger.info("已删除曲包: %s" % midi_to_del.name, "MidiView")

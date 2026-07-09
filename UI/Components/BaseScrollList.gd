@@ -100,8 +100,8 @@ func _ready() -> void:
 	scroll_state_reset_timer.timeout.connect(_stop_scroll)
 	add_child(scroll_state_reset_timer)
 
-	UIStateManager.instance.state_changed.connect(_on_state_changed)
-	_on_state_changed(UIStateManager.UIState.NONE, UIStateManager.instance.current_state)
+	UiStatMGR.state_changed.connect(_on_state_changed)
+	_on_state_changed(UIStateManager.UIState.NONE, UiStatMGR.current_state)
 
 	get_v_scroll_bar().gui_input.connect(_on_v_scrollbar_gui_input)
 	get_v_scroll_bar().value_changed.connect(_on_v_scrollbar_changed)
@@ -167,7 +167,7 @@ func _process(delta: float) -> void:
 		if abs(snap_distant-scroll_vertical)<10:
 			return
 		# 补间动画
-		snap_tween = AnimationManager.instance._create_tween("snap_target")
+		snap_tween = AniMGR._create_tween("snap_target")
 
 		snap_tween.set_ease(Tween.EASE_IN)
 		snap_tween.tween_property(self, "scroll_vertical", snap_distant, 0.2)
@@ -207,7 +207,7 @@ func _on_v_scrollbar_gui_input(event):
 				_inertia_driver.handle_scrollbar_press(event.pressed)
 
 func _gui_input(event: InputEvent) -> void:
-	if work_state != UIStateManager.instance.current_state:
+	if work_state != UiStatMGR.current_state:
 		return
 
 	# # 鼠标按钮事件
@@ -332,9 +332,9 @@ func _connect_head_and_tail() -> void:
 ## 刷新已有列表项的非共享属性颜色（如 albumNode 的 CountBase.self_modulate）
 ## StyleBoxFlat 已在 item_instance 上修改，duplicate() 共享引用，无需逐项刷新
 func refresh_item_colors() -> void:
-	if ThemeManager.instance == null:
+	if ThemeMGR == null:
 		return
-	var pri_light := ThemeManager.instance.get_color("primary_light")
+	var pri_light := ThemeMGR.get_color("primary_light")
 	for item in list_items:
 		var count_base := item.get_node_or_null("PN/CountBase") as TextureRect
 		if count_base:

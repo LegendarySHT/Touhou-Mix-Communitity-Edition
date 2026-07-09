@@ -4,9 +4,6 @@ extends Node
 
 class_name DataManager
 
-## 单例实例
-static var instance: DataManager
-
 ## 所有专辑数据 (ID -> AlbumData)
 var albums: Dictionary[String, AlbumData] = {}
 
@@ -28,18 +25,7 @@ var is_loading: bool = true
 ## 加载完成信号
 signal data_loaded
 
-func json_get(json, key, default):
-	var intermediate = json.get(key, default)
-	if not json or not intermediate:
-		return default
-	return json.get(key, default)
-
 func _ready() -> void:
-	if instance == null:
-		instance = self
-	else:
-		queue_free()
-	
 	add_to_group("singleton")
 
 ## 从midis_info目录异步加载所有MIDI数据
@@ -60,19 +46,19 @@ func load_all_midis_async() -> void:
 ## 线程函数：加载MIDI数据
 ## 使用新的谱面格式（从 FileSystemManager 获取谱面索引）
 func _load_midis() -> void:
-	print("[DataMGR] Thread started, loading MIDI data...")
+	GLogger.info("Thread started, loading MIDI data...", "DataMGR")
 	
 	# 获取谱面索引
 	var charts = FileSystemManager.instance.get_charts_index()
-	print("[DataMGR] Got charts index: %d charts" % charts.size())
+	GLogger.info("Got charts index: %d charts" % charts.size(), "DataMGR")
 	
 	if charts.is_empty():
-		print("[DataMGR] No charts found in FileSystemManager index")
+		GLogger.warning("No charts found in FileSystemManager index", "DataMGR")
 		return
 	
 	# 处理每个谱面
 	var processed_count = 0
-	print("[DataMGR] Starting to process %d charts..." % charts.size())
+	GLogger.info("Starting to process %d charts..." % charts.size(), "DataMGR")
 	
 	for folder_name in charts.keys():
 		var metadata = charts[folder_name]
@@ -83,8 +69,8 @@ func _load_midis() -> void:
 		if processed_count % 10 == 0:
 			await get_tree().process_frame
 	
-	print("[DataMGR] Finished processing %d charts, now emitting signal..." % processed_count)
-	print("[DataMGR] Midis in dictionary: %d" % midis.size())
+	GLogger.info("Finished processing %d charts, now emitting signal..." % processed_count, "DataMGR")
+	GLogger.info("Midis in dictionary: %d" % midis.size(), "DataMGR")
 
 	# 为无专辑/歌曲的 MIDI 合成 Unknown 分组
 	await _ensure_unknown_grouping()
@@ -92,37 +78,36 @@ func _load_midis() -> void:
 	_emit_data_loaded()
 
 func _emit_data_loaded():
-	print("[DataMGR] _emit_data_loaded() called")
+	GLogger.info("_emit_data_loaded() called", "DataMGR")
 	is_loading = false
 	var stats = get_statistics()
-	print("[DataMGR] Stats - Albums: %d, Songs: %d, MIDIs: %d" %
-		[stats.total_albums, stats.total_songs, stats.total_midis])
-	print("[DataMGR] Emitting data_loaded signal...")
+	GLogger.info("Stats - Albums: %d, Songs: %d, MIDIs: %d" % [stats.total_albums, stats.total_songs, stats.total_midis], "DataMGR")
+	GLogger.info("Emitting data_loaded signal...", "DataMGR")
 	data_loaded.emit()
-	print("[DataMGR] data_loaded signal emitted!")
+	GLogger.info("data_loaded signal emitted!", "DataMGR")
 
 ## 处理新格式的谱面数据（文件夹结构）
-func _process_new_format_chart(metadata: Dictionary) -> void:
-	var chart_id = metadata.get("id", "")
-	var json_data = metadata.get("data", {})
-	var folder_name = metadata.get("folder_name", "")
-	
+func _process_new_format_chart(metadata: ChartMetadata) -> void:
+	var chart_id = metadata.id
+	var json_data = metadata.data
+	var folder_name = metadata.folder_name
+
 	# 调试日志
 	if chart_id.is_empty():
-		print("[DataMGR] WARN: Chart metadata missing id field. Folder: %s" % folder_name)
+		GLogger.warning("Chart metadata missing id field. Folder: %s" % folder_name, "DataMGR")
 		return
-	
+
 	if json_data.is_empty():
-		print("[DataMGR] WARN: Chart %s has empty JSON data. Folder: %s" % [chart_id, folder_name])
+		GLogger.warning("Chart %s has empty JSON data. Folder: %s" % [chart_id, folder_name], "DataMGR")
 		return
-	
+
 	# 创建MIDI数据对象
 	var midi = MidiData.new()
 	midi.from_json(json_data)
 
 	# 验证是否成功设置了 id
 	if midi.id.is_empty():
-		print("[DataMGR] WARN: Failed to set MIDI id for chart %s" % chart_id)
+		GLogger.warning("Failed to set MIDI id for chart %s" % chart_id, "DataMGR")
 		return
 
 	# 初始化人声配置：若曲包存在人声音频文件则默认启用，否则禁用
@@ -130,7 +115,7 @@ func _process_new_format_chart(metadata: Dictionary) -> void:
 	var runtime_config = json_data.get("_runtime", {})
 	var has_saved_vocal_enabled = runtime_config is Dictionary and runtime_config.has("vocal_enabled")
 	if not has_saved_vocal_enabled:
-		var audio_path = metadata.get("audio_path", "")
+		var audio_path = metadata.audio_path
 		if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
 			midi.vocal_enabled = true
 			midi.vocal_file_path = audio_path
@@ -186,10 +171,10 @@ func _process_song_and_album_info(json_data: Dictionary, midi: MidiData, midi_id
 	if json_data.has("song") and json_data.has("album"):
 		_process_nested_format(json_data, midi, midi_id)
 	else:
-		GameLogger.instance.warning("Chart missing song/album: %s" % midi_id, "DataMGR")
+		GLogger.warning("Chart missing song/album: %s" % midi_id, "DataMGR")
 func _process_nested_format(json_data: Dictionary, midi: MidiData, midi_id: String) -> void:
 	# 处理歌曲信息
-	var song_json = json_get(json_data, "song", {}) as Dictionary
+	var song_json = JsonHelper.get_value(json_data, "song", {}) as Dictionary
 	var song_id = song_json.get("_id", "")
 	
 	if song_id and not song_id.is_empty():
@@ -204,7 +189,7 @@ func _process_nested_format(json_data: Dictionary, midi: MidiData, midi_id: Stri
 		midi.author_name = json_data.get("author", "")
 	
 	# 处理专辑信息
-	var album_json = json_get(json_data, "album", {}) as Dictionary
+	var album_json = JsonHelper.get_value(json_data, "album", {}) as Dictionary
 	var album_id = album_json.get("_id", "")
 	
 	if album_id and not album_id.is_empty():
@@ -291,7 +276,7 @@ func _ensure_unknown_grouping() -> void:
 			if unknown_album.earliest_uploaded_date.is_empty() or midi.uploaded_date < unknown_album.earliest_uploaded_date:
 				unknown_album.earliest_uploaded_date = midi.uploaded_date
 	
-	print("[DataMGR] Created Unknown album with %d orphan MIDIs" % orphan_midis.size())
+	GLogger.info("Created Unknown album with %d orphan MIDIs" % orphan_midis.size(), "DataMGR")
 
 ## 清理之前合成的 Unknown 条目（避免重复）
 func _cleanup_unknown_grouping() -> void:
@@ -316,7 +301,7 @@ func get_sorted_albums() -> Array[AlbumData]:
 	var method := SortingEngine.parse_album_sort_method(method_str)
 	var direction := SortingEngine.SortDirection.ASCENDING if dir_str == "asc" else SortingEngine.SortDirection.DESCENDING
 	
-	return SortingEngine.instance.sort_albums(album_array, method, direction)
+	return SortEngine.sort_albums(album_array, method, direction)
 
 ## 获取所有专辑列表（委托到 get_sorted_albums）
 func get_all_albums() -> Array[AlbumData]:
@@ -402,7 +387,7 @@ func clear_data() -> void:
 ## 参数: midi_id - MidiData 的 id 字段
 func remove_midi(midi_id: String) -> void:
 	if not midis.has(midi_id):
-		GameLogger.instance.warning("remove_midi: midi_id not found: %s" % midi_id, "DataMGR")
+		GLogger.warning("remove_midi: midi_id not found: %s" % midi_id, "DataMGR")
 		return
 
 	var midi: MidiData = midis[midi_id]
@@ -428,4 +413,4 @@ func remove_midi(midi_id: String) -> void:
 					midi_tree.erase(album_id)
 					albums.erase(album_id)
 
-	GameLogger.instance.info("Removed midi from memory: %s" % midi_id, "DataMGR")
+	GLogger.info("Removed midi from memory: %s" % midi_id, "DataMGR")

@@ -4,9 +4,6 @@ extends Node
 
 class_name EventBus
 
-## 单例实例
-static var instance: EventBus
-
 ## ========== 数据事件 ==========
 signal data_loaded_complete
 signal album_selected(album_id: String)
@@ -33,11 +30,7 @@ signal theme_changed(theme_name: String)
 signal midi_deleted(midi_id: String)
 
 func _ready() -> void:
-	if instance == null:
-		instance = self
-		add_to_group("singleton")
-	else:
-		queue_free()
+	add_to_group("singleton")
 
 ## 便利函数：发出歌曲选择事件
 func emit_song_selected(song_id: String) -> void:

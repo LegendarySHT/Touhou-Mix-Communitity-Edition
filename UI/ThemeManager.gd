@@ -6,28 +6,18 @@
 ## 背景色由 primary_dark 自动衍生，语义色（danger/success 等）写死在代码中
 ##
 ## 外部接口：
-##   ThemeManager.instance.get_color("primary")
-##   ThemeManager.instance.apply_preset("pink")
-##   ThemeManager.instance.refresh_all()          # 主题变更后刷新全部
-##   ThemeManager.instance.refresh_backgrounds()  # 仅刷新背景（给设置界面）
+##   ThemeMGR.get_color("primary")
+##   ThemeMGR.apply_preset("pink")
+##   ThemeMGR.refresh_all()          # 主题变更后刷新全部
+##   ThemeMGR.refresh_backgrounds()  # 仅刷新背景（给设置界面）
 class_name ThemeManager
 extends Node
 
-# ============ 单例 ============
-
-static var instance: ThemeManager
-
-func _init() -> void:
-	if instance != null:
-		push_error("ThemeManager is a singleton, use ThemeManager.instance instead")
-		return
-
 func _ready() -> void:
-	instance = self
 	add_to_group("singletons")
 	load_theme()
-	if EventBus.instance:
-		EventBus.instance.theme_changed.connect(_on_theme_changed)
+	if EvtBus:
+		EvtBus.theme_changed.connect(_on_theme_changed)
 
 # ============ 配置路径 ============
 
@@ -61,14 +51,14 @@ func get_color(key: String, default: Color = Color.WHITE) -> Color:
 	var k := key.to_lower()
 	if _palette.has(k):
 		return _palette[k]
-	GameLogger.instance.warning("Theme color key not found: %s" % key, "ThemeManager")
+	GLogger.warning("Theme color key not found: %s" % key, "ThemeManager")
 	return default
 
 func set_color(key: String, value: Color) -> void:
 	_palette[key.to_lower()] = value
-	GameLogger.instance.info("Theme color changed: %s = %s" % [key, value.to_html(true)], "ThemeManager")
-	if EventBus.instance:
-		EventBus.instance.theme_changed.emit(_theme_name)
+	GLogger.info("Theme color changed: %s = %s" % [key, value.to_html(true)], "ThemeManager")
+	if EvtBus:
+		EvtBus.theme_changed.emit(_theme_name)
 
 # ============ 预设颜色方案 ============
 
@@ -80,7 +70,7 @@ func get_available_presets() -> PackedStringArray:
 
 func apply_preset(preset_name: String) -> void:
 	if not _presets.has(preset_name):
-		GameLogger.instance.warning("预设不存在: %s，回退到 %s" % [preset_name, DEFAULT_PRESET], "ThemeManager")
+		GLogger.warning("预设不存在: %s，回退到 %s" % [preset_name, DEFAULT_PRESET], "ThemeManager")
 		if preset_name != DEFAULT_PRESET and _presets.has(DEFAULT_PRESET):
 			apply_preset(DEFAULT_PRESET)
 		return
@@ -92,10 +82,10 @@ func apply_preset(preset_name: String) -> void:
 			_palette[key.to_lower()] = Color(val)
 
 	_theme_name = preset_name
-	GameLogger.instance.info("主题预设已应用: %s (%d 色)" % [preset_name, _palette.size()], "ThemeManager")
+	GLogger.info("主题预设已应用: %s (%d 色)" % [preset_name, _palette.size()], "ThemeManager")
 
-	if EventBus.instance:
-		EventBus.instance.theme_changed.emit(_theme_name)
+	if EvtBus:
+		EvtBus.theme_changed.emit(_theme_name)
 	save_theme()
 
 func set_palette_colors(pri: Color, pri_light: Color, pri_dark: Color) -> void:
@@ -103,9 +93,9 @@ func set_palette_colors(pri: Color, pri_light: Color, pri_dark: Color) -> void:
 	_palette["primary_light"] = pri_light
 	_palette["primary_dark"] = pri_dark
 	_theme_name = "custom"
-	GameLogger.instance.info("主题色已自定义设置", "ThemeManager")
-	if EventBus.instance:
-		EventBus.instance.theme_changed.emit(_theme_name)
+	GLogger.info("主题色已自定义设置", "ThemeManager")
+	if EvtBus:
+		EvtBus.theme_changed.emit(_theme_name)
 	save_theme()
 
 # ============ 主题加载/保存 ============
@@ -133,8 +123,8 @@ func load_theme(file_path: String = "") -> bool:
 	apply_preset(active)
 
 	_loaded = true
-	if EventBus.instance:
-		EventBus.instance.theme_changed.emit(_theme_name)
+	if EvtBus:
+		EvtBus.theme_changed.emit(_theme_name)
 	return true
 
 func save_theme(file_path: String = "") -> bool:
@@ -165,7 +155,7 @@ func save_theme(file_path: String = "") -> bool:
 func get_font_size(key: String, default: int = 32) -> int:
 	if _font_sizes.has(key):
 		return _font_sizes[key]
-	GameLogger.instance.warning("Font size key not found: %s" % key, "ThemeManager")
+	GLogger.warning("Font size key not found: %s" % key, "ThemeManager")
 	return default
 
 # ============ 背景管理 ============
@@ -182,10 +172,10 @@ func set_view_background(view_name: String, config: Dictionary) -> void:
 	var prefix := "bg_" + view_name + "_"
 	for key in config:
 		_backgrounds[prefix + key] = config[key]
-	GameLogger.instance.info("背景设置已更新: %s" % view_name, "ThemeManager")
+	GLogger.info("背景设置已更新: %s" % view_name, "ThemeManager")
 	save_theme()
-	if EventBus.instance:
-		EventBus.instance.theme_changed.emit(_theme_name)
+	if EvtBus:
+		EvtBus.theme_changed.emit(_theme_name)
 
 func apply_background(texture_rect: TextureRect, view_name: String) -> void:
 	if texture_rect == null:
@@ -498,7 +488,7 @@ func _apply_track_theme(main: Node) -> void:
 		if sb_hp is StyleBoxFlat:
 			sb_hp.bg_color = DANGER_COLOR.lightened(0.2)
 
-	GameLogger.instance.debug("TrackView theme applied", "ThemeManager")
+	GLogger.debug("TrackView theme applied", "ThemeManager")
 
 
 func _apply_play_theme(main: Node) -> void:
@@ -544,7 +534,7 @@ func _apply_play_theme(main: Node) -> void:
 		if sb_p is StyleBoxFlat:
 			sb_p.bg_color = DANGER_COLOR
 
-	GameLogger.instance.debug("PlayView theme applied", "ThemeManager")
+	GLogger.debug("PlayView theme applied", "ThemeManager")
 
 
 ## 对 DelView 的静态部分应用主题色（侧边栏、内容面板、按钮颜色）
@@ -566,7 +556,7 @@ func _apply_delview_theme(main: Node) -> void:
 		if sb is StyleBoxFlat:
 			sb.bg_color = get_color("primary_dark")
 
-	GameLogger.instance.debug("DelView theme applied", "ThemeManager")
+	GLogger.debug("DelView theme applied", "ThemeManager")
 
 # ============ 全局刷新 ============
 
@@ -589,7 +579,7 @@ func refresh_all() -> void:
 	_apply_score_theme(main)
 	_apply_track_theme(main)
 	_apply_play_theme(main)
-	GameLogger.instance.info("主题刷新完成: %s" % _theme_name, "ThemeManager")
+	GLogger.info("主题刷新完成: %s" % _theme_name, "ThemeManager")
 
 func _on_theme_changed(preset_name: String) -> void:
 	# 如果信号携带的预设名在配置中存在且与当前不同，应用它
@@ -600,7 +590,7 @@ func _on_theme_changed(preset_name: String) -> void:
 			if val.is_valid_html_color():
 				_palette[key.to_lower()] = Color(val)
 		_theme_name = preset_name
-		GameLogger.instance.info("主题预设已应用: %s (%d 色)" % [preset_name, _palette.size()], "ThemeManager")
+		GLogger.info("主题预设已应用: %s (%d 色)" % [preset_name, _palette.size()], "ThemeManager")
 	save_theme()
 	refresh_all()
 
@@ -610,7 +600,7 @@ func refresh_backgrounds() -> void:
 	if not main:
 		return
 	_apply_all_backgrounds(main)
-	GameLogger.instance.info("背景刷新完成", "ThemeManager")
+	GLogger.info("背景刷新完成", "ThemeManager")
 
 # ============ 内部：主界面组件主题 ============
 
@@ -736,7 +726,7 @@ func _parse_theme_config(cfg: Dictionary) -> void:
 			var _name: String = (section as String).replace("preset_", "")
 			_presets[_name] = cfg[section].duplicate()
 
-	GameLogger.instance.info("加载了 %d 个主题预设" % _presets.size(), "ThemeManager")
+	GLogger.info("加载了 %d 个主题预设" % _presets.size(), "ThemeManager")
 
 	if cfg.has("backgrounds"):
 		for key in cfg["backgrounds"]:

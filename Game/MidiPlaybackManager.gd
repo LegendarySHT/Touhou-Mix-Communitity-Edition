@@ -126,10 +126,10 @@ func _ready() -> void:
 	_load_soundfont_from_config()
 	
 	# 监听设置改变信号（用于动态切换MIDI后端和音源）
-	if EventBus.instance:
-		EventBus.instance.settings_changed.connect(_on_settings_changed)
+	if EvtBus:
+		EvtBus.settings_changed.connect(_on_settings_changed)
 		# 监听配置变更信号（新增，用于应对直接配置文件修改）
-		EventBus.instance.config_changed.connect(_on_config_changed)
+		EvtBus.config_changed.connect(_on_config_changed)
 
 	# 启动后预加载 SoundFont 到后端
 	call_deferred("_preload_soundfont_to_backend")
@@ -148,7 +148,7 @@ func _on_settings_changed(setting_name: String, value: Variant) -> void:
 		
 		# 如果后端改变了，进行动态切换
 		if midi_backend != old_backend:
-			GameLogger.instance.info("MIDI backend changed from '%s' to '%s'" % [old_backend, midi_backend], "MidiPlaybackManager")
+			GLogger.info("MIDI backend changed from '%s' to '%s'" % [old_backend, midi_backend], "MidiPlaybackManager")
 			print("[MidiPlaybackManager] MIDI backend changed from '%s' to '%s' (triggered by settings)" % [old_backend, midi_backend])
 			
 			# 停止当前播放（如果有）
@@ -198,7 +198,7 @@ func _on_settings_changed(setting_name: String, value: Variant) -> void:
 		var backend = _get_active_backend()
 		if backend != null and backend.has_method("set_use_system_stopwatch"):
 			backend.set_use_system_stopwatch(use_system_stopwatch)
-			GameLogger.instance.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
+			GLogger.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
 			print("[MidiPlaybackManager] System stopwatch mode set to: %s" % ("ON" if use_system_stopwatch else "OFF"))
 		else:
 			print("[MidiPlaybackManager] Current backend does not support system stopwatch setting")
@@ -304,7 +304,7 @@ func load_midi(midi_data: MidiData) -> bool:
 		midi_timebase = midi_data.midi_timebase
 		track_infos = midi_data._runtime_track_infos
 		duration_ms = midi_data.duration_ms
-		GameLogger.instance.info("MIDI parse cache hit, skipping re-parse", "MidiPlaybackManager")
+		GLogger.info("MIDI parse cache hit, skipping re-parse", "MidiPlaybackManager")
 	else:
 		var parse_result = MidiParser.load_and_parse_midi(midi_file_path)
 		if not parse_result["success"]:
@@ -349,7 +349,7 @@ func load_midi(midi_data: MidiData) -> bool:
 			if note is MidiParser.Note and note.event != null:
 				current_midi_data.set_track_channel_enabled(note.event.track_index, note.event.channel, true)
 		current_midi_data._track_config_initialized = true
-		GameLogger.instance.info("Initialized selected_track_configs with all (track, channel) pairs for new MIDI", "MidiPlaybackManager")
+		GLogger.info("Initialized selected_track_configs with all (track, channel) pairs for new MIDI", "MidiPlaybackManager")
 	
 	# 加载到活跃后端
 	var backend = _get_active_backend()
@@ -393,7 +393,7 @@ func load_midi(midi_data: MidiData) -> bool:
 	if backend != null and backend.has_method("set_use_system_stopwatch"):
 		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
 		backend.set_use_system_stopwatch(use_system_stopwatch)
-		GameLogger.instance.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
+		GLogger.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
 	
 	# 发出信号
 
@@ -927,7 +927,7 @@ func _initialize_addon_backend() -> bool:
 		midi_player.finished.connect(_on_midi_finished)
 		print("[MidiPlaybackManager] Connected finished signal")
 	
-	GameLogger.instance.info("Addon MIDI backend initialized successfully", "MidiPlaybackManager")
+	GLogger.info("Addon MIDI backend initialized successfully", "MidiPlaybackManager")
 	print("[MidiPlaybackManager] Addon backend initialization complete")
 	
 	return true
@@ -1011,7 +1011,7 @@ func _initialize_meltysynth_backend() -> bool:
 	meltysynth_player = wrapper
 	# 【关键修复】初始化时也要设置 midi_player 指向 meltysynth_player，确保 TrackView 的调用能正确转发
 	midi_player = wrapper
-	GameLogger.instance.info("MeltySynth C# backend initialized successfully", "MidiPlaybackManager")
+	GLogger.info("MeltySynth C# backend initialized successfully", "MidiPlaybackManager")
 	print("[MidiPlaybackManager] MeltySynth backend initialization complete")
 	print("[MidiPlaybackManager] Set both meltysynth_player and midi_player to: %s" % wrapper)
 	
@@ -1449,11 +1449,11 @@ func _locate_midi_file(midi_data: MidiData) -> String:
 	# 从charts索引中查找（优先使用已缓存的路径）
 	var charts_index = filesystem_manager.get_charts_index()
 	for folder_name in charts_index.keys():
-		var metadata: Dictionary = charts_index[folder_name]
-		var chart_id: String = metadata.get("id", "")
+		var metadata: ChartMetadata = charts_index[folder_name]
+		var chart_id: String = metadata.id
 		if chart_id == midi_data.id or chart_id == midi_data.file_hash:
 			# 首选使用索引中缓存的路径
-			var chart_path: String = metadata.get("path", "")
+			var chart_path: String = metadata.path
 			if chart_path.is_empty():
 				chart_path = FileSystemManager.CHARTS_DIR.path_join(folder_name)
 			# 1) 按 chart_id 命名的mid
@@ -1692,7 +1692,7 @@ func start_vocal_playback() -> void:
 		# 预加载未完成或路径不匹配，回退到同步加载
 		# 首先检查文件是否存在（使用FileAccess，支持user://目录）
 		if not FileAccess.file_exists(vocal_file_path):
-			GameLogger.instance.warning("Vocal file does not exist, skipping vocal playback: %s" % vocal_file_path, "MidiPlaybackMGR")
+			GLogger.warning("Vocal file does not exist, skipping vocal playback: %s" % vocal_file_path, "MidiPlaybackMGR")
 			return
 
 		# 根据文件扩展名加载对应的AudioStream类型

@@ -9,7 +9,7 @@ extends ListItemBase
 @onready var line: Line2D = $Panel/HBoxC/Line2D
 @onready var cover_texture: TextureRect = $Panel/cover
 
-@onready var state_manager:UIStateManager = UIStateManager.instance
+@onready var state_manager:UIStateManager = UiStatMGR
 
 ## MIDI数据
 var midi_data: MidiData

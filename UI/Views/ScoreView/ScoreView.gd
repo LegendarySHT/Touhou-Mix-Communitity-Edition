@@ -93,7 +93,7 @@ func _on_love_btn_pressed():
 	pass
 
 ############################# 动画 ###############################
-@onready var ani: AnimationManager = AnimationManager.instance
+@onready var ani: AnimationManager = AniMGR
 var _loop_ani_chara: Tween = null
 var _loop_ani_rank: Tween = null
 
@@ -117,7 +117,7 @@ func ani_out():
 	ani.animate_position(nd, Vector2(nd.position.x, wh + 100), 0.5, "sv_bottom")
 	
 	await get_tree().create_timer(0.05).timeout
-	if UiStatMGR.instance.transition_version != AniMGR.instance._current_transition_version:
+	if UiStatMGR.transition_version != AniMGR._current_transition_version:
 		return
 	nd = get_node("Rank")
 	ani.animate_position(nd, Vector2(nd.position.x, wh), 0.5, "sv_rank")
@@ -127,7 +127,7 @@ func ani_out():
 	ani.animate_fade_out(nd, 1, "sv_score_fade")
 	
 	await get_tree().create_timer(0.05).timeout
-	if UiStatMGR.instance.transition_version != AniMGR.instance._current_transition_version:
+	if UiStatMGR.transition_version != AniMGR._current_transition_version:
 		return
 	nd = get_node("Accuracy")
 	ani.animate_position(nd, Vector2(nd.position.x, wh), 0.5, "sv_acc")

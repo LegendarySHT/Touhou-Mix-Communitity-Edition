@@ -1,8 +1,8 @@
 extends VBoxContainer
 
-@onready var ui : UIStateManager = UIStateManager.instance
-@onready var se = SortEngine.instance
-@onready var ani: AnimationManager = AnimationManager.instance
+@onready var ui : UIStateManager = UiStatMGR
+@onready var se = SortEngine
+@onready var ani: AnimationManager = AniMGR
 
 @onready var sort_button = $Btns/Search
 @onready var love_button = $Btns/FavorList
@@ -114,7 +114,7 @@ func _on_ordering_pressed() -> void:
 
 
 func _on_search_query(query: String = "") -> void:
-	EventBus.instance.search_query_changed.emit(query if query else search_lineedit.text)
+	EvtBus.search_query_changed.emit(query if query else search_lineedit.text)
 
 	if ui.current_state!=ui.UIState.SORTED_VIEW:
 		ui.change_state(ui.UIState.SORTED_VIEW)

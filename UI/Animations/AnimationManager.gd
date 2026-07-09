@@ -4,9 +4,6 @@ extends Node
 
 class_name AnimationManager
 
-## 单例实例
-static var instance: AnimationManager
-
 ## 预定义的动画时长
 const DURATION_QUICK = 0.2
 const DURATION_NORMAL = 0.3
@@ -30,14 +27,10 @@ var _current_transition_version: int = -1
 var _base_positions: Dictionary = {}
 
 func _ready() -> void:
-	if instance == null:
-		instance = self
-	else:
-		queue_free()
 	add_to_group("singleton")
 
 	# 连接场景退出信号
-	var UI: UIStateManager = UiStatMGR.instance
+	var UI: UIStateManager = UiStatMGR
 	if UI:
 		UI.state_changed.connect(_scene_transition_exit)
 		#UI.state_entering.connect(_scene_transition_enter)
@@ -370,7 +363,7 @@ var tan15 = tan(deg_to_rad(15))
 
 ## 页面组件退出动画
 func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
-	_current_transition_version = UiStatMGR.instance.transition_version
+	_current_transition_version = UiStatMGR.transition_version
 	_kill_scene_transition_tweens()
 
 	# 修复 ui_exist 并重置位置（包括被杀死补间破坏的子节点）
@@ -397,7 +390,7 @@ func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStat
 			ui_exist[key] = false
 
 func _scene_transition_enter(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
-	if UiStatMGR.instance.transition_version != _current_transition_version:
+	if UiStatMGR.transition_version != _current_transition_version:
 		return
 	# 共享组件：在两个状态中都存在，无入场动画，但需确保位置正确
 	for key in ui_exist.keys():
@@ -532,7 +525,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 	if tween:
 		var captured_version := _current_transition_version
 		tween.finished.connect(func() -> void:
-			if UiStatMGR.instance.transition_version != captured_version:
+			if UiStatMGR.transition_version != captured_version:
 				return
 			_scene_transition_enter(old_state, new_state)
 		)
@@ -549,8 +542,8 @@ func _save_settings_on_exit(setting_view: Control) -> void:
 		print("[AnimationManager] Settings saved successfully")
 		
 		# 发出通配符信号，通知所有监听者配置已变化
-		if EventBus.instance:
-			EventBus.instance.settings_changed.emit("*", null)
+		if EvtBus:
+			EvtBus.settings_changed.emit("*", null)
 	else:
 		push_warning("[AnimationManager] Failed to save settings")
 
@@ -607,7 +600,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			# 不要问为什么在播放动画的地方做初始化
 			if SS:
 				var button=SS.get_node("PN/AlbumButton")
-				var ui: UIStateManager = UiStatMGR.instance
+				var ui: UIStateManager = UiStatMGR
 				button.pressed.connect(func() -> void:
 					ui.change_state(ui.UIState.ALBUM_VIEW))
 		"Sorted_List":
@@ -661,7 +654,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 	if tween:
 		var captured_version := _current_transition_version
 		tween.finished.connect(func() -> void:
-			if UiStatMGR.instance.transition_version != captured_version:
+			if UiStatMGR.transition_version != captured_version:
 				return
 			scene_transition_fin.emit()
 		)

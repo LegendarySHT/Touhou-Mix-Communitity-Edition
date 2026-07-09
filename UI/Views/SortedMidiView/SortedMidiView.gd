@@ -8,10 +8,10 @@ class_name SortedMidiView
 var current_midis: Array[MidiData] = []
 
 ## 管理器引用
-@onready var sm: UIStateManager = UIStateManager.instance
-@onready var dm: DataManager = DataManager.instance
-@onready var eb: EventBus = EventBus.instance
-@onready var se: SortingEngine = SortingEngine.instance
+@onready var sm: UIStateManager = UiStatMGR
+@onready var dm: DataManager = DataMGR
+@onready var eb: EventBus = EvtBus
+@onready var se: SortingEngine = SortEngine
 
 ## 空结果提示节点
 @onready var no_items_node: Label = get_node_or_null("/root/Main/skew/C/NoItems")

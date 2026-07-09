@@ -32,33 +32,14 @@ var total_midi_count: int = 0
 ## 专辑下所有 MIDI 的最早上传日期（用于按上传时间排序）
 var earliest_uploaded_date: String = ""
 
-func json_get(json, key, default):
-	var intermediate = json.get(key,default)
-	if not json or not intermediate:
-		return default
-	return json.get(key,default)
-
 ## 从JSON数据构造
 func from_json(json_data: Dictionary) -> void:
 	id = json_data.get("_id", "")
 	name = json_data.get("name", "")
-	abbreviation = json_get(json_data,"abbr","")
-	release_date = json_get(json_data,"date","")
-	description = json_get(json_data,"description", "")
-	cover_url = json_get(json_data,"coverUrl", "")
-
-## 转换为字典格式
-func to_dict() -> Dictionary:
-	return {
-		"id": id,
-		"name": name,
-		"abbreviation": abbreviation,
-		"release_date": release_date,
-		"description": description,
-		"cover_url": cover_url,
-		"song_ids": song_ids,
-		"total_midi_count": total_midi_count
-	}
+	abbreviation = JsonHelper.get_value(json_data,"abbr","")
+	release_date = JsonHelper.get_value(json_data,"date","")
+	description = JsonHelper.get_value(json_data,"description", "")
+	cover_url = JsonHelper.get_value(json_data,"coverUrl", "")
 
 ## 添加歌曲ID
 func add_song_id(song_id: String) -> void:

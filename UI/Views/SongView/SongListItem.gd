@@ -7,7 +7,7 @@ extends ListItemBase
 @onready var midi_count_label: Label = $PC/HBoxC/CountBase/SongCount
 @onready var cover: TextureRect = $PC/HBoxC/PC/cover
 
-@onready var animation_manager: AnimationManager = AnimationManager.instance
+@onready var animation_manager: AnimationManager = AniMGR
 
 ## 歌曲数据
 var song_data: SongData
@@ -42,7 +42,7 @@ func _load_cover_image() -> void:
 		return
 
 	var fs_mgr := FileSystemManager.instance
-	var data_mgr := DataManager.instance
+	var data_mgr := DataMGR
 	if not fs_mgr or not data_mgr:
 		return
 

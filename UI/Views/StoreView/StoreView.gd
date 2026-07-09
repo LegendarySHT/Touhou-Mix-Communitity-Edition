@@ -25,8 +25,8 @@ func _ready() -> void:
 	for i in range(36):
 		create_and_add_item("%d" % i, "StoreMidiItem")
 
-	await EventBus.instance.data_loaded_complete
-	var test_midis:Array[MidiData] = DataManager.instance.get_all_midis()
+	await EvtBus.data_loaded_complete
+	var test_midis:Array[MidiData] = DataMGR.get_all_midis()
 	for i in range(5):
 		container.get_child(i).set_display(test_midis[i])
 
@@ -35,7 +35,7 @@ func _ready() -> void:
 	_toggle_top(true)
 	_toggle_bottom(true)
 
-	UIStateManager.instance.state_changed.connect(_on_state)
+	UiStatMGR.state_changed.connect(_on_state)
 
 func _on_state(_old: UIStateManager.UIState, new: UIStateManager.UIState) -> void:
 	if new == UIStateManager.UIState.STORE_VIEW:

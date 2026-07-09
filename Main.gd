@@ -9,7 +9,6 @@ var event_bus: EventBus
 var state_manager: UIStateManager
 var animation_manager: AnimationManager
 var sorting_engine: SortingEngine
-var gameplay_manager: GameplayManager
 var score_calculator: ScoreCalculator
 var audio_manager: AudioManager
 var midi_playback_manager: MidiPlaybackManager
@@ -121,7 +120,7 @@ func _initialize_core_systems() -> void:
 	print("=== Initializing Core Systems ===")
 
 	# 1. 初始化日志系统（单例，已自动管理）
-	logger = GameLogger.instance
+	logger = GLogger
 	if logger:
 		logger.info("Logger initialized", "Main")
 	
@@ -138,8 +137,8 @@ func _initialize_core_systems() -> void:
 		logger.info("Configuration pre-loaded before Manager initialization", "Main")
 
 	# 2.75. ThemeManager 已通过 autoload 自动实例化
-	if ThemeManager.instance and ThemeManager.instance.is_loaded():
-		logger.info("ThemeManager initialized with theme: %s" % ThemeManager.instance.get_theme_name(), "Main")
+	if ThemeMGR and ThemeMGR.is_loaded():
+		logger.info("ThemeManager initialized with theme: %s" % ThemeMGR.get_theme_name(), "Main")
 
 	# 3. 初始化文件系统管理器（单例，已自动管理）
 	filesystem_manager = FileSystemManager.new()
@@ -152,36 +151,29 @@ func _initialize_core_systems() -> void:
 	filesystem_manager.initialize_directory_structure()
 	
 	# 4. 初始化事件总线（单例，已自动管理）
-	event_bus = EventBus.instance
+	event_bus = EvtBus
 	if event_bus and logger:
 		logger.info("EventBus initialized", "Main")
 	
 	# 5. 初始化UI状态管理器（单例，已自动管理）
-	state_manager = UIStateManager.instance
+	state_manager = UiStatMGR
 	if state_manager and logger:
 		logger.info("UIStateManager initialized", "Main")
 	
 	# 6. 初始化动画管理器（单例，已自动管理）
-	animation_manager = AnimationManager.instance
+	animation_manager = AniMGR
 	if animation_manager and logger:
 		logger.info("AnimationManager initialized", "Main")
 	
 	# 7. 初始化排序引擎（单例，已自动管理）
-	sorting_engine = SortingEngine.instance
+	sorting_engine = SortEngine
 	if sorting_engine and logger:
 		logger.info("SortingEngine initialized", "Main")
 	
 	# 8. 初始化数据管理器（单例，已自动管理）
-	data_manager = DataManager.instance
+	data_manager = DataMGR
 	if data_manager and logger:
 		logger.info("DataManager initialized", "Main")
-	
-	# 9. 初始化游戏管理器
-	gameplay_manager = GameplayManager.new()
-	gameplay_manager.name = "GameplayManager"
-	add_child(gameplay_manager)
-	if logger:
-		logger.info("GameplayManager initialized", "Main")
 	
 	# 9.5 初始化分数计算器
 	score_calculator = ScoreCalculator.new()
@@ -272,8 +264,8 @@ func _init_ui() -> void:
 	Main.add_child(play_page)
 
 	# 应用主题（Theme 资源 + 主界面组件 + 所有背景）
-	if ThemeManager.instance:
-		ThemeManager.instance.refresh_all()
+	if ThemeMGR:
+		ThemeMGR.refresh_all()
 
 ## 连接核心系统信号
 func _connect_signals() -> void:

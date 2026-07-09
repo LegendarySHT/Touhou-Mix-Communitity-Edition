@@ -35,8 +35,8 @@ func _ready() -> void:
 	add_child(vocal_player)
 
 	# 监听配置变更信号
-	if EventBus.instance:
-		EventBus.instance.config_changed.connect(_on_config_changed)
+	if EvtBus:
+		EvtBus.config_changed.connect(_on_config_changed)
 
 ## 设置主音量
 func set_master_volume(volume: float) -> void:
