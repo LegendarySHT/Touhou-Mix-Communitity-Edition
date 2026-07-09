@@ -1,6 +1,6 @@
-extends ListItemBase
+extends CoverListItemBase
 
-@onready var cover_texture:TextureRect = $CoverPanel/cover
+# cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
 @onready var title_text:Label = $InfoPanel/MidiName
 @onready var author_text:Label = $InfoPanel/Author
 @onready var uploader:Label = $InfoPanel/Uploader
@@ -13,6 +13,8 @@ signal init_finished
 var midi_data:MidiData
 
 func _ready() -> void:
+	cover_texture = $CoverPanel/cover
+	_parallax_enabled = false
 	button = get_node_or_null("Button")
 	parent_node = get_node("/root/Main/Store/StoreMidiList")
 

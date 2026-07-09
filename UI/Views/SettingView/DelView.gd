@@ -528,7 +528,7 @@ func _on_midi_delete_selected() -> void:
 		if path.is_empty():
 			push_error("[DelView] 找不到谱面路径: %s" % midi_id)
 			continue
-		if _remove_dir_recursive(path):
+		if FileSystemManager.instance.delete_directory_recursive(path):
 			print("[DelView] 已删除谱面: %s" % path)
 			FileSystemManager.instance.remove_from_charts_index(midi_id)
 			DataMGR.remove_midi(midi_id)
@@ -577,7 +577,7 @@ func _scan_audio_files() -> Array[Dictionary]:
 	while dn != "":
 		if dir.current_is_dir() and not dn.begins_with("."):
 			var chart_path := charts_dir.path_join(dn)
-			var mp3_files := _find_files_in_dir(chart_path, "*.mp3")
+			var mp3_files := FileSystemManager.instance.find_files_in_dir(chart_path, "*.mp3")
 			for mp3 in mp3_files:
 				result.append({
 					"file_name": mp3,
@@ -831,7 +831,7 @@ func _on_skin_delete_selected() -> void:
 		return
 
 	for item in to_delete:
-		if _remove_dir_recursive(item["path"]):
+		if FileSystemManager.instance.delete_directory_recursive(item["path"]):
 			print("[DelView] 已删除皮肤: %s" % item["name"])
 		else:
 			push_error("[DelView] 删除失败: %s" % item["path"])
@@ -1062,81 +1062,3 @@ func _refresh_list_checkboxes(list_container: VBoxContainer, checked: bool) -> v
 			var cb := row.get_child(0)
 			if cb is CheckBox:
 				cb.button_pressed = checked
-
-
-func _find_file_in_dir(dir_path: String, pattern: String) -> String:
-	var d := DirAccess.open(dir_path)
-	if not d:
-		return ""
-	var ext := pattern.replace("*.", ".")
-	d.list_dir_begin()
-	var fn := d.get_next()
-	while fn != "":
-		if fn.ends_with(ext) and not d.current_is_dir():
-			d.list_dir_end()
-			return fn
-		fn = d.get_next()
-	d.list_dir_end()
-	return ""
-
-
-func _find_files_in_dir(dir_path: String, pattern: String) -> PackedStringArray:
-	var result: PackedStringArray = []
-	var d := DirAccess.open(dir_path)
-	if not d:
-		return result
-	var ext := pattern.replace("*.", ".")
-	d.list_dir_begin()
-	var fn := d.get_next()
-	while fn != "":
-		if fn.ends_with(ext) and not d.current_is_dir():
-			result.append(fn)
-		fn = d.get_next()
-	d.list_dir_end()
-	return result
-
-
-func _remove_dir_recursive(dir_path: String) -> bool:
-	var d := DirAccess.open(dir_path)
-	if not d:
-		return false
-	d.list_dir_begin()
-	var fn := d.get_next()
-	while fn != "":
-		if fn == "." or fn == "..":
-			fn = d.get_next()
-			continue
-		var full := dir_path.path_join(fn)
-		if d.current_is_dir():
-			_remove_dir_recursive(full)
-		else:
-			DirAccess.remove_absolute(full)
-		fn = d.get_next()
-	d.list_dir_end()
-	return DirAccess.remove_absolute(dir_path) == OK
-
-
-func _copy_dir_recursive(src_dir: String, dst_dir: String) -> bool:
-	PathHelper.ensure_dir_exists(dst_dir)
-	var d := DirAccess.open(src_dir)
-	if not d:
-		return false
-	d.list_dir_begin()
-	var fn := d.get_next()
-	var ok := true
-	while fn != "":
-		if fn == "." or fn == "..":
-			fn = d.get_next()
-			continue
-		var src := src_dir.path_join(fn)
-		var dst := dst_dir.path_join(fn)
-		if d.current_is_dir():
-			ok = _copy_dir_recursive(src, dst) and ok
-		else:
-			var err := DirAccess.copy_absolute(src, dst)
-			if err != OK:
-				push_error("[DelView] 复制失败: %s -> %s" % [src, dst])
-				ok = false
-		fn = d.get_next()
-	d.list_dir_end()
-	return ok

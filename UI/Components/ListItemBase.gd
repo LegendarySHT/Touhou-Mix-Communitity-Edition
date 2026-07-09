@@ -150,9 +150,3 @@ func _pulse_animation(enable: bool):
 func initialize(id: String, type: String) -> void:
 	item_id = id
 	item_type = type
-
-# 封面移动动画
-func process_item_cover_move() -> void:
-	var max_y = self.cover_texture.size.y - size.y
-	var window_height = parent_node.size.y
-	self.cover_texture.position.y = - global_position.y / window_height * max_y

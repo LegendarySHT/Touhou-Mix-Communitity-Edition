@@ -1,0 +1,274 @@
+class_name VocalTrackController
+extends Node
+
+## 人声子系统控制器：从 TrackView 提取的人声导入/启用/音量/检测逻辑
+
+var _track_view: TrackView = null
+var _file_dialog: FileDialog = null
+var _vocal_import_btn: TextureButton = null
+var _vocal_enable_btn: Button = null
+var _vocal_vol_btn: TextureButton = null
+var _vocal_vol_slider: HSlider = null
+var _vocal_vol_label: Label = null
+
+## 人声音频路径（由本控制器管理，TrackView 通过 vocal_file_path 访问）
+var vocal_file_path: String = ""
+
+
+func setup(track_view: TrackView, file_dialog: FileDialog, vocal_import_btn: TextureButton,
+		vocal_enable_btn: Button, vocal_vol_btn: TextureButton,
+		vocal_vol_slider: HSlider, vocal_vol_label: Label) -> void:
+	_track_view = track_view
+	_file_dialog = file_dialog
+	_vocal_import_btn = vocal_import_btn
+	_vocal_enable_btn = vocal_enable_btn
+	_vocal_vol_btn = vocal_vol_btn
+	_vocal_vol_slider = vocal_vol_slider
+	_vocal_vol_label = vocal_vol_label
+
+
+## 打开FileDialog导入人声文件
+func on_vocal_import_btn_pressed() -> void:
+	if not _file_dialog:
+		push_error("[TrackView] FileDialog not initialized")
+		return
+
+	var current_midi_data = _track_view.current_midi_data
+	if not current_midi_data:
+		push_warning("[TrackView] No MIDI data loaded, cannot import vocal file")
+		return
+
+	# 获取当前曲包文件夹路径
+	var filesystem_mgr = FileSystemManager.instance
+	var chart_id = current_midi_data.file_hash if not current_midi_data.file_hash.is_empty() else current_midi_data.id
+	var chart_folder = filesystem_mgr.get_chart_folder_path(chart_id)
+
+	if chart_folder.is_empty():
+		push_warning("[TrackView] Cannot locate chart folder for MIDI: %s" % chart_id)
+		# 回退到Charts目录
+		chart_folder = FileSystemManager.CHARTS_DIR
+
+	# 配置FileDialog
+	_file_dialog.current_dir = chart_folder
+	_file_dialog.current_file = ""
+	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_file_dialog.filters = PackedStringArray(["Audio Files (*.mp3,*.wav,*.ogg,*.flac) ; *.mp3,*.wav,*.ogg,*.flac", "All Files ; *"])
+
+	# 显示对话框（对于原生对话框，直接调用popup_centered_clamped）
+	_file_dialog.popup_centered_clamped(Vector2(1024, 768), 0.7)
+
+	GLogger.info("Opening vocal import dialog at: %s" % chart_folder, "TrackView")
+
+
+## 检查文件名扩展名是否为有效音频格式
+## 根据文件头部 magic bytes 检测音频格式，返回扩展名
+func detect_audio_format(buffer: PackedByteArray) -> String:
+	# OGG: "OggS"
+	if buffer.size() >= 4 and buffer[0] == 0x4F and buffer[1] == 0x67 and buffer[2] == 0x67 and buffer[3] == 0x53:
+		return "ogg"
+	# WAV: "RIFF"
+	if buffer.size() >= 4 and buffer[0] == 0x52 and buffer[1] == 0x49 and buffer[2] == 0x46 and buffer[3] == 0x46:
+		return "wav"
+	# FLAC: "fLaC"
+	if buffer.size() >= 4 and buffer[0] == 0x66 and buffer[1] == 0x4C and buffer[2] == 0x61 and buffer[3] == 0x43:
+		return "flac"
+	# MP3: 0xFF 0xFB or 0xFF 0xFA or 0xFF 0xF3 or ID3 tag
+	if buffer.size() >= 3:
+		if (buffer[0] == 0xFF and (buffer[1] & 0xE0) == 0xE0):
+			return "mp3"
+		# ID3v2 tag: "ID3"
+		if buffer[0] == 0x49 and buffer[1] == 0x44 and buffer[2] == 0x33:
+			return "mp3"
+	return ""
+
+
+## 处理文件选择完成
+func on_vocal_file_selected(file_path: String) -> void:
+	if file_path.is_empty():
+		return
+
+	var selected_file = file_path
+	var is_content_uri := selected_file.begins_with("content://")
+
+	var current_midi_data = _track_view.current_midi_data
+	if not current_midi_data:
+		push_warning("[TrackView] No MIDI data loaded, cannot import vocal file")
+		return
+
+	# 获取目标曲包文件夹
+	var filesystem_mgr = FileSystemManager.instance
+	var chart_id = current_midi_data.file_hash if not current_midi_data.file_hash.is_empty() else current_midi_data.id
+	var chart_folder = filesystem_mgr.get_chart_folder_path(chart_id)
+
+	if chart_folder.is_empty():
+		push_warning("[TrackView] Cannot locate chart folder for MIDI: %s" % chart_id)
+		GLogger.warning("Cannot locate chart folder for MIDI: %s" % chart_id, "TrackView")
+		return
+
+	# 确保目标文件夹存在
+	if not DirAccess.dir_exists_absolute(chart_folder):
+		var error = DirAccess.make_dir_absolute(chart_folder)
+		if error != OK:
+			push_error("[TrackView] Failed to create chart folder: %s (error code: %d)" % [chart_folder, error])
+			GLogger.error("Failed to create chart folder: %s" % chart_folder, "TrackView")
+			return
+
+	# 读取源文件
+	var src_file = FileAccess.open(selected_file, FileAccess.READ)
+	if src_file == null:
+		push_error("[TrackView] Failed to open file: %s" % selected_file)
+		GLogger.error("Failed to open audio file: %s" % selected_file, "TrackView")
+		return
+
+	var file_size = src_file.get_length()
+	if file_size < 1024:
+		push_error("[TrackView] Audio file too small: %d bytes" % file_size)
+		src_file.close()
+		return
+
+	var buffer = src_file.get_buffer(file_size)
+	src_file.close()
+
+	# 确定目标文件名
+	var source_file_name: String
+	if not is_content_uri:
+		source_file_name = selected_file.get_file()
+	else:
+		# Android SAF 无法直接拿到文件名，用 magic bytes 检测格式
+		var ext := detect_audio_format(buffer)
+		if ext.is_empty():
+			push_warning("[TrackView] Cannot detect audio format from content: %s" % selected_file)
+			GLogger.warning("Cannot detect audio format from content URI", "TrackView")
+			return
+		source_file_name = chart_id + "_vocal." + ext
+
+	var destination_path = chart_folder.path_join(source_file_name)
+
+	# 写入本地文件
+	var dst_file = FileAccess.open(destination_path, FileAccess.WRITE)
+	if dst_file == null:
+		push_error("[TrackView] Failed to create destination file: %s" % destination_path)
+		return
+
+	dst_file.store_buffer(buffer)
+	dst_file.close()
+
+	# 保存路径到 MidiData
+	vocal_file_path = destination_path
+	if current_midi_data:
+		current_midi_data.vocal_file_path = destination_path
+
+	# 刷新UI显示
+	init_vocal_btn_display()
+
+	# 如果 MIDI 正在播放，立即启动人声同步播放
+	var midi_playback_manager = _track_view.midi_playback_manager
+	if midi_playback_manager and midi_playback_manager.is_playing:
+		midi_playback_manager.start_vocal_playback()
+
+	GLogger.info("Vocal file imported successfully: %s -> %s" % [selected_file, destination_path], "TrackView")
+	print("[TrackView] Vocal file imported to: %s" % destination_path)
+
+
+## 人声启用/禁用按钮回调
+func on_vocal_enable_btn_toggled(toggle_on: bool) -> void:
+	_vocal_enable_btn.text = "人声已启用" if not toggle_on else "人声已关闭"
+
+	var current_midi_data = _track_view.current_midi_data
+	if current_midi_data:
+		current_midi_data.vocal_enabled = not toggle_on
+		var midi_playback_manager = _track_view.midi_playback_manager
+		if midi_playback_manager and midi_playback_manager.is_playing:
+			if current_midi_data.vocal_enabled:
+				midi_playback_manager.start_vocal_playback()
+			else:
+				midi_playback_manager.stop_vocal_playback()
+
+
+## 检测并定位人声文件
+## 优先级：1. MidiData.vocal_file_path（已保存的路径）
+##        2. FileSystemManager 扫描到的音频文件（.ogg/.mp3/.wav/.flac）
+func detect_vocal_file(midi_data: MidiData) -> void:
+	if not midi_data:
+		return
+
+	vocal_file_path = ""
+
+	# 检查是否已有保存的人声文件路径
+	if not midi_data.vocal_file_path.is_empty():
+		if FileAccess.file_exists(midi_data.vocal_file_path):
+			vocal_file_path = midi_data.vocal_file_path
+			GLogger.info("Vocal file restored from saved config: %s" % vocal_file_path, "TrackView")
+			return
+		# 如果保存的路径已不存在，继续扫描
+		GLogger.warning("Saved vocal file no longer exists: %s" % midi_data.vocal_file_path, "TrackView")
+		midi_data.vocal_file_path = ""
+
+	# 从 FileSystemManager 的 charts_index 中查找音频文件
+	var filesystem_mgr = FileSystemManager.instance
+	var chart_id = midi_data.file_hash if not midi_data.file_hash.is_empty() else midi_data.id
+	var charts_index = filesystem_mgr.get_charts_index()
+
+	# 遍历 charts_index 查找对应的 metadata
+	for folder_name in charts_index.keys():
+		var metadata: ChartMetadata = charts_index[folder_name]
+		var metadata_id = metadata.id
+
+		# 匹配方式1：metadata 的 id
+		if metadata_id == chart_id:
+			var audio_path = metadata.audio_path
+			if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
+				vocal_file_path = audio_path
+				midi_data.vocal_file_path = audio_path
+				GLogger.info("Vocal file detected from chart metadata: %s" % audio_path, "TrackView")
+				return
+			elif not audio_path.is_empty():
+				GLogger.warning("Vocal file in chart metadata no longer exists: %s" % audio_path, "TrackView")
+
+		# 匹配方式2：JSON 数据中的 hash 字段
+		var json_data = metadata.data
+		if json_data is Dictionary and json_data.has("hash"):
+			if json_data.get("hash", "") == chart_id:
+				var audio_path = metadata.audio_path
+				if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
+					vocal_file_path = audio_path
+					midi_data.vocal_file_path = audio_path
+					GLogger.info("Vocal file detected from JSON hash match: %s" % audio_path, "TrackView")
+					return
+				elif not audio_path.is_empty():
+					GLogger.warning("Vocal file in JSON hash metadata no longer exists: %s" % audio_path, "TrackView")
+
+	# 未找到人声文件
+	GLogger.info("No vocal file found for MIDI: %s" % chart_id, "TrackView")
+
+
+# 在这个函数执行前需要先检查有无人声音频
+func init_vocal_btn_display() -> void:
+	var latency_container = _track_view.get_node("MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC")
+	var enable: bool = vocal_file_path != ""
+
+	# 设置组件可见性
+	_vocal_import_btn.visible = not enable
+
+	latency_container.visible = enable
+	_vocal_enable_btn.visible = enable
+
+	_vocal_vol_btn.visible = enable
+	_vocal_vol_slider.visible = enable
+	_vocal_vol_label.visible = enable
+
+	# 如果有人声文件，恢复音量设置
+	var current_midi_data = _track_view.current_midi_data
+	if enable and current_midi_data:
+		_vocal_vol_slider.value = current_midi_data.vocal_volume
+		set_display_vocal_volume(current_midi_data.vocal_volume)
+		_vocal_enable_btn.button_pressed = not current_midi_data.vocal_enabled
+		_vocal_enable_btn.text = "人声已启用" if current_midi_data.vocal_enabled else "人声已关闭"
+
+
+func set_display_vocal_volume(value: float) -> void:
+	_vocal_vol_slider.set_block_signals(true)
+	_vocal_vol_slider.value = value
+	_vocal_vol_slider.set_block_signals(false)
+
+	_vocal_vol_label.text = "%d%%" % int(value)

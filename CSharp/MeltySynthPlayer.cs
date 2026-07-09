@@ -78,14 +78,8 @@ public partial class MeltySynthPlayer : Node
 	private readonly Dictionary<int, int> _virtualChannelCc11 = new Dictionary<int, int>();
 	private readonly Dictionary<int, int> _virtualChannelCc10 = new Dictionary<int, int>();
 	private readonly Dictionary<int, int> _virtualChannelPitchBend = new Dictionary<int, int>();
-	private sealed class ManualFilterState
-	{
-		public readonly Dictionary<int, int> PendingManualOnsByTick = new Dictionary<int, int>();
-		public int ActiveManualNotes;
-	}
 
 	private readonly Dictionary<long, ManualFilterState> _manualNoteFilters = new Dictionary<long, ManualFilterState>();
-	private const int MANUAL_WILDCARD_TICK = -1;
 	private readonly HashSet<int> _mutedVirtualChannels = new HashSet<int>();
 
 	// ============ 选项 A：独立合成器用于低延迟手动音符 ============
@@ -99,6 +93,10 @@ public partial class MeltySynthPlayer : Node
 
 	// 跟踪已应用通道状态到手动合成器的虚拟通道，避免每次触发音符重复设置
 	private readonly ConcurrentDictionary<int, byte> _channelStateAppliedToManual = new ConcurrentDictionary<int, byte>();
+
+	// ============ OnSendMessage 拦截器管道 ============
+	private MessageHandlerContext _messageContext;
+	private readonly List<IMidiMessageHandler> _handlers = new List<IMidiMessageHandler>();
 
 	private void RequestAudioOutputPlay()
 	{
@@ -890,7 +888,7 @@ public partial class MeltySynthPlayer : Node
 					if (TryConvertToInt(pitchKey, out var pitch))
 					{
 						// 旧格式只有 bool，保持“全局屏蔽该音高”语义
-						AddManualFilterCount(virtualChannel, pitch, MANUAL_WILDCARD_TICK, int.MaxValue / 4);
+						AddManualFilterCount(virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, int.MaxValue / 4);
 					}
 				}
 			}
@@ -909,11 +907,6 @@ public partial class MeltySynthPlayer : Node
 		// GD.Print($"[MeltySynthPlayer] Manual control mapping updated: vc_pitch_entries={mappedPairs}, pending_manual_ons={pendingOns}");
 	}
 
-	private static long MakeManualFilterKey(int virtualChannel, int pitch)
-	{
-		return ((long)virtualChannel << 32) | (uint)pitch;
-	}
-
 	private void AddManualFilterCount(int virtualChannel, int pitch, int tick, int count)
 	{
 		if (count <= 0)
@@ -921,7 +914,7 @@ public partial class MeltySynthPlayer : Node
 			return;
 		}
 
-		var key = MakeManualFilterKey(virtualChannel, pitch);
+		var key = MessageHandlerContext.MakeManualFilterKey(virtualChannel, pitch);
 		if (!_manualNoteFilters.TryGetValue(key, out var state))
 		{
 			state = new ManualFilterState();
@@ -978,24 +971,24 @@ public partial class MeltySynthPlayer : Node
 		{
 			if (startTickMapVariant.AsBool())
 			{
-				AddManualFilterCount(virtualChannel, pitch, MANUAL_WILDCARD_TICK, 1);
+				AddManualFilterCount(virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, 1);
 			}
 			return;
 		}
 
 		if (startTickMapVariant.VariantType == Variant.Type.Int)
 		{
-			AddManualFilterCount(virtualChannel, pitch, MANUAL_WILDCARD_TICK, Math.Max(0, (int)startTickMapVariant.AsInt64()));
+			AddManualFilterCount(virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, Math.Max(0, (int)startTickMapVariant.AsInt64()));
 			return;
 		}
 
 		if (startTickMapVariant.VariantType == Variant.Type.Float)
 		{
-			AddManualFilterCount(virtualChannel, pitch, MANUAL_WILDCARD_TICK, Math.Max(0, (int)Math.Round(startTickMapVariant.AsDouble())));
+			AddManualFilterCount(virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, Math.Max(0, (int)Math.Round(startTickMapVariant.AsDouble())));
 			return;
 		}
 
-		AddManualFilterCount(virtualChannel, pitch, MANUAL_WILDCARD_TICK, 1);
+		AddManualFilterCount(virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, 1);
 	}
 
 	private static bool TryConvertToInt(object value, out int result)
@@ -1278,7 +1271,25 @@ public partial class MeltySynthPlayer : Node
 		_autoSynth = new Synthesizer(_soundFont, settings);
 		_synth = _autoSynth;  // 兼容性：保持 _synth 指向自动合成器
 		GD.Print($"[MeltySynthPlayer] Created autoSynth: sampleRate={settings.SampleRate}, polyphony={settings.MaximumPolyphony}");
-		
+
+		// 初始化 OnSendMessage 拦截器管道（仅一次，字典引用持久有效）
+		if (_messageContext == null)
+		{
+			_messageContext = new MessageHandlerContext(
+				_virtualChannelCurrentBank, _virtualChannelCurrentProgram,
+				_virtualChannelCc7, _virtualChannelCc11, _virtualChannelCc10,
+				_virtualChannelPitchBend, _virtualChannelInstruments,
+				_virtualChannelVolumes, _manualNoteFilters,
+				_mutedVirtualChannels, _channelStateAppliedToManual);
+			_handlers.Clear();
+			_handlers.Add(new ChannelStateMirrorHandler(_messageContext));
+			_handlers.Add(new ManualNoteFilterHandler(_messageContext));
+			_handlers.Add(new MuteFilterHandler(_messageContext));
+			_handlers.Add(new InstrumentOverrideHandler(_messageContext));
+			_handlers.Add(new VolumeScaleHandler(_messageContext));
+			_handlers.Add(new SynthForwarderHandler());
+		}
+
 		_sequencer = new MidiFileSequencer(_autoSynth)
 		{
 			OnSendMessage = OnSendMessage
@@ -1422,115 +1433,11 @@ public partial class MeltySynthPlayer : Node
 
 	private void OnSendMessage(Synthesizer synthesizer, int virtualChannel, int command, int data1, int data2, int tick)
 	{
-		if (command == 0xB0)
+		foreach (var handler in _handlers)
 		{
-			if (data1 == 0x00)
-			{
-				_virtualChannelCurrentBank[virtualChannel] = data2;
-				_channelStateAppliedToManual.TryRemove(virtualChannel, out _);
-			}
-			else if (data1 == 0x07)
-			{
-				_virtualChannelCc7[virtualChannel] = data2;
-				_channelStateAppliedToManual.TryRemove(virtualChannel, out _);
-			}
-			else if (data1 == 0x0B)
-			{
-				_virtualChannelCc11[virtualChannel] = data2;
-				_channelStateAppliedToManual.TryRemove(virtualChannel, out _);
-			}
-			else if (data1 == 0x0A)
-			{
-				_virtualChannelCc10[virtualChannel] = data2;
-				_channelStateAppliedToManual.TryRemove(virtualChannel, out _);
-			}
-		}
-		else if (command == 0xC0)
-		{
-			_virtualChannelCurrentProgram[virtualChannel] = data1;
-			_channelStateAppliedToManual.TryRemove(virtualChannel, out _);
-		}
-		else if (command == 0xE0)
-		{
-			_virtualChannelPitchBend[virtualChannel] = (data2 << 7) | data1;
-			_channelStateAppliedToManual.TryRemove(virtualChannel, out _);
-		}
-
-		var isNoteOn = command == 0x90 && data2 > 0;
-		var isNoteOff = command == 0x80 || (command == 0x90 && data2 == 0);
-		if (isNoteOn || isNoteOff)
-		{
-			var key = MakeManualFilterKey(virtualChannel, data1);
-			if (_manualNoteFilters.TryGetValue(key, out var state))
-			{
-				if (isNoteOn)
-				{
-					var exactCount = state.PendingManualOnsByTick.ContainsKey(tick) ? state.PendingManualOnsByTick[tick] : 0;
-					if (exactCount > 0)
-					{
-						state.PendingManualOnsByTick[tick] = exactCount - 1;
-						state.ActiveManualNotes += 1;
-						return;
-					}
-
-					var wildcardCount = state.PendingManualOnsByTick.ContainsKey(MANUAL_WILDCARD_TICK) ? state.PendingManualOnsByTick[MANUAL_WILDCARD_TICK] : 0;
-					if (wildcardCount > 0)
-					{
-						state.PendingManualOnsByTick[MANUAL_WILDCARD_TICK] = wildcardCount - 1;
-						state.ActiveManualNotes += 1;
-						return;
-					}
-				}
-
-				if (isNoteOff && state.ActiveManualNotes > 0)
-				{
-					state.ActiveManualNotes -= 1;
-					return;
-				}
-			}
-		}
-
-		if (_mutedVirtualChannels.Contains(virtualChannel) && command == 0x90 && data2 > 0)
-		{
-			return;
-		}
-
-		// 【关键】乐器覆盖拦截：对 MIDI 文件中的 Bank Change 和 Program Change 进行覆盖
-		if (_virtualChannelInstruments.TryGetValue(virtualChannel, out var instrument))
-		{
-			if (command == 0xB0 && data1 == 0x00)
-			{
-				// Bank Change (0xB0 0x00)
-				var oldBank = data2;
-				data2 = instrument.bank;
-				if (oldBank != instrument.bank)
-				{
-					// GD.Print($"[MeltySynthPlayer] [INTERCEPT] Bank Change intercepted for virtual channel {virtualChannel}: {oldBank} -> {data2}");
-				}
-			}
-			else if (command == 0xC0)
-			{
-				// Program Change (0xC0)
-				var oldProgram = data1;
-				data1 = instrument.program;
-				if (oldProgram != instrument.program)
-				{
-					// GD.Print($"[MeltySynthPlayer] [INTERCEPT] Program Change intercepted for virtual channel {virtualChannel}: {oldProgram} -> {data1}");
-				}
-			}
-		}
-
-		if (command == 0x90 && data2 > 0)
-		{
-			var volume = _virtualChannelVolumes.TryGetValue(virtualChannel, out var vol) ? vol : 1.0f;
-			data2 = Math.Clamp((int)Math.Round(data2 * volume), 0, 127);
-			if (data2 == 0)
-			{
+			if (!handler.Process(synthesizer, virtualChannel, ref command, ref data1, ref data2, tick))
 				return;
-			}
 		}
-
-		synthesizer.ProcessMidiMessage(virtualChannel, command, data1, data2);
 	}
 
 	private void ApplyChannelStateToManualSynth(int virtualChannel)

@@ -1,23 +1,26 @@
 ## 专辑列表项组件
-## 继承自 ListItemBase，显示专辑信息
-extends ListItemBase
+## 继承自 CoverListItemBase，显示专辑信息
+extends CoverListItemBase
 
 ## 引用节点路径
 @onready var album_name_label: Label = $PN/AlbumName
 @onready var song_count_label: Label = $PN/CountBase/SongCount
-@onready var cover_texture: TextureRect = $PN/PN/cover
+# cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
 
 ## 专辑数据
 var album_data: AlbumData
 
 ## 展开动画补间
-var expand_tween: Tween
-var _last_cover_offset: float = 0.0
+var expand_tween: Tween:
+	set(t):
+		expand_tween = t
+		_extra_motion_tween = t
 
 var ALBUMBUTTON = "PN/AlbumButton"
 signal _init_fin
 
 func _ready() -> void:
+	cover_texture = $PN/PN/cover
 	await _init_fin
 
 	if not album_data:
@@ -25,27 +28,8 @@ func _ready() -> void:
 		return
 	album_name_label.text = " %s" % album_data.name if album_data.name else "Unknown"
 	song_count_label.text = "%d" % album_data.song_ids.size()
-	
-	_load_cover_image()
 
-func _process(_delta: float) -> void:
-	if parent_node == null:
-		return
-	# 方案A：仅在滚动、吸附或展开动画期间才更新视差
-	if parent_node.scroll_velocity == 0 and parent_node.snap_tween == null and expand_tween == null:
-		return
-	# 方案B：跳过不在 ScrollContainer 可视区内的项目
-	var item_top := global_position.y
-	var item_bottom := item_top + size.y
-	var parent_ctrl := parent_node as Control
-	var view_top: float = parent_ctrl.global_position.y
-	var view_bottom: float = view_top + parent_ctrl.size.y
-	if item_bottom < view_top or item_top > view_bottom:
-		return
-	var new_offset: float = -(global_position.y / max(parent_ctrl.size.y, 1.0)) * max(cover_texture.size.y - size.y, 0.0)
-	if not is_equal_approx(new_offset, _last_cover_offset):
-		cover_texture.position.y = new_offset
-		_last_cover_offset = new_offset
+	_load_cover_image()
 
 ## 从AlbumData初始化显示
 func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: ButtonGroup) -> void:

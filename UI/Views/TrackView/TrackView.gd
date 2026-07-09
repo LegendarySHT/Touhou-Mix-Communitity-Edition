@@ -40,7 +40,11 @@ var instrument_options: Array = [] # 全局乐器列表（会被 _extract_instru
 var regular_instruments: Array = []  # 常规乐器 (Bank 0)
 var drum_instruments: Array = []     # 鼓组乐器 (Bank 128)
 # 人声音频路径存在时相关组件会显示
-var vocal_file_path: String = ""
+# vocal_file_path 现由 _vocal_controller 管理
+
+# 子系统控制器
+var _vocal_controller: VocalTrackController = null
+var _config_persistence: MidiConfigPersistence = null
 
 
 # 用于存储所有音符的列表
@@ -116,17 +120,31 @@ func _ready() -> void:
 	if not progress_bar.is_connected("value_changed", Callable(self, "_on_progress_bar_value_changed")):
 		progress_bar.value_changed.connect(_on_progress_bar_value_changed)
 
+	# 初始化子系统控制器
+	if _vocal_controller == null:
+		_vocal_controller = VocalTrackController.new()
+		_vocal_controller.name = "VocalTrackController"
+		add_child(_vocal_controller)
+		_vocal_controller.setup(self, file_dialog, vocal_import_btn, vocal_enable_btn,
+			vocal_vol_btn, vocal_vol_slider, vocal_vol_label)
+
+	if _config_persistence == null:
+		_config_persistence = MidiConfigPersistence.new()
+		_config_persistence.name = "MidiConfigPersistence"
+		add_child(_config_persistence)
+		_config_persistence.setup(self)
+
 	# 连接人声导入和启用信号（检查防止重复连接）
-	if not vocal_import_btn.is_connected("pressed", Callable(self, "_on_vocal_import_btn_pressed")):
-		vocal_import_btn.pressed.connect(_on_vocal_import_btn_pressed)
-	
-	if not vocal_enable_btn.is_connected("toggled", Callable(self, "_on_vocal_enable_btn_toggled")):
-		vocal_enable_btn.toggled.connect(_on_vocal_enable_btn_toggled)
-	
+	if not vocal_import_btn.is_connected("pressed", Callable(_vocal_controller, "on_vocal_import_btn_pressed")):
+		vocal_import_btn.pressed.connect(_vocal_controller.on_vocal_import_btn_pressed)
+
+	if not vocal_enable_btn.is_connected("toggled", Callable(_vocal_controller, "on_vocal_enable_btn_toggled")):
+		vocal_enable_btn.toggled.connect(_vocal_controller.on_vocal_enable_btn_toggled)
+
 	# 连接FileDialog信号（使用file_selected而不是files_selected，因为是单文件模式）
 	if file_dialog:
-		if not file_dialog.is_connected("file_selected", Callable(self, "_on_vocal_file_selected")):
-			file_dialog.file_selected.connect(_on_vocal_file_selected)
+		if not file_dialog.is_connected("file_selected", Callable(_vocal_controller, "on_vocal_file_selected")):
+			file_dialog.file_selected.connect(_vocal_controller.on_vocal_file_selected)
 
 	# 连接Latency输入框信号（检查防止重复连接）
 	if latency_edit:
@@ -151,7 +169,7 @@ func _load_midi(midi: MidiData) -> void:
 	container.size.y = 0
 	
 # 【关键】在加载MIDI之前先检测人声文件，确保vocal_file_path已设置
-	_detect_vocal_file(current_midi_data)
+	_vocal_controller.detect_vocal_file(current_midi_data)
 	# 加载MIDI到播放管理器
 	if not midi_playback_manager.load_midi(midi):
 		push_error("Failed to load MIDI: " + midi.name)
@@ -167,7 +185,7 @@ func _load_midi(midi: MidiData) -> void:
 	_extract_instruments_from_midi()
 
 	# 恢复用户配置的数据部分（音量值、进度条、独奏状态）
-	_restore_midi_data_config()
+	_config_persistence.restore_midi_data_config()
 
 	# 加载音符
 	var all_notes = midi_playback_manager.current_notes
@@ -202,10 +220,10 @@ func _load_midi(midi: MidiData) -> void:
 	_initialize_track_volumes_for_new_midi()
 
 	# 恢复用户配置的UI部分（按钮状态、文本标签等）
-	_restore_midi_ui_config()
+	_config_persistence.restore_midi_ui_config()
 
 	# 检测并初始化人声文件
-	_init_vocal_btn_display()
+	_vocal_controller.init_vocal_btn_display()
 
 	# 初始化Latency输入框
 	_init_latency_edit()
@@ -384,7 +402,7 @@ func _on_vocal_volume_changed(value: float) -> void:
 		current_midi_data.vocal_volume = int(value)
 
 	# 更新标签
-	_set_display_vocal_volume(value)
+	_vocal_controller.set_display_vocal_volume(value)
 
 func _on_expand_master_area_btn_toggled(is_expanded: bool) -> void:
 	var node: Panel = $MC/VBox/TotalView
@@ -406,212 +424,6 @@ func _on_expand_master_area_btn_toggled(is_expanded: bool) -> void:
 	tween.play()
 	await tween.finished
 	master_note_displayer.refresh_notes_lane(master_note_displayer.lane_count)
-
-## 打开FileDialog导入人声文件
-func _on_vocal_import_btn_pressed() -> void:
-	if not file_dialog:
-		push_error("[TrackView] FileDialog not initialized")
-		return
-	
-	if not current_midi_data:
-		push_warning("[TrackView] No MIDI data loaded, cannot import vocal file")
-		return
-	
-	# 获取当前曲包文件夹路径
-	var filesystem_mgr = FileSystemManager.instance
-	var chart_id = current_midi_data.file_hash if not current_midi_data.file_hash.is_empty() else current_midi_data.id
-	var chart_folder = filesystem_mgr.get_chart_folder_path(chart_id)
-	
-	if chart_folder.is_empty():
-		push_warning("[TrackView] Cannot locate chart folder for MIDI: %s" % chart_id)
-		# 回退到Charts目录
-		chart_folder = FileSystemManager.CHARTS_DIR
-	
-	# 配置FileDialog
-	file_dialog.current_dir = chart_folder
-	file_dialog.current_file = ""
-	file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	file_dialog.filters = PackedStringArray(["Audio Files (*.mp3,*.wav,*.ogg,*.flac) ; *.mp3,*.wav,*.ogg,*.flac", "All Files ; *"])
-	
-	# 显示对话框（对于原生对话框，直接调用popup_centered_clamped）
-	file_dialog.popup_centered_clamped(Vector2(1024, 768), 0.7)
-	
-	GLogger.info("Opening vocal import dialog at: %s" % chart_folder, "TrackView")
-
-## 处理文件选择完成
-
-## 检查文件名扩展名是否为有效音频格式
-## 根据文件头部 magic bytes 检测音频格式，返回扩展名
-func _detect_audio_format(buffer: PackedByteArray) -> String:
-	# OGG: "OggS"
-	if buffer.size() >= 4 and buffer[0] == 0x4F and buffer[1] == 0x67 and buffer[2] == 0x67 and buffer[3] == 0x53:
-		return "ogg"
-	# WAV: "RIFF"
-	if buffer.size() >= 4 and buffer[0] == 0x52 and buffer[1] == 0x49 and buffer[2] == 0x46 and buffer[3] == 0x46:
-		return "wav"
-	# FLAC: "fLaC"
-	if buffer.size() >= 4 and buffer[0] == 0x66 and buffer[1] == 0x4C and buffer[2] == 0x61 and buffer[3] == 0x43:
-		return "flac"
-	# MP3: 0xFF 0xFB or 0xFF 0xFA or 0xFF 0xF3 or ID3 tag
-	if buffer.size() >= 3:
-		if (buffer[0] == 0xFF and (buffer[1] & 0xE0) == 0xE0):
-			return "mp3"
-		# ID3v2 tag: "ID3"
-		if buffer[0] == 0x49 and buffer[1] == 0x44 and buffer[2] == 0x33:
-			return "mp3"
-	return ""
-
-func _on_vocal_file_selected(file_path: String) -> void:
-	if file_path.is_empty():
-		return
-	
-	var selected_file = file_path
-	var is_content_uri := selected_file.begins_with("content://")
-	
-	if not current_midi_data:
-		push_warning("[TrackView] No MIDI data loaded, cannot import vocal file")
-		return
-	
-	# 获取目标曲包文件夹
-	var filesystem_mgr = FileSystemManager.instance
-	var chart_id = current_midi_data.file_hash if not current_midi_data.file_hash.is_empty() else current_midi_data.id
-	var chart_folder = filesystem_mgr.get_chart_folder_path(chart_id)
-	
-	if chart_folder.is_empty():
-		push_warning("[TrackView] Cannot locate chart folder for MIDI: %s" % chart_id)
-		GLogger.warning("Cannot locate chart folder for MIDI: %s" % chart_id, "TrackView")
-		return
-	
-	# 确保目标文件夹存在
-	if not DirAccess.dir_exists_absolute(chart_folder):
-		var error = DirAccess.make_dir_absolute(chart_folder)
-		if error != OK:
-			push_error("[TrackView] Failed to create chart folder: %s (error code: %d)" % [chart_folder, error])
-			GLogger.error("Failed to create chart folder: %s" % chart_folder, "TrackView")
-			return
-	
-	# 读取源文件
-	var src_file = FileAccess.open(selected_file, FileAccess.READ)
-	if src_file == null:
-		push_error("[TrackView] Failed to open file: %s" % selected_file)
-		GLogger.error("Failed to open audio file: %s" % selected_file, "TrackView")
-		return
-	
-	var file_size = src_file.get_length()
-	if file_size < 1024:
-		push_error("[TrackView] Audio file too small: %d bytes" % file_size)
-		src_file.close()
-		return
-	
-	var buffer = src_file.get_buffer(file_size)
-	src_file.close()
-	
-	# 确定目标文件名
-	var source_file_name: String
-	if not is_content_uri:
-		source_file_name = selected_file.get_file()
-	else:
-		# Android SAF 无法直接拿到文件名，用 magic bytes 检测格式
-		var ext := _detect_audio_format(buffer)
-		if ext.is_empty():
-			push_warning("[TrackView] Cannot detect audio format from content: %s" % selected_file)
-			GLogger.warning("Cannot detect audio format from content URI", "TrackView")
-			return
-		source_file_name = chart_id + "_vocal." + ext
-	
-	var destination_path = chart_folder.path_join(source_file_name)
-	
-	# 写入本地文件
-	var dst_file = FileAccess.open(destination_path, FileAccess.WRITE)
-	if dst_file == null:
-		push_error("[TrackView] Failed to create destination file: %s" % destination_path)
-		return
-	
-	dst_file.store_buffer(buffer)
-	dst_file.close()
-	
-	# 保存路径到 MidiData
-	vocal_file_path = destination_path
-	if current_midi_data:
-		current_midi_data.vocal_file_path = destination_path
-	
-	# 刷新UI显示
-	_init_vocal_btn_display()
-	
-	# 如果 MIDI 正在播放，立即启动人声同步播放
-	if midi_playback_manager and midi_playback_manager.is_playing:
-		midi_playback_manager.start_vocal_playback()
-	
-	GLogger.info("Vocal file imported successfully: %s -> %s" % [selected_file, destination_path], "TrackView")
-	print("[TrackView] Vocal file imported to: %s" % destination_path)
-
-## 人声启用/禁用按钮回调
-func _on_vocal_enable_btn_toggled(toggle_on: bool) -> void:
-	vocal_enable_btn.text = "人声已启用" if not toggle_on else "人声已关闭"
-	
-	if current_midi_data:
-		current_midi_data.vocal_enabled = not toggle_on
-		if midi_playback_manager and midi_playback_manager.is_playing:
-			if current_midi_data.vocal_enabled:
-				midi_playback_manager.start_vocal_playback()
-			else:
-				midi_playback_manager.stop_vocal_playback()
-
-## 检测并定位人声文件
-## 优先级：1. MidiData.vocal_file_path（已保存的路径）
-##        2. FileSystemManager 扫描到的音频文件（.ogg/.mp3/.wav/.flac）
-func _detect_vocal_file(midi_data: MidiData) -> void:
-	if not midi_data:
-		return
-	
-	vocal_file_path = ""
-	
-	# 检查是否已有保存的人声文件路径
-	if not midi_data.vocal_file_path.is_empty():
-		if FileAccess.file_exists(midi_data.vocal_file_path):
-			vocal_file_path = midi_data.vocal_file_path
-			GLogger.info("Vocal file restored from saved config: %s" % vocal_file_path, "TrackView")
-			return
-		# 如果保存的路径已不存在，继续扫描
-		GLogger.warning("Saved vocal file no longer exists: %s" % midi_data.vocal_file_path, "TrackView")
-		midi_data.vocal_file_path = ""
-	
-	# 从 FileSystemManager 的 charts_index 中查找音频文件
-	var filesystem_mgr = FileSystemManager.instance
-	var chart_id = midi_data.file_hash if not midi_data.file_hash.is_empty() else midi_data.id
-	var charts_index = filesystem_mgr.get_charts_index()
-	
-	# 遍历 charts_index 查找对应的 metadata
-	for folder_name in charts_index.keys():
-		var metadata: ChartMetadata = charts_index[folder_name]
-		var metadata_id = metadata.id
-
-		# 匹配方式1：metadata 的 id
-		if metadata_id == chart_id:
-			var audio_path = metadata.audio_path
-			if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
-				vocal_file_path = audio_path
-				midi_data.vocal_file_path = audio_path
-				GLogger.info("Vocal file detected from chart metadata: %s" % audio_path, "TrackView")
-				return
-			elif not audio_path.is_empty():
-				GLogger.warning("Vocal file in chart metadata no longer exists: %s" % audio_path, "TrackView")
-		
-		# 匹配方式2：JSON 数据中的 hash 字段
-		var json_data = metadata.data
-		if json_data is Dictionary and json_data.has("hash"):
-			if json_data.get("hash", "") == chart_id:
-				var audio_path = metadata.audio_path
-				if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
-					vocal_file_path = audio_path
-					midi_data.vocal_file_path = audio_path
-					GLogger.info("Vocal file detected from JSON hash match: %s" % audio_path, "TrackView")
-					return
-				elif not audio_path.is_empty():
-					GLogger.warning("Vocal file in JSON hash metadata no longer exists: %s" % audio_path, "TrackView")
-	
-	# 未找到人声文件
-	GLogger.info("No vocal file found for MIDI: %s" % chart_id, "TrackView")
 
 # ============= 音轨信号回调 =======================
 
@@ -873,28 +685,6 @@ func _set_note_displayers_process(enable: bool) -> void:
 
 # ============== UI 显示函数 ========================
 
-# 在这个函数执行前需要先检查有无人声音频
-func _init_vocal_btn_display() -> void:
-	var latency_container = $MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC
-	var enable: bool = vocal_file_path != ""
-	
-	# 设置组件可见性
-	vocal_import_btn.visible = not enable
-	
-	latency_container.visible = enable
-	vocal_enable_btn.visible = enable
-
-	vocal_vol_btn.visible = enable
-	vocal_vol_slider.visible = enable
-	vocal_vol_label.visible = enable
-	
-	# 如果有人声文件，恢复音量设置
-	if enable and current_midi_data:
-		vocal_vol_slider.value = current_midi_data.vocal_volume
-		_set_display_vocal_volume(current_midi_data.vocal_volume)
-		vocal_enable_btn.button_pressed = not current_midi_data.vocal_enabled
-		vocal_enable_btn.text = "人声已启用" if current_midi_data.vocal_enabled else "人声已关闭"
-
 # 更新MIDI音量标签
 func _set_display_midi_volume(value: float) -> void:
 	# value 已经是 0-100 的百分比
@@ -903,13 +693,6 @@ func _set_display_midi_volume(value: float) -> void:
 	midi_vol_slider.set_block_signals(false)
 
 	midi_vol_label.text = "%d%%" % int(value)
-
-func _set_display_vocal_volume(value: float) -> void:
-	vocal_vol_slider.set_block_signals(true)
-	vocal_vol_slider.value = value
-	vocal_vol_slider.set_block_signals(false)
-
-	vocal_vol_label.text = "%d%%" % int(value)
 
 # 格式化时间（毫秒到 HH:MM:SS）
 func _format_time(ms: float) -> String:
@@ -1074,7 +857,7 @@ func _initialize_track_volumes_for_new_midi() -> void:
 func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	# 保存当前MIDI配置到JSON文件
 	if current_midi_data != null:
-		call_deferred("_save_midi_config")
+		_config_persistence.call_deferred("save_midi_config")
 
 	if old_state == work_state:
 		if midi_playback_manager:
@@ -1094,216 +877,6 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 			midi_playback_manager.resume()
 			_set_note_displayers_process(true)
 			print("[TrackView] Reloaded MIDI after returning from settings")
-
-## 保存当前MIDI配置到JSON文件
-func _save_midi_config() -> void:
-	if current_midi_data == null:
-		push_warning("[TrackView] No MIDI data to save")
-		return
-	
-	# 更新MidiData中的音量值
-	current_midi_data.midi_volume = int(midi_vol_slider.value)
-	current_midi_data.vocal_volume = int(vocal_vol_slider.value)
-	
-	# 更新人声文件路径
-	current_midi_data.vocal_file_path = vocal_file_path
-	
-	# 更新独奏状态
-	current_midi_data.solo_pairs = solo_pairs.duplicate()
-	
-	# 更新音轨启用状态（从所有轨道UI控件收集）
-	# selected_track_configs 由各个 MidiTrack 项通过 _on_track_enable_toggled 更新
-	# 这里只需确保 current_midi_data.selected_track_configs 已是最新状态
-	# 导出运行时配置
-	var runtime_config = current_midi_data.export_runtime_config()
-	
-	# 获取JSON文件路径（优先使用file_hash，如果为空则使用id）
-	var chart_id = current_midi_data.file_hash if not current_midi_data.file_hash.is_empty() else current_midi_data.id
-	var json_path = FileSystemManager.instance.get_chart_json_path(chart_id)
-	if json_path.is_empty():
-		push_warning("[TrackView] Failed to get JSON path for MIDI: %s (id=%s, file_hash=%s)" % 
-			[chart_id, current_midi_data.id, current_midi_data.file_hash])
-		return
-	
-	# 准备要保存的数据（只包含_runtime字段，通过合并保留其他字段）
-	var data_to_save = {
-		"_runtime": runtime_config
-	}
-	
-	# 使用ConfigManager保存JSON（启用合并模式，保留原有字段）
-	var config_manager = ConfigManager.instance
-	if config_manager.save_json_file(json_path, data_to_save, true):
-		print("[TrackView] Successfully saved MIDI config to: %s (volume: %d/%d, solo: %d, track_enabled: %s, vocal: %s)" % 
-			[json_path, current_midi_data.midi_volume, current_midi_data.vocal_volume, solo_pairs.size(), current_midi_data.selected_track_configs, vocal_file_path])
-	else:
-		push_error("[TrackView] Failed to save MIDI config to: %s" % json_path)
-
-## 恢复MIDI配置的数据部分（音量、进度条、独奏状态）
-## 在_load_midi中早期调用，此时list_items还未创建
-func _restore_midi_data_config() -> void:
-	if current_midi_data == null:
-		return
-	
-	midi_vol_slider.set_block_signals(true)
-	vocal_vol_slider.set_block_signals(true)
-	
-	# 获取音量值，如果是默认值50则从全局设置中读取
-	var midi_vol = current_midi_data.midi_volume
-	var vocal_vol = current_midi_data.vocal_volume
-	
-	if midi_vol == 50:  # 默认值
-		var setting_view = get_node_or_null("/root/Main/skew/C/SettingView")
-		if setting_view and setting_view.has_method("get_setting_value"):
-			var global_midi_vol = setting_view.get_setting_value("default_midi_volume")
-			if global_midi_vol != null:
-				midi_vol = int(global_midi_vol)
-	
-	if vocal_vol == 50:  # 默认值
-		var setting_view = get_node_or_null("/root/Main/skew/C/SettingView")
-		if setting_view and setting_view.has_method("get_setting_value"):
-			var global_vocal_vol = setting_view.get_setting_value("default_vocal_volume")
-			if global_vocal_vol != null:
-				vocal_vol = int(global_vocal_vol)
-	
-	midi_vol_slider.value = midi_vol
-	vocal_vol_slider.value = vocal_vol
-
-	_set_display_midi_volume(midi_vol_slider.value)
-	_set_display_vocal_volume(vocal_vol_slider.value)
-
-	midi_vol_slider.set_block_signals(false)
-	vocal_vol_slider.set_block_signals(false)
-
-	# 应用实际的播放音量，不只是更新UI
-	var midi_volume_db = linear_to_db(midi_vol / 100.0)
-	midi_playback_manager.set_volume_db(midi_volume_db)
-
-	var vocal_volume_db = linear_to_db(vocal_vol / 100.0)
-	midi_playback_manager.set_vocal_volume_db(vocal_volume_db)
-	
-	# 恢复进度条位置和最大值（初始化为0）
-	progress_bar.set_block_signals(true)
-	progress_bar.value = 0.0
-	progress_bar.max_value = current_midi_data.duration_ms
-	progress_bar.set_block_signals(false)
-	current_time.text = _format_time(0.0)
-	
-	# 恢复独奏状态（到内存，后续UI恢复会用到）
-	solo_pairs = current_midi_data.solo_pairs.duplicate()
-	
-	# 初始化音轨启用状态：如果是新MIDI（从未配置过），则默认全部启用
-	# 这很重要，因为_restore_midi_ui_config()会检查这个值来显示enable按钮状态
-	if not current_midi_data._track_config_initialized:
-		# 新MIDI：等待All_Notes加载后进行初始化（在_init_master_note_displayer中）
-		# 但这里需要先设置一个占位符，否则_restore_midi_ui_config会显示"禁用"
-		print("[TrackView] New MIDI detected (not initialized), will initialize in _init_master_note_displayer")
-	else:
-		# 旧MIDI：selected_track_configs已从JSON恢复（可能为空或有配置），将在_restore_midi_ui_config中应用
-		print("[TrackView] Existing MIDI config restored: %d tracks have enabled channels" % 
-			current_midi_data.selected_track_configs.size())
-	
-	print("[TrackView] Restored MIDI data config: midi_volume=%d, vocal_volume=%d, solo_count=%d" % 
-		[midi_vol, vocal_vol, solo_pairs.size()])
-	
-	# 恢复轨道级音量配置（从保存的配置）
-	if not current_midi_data.track_channel_volume_config.is_empty():
-		for track_index in current_midi_data.track_channel_volume_config.keys():
-			var channels = current_midi_data.track_channel_volume_config[track_index]
-			for channel in channels.keys():
-				var volume = channels[channel]
-				# 立即应用到播放器（转换track_index和channel为int）
-				midi_playback_manager.set_track_channel_volume(int(track_index), int(channel), volume)
-		print("[TrackView] Restored track volumes: %d tracks" % current_midi_data.track_channel_volume_config.size())
-	
-	# 恢复轨道-通道乐器覆盖配置（从保存的配置）
-	if not current_midi_data.track_channel_instrument_overrides.is_empty():
-		for track_index in current_midi_data.track_channel_instrument_overrides.keys():
-			var channels = current_midi_data.track_channel_instrument_overrides[track_index]
-			for channel in channels.keys():
-				var instr = channels[channel]
-				# 立即应用到MidiPlayer
-				if midi_playback_manager.midi_player:
-					midi_playback_manager.midi_player.set_track_channel_instrument(
-						int(track_index),
-						int(channel),
-						instr.get("bank", 0),
-						instr.get("program", 0)
-					)
-		print("[TrackView] Restored instrument overrides: %d tracks" % current_midi_data.track_channel_instrument_overrides.size())
-
-## 恢复MIDI配置的UI部分（按钮状态、音量值）
-## 在_create_track_views之后调用，此时list_items已有内容
-func _restore_midi_ui_config() -> void:
-	if current_midi_data == null:
-		return
-	
-	# 更新所有轨道按钮的UI状态（启用按钮、静音按钮、独奏按钮、音量滑块）
-	for track_item in list_items:
-		if track_item is MidiTrack:
-			var track_idx = track_item.track_index
-			var channel = track_item.track_channel
-			
-			# 更新启用按钮状态
-			# 新MIDI时，尚未初始化配置，应该默认显示"启用"
-			var is_enabled = current_midi_data.is_track_channel_selected(track_idx, channel)
-			if not current_midi_data._track_config_initialized:
-				# 新MIDI的情况：默认认为所有轨道启用（待_init_master_note_displayer正式初始化）
-				is_enabled = true
-			
-			if track_item.enable_btn:
-				track_item.enable_btn.set_block_signals(true)
-				track_item.enable_btn.button_pressed = is_enabled
-				track_item.enable_btn.set_block_signals(false)
-				# 更新UI显示
-				if track_item.enable_btn_text:
-					track_item.enable_btn_text.text = "已启用" if is_enabled else "已禁用"
-				if track_item.note_display:
-					track_item.note_display.note_color = track_item.color_normal if is_enabled else track_item.color_dark
-					track_item.note_display.update_color()
-			
-			# 更新静音按钮状态
-			var is_muted = current_midi_data.get_track_channel_mute(track_idx, channel)
-			if track_item.mute_btn:
-				track_item.mute_btn.set_block_signals(true)
-				track_item.mute_btn.button_pressed = is_muted
-				track_item.mute_btn.set_block_signals(false)
-				track_item.mute_btn.modulate = Color(ThemeManager.DANGER_COLOR.r, ThemeManager.DANGER_COLOR.g, ThemeManager.DANGER_COLOR.b, 0.6) if is_muted else Color(1, 1, 1, 1)
-			
-			# 更新独奏按钮状态
-			var is_soloed = solo_pairs.has("%d:%d" % [track_idx, channel])
-			if track_item.solo_btn:
-				track_item.solo_btn.set_block_signals(true)
-				track_item.solo_btn.button_pressed = is_soloed
-				track_item.solo_btn.set_block_signals(false)
-				track_item.solo_btn.modulate = Color(ThemeManager.WARNING_COLOR.r, ThemeManager.WARNING_COLOR.g, ThemeManager.WARNING_COLOR.b, 0.7) if is_soloed else Color(1, 1, 1, 1)
-			
-			# 更新音量滑块和标签
-			if track_item.volume_slider:
-				# 从saved配置中获取音量值，如果没有保存过则使用默认值1.0（100%）
-				var saved_volume = current_midi_data.get_track_channel_volume(track_idx, channel)
-				var slider_value = saved_volume * 100.0  # 转换为0-100的百分比
-				
-				track_item.volume_slider.set_block_signals(true)
-				track_item.volume_slider.value = slider_value
-				track_item.volume_slider.set_block_signals(false)
-				
-				# 更新音量标签显示
-				if track_item.volume_label:
-					track_item.volume_label.text = "%.2fdB" % linear_to_db(saved_volume)
-	
-	if not solo_pairs.is_empty():
-		print("[TrackView] Restored solo pairs: %d channels are soloed" % solo_pairs.size())
-		# 【关键】恢复UI后，立即应用独奏状态到后端（包括mute状态和快照）
-		_capture_solo_snapshot()
-		_apply_solo_state()
-	
-	if current_midi_data._track_config_initialized:
-		if not current_midi_data.selected_track_configs.is_empty():
-			print("[TrackView] Restored enable states: %d tracks with enabled channels" % current_midi_data.selected_track_configs.size())
-		else:
-			print("[TrackView] Restored enable states: All tracks are DISABLED")
-	else:
-		print("[TrackView] New MIDI: All tracks shown as enabled, will be finalized in _init_master_note_displayer")
 
 ## 初始化Latency输入框（从MidiData读取偏移值）
 func _init_latency_edit() -> void:

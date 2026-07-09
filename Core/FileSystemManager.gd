@@ -904,3 +904,23 @@ func remove_from_charts_index(chart_id: String) -> void:
 			GLogger.info("Removed chart from index: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
 			return
 	GLogger.warning("remove_from_charts_index: chart_id not found: %s" % chart_id, "FileSystemMGR")
+
+## 在目录中查找匹配通配符模式（如 "*.mp3"）的所有文件名
+## 返回文件名列表（非完整路径）
+func find_files_in_dir(dir_path: String, pattern: String) -> PackedStringArray:
+	var result: PackedStringArray = []
+	if dir_path.is_empty():
+		return result
+	var d := DirAccess.open(dir_path)
+	if d == null:
+		GLogger.warning("find_files_in_dir: cannot open dir: %s" % dir_path, "FileSystemMGR")
+		return result
+	var ext := pattern.replace("*.", ".")
+	d.list_dir_begin()
+	var fn := d.get_next()
+	while fn != "":
+		if fn.ends_with(ext) and not d.current_is_dir():
+			result.append(fn)
+		fn = d.get_next()
+	d.list_dir_end()
+	return result

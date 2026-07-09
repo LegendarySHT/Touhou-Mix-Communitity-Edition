@@ -492,9 +492,9 @@ func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
 	print("[PlayView] MIDI loaded and runtime config applied")
 
 ## 将KeySequenceManager生成的游戏序列转换为FlowArea所需的格式
-func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowArea.Note]:
+func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowNote]:
 	print("[PlayView] _convert_game_sequences_to_flow_notes called with %d sequences" % sequences.size())
-	var flow_notes: Array[FlowArea.Note] = []
+	var flow_notes: Array[FlowNote] = []
 	var lc = get_lane_count()
 	print("[PlayView] Lane count: %d" % lc)
 
@@ -513,14 +513,14 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowArea.N
 		var note_type: int
 		match seq.block_type:
 			0:  # INSTANT = 滑块 → Slide
-				note_type = FlowArea.NoteType.Slide
+				note_type = FlowNote.NoteType.Slide
 			1:  # SHORT = 点块 → Block
-				note_type = FlowArea.NoteType.Block
+				note_type = FlowNote.NoteType.Block
 			2:  # LONG = 长条 → Long
-				note_type = FlowArea.NoteType.Long
+				note_type = FlowNote.NoteType.Long
 		
 		# 创建FlowArea的Note对象
-		var flow_note = FlowArea.Note.new(
+		var flow_note = FlowNote.new(
 			note_type,
 			seq.start_time_ms,   # 开始时间（毫秒）
 			seq.duration_ms,     # 持续时间（毫秒）
