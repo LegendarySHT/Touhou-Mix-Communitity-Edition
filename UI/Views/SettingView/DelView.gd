@@ -180,7 +180,7 @@ func _update_tab_header(tab: Tab) -> void:
 			_update_midi_toggle_state()
 		Tab.AUDIO:
 			_tab_title.text = "人声音频管理"
-			_item_sum.text = "共 %d 个 MP3 文件" % _audio_items.size()
+			_item_sum.text = "共 %d 个音频文件" % _audio_items.size()
 			_update_list_toggle_state(false)
 		Tab.SF2:
 			_tab_title.text = "SF2 音源管理"
@@ -557,7 +557,7 @@ func _build_audio_list() -> void:
 		var row := _make_list_row(_audio_items[i], i, _audio_items)
 		_audio_list.add_child(row)
 
-	_item_sum.text = "共 %d 个 MP3 文件" % _audio_items.size()
+	_item_sum.text = "共 %d 个音频文件" % _audio_items.size()
 	_update_list_toggle_state(false)
 	_tab_data_built[Tab.AUDIO] = true
 
@@ -572,23 +572,36 @@ func _scan_audio_files() -> Array[Dictionary]:
 	if not dir:
 		return result
 
+	var audio_exts := ["ogg", "mp3", "wav", "flac"]
 	dir.list_dir_begin()
 	var dn := dir.get_next()
 	while dn != "":
 		if dir.current_is_dir() and not dn.begins_with("."):
 			var chart_path := charts_dir.path_join(dn)
-			var mp3_files := FileSystemManager.instance.find_files_in_dir(chart_path, "*.mp3")
-			for mp3 in mp3_files:
-				result.append({
-					"file_name": mp3,
-					"path": chart_path.path_join(mp3),
-					"chart_name": dn,
-					"selected": false,
-				})
+			# 提取歌曲名（去掉 hash_ 前缀）
+			var song_name: String = dn
+			var hash_idx := song_name.find("_")
+			if hash_idx >= 0:
+				song_name = song_name.substr(hash_idx + 1)
+			for ext in audio_exts:
+				var files := FileSystemManager.instance.find_files_in_dir(chart_path, "*." + ext)
+				for f in files:
+					result.append({
+						"file_name": f,
+						"path": chart_path.path_join(f),
+						"format": ext,
+						"song_name": song_name,
+						"selected": false,
+					})
 		dn = dir.get_next()
 	dir.list_dir_end()
 
-	result.sort_custom(func(a, b): return a["file_name"] < b["file_name"] if _sort_ascending else a["file_name"] > b["file_name"])
+	result.sort_custom(func(a, b):
+		var cmp_song = a["song_name"] < b["song_name"] if _sort_ascending else a["song_name"] > b["song_name"]
+		if cmp_song: return true
+		if a["song_name"] > b["song_name"] if _sort_ascending else a["song_name"] < b["song_name"]: return false
+		return a["format"] < b["format"] if _sort_ascending else a["format"] > b["format"]
+	)
 	return result
 
 
@@ -933,7 +946,7 @@ func _apply_search_filter() -> void:
 			Tab.AUDIO:
 				for row in _audio_list.get_children():
 					row.visible = true
-				_item_sum.text = "共 %d 个 MP3 文件" % _audio_items.size()
+				_item_sum.text = "共 %d 个音频文件" % _audio_items.size()
 			Tab.SF2:
 				for row in _sf2_list.get_children():
 					row.visible = true
@@ -953,7 +966,7 @@ func _apply_search_filter() -> void:
 			_tab_data_built[Tab.MIDI] = false
 			_build_midi_tree()
 		Tab.AUDIO:
-			_apply_list_filter(_audio_list, _audio_items, "file_name")
+			_apply_list_filter(_audio_list, _audio_items, "song_name")
 		Tab.SF2:
 			_apply_list_filter(_sf2_list, _sf2_items, "file_name")
 		Tab.SKIN:
@@ -977,23 +990,140 @@ func _apply_list_filter(list_container: VBoxContainer, items: Array, name_key: S
 	_item_sum.text = "共 %d 个 (匹配 %d 个)" % [items.size(), visible_count]
 
 
+# 仅重建显示行（不扫描文件），用于排序切换时的即时刷新
+func _rebuild_audio_rows() -> void:
+	for child in _audio_list.get_children():
+		child.queue_free()
+	for i in _audio_items.size():
+		var row := _make_list_row(_audio_items[i], i, _audio_items)
+		_audio_list.add_child(row)
+	_item_sum.text = "共 %d 个音频文件" % _audio_items.size()
+
+func _rebuild_sf2_rows() -> void:
+	for child in _sf2_list.get_children():
+		child.queue_free()
+	for i in _sf2_items.size():
+		var item := _sf2_items[i]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var cb := CheckBox.new()
+		cb.button_pressed = item["selected"]
+		cb.toggled.connect(func(on: bool):
+			_sf2_items[i]["selected"] = on
+			_update_list_toggle_state(on)
+		)
+		row.add_child(cb)
+		var name_label := Label.new()
+		name_label.text = item["file_name"]
+		if item["is_builtin"]:
+			name_label.text += " [内置]"
+		name_label.size_flags_horizontal = SIZE_EXPAND_FILL
+		row.add_child(name_label)
+		var size_label := Label.new()
+		size_label.text = "%.1f MB" % item["size_mb"]
+		row.add_child(size_label)
+		_sf2_list.add_child(row)
+	_item_sum.text = "共 %d 个音源" % _sf2_items.size()
+
+func _rebuild_skin_rows() -> void:
+	for child in _skin_list.get_children():
+		child.queue_free()
+	for i in _skin_items.size():
+		var item := _skin_items[i]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var cb := CheckBox.new()
+		cb.button_pressed = item["selected"]
+		if item["is_builtin"]:
+			cb.disabled = true
+		cb.toggled.connect(func(on: bool):
+			_skin_items[i]["selected"] = on
+			_update_list_toggle_state(on)
+		)
+		row.add_child(cb)
+		var name_label := Label.new()
+		name_label.text = item["name"]
+		name_label.size_flags_horizontal = SIZE_EXPAND_FILL
+		row.add_child(name_label)
+		_skin_list.add_child(row)
+	_item_sum.text = "共 %d 个皮肤" % _skin_items.size()
+
+func _rebuild_bg_rows() -> void:
+	for child in _bg_list.get_children():
+		child.queue_free()
+	for i in _bg_items.size():
+		var item := _bg_items[i]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var cb := CheckBox.new()
+		cb.button_pressed = item["selected"]
+		cb.toggled.connect(func(on: bool):
+			_bg_items[i]["selected"] = on
+			_update_list_toggle_state(on)
+		)
+		row.add_child(cb)
+		var name_label := Label.new()
+		name_label.text = item["name"]
+		name_label.size_flags_horizontal = SIZE_EXPAND_FILL
+		row.add_child(name_label)
+		_bg_list.add_child(row)
+	_item_sum.text = "共 %d 张背景" % _bg_items.size()
+
+
+# 不扫描文件、就地排序后重建显示
+func _resort_midi() -> void:
+	_tab_data_built[Tab.MIDI] = false
+	_build_midi_tree()
+
+
+func _resort_audio() -> void:
+	_audio_items.sort_custom(func(a, b):
+		var cmp_song = a["song_name"] < b["song_name"] if _sort_ascending else a["song_name"] > b["song_name"]
+		if cmp_song: return true
+		if a["song_name"] > b["song_name"] if _sort_ascending else a["song_name"] < b["song_name"]: return false
+		return a["format"] < b["format"] if _sort_ascending else a["format"] > b["format"]
+	)
+	_rebuild_audio_rows()
+	_apply_search_filter()
+
+func _resort_sf2() -> void:
+	_sf2_items.sort_custom(func(a, b):
+		if a["is_builtin"] != b["is_builtin"]:
+			return not a["is_builtin"]
+		return a["file_name"] < b["file_name"] if _sort_ascending else a["file_name"] > b["file_name"]
+	)
+	_rebuild_sf2_rows()
+	_apply_search_filter()
+
+func _resort_skin() -> void:
+	_skin_items.sort_custom(func(a, b):
+		if a["is_builtin"] != b["is_builtin"]:
+			return not a["is_builtin"]
+		return a["name"] < b["name"] if _sort_ascending else a["name"] > b["name"]
+	)
+	_rebuild_skin_rows()
+	_apply_search_filter()
+
+func _resort_bg() -> void:
+	_bg_items.sort_custom(func(a, b): return a["name"] < b["name"] if _sort_ascending else a["name"] > b["name"])
+	_rebuild_bg_rows()
+	_apply_search_filter()
+
+
 func _on_order_btn_pressed() -> void:
 	_sort_ascending = not _sort_ascending
 	_order_btn.icon = load("res://Resources/icon/Sort/Ordering/Ascent.png" if _sort_ascending else "res://Resources/icon/Sort/Ordering/Descent.png")
-	_tab_data_built[_current_tab] = false
 	match _current_tab:
 		Tab.MIDI:
-			_build_midi_tree()
+			_resort_midi()
 		Tab.AUDIO:
-			_build_audio_list()
+			_resort_audio()
 		Tab.SF2:
-			_build_sf2_list()
+			_resort_sf2()
 		Tab.SKIN:
-			_build_skin_list()
+			_resort_skin()
 		Tab.BG:
-			_build_bg_list()
-	if _current_tab != Tab.MIDI:
-		_apply_search_filter()
+			_resort_bg()
 
 
 # ============================================================
@@ -1012,14 +1142,13 @@ func _make_list_row(item: Dictionary, idx: int, items: Array) -> HBoxContainer:
 	)
 	row.add_child(cb)
 
-	var name_label := Label.new()
-	name_label.text = item.get("file_name", item.get("name", ""))
-	name_label.size_flags_horizontal = SIZE_EXPAND_FILL
-	row.add_child(name_label)
-
+	# \"格式: mp3  歌曲: SongName\"
 	var info_label := Label.new()
-	if item.has("chart_name"):
-		info_label.text = "来自: " + item["chart_name"]
+	var fmt: String = item.get("format", "")
+	var song: String = item.get("song_name", "")
+	info_label.text = "格式: %s  歌曲: %s" % [fmt, song]
+	info_label.size_flags_horizontal = SIZE_EXPAND_FILL
+	info_label.clip_text = true
 	row.add_child(info_label)
 
 	return row

@@ -13,7 +13,7 @@ config_version=5
 config/name="Touhou Mix Comunitity Edition"
 run/main_scene="uid://jvmwtrulpf5g"
 config/quit_on_go_back=false
-config/features=PackedStringArray("4.6", "C#", "Mobile")
+config/features=PackedStringArray("4.7", "C#", "Mobile")
 config/icon="uid://von2js75nk2a"
 
 [autoload]

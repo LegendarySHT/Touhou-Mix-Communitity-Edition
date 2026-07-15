@@ -1,20 +1,24 @@
 [gd_scene format=3 uid="uid://gcsnfsagjom5"]
 
 [node name="ValueLineEdit" type="HBoxContainer" unique_id=43757917]
-custom_minimum_size = Vector2(500, 80)
+custom_minimum_size = Vector2(250, 80)
+offset_right = 250.0
+offset_bottom = 80.0
+size_flags_horizontal = 1
 size_flags_vertical = 4
 
 [node name="LineEdit" type="LineEdit" parent="." unique_id=1158713396]
-custom_minimum_size = Vector2(400, 0)
+clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 mouse_filter = 1
 theme_override_font_sizes/font_size = 32
-placeholder_text = "222222"
+placeholder_text = "text..."
 alignment = 1
 max_length = 64
+emoji_menu_enabled = false
 
 [node name="Label" type="Label" parent="." unique_id=407175546]
 visible = false

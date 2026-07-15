@@ -777,7 +777,7 @@ func get_chart_path(chart_id: String) -> String:
 	var metadata: ChartMetadata = charts_index[chart_id]
 	return metadata.path
 
-func get_cover_by_midiData(midi: MidiData) -> ImageTexture:
+func get_cover_by_midiData(midi: MidiData) -> Texture2D:
 	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	var fs_mgr := FileSystemManager.instance
 	var data_mgr := DataMGR

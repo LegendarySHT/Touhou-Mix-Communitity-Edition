@@ -273,8 +273,8 @@ size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_5h6qm")
 
 [node name="Indicator" type="VBoxContainer" parent="LeftArea/InfoWindow/HBoxC/Right/Center" unique_id=35138421]
-clip_contents = true
 custom_minimum_size = Vector2(50, 200)
+clip_contents = true
 layout_mode = 1
 anchors_preset = 13
 anchor_left = 0.5
@@ -654,12 +654,14 @@ metadata/_tab_index = 1
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/h_separation = 80
-theme_override_constants/v_separation = 20
+theme_override_constants/v_separation = 60
 columns = 2
 
 [node name="Mode" type="OptionButton" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC" unique_id=405700545]
-custom_minimum_size = Vector2(200, 120)
+custom_maximum_size = Vector2(200, 120)
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
 focus_neighbor_right = NodePath("../Limit")
 focus_neighbor_bottom = NodePath("../Repeat")
 theme_override_font_sizes/font_size = 23
@@ -675,8 +677,10 @@ popup/item_1/icon = ExtResource("21_2bu1o")
 popup/item_1/id = 1
 
 [node name="Limit" type="OptionButton" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC" unique_id=1411967904]
-custom_minimum_size = Vector2(200, 120)
+custom_maximum_size = Vector2(200, 120)
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
 focus_neighbor_left = NodePath("../Mode")
 focus_neighbor_bottom = NodePath("../GameMode")
 theme_override_font_sizes/font_size = 23
@@ -695,8 +699,10 @@ popup/item_2/icon = ExtResource("24_qg2wq")
 popup/item_2/id = 2
 
 [node name="Repeat" type="OptionButton" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC" unique_id=367832061]
-custom_minimum_size = Vector2(200, 120)
+custom_maximum_size = Vector2(200, 120)
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
 focus_neighbor_top = NodePath("../Mode")
 focus_neighbor_right = NodePath("../GameMode")
 theme_override_font_sizes/font_size = 23
@@ -712,8 +718,10 @@ popup/item_1/icon = ExtResource("26_8q3pc")
 popup/item_1/id = 1
 
 [node name="GameMode" type="OptionButton" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/Mode/GridC" unique_id=1462223095]
-custom_minimum_size = Vector2(200, 120)
+custom_maximum_size = Vector2(200, 120)
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
 focus_neighbor_left = NodePath("../Repeat")
 focus_neighbor_top = NodePath("../Limit")
 theme_override_font_sizes/font_size = 23

@@ -131,10 +131,10 @@ text = "外观"
 
 [node name="SettingList" type="ScrollContainer" parent="HBoxC" unique_id=864187716]
 z_index = 1
-clip_contents = false
 custom_minimum_size = Vector2(1300, 0)
+clip_contents = false
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 6
 mouse_filter = 0
 follow_focus = true
 horizontal_scroll_mode = 0
@@ -143,9 +143,11 @@ container_path = NodePath("GridC")
 list_item_class = "res://UI/Views/SettingView/SettingListItem.tscn"
 
 [node name="GridC" type="GridContainer" parent="HBoxC/SettingList" unique_id=397882809]
+custom_maximum_size = Vector2(1200, -1)
+propagate_maximum_size = false
 layout_mode = 2
 size_flags_horizontal = 6
-theme_override_constants/h_separation = 100
+theme_override_constants/h_separation = 60
 theme_override_constants/v_separation = 20
 columns = 2
 

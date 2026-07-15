@@ -274,7 +274,7 @@ func select_item(index: int) -> int:
 
 	return index
 
-func get_selected_node() -> Node2D:
+func get_selected_node() -> Control:
 	if selected_item == -1:
 		return null
 	return container.get_child(selected_item)

@@ -245,12 +245,17 @@ func _load_config_parameters() -> void:
 	max_instant_connect_seconds = config_manager.get_float(app_cfg, "instant_connect_max_time", 1.0)
 	key_width = config_manager.get_float(app_cfg, "block_size", key_width)
 	
-	# 键盘模式特殊处理：禁用触摸移动速度限制
+	# 键盘模式特殊处理：禁用触摸移动速度限制，并调整轨道数为按键数
 	var keyboard_mode_enabled = config_manager.get_int("Lane", "keyboard_mode", 0) == 1
 	if keyboard_mode_enabled:
 		max_touch_move_velocity = 999999.0
+		# 键盘模式下，有效轨道数 = 键盘按键数，保证 KeySequenceManager 与 PlayView 一致
+		var keyboard_keys_str = config_manager.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")
+		var key_map = ConfigParser.parse_keyboard_keys(keyboard_keys_str)
+		if key_map.size() > 0:
+			lane_count = key_map.size()
 		GLogger.info(
-			"Keyboard mode enabled: max_touch_move_velocity set to unlimited (999999.0)",
+			"Keyboard mode enabled: max_touch_move_velocity set to unlimited, lane_count adjusted to %d" % lane_count,
 			"KeySequenceManager"
 		)
 	
@@ -1055,15 +1060,28 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			
 			"keyboard_mode":
 				var keyboard_mode_enabled = int(value) == 1
-				# 更新触摸移动速度限制
+				var config_manager = ConfigManager.instance
 				if keyboard_mode_enabled:
 					max_touch_move_velocity = 999999.0
-					GLogger.info("Keyboard mode enabled: max_touch_move_velocity set to unlimited", "KeySequenceManager")
+					# 键盘模式下，有效轨道数 = 键盘按键数
+					var keyboard_keys_str = config_manager.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")
+					var key_map = ConfigParser.parse_keyboard_keys(keyboard_keys_str)
+					if key_map.size() > 0:
+						lane_count = key_map.size()
+					GLogger.info("Keyboard mode enabled: max_touch_move_velocity set to unlimited, lane_count adjusted to %d" % lane_count, "KeySequenceManager")
 				else:
 					# 恢复到配置中的值
-					var config_manager = ConfigManager.instance
 					max_touch_move_velocity = config_manager.get_float("Generator", "max_touch_move_speed", 500.0)
-					GLogger.info("Keyboard mode disabled: max_touch_move_velocity restored to %.1f" % max_touch_move_velocity, "KeySequenceManager")
+					lane_count = config_manager.get_int("Lane", "lane_count", 12)
+					GLogger.info("Keyboard mode disabled: max_touch_move_velocity restored to %.1f, lane_count restored to %d" % [max_touch_move_velocity, lane_count], "KeySequenceManager")
+			
+			"keyboard_mode_keys":
+				# 键盘模式下键位变更时同步更新轨道数
+				if ConfigManager.instance.get_int("Lane", "keyboard_mode", 0) == 1:
+					var new_keys = ConfigParser.parse_keyboard_keys(str(value))
+					if new_keys.size() > 0:
+						lane_count = new_keys.size()
+					GLogger.info("Keyboard mode keys changed: lane_count updated to %d" % lane_count, "KeySequenceManager")
 	
 	# 处理 Generator 相关配置变更
 	elif section == "Generator":

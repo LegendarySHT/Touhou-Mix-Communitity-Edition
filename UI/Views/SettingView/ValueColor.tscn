@@ -1,7 +1,10 @@
 [gd_scene format=3 uid="uid://bp0ngpd342feu"]
 
 [node name="ValueColor" type="HBoxContainer" unique_id=2057857977]
-custom_minimum_size = Vector2(500, 0)
+custom_minimum_size = Vector2(250, 0)
+offset_right = 500.0
+offset_bottom = 80.0
+size_flags_horizontal = 1
 theme_override_constants/separation = 20
 
 [node name="HexColor" type="LineEdit" parent="." unique_id=142305028]

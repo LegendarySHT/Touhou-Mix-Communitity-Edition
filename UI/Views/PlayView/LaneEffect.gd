@@ -227,7 +227,8 @@ func init_key_display(key_map: Array[Key]) -> void:
 
 func get_lane_by_idx(lane_index: int) -> Node:
 	if lane_index < 0 or lane_index >= _beam_nodes.size():
-		return null
+		push_error("[LaneEffect] 指定的轨道编号超出范围")
+		return _beam_nodes[lane_index % _beam_nodes.size()]
 	return _beam_nodes[lane_index]
 
 
@@ -260,7 +261,10 @@ func light_lane(lane_index: int, cl: Color = Color.WHITE) -> void:
 		var tween := ani._create_tween("lane_beam_%d" % lane_index)
 		tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 		tween.tween_property(beam_node, "self_modulate:a", 0.0, _beam_fade_duration_sec)
-		tween.finished.connect(func(): beam_node.visible = false)
+		tween.finished.connect(func(): 
+			if (beam_node):
+				beam_node.visible = false
+		)
 		return
 
 	beam_node.visible = true
