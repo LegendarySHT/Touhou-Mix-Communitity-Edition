@@ -47,8 +47,10 @@ MidiPlaybackManager.instance.set_backend("meltysynth")
 不同模块时间单位不同，联调时必须统一：
 
 - `MidiPlaybackManager`：tick / 毫秒（推荐使用 `get_position_ms()`）
-- `GameplayManager`：秒（`game_time`）
-- 可视化/按键序列：毫秒（通常由 `game_time * 1000` 转换）
+- `PlayView.gd` / `NoteFallCalculator`：秒（游戏内主时钟）
+- `KeySequenceManager`：毫秒（通常由 `game_time * 1000` 转换）
+
+> 注：项目当前不存在 `GameplayManager`，游戏时间由 `PlayView` 与 `NoteFallCalculator` 维护。
 
 ## 排障建议
 

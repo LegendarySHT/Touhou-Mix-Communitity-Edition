@@ -1,6 +1,6 @@
 # 架构总览
 
-> 适用版本：THMIX Community Edition（Godot 4.6）
+> 适用版本：THMIX Community Edition（Godot 4.7.1 Mono）
 
 ## 分层结构
 
@@ -11,30 +11,39 @@
 3. `UI/`：视图与组件（通过 `EventBus` / `UIStateManager` 协作）
 
 跨层通信的原则：
-- 全局管理器统一通过 `ClassName.instance` 访问
+- 全局管理器统一通过 autoload 别名或 `ClassName.instance` 访问
 - 跨模块通知优先用 `EventBus` 信号
-- UI 切换统一经 `UIStateManager.instance.change_state()`
+- UI 切换统一经 `UiStatMGR.change_state()`
 
 ## 核心管理器
 
-### Core 层
-- `DataManager`：加载并组织 `albums/songs/midis`
-- `FileSystemManager`：初始化 `user://files` 目录并扫描资源
-- `SortingEngine`：排序、筛选、搜索
-- `UIStateManager`：UI 状态机与历史栈
-- `EventBus`：全局事件总线
+### Core 层（autoload）
+- `DataManager`（别名 `DataMGR`）：加载并组织 `albums/songs/midis`
+- `EventBus`（别名 `EvtBus`）：全局事件总线（14 个信号）
+- `SortingEngine`（别名 `SortEngine`）：排序、筛选、搜索
+- `UIStateManager`（别名 `UiStatMGR`）：UI 状态机与历史栈
+- `SkinManager`（别名 `SkinMGR`）：皮肤资源管理
 
-### Game 层
-- `GameplayManager`：游戏流程、状态与时间推进
+### UI 层（autoload）
+- `ThemeManager`（别名 `ThemeMGR`）：主题色、背景、字号统一管理
+- `AnimationManager`（别名 `AniMGR`）：统一 Tween 管理
+
+### Utilities 层（autoload）
+- `GameLogger`（别名 `GLogger`）：统一日志输出
+
+### Core 层（Main.gd 手动创建）
+- `FileSystemManager`：初始化 `user://files` 目录并扫描资源（含 `static var instance`）
+
+### Game 层（Main.gd 手动创建）
 - `ScoreCalculator`：判定、准确率、评级
 - `AudioManager`：全局音量与音频通道
 - `MidiPlaybackManager`：MIDI 后端（addons / meltysynth）与音源管理
 - `KeySequenceManager`：按键序列分类与可视化输入数据
+- `NoteFallCalculator`：音符下落计算
 
-### Utilities
-- `ConfigManager`：懒加载单例，统一 INI 读取/写入与通知
-- `PathHelper`：跨平台路径（桌面/Android）
-- `GameLogger`：统一日志输出
+### Utilities 层（懒加载）
+- `ConfigManager`：唯一懒加载单例（`ConfigManager.instance`），统一 INI 读取/写入与通知
+- `PathHelper`：纯静态工具类，跨平台路径（桌面/Android）
 
 ## 数据主链路
 
@@ -72,10 +81,11 @@ enum UIState {
 
 ## 关键约束
 
-- 不要在业务代码中使用 `get_node("/root/..." )` 访问管理器。
+- 不要在业务代码中使用 `get_node("/root/..." )` 访问管理器，统一走 autoload 别名或 `ClassName.instance`。
 - `ConfigManager` 是唯一懒加载单例特例，其他 Manager 按初始化流程就位。
-- `DataManager.load_all_midis_async()` 前必须保证 `FileSystemManager` 资源扫描已完成或超时兜底。
+- `DataManager.load_all_midis_async()` 前必须保证 `FileSystemManager` 资源扫描已完成或超时兜底（`Main._load_midi_data()` 内含等待逻辑）。
 - 与播放时间有关的模块要明确单位（tick / ms / 秒），避免混用。
+- 项目当前**不存在** `GameplayManager`，游戏流程由 `PlayView.gd`、`ScoreCalculator`、`MidiPlaybackManager`、`KeySequenceManager` 协同承担；文档中历史性地提及 `GameplayManager` 的内容已废弃。
 
 ## 关联文档
 

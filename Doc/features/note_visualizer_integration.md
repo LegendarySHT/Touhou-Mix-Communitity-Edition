@@ -11,9 +11,10 @@
   - `sequences_classified`
   - `keys_generated`
   - `keys_optimized`
-- `Game/GameplayManager.gd`：游戏时间推进
+- `Game/NoteFallCalculator.gd`：音符下落位置计算（游戏时间推进的核心）
 - `Game/MidiPlaybackManager.gd`：播放位置（tick/ms）
-- Play/Track 相关 UI：消费按键序列并渲染
+- `UI/Views/PlayView/`：消费按键序列并渲染（`PlayView.gd`、`FlowArea.gd`、`FlowNote.gd`、`NoteJudger.gd`）
+- `Game/ScoreCalculator.gd`：判定与计分
 
 ## 集成建议
 
@@ -24,7 +25,7 @@
 
 ## 时间同步注意事项
 
-- 若以 `GameplayManager.game_time` 为主时钟，渲染侧使用 `game_time * 1000`。
+- 游戏主时钟由 `PlayView` 维护（秒），渲染侧使用 `game_time * 1000` 转毫秒。
 - 若直接读取播放管理器，优先 `MidiPlaybackManager.get_position_ms()`。
 - 不要在同一逻辑中混用 tick 与秒。
 
