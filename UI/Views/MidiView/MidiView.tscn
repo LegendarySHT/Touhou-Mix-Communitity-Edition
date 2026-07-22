@@ -33,6 +33,8 @@
 [ext_resource type="Texture2D" uid="uid://dkawdaqn2h0i4" path="res://Resources/icon/midiInfoPage/RightWindow/Inf.png" id="26_8q3pc"]
 [ext_resource type="Texture2D" uid="uid://ead0g8brwlah" path="res://Resources/icon/midiInfoPage/RightWindow/Mode.png" id="27_mo7xw"]
 [ext_resource type="Texture2D" uid="uid://b5crx12jq5dht" path="res://Resources/icon/midiInfoPage/RightWindow/ScanLine.png" id="28_y3sh5"]
+[ext_resource type="Script" uid="uid://dhq75pjfp8xyl" path="res://UI/Views/MidiView/MidiFavorPanel.gd" id="30_favor_panel"]
+[ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="31_add"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_srflm"]
 draw_center = false
@@ -549,10 +551,10 @@ visible = false
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="RightArea" type="MarginContainer" parent="." unique_id=1730032866]
+[node name="RightArea" type="Control" parent="." unique_id=1730032866]
 custom_minimum_size = Vector2(600, 0)
+clip_contents = true
 layout_mode = 1
-anchors_preset = -1
 anchor_left = 0.5
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -563,7 +565,13 @@ grow_horizontal = 0
 grow_vertical = 2
 
 [node name="OptionPanel" type="PanelContainer" parent="RightArea" unique_id=1504818877]
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -134.0
+grow_horizontal = 2
+grow_vertical = 2
 size_flags_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_fx5ny")
 
@@ -743,6 +751,46 @@ custom_minimum_size = Vector2(600, 770)
 layout_mode = 2
 mouse_filter = 2
 metadata/_tab_index = 2
+
+[node name="FavorPanel" type="PanelContainer" parent="RightArea" unique_id=203199523]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -134.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_fx5ny")
+script = ExtResource("30_favor_panel")
+
+[node name="VBoxC" type="VBoxContainer" parent="RightArea/FavorPanel" unique_id=1820391247]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 30
+
+[node name="FavorList" type="ScrollContainer" parent="RightArea/FavorPanel/VBoxC" unique_id=936505813]
+custom_minimum_size = Vector2(0, 500)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="VBoxC" type="VBoxContainer" parent="RightArea/FavorPanel/VBoxC/FavorList" unique_id=253766444]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CreateList" type="VBoxContainer" parent="RightArea/FavorPanel/VBoxC" unique_id=1667524261]
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+alignment = 1
+
+[node name="AddBtn" type="TextureButton" parent="RightArea/FavorPanel/VBoxC/CreateList" unique_id=315885352]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+texture_normal = ExtResource("31_add")
+ignore_texture_size = true
+stretch_mode = 5
 
 [connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/PreviBtn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_previous"]
 [connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/Fold/Btn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_show_midi_list"]

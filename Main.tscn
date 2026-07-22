@@ -867,15 +867,18 @@ layout_mode = 2
 [node name="FavorListItem" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage/FavorList/VBoxC" unique_id=1385106200 instance=ExtResource("20_devvj")]
 layout_mode = 2
 
-[node name="CreateList" type="HBoxContainer" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage" unique_id=659633133]
+[node name="CreateList" type="VBoxContainer" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage" unique_id=659633133]
 layout_mode = 2
 alignment = 1
 
 [node name="AddBtn" type="TextureButton" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage/CreateList" unique_id=482899021]
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 8
 texture_normal = ExtResource("17_5mkgo")
+ignore_texture_size = true
+stretch_mode = 5
 
 [node name="AlbumList" type="ScrollContainer" parent="skew/C" unique_id=257977288]
 physics_interpolation_mode = 1

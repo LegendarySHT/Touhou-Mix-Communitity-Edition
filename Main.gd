@@ -174,7 +174,14 @@ func _initialize_core_systems() -> void:
 	data_manager = DataMGR
 	if data_manager and logger:
 		logger.info("DataManager initialized", "Main")
-	
+
+	# 8.5 初始化收藏夹管理器（需在 DataManager 之后，因为它依赖 data_loaded_complete 验证 midi 引用）
+	var favorite_manager := FavoriteManager.new()
+	favorite_manager.name = "FavoriteManager"
+	add_child(favorite_manager)
+	if logger:
+		logger.info("FavoriteManager initialized", "Main")
+
 	# 9.5 初始化分数计算器
 	score_calculator = ScoreCalculator.new()
 	score_calculator.name = "ScoreCalculator"

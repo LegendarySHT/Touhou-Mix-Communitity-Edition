@@ -1,6 +1,9 @@
 [gd_scene format=3 uid="uid://xgcfhg1x2v6p"]
 
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="1_2ct6a"]
+[ext_resource type="Script" uid="uid://cl2ypj2kc15am" path="res://UI/Components/ShortCutMenu/favorListItem.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="2_add"]
+[ext_resource type="Texture2D" uid="uid://bqehp2aavod7n" path="res://Resources/icon/midiInfoPage/delete.png" id="3_delete"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3rk5"]
 draw_center = false
@@ -14,45 +17,117 @@ corner_radius_top_right = 2
 corner_radius_bottom_right = 2
 corner_radius_bottom_left = 2
 
-[node name="FavorListItem" type="HBoxContainer" unique_id=501898749]
+[node name="FavorListItem" type="HBoxContainer" unique_id=1284658319]
 custom_minimum_size = Vector2(500, 0)
 size_flags_horizontal = 4
+mouse_filter = 0
 theme_override_constants/separation = 40
 alignment = 1
+script = ExtResource("1_script")
 
-[node name="Cover" type="TextureRect" parent="." unique_id=768884939]
+[node name="Cover" type="TextureRect" parent="." unique_id=33163108]
 custom_minimum_size = Vector2(130, 130)
 layout_mode = 2
+mouse_filter = 2
 texture = ExtResource("1_2ct6a")
-expand_mode = 3
-stretch_mode = 5
+expand_mode = 5
+stretch_mode = 6
 
-[node name="PanelContainer" type="PanelContainer" parent="Cover" unique_id=738276527]
+[node name="PanelContainer" type="PanelContainer" parent="Cover" unique_id=2007048721]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_w3rk5")
 
-[node name="Detail" type="VBoxContainer" parent="." unique_id=151275904]
+[node name="ActionIconWrap" type="Control" parent="Cover" unique_id=1797413720]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -50.0
+offset_top = -50.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+clip_contents = true
+
+[node name="Bg" type="ColorRect" parent="Cover/ActionIconWrap"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.5)
+
+[node name="ActionIcon" type="TextureRect" parent="Cover/ActionIconWrap"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_add")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="Detail" type="VBoxContainer" parent="." unique_id=1418457743]
+custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 2
 theme_override_constants/separation = 20
 
-[node name="name" type="Label" parent="Detail" unique_id=116221595]
+[node name="NameBox" type="Control" parent="Detail" unique_id=644110351]
 custom_minimum_size = Vector2(0, 50)
+clip_contents = true
 layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="name" type="Label" parent="Detail/NameBox" unique_id=1870450257]
+layout_mode = 0
+offset_right = 1.0
+offset_bottom = 1.0
+mouse_filter = 0
 theme_override_font_sizes/font_size = 30
 text = "Test"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="midiCount" type="Label" parent="Detail" unique_id=2135430848]
+[node name="nameEdit" type="LineEdit" parent="Detail" unique_id=1039444612]
+visible = false
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 30
+placeholder_text = "输入新名称"
+
+[node name="midiCount" type="Label" parent="Detail" unique_id=1996047377]
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
 text = "11 midis"
+
+[node name="ManageBtns" type="HBoxContainer" parent="." unique_id=245700086]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="DeleteBtn" type="TextureButton" parent="ManageBtns" unique_id=702320371]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+texture_normal = ExtResource("3_delete")
+ignore_texture_size = true
+stretch_mode = 5

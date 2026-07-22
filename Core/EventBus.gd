@@ -29,6 +29,22 @@ signal theme_changed(theme_name: String)
 ## ========== 文件系统事件 ==========
 signal midi_deleted(midi_id: String)
 
+## ========== 收藏夹事件 ==========
+## 收藏夹数据加载并验证完成
+signal favorites_loaded
+## 收藏夹数据更新（通用刷新触发）
+signal favorites_updated
+## 收藏夹创建
+signal favorite_list_created(favorite_id: String)
+## 收藏夹删除
+signal favorite_list_deleted(favorite_id: String)
+## 收藏夹重命名
+signal favorite_list_renamed(favorite_id: String, new_name: String)
+## MIDI 被添加到或移除出收藏夹
+signal favorite_midi_changed(favorite_id: String, midi_id: String, added: bool)
+## 请求浏览收藏夹内容（AlbumView 点击列表项时发出）
+signal favorite_selected_for_browse(favorite_id: String)
+
 func _ready() -> void:
 	add_to_group("singleton")
 

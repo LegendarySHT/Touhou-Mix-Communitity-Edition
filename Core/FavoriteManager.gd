@@ -1,0 +1,197 @@
+## 收藏夹管理单例
+## 负责收藏夹的 CRUD 操作和持久化
+## 数据以 JSON 格式存储在 user://files/favorites.json，用户可直接编辑
+extends Node
+
+class_name FavoriteManager
+
+static var instance: FavoriteManager
+
+const FAVORITES_FILE = "favorites.json"
+const DEFAULT_FAVORITE_NAME = "默认收藏夹"
+
+## 所有收藏夹列表
+var favorites: Array[FavoriteListData] = []
+
+
+func _ready() -> void:
+	instance = self
+	EvtBus.data_loaded_complete.connect(_on_data_loaded_complete)
+	EvtBus.midi_deleted.connect(_on_midi_deleted)
+	# 先加载收藏夹数据（不依赖 DataManager）
+	_load_favorites()
+
+
+# ========== 持久化 ==========
+
+## 加载收藏夹数据
+func _load_favorites() -> void:
+	var path := _get_favorites_path()
+	if not FileAccess.file_exists(path):
+		_create_default_favorite()
+		_save_favorites()
+		return
+	var data: Dictionary = ConfigManager.instance.load_json_file(path)
+	favorites.clear()
+	var raw_favorites = data.get("favorites", [])
+	for fav_dict in raw_favorites:
+		favorites.append(FavoriteListData.from_dict(fav_dict))
+	# 确保至少有默认收藏夹
+	if favorites.is_empty():
+		_create_default_favorite()
+		_save_favorites()
+
+
+## 保存收藏夹数据（带缩进，用户可读）
+func _save_favorites() -> void:
+	var path := _get_favorites_path()
+	PathHelper.ensure_dir_exists(PathHelper.get_files_dir())
+	var data := {"favorites": []}
+	for fav in favorites:
+		data["favorites"].append(fav.to_dict())
+	# 带缩进的 JSON，方便用户直接编辑
+	var json_str := JSON.stringify(data, "\t")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file:
+		file.store_string(json_str)
+		file.close()
+
+
+func _get_favorites_path() -> String:
+	return PathHelper.get_files_dir() + FAVORITES_FILE
+
+
+## DataManager 加载完成后验证，清理已不存在的 midi 引用
+func _on_data_loaded_complete() -> void:
+	_validate_favorites()
+
+
+func _validate_favorites() -> void:
+	var changed := false
+	for fav in favorites:
+		var original_size := fav.midi_ids.size()
+		fav.midi_ids = fav.midi_ids.filter(func(id): return DataMGR.get_midi_by_id(id) != null)
+		if fav.midi_ids.size() != original_size:
+			changed = true
+	if changed:
+		_save_favorites()
+	EvtBus.favorites_loaded.emit()
+
+
+## MIDI 删除时同步清理收藏夹中的引用
+func _on_midi_deleted(midi_id: String) -> void:
+	var changed := false
+	for fav in favorites:
+		var original_size := fav.midi_ids.size()
+		# midi_id 可能是 id 或 file_hash（取决于 emit 处），多次 erase 安全
+		fav.midi_ids.erase(midi_id)
+		if fav.midi_ids.size() != original_size:
+			changed = true
+	if changed:
+		_save_favorites()
+		EvtBus.favorites_updated.emit()
+
+
+# ========== CRUD 操作 ==========
+
+## 创建新收藏夹
+## 返回新收藏夹的 id
+func create_favorite(fav_name: String) -> String:
+	if fav_name.is_empty():
+		fav_name = "新收藏夹"
+	var fav := FavoriteListData.new(_generate_id(), fav_name, [])
+	favorites.append(fav)
+	_save_favorites()
+	EvtBus.favorite_list_created.emit(fav.id)
+	return fav.id
+
+
+## 删除收藏夹
+func delete_favorite(fav_id: String) -> void:
+	for i in range(favorites.size()):
+		if favorites[i].id == fav_id:
+			favorites.remove_at(i)
+			_save_favorites()
+			EvtBus.favorite_list_deleted.emit(fav_id)
+			return
+
+
+## 重命名收藏夹
+func rename_favorite(fav_id: String, new_name: String) -> void:
+	if new_name.is_empty():
+		return
+	for fav in favorites:
+		if fav.id == fav_id:
+			fav.name = new_name
+			_save_favorites()
+			EvtBus.favorite_list_renamed.emit(fav_id, new_name)
+			return
+
+
+## 添加 MIDI 到收藏夹
+func add_midi_to_favorite(fav_id: String, midi: MidiData) -> void:
+	var chart_id := _get_chart_id(midi)
+	for fav in favorites:
+		if fav.id == fav_id:
+			if not chart_id in fav.midi_ids:
+				fav.midi_ids.append(chart_id)
+				_save_favorites()
+				EvtBus.favorite_midi_changed.emit(fav_id, chart_id, true)
+			return
+
+
+## 从收藏夹移除 MIDI
+func remove_midi_from_favorite(fav_id: String, midi: MidiData) -> void:
+	var chart_id := _get_chart_id(midi)
+	for fav in favorites:
+		if fav.id == fav_id:
+			fav.midi_ids.erase(chart_id)
+			_save_favorites()
+			EvtBus.favorite_midi_changed.emit(fav_id, chart_id, false)
+			return
+
+
+## 检查 MIDI 是否在收藏夹中
+func is_midi_in_favorite(fav_id: String, midi: MidiData) -> bool:
+	var chart_id := _get_chart_id(midi)
+	for fav in favorites:
+		if fav.id == fav_id:
+			return chart_id in fav.midi_ids
+	return false
+
+
+# ========== 查询接口 ==========
+
+## 获取收藏夹
+func get_favorite(fav_id: String) -> FavoriteListData:
+	for fav in favorites:
+		if fav.id == fav_id:
+			return fav
+	return null
+
+
+## 获取收藏夹中的所有 MidiData
+func get_midis_of_favorite(fav_id: String) -> Array[MidiData]:
+	var result: Array[MidiData] = []
+	var fav := get_favorite(fav_id)
+	if not fav:
+		return result
+	for chart_id in fav.midi_ids:
+		var midi := DataMGR.get_midi_by_id(chart_id)
+		if midi:
+			result.append(midi)
+	return result
+
+
+# ========== 内部工具 ==========
+
+func _get_chart_id(midi: MidiData) -> String:
+	return midi.file_hash if not midi.file_hash.is_empty() else midi.id
+
+
+func _generate_id() -> String:
+	return str(Time.get_unix_time_from_system()) + "_" + str(randi() % 1000000)
+
+
+func _create_default_favorite() -> void:
+	favorites.append(FavoriteListData.new(_generate_id(), DEFAULT_FAVORITE_NAME, []))

@@ -34,6 +34,7 @@ func _ready() -> void:
 	eb.search_query_changed.connect(_on_search_query_changed)
 	eb.sort_finished.connect(_load_sorted_midis)
 	sm.state_changed.connect(_hide_label)
+	eb.favorite_selected_for_browse.connect(_on_favorite_selected_for_browse)
 
 	super._ready()
 
@@ -115,3 +116,10 @@ func _on_search_query_changed(query: String) -> void:
 func _hide_label(_old,_new):
 	if no_items_node.visible:
 		no_items_node.visible = false
+
+## 收藏夹被选中浏览：加载该收藏夹的所有 midi
+func _on_favorite_selected_for_browse(fav_id: String) -> void:
+	if not FavoriteManager.instance:
+		return
+	current_midis = FavoriteManager.instance.get_midis_of_favorite(fav_id)
+	_load_sorted_midis(false)

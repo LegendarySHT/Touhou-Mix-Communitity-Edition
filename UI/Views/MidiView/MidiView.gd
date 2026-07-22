@@ -11,6 +11,21 @@ extends Control
 @onready var play_btn: Button = $LeftArea/MainBtn/PlayBtn
 @onready var favor_list_btn: Button = $LeftArea/MainBtn/FavorListBtn
 
+# RightArea 滑动面板
+@onready var right_area: Control = $RightArea
+@onready var option_panel: PanelContainer = $RightArea/OptionPanel
+@onready var favor_panel: PanelContainer = $RightArea/FavorPanel
+
+# 收藏夹按钮图标
+const ICON_FAVOR_LIST := "res://Resources/icon/midiInfoPage/addToList.png"
+const ICON_BACK := "res://Resources/icon/back.png"
+
+# 收藏夹面板状态
+var _favor_panel_visible: bool = false
+var _is_animating: bool = false
+# 上一次 midi_list 选中索引，用于检测内部切换
+var _last_midi_selection: int = -1
+
 # midi信息框左边的三个按钮
 @onready var left_btns: Array[Button] = [$LeftArea/InfoWindow/HBoxC/Left/PreviBtn, $LeftArea/InfoWindow/HBoxC/Left/Fold/Btn, $LeftArea/InfoWindow/HBoxC/Left/NextBtn]
 
@@ -35,12 +50,10 @@ func _ready() -> void:
 		return
 
 	# 连接事件
-	event_bus.song_selected.connect(func (song_id: String):
-		midi_list.load_midi(data_manager.get_midis_by_song(song_id))
-	)
-	event_bus.midi_selected.connect(func (_midi_id: String, midi:MidiData):
-		midi_list.load_midi([midi])
-	)
+	event_bus.song_selected.connect(_on_song_selected)
+	event_bus.midi_selected.connect(_on_midi_selected)
+	# 监听 UI 状态变化，进入 MIDI_VIEW 时若 FavorPanel 可见则刷新
+	UiStatMGR.state_changed.connect(_on_state_changed)
 
 	# 连接主要按钮事件
 	play_btn.pressed.connect(_on_click_start_btn)
@@ -67,6 +80,43 @@ func _ready() -> void:
 	info_btn.pressed.connect(_on_info_btn_pressed)
 	delete_btn.pressed.connect(_on_del_btn_pressed)
 
+# MIDI 选择变化：加载列表，若收藏夹面板可见则同步刷新
+func _on_midi_selected(_midi_id: String, midi: MidiData) -> void:
+	midi_list.load_midi([midi])
+	if _favor_panel_visible and favor_panel:
+		favor_panel.show_with_midi(midi)
+
+
+# 歌曲选择：加载该歌曲的 midi 列表，加载完成后若 FavorPanel 可见则刷新
+func _on_song_selected(song_id: String) -> void:
+	await midi_list.load_midi(data_manager.get_midis_by_song(song_id))
+	if _favor_panel_visible and favor_panel:
+		var midi: MidiData = midi_list.get_selection()
+		if midi:
+			favor_panel.show_with_midi(midi)
+
+
+# UI 状态变化：进入 MIDI_VIEW 时若 FavorPanel 可见，用当前选中 midi 刷新
+func _on_state_changed(_old_state: int, new_state: int) -> void:
+	if new_state == UIStateManager.UIState.MIDI_VIEW and _favor_panel_visible and favor_panel:
+		var midi: MidiData = midi_list.get_selection()
+		if midi:
+			favor_panel.show_with_midi(midi)
+		_last_midi_selection = midi_list.selected_item
+
+
+# 轮询检测 midi_list 内部切换（prev/next/list 展开按钮不发出信号）
+# FavorPanel 可见时，若选中项变化则同步刷新操作对象
+func _process(_delta: float) -> void:
+	if not _favor_panel_visible or not favor_panel:
+		return
+	var cur_sel: int = midi_list.selected_item
+	if cur_sel != _last_midi_selection and cur_sel != -1:
+		_last_midi_selection = cur_sel
+		var midi: MidiData = midi_list.get_selection()
+		if midi:
+			favor_panel.show_with_midi(midi)
+
 # 点击开始游戏的事件
 func _on_click_start_btn() -> void:
 	var midi:MidiData = midi_list.get_selection()
@@ -85,9 +135,55 @@ func _on_click_track_btn():
 	UiStatMGR.change_state(UIStateManager.UIState.TRACK_VIEW)
 	EvtBus.enter_track_view_with.emit.call_deferred(midi)
 
-# 跳转到收藏夹
-func _on_click_favor_list_btn():
-	pass
+# 收藏夹按钮：切换 RightArea 中 OptionPanel 和 FavorPanel 的滑动显示
+func _on_click_favor_list_btn() -> void:
+	if _is_animating:
+		return
+	if _favor_panel_visible:
+		_hide_favor_panel()
+	else:
+		var midi: MidiData = midi_list.get_selection()
+		if not midi:
+			return
+		favor_panel.show_with_midi(midi)
+		_show_favor_panel()
+
+
+# 显示收藏夹面板：OptionPanel 淡出，FavorPanel 淡入
+func _show_favor_panel() -> void:
+	_is_animating = true
+	_favor_panel_visible = true
+	# 同步当前选中索引，作为后续 _process 检测内部切换的基准
+	_last_midi_selection = midi_list.selected_item
+	favor_list_btn.icon = load(ICON_BACK)
+	# 先重置透明度
+	option_panel.modulate.a = 1.0
+	favor_panel.modulate.a = 0.0
+	favor_panel.visible = true
+	var tween := create_tween().set_parallel(true)
+	tween.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(option_panel, "modulate:a", 0.0, 0.3)
+	tween.tween_property(favor_panel, "modulate:a", 1.0, 0.3)
+	await tween.finished
+	option_panel.visible = false
+	_is_animating = false
+
+
+# 隐藏收藏夹面板：FavorPanel 淡出，OptionPanel 淡入
+func _hide_favor_panel() -> void:
+	_is_animating = true
+	_favor_panel_visible = false
+	favor_list_btn.icon = load(ICON_FAVOR_LIST)
+	favor_panel.cancel_create()
+	option_panel.visible = true
+	option_panel.modulate.a = 0.0
+	var tween := create_tween().set_parallel(true)
+	tween.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(favor_panel, "modulate:a", 0.0, 0.3)
+	tween.tween_property(option_panel, "modulate:a", 1.0, 0.3)
+	await tween.finished
+	favor_panel.visible = false
+	_is_animating = false
 
 # 显示简介什么的
 func _on_info_btn_pressed():
