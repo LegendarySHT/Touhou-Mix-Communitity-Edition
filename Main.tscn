@@ -854,6 +854,7 @@ theme_override_constants/margin_right = 20
 
 [node name="FavorPage" type="VBoxContainer" parent="skew/C/ShortCutMenu/Panel/Page" unique_id=1714220272]
 layout_mode = 2
+size_flags_vertical = 3
 mouse_filter = 2
 theme_override_constants/separation = 60
 
@@ -869,6 +870,7 @@ layout_mode = 2
 
 [node name="CreateList" type="VBoxContainer" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage" unique_id=659633133]
 layout_mode = 2
+size_flags_vertical = 3
 alignment = 1
 
 [node name="AddBtn" type="TextureButton" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage/CreateList" unique_id=482899021]

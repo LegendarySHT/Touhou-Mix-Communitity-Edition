@@ -24,7 +24,7 @@ const FAVOR_ITEM_SCENE := preload("res://UI/Components/ShortCutMenu/favorListIte
 const ICON_ADD := "res://Resources/icon/add.png"
 const ICON_CONFIRM := "res://Resources/icon/comfirm.png"
 const FAVOR_LIST_DEFAULT_HEIGHT := 530
-const FAVOR_LIST_CREATE_HEIGHT := 400
+const FAVOR_LIST_CREATE_HEIGHT := 470
 
 # 新建收藏夹状态
 var _is_creating: bool = false
