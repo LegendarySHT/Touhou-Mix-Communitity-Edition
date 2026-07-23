@@ -207,13 +207,9 @@ func _on_setting_value_changed(id: String, value: Variant):
 		if not section.is_empty() and not key.is_empty():
 			# 根据配置类型转换值（确保类型匹配）
 			var converted_value = value
-			
-			# 特殊处理：midi_backend 需要将索引转换为实际值
-			if id == "midi_backend" and value is int:
-				# 0 -> "addons", 1 -> "meltysynth"
-				converted_value = "addons" if value == 0 else "meltysynth"
-				print("[SettingList] Converting midi_backend index %d to '%s'" % [value, converted_value])
-			elif id == "play_background_mode" and value is int:
+
+			# 特殊处理：play_background_mode 需要刷新相关项可见性
+			if id == "play_background_mode" and value is int:
 				converted_value = value
 				_refresh_play_background_visibility()
 			# 特殊处理：note_fall_mode 需要控制自定义缓动选项的可见性

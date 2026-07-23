@@ -207,18 +207,6 @@ static func get_setting_groups() -> Array:
 			"options": [],
 			"dynamic_options": true
 		},
-		{
-		"id": "midi_backend",
-		"name_en": "MIDI Backend",
-		"name_zh": "MIDI合成器",
-		"description": "选择MIDI合成器后端以进行音质对比。",
-		"type": "TYPE_OPTION",
-		"default_value": "0",
-		"options": [
-			{"text_en": "Addon (GDScript)", "text_zh": "插件合成器", "value": "addons"},
-			{"text_en": "MeltySynth (C#)", "text_zh": "MeltySynth", "value": "meltysynth"}
-		]
-	},
 
 	]
 	},

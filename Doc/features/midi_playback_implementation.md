@@ -2,39 +2,27 @@
 
 ## 目标
 
-统一描述当前 MIDI 播放链路：后端选择、音源加载、运行期切换和时间同步。
+统一描述当前 MIDI 播放链路：后端初始化、音源加载和时间同步。
 
 ## 主要组件
 
-- `Game/MidiPlaybackManager.gd`：播放入口、后端管理、SoundFont 扫描/切换
+- `Game/MidiPlaybackManager.gd`：播放入口、SoundFont 扫描/切换
 - `Game/MidiPlaybackInterfaces.gd`：播放后端接口层
-- `addons/midi/MidiPlayer.gd`：GDScript 后端（addons）
-- `CSharp/MeltySynthPlayer.cs` + `CSharp/MeltySynthPlayerWrapper.gd`：MeltySynth 后端
+- `CSharp/MeltySynthPlayer.cs` + `CSharp/MeltySynthPlayerWrapper.gd`：MeltySynth 后端（唯一后端）
+- `addons/midi/SMF.gd`：SMF 解析库，供 `Utilities/MidiParser.gd` 解析 MIDI 文件使用（不再作为播放后端）
 
 ## 后端机制
 
-当前支持两种后端：
-- `addons`
-- `meltysynth`
-
-由 `MidiPlaybackManager` 管理状态：
-- `midi_backend`
-- `backend_switching`（避免重入切换）
-
-运行时切换示例：
-
-```gdscript
-MidiPlaybackManager.instance.set_backend("meltysynth")
-```
+当前仅使用 MeltySynth（C#）后端，由 `MidiPlaybackManager._initialize_backend()` 在启动时初始化。
+历史上曾存在的 `addons`（GDScript MidiPlayer）后端已下线，不再支持运行时切换。
 
 ## 设置变更联动
 
-`MidiPlaybackManager` 监听 `EventBus.settings_changed`，当检测到 `midi_backend` 或通配刷新时：
+`MidiPlaybackManager` 监听 `EventBus.settings_changed`，响应以下设置变更：
 
-1. 读取新配置
-2. 若后端变化，先停止当前播放
-3. 重建后端实例
-4. 重新应用当前 MIDI（若存在）
+- `soundfont_select`：重新加载音源
+- `use_system_stopwatch`：切换系统时钟模式
+- `max_polyphony`：重新设置复音数并重载 SoundFont（必要时恢复播放）
 
 ## SoundFont 处理
 
@@ -54,11 +42,9 @@ MidiPlaybackManager.instance.set_backend("meltysynth")
 
 ## 排障建议
 
-1. 后端未切换：检查 `settings_changed` 是否触发、`backend_switching` 是否卡住。
-2. 无声音：检查 SoundFont 文件是否存在、路径是否正确。
-3. 时序错位：确认 tick/ms/sec 是否混用。
+1. 无声音：检查 SoundFont 文件是否存在、路径是否正确。
+2. 时序错位：确认 tick/ms/sec 是否混用。
 
 ## 关联文档
 
 - `soundfont_selection_feature.md`
-- `../quickref/MIDI_BACKEND_QUICK_REFERENCE.md`

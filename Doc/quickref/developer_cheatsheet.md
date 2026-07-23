@@ -37,7 +37,6 @@ ConfigManager.instance.set_value_and_notify("Audio", "master_volume", 70)
 ## 播放接口
 
 ```gdscript
-MidiPlaybackManager.instance.set_backend("addons")
 MidiPlaybackManager.instance.set_soundfont("GeneralUser-GS.sf2")
 var pos_ms = MidiPlaybackManager.instance.get_position_ms()
 ```

@@ -5,9 +5,6 @@ class_name MeltySynthPlayerWrapper
 
 @export var meltysynth_player: Node
 
-# 没有AudioStreamPlayer，返回空数组以避免错误
-var audio_stream_players: Array = []
-
 # 最大复音数
 var max_polyphony: int = 96:
 	set(value):

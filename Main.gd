@@ -447,17 +447,6 @@ func _apply_single_setting(setting_name: String, value: Variant) -> void:
 			var soundfont_name = str(value)
 			midi_playback_manager.set_soundfont(soundfont_name)
 
-	# MIDI后端设置
-	elif setting_name == "midi_backend":
-		if midi_playback_manager:
-			var backend_value = str(value)
-			# 如果是选项索引，转换为对应的字符串值
-			if backend_value == "0":
-				backend_value = "addons"
-			elif backend_value == "1":
-				backend_value = "meltysynth"
-			midi_playback_manager.set_backend(backend_value)
-	
 	# 显示相关设置
 	elif setting_name == "fullscreen":
 		var is_fullscreen = value in ["1", "true", "True", "yes", "Yes"]
@@ -499,8 +488,6 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			# MIDI播放管理器监听这些配置
 			if key == "soundfont_file" and midi_playback_manager:
 				midi_playback_manager.set_soundfont(str(value))
-			elif key == "midi_backend" and midi_playback_manager:
-				midi_playback_manager.set_backend(str(value))
 		
 		"Display":
 			if key == "fullscreen":

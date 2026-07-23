@@ -12,14 +12,13 @@
 - `initialization_sequence.md`：`Main._initialize_core_systems()` 初始化顺序与依赖
 
 ### 2) 功能文档（`features/`）
-- `midi_playback_implementation.md`：MIDI 播放后端与切换机制
+- `midi_playback_implementation.md`：MIDI 播放后端与音源管理
 - `soundfont_selection_feature.md`：SoundFont 扫描、选择与应用
 - `note_visualizer_integration.md`：打歌可视化与 `KeySequenceManager` 集成要点
 
 ### 3) 快速参考（`quickref/`）
 - `quick_start.md`：新开发者上手路径
 - `developer_cheatsheet.md`：常用接口与排障速查
-- `MIDI_BACKEND_QUICK_REFERENCE.md`：后端切换关键调用
 - `MIDI_PERSISTENCE_QUICK_REFERENCE.md`：`MidiData._runtime` 持久化
 - `FILESYSTEM_MANAGER_GUIDE.md`：资源目录与文件系统初始化
 

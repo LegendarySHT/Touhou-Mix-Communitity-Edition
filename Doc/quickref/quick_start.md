@@ -26,9 +26,6 @@ var midis = DataManager.instance.get_midis_by_song(song_id)
 # 状态切换
 UIStateManager.instance.change_state(UIStateManager.UIState.MIDI_VIEW)
 
-# 后端切换
-MidiPlaybackManager.instance.set_backend("meltysynth")
-
 # 配置读取
 var lane_count = ConfigManager.instance.get_int("Lane", "lane_count", 12)
 ```

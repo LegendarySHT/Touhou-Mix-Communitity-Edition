@@ -544,16 +544,13 @@ func _on_track_instrument_changed(index: int, track_index: int, channel: int) ->
 	if not midi_playback_manager:
 		push_error("[TrackView] midi_playback_manager is null")
 		return
-	
-	var backend_name = midi_playback_manager.midi_backend
+
 	var midi_player_ref = midi_playback_manager.midi_player
-	
-	print("[TrackView] 当前后端: %s, midi_player: %s" % [backend_name, midi_player_ref])
-	
+
 	if midi_player_ref == null:
 		push_error("[TrackView] midi_player is null - backend probably not initialized")
 		return
-	
+
 	if not midi_player_ref.has_method("set_track_channel_instrument"):
 		push_error("[TrackView] midi_player doesn't have set_track_channel_instrument method")
 		return

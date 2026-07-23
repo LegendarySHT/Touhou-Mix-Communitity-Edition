@@ -35,4 +35,3 @@
 ## 关联文档
 
 - `midi_playback_implementation.md`
-- `../quickref/MIDI_BACKEND_QUICK_REFERENCE.md`

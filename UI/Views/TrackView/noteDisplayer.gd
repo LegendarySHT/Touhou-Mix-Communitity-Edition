@@ -218,20 +218,8 @@ func reset_playhead_position(target_ms: float) -> void:
 		return
 	
 	# 计算目标tick（根据BPM时间线或默认120 BPM）
-	var timebase = 480
-	
-	# 【修复】安全地检查 smf_data 属性（MidiPlayer 插件有此属性，MeltySynth 后端没有）
-	if midi_playback_mgr.midi_player != null:
-		var player = midi_playback_mgr.midi_player
-		# 检查是否有 smf_data 属性（仅 MidiPlayer 插件有）
-		if "smf_data" in player:
-			if player.smf_data:
-				timebase = player.smf_data.timebase
-		else:
-			# MeltySynth 或其他后端：使用默认 timebase
-			timebase = midi_playback_mgr.midi_timebase
-	else:
-		timebase = midi_playback_mgr.midi_timebase
+	# 后端统一为 MeltySynth，直接使用其维护的 midi_timebase
+	var timebase = midi_playback_mgr.midi_timebase
 
 	var target_tick = midi_playback_mgr._calculate_tick_from_position_with_bpm_timeline(
 		target_ms,

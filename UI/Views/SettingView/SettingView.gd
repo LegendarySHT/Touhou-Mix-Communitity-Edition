@@ -129,17 +129,6 @@ func save_config_to_file() -> bool:
 	
 	# 获取当前 ui 中的配置
 	var settings_dict = setting_list.get_all_settings_as_json()
-	
-	# 特殊处理 midi_backend：将选项索引转换为实际值
-	if settings_dict.has("midi_backend"):
-		var raw_value = settings_dict["midi_backend"]
-		print("[SettingView] midi_backend raw value from ui: %s (type: %s)" % [raw_value, typeof(raw_value)])
-		if raw_value is int or (raw_value is String and raw_value.is_valid_int()):
-			var index = int(raw_value)
-			# 0 -> "addons", 1 -> "meltysynth"
-			var converted = "addons" if index == 0 else "meltysynth"
-			print("[SettingView] Converting midi_backend index %d to '%s'" % [index, converted])
-			settings_dict["midi_backend"] = converted
 
 	# 特殊处理缓动选项：将选项索引转换为缓动函数/相位的名称
 	var easing_options_to_convert = [
@@ -236,10 +225,6 @@ func save_config_to_file() -> bool:
 		if setting_list and setting_list.has_method("apply_pending_config_updates"):
 			var applied_count = setting_list.apply_pending_config_updates()
 			print("[SettingView] Applied %d deferred config updates" % applied_count)
-		# 保存后立即验证（使用单例缓存）
-		var verify_config = config_manager.load_config(CONFIG_PATH)
-		if verify_config.has("Gameplay"):
-			print("[SettingView] Verification: midi_backend in saved file = '%s'" % verify_config["Gameplay"].get("midi_backend", "NOT_FOUND"))
 	else:
 		push_error("[SettingView] Failed to save config to: %s" % CONFIG_PATH)
 	
