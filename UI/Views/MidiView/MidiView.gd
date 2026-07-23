@@ -14,7 +14,9 @@ extends Control
 # RightArea 滑动面板
 @onready var right_area: Control = $RightArea
 @onready var option_panel: PanelContainer = $RightArea/OptionPanel
-@onready var favor_panel: PanelContainer = $RightArea/FavorPanel
+@onready var favor_panel: PanelContainer = $RightArea/OptionPanel/VBoxC/TabView/TabC/FavorPanel
+@onready var tab_container: TabContainer = $RightArea/OptionPanel/VBoxC/TabView/TabC
+@onready var tab_btn: HBoxContainer = $RightArea/OptionPanel/VBoxC/TabBtn
 
 # 收藏夹按钮图标
 const ICON_FAVOR_LIST := "res://Resources/icon/midiInfoPage/addToList.png"
@@ -22,6 +24,7 @@ const ICON_BACK := "res://Resources/icon/midiInfoPage/back.png"
 
 # 收藏夹面板状态
 var _favor_panel_visible: bool = false
+var _prev_tab_idx: int = 0
 var _is_animating: bool = false
 # 上一次 midi_list 选中索引，用于检测内部切换
 var _last_midi_selection: int = -1
@@ -149,40 +152,65 @@ func _on_click_favor_list_btn() -> void:
 		_show_favor_panel()
 
 
-# 显示收藏夹面板：OptionPanel 淡出，FavorPanel 淡入
+# 显示收藏夹面板：两阶段动画，避免布局跳变
 func _show_favor_panel() -> void:
 	_is_animating = true
 	_favor_panel_visible = true
-	# 同步当前选中索引，作为后续 _process 检测内部切换的基准
 	_last_midi_selection = midi_list.selected_item
 	favor_list_btn.icon = load(ICON_BACK)
-	# 先重置透明度
-	option_panel.modulate.a = 1.0
-	favor_panel.modulate.a = 0.0
+	_prev_tab_idx = tab_container.current_tab
+	var current_page := tab_container.get_tab_control(_prev_tab_idx) if _prev_tab_idx >= 0 else null
+	# FavorPanel 提前就位（布局占位，视觉偏移到下方）
 	favor_panel.visible = true
-	var tween := create_tween().set_parallel(true)
-	tween.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-	tween.tween_property(option_panel, "modulate:a", 0.0, 0.3)
-	tween.tween_property(favor_panel, "modulate:a", 1.0, 0.3)
-	await tween.finished
-	option_panel.visible = false
+	favor_panel.modulate.a = 0.0
+	favor_panel.offset_transform_position.y = 800
+	# 第一阶段：TabBtn 淡出 + 高度收缩，布局空间平滑释放
+	var tween1 := create_tween().set_parallel(true)
+	tween1.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween1.tween_property(tab_btn, "modulate:a", 0.0, 0.2)
+	tween1.tween_property(tab_btn, "custom_minimum_size:y", 0, 0.2)
+	if current_page:
+		tween1.tween_property(current_page, "modulate:a", 0.0, 0.2)
+	await tween1.finished
+	tab_btn.visible = false
+	# 第二阶段：FavorPanel 从下方滑入 + 淡入
+	var tween2 := create_tween().set_parallel(true)
+	tween2.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween2.tween_property(favor_panel, "modulate:a", 1.0, 0.3)
+	tween2.tween_property(favor_panel, "offset_transform_position:y", 0, 0.4)
+	await tween2.finished
+	tab_container.current_tab = 3
 	_is_animating = false
 
 
-# 隐藏收藏夹面板：FavorPanel 淡出，OptionPanel 淡入
+# 隐藏收藏夹面板：两阶段反向动画
 func _hide_favor_panel() -> void:
 	_is_animating = true
 	_favor_panel_visible = false
 	favor_list_btn.icon = load(ICON_FAVOR_LIST)
 	favor_panel.cancel_create()
-	option_panel.visible = true
-	option_panel.modulate.a = 0.0
-	var tween := create_tween().set_parallel(true)
-	tween.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-	tween.tween_property(favor_panel, "modulate:a", 0.0, 0.3)
-	tween.tween_property(option_panel, "modulate:a", 1.0, 0.3)
-	await tween.finished
-	favor_panel.visible = false
+	var target_page := tab_container.get_tab_control(_prev_tab_idx) if _prev_tab_idx >= 0 else null
+	# 第一阶段：FavorPanel 滑出到下方 + 淡出
+	var tween1 := create_tween().set_parallel(true)
+	tween1.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween1.tween_property(favor_panel, "modulate:a", 0.0, 0.2)
+	tween1.tween_property(favor_panel, "offset_transform_position:y", 800, 0.3)
+	await tween1.finished
+	tab_container.current_tab = _prev_tab_idx
+	# 第二阶段：TabBtn 高度恢复 + 淡入 + 目标标签页淡入
+	tab_btn.visible = true
+	tab_btn.modulate.a = 0.0
+	tab_btn.custom_minimum_size.y = 0
+	if target_page:
+		target_page.visible = true
+		target_page.modulate.a = 0.0
+	var tween2 := create_tween().set_parallel(true)
+	tween2.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween2.tween_property(tab_btn, "modulate:a", 1.0, 0.25)
+	tween2.tween_property(tab_btn, "custom_minimum_size:y", 120, 0.25)
+	if target_page:
+		tween2.tween_property(target_page, "modulate:a", 1.0, 0.25)
+	await tween2.finished
 	_is_animating = false
 
 # 显示简介什么的

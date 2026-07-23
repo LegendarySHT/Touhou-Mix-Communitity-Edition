@@ -864,6 +864,7 @@ layout_mode = 2
 
 [node name="VBoxC" type="VBoxContainer" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage/FavorList" unique_id=1181947446]
 layout_mode = 2
+theme_override_constants/separation = 20
 
 [node name="FavorListItem" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage/FavorList/VBoxC" unique_id=1385106200 instance=ExtResource("20_devvj")]
 layout_mode = 2

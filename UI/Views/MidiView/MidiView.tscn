@@ -147,6 +147,9 @@ content_margin_left = 25.0
 content_margin_right = 25.0
 draw_center = false
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qg2wq"]
+content_margin_bottom = 30.0
+
 [node name="InfoUI" type="Control" unique_id=1711899844]
 layout_mode = 3
 anchors_preset = 15
@@ -577,13 +580,13 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_fx5ny")
 
 [node name="VBoxC" type="VBoxContainer" parent="RightArea/OptionPanel" unique_id=327543443]
 layout_mode = 2
-size_flags_vertical = 0
 theme_override_constants/separation = -1
 script = ExtResource("18_2bu1o")
 
 [node name="TabBtn" type="HBoxContainer" parent="RightArea/OptionPanel/VBoxC" unique_id=339701538]
 custom_minimum_size = Vector2(600, 120)
 layout_mode = 2
+offset_transform_enabled = true
 theme_override_constants/separation = 0
 alignment = 1
 
@@ -620,17 +623,17 @@ metadata/id = 3
 
 [node name="TabView" type="MarginContainer" parent="RightArea/OptionPanel/VBoxC" unique_id=757236744]
 layout_mode = 2
+size_flags_vertical = 3
 theme_override_constants/margin_top = 40
 
 [node name="TabC" type="TabContainer" parent="RightArea/OptionPanel/VBoxC/TabView" unique_id=1154304984]
+custom_minimum_size = Vector2(600, 778)
 layout_mode = 2
-size_flags_vertical = 3
 current_tab = 0
 tabs_visible = false
 
 [node name="Rank" type="PanelContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC" unique_id=1031929289]
 self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(600, 770)
 layout_mode = 2
 mouse_filter = 2
 metadata/_tab_index = 0
@@ -653,7 +656,6 @@ alignment = 1
 [node name="Mode" type="PanelContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC" unique_id=290841234]
 visible = false
 self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(600, 770)
 layout_mode = 2
 mouse_filter = 2
 metadata/_tab_index = 1
@@ -747,45 +749,40 @@ popup/item_1/id = 1
 [node name="Comment" type="PanelContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC" unique_id=1171996352]
 visible = false
 self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(600, 770)
 layout_mode = 2
 mouse_filter = 2
 metadata/_tab_index = 2
 
-[node name="FavorPanel" type="PanelContainer" parent="RightArea" unique_id=203199523]
+[node name="FavorPanel" type="PanelContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC" unique_id=203199523]
 visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_bottom = -134.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_fx5ny")
-script = ExtResource("30_favor_panel")
-
-[node name="VBoxC" type="VBoxContainer" parent="RightArea/FavorPanel" unique_id=1820391247]
 layout_mode = 2
-size_flags_vertical = 3
+offset_transform_enabled = true
+theme_override_styles/panel = SubResource("StyleBoxEmpty_qg2wq")
+script = ExtResource("30_favor_panel")
+metadata/_tab_index = 3
+
+[node name="VBoxC" type="VBoxContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/FavorPanel" unique_id=1820391247]
+layout_mode = 2
 theme_override_constants/separation = 30
 
-[node name="FavorList" type="ScrollContainer" parent="RightArea/FavorPanel/VBoxC" unique_id=936505813]
+[node name="FavorList" type="ScrollContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/FavorPanel/VBoxC" unique_id=936505813]
 custom_minimum_size = Vector2(0, 500)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="VBoxC" type="VBoxContainer" parent="RightArea/FavorPanel/VBoxC/FavorList" unique_id=253766444]
+[node name="VBoxC" type="VBoxContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/FavorPanel/VBoxC/FavorList" unique_id=253766444]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 20
 
-[node name="CreateList" type="VBoxContainer" parent="RightArea/FavorPanel/VBoxC" unique_id=1667524261]
+[node name="CreateList" type="VBoxContainer" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/FavorPanel/VBoxC" unique_id=1667524261]
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
 alignment = 1
 
-[node name="AddBtn" type="TextureButton" parent="RightArea/FavorPanel/VBoxC/CreateList" unique_id=315885352]
+[node name="AddBtn" type="TextureButton" parent="RightArea/OptionPanel/VBoxC/TabView/TabC/FavorPanel/VBoxC/CreateList" unique_id=315885352]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 texture_normal = ExtResource("31_add")

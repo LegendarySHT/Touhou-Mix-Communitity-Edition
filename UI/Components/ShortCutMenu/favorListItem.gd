@@ -133,12 +133,11 @@ func _setup_name_scroll() -> void:
 	).x
 	# 设置 Label 尺寸：高度填满 NameBox，宽度取文字宽度和 NameBox 宽度的较大值
 	name_label.size = Vector2(max(text_width, box_width), box_height)
-	if text_width <= box_width:
-		# 文字未超出：居中显示，无需滚动
-		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		return
-	# 文字超出：左对齐 + 来回滚动
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	if text_width <= box_width:
+		# 文字未超出：无需滚动
+		return
+	# 文字超出：来回滚动
 	var max_offset := text_width - box_width
 	_scroll_tween = create_tween().set_loops()
 	_scroll_tween.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
@@ -159,7 +158,7 @@ func _enter_rename_mode() -> void:
 	name_label.position.x = 0
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_edit.text = _name_full_text
-	name_label.visible = false
+	name_box.visible = false
 	name_edit.visible = true
 	name_edit.grab_focus()
 	name_edit.select_all()
@@ -178,7 +177,7 @@ func _confirm_rename() -> void:
 		return
 	var new_name := name_edit.text.strip_edges()
 	name_edit.visible = false
-	name_label.visible = true
+	name_box.visible = true
 	if not new_name.is_empty() and new_name != _name_full_text:
 		favor_item_renamed.emit(favorite_id, new_name)
 	else:
