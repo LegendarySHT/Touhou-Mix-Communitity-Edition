@@ -18,7 +18,7 @@ extends Control
 
 # 收藏夹按钮图标
 const ICON_FAVOR_LIST := "res://Resources/icon/midiInfoPage/addToList.png"
-const ICON_BACK := "res://Resources/icon/back.png"
+const ICON_BACK := "res://Resources/icon/midiInfoPage/back.png"
 
 # 收藏夹面板状态
 var _favor_panel_visible: bool = false
