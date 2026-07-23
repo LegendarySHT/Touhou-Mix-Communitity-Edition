@@ -76,11 +76,11 @@ func _ready() -> void:
 	
 	if midi_vol_slider:
 		midi_vol_slider.min_value = 0
-		midi_vol_slider.max_value = 100
+		midi_vol_slider.max_value = 200  # 上限200% (+6dB), 允许用户在MeltySynth合成音量偏小时主动提升
 		midi_vol_slider.step = 1
 	if vocal_vol_slider:
 		vocal_vol_slider.min_value = 0
-		vocal_vol_slider.max_value = 100
+		vocal_vol_slider.max_value = 200  # 与midi音量上限保持一致
 		vocal_vol_slider.step = 1
 
 	midi_vol_slider.value = db_to_linear(midi_playback_manager.midi_player_config["volume_db"]) * 100
