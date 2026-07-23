@@ -43,6 +43,34 @@ var _current_stat: ShowStat = ShowStat.SETTING_BTN
 var _visible: bool = true
 var _arrow_left: bool = false
 var _rot_tween: Tween = null
+
+# 文本输入时禁用快捷键，避免字母键触发跳转
+var _saved_shortcut: Shortcut = null
+var _shortcuts_blocked: bool = false
+
+## 根据焦点控件状态，禁用/恢复 LeftTopBtn 与 RightBottomBtn 的快捷键
+## 当 LineEdit/TextEdit 获得焦点时禁用，避免输入字符时触发快捷按钮跳转
+func _process(_delta: float) -> void:
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	var should_block := focus_owner is LineEdit or focus_owner is TextEdit
+	if should_block == _shortcuts_blocked:
+		return
+	_shortcuts_blocked = should_block
+	_set_shortcut_enabled(not should_block)
+	if RB_Btn.instance:
+		RB_Btn.instance._set_shortcut_enabled(not should_block)
+
+## 禁用/恢复自身快捷键（禁用时移除 shortcut，恢复时还原）
+func _set_shortcut_enabled(enabled: bool) -> void:
+	if enabled:
+		if _saved_shortcut:
+			btn.shortcut = _saved_shortcut
+			_saved_shortcut = null
+	else:
+		if btn.shortcut:
+			_saved_shortcut = btn.shortcut
+			btn.shortcut = null
+
 func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 	if content_to_show == _current_stat:
 		return
@@ -88,8 +116,13 @@ func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 			_rot_tween = null
 		)
 
-	# 快捷键
-	btn.shortcut.events[0] = event
+	# 快捷键：shortcut 被禁用时更新到 _saved_shortcut，恢复后即生效
+	var target := btn.shortcut if btn.shortcut else _saved_shortcut
+	if target:
+		if target.events.is_empty():
+			target.events = [event]
+		else:
+			target.events[0] = event
 	_current_stat = content_to_show
 
 func _on_button_pressed() -> void:

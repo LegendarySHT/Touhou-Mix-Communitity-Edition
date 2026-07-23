@@ -42,6 +42,21 @@ func _on_state_change(_old_state, new_state: UIStateManager.UIState):
 
 var _current_stat: ShowStat = ShowStat.STORE_BTN
 var _visible: bool = true
+
+# 文本输入时禁用快捷键，避免字母键触发跳转（由 LeftTopBtn 统一驱动）
+var _saved_shortcut: Shortcut = null
+
+## 禁用/恢复自身快捷键（禁用时移除 shortcut，恢复时还原）
+func _set_shortcut_enabled(enabled: bool) -> void:
+	if enabled:
+		if _saved_shortcut:
+			btn.shortcut = _saved_shortcut
+			_saved_shortcut = null
+	else:
+		if btn.shortcut:
+			_saved_shortcut = btn.shortcut
+			btn.shortcut = null
+
 func switch_display(content_to_show: ShowStat = ShowStat.NONE):
 	if content_to_show == _current_stat:
 		return
@@ -71,8 +86,13 @@ func switch_display(content_to_show: ShowStat = ShowStat.NONE):
 			ani.animate_position(vboxc, Vector2(vboxc.position.x, -380), 0.35, "RB_ICON")
 			event.keycode = KEY_RIGHT
 	
-	# 快捷键
-	btn.shortcut.events[0] = event
+	# 快捷键：shortcut 被禁用时更新到 _saved_shortcut，恢复后即生效
+	var target := btn.shortcut if btn.shortcut else _saved_shortcut
+	if target:
+		if target.events.is_empty():
+			target.events = [event]
+		else:
+			target.events[0] = event
 	_current_stat = content_to_show
 
 func _on_button_pressed() -> void:
