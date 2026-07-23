@@ -14,7 +14,7 @@ func _ready() -> void:
 	get_v_scroll_bar().value_changed.connect(func (_v):
 		var btns = get_parent().get_parent().short_cut_btn.get_children()
 		var idx = _get_current_para_sepa_idx()
-		# 边界检查：btns 只有 6 个按钮，跳过"浏览设置"分组（索引 6）
+		# 边界检查：分组索引超出快捷按钮数量时跳过
 		if idx < 0 or idx >= btns.size():
 			return
 		var tBtn: Button = btns[idx]

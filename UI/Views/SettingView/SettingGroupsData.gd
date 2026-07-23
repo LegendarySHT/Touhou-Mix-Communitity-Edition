@@ -6,7 +6,7 @@ extends RefCounted
 static func get_setting_groups() -> Array:
 	return [
 	{
-		"name": "浏览设置",
+		"name": "常规设置",
 		"settings": [
 			{
 				"id": "album_sort_method",
@@ -33,12 +33,7 @@ static func get_setting_groups() -> Array:
 					{"text_en": "Newest First", "text_zh": "从新到旧"}
 				],
 				"option_values": ["asc", "desc"]
-			}
-		]
-	},
-	{
-		"name": "常规设置",
-		"settings": [
+			},
 			{
 				"id": "display_debug_info",
 				"name_en": "Display Debug Info",
