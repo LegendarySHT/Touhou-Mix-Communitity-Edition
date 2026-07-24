@@ -35,11 +35,20 @@ func _ready():
 		print("=== Base dir: %s ===" % PathHelper.get_base_dir())
 		OS.request_permissions()
 	
-	# 所有平台统一初始化核心系统
+	# 桌面端：无重力传感器，立即关闭自动旋转 _process，避免 2 秒无意义等待
+	if not PathHelper.is_android():
+		if Input.get_gravity() == Vector3.ZERO:
+			print("自动旋转屏幕方向功能已关闭")
+			set_process(false)
+		# 桌面端无需等待，直接开始初始化
+		_initialize_core_systems()
+		return
+	
+	# Android 平台：先初始化核心系统，再等待传感器就绪
 	_initialize_core_systems()
-
-	await get_tree().create_timer(2).timeout
-	# 设备可能不支持旋转功能，所以关闭
+	
+	# 短暂等待传感器数据可用（远少于 2 秒，传感器通常 100ms 内就绪）
+	await get_tree().create_timer(0.3).timeout
 	if Input.get_gravity() == Vector3.ZERO:
 		print("自动旋转屏幕方向功能已关闭")
 		set_process(false)
@@ -203,6 +212,10 @@ func _initialize_core_systems() -> void:
 	if logger:
 		logger.info("MidiPlaybackManager initialized", "Main")
 	
+	# 让出帧：MeltySynth 后端初始化（场景加载 + C# _Ready）较重，
+	# 让引擎先渲染一帧再继续 UI 初始化，避免单帧卡顿
+	await get_tree().process_frame
+
 	# 12. 初始化键序列管理器
 	key_sequence_manager = KeySequenceManager.new()
 	key_sequence_manager.name = "KeySequenceManager"
@@ -212,7 +225,13 @@ func _initialize_core_systems() -> void:
 
 	# 13. 初始化并加载UI（确保各管理器已就绪）
 	_init_ui()
-	
+
+	# 让出帧：6 个 PackedScene 实例化较重，让引擎先渲染 UI 再继续信号连接和数据加载
+	await get_tree().process_frame
+
+	# 视图已全部实例化且布局已结算，捕获各组件基础位置（供场景切换动画复位使用）
+	AniMGR._capture_base_positions()
+
 	# 连接信号
 	_connect_signals()
 	

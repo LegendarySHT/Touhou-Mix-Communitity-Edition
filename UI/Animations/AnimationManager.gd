@@ -35,7 +35,8 @@ func _ready() -> void:
 		UI.state_changed.connect(_scene_transition_exit)
 		#UI.state_entering.connect(_scene_transition_enter)
 
-	call_deferred("_capture_base_positions")
+	# 基础位置捕获由 Main 在 _init_ui() 完成后触发：autoload 的 _ready 早于主场景 _init_ui，
+	# 此处 call_deferred 会在动态视图创建前执行，导致 "COMP xxx Not Found" 错误
 
 
 ## 创建位置动画
