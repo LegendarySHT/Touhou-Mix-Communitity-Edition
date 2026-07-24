@@ -134,7 +134,7 @@ text = "9"
 horizontal_alignment = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="AlbumName" type="Label" parent="PN" unique_id=1507697288]
+[node name="NameBox" type="Control" parent="PN" unique_id=1507697287]
 layout_mode = 1
 anchors_preset = -1
 anchor_top = 1.0
@@ -146,13 +146,20 @@ offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 2
 grow_vertical = 0
+clip_contents = true
+mouse_filter = 2
+
+[node name="AlbumName" type="Label" parent="PN/NameBox" unique_id=1507697288]
+layout_mode = 0
+offset_right = 1.0
+offset_bottom = 1.0
+mouse_filter = 1
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
 theme_override_fonts/font = ExtResource("3_j1pth")
 theme_override_font_sizes/font_size = 25
 text = "Test Title aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 vertical_alignment = 2
-clip_text = true
 metadata/_edit_use_anchors_ = true
 
 [node name="VE" type="VisibleOnScreenEnabler2D" parent="PN" unique_id=1859970557]

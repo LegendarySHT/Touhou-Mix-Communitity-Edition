@@ -56,18 +56,24 @@ grow_horizontal = 2
 grow_vertical = 0
 alignment = 1
 
-[node name="MidiName" type="Label" parent="VBoxC" unique_id=2113026606]
+[node name="NameBox" type="Control" parent="VBoxC" unique_id=2113026605]
 custom_minimum_size = Vector2(700, 0)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 8
+mouse_filter = 2
+clip_contents = true
+
+[node name="MidiName" type="Label" parent="VBoxC/NameBox" unique_id=2113026606]
+layout_mode = 0
+offset_right = 1.0
+offset_bottom = 1.0
 mouse_filter = 1
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
 theme_override_fonts/font = ExtResource("3_jdrqc")
 theme_override_font_sizes/font_size = 30
 text = "Midi Name"
-clip_text = true
 
 [node name="Line2D" type="Line2D" parent="VBoxC" unique_id=491699227]
 position = Vector2(-50, 12)

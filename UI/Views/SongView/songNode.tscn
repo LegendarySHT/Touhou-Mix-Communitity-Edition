@@ -82,7 +82,7 @@ expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true
 
-[node name="SongName" type="Label" parent="PC/HBoxC/PC" unique_id=22989094]
+[node name="NameBox" type="Control" parent="PC/HBoxC/PC" unique_id=22989093]
 custom_minimum_size = Vector2(600, 40)
 layout_mode = 1
 anchors_preset = 2
@@ -93,6 +93,14 @@ offset_top = -60.0
 offset_right = 620.0
 offset_bottom = -14.0
 grow_vertical = 0
+clip_contents = true
+mouse_filter = 2
+
+[node name="SongName" type="Label" parent="PC/HBoxC/PC/NameBox" unique_id=22989094]
+layout_mode = 0
+offset_right = 1.0
+offset_bottom = 1.0
+mouse_filter = 1
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5

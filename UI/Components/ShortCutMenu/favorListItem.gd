@@ -6,6 +6,8 @@ extends HBoxContainer
 
 class_name FavorListItem
 
+const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
+
 enum Mode { BROWSE, MANAGE }
 
 ## 列表项点击（BROWSE 模式）
@@ -34,8 +36,8 @@ var current_midi: MidiData = null
 const ICON_ADD := "res://Resources/icon/add.png"
 const ICON_DELETE := "res://Resources/icon/minus.png"
 
-# 文字滚动动画相关
-var _scroll_tween: Tween = null
+# 文字滚动状态
+var _name_scroll_state: TextScrollHelper.State = null
 var _name_full_text: String = ""
 
 
@@ -111,51 +113,20 @@ func _apply_mode() -> void:
 
 # ========== 文字滚动动画 ==========
 
-## 检测文字是否超出 Label 显示区域，若超出则启动来回滚动
-## 同步计算，避免 await 造成刷新时闪烁
+## 启动/重算名称滚动动画（委托给 TextScrollHelper）
+## 视觉规范：名称始终左对齐（与协作者微调一致）
 func _setup_name_scroll() -> void:
-	# 清理旧动画
-	if _scroll_tween:
-		_scroll_tween.kill()
-		_scroll_tween = null
-	# 重置位置
-	name_label.position = Vector2.ZERO
-	# 获取 box 宽度：优先用已布局的 size，未布局时用 Detail 最小宽度 230 作为 fallback
-	var box_width := name_box.size.x
-	if box_width <= 10:
-		box_width = 230
-	var box_height := name_box.size.y
-	if box_height <= 10:
-		box_height = 50
-	# 检测文字宽度
-	var text_width := name_label.get_theme_font("font").get_string_size(
-		_name_full_text, HORIZONTAL_ALIGNMENT_LEFT, -1, name_label.get_theme_font_size("font_size")
-	).x
-	# 设置 Label 尺寸：高度填满 NameBox，宽度取文字宽度和 NameBox 宽度的较大值
-	name_label.size = Vector2(max(text_width, box_width), box_height)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	if text_width <= box_width:
-		# 文字未超出：无需滚动
-		return
-	# 文字超出：来回滚动
-	var max_offset := text_width - box_width
-	_scroll_tween = create_tween().set_loops()
-	_scroll_tween.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
-	# 向右滚动到末端，再回到开头，中间停留
-	_scroll_tween.tween_property(name_label, "position:x", -max_offset, 3.0)
-	_scroll_tween.tween_interval(1.0)
-	_scroll_tween.tween_property(name_label, "position:x", 0, 3.0)
-	_scroll_tween.tween_interval(1.0)
+	_name_scroll_state = TextScrollHelper.setup(
+		name_label, name_box, _name_full_text, _name_scroll_state
+	)
 
 
 # ========== 重命名交互 ==========
 
 func _enter_rename_mode() -> void:
-	# 暂停滚动动画
-	if _scroll_tween:
-		_scroll_tween.kill()
-		_scroll_tween = null
-	name_label.position.x = 0
+	# 暂停滚动动画并重置位置
+	TextScrollHelper.stop(_name_scroll_state)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_edit.text = _name_full_text
 	name_box.visible = false
