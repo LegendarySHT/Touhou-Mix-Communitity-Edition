@@ -5,9 +5,9 @@ extends CoverListItemBase
 const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 
 ## 引用节点路径
-@onready var album_name_label: Label = $PN/NameBox/AlbumName
-@onready var name_box: Control = $PN/NameBox
-@onready var song_count_label: Label = $PN/CountBase/SongCount
+@onready var album_name_label: Label = $NameBox/AlbumName
+@onready var name_box: Control = $NameBox
+@onready var song_count_label: Label = $CountBase/SongCount
 # cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
 
 ## 专辑数据
@@ -22,11 +22,11 @@ var expand_tween: Tween:
 		expand_tween = t
 		_extra_motion_tween = t
 
-var ALBUMBUTTON = "PN/AlbumButton"
+var ALBUMBUTTON = "AlbumButton"
 signal _init_fin
 
 func _ready() -> void:
-	cover_texture = $PN/PN/cover
+	cover_texture = $PN/cover
 	await _init_fin
 
 	if not album_data:
@@ -80,9 +80,10 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 	expand_tween.set_parallel(true)
 	
 	var expa: int = 1 if toggled_on else 0
-	expand_tween.tween_property(self.get_node("PN"),"custom_minimum_size",Vector2(600 + expa*350, 150 + 250*expa),0.15)
-	expand_tween.tween_property(self.get_node("PN/PN/cover"),"size", Vector2.ONE *( 600 + expa*345),0.15)
+	expand_tween.tween_property(self,"custom_minimum_size",Vector2(600 + expa*350, 150 + 250*expa),0.15)
 	expand_tween.tween_property(album_name_label,"theme_override_font_sizes/font_size",25 + 20*expa,0.15)
+	# 不调这个的话字的上下位置有点问题
+	expand_tween.tween_property(album_name_label,"offset_transform_position:y",15 - 25*expa,0.15)
 
 	if toggled_on:
 		parent_node.selected_item = item_index

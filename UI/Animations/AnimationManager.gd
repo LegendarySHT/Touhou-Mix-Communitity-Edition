@@ -24,7 +24,6 @@ var tween_counter: int = 0
 signal scene_transition_fin
 
 var _current_transition_version: int = -1
-var _base_positions: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("singleton")
@@ -34,10 +33,6 @@ func _ready() -> void:
 	if UI:
 		UI.state_changed.connect(_scene_transition_exit)
 		#UI.state_entering.connect(_scene_transition_enter)
-
-	# 基础位置捕获由 Main 在 _init_ui() 完成后触发：autoload 的 _ready 早于主场景 _init_ui，
-	# 此处 call_deferred 会在动态视图创建前执行，导致 "COMP xxx Not Found" 错误
-
 
 ## 创建位置动画
 func animate_position(target: Node, to_pos: Vector2, duration: float = DURATION_NORMAL, 
@@ -74,7 +69,7 @@ func animate_list_item_horizontal(target: BaseScrollList, center_index: int, exc
 		if not tag.get_global_rect().intersects(screen_rect):
 			pass
 		time = time + 0.08 if time < 0.7 else 0.7
-		tween.tween_property(tag,"theme_override_constants/margin_left",horizon_delta,time).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+		tween.tween_property(tag,"offset_transform_position:x",horizon_delta,time).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 
 	return tween
 
@@ -181,6 +176,24 @@ func animate_pulse(target: Node, min_scale: float = 0.9, max_scale: float = 1.0,
 	tween.tween_property(target, "scale", Vector2(min_scale, min_scale), duration / 2.0)
 	return tween
 
+func animate_offset_to(target: Node, to_offset: Vector2, duration: float = DURATION_NORMAL,
+					   tween_id: String = "") -> Tween:
+	var tween = _create_tween(tween_id)
+	tween.set_ease(EASING_STANDARD)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	target.offset_transform_enabled = true
+	tween.tween_property(target, "offset_transform_position", to_offset, duration)
+	return tween
+
+func animate_offset_back(target: Node, duration: float = DURATION_NORMAL,
+						 tween_id: String = "") -> Tween:
+	var tween = _create_tween(tween_id)
+	tween.set_ease(EASING_STANDARD)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	target.offset_transform_enabled = true
+	tween.tween_property(target, "offset_transform_position", Vector2.ZERO, duration)
+	return tween
+
 ## 延迟执行回调
 func delay_call(callback: Callable, delay: float, tween_id: String = "") -> Tween:
 	var tween = _create_tween(tween_id)
@@ -245,34 +258,6 @@ func get_active_tween_count() -> int:
 ## 销毁时清理所有Tween
 func _exit_tree() -> void:
 	stop_all_tweens()
-
-
-func _capture_base_positions() -> void:
-	for key in ui_path_map:
-		var comp := get_comp(key)
-		if is_instance_valid(comp):
-			_base_positions[key] = comp.position
-
-	var pi := get_comp("Player_Info")
-	if is_instance_valid(pi):
-		var chara := pi.get_node_or_null("Chara")
-		if chara:
-			_base_positions["Player_Info/Chara"] = chara.position
-
-	var store := get_comp("Store_View")
-	if is_instance_valid(store):
-		var top_bar := store.get_node_or_null("TopBar")
-		if top_bar:
-			_base_positions["Store_View/TopBar"] = top_bar.position
-		var bottom := store.get_node_or_null("Bottom")
-		if bottom:
-			_base_positions["Store_View/Bottom"] = bottom.position
-
-	var window := get_window()
-	if window:
-		if not window.size_changed.is_connected(_capture_base_positions):
-			window.size_changed.connect(_capture_base_positions)
-
 
 func _kill_scene_transition_tweens() -> void:
 	for key in ui_exist.keys():
@@ -377,13 +362,13 @@ func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStat
 				if comp is CanvasItem:
 					comp.modulate.a = 1.0
 		# 无条件重置位置（即使 ui_exist 已为 true），防止补间被杀后位置损坏
-		if is_instance_valid(comp) and _base_positions.has(key):
-			comp.position = _base_positions[key]
+		if is_instance_valid(comp) and comp.offset_transform_enabled:
+			comp.offset_transform_position = Vector2.ZERO
 		# 同时重置 Chara 子节点
 		if key == "Player_Info" and is_instance_valid(comp):
 			var chara := comp.get_node_or_null("Chara")
-			if chara and _base_positions.has("Player_Info/Chara"):
-				chara.position = _base_positions["Player_Info/Chara"]
+			if chara and chara.offset_transform_enabled:
+				chara.offset_transform_position = Vector2.ZERO
 
 	for key in ui_exist.keys():
 		if ui_exist[key] and (key in ui_part[old_state]) and (key not in ui_part[new_state]):
@@ -393,16 +378,6 @@ func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStat
 func _scene_transition_enter(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	if UiStatMGR.transition_version != _current_transition_version:
 		return
-	# 共享组件：在两个状态中都存在，无入场动画，但需确保位置正确
-	for key in ui_exist.keys():
-		if ui_exist[key] and key in ui_part.get(new_state, []):
-			var comp := get_comp(key)
-			if is_instance_valid(comp) and _base_positions.has(key):
-				comp.position = _base_positions[key]
-			if key == "Player_Info" and is_instance_valid(comp):
-				var chara := comp.get_node_or_null("Chara")
-				if chara and _base_positions.has("Player_Info/Chara"):
-					chara.position = _base_positions["Player_Info/Chara"]
 	# 新组件：播放入场动画
 	for key in ui_exist.keys():
 		if not ui_exist[key] and key in ui_part.get(new_state, []):
@@ -439,7 +414,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 				copy.position = skew.to_local(sItem.global_position)
 
 				# 设置节点
-				var button: Button = copy.get_node("PN/AlbumButton")
+				var button: Button = copy.get_node("AlbumButton")
 				button.button_group=null
 				button.toggle_mode=false
 
@@ -451,18 +426,14 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 
 				tindex = sIndex
 				sItem.modulate.a = 0.0
-
-				var border:PanelContainer = copy.get_node("PN/Border")
-				border.add_theme_stylebox_override("panel",border.get_theme_stylebox("panel").duplicate())
 				
-				create_tween().tween_property(border.get_theme_stylebox("panel"), "shadow_size", 24, 0.25)
+				create_tween().tween_property(button.get_theme_stylebox("normal"), "shadow_size", 24, 0.25)
+				create_tween().tween_property(button.get_theme_stylebox("hover"), "shadow_size", 24, 0.25)
 				skew.add_child(copy)
 
-			tween = animate_list_item_horizontal(album_list, sIndex, tindex, -1200, tween_id)
+			animate_list_item_horizontal(album_list, sIndex, tindex, -1200, tween_id)
 			out_item_idx = sIndex
-			tween.finished.connect(func() -> void:
-				album_list.visible=false
-			)
+			tween = animate_fade_out(album_list, 0.7, "AlbumListFadeOut")
 		"Song_List":
 			if new_state == UIStateManager.UIState.ALBUM_VIEW:
 				animate_position(SS, skew.to_local(album_list.container.get_child(out_item_idx).global_position), 0.25, "SSPosition")
@@ -471,10 +442,10 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			
 			# 歌曲列表收起
 			animate_fade_out(song_list, 0.25, "SongListFadeOut")
-			tween = animate_position(song_list, Vector2(song_list.position.x, 2 * _base_positions.get("Song_List", song_list.position).y), 0.25, tween_id)
+			tween = animate_offset_to(song_list, Vector2(0, song_list.size.y), 0.25, tween_id)
 
 		"Sorted_List":
-			tween = animate_position(ani_comp, Vector2(-1500, ani_comp.position.y), 0.25, tween_id)
+			tween = animate_offset_to(ani_comp, Vector2(-1500, 0), 0.25, tween_id)
 			tween.finished.connect(func() -> void:
 				ani_comp.visible=false
 			)
@@ -485,18 +456,12 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 				ani_comp.get_node("RightArea/OptionPanel/VBoxC/TabBtn/Rank").button_pressed=true
 			)
 		"Player_Info":
-			var base = _base_positions.get("Player_Info", ani_comp.position)
 			var chara = ani_comp.get_node("Chara")
-			var chara_base = _base_positions.get("Player_Info/Chara", chara.position if chara else Vector2.ZERO)
-			ani_comp.position = base
-			if chara: chara.position = chara_base
-			if chara: animate_position(chara, Vector2(chara_base.x, chara_base.y + chara.size.y), 0.35, "CharactorPosition")
-			animate_position(ani_comp, Vector2(base.x + 900, base.y + 200), 0.55, "PlayerInfoPosition")
+			if chara: animate_offset_to(chara, Vector2(0, chara.size.y), 0.35, "CharactorPosition")
+			animate_offset_to(ani_comp, Vector2(900, 200), 0.55, "PlayerInfoPosition")
 			
 		"Shortcut_Menu":
-			var base = _base_positions.get("Shortcut_Menu", ani_comp.position)
-			ani_comp.position = base
-			var t = animate_position(ani_comp, base + Vector2(500*tan15, -500), 0.25, "MenuBarPosition")
+			var t = animate_offset_to(ani_comp, Vector2(500*tan15, -500), 0.25, "MenuBarPosition")
 			t.finished.connect(func() -> void:
 				ani_comp.visible = false
 			)
@@ -504,22 +469,27 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			tween = animate_fade_out(ani_comp, 0.35, tween_id)
 		"Track_List":
 			tween = animate_fade_out(ani_comp, 0.35, tween_id)
-			animate_position(ani_comp, Vector2(ani_comp.position.x, 1080), 0.25, "track_pos")
+			animate_offset_to(ani_comp, Vector2(0, 1080), 0.25, "track_pos")
 		"Play_View":
 			tween = animate_fade_out(ani_comp, 0.45, tween_id)
 		"Setting_View":
 			if ani_comp.has_method("has_pending_changes") and ani_comp.has_pending_changes():
 				_save_settings_on_exit(ani_comp)
 			
+			var btns = ani_comp.get_node("HBoxC/ShortCut")
+			var setting_list = ani_comp.get_node("HBoxC/SettingList")
+			tween = animate_offset_to(btns, Vector2(-500, 0), 0.35, "sv_btns")
+			animate_offset_to(setting_list, Vector2(-1500, 0), 0.25, "sv_info")
+
 			tween = animate_fade_out(ani_comp, 0.35, tween_id)
 			if ani_comp.has_method("switch_page_instant"):
 				ani_comp.switch_page_instant()
 			else:
 				ani_comp.switch_page()
 		"Score_View":
-			ani_comp.ani_out()
+			ani_comp.animate(false)
 			if new_state!= UIStateManager.UIState.PLAY_VIEW:
-				await get_tree().create_timer(0.8).timeout
+				await get_tree().create_timer(0.7).timeout
 			tween = animate_fade_out(ani_comp, 0.45, tween_id)
 
 	# 发射结束信号
@@ -565,7 +535,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 
 	match ui_name:
 		"Album_List":
-			album_list.visible=true
+			animate_fade_in(album_list, 0.35, "AlbumListFadeIn")
 			song_list.visible=false
 			
 			var sIndex = out_item_idx
@@ -582,8 +552,9 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			
 			# 从Song_List回来时会触发下面的
 			if SS:
-				var border:PanelContainer = SS.get_node("PN/Border")				
-				await create_tween().tween_property(border.get_theme_stylebox("panel"), "shadow_size", 0, 0.2).finished
+				var button:Button = SS.get_node("AlbumButton")				
+				await create_tween().tween_property(button.get_theme_stylebox("normal"), "shadow_size", 0, 0.2).finished
+				await create_tween().tween_property(button.get_theme_stylebox("hover"), "shadow_size", 0, 0.2).finished
 				SS.queue_free()
 			
 			song_list.clear_items.call_deferred()
@@ -594,62 +565,63 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 				animate_fade_in(SS, 0.15, "SSPosition")
 
 			song_list.visible=true
-			song_list.position=Vector2(20,-750)
-			animate_position(song_list, Vector2(song_list.position.x, 400), 0.15, tween_id)
+			song_list.offset_transform_position = Vector2(0, -1150)
+			animate_offset_back(song_list, 0.15, tween_id)
 			tween = animate_fade_in(song_list, 0.4, "SongListFadeIn")
 
 			# 不要问为什么在播放动画的地方做初始化
 			if SS:
-				var button=SS.get_node("PN/AlbumButton")
+				var button=SS.get_node("AlbumButton")
 				var ui: UIStateManager = UiStatMGR
 				button.pressed.connect(func() -> void:
 					ui.change_state(ui.UIState.ALBUM_VIEW))
 		"Sorted_List":
 			ani_comp.visible = true
 
-			animate_position(ani_comp, Vector2(0, ani_comp.position.y), 0.25, tween_id)
+			animate_offset_back(ani_comp, 0.25, tween_id)
 		"Midi_Info_View":
 			animate_fade_in(ani_comp, 0.1, "InfoUIFadeIn")
 
-			ani_comp.position = Vector2(0,-500)
-			tween = animate_position(ani_comp, Vector2.ZERO, 0.5, tween_id)
+			ani_comp.offset_transform_position = Vector2(0, -500)
+			tween = animate_offset_back(ani_comp, 0.5, tween_id)
 		"Player_Info":
-			var base = _base_positions.get("Player_Info", ani_comp.position)
-			var chara = ani_comp.get_node("Chara")
-			var chara_base = _base_positions.get("Player_Info/Chara", chara.position if chara else Vector2.ZERO)
-			ani_comp.position = Vector2(base.x + 900, base.y + 200)
-			if chara: chara.position = Vector2(chara_base.x, chara_base.y + chara.size.y)
-			animate_position(ani_comp, base, 0.35, "PlayerInfoPosition")
-			if chara: animate_position(chara, chara_base, 0.55, "CharactorPosition")
+			var chara: Node = ani_comp.get_node("Chara")
+			ani_comp.offset_transform_position = Vector2(900, 200)
+			if chara: chara.offset_transform_position = Vector2(0, chara.size.y)
+			animate_offset_back(ani_comp, 0.35, "PlayerInfoPosition")
+			if chara: animate_offset_back(chara, 0.55, "CharactorPosition")
 		
 		"Shortcut_Menu":
 			ani_comp.visible = true
-			var base = _base_positions.get("Shortcut_Menu", ani_comp.position)
-			ani_comp.position = base + Vector2(500*tan15, -500)
-			animate_position(ani_comp, base, 0.25, "MenuBarPosition")
+			ani_comp.offset_transform_position = Vector2(500*tan15, -500)
+			animate_offset_back(ani_comp, 0.25, "MenuBarPosition")
 		"Store_View":
 			var top_bar = ani_comp.get_node("TopBar")
-			top_bar.position.y = -500
-			animate_position(top_bar, Vector2.ZERO, 0.25, "top_bar_in")
+			top_bar.offset_transform_position = Vector2(0, -500)
+			animate_offset_back(top_bar, 0.25, "top_bar_in")
 
 			var bottom = ani_comp.get_node("Bottom")
-			var bottom_base = _base_positions.get("Store_View/Bottom", bottom.position)
-			bottom.position = Vector2(bottom_base.x, bottom_base.y + 500)
-			animate_position(bottom, bottom_base, 0.25, "bottom_in")
+			bottom.offset_transform_position = Vector2(0, 500)
+			animate_offset_back(bottom, 0.25, "bottom_in")
 
 			tween = animate_fade_in(ani_comp, 0.45, tween_id)
 		"Track_List":
 			ani_comp.scroll_vertical = 300
 			tween = animate_fade_in(ani_comp, 0.45, tween_id)
-			animate_position(ani_comp, Vector2.ZERO, 0.25, "track_pos")
+			animate_offset_back(ani_comp, 0.25, "track_pos")
 		"Play_View":
 			tween = animate_fade_in(ani_comp, 0.45, tween_id)
 		"Setting_View":
-			tween = animate_fade_in(ani_comp, 0.45, tween_id)
+			var btns = ani_comp.get_node("HBoxC/ShortCut")
+			var setting_list = ani_comp.get_node("HBoxC/SettingList")
+			btns.offset_transform_position = Vector2(-500, 0)
+			setting_list.offset_transform_position = Vector2(-1500, 0)
+			tween = animate_offset_back(btns, 0.25, "sv_btns")
+			animate_offset_back(setting_list, 0.35, "sv_info")
 		"Score_View":
 			tween = animate_fade_in(ani_comp, 0.45, tween_id)
 			tween.finished.connect(func ():
-				ani_comp.ani_in())
+				ani_comp.animate())
 
 	# 播放完毕
 	if tween:

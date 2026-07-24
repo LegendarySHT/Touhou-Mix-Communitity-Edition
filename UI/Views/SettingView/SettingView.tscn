@@ -76,6 +76,7 @@ alignment = 1
 z_index = 2
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
+offset_transform_enabled = true
 focus_mode = 1
 alignment = 1
 
@@ -135,6 +136,7 @@ custom_minimum_size = Vector2(1300, 0)
 clip_contents = false
 layout_mode = 2
 size_flags_horizontal = 6
+offset_transform_enabled = true
 mouse_filter = 0
 follow_focus = true
 horizontal_scroll_mode = 0

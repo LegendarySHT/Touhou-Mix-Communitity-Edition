@@ -229,9 +229,6 @@ func _initialize_core_systems() -> void:
 	# 让出帧：6 个 PackedScene 实例化较重，让引擎先渲染 UI 再继续信号连接和数据加载
 	await get_tree().process_frame
 
-	# 视图已全部实例化且布局已结算，捕获各组件基础位置（供场景切换动画复位使用）
-	AniMGR._capture_base_positions()
-
 	# 连接信号
 	_connect_signals()
 	

@@ -604,6 +604,7 @@ offset_bottom = 254.0
 grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(232, 197)
+offset_transform_enabled = true
 theme_override_colors/font_shadow_color = Color(0.49411765, 0.49411765, 0.49411765, 0.7058824)
 theme_override_constants/shadow_offset_x = 5
 theme_override_constants/shadow_offset_y = -1

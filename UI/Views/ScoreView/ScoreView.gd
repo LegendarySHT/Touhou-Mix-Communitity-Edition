@@ -12,14 +12,21 @@ class_name ScoreView
 @onready var score: Label = $Score/score
 @onready var pp: Label = $Score/score/pp
 
-# 角色
-@onready var chara: TextureRect = $Chara
-
 # 个人信息区
 @onready var avator: TextureRect = $LevelingProgress/Panel/TextureRect
 @onready var name_label: Label = $LevelingProgress/Data/name
 @onready var lvl_label: Label = $LevelingProgress/Data/level
 @onready var lvl_exp_progress: ProgressBar = $LevelingProgress/Data/ProgressBar
+
+# 图片
+@onready var bg: TextureRect = $BackGround
+@onready var chara: TextureRect = $Chara
+
+# 动画相关
+@onready var btns: Panel = $Btns
+@onready var bottom: Panel = $Bottom
+@onready var info: Panel = $LevelingProgress
+@onready var score_panel: Panel = $Score
 
 class ScoreData:
 	## 由 ScoreCalculator 填充的最终数据（纯数据容器，不含计算逻辑）
@@ -65,7 +72,7 @@ func _ready() -> void:
 		c.size.x = get_viewport().get_visible_rect().size.x
 	)
 
-	ani_out()
+	animate(false)
 
 func set_display(result: ScoreData):
 	data_area.get_node("PerfectCtn").text = str(result.count.Perfect)
@@ -97,43 +104,6 @@ func _on_love_btn_pressed():
 var _loop_ani_chara: Tween = null
 var _loop_ani_rank: Tween = null
 
-func ani_out():
-	var wh = get_viewport().get_visible_rect().size.y
-	var ww = get_viewport().get_visible_rect().size.x
-
-	var nd = get_node("BackGround")
-	ani.animate_scale(nd, Vector2.ZERO, 0.25, "sv_bg")
-
-	nd = get_node("Btns")
-	ani.animate_position(nd, Vector2(nd.position.x, wh), 0.5, "sv_btns")
-
-	nd = get_node("LevelingProgress")
-	ani.animate_position(nd, Vector2(-100-nd.size.x, 0), 0.25, "sv_info")
-	
-	nd = get_node("Chara")
-	ani.animate_position(nd, Vector2(nd.position.x, wh), 0.5, "sv_chara")
-
-	nd = get_node("Bottom")
-	ani.animate_position(nd, Vector2(nd.position.x, wh + 100), 0.5, "sv_bottom")
-	
-	await get_tree().create_timer(0.05).timeout
-	if UiStatMGR.transition_version != AniMGR._current_transition_version:
-		return
-	nd = get_node("Rank")
-	ani.animate_position(nd, Vector2(nd.position.x, wh), 0.5, "sv_rank")
-
-	nd = get_node("Score")
-	ani.animate_position(nd, Vector2(-ww, nd.position.y), 1, "sv_score")
-	ani.animate_fade_out(nd, 1, "sv_score_fade")
-	
-	await get_tree().create_timer(0.05).timeout
-	if UiStatMGR.transition_version != AniMGR._current_transition_version:
-		return
-	nd = get_node("Accuracy")
-	ani.animate_position(nd, Vector2(nd.position.x, wh), 0.5, "sv_acc")
-
-	_kill_loop_ani()
-
 func _kill_loop_ani():
 	if _loop_ani_chara:
 		_loop_ani_chara.kill()
@@ -142,48 +112,59 @@ func _kill_loop_ani():
 		_loop_ani_rank.kill()
 		_loop_ani_rank = null
 
-func ani_in():
-	var charaNode = null
-	var rankNode = null
-
-	var nd = get_node("BackGround")
-	ani.animate_scale(nd, Vector2.ONE, 0.5, "sv_bg")
-
-	nd = get_node("Btns")
-	ani.animate_position(nd, Vector2(nd.position.x, 0), 0.8, "sv_btns")
-
-	nd = get_node("LevelingProgress")
-	ani.animate_position(nd, Vector2.ZERO, 0.5, "sv_info")
-	
-	charaNode = get_node("Chara")
-	ani.animate_position(charaNode, Vector2(charaNode.position.x, 150), 0.8, "sv_chara")
-
-	nd = get_node("Bottom")
-	ani.animate_position(nd, Vector2(nd.position.x, 680), 0.8, "sv_bottom")
-	
-	await get_tree().create_timer(0.05).timeout
-	rankNode = get_node("Rank")
-	ani.animate_position(rankNode, Vector2(rankNode.position.x, 400), 0.8, "sv_rank")
-
-	nd = get_node("Score")
-	ani.animate_position(nd, Vector2(0, nd.position.y), 1.25, "sv_score")
-	ani.animate_fade_in(nd, 1, "sv_score_fade")
-	
-	await get_tree().create_timer(0.05).timeout
-	nd = get_node("Accuracy")
-	ani.animate_position(nd, Vector2(nd.position.x, 427), 0.8, "sv_acc")
-
-	await get_tree().create_timer(0.8).timeout
+func _play_loop_ani():
 	_kill_loop_ani()
-	
 	_loop_ani_chara = create_tween()
 	_loop_ani_rank = create_tween()
 
 	_loop_ani_chara.set_loops()
 	_loop_ani_rank.set_loops()
 
-	_loop_ani_rank.tween_property(rankNode, "scale", Vector2.ONE*1.01, 1)
-	_loop_ani_rank.tween_property(rankNode, "scale", Vector2.ONE*0.99, 1)
+	_loop_ani_rank.tween_property(rank, "offset_transform_scale", Vector2.ONE*0.99, 1)
+	_loop_ani_rank.tween_property(rank, "offset_transform_scale", Vector2.ONE*1.01, 1)
 
-	_loop_ani_chara.tween_property(charaNode, "position:y", charaNode.position.y + 10, 1.5)
-	_loop_ani_chara.tween_property(charaNode, "position:y", charaNode.position.y - 10, 1.5)
+	_loop_ani_chara.tween_property(chara, "position:y", chara.position.y + 10, 1.5)
+	_loop_ani_chara.tween_property(chara, "position:y", chara.position.y - 10, 1.5)
+
+func animate(ani_in: bool = true):
+	# 窗口大小
+	var wh = size.y
+	var ww = size.x
+
+	# 外围组件
+	if ani_in:
+		ani.animate_scale(bg, Vector2.ONE, 0.5, "sv_bg")
+		ani.animate_offset_back(info, 0.5, "sv_info")
+
+		ani.animate_offset_back(btns, 0.8, "sv_btns")
+		ani.animate_offset_back(chara, 0.8, "sv_chara")
+		ani.animate_offset_back(bottom, 0.8, "sv_bottom")
+	else:
+		ani.animate_scale(bg, Vector2.ZERO, 0.25, "sv_bg")
+		ani.animate_offset_to(info, Vector2(- info.size.x, 0), 0.25, "sv_info")
+
+		ani.animate_offset_to(btns, Vector2(btns.size.x + 100, 0), 0.5, "sv_btns")
+		ani.animate_offset_to(chara, Vector2(0, wh), 0.5, "sv_chara")
+		ani.animate_offset_to(bottom, Vector2(0, wh), 0.5, "sv_bottom")
+	
+	await get_tree().create_timer(0.05).timeout
+	# 数值组件
+	if ani_in:
+		ani.animate_offset_back(rank, 0.8, "sv_rank")
+
+		ani.animate_fade_in(score_panel, 1, "sv_score_fade")
+		ani.animate_offset_back(score, 0.5, "sv_score")
+		ani.animate_offset_back(pp, 0.8, "sv_pp")
+
+		ani.animate_offset_back(accuracy, 1.5, "sv_acc")
+	else:
+		ani.animate_offset_to(rank, Vector2(0, wh), 0.5, "sv_rank")
+
+		ani.animate_fade_out(score_panel, 1, "sv_score_fade")
+		ani.animate_offset_to(score, Vector2(-ww, 0), 0.5, "sv_score")
+		ani.animate_offset_to(pp, Vector2(-ww, 0), 0.8, "sv_pp")
+
+		ani.animate_offset_to(accuracy, Vector2(0, wh), 1.5, "sv_acc")
+
+	await get_tree().create_timer(0.8).timeout
+	_play_loop_ani()

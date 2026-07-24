@@ -234,7 +234,7 @@ func _modify_button_colors(btn: Button, pri_light: Color, fancy_focus: bool) -> 
 
 	sb = btn.get_theme_stylebox("hover")
 	if sb is StyleBoxFlat:
-		sb.bg_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.15)
+		sb.bg_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.05 if fancy_focus else 0.15)
 
 	if fancy_focus:
 		sb = btn.get_theme_stylebox("focus")
@@ -243,21 +243,19 @@ func _modify_button_colors(btn: Button, pri_light: Color, fancy_focus: bool) -> 
 
 ## 修改 albumNode 的 item_instance 上的共享 StyleBoxFlat 和 self_modulate
 func _style_album_instance(item: Control, pri_light: Color) -> void:
-	# PN/Border — border_color + shadow_color
-	var border := item.get_node_or_null("PN/Border") as PanelContainer
-	if border:
-		var sb := border.get_theme_stylebox("panel")
-		if sb is StyleBoxFlat:
-			sb.border_color = pri_light
-			sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.57)
-
-	# PN/AlbumButton — pressed/hover/focus 的颜色
-	var btn := item.get_node_or_null("PN/AlbumButton") as Button
+	# AlbumButton — pressed/hover/focus 的颜色
+	var btn := item.get_node_or_null("AlbumButton") as Button
 	if btn:
 		_modify_button_colors(btn, pri_light, true)
+		# 边框颜色
+		for state in ["normal", "hover", "pressed"]:
+			var sb := btn.get_theme_stylebox(state)
+			if sb is StyleBoxFlat:
+				sb.border_color = pri_light
+				sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.4)
 
-	# PN/CountBase — self_modulate 是属性非共享资源，设在 item_instance 上让 duplicate() 自动带过去
-	var count_base := item.get_node_or_null("PN/CountBase") as TextureRect
+	# CountBase — self_modulate 是属性非共享资源，设在 item_instance 上让 duplicate() 自动带过去
+	var count_base := item.get_node_or_null("CountBase") as TextureRect
 	if count_base:
 		count_base.self_modulate = pri_light
 
