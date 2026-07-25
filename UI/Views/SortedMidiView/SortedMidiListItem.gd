@@ -44,6 +44,6 @@ func setup_with_midi(midi: MidiData, index: int, bg:ButtonGroup) -> void:
 	button = get_node("Panel/Button")
 	button.button_group = bg
 
-	enable_selected_animation(button, get_parent().get_parent())
+	enable_selected_animation(button, get_node("/root/Main/skew/C/SortedMidisList"))
 
 	_init_fin.emit()

@@ -21,9 +21,6 @@ func _ready() -> void:
 		return
 	
 	work_state = UIStateManager.UIState.SONG_VIEW
-	item_height = 140
-	item_spacing = 29
-
 	# 连接事件
 	event_bus.album_selected.connect(_load_songs)
 	event_bus.midi_deleted.connect(func(_id): if not current_album_id.is_empty(): _load_songs(current_album_id))
@@ -41,7 +38,7 @@ func _load_songs(album_id: String) -> void:
 	_connect_head_and_tail()
 
 	# 加长
-	container.custom_minimum_size.y = (item_height + item_spacing) * (current_songs.size() + 1)
+	container.custom_minimum_size.y = (140 + 29) * (current_songs.size() + 1)
 
 	# 安全网：若歌曲列表为空且 Album 也被删除（级联），延迟退回 AlbumView
 	# 若 Song 被删除但 Album 仍存在，则显示该 Album 的空列表（不退回）

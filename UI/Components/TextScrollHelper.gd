@@ -62,9 +62,6 @@ static func setup(label: Label, clip_container: Control, full_text: String,
 		full_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 	).x
 
-	# 设置 Label 尺寸：高度等于文字高度，宽度取文字宽与容器宽的较大值
-	label.size = Vector2(max(text_width, box_width), text_height)
-
 	if text_width <= box_width:
 		# 文字未溢出：不滚动
 		return state

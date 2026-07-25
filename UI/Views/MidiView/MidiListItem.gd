@@ -119,39 +119,48 @@ func _load_cover_image() -> void:
 func on_item_button_toggled(toggled_on: bool):
 	if not parent_node.current_midis.size() > 1 and not toggled_on:
 		return
+	# 更新该项的指示器颜色（开=高亮，关=白色）
+	var indicator_node := get_node(INDICATOR)
+	var primary_dark := Color(0.129, 0.412, 0.702)
+	if ThemeMGR:
+		primary_dark = ThemeMGR.get_color("primary_dark")
+	create_tween().tween_property(indicator_node.get_child(item_index), "color", primary_dark if toggled_on else Color(1, 1, 1), 0.15)
+	if toggled_on:
+		parent_node.selected_item = item_index
+		# 收起状态点击 → 自动展开全部；展开状态 → 直接吸附
+		if parent_node._collapsed:
+			parent_node._show_midi_list(item_index)
+		else:
+			parent_node.need_snap = true
+			# 指示器移到新选中项
+			create_tween().tween_property(indicator_node, "position", Vector2(30, 100 - item_index * 24), 0.35)
+		_update_data_display()
+
+## 设置展开/收起（由 MidiList._show_midi_list 批量调用）
+func set_expanded(expanded: bool) -> void:
+	if expand_tween:
+		expand_tween.kill()
+	var expa := 1 if expanded else 0
 	expand_tween = create_tween()
 	expand_tween.set_ease(Tween.EASE_OUT)
 	expand_tween.set_trans(Tween.TRANS_QUINT)
 	expand_tween.set_parallel(true)
-	
-	var indicator = get_node(INDICATOR)
-	var expa = 1 if toggled_on else 0
-	expand_tween.tween_property(self , "custom_minimum_size", Vector2(750, 150 + 240 * expa), 0.35)
+	expand_tween.tween_property(self, "custom_minimum_size", Vector2(750, 150 + 240 * expa), 0.35)
 	expand_tween.tween_property(get_node("VBoxC/MC"), "theme_override_constants/margin_bottom", 20 * expa, 0.15)
-	#文字
 	expand_tween.tween_property(midi_name_label, "theme_override_font_sizes/font_size", 30 + 10 * expa, 0.25)
 	expand_tween.tween_property(line, "position", Vector2(-50, 12 - 5 * expa), 0.15)
-	#指示器
-	var primary_dark: Color = Color(0.129, 0.412, 0.702)
+	# 指示器颜色
+	var indicator_node := get_node(INDICATOR)
+	var primary_dark := Color(0.129, 0.412, 0.702)
 	if ThemeMGR:
 		primary_dark = ThemeMGR.get_color("primary_dark")
-	expand_tween.tween_property(indicator.get_child(item_index), "color", primary_dark if expa else Color(1, 1, 1), 0.15)
-	expand_tween.tween_property(indicator, "position", Vector2(30, 100 - item_index * 24), 0.35)
-	
-	if toggled_on:
-		parent_node.selected_item = item_index
-
+	var highlight = expanded and (parent_node.selected_item == item_index)
+	expand_tween.tween_property(indicator_node.get_child(item_index), "color", primary_dark if highlight else Color(1, 1, 1), 0.15)
 	expand_tween.finished.connect(func():
 		expand_tween.kill()
 		expand_tween = null
-		# 字号变化后重算滚动布局
 		call_deferred("_setup_name_scroll")
 	)
-	await get_tree().create_timer(0.35).timeout
-	if toggled_on and parent_node.selected_item == item_index:
-		parent_node.need_snap = true
-
-		_update_data_display()
 
 
 ## 更新信息面板（入口）

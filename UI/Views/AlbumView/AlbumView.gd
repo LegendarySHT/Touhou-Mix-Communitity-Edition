@@ -21,14 +21,13 @@ func _ready() -> void:
 		return
 	
 	work_state = UIStateManager.UIState.ALBUM_VIEW
-	item_height = 179 # 间距29 项高150
-	item_spacing = 29
-	snap_offset_y = -250
+	snap_offset_y = 100
 
 	# 连接事件
 	data_manager.data_loaded.connect(_load_albums)
 	event_bus.midi_deleted.connect(func(_id): _load_albums())
 	event_bus.config_changed.connect(_on_config_changed)
+	modulate.a = 0.0
 
 	super._ready()
 
@@ -73,6 +72,7 @@ func _refresh_display_async(refresh_id: int) -> void:
 		# 第一批出来后立即隐藏 Loading
 		if counter == 1 and _loading_node:
 			_loading_node.stop_rotation()
+			create_tween().tween_property(self, "modulate:a", 1.0, 0.3)
 		
 		# 每 3 个专辑释放一帧，保持 UI 响应
 		if counter % 3 == 0:
@@ -87,7 +87,7 @@ func _refresh_display_async(refresh_id: int) -> void:
 func _process(delta):
 	super._process(delta)
 
-	if selected_item == -1 and not (is_dragging_list or is_dragging_bar or snap_tween or scroll_velocity != 0):
+	if selected_item == -1 and scroll_control_state == ScrollControlState.IDLE:
 		need_snap = true
 		# print("need snap v: %f" % scroll_velocity)
 

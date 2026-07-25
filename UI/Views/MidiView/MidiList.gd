@@ -8,6 +8,7 @@ class_name MidiView
 var current_midis: Array[MidiData] = []
 
 var last_selection:int = -1 # 上一次选中的节点
+var _collapsed: bool = false # 列表是否处于收起状态
 
 @onready var indicator = $/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator
 @onready var  previ_btn = $/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Left/PreviBtn
@@ -18,8 +19,6 @@ var last_selection:int = -1 # 上一次选中的节点
 
 func _ready() -> void:
 	work_state = UIStateManager.UIState.MIDI_VIEW
-	item_height = 150
-	item_spacing = 4
 	snap_offset_y = 0
 
 	super._ready()
@@ -31,7 +30,11 @@ func load_midi(midis:Array[MidiData]) -> void:
 	_setup_focus_neighbor()
 	
 	await get_tree().process_frame
+	_collapsed = false
 	select_item(0)
+	for item in list_items:
+		item.set_expanded(true)
+	need_snap = true
 
 func _setup_focus_neighbor():
 	if container == null:
@@ -77,26 +80,41 @@ func _clear_list() -> void:
 	selected_item = -1
 
 func _gui_input(event):
+	# 展开状态下不响应鼠标拖拽
+	if not _collapsed and (event is InputEventMouseButton or event is InputEventMouseMotion):
+		return
 	super._gui_input(event)
 
 func _process(_delta):
 	super._process(_delta)
-	
-	if abs(_mouse_delta) > 50 and is_dragging_list and list_items.size() > 1 and selected_item != -1:
-		_show_midi_list()
 
-func _show_midi_list(_index: int = 0) -> void:
+func _show_midi_list(_index: int = -1) -> void:
 	if current_midis.size() == 1:
 		return
-
-	if selected_item != -1:
-		get_selected_node().button.button_pressed = false
-		last_selection = selected_item
+	if not _collapsed:
+		# 展开 → 收起全部
+		_collapsed = true
+		if selected_item != -1:
+			last_selection = selected_item
+			get_selected_node().button.button_pressed = false
 		selected_item = -1
+		for item in list_items:
+			item.set_expanded(false)
+		need_snap = false
 	else:
-		selected_item = last_selection
-		get_selected_node().button.button_pressed = true
-		last_selection = -1
+		# 收起 → 展开全部
+		_collapsed = false
+		var target := _index if _index >= 0 else last_selection
+		if target >= 0 and target < list_items.size():
+			selected_item = target
+			last_selection = target
+			get_selected_node().button.button_pressed = true
+		for item in list_items:
+			item.set_expanded(true)
+		need_snap = true
+		# 指示器移到选中项
+		if indicator and selected_item != -1:
+			create_tween().tween_property(indicator, "position", Vector2(30, 100 - selected_item * 24), 0.35)
 
 func _previous() -> void:
 	if current_midis.size() != 1:

@@ -893,17 +893,28 @@ grow_vertical = 2
 size_flags_horizontal = 0
 horizontal_scroll_mode = 0
 script = ExtResource("7_w3rk5")
-container_path = NodePath("VBox")
+container_path = NodePath("VBox/VBox")
 list_item_class = "res://UI/Views/AlbumView/albumNode.tscn"
 metadata/_edit_lock_ = true
 
-[node name="VBox" type="VBoxContainer" parent="skew/C/AlbumList" unique_id=1696024062]
+[node name="VBox" type="VBoxContainer" parent="skew/C/AlbumList" unique_id=1809549679]
+layout_mode = 2
+
+[node name="MarginTop" type="MarginContainer" parent="skew/C/AlbumList/VBox" unique_id=347624655]
+layout_mode = 2
+theme_override_constants/margin_top = 250
+
+[node name="VBox" type="VBoxContainer" parent="skew/C/AlbumList/VBox" unique_id=1696024062]
 custom_minimum_size = Vector2(630, 0)
 layout_mode = 2
 size_flags_horizontal = 2
 mouse_filter = 2
 theme_override_constants/separation = 29
 alignment = 1
+
+[node name="MarginBottom" type="MarginContainer" parent="skew/C/AlbumList/VBox" unique_id=273776046]
+layout_mode = 2
+theme_override_constants/margin_bottom = 900
 
 [node name="SongList" type="ScrollContainer" parent="skew/C" unique_id=2135907176]
 physics_interpolation_mode = 1
@@ -945,15 +956,26 @@ offset_transform_position = Vector2(-1500, 0)
 follow_focus = true
 horizontal_scroll_mode = 0
 script = ExtResource("26_5mvff")
-container_path = NodePath("VBox")
+container_path = NodePath("VBox/VBox")
 list_item_class = "res://UI/Views/SortedMidiView/sortedMidiNode.tscn"
 
-[node name="VBox" type="VBoxContainer" parent="skew/C/SortedMidisList" unique_id=1865026005]
+[node name="VBox" type="VBoxContainer" parent="skew/C/SortedMidisList" unique_id=430529324]
+layout_mode = 2
+
+[node name="MarginTop" type="MarginContainer" parent="skew/C/SortedMidisList/VBox" unique_id=787219853]
+layout_mode = 2
+theme_override_constants/margin_top = 250
+
+[node name="VBox" type="VBoxContainer" parent="skew/C/SortedMidisList/VBox" unique_id=1865026005]
 custom_minimum_size = Vector2(630, 0)
 layout_mode = 2
 size_flags_horizontal = 2
 mouse_filter = 2
 theme_override_constants/separation = 29
+
+[node name="MarginBottom" type="MarginContainer" parent="skew/C/SortedMidisList/VBox" unique_id=625870149]
+layout_mode = 2
+theme_override_constants/margin_bottom = 900
 
 [node name="Loading" type="TextureRect" parent="skew/C" unique_id=759121335]
 custom_minimum_size = Vector2(200, 200)

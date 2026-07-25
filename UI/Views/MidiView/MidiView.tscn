@@ -253,6 +253,8 @@ metadata/_edit_lock_ = true
 [node name="VBOX" type="VBoxContainer" parent="LeftArea/InfoWindow/HBoxC/MidiList" unique_id=545536108]
 layout_mode = 2
 size_flags_vertical = 2
+theme_override_constants/separation = 0
+alignment = 1
 
 [node name="Right" type="VBoxContainer" parent="LeftArea/InfoWindow/HBoxC" unique_id=1009054736]
 custom_minimum_size = Vector2(110, 0)

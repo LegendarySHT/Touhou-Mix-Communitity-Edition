@@ -39,6 +39,7 @@ signal btn_confirmed(index: int)
 func enable_selected_animation(btn: Button, parent) -> void:
 	init_btn(btn, parent)
 	_enable_ani = true
+	offset_transform_enabled = true
 
 func init_btn(btn: Button, parent) -> void:
 	if _item_btn:
@@ -83,7 +84,7 @@ func _on_button_down():
 		pulse_tween.kill()
 
 	press_tween = create_tween()
-	press_tween.tween_property(self, "scale", Vector2(0.96, 0.96), 0.07).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "offset_transform_scale", Vector2(0.96, 0.96), 0.07).set_ease(Tween.EASE_OUT)
 
 func _on_button_up():
 	if not _enable_ani:
@@ -94,9 +95,9 @@ func _on_button_up():
 		press_tween.kill()
 	
 	press_tween = create_tween()
-	press_tween.tween_property(self, "scale", Vector2(1.03, 1.03), 0.06).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BOUNCE)
+	press_tween.tween_property(self, "offset_transform_scale", Vector2(1.03, 1.03), 0.06).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BOUNCE)
 	
-	press_tween.tween_property(self, "scale", Vector2(0.98, 0.98), 0.34).set_ease(Tween.EASE_IN_OUT)
+	press_tween.tween_property(self, "offset_transform_scale", Vector2(0.98, 0.98), 0.34).set_ease(Tween.EASE_IN_OUT)
 
 	press_tween.finished.connect(func ():
 		_pulse_animation(is_selected)
@@ -139,11 +140,11 @@ func _pulse_animation(enable: bool):
 		pulse_tween.set_loops()
 		
 		# 柔和的脉冲
-		pulse_tween.tween_property(self, "scale", Vector2(1.01, 1.01), 0.8).set_ease(Tween.EASE_IN_OUT)
+		pulse_tween.tween_property(self, "offset_transform_scale", Vector2(1.01, 1.01), 0.8).set_ease(Tween.EASE_IN_OUT)
 		
-		pulse_tween.tween_property(self, "scale", Vector2(0.99, 0.99), 0.8).set_ease(Tween.EASE_IN_OUT)
+		pulse_tween.tween_property(self, "offset_transform_scale", Vector2(0.99, 0.99), 0.8).set_ease(Tween.EASE_IN_OUT)
 	else:
-		create_tween().tween_property(self, "scale", Vector2.ONE, 0.2).set_ease(Tween.EASE_IN_OUT)
+		create_tween().tween_property(self, "offset_transform_scale", Vector2.ONE, 0.2).set_ease(Tween.EASE_IN_OUT)
 
 # 虚函数：初始化列表项
 func initialize(id: String, type: String) -> void:

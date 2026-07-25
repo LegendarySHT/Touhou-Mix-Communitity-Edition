@@ -27,9 +27,6 @@ func _ready() -> void:
 		return
 	
 	work_state = UIStateManager.UIState.SORTED_VIEW
-	item_height = 179 # 间距29 项高150
-	item_spacing = 29
-
 	# 连接事件
 	eb.search_query_changed.connect(_on_search_query_changed)
 	eb.sort_finished.connect(_load_sorted_midis)

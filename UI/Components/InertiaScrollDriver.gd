@@ -74,19 +74,13 @@ func handle_mouse_button(event: InputEventMouseButton, current_scroll_vertical: 
 
 ## 处理鼠标移动事件（从父级 _gui_input 转发）。
 ## 返回新的 scroll_vertical 值，或 -1 表示无需更新。
-func handle_mouse_motion(event: InputEventMouseMotion, max_scroll: int,
-		item_height: float, midi_view_clamp: bool, has_selected_item: bool) -> int:
+func handle_mouse_motion(event: InputEventMouseMotion, max_scroll: int) -> int:
 	if not _is_dragging_list:
 		return -1
 
 	is_dragging_list = true
 	var raw_delta = (event.global_position.y - _mouse_start_pos) * drag_sensitivity
-
-	# MIDI 视图的行限制
-	if midi_view_clamp and abs(raw_delta * drag_sensitivity) > item_height and has_selected_item:
-		_mouse_delta = item_height * sign(raw_delta)
-	else:
-		_mouse_delta = raw_delta
+	_mouse_delta = raw_delta
 
 	# 更新速度（来自引擎的内置指针速度）
 	if scroll_velocity * event.velocity.y > 0.0 or abs(event.velocity.y) > abs(scroll_velocity):

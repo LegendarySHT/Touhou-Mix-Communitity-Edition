@@ -4,6 +4,14 @@ extends ScrollContainer
 
 class_name BaseScrollList
 
+enum ScrollControlState {
+	IDLE,              # 空闲 —— 无滚动活动
+	USER_DRAG,         # 用户拖拽列表内容
+	SCROLLBAR_DRAG,    # 用户拖拽滚动条
+	INERTIA,           # 惯性滚动中
+	SNAP_ANIMATION,    # 吸附动画播放中
+}
+
 ## 容器（放置列表项的VBox或HBox）
 @export var container_path: NodePath
 @onready var container: Container = get_node(container_path) if container_path else null
@@ -11,12 +19,6 @@ class_name BaseScrollList
 ## 列表项场景或预制体
 @export var list_item_class: Variant
 @onready var item_instance = load(list_item_class).instantiate()
-
-## 列表项的高度
-@export var item_height: float = 100.0
-
-## 列表项间距
-@export var item_spacing: float = 10.0
 
 ## 工作状态，当不处于该状态时停止处理操作
 var work_state: UIStateManager.UIState = UIStateManager.UIState.NONE
@@ -64,21 +66,33 @@ var wheel_velocity: float:
 		if _inertia_driver:
 			_inertia_driver.wheel_velocity = v
 
-## 上一帧的滚动位置
-var last_bar_position: int = 0
+## 正在拖动滚动条（内部状态，对外通过 scroll_control_state 统一查询）
+var _is_dragging_bar: bool = false
 
-## 是否正在滚动
-var is_dragging_bar: bool = false # 当鼠标拖动滚动条时为true
-var is_wheel_scrolling: bool = false # 当滚轮滚动时为true
+## 滚动控制状态 —— 统一查询当前是谁在控制滚动位置
+## IDLE=空闲, USER_DRAG=拖拽列表, SCROLLBAR_DRAG=拖拽滚动条, INERTIA=惯性, SNAP_ANIMATION=吸附动画
+var scroll_control_state: ScrollControlState:
+	get:
+		if is_dragging_list:
+			return ScrollControlState.USER_DRAG
+		if _is_dragging_bar:
+			return ScrollControlState.SCROLLBAR_DRAG
+		if _snap_active:
+			return ScrollControlState.SNAP_ANIMATION
+		if scroll_velocity != 0:
+			return ScrollControlState.INERTIA
+		return ScrollControlState.IDLE
 
 ## 所有列表项
 var list_items: Array[ListItemBase] = []
 var selected_item: int = -1 # 选中的项，或者snap的目标项
 
 ## snap相关
-var need_snap: bool = false # 吸附完成后为false
+var need_snap: bool = false # 吸附请求标志
 var snap_offset_y: float = 500 # 吸附偏移量
-var snap_tween: Tween
+var _snap_active: bool = false # 吸附动画进行中
+var _snap_stable_frames: int = 0 # 连续稳定帧计数（防止布局抖动导致提前收敛）
+var _snap_integral: float = 0.0 # PI控制积分项
 
 ## 计时器
 var scroll_state_reset_timer: Timer
@@ -119,7 +133,7 @@ func _on_v_scrollbar_changed(_value: float):
 		scroll_state_reset_timer.stop()
 		scroll_state_reset_timer.start()
 
-	if work_state in [UIStateManager.UIState.ALBUM_VIEW] and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+	if work_state in [UIStateManager.UIState.ALBUM_VIEW] and (is_dragging_list or _is_dragging_bar):
 		call_deferred("reset_selection")
 
 	# 到达上下边界就停止
@@ -146,63 +160,68 @@ func _process(delta: float) -> void:
 		var new_pos = _inertia_driver.process_inertia(delta, scroll_vertical, get_v_scroll_bar().max_value)
 		if new_pos >= 0:
 			scroll_vertical = new_pos
-			if snap_tween:
-				snap_tween.kill()
-				snap_tween = null
 
-	# 吸附
-	if list_items and need_snap and not (is_dragging_list or scroll_velocity!=0):
-		var snap_index = selected_item if selected_item != -1 else _find_snap_target_from_visible()
-		if snap_index == -1:
-			return
-
-		snap_index = select_item(snap_index)
-		var snap_node = container.get_child(snap_index)
-		if not snap_node:
-			return
-
-		# 计算吸附位置
-		var snap_distant: int = snap_node.position.y + snap_offset_y
-		need_snap=false
-		if abs(snap_distant-scroll_vertical)<10:
-			return
-		# 补间动画
-		snap_tween = AniMGR._create_tween("snap_target")
-
-		snap_tween.set_ease(Tween.EASE_IN)
-		snap_tween.tween_property(self, "scroll_vertical", snap_distant, 0.2)
-
-		snap_tween.finished.connect(func ():
-			snap_tween.kill()
-			snap_tween = null
-		)
+	# 吸附（逐帧 lerp，每帧重新计算目标位置以应对项展开/收起导致的布局变化）
+	if list_items and need_snap and scroll_control_state in [ScrollControlState.IDLE, ScrollControlState.SNAP_ANIMATION]:
+		if not _snap_active:
+			_snap_active = true
+		_process_snap(delta)
+	elif _snap_active:
+		_snap_active = false
+		_snap_stable_frames = 0
 
 
 func _find_snap_target_from_visible() -> int:
-	var visible_indices: Array[int] = []
 	var view_top = global_position.y
-	var view_bottom = global_position.y + size.y
+	# 只要列表项的顶部在可视区域内，就认为它是吸附目标
+	for it in container.get_children():
+		if it.global_position.y > view_top:
+			return it.get_index()
+	return -1
 
-	for i in range(container.get_child_count()):
-		var child = container.get_child(i)
-		var item_top = child.global_position.y
-		var item_bottom = child.global_position.y + child.size.y
+## 逐帧吸附处理
+## 基于全局位置直接修正 —— 无视 scroll_vertical，只维护目标项在屏幕上的位置
+func _process_snap(delta: float) -> void:
+	# 无选中项时尝试自动寻找可见项
+	if selected_item == -1:
+		var found := _find_snap_target_from_visible()
+		if found != -1:
+			select_item(found)
+		if selected_item == -1:
+			need_snap = false
+			_snap_active = false
+			return
 
-		# 至少部分可见
-		if item_bottom > view_top and item_top < view_bottom:
-			visible_indices.append(i)
+	var snap_node := container.get_child(selected_item)
+	if not snap_node:
+		need_snap = false
+		_snap_active = false
+		return
 
-	if visible_indices.is_empty():
-		return -1
-
-	if visible_indices.size() >= 2:
-		return visible_indices[1]
-	return visible_indices[0]
+	# 目标：项顶部距离 ScrollContainer 顶部 = snap_offset_y 像素
+	# 只用全局位置算距离，不依赖 scroll_vertical（避免容器尺寸变化干扰）
+	var distance: float = snap_node.global_position.y - global_position.y - snap_offset_y
+	
+	# PI 控制：P项快速响应，I项累积小偏差消除稳态误差
+	_snap_integral = clampf(_snap_integral + distance * delta, -20.0, 20.0)
+	var step: float = distance * clampf(delta * 12.0, 0.0, 1.0) + _snap_integral * 0.3
+	
+	if abs(distance) < 1.0:
+		_snap_stable_frames += 1
+		if _snap_stable_frames >= 5:
+			need_snap = false
+			_snap_active = false
+			_snap_integral = 0.0
+	else:
+		_snap_stable_frames = 0
+		var int_step := roundi(step)
+		if int_step != 0:
+			scroll_vertical += int_step
 
 func _on_v_scrollbar_gui_input(event):
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
-			is_dragging_bar = event.pressed
+			_is_dragging_bar = event.pressed
 			if _inertia_driver:
 				_inertia_driver.handle_scrollbar_press(event.pressed)
 
@@ -254,12 +273,10 @@ func _gui_input(event: InputEvent) -> void:
 
 	# 鼠标移动事件
 	elif event is InputEventMouseMotion:
-		if _inertia_driver and not is_dragging_bar:
-			var midi_clamp = work_state in [UIStateManager.UIState.MIDI_VIEW]
+		if _inertia_driver and scroll_control_state != ScrollControlState.SCROLLBAR_DRAG:
 			@warning_ignore("narrowing_conversion")
 			var target = _inertia_driver.handle_mouse_motion(
-				event, get_v_scroll_bar().max_value,
-				item_height, midi_clamp, selected_item != -1
+				event, get_v_scroll_bar().max_value
 			)
 			if target >= 0:
 				scroll_vertical = target
@@ -312,9 +329,13 @@ func clear_items() -> void:
 
 	# 重置值
 	selected_item = -1
+	need_snap = false
+	_snap_active = false
+	_snap_stable_frames = 0
+	_snap_integral = 0.0
 	if _inertia_driver:
 		_inertia_driver.reset()
-	is_dragging_bar = false
+	_is_dragging_bar = false
 
 ## 将头尾连接 用于focus循环
 func _connect_head_and_tail() -> void:

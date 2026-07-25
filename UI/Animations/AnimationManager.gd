@@ -534,7 +534,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			song_list.visible=false
 			
 			var sIndex = out_item_idx
-			var vbox := album_list.get_node("VBox")
+			var vbox := album_list.container
 			if sIndex >= vbox.get_child_count() or sIndex < 0:
 				return
 			

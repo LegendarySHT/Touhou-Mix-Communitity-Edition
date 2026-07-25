@@ -15,8 +15,8 @@ border_width_bottom = 5
 border_blend = true
 
 [node name="MidiNode" type="Panel" unique_id=1462937211]
-clip_contents = true
 custom_minimum_size = Vector2(750, 150)
+clip_contents = true
 anchors_preset = -1
 anchor_right = 0.9479167
 anchor_bottom = 1.0
@@ -58,11 +58,11 @@ alignment = 1
 
 [node name="NameBox" type="Control" parent="VBoxC" unique_id=2113026605]
 custom_minimum_size = Vector2(700, 0)
+clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 8
 mouse_filter = 2
-clip_contents = true
 
 [node name="MidiName" type="Label" parent="VBoxC/NameBox" unique_id=2113026606]
 layout_mode = 0
@@ -77,8 +77,9 @@ text = "Midi Name"
 
 [node name="Line2D" type="Line2D" parent="VBoxC" unique_id=491699227]
 position = Vector2(-50, 12)
-points = PackedVector2Array(80, 45, 810, 45)
+points = PackedVector2Array(70, 45, 780, 45)
 width = 6.0
+end_cap_mode = 2
 
 [node name="HBoxC" type="HBoxContainer" parent="VBoxC" unique_id=1276140823]
 custom_minimum_size = Vector2(700, 0)
