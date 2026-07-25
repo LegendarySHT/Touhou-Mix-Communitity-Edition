@@ -5,7 +5,7 @@ extends VBoxContainer
 @onready var ani: AnimationManager = AniMGR
 
 @onready var sort_button = $Btns/Search
-@onready var love_button = $Btns/FavorList
+@onready var favor_list_button = $Btns/FavorList
 
 @onready var page_container = $Panel # 页面背景
 @onready var page = $Panel/Page # 页面内容
@@ -33,7 +33,7 @@ var _create_edit: LineEdit = null
 func _ready() -> void:
 	# 连接按钮点击事件
 	sort_button.toggled.connect(_on_menu_tab_btn_toggled.bind(sort_button))
-	love_button.toggled.connect(_on_menu_tab_btn_toggled.bind(love_button))
+	favor_list_button.toggled.connect(_on_menu_tab_btn_toggled.bind(favor_list_button))
 
 	_on_menu_tab_btn_toggled(false, sort_button)
 
@@ -42,7 +42,7 @@ func _ready() -> void:
 
 	# 按钮聚焦事件
 	sort_button.focus_entered.connect(_on_focus_enter.bind(sort_button))
-	love_button.focus_entered.connect(_on_focus_enter.bind(love_button))
+	favor_list_button.focus_entered.connect(_on_focus_enter.bind(favor_list_button))
 
 	# 收藏夹相关
 	add_btn.pressed.connect(_on_add_btn_pressed)
@@ -60,10 +60,11 @@ func _on_focus_enter(btn: Button):
 	if not btn.button_pressed:
 		btn.button_pressed = true
 
-func _on_state_changed(old_state: UIStateManager.UIState, _new_state: UIStateManager.UIState) -> void:
-	if old_state == UIStateManager.UIState.SORTED_VIEW:
+func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
+	var valid_state = [UIStateManager.UIState.ALBUM_VIEW, UIStateManager.UIState.SONG_VIEW]
+	if new_state != UIStateManager.UIState.SORTED_VIEW and not (old_state in valid_state and new_state in valid_state):
 		sort_button.button_pressed = false
-		love_button.button_pressed = false
+		favor_list_button.button_pressed = false
 
 func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
 	var tween = create_tween()
@@ -82,10 +83,10 @@ func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
 		ani.animate_fade_in(page_container, 0, "menu_fade")
 
 	if toggled_on:
-		tween.tween_property(page, "position", Vector2(40, 50) + (Vector2(-605, 0) if btn == love_button else Vector2.ZERO), 0.5)
+		tween.tween_property(page, "position", Vector2(40, 50) + (Vector2(-605, 0) if btn == favor_list_button else Vector2.ZERO), 0.5)
 
 func _is_all_off() -> bool:
-	if sort_button.button_pressed or love_button.button_pressed:
+	if sort_button.button_pressed or favor_list_button.button_pressed:
 		return false
 	return true
 
@@ -216,9 +217,7 @@ func _on_favor_item_clicked(fav_id: String) -> void:
 	EvtBus.favorite_selected_for_browse.emit(fav_id)
 	if ui.current_state != ui.UIState.SORTED_VIEW:
 		ui.change_state(ui.UIState.SORTED_VIEW)
-	# 关闭 ShortCutMenu
-	love_button.button_pressed = false
-
+	favor_list_button.button_pressed = false
 
 ## 重命名收藏夹
 func _on_favor_item_renamed(fav_id: String, new_name: String) -> void:

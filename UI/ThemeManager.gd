@@ -234,12 +234,19 @@ func _modify_button_colors(btn: Button, pri_light: Color, fancy_focus: bool) -> 
 
 	sb = btn.get_theme_stylebox("hover")
 	if sb is StyleBoxFlat:
-		sb.bg_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.05 if fancy_focus else 0.15)
+		sb.bg_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.15)
 
 	if fancy_focus:
 		sb = btn.get_theme_stylebox("focus")
 		if sb is StyleBoxFlat:
 			sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.6)
+
+		# 边框颜色
+		for state in ["normal", "hover", "pressed"]:
+			sb = btn.get_theme_stylebox(state)
+			if sb is StyleBoxFlat:
+				sb.border_color = pri_light
+				sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.4)
 
 ## 修改 albumNode 的 item_instance 上的共享 StyleBoxFlat 和 self_modulate
 func _style_album_instance(item: Control, pri_light: Color) -> void:
@@ -247,12 +254,6 @@ func _style_album_instance(item: Control, pri_light: Color) -> void:
 	var btn := item.get_node_or_null("AlbumButton") as Button
 	if btn:
 		_modify_button_colors(btn, pri_light, true)
-		# 边框颜色
-		for state in ["normal", "hover", "pressed"]:
-			var sb := btn.get_theme_stylebox(state)
-			if sb is StyleBoxFlat:
-				sb.border_color = pri_light
-				sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.4)
 
 	# CountBase — self_modulate 是属性非共享资源，设在 item_instance 上让 duplicate() 自动带过去
 	var count_base := item.get_node_or_null("CountBase") as TextureRect
@@ -261,22 +262,15 @@ func _style_album_instance(item: Control, pri_light: Color) -> void:
 
 ## 修改 songNode 的 item_instance
 func _style_song_instance(item: Control, pri_light: Color) -> void:
-	# PC/Border
-	var border := item.get_node_or_null("PC/Border") as PanelContainer
-	if border:
-		var sb := border.get_theme_stylebox("panel")
-		if sb is StyleBoxFlat:
-			sb.border_color = pri_light
-
-	# PC/HBoxC/CountBase — bg_color
-	var count_base := item.get_node_or_null("PC/HBoxC/CountBase") as PanelContainer
+	# HBoxC/CountBase — bg_color
+	var count_base := item.get_node_or_null("HBoxC/CountBase") as PanelContainer
 	if count_base:
 		var sb := count_base.get_theme_stylebox("panel")
 		if sb is StyleBoxFlat:
 			sb.bg_color = pri_light
 
-	# PC/SongButton
-	var btn := item.get_node_or_null("PC/SongButton") as Button
+	# SongButton
+	var btn := item.get_node_or_null("SongButton") as Button
 	if btn:
 		_modify_button_colors(btn, pri_light, true)
 
@@ -374,18 +368,10 @@ func _style_midi_individual_nodes(info_ui: Node) -> void:
 	# InfoWindow 边框
 	var info_window := info_ui.get_node_or_null("LeftArea/InfoWindow") as PanelContainer
 	_style_panel_set_bg_color(info_window, pd)
-	# if info_window:
-	# 	var sb := info_window.get_theme_stylebox("panel")
-	# 	if sb is StyleBoxFlat:
-	# 		sb.border_color = pl
 
 	# Fold 面板（与 Center 共享同一 StyleBoxFlat_5h6qm）
 	var fold := info_ui.get_node_or_null("LeftArea/InfoWindow/HBoxC/Left/Fold") as Panel
 	_style_panel_set_bg_color(fold, pl)
-	# if fold:
-	# 	var sb := fold.get_theme_stylebox("panel")
-	# 	if sb is StyleBoxFlat:
-	# 		sb.bg_color = pl
 
 	# Fold/Btn — 只改 pressed（normal 透明，hover 暗色遮罩保留）
 	var fold_btn := info_ui.get_node_or_null("LeftArea/InfoWindow/HBoxC/Left/Fold/Btn") as Button
@@ -410,13 +396,13 @@ func _style_midi_individual_nodes(info_ui: Node) -> void:
 	var redirect_btn := info_ui.get_node_or_null("LeftArea/RedirectButtons/Button") as Button
 	_style_button_set_bg_color(redirect_btn, p)
 
-	# OptionPanel 背景
-	var option_panel := info_ui.get_node_or_null("RightArea/OptionPanel") as PanelContainer
-	_style_panel_set_bg_color(option_panel, pd)
+	# OptionPanel 背景 (和按钮按下状态同色)
+	var option_panel := info_ui.get_node_or_null("OptionPanel") as PanelContainer
+	_style_panel_set_bg_color(option_panel, p.darkened(0.25))
 
-## 对 MidiView (InfoUI) 的独立节点应用主题色
+## 对 MidiView 的独立节点应用主题色
 func _apply_midi_theme(main: Node) -> void:
-	var info_ui := main.get_node_or_null("skew/C/InfoUI")
+	var info_ui := main.get_node_or_null("skew/C/MidiView")
 	if not info_ui:
 		return
 	_style_midi_individual_nodes(info_ui)

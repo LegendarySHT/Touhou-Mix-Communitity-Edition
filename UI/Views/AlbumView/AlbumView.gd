@@ -13,7 +13,6 @@ var current_albums: Array[AlbumData] = []
 
 ## 列表刷新控制
 var _refresh_id: int = 0
-var _is_refreshing: bool = false
 @onready var _loading_node: Control = get_parent().get_node("Loading") if get_parent() else null
 
 func _ready() -> void:

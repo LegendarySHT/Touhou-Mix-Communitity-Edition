@@ -99,8 +99,7 @@ func _on_button_up():
 	press_tween.tween_property(self, "scale", Vector2(0.98, 0.98), 0.34).set_ease(Tween.EASE_IN_OUT)
 
 	press_tween.finished.connect(func ():
-		if not is_selected:
-			_pulse_animation(false)
+		_pulse_animation(is_selected)
 	)
 
 func _on_toggled(toggled_on: bool):

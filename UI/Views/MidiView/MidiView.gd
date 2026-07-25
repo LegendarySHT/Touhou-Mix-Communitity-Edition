@@ -1,8 +1,8 @@
-extends Control
+extends HBoxContainer
 
 # 主要节点
 @onready var midi_list: MidiView = $LeftArea/InfoWindow/HBoxC/MidiList
-@onready var option_list: VBoxContainer = $RightArea/OptionPanel/VBoxC
+@onready var option_list: VBoxContainer = $OptionPanel/VBoxC
 @onready var description: RichTextLabel = $LeftArea/InfoWindow/HBoxC/Description
 
 # 下面的三个主要按钮
@@ -12,11 +12,10 @@ extends Control
 @onready var favor_list_btn: Button = $LeftArea/MainBtn/FavorListBtn
 
 # RightArea 滑动面板
-@onready var right_area: Control = $RightArea
-@onready var option_panel: PanelContainer = $RightArea/OptionPanel
-@onready var favor_panel: PanelContainer = $RightArea/OptionPanel/VBoxC/TabView/TabC/FavorPanel
-@onready var tab_container: TabContainer = $RightArea/OptionPanel/VBoxC/TabView/TabC
-@onready var tab_btn: HBoxContainer = $RightArea/OptionPanel/VBoxC/TabBtn
+@onready var option_panel: PanelContainer = $OptionPanel
+@onready var favor_panel: PanelContainer = $OptionPanel/VBoxC/TabView/FavorPanel
+@onready var tab_container: TabContainer = $OptionPanel/VBoxC/TabView
+@onready var tab_btn: HBoxContainer = $OptionPanel/VBoxC/TabBtn
 
 # 收藏夹按钮图标
 const ICON_FAVOR_LIST := "res://Resources/icon/midiInfoPage/addToList.png"
@@ -184,34 +183,43 @@ func _show_favor_panel() -> void:
 
 
 # 隐藏收藏夹面板：两阶段反向动画
-func _hide_favor_panel() -> void:
+func _hide_favor_panel(exiting_page: bool = false) -> void:
 	_is_animating = true
 	_favor_panel_visible = false
 	favor_list_btn.icon = load(ICON_FAVOR_LIST)
 	favor_panel.cancel_create()
 	var target_page := tab_container.get_tab_control(_prev_tab_idx) if _prev_tab_idx >= 0 else null
-	# 第一阶段：FavorPanel 滑出到下方 + 淡出
-	var tween1 := create_tween().set_parallel(true)
-	tween1.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-	tween1.tween_property(favor_panel, "modulate:a", 0.0, 0.2)
-	tween1.tween_property(favor_panel, "offset_transform_position:y", 800, 0.3)
-	await tween1.finished
+	if not target_page:
+		push_error("[MidiView] Invalid target page index: %d" % _prev_tab_idx)
+	if not exiting_page:
+		# 第一阶段：FavorPanel 滑出到下方 + 淡出
+		var tween1 := create_tween().set_parallel(true)
+		tween1.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+		tween1.tween_property(favor_panel, "modulate:a", 0.0, 0.2)
+		tween1.tween_property(favor_panel, "offset_transform_position:y", 800, 0.3)
+		await tween1.finished
+	else:
+		favor_panel.modulate.a = 0.0
+		favor_panel.offset_transform_position.y = 800
 	tab_container.current_tab = _prev_tab_idx
 	# 第二阶段：TabBtn 高度恢复 + 淡入 + 目标标签页淡入
 	tab_btn.visible = true
-	tab_btn.modulate.a = 0.0
-	tab_btn.custom_minimum_size.y = 0
-	if target_page:
-		target_page.visible = true
-		target_page.modulate.a = 0.0
-	var tween2 := create_tween().set_parallel(true)
-	tween2.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-	tween2.tween_property(tab_btn, "modulate:a", 1.0, 0.25)
-	tween2.tween_property(tab_btn, "custom_minimum_size:y", 120, 0.25)
-	if target_page:
+	tab_btn.modulate.a = 1.0 if exiting_page else 0.0
+	tab_btn.custom_minimum_size.y = 120 if exiting_page else 0
+	
+	target_page.visible = true
+	target_page.modulate.a = 1.0 if exiting_page else 0.0
+	if not exiting_page:
+		var tween2 := create_tween().set_parallel(true)
+		tween2.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+		tween2.tween_property(tab_btn, "modulate:a", 1.0, 0.25)
+		tween2.tween_property(tab_btn, "custom_minimum_size:y", 120, 0.25)
 		tween2.tween_property(target_page, "modulate:a", 1.0, 0.25)
-	await tween2.finished
+		await tween2.finished
 	_is_animating = false
+
+	if exiting_page:
+		get_node("OptionPanel/VBoxC/TabBtn/Rank").button_pressed=true
 
 # 显示简介什么的
 func _on_info_btn_pressed():
@@ -329,3 +337,9 @@ func _on_del_btn_pressed():
 				UiStatMGR.go_back_to(UIStateManager.UIState.ALBUM_VIEW)
 			EvtBus.midi_deleted.emit(deleted_id)
 			GLogger.info("已删除曲包: %s" % midi_to_del.name, "MidiView")
+
+# 退出界面时恢复页面状态
+func restore_panel_state() -> void:
+	if _favor_panel_visible:
+		_hide_favor_panel(true)
+	get_node("OptionPanel/VBoxC/TabBtn/Rank").button_pressed=true

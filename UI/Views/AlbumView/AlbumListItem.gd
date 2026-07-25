@@ -26,7 +26,7 @@ var ALBUMBUTTON = "AlbumButton"
 signal _init_fin
 
 func _ready() -> void:
-	cover_texture = $PN/cover
+	cover_texture = $cover
 	await _init_fin
 
 	if not album_data:
@@ -37,7 +37,7 @@ func _ready() -> void:
 
 	_load_cover_image()
 	# 启动文字滚动动画（如名称过长）
-	call_deferred("_setup_name_scroll")
+	call_deferred("setup_name_scroll")
 
 ## 从AlbumData初始化显示
 func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: ButtonGroup) -> void:
@@ -92,7 +92,7 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 		expand_tween.kill()
 		expand_tween = null
 		# 字号变化后重算滚动布局
-		call_deferred("_setup_name_scroll")
+		call_deferred("setup_name_scroll")
 	)
 
 	# 因为塞在tween里的话，节点在屏幕外似乎无法触发，所以就成下面这样了
@@ -102,7 +102,7 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 
 
 ## 启动/重算专辑名称滚动动画
-func _setup_name_scroll() -> void:
+func setup_name_scroll() -> void:
 	if not is_instance_valid(album_name_label) or not is_instance_valid(name_box):
 		return
 	# 循环等待 NameBox 布局完成（最多 5 帧），确保 size 正确

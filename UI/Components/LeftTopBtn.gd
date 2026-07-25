@@ -16,8 +16,6 @@ enum ShowStat {
 @onready var ui: UIStateManager = UiStatMGR
 @onready var eb: EventBus = EvtBus
 
-@onready var _base_position: Vector2 = position
-
 @onready var vboxc: VBoxContainer = $VBoxC
 @onready var arrow: TextureRect = $VBoxC/C2/Arrow
 @onready var btn: Button = $Button
@@ -78,12 +76,10 @@ func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 	# 控制按钮框架是否可见
 	if content_to_show == ShowStat.NONE:
 		if _visible:
-			self.position = _base_position
-			ani.animate_position(self, _base_position + Vector2(-500, -134), 0.5, "LT_VISBLE")
+			ani.animate_offset_to(self, Vector2(-500, -134), 0.5, "LT_VISBLE")
 	else:
 		if not _visible:
-			self.position = _base_position + Vector2(-500, -134)
-			ani.animate_position(self, _base_position, 0.5, "LT_VISBLE")
+			ani.animate_offset_back(self, 0.5, "LT_VISBLE")
 	_visible = content_to_show != ShowStat.NONE
 	
 	if _rot_tween:

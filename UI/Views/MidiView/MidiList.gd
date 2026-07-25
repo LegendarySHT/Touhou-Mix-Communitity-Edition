@@ -9,12 +9,12 @@ var current_midis: Array[MidiData] = []
 
 var last_selection:int = -1 # 上一次选中的节点
 
-@onready var indicator = $/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator
-@onready var  previ_btn = $/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Left/PreviBtn
-@onready var info_btn = $/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/InfoBtn
+@onready var indicator = $/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator
+@onready var  previ_btn = $/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Left/PreviBtn
+@onready var info_btn = $/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Right/InfoBtn
 
 # MidiView
-@onready var midi_view = $/root/Main/skew/C/InfoUI
+@onready var midi_view = $/root/Main/skew/C/MidiView
 
 func _ready() -> void:
 	work_state = UIStateManager.UIState.MIDI_VIEW

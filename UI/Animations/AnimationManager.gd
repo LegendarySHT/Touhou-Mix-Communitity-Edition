@@ -267,7 +267,7 @@ func _kill_scene_transition_tweens() -> void:
 	var secondary := [
 		"SSPosition", "SongListFadeOut", "SongListFadeIn",
 		"CharactorPosition", "PlayerInfoPosition", "MenuBarPosition",
-		"top_bar_in", "bottom_in", "track_pos", "InfoUIFadeIn",
+		"top_bar_in", "bottom_in", "track_pos", "MidiViewFadeIn",
 		"sv_bg", "sv_btns", "sv_info", "sv_chara", "sv_bottom",
 		"sv_rank", "sv_score", "sv_score_fade", "sv_acc",
 	]
@@ -325,7 +325,7 @@ var ui_path_map = {
 	"Player_Info": "/root/Main/PlayerInfo",
 	"Sorted_List" : "/root/Main/skew/C/SortedMidisList",
 	"Shortcut_Menu" : "/root/Main/skew/C/ShortCutMenu",
-	"Midi_Info_View" : "/root/Main/skew/C/InfoUI",
+	"Midi_Info_View" : "/root/Main/skew/C/MidiView",
 	"Store_View": "/root/Main/Store",
 	"Track_List": "/root/Main/skew/C/TrackView",
 	"Play_View": "/root/Main/PlayView",
@@ -399,16 +399,14 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 	match ui_name:
 		"Album_List":
 			var sIndex = album_list.selected_item
-			if sIndex < 0:
-				return
-			var tindex = -1 # 目标状态不是歌曲列表时所有项都要播放退场动画
+			var tIndex = -1
 
-			if new_state == UIStateManager.UIState.SONG_VIEW:
+			if sIndex >= 0 and new_state == UIStateManager.UIState.SONG_VIEW:
 				var sItem = album_list.container.get_child(sIndex)
 				var old_SS := get_node_or_null(_SS)
 				if is_instance_valid(old_SS):
 					old_SS.queue_free()
-				var copy=sItem.duplicate(true)
+				var copy=sItem.duplicate()
 				copy.name="SS"
 
 				copy.position = skew.to_local(sItem.global_position)
@@ -424,18 +422,15 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 				sc.events = [event]
 				button.shortcut = sc
 
-				tindex = sIndex
-				sItem.modulate.a = 0.0
-				
-				create_tween().tween_property(button.get_theme_stylebox("normal"), "shadow_size", 24, 0.25)
-				create_tween().tween_property(button.get_theme_stylebox("hover"), "shadow_size", 24, 0.25)
+				tIndex = sIndex
 				skew.add_child(copy)
+				copy.setup_name_scroll()
 
-			animate_list_item_horizontal(album_list, sIndex, tindex, -1200, tween_id)
+			animate_list_item_horizontal(album_list, sIndex, tIndex, -1200, tween_id)
 			out_item_idx = sIndex
 			tween = animate_fade_out(album_list, 0.7, "AlbumListFadeOut")
 		"Song_List":
-			if new_state == UIStateManager.UIState.ALBUM_VIEW:
+			if new_state == UIStateManager.UIState.ALBUM_VIEW and out_item_idx >= 0:
 				animate_position(SS, skew.to_local(album_list.container.get_child(out_item_idx).global_position), 0.25, "SSPosition")
 			else:
 				animate_fade_out(SS, 0.15, "SSPosition")
@@ -453,7 +448,7 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			tween = animate_fade_out(ani_comp, 0.3, tween_id)
 			
 			tween.finished.connect(func() -> void:
-				ani_comp.get_node("RightArea/OptionPanel/VBoxC/TabBtn/Rank").button_pressed=true
+				ani_comp.restore_panel_state()
 			)
 		"Player_Info":
 			var chara = ani_comp.get_node("Chara")
@@ -539,11 +534,8 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			song_list.visible=false
 			
 			var sIndex = out_item_idx
-			if sIndex < 0:
-				return
-			
 			var vbox := album_list.get_node("VBox")
-			if sIndex >= vbox.get_child_count():
+			if sIndex >= vbox.get_child_count() or sIndex < 0:
 				return
 			
 			vbox.get_child(sIndex).modulate = Color(1, 1, 1, 1)
@@ -552,15 +544,12 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			
 			# 从Song_List回来时会触发下面的
 			if SS:
-				var button:Button = SS.get_node("AlbumButton")				
-				await create_tween().tween_property(button.get_theme_stylebox("normal"), "shadow_size", 0, 0.2).finished
-				await create_tween().tween_property(button.get_theme_stylebox("hover"), "shadow_size", 0, 0.2).finished
 				SS.queue_free()
 			
 			song_list.clear_items.call_deferred()
 		"Song_List":
 			if old_state == UIStateManager.UIState.ALBUM_VIEW:
-				animate_position(SS, skew.to_local(Vector2(280, 10)), 0.15, "SSPosition")
+				animate_position(SS, skew.to_local(Vector2(280, 40)), 0.15, "SSPosition")
 			elif SS:
 				animate_fade_in(SS, 0.15, "SSPosition")
 
@@ -580,7 +569,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 
 			animate_offset_back(ani_comp, 0.25, tween_id)
 		"Midi_Info_View":
-			animate_fade_in(ani_comp, 0.1, "InfoUIFadeIn")
+			animate_fade_in(ani_comp, 0.1, "MidiViewFadeIn")
 
 			ani_comp.offset_transform_position = Vector2(0, -500)
 			tween = animate_offset_back(ani_comp, 0.5, tween_id)

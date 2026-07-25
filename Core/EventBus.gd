@@ -3,7 +3,7 @@
 extends Node
 
 class_name EventBus
-
+@warning_ignore_start("unused_signal")
 ## ========== 数据事件 ==========
 signal data_loaded_complete
 signal album_selected(album_id: String)
@@ -44,6 +44,7 @@ signal favorite_list_renamed(favorite_id: String, new_name: String)
 signal favorite_midi_changed(favorite_id: String, midi_id: String, added: bool)
 ## 请求浏览收藏夹内容（AlbumView 点击列表项时发出）
 signal favorite_selected_for_browse(favorite_id: String)
+@warning_ignore_restore("unused_signal")
 
 func _ready() -> void:
 	add_to_group("singleton")

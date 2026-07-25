@@ -1,16 +1,18 @@
 [gd_scene format=3 uid="uid://cmg2kkhga3yj5"]
 
 [ext_resource type="Script" uid="uid://dye4gnjw1k7du" path="res://UI/Views/AlbumView/AlbumListItem.gd" id="1_pxpjj"]
-[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_fljdd"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_j1pth"]
 [ext_resource type="Texture2D" uid="uid://co2vcj4yav5cd" path="res://Resources/icon/Count_Base.png" id="4_4cpa4"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ohh21"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fljdd"]
 bg_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
+
+[sub_resource type="ImageTexture" id="ImageTexture_pxpjj"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pxpjj"]
 draw_center = false
@@ -19,10 +21,11 @@ border_width_top = 5
 border_width_right = 5
 border_width_bottom = 5
 border_color = Color(0.41568628, 0.59607846, 1, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j1pth"]
 bg_color = Color(0.18098986, 0.36878055, 0.8004749, 0.24705882)
@@ -31,10 +34,11 @@ border_width_left = 5
 border_width_top = 5
 border_width_right = 5
 border_width_bottom = 5
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4cpa4"]
 bg_color = Color(0.28210002, 0.4809351, 0.91, 0.14509805)
@@ -42,10 +46,11 @@ border_width_left = 5
 border_width_top = 5
 border_width_right = 5
 border_width_bottom = 5
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xpu1h"]
 draw_center = false
@@ -54,10 +59,11 @@ border_width_top = 8
 border_width_right = 8
 border_width_bottom = 8
 border_color = Color(0.97, 0.97, 0.97, 0.6392157)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
 expand_margin_left = 3.0
 expand_margin_top = 3.0
 expand_margin_right = 3.0
@@ -66,26 +72,18 @@ shadow_color = Color(0.31, 0.7354999, 1, 0.6)
 shadow_size = 10
 
 [node name="AlbumNode" type="Panel" unique_id=123505267]
+clip_children = 1
 custom_minimum_size = Vector2(600, 150)
 offset_right = 600.0
 offset_bottom = 150.0
 size_flags_horizontal = 0
 size_flags_vertical = 0
 offset_transform_enabled = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_fljdd")
 script = ExtResource("1_pxpjj")
 metadata/index = 0
 
-[node name="PN" type="Panel" parent="." unique_id=1228453054]
-clip_children = 1
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_ohh21")
-
-[node name="cover" type="TextureRect" parent="PN" unique_id=1027177707]
+[node name="cover" type="TextureRect" parent="." unique_id=1027177707]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -94,21 +92,22 @@ grow_horizontal = 2
 pivot_offset = Vector2(0, 350)
 size_flags_vertical = 0
 mouse_filter = 2
-texture = ExtResource("2_fljdd")
+texture = SubResource("ImageTexture_pxpjj")
 expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true
 
-[node name="DecoratedLine" type="Line2D" parent="PN" unique_id=1372001257]
-position = Vector2(121.516785, -335.3292)
+[node name="DecoratedLine" type="Line2D" parent="." unique_id=1372001257]
+position = Vector2(120, -335)
 scale = Vector2(0.867977, 0.838323)
-points = PackedVector2Array(-81.799, 777, 777, 777)
-joint_mode = 1
+points = PackedVector2Array(-80, 777, 880, 777)
+end_cap_mode = 2
 
 [node name="NameBox" type="Control" parent="." unique_id=1507697287]
 custom_minimum_size = Vector2(0, 50)
 clip_contents = true
 layout_mode = 1
+anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -127,11 +126,12 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = -455.0
+offset_right = -440.0
 offset_bottom = -21.0
 grow_horizontal = 2
 grow_vertical = 2
 offset_transform_enabled = true
+offset_transform_position = Vector2(0, 15)
 mouse_filter = 1
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
@@ -171,10 +171,6 @@ theme_override_font_sizes/font_size = 60
 text = "9"
 horizontal_alignment = 1
 metadata/_edit_use_anchors_ = true
-
-[node name="VE" type="VisibleOnScreenEnabler2D" parent="." unique_id=1859970557]
-position = Vector2(-100, -411)
-rect = Rect2(100, 91, 600, 806)
 
 [node name="AlbumButton" type="Button" parent="." unique_id=1523238690]
 layout_mode = 1

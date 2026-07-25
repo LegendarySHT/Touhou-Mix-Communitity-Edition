@@ -21,7 +21,7 @@ var _name_scroll_state: TextScrollHelper.State = null
 ## 展开动画补间
 var expand_tween: Tween
 
-var INDICATOR = "/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
+var INDICATOR = "/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
 
 ## ========== 信息缓存（静态，跨实例共享）==========
 ## schema: { midi_id: { "time_str", "bpm_str", "bpm_timeline", "timebase",
@@ -156,8 +156,8 @@ func on_item_button_toggled(toggled_on: bool):
 
 ## 更新信息面板（入口）
 func _update_data_display() -> void:
-	var info_node: GridContainer = get_node_or_null("/root/Main/skew/C/InfoUI/LeftArea/DetailData")
-	var description: RichTextLabel = get_node_or_null("/root/Main/skew/C/InfoUI/LeftArea/InfoWindow/HBoxC/Description")
+	var info_node: GridContainer = get_node_or_null("/root/Main/skew/C/MidiView/LeftArea/DetailData")
+	var description: RichTextLabel = get_node_or_null("/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Description")
 	if not (info_node and description):
 		push_error("[MidiNode] Info Set Failed")
 		return
@@ -413,7 +413,7 @@ func _apply_display() -> void:
 	if parent_node == null or parent_node.selected_item != item_index:
 		return # 本 item 未展开，无需刷新共享面板
 
-	var info_node: GridContainer = get_node_or_null("/root/Main/skew/C/InfoUI/LeftArea/DetailData")
+	var info_node: GridContainer = get_node_or_null("/root/Main/skew/C/MidiView/LeftArea/DetailData")
 	if info_node == null:
 		return
 
@@ -434,7 +434,7 @@ func _on_config_changed(_key: String, section: String, _value: Variant) -> void:
 		_info_cache[mid_id].erase("mpp_str")
 	# 若本 item 正展开，立即重新触发计算
 	if parent_node and parent_node.selected_item == item_index and midi_data != null:
-		var info_node = get_node_or_null("/root/Main/skew/C/InfoUI/LeftArea/DetailData")
+		var info_node = get_node_or_null("/root/Main/skew/C/MidiView/LeftArea/DetailData")
 		if info_node:
 			info_node.get_node("Note/Label").text = "..."
 			info_node.get_node("MPP/Label").text = "..."
@@ -450,7 +450,7 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 			_info_cache[mid_id].erase("mpp_str")
 		# 若本 item 正展开，立即重触发
 		if parent_node and parent_node.selected_item == item_index and midi_data != null:
-			var info_node = get_node_or_null("/root/Main/skew/C/InfoUI/LeftArea/DetailData")
+			var info_node = get_node_or_null("/root/Main/skew/C/MidiView/LeftArea/DetailData")
 			if info_node:
 				info_node.get_node("Note/Label").text = "..."
 				info_node.get_node("MPP/Label").text = "..."

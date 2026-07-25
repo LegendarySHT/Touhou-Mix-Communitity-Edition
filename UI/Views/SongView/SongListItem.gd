@@ -5,10 +5,10 @@ extends ListItemBase
 const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 
 ## 引用节点（需要根据实际场景结构调整）
-@onready var song_name_label: Label = $PC/HBoxC/PC/NameBox/SongName
-@onready var name_box: Control = $PC/HBoxC/PC/NameBox
-@onready var midi_count_label: Label = $PC/HBoxC/CountBase/SongCount
-@onready var cover: TextureRect = $PC/HBoxC/PC/cover
+@onready var song_name_label: Label = $HBoxC/PN/NameBox/SongName
+@onready var name_box: Control = $HBoxC/PN/NameBox
+@onready var midi_count_label: Label = $HBoxC/CountBase/SongCount
+@onready var cover: TextureRect = $HBoxC/PN/cover
 
 @onready var animation_manager: AnimationManager = AniMGR
 
@@ -51,7 +51,7 @@ func setup_with_song(parent: SongView, song: SongData, index: int, bg: ButtonGro
 	item_type = "song"
 	item_index = index
 
-	button = get_node("PC/SongButton")
+	button = get_node("SongButton")
 	button.button_group = bg
 	
 	enable_selected_animation(button, parent)
@@ -71,4 +71,4 @@ func _load_cover_image() -> void:
 	var midis := data_mgr.get_midis_by_song(song_data.id)
 	cover.texture = fs_mgr.get_cover_by_midiData(midis[get_meta("index")])
 
-	cover.position.y = -(floori(self.size.y * item_index) % int(cover.size.y-self.size.y))
+	cover.offset_transform_position.y = -(floori(self.size.y * item_index) % int(cover.size.y-self.size.y))

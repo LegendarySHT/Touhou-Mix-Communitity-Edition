@@ -4,6 +4,14 @@
 [ext_resource type="Script" uid="uid://bt0e0os76bnfm" path="res://UI/Views/SongView/SongListItem.gd" id="1_5wnnw"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="2_5wnnw"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_i6pqd"]
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xw3gp"]
 bg_color = Color(0.42352942, 0.72156864, 1, 1)
 
@@ -14,31 +22,60 @@ border_width_top = 5
 border_width_right = 5
 border_width_bottom = 5
 border_color = Color(0.41568628, 0.59607846, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3ky2n"]
-draw_center = false
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m8nr4"]
 bg_color = Color(0.18098986, 0.36878055, 0.8004749, 0.24705882)
 draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m8nr4"]
+bg_color = Color(0.28210002, 0.4809351, 0.91, 0.14509805)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jun87"]
-bg_color = Color(0.28210002, 0.4809351, 0.91, 0.14509805)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_p8xhf"]
 draw_center = false
 border_width_left = 8
 border_width_top = 8
 border_width_right = 8
 border_width_bottom = 8
 border_color = Color(0.97, 0.97, 0.97, 0.6392157)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
 expand_margin_left = 3.0
 expand_margin_top = 3.0
 expand_margin_right = 3.0
 expand_margin_bottom = 3.0
+shadow_color = Color(0.31, 0.7354999, 1, 0.6)
+shadow_size = 10
 
-[node name="SongNode" type="MarginContainer" unique_id=1629036043]
+[node name="SongNode" type="Panel" unique_id=164527532]
+clip_children = 1
 custom_minimum_size = Vector2(900, 140)
+propagate_maximum_size = true
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -50,56 +87,58 @@ offset_right = -60.0
 offset_bottom = -400.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 0
+offset_transform_enabled = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_i6pqd")
 script = ExtResource("1_5wnnw")
 metadata/index = 0
 
-[node name="PC" type="Panel" parent="." unique_id=1200680228]
-layout_mode = 2
-mouse_filter = 1
-
-[node name="HBoxC" type="HBoxContainer" parent="PC" unique_id=1501583269]
-layout_mode = 0
-offset_right = 900.0
-offset_bottom = 140.0
-theme_override_constants/separation = 0
-
-[node name="PC" type="Panel" parent="PC/HBoxC" unique_id=533597184]
-clip_contents = true
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="cover" type="TextureRect" parent="PC/HBoxC/PC" unique_id=1928751118]
+[node name="HBoxC" type="HBoxContainer" parent="." unique_id=1501583269]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 740.0
 grow_horizontal = 2
+theme_override_constants/separation = 0
+
+[node name="PN" type="Panel" parent="HBoxC" unique_id=1364822703]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="cover" type="TextureRect" parent="HBoxC/PN" unique_id=1928751118]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 740.0
+grow_horizontal = 2
+size_flags_horizontal = 3
 size_flags_vertical = 0
+offset_transform_enabled = true
 mouse_filter = 2
 texture = ExtResource("1_0asqb")
 expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true
 
-[node name="NameBox" type="Control" parent="PC/HBoxC/PC" unique_id=22989093]
-custom_minimum_size = Vector2(600, 40)
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -60.0
-offset_right = 620.0
-offset_bottom = -14.0
-grow_vertical = 0
+[node name="NameBox" type="Control" parent="HBoxC/PN" unique_id=22989093]
+custom_minimum_size = Vector2(600, 45)
 clip_contents = true
+layout_mode = 1
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 90.0
+grow_horizontal = 2
+offset_transform_position = Vector2(0, -12)
 mouse_filter = 2
 
-[node name="SongName" type="Label" parent="PC/HBoxC/PC/NameBox" unique_id=22989094]
-layout_mode = 0
-offset_right = 1.0
-offset_bottom = 1.0
+[node name="SongName" type="Label" parent="HBoxC/PN/NameBox" unique_id=22989094]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -10)
 mouse_filter = 1
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
@@ -110,13 +149,14 @@ text = "Test Title"
 vertical_alignment = 2
 metadata/_edit_use_anchors_ = true
 
-[node name="CountBase" type="PanelContainer" parent="PC/HBoxC" unique_id=1977890608]
+[node name="CountBase" type="PanelContainer" parent="HBoxC" unique_id=1977890608]
 custom_minimum_size = Vector2(160, 0)
+custom_maximum_size = Vector2(-1, 140)
 layout_mode = 2
 size_flags_horizontal = 8
 theme_override_styles/panel = SubResource("StyleBoxFlat_xw3gp")
 
-[node name="SongCount" type="Label" parent="PC/HBoxC/CountBase" unique_id=1861393487]
+[node name="SongCount" type="Label" parent="HBoxC/CountBase" unique_id=1861393487]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 80
@@ -124,17 +164,7 @@ text = "9"
 horizontal_alignment = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="Border" type="PanelContainer" parent="PC" unique_id=1884286811]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_krpnw")
-
-[node name="SongButton" type="Button" parent="PC" unique_id=1363007175]
+[node name="SongButton" type="Button" parent="." unique_id=1363007175]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -145,9 +175,9 @@ size_flags_horizontal = 0
 size_flags_vertical = 0
 focus_next = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
 mouse_filter = 1
-theme_override_styles/normal = SubResource("StyleBoxFlat_3ky2n")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_m8nr4")
-theme_override_styles/hover = SubResource("StyleBoxFlat_jun87")
-theme_override_styles/focus = SubResource("StyleBoxFlat_p8xhf")
+theme_override_styles/normal = SubResource("StyleBoxFlat_krpnw")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_3ky2n")
+theme_override_styles/hover = SubResource("StyleBoxFlat_m8nr4")
+theme_override_styles/focus = SubResource("StyleBoxFlat_jun87")
 toggle_mode = true
 metadata/index = 0
