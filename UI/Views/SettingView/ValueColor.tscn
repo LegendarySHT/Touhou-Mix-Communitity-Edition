@@ -1,16 +1,16 @@
 [gd_scene format=3 uid="uid://bp0ngpd342feu"]
 
 [node name="ValueColor" type="HBoxContainer" unique_id=2057857977]
-custom_minimum_size = Vector2(250, 0)
-offset_right = 500.0
+custom_minimum_size = Vector2(200, 0)
+custom_maximum_size = Vector2(500, -1)
+offset_right = 294.0
 offset_bottom = 80.0
-size_flags_horizontal = 1
+size_flags_horizontal = 3
 theme_override_constants/separation = 20
 
 [node name="HexColor" type="LineEdit" parent="." unique_id=142305028]
-custom_minimum_size = Vector2(390, 80)
 layout_mode = 2
-size_flags_vertical = 4
+size_flags_horizontal = 3
 focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 theme_override_font_sizes/font_size = 48
@@ -20,6 +20,7 @@ max_length = 10
 [node name="ColorPickerButton" type="ColorPickerButton" parent="." unique_id=1080424707]
 custom_minimum_size = Vector2(86, 80)
 layout_mode = 2
+size_flags_horizontal = 8
 size_flags_vertical = 4
 focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 color = Color(1, 1, 1, 1)

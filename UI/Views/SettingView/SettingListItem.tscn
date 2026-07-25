@@ -3,9 +3,9 @@
 [ext_resource type="Script" uid="uid://11gqhll7nlom" path="res://UI/Views/SettingView/SettingListItem.gd" id="1_oiux8"]
 
 [node name="Key" type="VBoxContainer" unique_id=892225577]
-custom_minimum_size = Vector2(500, 0)
-custom_maximum_size = Vector2(-1, 100)
-offset_right = 500.0
+custom_minimum_size = Vector2(250, 0)
+custom_maximum_size = Vector2(-1, 400)
+offset_right = 288.0
 offset_bottom = 86.0
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
@@ -13,14 +13,13 @@ alignment = 1
 script = ExtResource("1_oiux8")
 
 [node name="name" type="Label" parent="." unique_id=902605667]
-custom_minimum_size = Vector2(500, 0)
 layout_mode = 2
 mouse_filter = 1
 theme_override_font_sizes/font_size = 48
 text = "设置项的名字"
 
 [node name="desc" type="Label" parent="." unique_id=770396797]
-custom_minimum_size = Vector2(500, 0)
+custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 1
