@@ -469,7 +469,12 @@ func set_note_width(wid: float):
 			_note_max_size_y = _note_max_size_y if _note_max_size_y > nt.size.y else nt.size.y
 
 func clear_flow_area():
+	# 斩断 FlowNote ↔ GameSequence 的 RefCounted 循环引用，释放旧音符
 	if notes_list:
+		for note in notes_list:
+			if note.game_sequence_ref != null:
+				note.game_sequence_ref.flow_note_ref = null
+				note.game_sequence_ref = null
 		notes_list.clear()
 
 	for note in active_notes.duplicate():

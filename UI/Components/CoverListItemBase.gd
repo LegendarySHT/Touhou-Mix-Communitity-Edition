@@ -31,5 +31,5 @@ func _process(_delta: float) -> void:
 		return
 	var new_offset: float = -(global_position.y / max(parent_ctrl.size.y, 1.0)) * max(cover_texture.size.y - size.y, 0.0)
 	if not is_equal_approx(new_offset, _last_cover_offset):
-		cover_texture.position.y = new_offset
+		cover_texture.offset_transform_position.y = new_offset
 		_last_cover_offset = new_offset

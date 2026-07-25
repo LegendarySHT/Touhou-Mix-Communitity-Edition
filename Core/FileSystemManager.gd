@@ -47,6 +47,10 @@ var soundfonts_index: Dictionary = {}
 ## 背景图索引 {background_name: String(path)}
 var backgrounds_index: Dictionary = {}
 
+## 封面纹理缓存 {cover_path: Texture2D}
+## 避免同一封面文件被反复从磁盘加载（尤其是 user:// 路径每次都会创建新 ImageTexture）
+var _cover_texture_cache: Dictionary = {}
+
 ## ========== 状态标志 ==========
 var is_initialized: bool = false
 var is_scanning: bool = false
@@ -783,26 +787,52 @@ func get_cover_by_midiData(midi: MidiData) -> Texture2D:
 	var data_mgr := DataMGR
 	if not fs_mgr or not data_mgr:
 		GLogger.warning("Failed to access FileSystemManager or DataManager", "FileMGR")
-		return load(DEFAULT_COVER_PATH)
+		return _load_cover_with_cache(DEFAULT_COVER_PATH)
 
 	for folder_name in charts_index.keys():
 		var metadata: ChartMetadata = charts_index[folder_name]
 		var chart_id: String = metadata.id
 		if chart_id == midi.file_hash or metadata.data.get("_id", "") == midi.id:
 			var path: String = metadata.cover_path
-			if not path.is_empty() and FileAccess.file_exists(path):
-				# 区分 res:// 和 user:// 路径
-				if path.begins_with("res://"):
-					return load(path)
-				else:
-					# user:// 路径需要动态加载
-					var image = Image.load_from_file(path)
-					if image:
-						return ImageTexture.create_from_image(image)
-					else:
-						GLogger.warning("Failed to load cover image: %s" % path, "FileSystemMGR")
+			if path.is_empty():
+				return _load_cover_with_cache(DEFAULT_COVER_PATH)
+			return _load_cover_with_cache(path)
 
-	return load(DEFAULT_COVER_PATH)
+	return _load_cover_with_cache(DEFAULT_COVER_PATH)
+
+## 带缓存的封面纹理加载
+## 同 path 多次调用只从磁盘加载一次，后续直接返回缓存引用
+func _load_cover_with_cache(path: String) -> Texture2D:
+	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
+	# 命中缓存：直接返回（res:// 有 ResourceLoader 内建缓存，user:// 靠本字典）
+	if _cover_texture_cache.has(path):
+		var cached = _cover_texture_cache[path]
+		if is_instance_valid(cached):
+			return cached
+		_cover_texture_cache.erase(path)  # 已失效的弱引用清理
+
+	var texture: Texture2D = null
+	# 区分 res:// 和 user:// 路径
+	if path.begins_with("res://"):
+		texture = load(path)
+	else:
+		if not FileAccess.file_exists(path):
+			GLogger.warning("Cover file not found: %s" % path, "FileSystemMGR")
+			return _load_cover_with_cache(DEFAULT_COVER_PATH)
+		var image := Image.load_from_file(path)
+		if image:
+			texture = ImageTexture.create_from_image(image)
+		else:
+			GLogger.warning("Failed to load cover image: %s" % path, "FileSystemMGR")
+			return _load_cover_with_cache(DEFAULT_COVER_PATH)
+
+	if texture:
+		_cover_texture_cache[path] = texture
+	return texture
+
+## 清除封面纹理缓存（封面文件更新后调用）
+func clear_cover_cache() -> void:
+	_cover_texture_cache.clear()
 
 ## 获取指定chart ID对应的JSON文件完整路径
 ## 参数: chart_id - MidiData中的id字段或file_hash字段

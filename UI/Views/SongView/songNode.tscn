@@ -88,6 +88,7 @@ offset_bottom = -400.0
 grow_horizontal = 2
 grow_vertical = 2
 offset_transform_enabled = true
+mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_i6pqd")
 script = ExtResource("1_5wnnw")
 metadata/index = 0

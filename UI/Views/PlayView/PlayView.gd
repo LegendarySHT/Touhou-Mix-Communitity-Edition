@@ -218,16 +218,19 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
 	set_process(enable)
 	get_node("Layer").visible = enable
-	# env.environment = current_env if enable else null
-	
-	# 离开播放视图时停止MIDI播放
+
+	# 离开播放视图时统一清理所有资源（无论从哪条路径退出都走这里）
 	if _oldState == UIStateManager.UIState.PLAY_VIEW and state != UIStateManager.UIState.PLAY_VIEW:
 		if playback_mgr:
 			playback_mgr.stop()
-			# 清除手动控制notes标记，恢复TrackView等场景的自动播放
 			playback_mgr.clear_manual_control_notes()
+		flow_area.clear_flow_area()
+		game_sequences.clear()
 		_teardown_blur_bake_viewport()
-	
+		# 重置状态，供下次 _prepare_game 使用
+		_is_finishing_game = false
+		is_pause = true
+
 	if enable:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
 
@@ -527,7 +530,10 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowNote]:
 			lane                 # 车道
 		)
 		
-		# 新增：建立双向映射
+		# 建立双向映射（先斩断旧引用避免 RefCounted 循环泄漏）
+		if seq.flow_note_ref != null:
+			seq.flow_note_ref.game_sequence_ref = null
+			seq.flow_note_ref = null
 		seq.flow_note_ref = flow_note
 		flow_note.game_sequence_ref = seq
 		
@@ -852,28 +858,13 @@ func _on_game_finished() -> void:
 	play_result.early_count = snap["early_count"]
 	play_result.late_count = snap["late_count"]
 
-	# 安全清场
-	flow_area.clear_flow_area()
-
-	# 进入结算界面
+	# 进入结算界面（资源清理已统一由 _on_state_changed 处理）
 	get_node("/root/Main/ScoreView").set_display(play_result)
 	UiStatMGR.change_state(UIStateManager.UIState.SCORE_VIEW, false)
-	await get_tree().create_timer(0.8).timeout
-	is_pause = true
-	_init_display()
 
 ## 退出游戏
 func _on_quit_pressed() -> void:
-	# 停止MIDI播放
-	if playback_mgr:
-		playback_mgr.stop()
-		# 清除手动控制notes标记，恢复TrackView等场景的自动播放
-		playback_mgr.clear_manual_control_notes()
-	_init_display()
-	flow_area.clear_flow_area()
-	game_sequences.clear()  # 清空游戏序列
-	
-	# 返回主菜单或上一级界面
+	# 返回上级界面（_on_state_changed 统一处理 MIDI 停止、音符回收、背景清理等）
 	UiStatMGR.go_back()
 
 # 初始化分数等内容的显示
@@ -887,11 +878,12 @@ func _init_display():
 	pp_text.text = "0.00pp"
 	accuracy_text.text = "100.00%"
 
-	# 设置歌曲信息
+	# 设置歌曲信息（封面只加载一次，同时传给信息面板和背景）
 	var cover_texture = FileSystemManager.instance.get_cover_by_midiData(current_midi)
+	var has_custom_cover := _has_cover_for_current_midi()
 	if cover_texture:
 		cover.texture = cover_texture
-	_apply_play_background()
+	_apply_play_background(cover_texture, has_custom_cover)
 
 	ani.animate_fade_in(center_bg, 0.2, "_show_bg")
 	album.text = current_midi.artist_name
@@ -926,7 +918,7 @@ func _init_display():
 	auto_label.visible = flow_area.auto_mode
 
 
-func _apply_play_background() -> void:
+func _apply_play_background(p_cover: Texture2D = null, p_has_custom_cover: bool = false) -> void:
 	if background == null:
 		return
 
@@ -941,14 +933,19 @@ func _apply_play_background() -> void:
 	_apply_background_size_mode(size_mode)
 
 	if mode == PLAY_BG_MODE_COVER:
-		if _has_cover_for_current_midi():
-			var cover_texture = FileSystemManager.instance.get_cover_by_midiData(current_midi)
-			if cover_texture:
-				background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-				background.texture = _prepare_background_texture(cover_texture)
-				background.modulate = Color.WHITE
-				_set_cover_blur_material(blur_strength)
-				return
+		# 优先使用调用方传入的封面（避免重复加载和 charts_index 扫描）
+		var cover_texture: Texture2D = p_cover
+		var has_custom: bool = p_has_custom_cover
+		if p_cover == null:
+			has_custom = _has_cover_for_current_midi()
+			if has_custom:
+				cover_texture = FileSystemManager.instance.get_cover_by_midiData(current_midi)
+		if has_custom and cover_texture:
+			background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			background.texture = _prepare_background_texture(cover_texture)
+			background.modulate = Color.WHITE
+			_set_cover_blur_material(blur_strength)
+			return
 		_apply_background_solid(color_html)
 		return
 
