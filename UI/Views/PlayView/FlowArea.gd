@@ -389,6 +389,9 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 	# 应用 long-f 中部贴图模式（repeat / stretch）
 	_apply_long_f_mode()
 
+	# 清空音符对象池，使下次 _init_note_pool 用新皮肤纹理重建节点
+	_clear_and_free_note_pools()
+
 	print("[FlowArea] Loaded note skin: %s, core flags: short=%s, instant=%s, long=%s" % [skin_name, _skin_has_short_core, _skin_has_instant_core, _skin_has_long_core])
 
 # 根据皮肤配置设置 long-f 中部贴图的应用方式
@@ -421,6 +424,21 @@ func _apply_long_f_mode_to_body(tr) -> void:
 			tr.material = new_mat
 	else:
 		tr.material = null
+
+# 清空音符对象池中所有节点（皮肤热切换时调用，使下次 _init_note_pool 用新模板重建）
+func _clear_and_free_note_pools() -> void:
+	for note in _note_pool_block:
+		if is_instance_valid(note):
+			note.queue_free()
+	_note_pool_block.clear()
+	for note in _note_pool_slide:
+		if is_instance_valid(note):
+			note.queue_free()
+	_note_pool_slide.clear()
+	for note in _note_pool_long:
+		if is_instance_valid(note):
+			note.queue_free()
+	_note_pool_long.clear()
 
 # 确保节点持有独立的 repeat shader material 副本（避免多 note 共享同一 material）
 func _ensure_independent_repeat_material(tr) -> void:
