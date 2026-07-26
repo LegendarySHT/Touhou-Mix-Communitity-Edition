@@ -23,18 +23,18 @@ const SKIN_GLOW_SIZE_DEFAULT_LONG = 8.0
 ## ========== 资源索引 ==========
 ## 皮肤索引 {skin_name: SkinMetadata}
 var skins_index: Dictionary = {}
+var _scan_requested: bool = false
 
 func _ready() -> void:
 	add_to_group("singleton")
-
-	# 初始化皮肤扫描
-	scan_skins()
-
-	GLogger.info("SkinManager initialized", "SkinMGR")
+	# 不在 _ready 中主动扫描。扫描由 FileSystemManager._scan_all_resources()
+	# 在目录结构初始化完成后统一触发，确保默认皮肤已复制到位。
+	GLogger.info("SkinManager initialized (deferred scan)", "SkinMGR")
 
 ## 扫描皮肤目录 - 同时扫描内置和用户皮肤
 func scan_skins() -> void:
 	# await get_tree().process_frame
+	_scan_requested = true
 	skins_index.clear()
 
 	# 先扫描内置皮肤
@@ -56,6 +56,7 @@ func _scan_skins_from_dir(dir_path: String, is_builtin: bool) -> void:
 
 	dir.list_dir_begin()
 	var folder_name = dir.get_next()
+	var _count = 0
 
 	while folder_name != "":
 		if not dir.current_is_dir() or folder_name.begins_with("."):
@@ -75,7 +76,10 @@ func _scan_skins_from_dir(dir_path: String, is_builtin: bool) -> void:
 			if metadata != null and not metadata.is_empty():
 				skins_index[skin_key] = SkinMetadata.from_dict(metadata)
 
+		_count += 1
 		folder_name = dir.get_next()
+		if _count % 10 == 0:
+			await get_tree().process_frame
 
 	dir.list_dir_end()
 

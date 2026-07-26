@@ -41,7 +41,7 @@ const IMPORT_SUFFIX = ".import"
 ## 谱面索引 {chart_id: ChartMetadata}
 var charts_index: Dictionary = {}
 
-## 音源索引 {soundfont_name: String(path)}
+## 音源索引 {soundfont_name: {path, size_mb, is_builtin}}
 var soundfonts_index: Dictionary = {}
 
 ## 背景图索引 {background_name: String(path)}
@@ -50,6 +50,15 @@ var backgrounds_index: Dictionary = {}
 ## 封面纹理缓存 {cover_path: Texture2D}
 ## 避免同一封面文件被反复从磁盘加载（尤其是 user:// 路径每次都会创建新 ImageTexture）
 var _cover_texture_cache: Dictionary = {}
+
+## ========== 反向索引 ==========
+## {chart_id: folder_name}
+var _chart_id_to_folder: Dictionary = {}
+## {file_hash: folder_name}
+var _hash_to_folder: Dictionary = {}
+## ========== 音频文件索引 ==========
+## [{file_name, path, format, chart_id, song_name}]
+var audio_files_index: Array[Dictionary] = []
 
 ## ========== 状态标志 ==========
 var is_initialized: bool = false
@@ -487,13 +496,12 @@ func _scan_all_resources() -> void:
 	is_scanning = true
 	GLogger.info("Scanning all resources...", "FileSystemMGR")
 
-	scan_charts()
-	await get_tree().process_frame
-	SkinMGR.scan_skins()
+	await scan_charts()
+	await SkinMGR.scan_skins()
 	await get_tree().process_frame
 	scan_soundfonts()
 	await get_tree().process_frame
-	scan_backgrounds()
+	await scan_backgrounds()
 	await get_tree().process_frame
 
 	is_scanning = false
@@ -509,6 +517,9 @@ func _scan_all_resources() -> void:
 func scan_charts() -> void:
 	# await get_tree().process_frame
 	charts_index.clear()
+	_chart_id_to_folder.clear()
+	_hash_to_folder.clear()
+	audio_files_index.clear()
 	
 	var dir = DirAccess.open(CHARTS_DIR)
 	if dir == null:
@@ -527,10 +538,24 @@ func scan_charts() -> void:
 			if metadata != null and not metadata.is_empty():
 				charts_index[folder_name] = ChartMetadata.from_dict(metadata)
 				count += 1
+
+				# 构建反向索引
+				var chart_meta = charts_index[folder_name]
+				var meta_id: String = chart_meta.id
+				if not meta_id.is_empty():
+					_chart_id_to_folder[meta_id] = folder_name
+				var json_data = chart_meta.data
+				if json_data is Dictionary:
+					var fh: String = json_data.get("file_hash", "")
+					if not fh.is_empty():
+						_hash_to_folder[fh] = folder_name
+					var ah: String = json_data.get("hash", "")
+					if not ah.is_empty() and ah != fh:
+						_hash_to_folder[ah] = folder_name
 		
 		folder_name = dir.get_next()
-		# if count % 10 == 0:
-		# 	await get_tree().process_frame
+		if count % 5 == 0:
+			await get_tree().process_frame
 	
 	dir.list_dir_end()
 
@@ -564,13 +589,24 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 	# 音频文件不是必需的，但会查找
 	var audio_extensions = ["ogg", "mp3", "wav", "flac"]
 	var has_audio = false
+	var _song_name = folder_name
+	var _hash_idx = _song_name.find("_")
+	if _hash_idx >= 0:
+		_song_name = _song_name.substr(_hash_idx + 1)
 	for ext in audio_extensions:
 		var audio_path = chart_path.path_join(chart_id + "." + ext)
 		if FileAccess.file_exists(audio_path):
-			metadata["audio_path"] = audio_path
-			has_audio = true
-			break
-	
+			audio_files_index.append({
+				"file_name": chart_id + "." + ext,
+				"path": audio_path,
+				"format": ext,
+				"chart_id": chart_id,
+				"song_name": _song_name,
+			})
+			if not has_audio:
+				metadata["audio_path"] = audio_path
+				has_audio = true
+			# 不 break，收集所有音频文件到 audio_files_index
 	# 查找封面图（可选）- 搜索所有可能的封面文件
 	var dir = DirAccess.open(chart_path)
 	if dir:
@@ -624,34 +660,47 @@ func _load_chart_from_json(json_path: String, chart_id: String) -> Dictionary:
 
 ## 扫描音源目录
 func scan_soundfonts() -> void:
-	# await get_tree().process_frame
 	soundfonts_index.clear()
 	
-	var dir = DirAccess.open(SOUNDFONT_DIR)
-	if dir == null:
-		GLogger.warning("Failed to open soundfont directory", "FileSystemMGR")
-		return
+	# 辅助函数：扫描单个目录
+	var _scan_dir = func(dir_path: String, is_builtin: bool):
+		var dir = DirAccess.open(dir_path)
+		if dir == null:
+			return
+		dir.list_dir_begin()
+		var file_name = dir.get_next()
+		while file_name != "":
+			if not dir.current_is_dir() and file_name.ends_with(".sf2"):
+				var sf_path = dir_path.path_join(file_name)
+				var sf_name = file_name.get_basename()
+				
+				# 如果用户目录有同名文件，内置版本不覆盖
+				if is_builtin and soundfonts_index.has(sf_name):
+					file_name = dir.get_next()
+					continue
+				
+				var size_mb = 0.0
+				var f = FileAccess.open(sf_path, FileAccess.READ)
+				if f:
+					size_mb = snapped(f.get_length() / 1048576.0, 0.1)
+					f.close()
+				
+				soundfonts_index[sf_name] = {
+					"path": sf_path,
+					"size_mb": size_mb,
+					"is_builtin": is_builtin,
+				}
+			file_name = dir.get_next()
+		dir.list_dir_end()
 	
-	dir.list_dir_begin()
-	var file_name = dir.get_next()
-	var count = 0
+	# 先扫描用户目录，再扫描内置目录
+	_scan_dir.call(SOUNDFONT_DIR, false)
+	_scan_dir.call("res://Resources/Soundfont/", true)
 	
-	while file_name != "":
-		if not dir.current_is_dir() and file_name.ends_with(".sf2"):
-			var soundfont_path = SOUNDFONT_DIR.path_join(file_name)
-			var soundfont_name = file_name.get_basename()
-			soundfonts_index[soundfont_name] = soundfont_path
-			count += 1
-		
-		file_name = dir.get_next()
-		# await get_tree().process_frame
-	
-	dir.list_dir_end()
-	GLogger.info("Scanned %d soundfonts" % count, "FileSystemMGR")
+	GLogger.info("Scanned %d soundfonts" % soundfonts_index.size(), "FileSystemMGR")
 
 ## 扫描背景图目录
 func scan_backgrounds() -> void:
-	# await get_tree().process_frame
 	backgrounds_index.clear()
 	
 	var dir = DirAccess.open(BACKGROUND_DIR)
@@ -670,8 +719,9 @@ func scan_backgrounds() -> void:
 				var bg_path = BACKGROUND_DIR.path_join(file_name)
 				backgrounds_index[file_name.get_basename()] = bg_path
 				count += 1
-		
 		file_name = dir.get_next()
+		if count % 20 == 0:
+			await get_tree().process_frame
 	
 	dir.list_dir_end()
 	GLogger.info("Scanned %d backgrounds" % count, "FileSystemMGR")
@@ -683,12 +733,23 @@ func get_charts_index() -> Dictionary:
 	return charts_index
 
 ## 获取音源索引
+## 获取音源索引（完整信息）
 func get_soundfonts_index() -> Dictionary:
 	return soundfonts_index
+
+## 获取指定音源的文件路径
+func get_soundfont_path(name: String) -> String:
+	var entry = soundfonts_index.get(name, {})
+	return entry.get("path", "") if entry is Dictionary else ""
 
 ## 获取背景图索引
 func get_backgrounds_index() -> Dictionary:
 	return backgrounds_index
+
+## 获取音频文件索引
+## 返回: Array[Dictionary] 含 file_name/path/format/chart_id/song_name
+func get_audio_files_index() -> Array[Dictionary]:
+	return audio_files_index
 
 ## 获取谱面目录路径
 func get_charts_directory() -> String:
@@ -702,6 +763,28 @@ func get_logs_directory() -> String:
 func get_settings_directory() -> String:
 	return SETTINGS_DIR
 
+## 通过 chart_id/hash 查找 charts_index 条目（O(1)反向索引，未命中时回退到线性扫描）
+func _lookup_chart(chart_id: String) -> Dictionary:
+	if not _chart_id_to_folder.is_empty():
+		if _chart_id_to_folder.has(chart_id):
+			var fn: String = _chart_id_to_folder[chart_id]
+			if charts_index.has(fn):
+				return {"folder_name": fn, "metadata": charts_index[fn]}
+		if _hash_to_folder.has(chart_id):
+			var fn: String = _hash_to_folder[chart_id]
+			if charts_index.has(fn):
+				return {"folder_name": fn, "metadata": charts_index[fn]}
+	# 回退到线性扫描
+	for folder_name in charts_index.keys():
+		var meta: ChartMetadata = charts_index[folder_name]
+		if meta.id == chart_id:
+			return {"folder_name": folder_name, "metadata": meta}
+		var jd = meta.data
+		if jd is Dictionary:
+			if jd.get("hash", "") == chart_id or jd.get("file_hash", "") == chart_id:
+				return {"folder_name": folder_name, "metadata": meta}
+	return {}
+
 ## 从 chart_id 反向查询对应的曲包文件夹路径
 ## 参数: chart_id - MidiData 中的 id 字段或 file_hash 字段
 ## 返回: user://files/Charts/[folder_name]/ 或空字符串（未找到）
@@ -711,26 +794,11 @@ func get_chart_folder_path(chart_id: String) -> String:
 		GLogger.warning("charts_index is empty, cannot locate chart folder", "FileSystemMGR")
 		return ""
 	
-	# 遍历 charts_index 查找匹配的 chart_id
-	for folder_name in charts_index.keys():
-		var metadata: ChartMetadata = charts_index[folder_name]
-		var metadata_id = metadata.id
-
-		# 匹配方式1：通过 metadata 中的 id 字段匹配
-		if metadata_id == chart_id:
-			var folder_path = metadata.path
-			if not folder_path.is_empty():
-				return folder_path
-
-		# 匹配方式2：通过 JSON 数据中的 hash 字段匹配
-		var json_data = metadata.data
-		if json_data is Dictionary and json_data.has("hash"):
-			if json_data.get("hash", "") == chart_id:
-				var folder_path = metadata.path
-				if not folder_path.is_empty():
-					return folder_path
-	
-	# 未找到，打印调试信息并返回空字符串
+	var result = _lookup_chart(chart_id)
+	if not result.is_empty():
+		var path: String = result["metadata"].path
+		if not path.is_empty():
+			return path
 	GLogger.warning("Chart folder path not found for ID: %s" % chart_id, "FileSystemMGR")
 	return ""
 
@@ -783,21 +851,18 @@ func get_chart_path(chart_id: String) -> String:
 
 func get_cover_by_midiData(midi: MidiData) -> Texture2D:
 	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
-	var fs_mgr := FileSystemManager.instance
-	var data_mgr := DataMGR
-	if not fs_mgr or not data_mgr:
-		GLogger.warning("Failed to access FileSystemManager or DataManager", "FileMGR")
+	if not midi:
 		return _load_cover_with_cache(DEFAULT_COVER_PATH)
-
-	for folder_name in charts_index.keys():
-		var metadata: ChartMetadata = charts_index[folder_name]
-		var chart_id: String = metadata.id
-		if chart_id == midi.file_hash or metadata.data.get("_id", "") == midi.id:
-			var path: String = metadata.cover_path
-			if path.is_empty():
-				return _load_cover_with_cache(DEFAULT_COVER_PATH)
-			return _load_cover_with_cache(path)
-
+	
+	# 优先用 file_hash 反向索引查找
+	var result = _lookup_chart(midi.file_hash)
+	if result.is_empty():
+		result = _lookup_chart(midi.id)
+	if not result.is_empty():
+		var path: String = result["metadata"].cover_path
+		if path.is_empty():
+			return _load_cover_with_cache(DEFAULT_COVER_PATH)
+		return _load_cover_with_cache(path)
 	return _load_cover_with_cache(DEFAULT_COVER_PATH)
 
 ## 带缓存的封面纹理加载
@@ -838,37 +903,16 @@ func clear_cover_cache() -> void:
 ## 参数: chart_id - MidiData中的id字段或file_hash字段
 ## 返回: user://files/Charts/[folder_name]/[chart_id].json
 func get_chart_json_path(chart_id: String) -> String:
-	# 在charts_index中查找该chart_id对应的folder_name
-	for folder_name in charts_index.keys():
-		var metadata: ChartMetadata = charts_index[folder_name]
-		var metadata_id = metadata.id
-
-		# 匹配方式1：通过metadata中的id字段匹配
-		if metadata_id == chart_id:
-			# 优先使用已缓存的json_path
-			var cached_json_path = metadata.json_path
-			if not cached_json_path.is_empty():
-				return cached_json_path
-
-			# 备选方案：从路径重新构造（如果缓存不存在）
-			var chart_path = metadata.path
-			if not chart_path.is_empty():
-				return chart_path.path_join(metadata_id + ".json")
-
-		# 匹配方式2：通过JSON数据中的file_hash字段匹配（MidiData中保存的file_hash）
-		var json_data = metadata.data
-		if json_data is Dictionary and json_data.has("file_hash"):
-			if json_data.get("file_hash", "") == chart_id:
-				# 找到了对应的谱面
-				var cached_json_path = metadata.json_path
-				if not cached_json_path.is_empty():
-					return cached_json_path
-
-				var chart_path = metadata.path
-				if not chart_path.is_empty():
-					return chart_path.path_join(metadata_id + ".json")
-	
-	# 如果未找到，打印调试信息并返回空字符串
+	var result = _lookup_chart(chart_id)
+	if not result.is_empty():
+		var meta: ChartMetadata = result["metadata"]
+		# 优先使用已缓存的json_path
+		var cached_json_path = meta.json_path
+		if not cached_json_path.is_empty():
+			return cached_json_path
+		var chart_path = meta.path
+		if not chart_path.is_empty():
+			return chart_path.path_join(meta.id + ".json")
 	GLogger.warning("Chart JSON path not found for ID: %s (charts_index has %d entries)" % [chart_id, charts_index.size()], "FileSystemMGR")
 	return ""
 
@@ -923,18 +967,20 @@ func delete_directory_recursive(absolute_path: String) -> bool:
 ## 从 charts_index 中移除指定 chart_id 对应的条目
 ## 参数: chart_id - MidiData 中的 file_hash 或 id
 func remove_from_charts_index(chart_id: String) -> void:
-	for folder_name in charts_index.keys():
-		var metadata: ChartMetadata = charts_index[folder_name]
-		var metadata_id: String = metadata.id
-		var json_data = metadata.data
-		if metadata_id == chart_id \
-				or json_data.get("hash", "") == chart_id \
-				or json_data.get("file_hash", "") == chart_id:
-			charts_index.erase(folder_name)
-			GLogger.info("Removed chart from index: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
-			return
+	var result = _lookup_chart(chart_id)
+	if not result.is_empty():
+		var folder_name: String = result["folder_name"]
+		var meta: ChartMetadata = result["metadata"]
+		# 同步清理反向索引
+		_chart_id_to_folder.erase(meta.id)
+		var jd = meta.data
+		if jd is Dictionary:
+			_hash_to_folder.erase(jd.get("hash", ""))
+			_hash_to_folder.erase(jd.get("file_hash", ""))
+		charts_index.erase(folder_name)
+		GLogger.info("Removed chart from index: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
+		return
 	GLogger.warning("remove_from_charts_index: chart_id not found: %s" % chart_id, "FileSystemMGR")
-
 ## 在目录中查找匹配通配符模式（如 "*.mp3"）的所有文件名
 ## 返回文件名列表（非完整路径）
 func find_files_in_dir(dir_path: String, pattern: String) -> PackedStringArray:

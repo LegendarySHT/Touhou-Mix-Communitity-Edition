@@ -566,6 +566,21 @@ func _build_audio_page() -> void:
 
 
 func _scan_audio_files() -> Array[Dictionary]:
+	# 优先从 FileSystemManager 索引读取
+	var fs_mgr = FileSystemManager.instance
+	if fs_mgr and not fs_mgr.audio_files_index.is_empty():
+		var result: Array[Dictionary] = []
+		for entry in fs_mgr.audio_files_index:
+			result.append({
+				"file_name": entry["file_name"],
+				"path": entry["path"],
+				"format": entry["format"],
+				"song_name": entry["song_name"],
+				"selected": false,
+			})
+		return result
+	
+	# 回退：独立扫描文件系统
 	var result: Array[Dictionary] = []
 	var charts_dir := PathHelper.get_charts_dir()
 	if not DirAccess.dir_exists_absolute(charts_dir):
@@ -748,6 +763,24 @@ func _build_sf2_page() -> void:
 
 
 func _scan_sf2_files() -> Array[Dictionary]:
+	# 优先从 FileSystemManager 索引读取
+	var fs_mgr = FileSystemManager.instance
+	if fs_mgr:
+		var sf_index = fs_mgr.get_soundfonts_index()
+		if not sf_index.is_empty():
+			var result: Array[Dictionary] = []
+			for sf_name in sf_index:
+				var entry = sf_index[sf_name]
+				result.append({
+					"file_name": sf_name + ".sf2",
+					"path": entry["path"],
+					"is_builtin": entry["is_builtin"],
+					"size_mb": entry["size_mb"],
+					"selected": false,
+				})
+			return result
+	
+	# 回退：独立扫描文件系统
 	var result: Array[Dictionary] = []
 
 	var user_dir := PathHelper.get_soundfont_dir()
