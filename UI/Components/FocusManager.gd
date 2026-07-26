@@ -14,7 +14,7 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		_last_input_was_keyboard = true
-	elif event is InputEventMouseButton and event.pressed:
+	elif event is InputEventScreenTouch and event.pressed:
 		_last_input_was_keyboard = false
 
 func _on_focus_change(_node: Control):

@@ -18,10 +18,9 @@ signal window_close
 var confirm: bool = false
 
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			_on_cancel_pressed()
-			accept_event()
+	if event is InputEventScreenTouch and event.pressed:
+		_on_cancel_pressed()
+		accept_event()
 	elif event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
 		_on_cancel_pressed()
 		accept_event()

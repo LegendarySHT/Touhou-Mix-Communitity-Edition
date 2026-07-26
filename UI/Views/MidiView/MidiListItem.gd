@@ -119,6 +119,10 @@ func _load_cover_image() -> void:
 func on_item_button_toggled(toggled_on: bool):
 	if not parent_node.current_midis.size() > 1 and not toggled_on:
 		return
+	# 展开状态下：按钮保持 pressed 却收到 false toggle → 拖拽取消，忽略
+	#（ButtonGroup 正常切项时按钮会变 unpressed，只有拖拽才会有 pressed + false 的状态矛盾）
+	if not toggled_on and not parent_node._collapsed and button.button_pressed:
+		return
 	# 更新该项的指示器颜色（开=高亮，关=白色）
 	var indicator_node := get_node(INDICATOR)
 	var primary_dark := Color(0.129, 0.412, 0.702)

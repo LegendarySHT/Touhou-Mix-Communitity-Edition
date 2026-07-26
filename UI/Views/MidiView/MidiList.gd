@@ -9,6 +9,7 @@ var current_midis: Array[MidiData] = []
 
 var last_selection:int = -1 # 上一次选中的节点
 var _collapsed: bool = false # 列表是否处于收起状态
+var _prev_scroll: int = 0  # 上帧滚动位置，变化说明有人在动列表
 
 @onready var indicator = $/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator
 @onready var  previ_btn = $/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Left/PreviBtn
@@ -31,6 +32,7 @@ func load_midi(midis:Array[MidiData]) -> void:
 	
 	await get_tree().process_frame
 	_collapsed = false
+	_prev_scroll = scroll_vertical  # 重置滚动追踪
 	select_item(0)
 	for item in list_items:
 		item.set_expanded(true)
@@ -67,26 +69,24 @@ func get_focus_node_path() -> NodePath:
 	if node:
 		return node.button.get_path()
 	return ""
- 
+
 ## 清空列表
 func _clear_list() -> void:
 	clear_items()
-	
+
 	# 清空指示器
 	if indicator:
 		for child in indicator.get_children():
 			child.free() # 因为初始化指示器时根据索引位置来设置颜色的，所以得立即清除
-	
+
 	selected_item = -1
 
-func _gui_input(event):
-	# 展开状态下不响应鼠标拖拽
-	if not _collapsed and (event is InputEventMouseButton or event is InputEventMouseMotion):
-		return
-	super._gui_input(event)
-
-func _process(_delta):
-	super._process(_delta)
+## 展开状态下被滚动了 → 立即收起
+func _process(delta):
+	super._process(delta)
+	if not _collapsed and not _snap_active and scroll_vertical != _prev_scroll:
+		_show_midi_list()
+	_prev_scroll = scroll_vertical
 
 func _show_midi_list(_index: int = -1) -> void:
 	if current_midis.size() == 1:
@@ -104,6 +104,7 @@ func _show_midi_list(_index: int = -1) -> void:
 	else:
 		# 收起 → 展开全部
 		_collapsed = false
+		_prev_scroll = scroll_vertical  # 重置滚动追踪
 		var target := _index if _index >= 0 else last_selection
 		if target >= 0 and target < list_items.size():
 			selected_item = target
@@ -128,7 +129,7 @@ func _next() -> void:
 func _refresh_display() -> void:
 	# 清空现有项
 	_clear_list()
-	
+
 	# 添加新项
 	var counter = 0
 	var bg = ButtonGroup.new()

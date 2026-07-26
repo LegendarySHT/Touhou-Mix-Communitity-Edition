@@ -410,18 +410,17 @@ func _on_midi_item_edited() -> void:
 	_updating_checkboxes = false
 
 func _on_midi_tree_gui_input(event: InputEvent) -> void:
-	if not event is InputEventMouseButton:
+	if not event is InputEventScreenTouch:
 		return
-	var mb := event as InputEventMouseButton
-	if not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
+	if not event.pressed:
 		return
-	var item := _midi_tree.get_item_at_position(mb.position)
+	var item := _midi_tree.get_item_at_position(event.position)
 	if not item:
 		return
 	var meta: Dictionary = item.get_metadata(0)
 	if meta.is_empty():
 		return
-	var col := _midi_tree.get_column_at_position(mb.position)
+	var col := _midi_tree.get_column_at_position(event.position)
 	if col == 0:
 		return
 	if meta["type"] == "album":

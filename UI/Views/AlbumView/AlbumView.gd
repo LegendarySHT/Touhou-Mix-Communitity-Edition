@@ -87,9 +87,8 @@ func _refresh_display_async(refresh_id: int) -> void:
 func _process(delta):
 	super._process(delta)
 
-	if selected_item == -1 and scroll_control_state == ScrollControlState.IDLE:
+	if selected_item == -1 and not is_scrolling():
 		need_snap = true
-		# print("need snap v: %f" % scroll_velocity)
 
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)

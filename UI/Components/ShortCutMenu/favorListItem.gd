@@ -55,13 +55,13 @@ func _ready() -> void:
 
 ## 点击名称区域：进入重命名模式
 func _on_name_label_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+	if event is InputEventScreenTouch and event.pressed:
 		_enter_rename_mode()
 
 
 ## 内置 gui_input：点击列表项主体（非按钮区域）触发主操作
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+	if event is InputEventScreenTouch and event.pressed:
 		# 编辑模式下不响应点击
 		if name_edit.visible:
 			return

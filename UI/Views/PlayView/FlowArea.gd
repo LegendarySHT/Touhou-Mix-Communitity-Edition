@@ -1022,22 +1022,10 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag:
 		touch_positions[event.index] = event.position
 		_handle_touch_drag(event.index, event.position)
-	# 桌面端鼠标点击/松开（复用触摸逻辑）
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			_handle_press(-1, event.position, event_time_ms)
-		else:
-			_handle_release(-1, event_time_ms)
-	# 桌面端鼠标拖动（用于长条跟随）
-	elif event is InputEventMouseMotion:
-		if -1 in active_holds:
-			_handle_touch_drag(-1, event.position)
 
 	# 仅在拖动时检查 slide 可判定状态，避免点按误标记同轨道其他 slide 为可判定
 	if event is InputEventScreenDrag and event.index in touch_positions:
 		_check_slides_at_touch_pos(event.index, touch_positions[event.index], event_time_ms)
-	elif event is InputEventMouseMotion and -1 in active_holds:
-		_check_slides_at_touch_pos(-1, event.position, event_time_ms)
 
 func _input(event: InputEvent) -> void:
 

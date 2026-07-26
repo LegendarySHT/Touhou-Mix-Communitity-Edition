@@ -19,7 +19,7 @@ func _process(_delta: float) -> void:
 	if not _parallax_enabled or cover_texture == null or parent_node == null:
 		return
 	# 仅在滚动、吸附动画或额外动画期间才更新
-	if parent_node.scroll_control_state == BaseScrollList.ScrollControlState.IDLE and _extra_motion_tween == null:
+	if not parent_node.is_scrolling() and _extra_motion_tween == null:
 		return
 	# 视区剔除
 	var item_top := global_position.y

@@ -382,8 +382,6 @@ func reset_to_defaults():
 						setting_item.set_value(setting_data.default_value)
 					break
 
-func _gui_input(event: InputEvent) -> void:
-	super._gui_input(event)
 
 ## 更新soundfont_select的选项（由SettingView调用）
 func update_soundfont_options(soundfont_list: Array, current_selection: String = "") -> void:

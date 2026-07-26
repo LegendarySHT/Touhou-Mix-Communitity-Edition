@@ -49,6 +49,7 @@ theme/custom_font="uid://drybvx6hogl55"
 [input_devices]
 
 sensors/enable_gravity=true
+pointing/emulate_touch_from_mouse=true
 
 [rendering]
 

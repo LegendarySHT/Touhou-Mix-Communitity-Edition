@@ -243,7 +243,6 @@ func _on_button_toggled(_toggled_on: bool, idx: int):
 					_snap_tween.kill()
 				_snap_tween = create_tween()
 				_snap_tween.tween_property(setting_list, "scroll_vertical", node.position.y + node.size.y, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-				setting_list.scroll_velocity = 0.0
 				_snap_tween.finished.connect(func ():
 					_snap_tween = null
 					short_cut_btn.remove_meta("snaping")

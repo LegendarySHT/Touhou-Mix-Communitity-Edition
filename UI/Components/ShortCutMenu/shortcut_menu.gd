@@ -54,8 +54,6 @@ func _ready() -> void:
 	EvtBus.favorite_midi_changed.connect(_refresh_favor_list)
 
 func _on_focus_enter(btn: Button):
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		return
 	await get_tree().create_timer(0.1).timeout
 	if not btn.button_pressed:
 		btn.button_pressed = true
