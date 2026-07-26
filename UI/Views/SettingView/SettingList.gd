@@ -62,18 +62,6 @@ func _add_separator():
 		container.add_child(separator)
 		separators.append(separator)
 
-func update_column_width(grid_width: float) -> void:
-	if container == null or separators.is_empty():
-		return
-	if grid_width <= 0:
-		return
-	grid_width -= 700
-	var col0_w: float = grid_width * 2.2 / 3.0
-	for i in range(0, separators.size(), 2):
-		var sep_left: Node = separators[i]
-		if is_instance_valid(sep_left):
-			sep_left.custom_minimum_size.x = col0_w
-
 func _get_current_para_sepa_idx():
 	var lower: int = separators.filter(func (s):
 		if s.global_position.y >= -s.size.y/2:

@@ -10,6 +10,5 @@ thickness = 8
 custom_minimum_size = Vector2(0, 150)
 offset_right = 3.0
 offset_bottom = 150.0
-size_flags_horizontal = 3
 mouse_filter = 1
 theme_override_styles/separator = SubResource("StyleBoxLine_m3shx")

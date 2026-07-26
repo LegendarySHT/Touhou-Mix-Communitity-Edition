@@ -5,7 +5,6 @@ custom_minimum_size = Vector2(200, 0)
 custom_maximum_size = Vector2(500, -1)
 offset_right = 294.0
 offset_bottom = 80.0
-size_flags_horizontal = 3
 theme_override_constants/separation = 20
 
 [node name="HexColor" type="LineEdit" parent="." unique_id=142305028]
