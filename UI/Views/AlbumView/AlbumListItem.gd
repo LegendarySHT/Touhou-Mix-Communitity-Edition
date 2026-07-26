@@ -82,7 +82,6 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 	var expa: int = 1 if toggled_on else 0
 	expand_tween.tween_property(self,"custom_minimum_size",Vector2(600 + expa*350, 150 + 250*expa),0.15)
 	expand_tween.tween_property(album_name_label,"theme_override_font_sizes/font_size",25 + 20*expa,0.15)
-	expand_tween.tween_property(album_name_label,"offset_transform_position:y",-10*expa,0.15)
 
 	if toggled_on:
 		parent_node.selected_item = item_index

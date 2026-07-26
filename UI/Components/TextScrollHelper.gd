@@ -8,8 +8,7 @@
 ##   # 尺寸/字体变化后再次调用 setup 即可重算
 ##   # 退出/隐藏时调用 TextScrollHelper.stop(state)
 ##
-## 结构要求：Label 必须作为某个 clip_contents=true 的 Control 子节点
-## （推荐 layout_mode=0 自由定位，由本工具设置 size 与 position）。
+## 结构要求：Label 必须作为某个 clip_contents=true 的 Control 子节点, 布局使用锚点布局并选择整个矩形的锚点预设即可
 extends RefCounted
 
 ## 滚动一段的时长
@@ -41,7 +40,7 @@ static func setup(label: Label, clip_container: Control, full_text: String,
 	state.tween = null
 
 	# 重置 Label 位置
-	label.position = Vector2.ZERO
+	label.offset_transform_position.x = 0.0
 
 	# 获取容器宽度（未布局时回退到 custom_minimum_size 或经验值）
 	var box_width := clip_container.size.x
@@ -51,28 +50,32 @@ static func setup(label: Label, clip_container: Control, full_text: String,
 	# 文字高度：用字体实际行高，避免垂直裁剪
 	var font := label.get_theme_font("font")
 	var font_size := label.get_theme_font_size("font_size")
-	var text_height := font.get_height(font_size)
-
-	# 确保容器高度至少等于文字高度（只增大不减小，避免影响已有固定高度的容器如 favorListItem）
-	if clip_container.custom_minimum_size.y < text_height:
-		clip_container.custom_minimum_size.y = text_height
 
 	# 测量文字宽度
 	var text_width := font.get_string_size(
 		full_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 	).x
 
+	# 容器尺寸变化时重新计算滚动
+	clip_container.resized.connect(func():
+		refresh(state)
+	)
+
+	# 文字未溢出：不滚动
 	if text_width <= box_width:
-		# 文字未溢出：不滚动
 		return state
 
+	# 启用 offset_transform 并左对齐
+	label.offset_transform_enabled = true
+	label.grow_horizontal = Control.GROW_DIRECTION_END
+
 	# 文字溢出：来回滚动
-	var max_offset := text_width - box_width
+	var max_offset := text_width - box_width + 20.0  # 额外留点空隙
 	var tween := label.create_tween().set_loops()
 	tween.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(label, "position:x", -max_offset, SCROLL_DURATION)
+	tween.tween_property(label, "offset_transform_position:x", -max_offset, SCROLL_DURATION)
 	tween.tween_interval(PAUSE_DURATION)
-	tween.tween_property(label, "position:x", 0.0, SCROLL_DURATION)
+	tween.tween_property(label, "offset_transform_position:x", 0.0, SCROLL_DURATION)
 	tween.tween_interval(PAUSE_DURATION)
 	state.tween = tween
 	return state
@@ -86,7 +89,7 @@ static func stop(state: State) -> void:
 		state.tween.kill()
 		state.tween = null
 	if state.label != null and is_instance_valid(state.label):
-		state.label.position = Vector2.ZERO
+		state.label.offset_transform_position.x = 0.0
 
 
 ## 使用 state 中缓存的 full_text 重新计算并启动
