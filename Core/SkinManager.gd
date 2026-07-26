@@ -348,3 +348,28 @@ func get_skin_path(skin_name: String) -> String:
 ## 获取皮肤索引
 func get_skins_index() -> Dictionary:
 	return skins_index
+
+## 删除皮肤及其目录，并从 skins_index 移除
+func remove_skin(skin_name: String) -> bool:
+	if not skins_index.has(skin_name):
+		GLogger.warning("remove_skin: skin not found: %s" % skin_name, "SkinMGR")
+		return false
+
+	var meta: SkinMetadata = skins_index[skin_name]
+	if meta.is_builtin:
+		GLogger.warning("remove_skin: cannot delete builtin skin: %s" % skin_name, "SkinMGR")
+		return false
+
+	var deleted := false
+	# 删除皮肤目录
+	if DirAccess.dir_exists_absolute(meta.path):
+		deleted = FileSystemManager.instance.delete_directory_recursive(meta.path)
+		if not deleted:
+			GLogger.warning("remove_skin: failed to delete dir: %s" % meta.path, "SkinMGR")
+	else:
+		deleted = true  # 目录已不存在，算成功
+
+	# 索引总是清理，避免残留条目
+	skins_index.erase(skin_name)
+	GLogger.info("Removed skin from index: %s (files deleted: %s)" % [skin_name, deleted], "SkinMGR")
+	return deleted

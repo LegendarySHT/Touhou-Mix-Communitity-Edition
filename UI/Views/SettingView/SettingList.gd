@@ -4,6 +4,7 @@ class_name SettingList
 var item_separator: String = "res://UI/Views/SettingView/Seperator.tscn"
 var setting_items: Dictionary = {}  # 存储所有设置项，键为id，值为SettingItem
 var pending_config_updates: Dictionary = {}  # 待提交配置，键为 "section::key"
+var _popup_refresh_map: Dictionary = {}  # 下拉刷新回调，键为 setting_id，值为 Callable
 
 var setting_groups: Array = []
 
@@ -179,6 +180,7 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 
 	# 连接值改变信号
 	setting_item.connect("value_changed", Callable(self, "_on_setting_value_changed"))
+	setting_item.option_popup_about_to_show.connect(_on_item_popup_about_to_show)
 	
 	# 存储到字典中
 	setting_items[setting_data.id] = setting_item
@@ -511,3 +513,13 @@ func set_note_fall_mode_and_show_custom_options(mode: int) -> void:
 				setting_item.visible = (mode == 2)
 				if setting_item.value_node:
 					setting_item.value_node.visible = (mode == 2)
+
+## 注册下拉弹出前的刷新回调（由 SettingView 调用）
+func register_popup_refresh(setting_id: String, refresh_callable: Callable) -> void:
+	_popup_refresh_map[setting_id] = refresh_callable
+
+## 下拉弹出前刷新选项
+func _on_item_popup_about_to_show(id: String) -> void:
+	if _popup_refresh_map.has(id):
+		var cb: Callable = _popup_refresh_map[id]
+		cb.call()

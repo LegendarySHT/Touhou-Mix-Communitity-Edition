@@ -151,8 +151,23 @@ func _refresh_display() -> void:
 			counter += 1
 
 func remove_selected_midi():
+	var removed_index = selected_item
 	current_midis.erase(get_selection())
 	_refresh_display()
+	_setup_focus_neighbor()
 
 	if not list_items.size():
 		UiStatMGR.go_back()
+		return
+
+	# 重建后默认选中并展开剩余项（与 load_midi 行为一致）
+	await get_tree().process_frame
+	_collapsed = false
+	_prev_scroll = scroll_vertical
+	var target = mini(removed_index, list_items.size() - 1)
+	select_item(target)
+	for item in list_items:
+		item.set_expanded(true)
+	if indicator:
+		indicator.position = Vector2(30, 100 - selected_item * 24)
+	need_snap = true

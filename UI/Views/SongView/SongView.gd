@@ -24,6 +24,11 @@ func _ready() -> void:
 	# 连接事件
 	event_bus.album_selected.connect(_load_songs)
 	event_bus.midi_deleted.connect(func(_id): if not current_album_id.is_empty(): _load_songs(current_album_id))
+	# 回到 SongView 时自动刷新，确保删除等操作后数据最新
+	state_manager.state_changed.connect(func(_old, new):
+		if new == UIStateManager.UIState.SONG_VIEW and not current_album_id.is_empty():
+			call_deferred("_refresh_from_data")
+	)
 
 	super._ready()
 
@@ -36,6 +41,7 @@ func _load_songs(album_id: String) -> void:
 	_refresh_display()
 
 	_connect_head_and_tail()
+	_update_ss_count()
 
 	# 加长
 	container.custom_minimum_size.y = (140 + 29) * (current_songs.size() + 1)
@@ -68,6 +74,32 @@ func _gui_input(event: InputEvent) -> void:
 func _deferred_go_back() -> void:
 	if current_songs.is_empty() and state_manager.current_state == UIStateManager.UIState.SONG_VIEW:
 		state_manager.go_back()
+
+## 从 DataManager 重新拉取并刷新列表（call_deferred 调用，确保在状态转换完成后执行）
+func _refresh_from_data() -> void:
+	if current_album_id.is_empty():
+		return
+	current_songs = data_manager.get_songs_by_album(current_album_id)
+	_refresh_display()
+	_connect_head_and_tail()
+	_update_ss_count()
+	container.custom_minimum_size.y = (140 + 29) * (current_songs.size() + 1)
+	if current_songs.is_empty():
+		var album_data = data_manager.get_album_by_id(current_album_id)
+		if album_data == null:
+			_deferred_go_back()
+
+## 同步更新 SS 节点（AnimationManager 在 SongView 过渡时从专辑列表复制的快照）的歌曲计数
+func _update_ss_count() -> void:
+	var album_data = data_manager.get_album_by_id(current_album_id)
+	if not album_data:
+		return
+	var ss_node = get_node_or_null("/root/Main/skew/SS")
+	if not is_instance_valid(ss_node):
+		return
+	var count_label = ss_node.get_node_or_null("CountBase/SongCount")
+	if is_instance_valid(count_label):
+		count_label.text = "%d" % album_data.song_ids.size()
 
 
 func on_item_button_confirmed(index: int):

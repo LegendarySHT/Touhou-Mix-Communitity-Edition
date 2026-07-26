@@ -20,6 +20,7 @@ var _can_edit_alpha: bool = false
 
 # 添加信号，用于通知值改变
 signal value_changed(id: String, value: Variant)
+signal option_popup_about_to_show(id: String)
 
 func setup_item(ID: String, content: String, desc: String, valueType: ValueType, initial_value: Variant = null) -> Control:
 	self.id = ID
@@ -79,6 +80,7 @@ func setup_item(ID: String, content: String, desc: String, valueType: ValueType,
 
 # 更新弹出菜单样式
 func _on_popup_menu_popup(popup_menu: PopupMenu) -> void:
+	option_popup_about_to_show.emit(id)
 	await get_tree().process_frame
 	popup_menu.position.y += 20
 	popup_menu.position.x -= 20

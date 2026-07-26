@@ -117,6 +117,23 @@ func _load_config_from_file() -> void:
 	_initialize_background_image_options(settings_dict)
 	_initialize_note_skin_options(settings_dict)
 
+	# 注册下拉弹出时动态刷新选项，确保 DelView 删除后选项及时更新
+	setting_list.register_popup_refresh("soundfont_select", func():
+		var sf_list = _scan_all_soundfonts()
+		var cur = ConfigManager.instance.get_value("Audio", "soundfont_select", "")
+		setting_list.update_soundfont_options(sf_list, cur)
+	)
+	setting_list.register_popup_refresh("block_skin_preset", func():
+		var skin_list = SkinMGR.get_available_skins()
+		var cur = ConfigManager.instance.get_value("Appearance", "block_skin_preset", "")
+		setting_list.update_note_skin_options(skin_list, cur)
+	)
+	setting_list.register_popup_refresh("play_background_image_file", func():
+		var image_files = _scan_background_images()
+		var cur = ConfigManager.instance.get_value("Appearance", "play_background_image_file", "")
+		setting_list.update_background_image_options(image_files, cur)
+	)
+
 	# 初始化下落模式和缓动选项可见性
 	var note_fall_mode = settings_dict.get("note_fall_mode", "0")
 	var mode_value = int(note_fall_mode) if note_fall_mode.is_valid_int() else 0

@@ -398,6 +398,10 @@ func remove_midi(midi_id: String) -> void:
 	midis.erase(midi_id)
 	json_cache.erase(midi_id)
 
+	# 更新专辑的 MIDI 计数
+	if not album_id.is_empty() and albums.has(album_id):
+		albums[album_id].total_midi_count = max(0, albums[album_id].total_midi_count - 1)
+
 	# 从 midi_tree 移除，并级联清理空的 Song / Album
 	if not album_id.is_empty() and not song_id.is_empty() and midi_tree.has(album_id):
 		var album_tree: Dictionary = midi_tree[album_id]
@@ -405,9 +409,11 @@ func remove_midi(midi_id: String) -> void:
 			var midi_ids: Array = album_tree[song_id]
 			midi_ids.erase(midi_id)
 			if midi_ids.is_empty():
-				# Song 下已无 midi，移除 Song
+				# Song 下已无 midi，移除 Song 并更新 Album 的 song_ids
 				album_tree.erase(song_id)
 				songs.erase(song_id)
+				if albums.has(album_id):
+					albums[album_id].remove_song_id(song_id)
 				# Album 下已无 song，移除 Album
 				if album_tree.is_empty():
 					midi_tree.erase(album_id)

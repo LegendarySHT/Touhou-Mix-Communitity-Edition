@@ -940,11 +940,26 @@ func delete_directory_recursive(absolute_path: String) -> bool:
 	if absolute_path.is_empty():
 		GLogger.warning("delete_directory_recursive: path is empty", "FileSystemMGR")
 		return false
+
+	# Android 上优先用 rm -rf，避免 DirAccess 逐个文件删除卡住
+	if OS.get_name() == "Android":
+		var exit_code := OS.execute("rm", ["-rf", absolute_path])
+		if exit_code == 0 and not DirAccess.dir_exists_absolute(absolute_path):
+			GLogger.info("Deleted directory (rm): %s" % absolute_path, "FileSystemMGR")
+			return true
+		GLogger.warning("delete_directory_recursive: rm -rf failed (exit %d), falling back to manual delete: %s" % [exit_code, absolute_path], "FileSystemMGR")
+
+	# 手动递归删除（非 Android 或 rm 失败时）
 	var dir = DirAccess.open(absolute_path)
 	if dir == null:
+		# rm -rf 可能已经成功删除了
+		if not DirAccess.dir_exists_absolute(absolute_path):
+			GLogger.info("Directory already gone: %s" % absolute_path, "FileSystemMGR")
+			return true
 		GLogger.warning("delete_directory_recursive: cannot open dir: %s" % absolute_path, "FileSystemMGR")
 		return false
-	# 先递归删除所有子内容
+
+	var failed_count := 0
 	dir.list_dir_begin()
 	var entry_name = dir.get_next()
 	while entry_name != "":
@@ -953,13 +968,19 @@ func delete_directory_recursive(absolute_path: String) -> bool:
 			if dir.current_is_dir():
 				delete_directory_recursive(full_path)
 			else:
-				DirAccess.remove_absolute(full_path)
+				var err_f := DirAccess.remove_absolute(full_path)
+				if err_f != OK:
+					GLogger.warning("delete_directory_recursive: failed to remove file (err %d): %s" % [err_f, full_path], "FileSystemMGR")
+					failed_count += 1
 		entry_name = dir.get_next()
 	dir.list_dir_end()
-	# 删除已空的目录本身
+
 	var err = DirAccess.remove_absolute(absolute_path)
 	if err != OK:
-		GLogger.error("delete_directory_recursive: failed to remove dir %s (err %d)" % [absolute_path, err], "FileSystemMGR")
+		if failed_count > 0:
+			GLogger.warning("delete_directory_recursive: could not delete dir %s (%d files remain, err %d)" % [absolute_path, failed_count, err], "FileSystemMGR")
+		else:
+			GLogger.error("delete_directory_recursive: failed to remove dir %s (err %d)" % [absolute_path, err], "FileSystemMGR")
 		return false
 	GLogger.info("Deleted directory: %s" % absolute_path, "FileSystemMGR")
 	return true
@@ -1000,3 +1021,67 @@ func find_files_in_dir(dir_path: String, pattern: String) -> PackedStringArray:
 		fn = d.get_next()
 	d.list_dir_end()
 	return result
+
+# ============================================================
+# 统一删除函数（文件 + 索引同步清理）
+# ============================================================
+
+## 删除谱面及其全部关联资源，并同步清理所有相关索引
+## 返回: 是否成功
+func delete_chart(chart_id: String) -> bool:
+	var result = _lookup_chart(chart_id)
+	if result.is_empty():
+		GLogger.warning("delete_chart: chart not found: %s" % chart_id, "FileSystemMGR")
+		return false
+
+	var folder_name: String = result["folder_name"]
+	var meta: ChartMetadata = result["metadata"]
+	var folder_path := CHARTS_DIR.path_join(folder_name)
+
+	# 先从 audio_files_index 中移除关联的音频条目
+	for i in range(audio_files_index.size() - 1, -1, -1):
+		if audio_files_index[i].get("chart_id", "") == chart_id:
+			audio_files_index.remove_at(i)
+
+	# 删除目录
+	if not delete_directory_recursive(folder_path):
+		return false
+
+	# 从 charts_index 移除
+	_chart_id_to_folder.erase(meta.id)
+	var jd = meta.data
+	if jd is Dictionary:
+		_hash_to_folder.erase(jd.get("hash", ""))
+		_hash_to_folder.erase(jd.get("file_hash", ""))
+	charts_index.erase(folder_name)
+	GLogger.info("Deleted chart: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
+	return true
+
+## 删除音频文件，并从 audio_files_index 移除
+func delete_audio(file_path: String) -> bool:
+	if not delete_file(file_path):
+		return false
+	for i in range(audio_files_index.size() - 1, -1, -1):
+		if audio_files_index[i].get("path", "") == file_path:
+			audio_files_index.remove_at(i)
+	return true
+
+## 删除 SF2 音源文件，并从 soundfonts_index 移除
+func delete_soundfont(file_path: String) -> bool:
+	if not delete_file(file_path):
+		return false
+	for sf_name in soundfonts_index.keys():
+		if soundfonts_index[sf_name].get("path", "") == file_path:
+			soundfonts_index.erase(sf_name)
+			break
+	return true
+
+## 删除背景图片文件，并从 backgrounds_index 移除
+func delete_background(file_path: String) -> bool:
+	if not delete_file(file_path):
+		return false
+	for bg_name in backgrounds_index.keys():
+		if backgrounds_index[bg_name] == file_path:
+			backgrounds_index.erase(bg_name)
+			break
+	return true

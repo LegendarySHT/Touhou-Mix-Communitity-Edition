@@ -288,13 +288,14 @@ func _build_midi_page() -> void:
 		)
 		_midi_album_midi_map[album_id] = midi_ids
 
-		# 用搜索词过滤后计数
+		# 用搜索词过滤后计数（专辑名匹配时其下所有谱面都显示）
+		var album_match := _search_query.is_empty() or _search_query.to_lower() in album_name.to_lower()
 		var filtered_count := 0
 		for midi_id in midi_ids:
 			var midi_data: MidiData = dm.midis.get(midi_id)
 			if not midi_data:
 				continue
-			if not _search_query.is_empty() and not _search_query.to_lower() in midi_data.name.to_lower():
+			if not _search_query.is_empty() and not album_match and not _search_query.to_lower() in midi_data.name.to_lower():
 				continue
 			filtered_count += 1
 
@@ -314,7 +315,7 @@ func _build_midi_page() -> void:
 			if not midi_data:
 				continue
 
-			if not _search_query.is_empty() and not _search_query.to_lower() in midi_data.name.to_lower():
+			if not _search_query.is_empty() and not album_match and not _search_query.to_lower() in midi_data.name.to_lower():
 				continue
 
 			var author := midi_data.artist_name if not midi_data.artist_name.is_empty() else "-"
@@ -335,12 +336,20 @@ func _build_midi_page() -> void:
 		if idx % 3 == 2:  # 每 3 个专辑 yield 一次
 			await get_tree().process_frame
 
+	# 构建期间切了 Tab，不覆写当前页面的 header
+	if _current_tab != Tab.MIDI:
+		_build_loading = false
+		return
+
 	print("[DelView] Total MIDI items created: %d" % total_count)
 	_item_sum.text = "共 %d 首谱面" % total_count
 	_update_midi_toggle_state()
 	await _apply_scrolls_to_container(_midi_list)
 	_tab_data_built[Tab.MIDI] = true
 	_build_loading = false
+
+	# 确保 header 显示与实际内容一致
+	_update_tab_header(Tab.MIDI)
 
 
 func _on_data_loaded() -> void:
@@ -475,15 +484,33 @@ func _on_midi_delete_selected() -> void:
 	if to_delete.is_empty():
 		return
 
+	# 先收集路径信息，然后立即清空页面（视觉即时反馈）
+	var path_map: Dictionary = {}
 	for midi_id in to_delete:
-		var path: String = _midi_path_map.get(midi_id, "")
+		path_map[midi_id] = _midi_path_map.get(midi_id, "")
+
+	_clear_page(_midi_list, [_midi_root_map, _midi_item_map])
+	_midi_album_order.clear()
+	_midi_album_midi_map.clear()
+	_midi_path_map.clear()
+	_midi_selected.clear()
+	_update_midi_toggle_state()
+	await get_tree().process_frame
+
+	# 清除搜索状态，确保重建后显示全部内容
+	_search_box.text = ""
+	_search_query = ""
+
+	for midi_id in to_delete:
+		var path: String = path_map.get(midi_id, "")
 		if path.is_empty():
 			push_error("[DelView] 找不到谱面路径: %s" % midi_id)
 			continue
-		if FileSystemManager.instance.delete_directory_recursive(path):
+		if FileSystemManager.instance.delete_chart(midi_id):
 			print("[DelView] 已删除谱面: %s" % path)
-			FileSystemManager.instance.remove_from_charts_index(midi_id)
 			DataMGR.remove_midi(midi_id)
+			# 通知其他视图刷新
+			EvtBus.midi_deleted.emit(midi_id)
 		else:
 			push_error("[DelView] 删除失败: %s" % path)
 
@@ -558,11 +585,19 @@ func _build_audio_page() -> void:
 		if gi % 5 == 4:
 			await get_tree().process_frame
 
+	# 构建期间切了 Tab，不覆写当前页面的 header
+	if _current_tab != Tab.AUDIO:
+		_build_loading = false
+		return
+
 	_item_sum.text = "共 %d 个音频文件" % _audio_items.size()
 	_update_flat_toggle_state(_audio_items)
 	await _apply_scrolls_to_container(_audio_list)
 	_tab_data_built[Tab.AUDIO] = true
 	_build_loading = false
+
+	# 确保 header 显示与实际内容一致
+	_update_tab_header(Tab.AUDIO)
 
 
 func _scan_audio_files() -> Array[Dictionary]:
@@ -700,12 +735,23 @@ func _on_audio_delete_selected() -> void:
 	if to_delete.is_empty():
 		return
 
+	# 先清空页面（视觉即时反馈）
+	_clear_page(_audio_list, [_audio_root_map, _audio_item_map])
+	_audio_group_order.clear()
+	_audio_items_in_group.clear()
+	_audio_items.clear()
+	_update_flat_toggle_state(_audio_items)
+	await get_tree().process_frame
+
+	# 清除搜索状态
+	_search_box.text = ""
+	_search_query = ""
+
 	for item in to_delete:
-		var err := DirAccess.remove_absolute(item["path"])
-		if err == OK:
+		if FileSystemManager.instance.delete_audio(item["path"]):
 			print("[DelView] 已删除音频: %s" % item["file_name"])
 		else:
-			push_error("[DelView] 删除失败: %s (错误码 %d)" % [item["path"], err])
+			push_error("[DelView] 删除失败: %s" % item["path"])
 
 	await get_tree().process_frame
 	_build_audio_page()
@@ -865,8 +911,7 @@ func _on_sf2_delete_selected() -> void:
 		return
 
 	for item in to_delete:
-		var err := DirAccess.remove_absolute(item["path"])
-		if err == OK:
+		if FileSystemManager.instance.delete_soundfont(item["path"]):
 			print("[DelView] 已删除音源: %s" % item["file_name"])
 		else:
 			push_error("[DelView] 删除失败: %s" % item["path"])
@@ -962,10 +1007,10 @@ func _on_skin_delete_selected() -> void:
 		return
 
 	for item in to_delete:
-		if FileSystemManager.instance.delete_directory_recursive(item["path"]):
+		if SkinMGR.remove_skin(item["name"]):
 			print("[DelView] 已删除皮肤: %s" % item["name"])
 		else:
-			push_error("[DelView] 删除失败: %s" % item["path"])
+			push_error("[DelView] 皮肤已从列表移除，但文件夹删除失败，请手动清理: %s" % item["path"])
 
 	await get_tree().process_frame
 	_build_skin_page()
@@ -1047,8 +1092,7 @@ func _on_bg_delete_selected() -> void:
 		return
 
 	for item in to_delete:
-		var err := DirAccess.remove_absolute(item["path"])
-		if err == OK:
+		if FileSystemManager.instance.delete_background(item["path"]):
 			print("[DelView] 已删除背景: %s" % item["name"])
 		else:
 			push_error("[DelView] 删除失败: %s" % item["path"])
