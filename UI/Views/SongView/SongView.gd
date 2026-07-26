@@ -59,6 +59,18 @@ func _refresh_display() -> void:
 	# 清空现有项
 	clear_items()
 	
+	var is_active := UiStatMGR.current_state == UIStateManager.UIState.SONG_VIEW
+	var no_items := get_node_or_null("/root/Main/skew/C/NoItems")
+	
+	if current_songs.is_empty():
+		if no_items and is_active:
+			no_items.visible = true
+		return
+	
+	# 列表非空，隐藏空提示
+	if no_items:
+		no_items.visible = false
+	
 	var counter:int = 0
 	var bg = ButtonGroup.new()
 	# 添加新项

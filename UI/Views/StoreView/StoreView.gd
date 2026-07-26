@@ -27,8 +27,11 @@ func _ready() -> void:
 
 	await EvtBus.data_loaded_complete
 	var test_midis:Array[MidiData] = DataMGR.get_all_midis()
+	
+	#演示代码
 	for i in range(5):
-		container.get_child(i).set_display(test_midis[i])
+		if i < test_midis.size():
+			container.get_child(i).set_display(test_midis[i])
 
 	_last_scroll_vertical = scroll_vertical
 	# 入场动画

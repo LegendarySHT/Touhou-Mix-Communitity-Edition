@@ -66,7 +66,11 @@ func _load_cover_image() -> void:
 		return
 
 	var songs := data_mgr.get_songs_by_album(album_data.id)
+	if songs.is_empty():
+		return
 	var midis := data_mgr.get_midis_by_song(songs[0].id)
+	if midis.is_empty():
+		return
 	cover_texture.texture = fs_mgr.get_cover_by_midiData(midis[0])
 
 ## 专辑按钮切换回调

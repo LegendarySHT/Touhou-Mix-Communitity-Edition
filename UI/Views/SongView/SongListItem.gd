@@ -69,6 +69,8 @@ func _load_cover_image() -> void:
 		return
 
 	var midis := data_mgr.get_midis_by_song(song_data.id)
+	if midis.is_empty():
+		return
 	cover.texture = fs_mgr.get_cover_by_midiData(midis[get_meta("index")])
 
 	cover.offset_transform_position.y = -(floori(self.size.y * item_index) % int(cover.size.y-self.size.y))

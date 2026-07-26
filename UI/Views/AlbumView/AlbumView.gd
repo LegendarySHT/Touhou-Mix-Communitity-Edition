@@ -27,6 +27,11 @@ func _ready() -> void:
 	data_manager.data_loaded.connect(_load_albums)
 	event_bus.midi_deleted.connect(func(_id): _load_albums())
 	event_bus.config_changed.connect(_on_config_changed)
+	# 回到 AlbumView 时补检空列表（midi_deleted 在不活跃时触发刷新，不会显示 NoItems）
+	UiStatMGR.state_changed.connect(func(_old, new):
+		if new == UIStateManager.UIState.ALBUM_VIEW:
+			call_deferred("_check_empty_display")
+	)
 	modulate.a = 0.0
 
 	super._ready()
@@ -58,6 +63,20 @@ func _on_config_changed(key: String, section: String, _value: Variant) -> void:
 func _refresh_display_async(refresh_id: int) -> void:
 	clear_items()
 	await get_tree().process_frame
+	
+	var is_active := UiStatMGR.current_state == UIStateManager.UIState.ALBUM_VIEW
+	var no_items := get_node_or_null("/root/Main/skew/C/NoItems")
+	
+	if current_albums.is_empty():
+		if _loading_node:
+			_loading_node.stop_rotation()
+		if no_items and is_active:
+			no_items.visible = true
+		return
+	
+	# 列表非空，隐藏空提示
+	if no_items:
+		no_items.visible = false
 	
 	var counter := 0
 	var bg := ButtonGroup.new()
@@ -92,6 +111,18 @@ func _process(delta):
 
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)
+
+## 状态变化时补检空列表显示（由 state_changed call_deferred 调用）
+func _check_empty_display() -> void:
+	var no_items := get_node_or_null("/root/Main/skew/C/NoItems")
+	if not current_albums.is_empty():
+		if no_items:
+			no_items.visible = false
+		return
+	if _loading_node:
+		_loading_node.stop_rotation()
+	if no_items:
+		no_items.visible = true
 
 func reset_selection():
 	if selected_item == -1:
