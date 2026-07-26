@@ -150,15 +150,25 @@ content_margin_left = 25.0
 content_margin_right = 25.0
 draw_center = false
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_8q3pc"]
+content_margin_left = 50.0
+content_margin_right = 50.0
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qg2wq"]
 content_margin_bottom = 30.0
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_vqh6o"]
+content_margin_left = 50.0
+content_margin_right = 50.0
+
 [node name="MidiView" type="HBoxContainer" unique_id=2031959890]
 anchors_preset = -1
-anchor_left = 0.2
-anchor_top = 0.2
-anchor_right = 0.8
-anchor_bottom = 0.8
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 50.0
+offset_top = 50.0
+offset_right = -100.0
+offset_bottom = -50.0
 grow_horizontal = 2
 grow_vertical = 2
 size_flags_vertical = 4
@@ -638,19 +648,19 @@ visible = false
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_8q3pc")
 metadata/_tab_index = 1
 
-[node name="GridC" type="GridContainer" parent="OptionPanel/VBoxC/TabView/Mode" unique_id=741669]
+[node name="HFlowC" type="HFlowContainer" parent="OptionPanel/VBoxC/TabView/Mode" unique_id=689612215]
 layout_mode = 2
-size_flags_horizontal = 4
-theme_override_constants/h_separation = 80
-theme_override_constants/v_separation = 60
-columns = 2
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 20
+alignment = 1
 
-[node name="Mode" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/GridC" unique_id=405700545]
-custom_maximum_size = Vector2(200, 120)
+[node name="Mode" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/HFlowC" unique_id=829194013]
+custom_maximum_size = Vector2(350, 120)
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 size_flags_vertical = 3
 focus_neighbor_right = NodePath("../Limit")
 focus_neighbor_bottom = NodePath("../Repeat")
@@ -666,10 +676,10 @@ popup/item_1/text = "Auto Mode"
 popup/item_1/icon = ExtResource("21_2bu1o")
 popup/item_1/id = 1
 
-[node name="Limit" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/GridC" unique_id=1411967904]
-custom_maximum_size = Vector2(200, 120)
+[node name="Limit" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/HFlowC" unique_id=1131758216]
+custom_maximum_size = Vector2(350, 120)
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 size_flags_vertical = 3
 focus_neighbor_left = NodePath("../Mode")
 focus_neighbor_bottom = NodePath("../GameMode")
@@ -688,10 +698,10 @@ popup/item_2/text = "All Perfect"
 popup/item_2/icon = ExtResource("24_qg2wq")
 popup/item_2/id = 2
 
-[node name="Repeat" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/GridC" unique_id=367832061]
-custom_maximum_size = Vector2(200, 120)
+[node name="Repeat" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/HFlowC" unique_id=717739868]
+custom_maximum_size = Vector2(350, 120)
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 size_flags_vertical = 3
 focus_neighbor_top = NodePath("../Mode")
 focus_neighbor_right = NodePath("../GameMode")
@@ -707,10 +717,10 @@ popup/item_1/text = "Repeat Infinity"
 popup/item_1/icon = ExtResource("26_8q3pc")
 popup/item_1/id = 1
 
-[node name="GameMode" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/GridC" unique_id=1462223095]
-custom_maximum_size = Vector2(200, 120)
+[node name="GameMode" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/HFlowC" unique_id=872825176]
+custom_maximum_size = Vector2(350, 120)
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 size_flags_vertical = 3
 focus_neighbor_left = NodePath("../Repeat")
 focus_neighbor_top = NodePath("../Limit")
@@ -731,6 +741,7 @@ visible = false
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_8q3pc")
 metadata/_tab_index = 2
 
 [node name="FavorPanel" type="PanelContainer" parent="OptionPanel/VBoxC/TabView" unique_id=203199523]
@@ -750,6 +761,7 @@ custom_minimum_size = Vector2(0, 500)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxEmpty_vqh6o")
 
 [node name="VBoxC" type="VBoxContainer" parent="OptionPanel/VBoxC/TabView/FavorPanel/VBoxC/FavorList" unique_id=253766444]
 layout_mode = 2

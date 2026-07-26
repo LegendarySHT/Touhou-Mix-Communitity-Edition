@@ -1,13 +1,13 @@
 extends VBoxContainer
 
 # 模式设置 (自动/普通 模式)
-@onready var mode_btn: OptionButton = $TabView/Mode/GridC/Mode
+@onready var mode_btn: OptionButton = $TabView/Mode/HFlowC/Mode
 # 限制设置 (无限制/FC/AP)
-@onready var limit_btn: OptionButton = $TabView/Mode/GridC/Limit
+@onready var limit_btn: OptionButton = $TabView/Mode/HFlowC/Limit
 # 循环设置 （单次/无限）
-@onready var repeat_btn: OptionButton = $TabView/Mode/GridC/Repeat
+@onready var repeat_btn: OptionButton = $TabView/Mode/HFlowC/Repeat
 # 游戏模式 （普通/扫描线）
-@onready var gamme_mode_btn: OptionButton = $TabView/Mode/GridC/GameMode
+@onready var gamme_mode_btn: OptionButton = $TabView/Mode/HFlowC/GameMode
 
 const MODE_NORMAL_ID: int = 0
 const MODE_AUTO_ID: int = 1
@@ -25,7 +25,7 @@ func _ready():
 					i.button_pressed = true
 			)
 	
-	for i in get_node("TabView/Mode/GridC").get_children():
+	for i in [mode_btn, limit_btn, repeat_btn, gamme_mode_btn]:
 		i.get_popup().about_to_popup.connect(_on_popup_menu_popup.bind(i.get_popup()))
 
 	if not mode_btn.item_selected.is_connected(_on_mode_selected):

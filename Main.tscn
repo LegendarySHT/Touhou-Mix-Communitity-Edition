@@ -360,7 +360,7 @@ shadow_offset = Vector2(2, 2)
 
 [sub_resource type="Gradient" id="Gradient_mxvw5"]
 interpolation_mode = 2
-colors = PackedColorArray(0, 0.28235295, 0.6862745, 0.6, 0.39607844, 0.43137255, 0.8352941, 0.89411765)
+colors = PackedColorArray(0, 0.28235295, 0.6862745, 1, 0.39607844, 0.43137255, 0.8352941, 1)
 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_xrxkg"]
 gradient = SubResource("Gradient_mxvw5")

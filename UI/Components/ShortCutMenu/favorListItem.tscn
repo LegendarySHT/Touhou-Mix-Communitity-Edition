@@ -19,7 +19,7 @@ corner_radius_bottom_left = 2
 
 [node name="FavorListItem" type="HBoxContainer" unique_id=1284658319]
 custom_minimum_size = Vector2(500, 0)
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 mouse_filter = 0
 theme_override_constants/separation = 40
 alignment = 1
@@ -45,6 +45,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_w3rk5")
 
 [node name="ActionIconWrap" type="Control" parent="Cover" unique_id=1797413720]
 custom_minimum_size = Vector2(50, 50)
+clip_contents = true
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -56,9 +57,8 @@ offset_top = -50.0
 grow_horizontal = 0
 grow_vertical = 0
 mouse_filter = 2
-clip_contents = true
 
-[node name="Bg" type="ColorRect" parent="Cover/ActionIconWrap"]
+[node name="Bg" type="ColorRect" parent="Cover/ActionIconWrap" unique_id=2014360466]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -68,7 +68,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0.5)
 
-[node name="ActionIcon" type="TextureRect" parent="Cover/ActionIconWrap"]
+[node name="ActionIcon" type="TextureRect" parent="Cover/ActionIconWrap" unique_id=147255320]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -96,13 +96,15 @@ size_flags_horizontal = 3
 mouse_filter = 2
 
 [node name="name" type="Label" parent="Detail/NameBox" unique_id=1870450257]
-layout_mode = 0
-offset_right = 1.0
-offset_bottom = 1.0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 0
 theme_override_font_sizes/font_size = 30
 text = "Test"
-horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="nameEdit" type="LineEdit" parent="Detail" unique_id=1039444612]

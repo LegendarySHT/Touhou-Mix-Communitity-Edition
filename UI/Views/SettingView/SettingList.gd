@@ -11,8 +11,6 @@ func _ready() -> void:
 	setting_groups = SettingGroupsData.get_setting_groups()
 	work_state = UIStateManager.UIState.SETTINGS_VIEW
 	super._ready()
-	if container:
-		container.resized.connect(_update_separator_widths)
 	get_v_scroll_bar().value_changed.connect(func (_v):
 		var btns = get_parent().get_parent().short_cut_btn.get_children()
 		var idx = _get_current_para_sepa_idx()
@@ -29,8 +27,6 @@ func _ready() -> void:
 				b.set_block_signals(true)
 				b.call_deferred("set_block_signals", false)
 			tBtn.button_pressed = true
-			# for b in btns:
-			# 	b.set_block_signals(false)
 	)
 
 # 传入配置字典加载界面
@@ -55,31 +51,24 @@ func load_settings(setting: Dictionary = {}):
 	_refresh_play_background_visibility()
 
 var separators = []
+@onready var separator_scene = load(item_separator)
 func _add_separator():
 	# 加载并添加分隔符
-	var separator_scene = load(item_separator)
 	if separator_scene:
 		var separator = separator_scene.instantiate()
 		container.add_child(separator)
-		separator.size_flags_stretch_ratio = 2
-
 		separators.append(separator)
 		separator = separator_scene.instantiate()
 		container.add_child(separator)
-		separator.size_flags_stretch_ratio = 1
 		separators.append(separator)
 
-		_update_separator_widths.call_deferred()
-
-func _update_separator_widths() -> void:
+func update_column_width(grid_width: float) -> void:
 	if container == null or separators.is_empty():
 		return
-	var grid_width: float = container.size.x
 	if grid_width <= 0:
 		return
-	var h_sep: float = container.get_theme_constant("h_separation")
-	var available: float = max(0.0, grid_width - h_sep)
-	var col0_w: float = available * 2.0 / 3.0
+	grid_width -= 700
+	var col0_w: float = grid_width * 2.2 / 3.0
 	for i in range(0, separators.size(), 2):
 		var sep_left: Node = separators[i]
 		if is_instance_valid(sep_left):

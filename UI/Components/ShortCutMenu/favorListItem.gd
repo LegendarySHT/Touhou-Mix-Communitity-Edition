@@ -50,6 +50,8 @@ func _ready() -> void:
 	name_edit.text_submitted.connect(_on_rename_submitted)
 	name_edit.focus_exited.connect(_on_rename_focus_exited)
 
+	# midiview变宽后，需要重新计算名称滚动动画
+	name_box.resized.connect(_setup_name_scroll)
 
 ## 点击名称区域：进入重命名模式
 func _on_name_label_gui_input(event: InputEvent) -> void:
