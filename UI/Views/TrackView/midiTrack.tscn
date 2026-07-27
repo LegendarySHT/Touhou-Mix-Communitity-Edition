@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://bvpw7fu0xco14" path="res://Resources/icon/TrackView/volume.png" id="2_phpps"]
 [ext_resource type="Texture2D" uid="uid://df7u4t3bhlafy" path="res://Resources/icon/TrackView/microphone.png" id="3_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://boaosvxm4ii76" path="res://Resources/icon/TrackView/reset.png" id="6_r0ui6"]
+[ext_resource type="Script" path="res://UI/Components/TouchScrollOptionButton.gd" id="7_r0ui6"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_31lmn"]
 bg_color = Color(0.59, 0.59, 0.59, 0.54509807)
@@ -468,6 +469,7 @@ stretch_mode = 5
 custom_minimum_size = Vector2(250, 50)
 layout_mode = 2
 focus_mode = 0
+mouse_filter = 1
 theme_override_font_sizes/font_size = 28
 theme_override_constants/arrow_margin = 10
 alignment = 1
@@ -476,6 +478,7 @@ fit_to_longest_item = false
 item_count = 1
 popup/item_0/text = "Grand Piano"
 popup/item_0/id = 0
+script = ExtResource("7_r0ui6")
 
 [node name="ResetBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=955571887]
 custom_minimum_size = Vector2(50, 50)
