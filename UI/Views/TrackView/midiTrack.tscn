@@ -6,7 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://bvpw7fu0xco14" path="res://Resources/icon/TrackView/volume.png" id="2_phpps"]
 [ext_resource type="Texture2D" uid="uid://df7u4t3bhlafy" path="res://Resources/icon/TrackView/microphone.png" id="3_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://boaosvxm4ii76" path="res://Resources/icon/TrackView/reset.png" id="6_r0ui6"]
-[ext_resource type="Script" path="res://UI/Components/TouchScrollOptionButton.gd" id="7_r0ui6"]
+[ext_resource type="Script" uid="uid://c2ylo07cj00rw" path="res://UI/Components/TouchScrollOptionButton.gd" id="7_r0ui6"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_31lmn"]
 bg_color = Color(0.59, 0.59, 0.59, 0.54509807)
@@ -279,6 +279,7 @@ theme_override_constants/margin_bottom = 20
 [node name="HBoxC" type="HBoxContainer" parent="HBoxC/MC" unique_id=327389710]
 custom_minimum_size = Vector2(1080, 0)
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = -4
 
 [node name="enableBtn" type="Button" parent="HBoxC/MC/HBoxC" unique_id=888662538]
@@ -287,7 +288,6 @@ custom_minimum_size = Vector2(280, 180)
 layout_mode = 2
 size_flags_vertical = 4
 focus_mode = 0
-mouse_filter = 1
 theme_override_font_sizes/font_size = 48
 theme_override_styles/normal = SubResource("StyleBoxFlat_7rc5s")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_8bk0u")
@@ -304,10 +304,12 @@ anchor_right = 1.0
 anchor_bottom = 0.5
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 alignment = 1
 
 [node name="Icon" type="TextureRect" parent="HBoxC/MC/HBoxC/enableBtn/HBoxC" unique_id=1705559011]
 layout_mode = 2
+mouse_filter = 2
 texture = ExtResource("1_ni118")
 expand_mode = 3
 
@@ -322,11 +324,13 @@ vertical_alignment = 1
 [node name="MC" type="MarginContainer" parent="HBoxC/MC/HBoxC" unique_id=1795218493]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 2
 theme_override_constants/margin_top = 25
 theme_override_constants/margin_bottom = 25
 
 [node name="flowArea" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC" unique_id=1152135973]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 0
 script = ExtResource("2_7rc5s")
 
@@ -334,7 +338,7 @@ script = ExtResource("2_7rc5s")
 custom_minimum_size = Vector2(940, 160)
 layout_mode = 2
 size_flags_horizontal = 3
-mouse_filter = 1
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxTexture_kgiiq")
 
 [node name="canvas" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea/noteFlowArea" unique_id=1782789059]
@@ -350,7 +354,7 @@ mouse_filter = 2
 [node name="noteTotal" type="Panel" parent="HBoxC/MC/HBoxC/MC/flowArea" unique_id=876599378]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
-mouse_filter = 1
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_xcqgn")
 
 [node name="VBoxC" type="VBoxContainer" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal" unique_id=1115858912]
@@ -366,6 +370,7 @@ offset_right = 110.0
 offset_bottom = 80.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 alignment = 1
 
 [node name="passedNote" type="Label" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC" unique_id=485936147]
@@ -393,6 +398,7 @@ offset_bottom = 15.0
 grow_horizontal = 2
 grow_vertical = 2
 rotation = -0.34906584
+mouse_filter = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_7vp1s")
 
 [node name="totalNote" type="Label" parent="HBoxC/MC/HBoxC/MC/flowArea/noteTotal/VBoxC" unique_id=884233785]
@@ -407,7 +413,7 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 size_flags_horizontal = 0
-mouse_filter = 1
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_c3ket")
 
 [node name="GridC" type="GridContainer" parent="HBoxC/MC/HBoxC/MC/ControlPanel" unique_id=761362062]

@@ -1221,6 +1221,8 @@ script = ExtResource("23_bg4s2")
 
 [node name="Window" type="Panel" parent="PopupWindowBG" unique_id=449892969]
 custom_minimum_size = Vector2(800, 500)
+custom_maximum_size = Vector2(800, 500)
+propagate_maximum_size = true
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -1272,6 +1274,7 @@ theme_override_font_sizes/font_size = 36
 text = "请选择要删除的内容"
 horizontal_alignment = 1
 vertical_alignment = 1
+autowrap_mode = 3
 
 [node name="OptionButton" type="OptionButton" parent="PopupWindowBG/Window/VBoxC/Content" unique_id=1532759313]
 custom_minimum_size = Vector2(0, 100)

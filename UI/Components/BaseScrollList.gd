@@ -89,15 +89,24 @@ func _on_v_scrollbar_changed(_value: float):
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == work_state
+	
+	# TRACK_VIEW 和 SETTINGS_VIEW 不需要 BaseScrollList 的触摸/滚动逻辑
+	if work_state in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
+		enable = false
+	
 	set_process(enable)
 	set_process_input(enable)
 
 	# 聚焦列表项
-	if enable and work_state not in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
+	if enable:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
 
 func _process(delta: float) -> void:
 	if container == null:
+		return
+	
+	# TRACK_VIEW 和 SETTINGS_VIEW 不需要 BaseScrollList 的触摸/滚动逻辑
+	if work_state in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
 		return
 
 	# 计算滚动速度
@@ -182,6 +191,10 @@ func _on_v_scrollbar_gui_input(event):
 
 func _gui_input(event: InputEvent) -> void:
 	if work_state != UiStatMGR.current_state:
+		return
+	
+	# TRACK_VIEW 和 SETTINGS_VIEW 不需要 BaseScrollList 的输入处理
+	if work_state in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
 		return
 
 	# 滚轮事件（桌面端鼠标滚轮 —— 接管项选择，滚动本身由 Godot ScrollContainer 处理）

@@ -126,7 +126,7 @@ focus_mode = 2
 follow_focus = true
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
-scroll_deadzone = 1000
+scroll_deadzone = 0
 script = ExtResource("1_7vp1s")
 container_path = NodePath("MC/VBox")
 list_item_class = "res://UI/Views/TrackView/midiTrack.tscn"
@@ -141,7 +141,6 @@ theme_override_constants/margin_right = 30
 custom_minimum_size = Vector2(1600, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-mouse_filter = 2
 theme_override_constants/separation = 29
 
 [node name="TotalView" type="Panel" parent="MC/VBox" unique_id=1479010735]
