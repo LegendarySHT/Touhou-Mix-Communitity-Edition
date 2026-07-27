@@ -36,9 +36,19 @@ var current_midi: MidiData = null
 const ICON_ADD := "res://Resources/icon/add.png"
 const ICON_DELETE := "res://Resources/icon/minus.png"
 
+# 点击 vs 滚动 判定阈值
+# 移动距离超过此值视为滚动（非点击），用于避免滚动收藏夹时误触
+const TAP_MOVE_THRESHOLD := 15.0
+
 # 文字滚动状态
 var _name_scroll_state: TextScrollHelper.State = null
 var _name_full_text: String = ""
+
+# 触摸追踪状态：用于区分“点击”与“滚动拖拽”
+# 同一时刻只有一个触摸目标，故状态可共享
+var _touch_start_pos: Vector2 = Vector2.ZERO
+var _touch_pending: bool = false   # 是否有待释放的触摸
+var _touch_on_name: bool = false   # 触摸起点是否在 name Label 上（用于保证按下与释放由同一控件处理）
 
 
 func _ready() -> void:
@@ -46,26 +56,68 @@ func _ready() -> void:
 	delete_btn.pressed.connect(_on_delete_pressed)
 	# 点击名称区域进入重命名模式
 	name_label.gui_input.connect(_on_name_label_gui_input)
+	# 拦截删除按钮的触摸事件，防止向上冒泡触发列表项点击
+	delete_btn.gui_input.connect(_on_delete_btn_gui_input)
 	# 连接 LineEdit 信号
 	name_edit.text_submitted.connect(_on_rename_submitted)
 	name_edit.focus_exited.connect(_on_rename_focus_exited)
 
 ## 点击名称区域：进入重命名模式
+## 仅在"按下后未发生明显移动"时才判定为点击，避免滚动误触
+## name Label 设为 MOUSE_FILTER_PASS，事件会继续冒泡至 _gui_input，通过 _touch_pending 守卫避免重复处理
 func _on_name_label_gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch and event.pressed:
-		_enter_rename_mode()
+	if not (event is InputEventScreenTouch):
+		return
+	if event.pressed:
+		_touch_start_pos = event.position
+		_touch_pending = true
+		_touch_on_name = true
+	elif _touch_pending and _touch_on_name:
+		_touch_pending = false
+		if _is_tap(event.position):
+			_enter_rename_mode()
+
+
+## 拦截删除按钮触摸：标记 _touch_pending 以阻止 _gui_input 触发列表项点击
+## DeleteBtn 设为 MOUSE_FILTER_PASS，按钮自身的 pressed 信号仍正常工作
+func _on_delete_btn_gui_input(event: InputEvent) -> void:
+	if not (event is InputEventScreenTouch):
+		return
+	if event.pressed:
+		_touch_pending = true
+	elif _touch_pending:
+		_touch_pending = false
 
 
 ## 内置 gui_input：点击列表项主体（非按钮区域）触发主操作
+## 仅在"按下后未发生明显移动"时才判定为点击，避免滚动误触
+## FavorListItem 设为 MOUSE_FILTER_PASS，触摸事件会继续冒泡至父级 ScrollContainer 以支持滚动
+## 子控件（name Label、DeleteBtn）的 gui_input 先于本函数触发并设置 _touch_pending，通过守卫避免重复处理
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch and event.pressed:
-		# 编辑模式下不响应点击
-		if name_edit.visible:
+	if not (event is InputEventScreenTouch):
+		return
+	if event.pressed:
+		# 若子控件已认领此触摸（_touch_pending 为 true），跳过以保留其状态
+		if _touch_pending:
 			return
-		if mode == Mode.BROWSE:
-			favor_item_clicked.emit(favorite_id)
-		else:
-			favor_midi_toggled.emit(favorite_id)
+		_touch_start_pos = event.position
+		_touch_pending = true
+		_touch_on_name = false
+	elif _touch_pending and not _touch_on_name:
+		_touch_pending = false
+		if _is_tap(event.position):
+			# 编辑模式下不响应点击
+			if name_edit.visible:
+				return
+			if mode == Mode.BROWSE:
+				favor_item_clicked.emit(favorite_id)
+			else:
+				favor_midi_toggled.emit(favorite_id)
+
+
+## 判定触摸释放是否构成有效点击（移动距离小于阈值）
+func _is_tap(release_pos: Vector2) -> bool:
+	return release_pos.distance_to(_touch_start_pos) <= TAP_MOVE_THRESHOLD
 
 
 ## 初始化列表项

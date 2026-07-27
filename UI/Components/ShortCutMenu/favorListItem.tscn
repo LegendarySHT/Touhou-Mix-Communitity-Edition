@@ -20,7 +20,7 @@ corner_radius_bottom_left = 2
 [node name="FavorListItem" type="HBoxContainer" unique_id=1284658319]
 custom_minimum_size = Vector2(500, 0)
 size_flags_horizontal = 3
-mouse_filter = 0
+mouse_filter = 1
 theme_override_constants/separation = 40
 alignment = 1
 script = ExtResource("1_script")
@@ -102,7 +102,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
+mouse_filter = 1
 theme_override_font_sizes/font_size = 30
 text = "Test"
 vertical_alignment = 1
@@ -119,6 +119,7 @@ placeholder_text = "输入新名称"
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 8
+mouse_filter = 2
 text = "11 midis"
 
 [node name="ManageBtns" type="HBoxContainer" parent="." unique_id=245700086]
@@ -130,6 +131,7 @@ alignment = 1
 [node name="DeleteBtn" type="TextureButton" parent="ManageBtns" unique_id=702320371]
 custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
+mouse_filter = 1
 texture_normal = ExtResource("3_delete")
 ignore_texture_size = true
 stretch_mode = 5
