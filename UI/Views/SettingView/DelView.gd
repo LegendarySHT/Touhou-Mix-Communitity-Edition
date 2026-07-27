@@ -18,7 +18,8 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 
 # ── TopBar ──
 @onready var _tab_title := $Content/PC/TopBar/TabTitle as Label
-@onready var _item_sum := $Content/PC/TopBar/ItemSum as Label
+@onready var _item_sum := $Content/PC/TopBar/ItemSum/Text as Label
+var _item_sum_scroll_state: TextScrollHelper.State = null
 
 # ── PageContainer ──
 @onready var _page_container := $Content/PageContainer as TabContainer
@@ -48,7 +49,7 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 @onready var _order_btn := $Content/PC/TopBar/OrderBtn as Button
 
 var _current_tab: Tab = Tab.MIDI
-var _sort_ascending: bool = true
+var _tab_sort_ascending: Array[bool] = [true, true, true, true, true]
 var _search_query: String = ""
 
 # MIDI 数据
@@ -114,6 +115,10 @@ func _switch_tab(tab: Tab) -> void:
 	_tab_buttons[tab].set_pressed_no_signal(true)
 	_page_container.current_tab = tab
 
+	_order_btn.icon = load("res://Resources/icon/Sort/Ordering/Ascent.png" if _tab_sort_ascending[tab] else "res://Resources/icon/Sort/Ordering/Descent.png")
+	_search_box.text = ""
+	_search_query = ""
+
 	_collapse_toggle.visible = (tab == Tab.MIDI or tab == Tab.AUDIO)
 
 	if _tab_data_built[tab]:
@@ -173,23 +178,23 @@ func _update_tab_header(tab: Tab) -> void:
 	match tab:
 		Tab.MIDI:
 			_tab_title.text = "MIDI 谱面管理"
-			_item_sum.text = "共 %d 首谱面" % _midi_selected.size()
+			_update_item_sum("共 %d 首谱面" % _midi_selected.size())
 			_update_midi_toggle_state()
 		Tab.AUDIO:
 			_tab_title.text = "人声音频管理"
-			_item_sum.text = "共 %d 个音频文件" % _audio_items.size()
+			_update_item_sum("共 %d 个音频文件" % _audio_items.size())
 			_update_flat_toggle_state(_audio_items)
 		Tab.SF2:
 			_tab_title.text = "SF2 音源管理"
-			_item_sum.text = "共 %d 个音源" % _sf2_items.size()
+			_update_item_sum("共 %d 个音源" % _sf2_items.size())
 			_update_flat_toggle_state(_sf2_items)
 		Tab.SKIN:
 			_tab_title.text = "皮肤管理"
-			_item_sum.text = "共 %d 个皮肤" % _skin_items.size()
+			_update_item_sum("共 %d 个皮肤" % _skin_items.size())
 			_update_flat_toggle_state(_skin_items)
 		Tab.BG:
 			_tab_title.text = "背景管理"
-			_item_sum.text = "共 %d 张背景" % _bg_items.size()
+			_update_item_sum("共 %d 张背景" % _bg_items.size())
 			_update_flat_toggle_state(_bg_items)
 
 
@@ -220,13 +225,13 @@ func _build_midi_page() -> void:
 	if dm.midi_tree.is_empty() and dm.midis.is_empty():
 		if dm.is_loading:
 			print("[DelView] DataMGR still loading, waiting for signal")
-			_item_sum.text = "数据加载中..."
+			_update_item_sum("数据加载中...")
 			_update_midi_toggle_state()
 			_build_loading = false
 			return
 		else:
 			print("[DelView] No MIDI data, showing empty state")
-			_item_sum.text = "无谱面数据"
+			_update_item_sum("无谱面数据")
 			_update_midi_toggle_state()
 			_tab_data_built[Tab.MIDI] = true
 			_build_loading = false
@@ -263,7 +268,7 @@ func _build_midi_page() -> void:
 			return true
 		var na = dm.albums[a].name if dm.albums.has(a) else a
 		var nb = dm.albums[b].name if dm.albums.has(b) else b
-		return na < nb if _sort_ascending else na > nb
+		return na < nb if _tab_sort_ascending[_current_tab] else na > nb
 	)
 	_midi_album_order = album_ids
 
@@ -284,7 +289,7 @@ func _build_midi_page() -> void:
 		midi_ids.sort_custom(func(a, b):
 			var ma := dm.midis[a] as MidiData
 			var mb := dm.midis[b] as MidiData
-			return ma.name < mb.name if _sort_ascending else ma.name > mb.name
+			return ma.name < mb.name if _tab_sort_ascending[_current_tab] else ma.name > mb.name
 		)
 		_midi_album_midi_map[album_id] = midi_ids
 
@@ -341,7 +346,7 @@ func _build_midi_page() -> void:
 		return
 
 	print("[DelView] Total MIDI items created: %d" % total_count)
-	_item_sum.text = "共 %d 首谱面" % total_count
+	_update_item_sum("共 %d 首谱面" % total_count)
 	_update_midi_toggle_state()
 	await _apply_scrolls_to_container(_midi_list)
 	_tab_data_built[Tab.MIDI] = true
@@ -512,13 +517,13 @@ func _build_audio_page() -> void:
 	_audio_group_order.clear()
 	_audio_items_in_group.clear()
 
-	_item_sum.text = "扫描中..."
+	_update_item_sum("扫描中...")
 	await get_tree().process_frame
 
 	_audio_items = await _scan_audio_files()
 
 	if _audio_items.is_empty():
-		_item_sum.text = "无音频文件"
+		_update_item_sum("无音频文件")
 		_update_flat_toggle_state(_audio_items)
 		_tab_data_built[Tab.AUDIO] = true
 		_build_loading = false
@@ -534,7 +539,7 @@ func _build_audio_page() -> void:
 
 	# 排序分组
 	var group_names := groups.keys()
-	group_names.sort_custom(func(a, b): return a < b if _sort_ascending else a > b)
+	group_names.sort_custom(func(a, b): return a < b if _tab_sort_ascending[_current_tab] else a > b)
 	_audio_group_order = group_names
 	_audio_items_in_group = groups
 
@@ -569,7 +574,7 @@ func _build_audio_page() -> void:
 		_build_loading = false
 		return
 
-	_item_sum.text = "共 %d 个音频文件" % _audio_items.size()
+	_update_item_sum("共 %d 个音频文件" % _audio_items.size())
 	_update_flat_toggle_state(_audio_items)
 	await _apply_scrolls_to_container(_audio_list)
 	_tab_data_built[Tab.AUDIO] = true
@@ -632,10 +637,10 @@ func _scan_audio_files() -> Array[Dictionary]:
 	dir.list_dir_end()
 
 	result.sort_custom(func(a, b):
-		var cmp_song = a["song_name"] < b["song_name"] if _sort_ascending else a["song_name"] > b["song_name"]
+		var cmp_song = a["song_name"] < b["song_name"] if _tab_sort_ascending[_current_tab] else a["song_name"] > b["song_name"]
 		if cmp_song: return true
-		if a["song_name"] > b["song_name"] if _sort_ascending else a["song_name"] < b["song_name"]: return false
-		return a["format"] < b["format"] if _sort_ascending else a["format"] > b["format"]
+		if a["song_name"] > b["song_name"] if _tab_sort_ascending[_current_tab] else a["song_name"] < b["song_name"]: return false
+		return a["format"] < b["format"] if _tab_sort_ascending[_current_tab] else a["format"] > b["format"]
 	)
 	return result
 
@@ -750,7 +755,7 @@ func _build_sf2_page() -> void:
 	_sf2_items = _scan_sf2_files()
 
 	if _sf2_items.is_empty():
-		_item_sum.text = "无 SF2 音源"
+		_update_item_sum("无 SF2 音源")
 		_update_flat_toggle_state(_sf2_items)
 		_tab_data_built[Tab.SF2] = true
 		_build_loading = false
@@ -780,7 +785,7 @@ func _build_sf2_page() -> void:
 		# 扁平项不折叠，隐藏点击展开事件
 		root_node.get_node("RightLabel").visible = true
 
-	_item_sum.text = "共 %d 个音源" % _sf2_items.size()
+	_update_item_sum("共 %d 个音源" % _sf2_items.size())
 	_update_flat_toggle_state(_sf2_items)
 	await _apply_scrolls_to_container(_sf2_list)
 	_tab_data_built[Tab.SF2] = true
@@ -863,7 +868,7 @@ func _scan_sf2_files() -> Array[Dictionary]:
 	result.sort_custom(func(a, b):
 		if a["is_builtin"] != b["is_builtin"]:
 			return not a["is_builtin"]
-		return a["file_name"] < b["file_name"] if _sort_ascending else a["file_name"] > b["file_name"]
+		return a["file_name"] < b["file_name"] if _tab_sort_ascending[_current_tab] else a["file_name"] > b["file_name"]
 	)
 	return result
 
@@ -926,11 +931,11 @@ func _build_skin_page() -> void:
 	_skin_items.sort_custom(func(a, b):
 		if a["is_builtin"] != b["is_builtin"]:
 			return not a["is_builtin"]
-		return a["name"] < b["name"] if _sort_ascending else a["name"] > b["name"]
+		return a["name"] < b["name"] if _tab_sort_ascending[_current_tab] else a["name"] > b["name"]
 	)
 
 	if _skin_items.is_empty():
-		_item_sum.text = "无皮肤"
+		_update_item_sum("无皮肤")
 		_update_flat_toggle_state(_skin_items)
 		_tab_data_built[Tab.SKIN] = true
 		_build_loading = false
@@ -957,7 +962,7 @@ func _build_skin_page() -> void:
 			_update_flat_toggle_state(_skin_items)
 		)
 
-	_item_sum.text = "共 %d 个皮肤" % _skin_items.size()
+	_update_item_sum("共 %d 个皮肤" % _skin_items.size())
 	_update_flat_toggle_state(_skin_items)
 	await _apply_scrolls_to_container(_skin_list)
 	_tab_data_built[Tab.SKIN] = true
@@ -1020,10 +1025,10 @@ func _build_bg_page() -> void:
 			"selected": false,
 		})
 
-	_bg_items.sort_custom(func(a, b): return a["name"] < b["name"] if _sort_ascending else a["name"] > b["name"])
+	_bg_items.sort_custom(func(a, b): return a["name"] < b["name"] if _tab_sort_ascending[_current_tab] else a["name"] > b["name"])
 
 	if _bg_items.is_empty():
-		_item_sum.text = "无背景图片"
+		_update_item_sum("无背景图片")
 		_update_flat_toggle_state(_bg_items)
 		_tab_data_built[Tab.BG] = true
 		_build_loading = false
@@ -1044,7 +1049,7 @@ func _build_bg_page() -> void:
 			_update_flat_toggle_state(_bg_items)
 		)
 
-	_item_sum.text = "共 %d 张背景" % _bg_items.size()
+	_update_item_sum("共 %d 张背景" % _bg_items.size())
 	_update_flat_toggle_state(_bg_items)
 	await _apply_scrolls_to_container(_bg_list)
 	_tab_data_built[Tab.BG] = true
@@ -1171,19 +1176,19 @@ func _apply_search_filter() -> void:
 		match _current_tab:
 			Tab.MIDI:
 				_reset_midi_visibility()
-				_item_sum.text = "共 %d 首谱面" % _midi_selected.size()
+				_update_item_sum("共 %d 首谱面" % _midi_selected.size())
 			Tab.AUDIO:
 				_reset_grouped_visibility(_audio_list, _audio_root_map, _audio_item_map)
-				_item_sum.text = "共 %d 个音频文件" % _audio_items.size()
+				_update_item_sum("共 %d 个音频文件" % _audio_items.size())
 			Tab.SF2:
 				_reset_flat_visibility(_sf2_nodes)
-				_item_sum.text = "共 %d 个音源" % _sf2_items.size()
+				_update_item_sum("共 %d 个音源" % _sf2_items.size())
 			Tab.SKIN:
 				_reset_flat_visibility(_skin_nodes)
-				_item_sum.text = "共 %d 个皮肤" % _skin_items.size()
+				_update_item_sum("共 %d 个皮肤" % _skin_items.size())
 			Tab.BG:
 				_reset_flat_visibility(_bg_nodes)
-				_item_sum.text = "共 %d 张背景" % _bg_items.size()
+				_update_item_sum("共 %d 张背景" % _bg_items.size())
 		return
 
 	match _current_tab:
@@ -1233,7 +1238,7 @@ func _apply_midi_search() -> void:
 		if root_node:
 			root_node.visible = has_visible_child
 
-	_item_sum.text = "共 %d 首谱面 (匹配 %d 首)" % [_midi_selected.size(), visible_count]
+	_update_item_sum("共 %d 首谱面 (匹配 %d 首)" % [_midi_selected.size(), visible_count])
 
 
 func _get_album_name(album_id: String) -> String:
@@ -1269,7 +1274,7 @@ func _apply_grouped_search(list: VBoxContainer, root_map: Dictionary, item_map: 
 		if root_node:
 			root_node.visible = has_visible
 
-	_item_sum.text = "共 %d %s (匹配 %d 个)" % [data.size(), unit, visible_count]
+	_update_item_sum("共 %d %s (匹配 %d 个)" % [data.size(), unit, visible_count])
 
 
 func _apply_flat_search(nodes: Dictionary, items: Array, key: String, unit: String) -> void:
@@ -1282,7 +1287,7 @@ func _apply_flat_search(nodes: Dictionary, items: Array, key: String, unit: Stri
 			nodes[i].visible = matches
 		if matches:
 			visible_count += 1
-	_item_sum.text = "共 %d %s (匹配 %d 个)" % [items.size(), unit, visible_count]
+	_update_item_sum("共 %d %s (匹配 %d 个)" % [items.size(), unit, visible_count])
 
 
 func _reset_midi_visibility() -> void:
@@ -1309,8 +1314,8 @@ func _reset_flat_visibility(nodes: Dictionary) -> void:
 # ── 排序 ──
 
 func _on_order_btn_pressed() -> void:
-	_sort_ascending = not _sort_ascending
-	_order_btn.icon = load("res://Resources/icon/Sort/Ordering/Ascent.png" if _sort_ascending else "res://Resources/icon/Sort/Ordering/Descent.png")
+	_tab_sort_ascending[_current_tab] = not _tab_sort_ascending[_current_tab]
+	_order_btn.icon = load("res://Resources/icon/Sort/Ordering/Ascent.png" if _tab_sort_ascending[_current_tab] else "res://Resources/icon/Sort/Ordering/Descent.png")
 	match _current_tab:
 		Tab.MIDI:
 			_resort_midi_instant()
@@ -1334,7 +1339,7 @@ func _resort_midi_instant() -> void:
 			return true
 		var na = dm.albums[a].name if dm.albums.has(a) else a
 		var nb = dm.albums[b].name if dm.albums.has(b) else b
-		return na < nb if _sort_ascending else na > nb
+		return na < nb if _tab_sort_ascending[_current_tab] else na > nb
 	)
 
 	# 2. 排序每个专辑内的 MIDI
@@ -1345,7 +1350,7 @@ func _resort_midi_instant() -> void:
 				return false
 			var ma := (dm.midis[a] as MidiData).name
 			var mb := (dm.midis[b] as MidiData).name
-			return ma < mb if _sort_ascending else ma > mb
+			return ma < mb if _tab_sort_ascending[_current_tab] else ma > mb
 		)
 
 	# 3. 原地重新排序 VBoxContainer 子节点
@@ -1361,7 +1366,7 @@ func _resort_midi_instant() -> void:
 
 func _resort_audio_instant() -> void:
 	# 1. 排序分组
-	_audio_group_order.sort_custom(func(a, b): return a < b if _sort_ascending else a > b)
+	_audio_group_order.sort_custom(func(a, b): return a < b if _tab_sort_ascending[_current_tab] else a > b)
 
 	# 2. 排序每组内的项
 	for song_name in _audio_items_in_group:
@@ -1369,7 +1374,7 @@ func _resort_audio_instant() -> void:
 		indices.sort_custom(func(ai: int, bi: int):
 			var fa = _audio_items[ai]["format"]
 			var fb = _audio_items[bi]["format"]
-			return fa < fb if _sort_ascending else fa > fb
+			return fa < fb if _tab_sort_ascending[_current_tab] else fa > fb
 		)
 
 	# 3. 原地重新排序
@@ -1398,22 +1403,27 @@ func _resort_flat_instant(items: Array, nodes: Dictionary, list: VBoxContainer, 
 func _compare_sf2(a: Dictionary, b: Dictionary) -> bool:
 	if a["is_builtin"] != b["is_builtin"]:
 		return not a["is_builtin"]
-	return a["file_name"] < b["file_name"] if _sort_ascending else a["file_name"] > b["file_name"]
+	return a["file_name"] < b["file_name"] if _tab_sort_ascending[_current_tab] else a["file_name"] > b["file_name"]
 
 
 func _compare_skin(a: Dictionary, b: Dictionary) -> bool:
 	if a["is_builtin"] != b["is_builtin"]:
 		return not a["is_builtin"]
-	return a["name"] < b["name"] if _sort_ascending else a["name"] > b["name"]
+	return a["name"] < b["name"] if _tab_sort_ascending[_current_tab] else a["name"] > b["name"]
 
 
 func _compare_bg(a: Dictionary, b: Dictionary) -> bool:
-	return a["name"] < b["name"] if _sort_ascending else a["name"] > b["name"]
+	return a["name"] < b["name"] if _tab_sort_ascending[_current_tab] else a["name"] > b["name"]
 
 
 # ============================================================
 # 通用工具
 # ============================================================
+
+func _update_item_sum(text: String) -> void:
+	_item_sum.text = text
+	_item_sum_scroll_state = TextScrollHelper.setup(_item_sum, _item_sum.get_parent(), text, _item_sum_scroll_state)
+
 
 func _create_tree_root(left_text: String, right_text: String, group_id: String) -> HBoxContainer:
 	var node := TREE_ROOT_SCENE.instantiate() as HBoxContainer

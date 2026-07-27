@@ -239,14 +239,20 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 48
 vertical_alignment = 1
 
-[node name="ItemSum" type="Label" parent="DelView/Content/PC/TopBar" unique_id=698575925]
-custom_minimum_size = Vector2(0, 100)
-layout_mode = 2
-vertical_alignment = 2
-
-[node name="Spacer" type="Control" parent="DelView/Content/PC/TopBar" unique_id=74935736]
+[node name="ItemSum" type="Control" parent="DelView/Content/PC/TopBar" unique_id=74935736]
+clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="Text" type="Label" parent="DelView/Content/PC/TopBar/ItemSum" unique_id=698575925]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+vertical_alignment = 2
 
 [node name="OrderBtn" type="Button" parent="DelView/Content/PC/TopBar" unique_id=82019563]
 custom_minimum_size = Vector2(100, 100)
