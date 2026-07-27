@@ -1,11 +1,9 @@
 extends OptionButton
 class_name TouchScrollOptionButton
 
-## 移动端使用自定义可滚动弹出面板替代原生 PopupMenu，
-## 面板统一处理点击选择和触摸拖动滚动，彻底解决触屏滚动问题。
-## 桌面端保持原生 PopupMenu 行为。
+## 使用自定义可滚动弹出面板替代原生 PopupMenu，
+## 统一处理点击选择和拖动滚动（触摸+鼠标），全平台一致体验。
 
-var _is_mobile: bool = false
 var _native_popup: PopupMenu
 
 # 自定义弹出面板节点
@@ -24,13 +22,11 @@ const WIDTH_MULTIPLIER: float = 2.0  # 宽度为按钮宽度的倍数
 
 
 func _ready() -> void:
-	_is_mobile = OS.get_name() in ["Android", "iOS"]
 	_native_popup = get_popup()
 	_cache_styles()
-	if _is_mobile:
-		# 拦截原生 PopupMenu：about_to_popup 时改用自定义面板
-		_native_popup.about_to_popup.connect(_on_native_about_to_popup)
-		_native_popup.popup_hide.connect(_on_native_popup_hide)
+	# 拦截原生 PopupMenu：about_to_popup 时改用自定义面板
+	_native_popup.about_to_popup.connect(_on_native_about_to_popup)
+	_native_popup.popup_hide.connect(_on_native_popup_hide)
 
 
 func _cache_styles() -> void:
@@ -233,51 +229,78 @@ class _PopupPanel extends Panel:
 		if owner_btn.selected >= 0 and owner_btn.selected < item_labels.size():
 			scroll.scroll_vertical = int(item_labels[owner_btn.selected].position.y)
 
-	# 用 _input 接收所有触摸事件，手动命中检测
+	# 用 _input 统一接收触摸和鼠标事件，手动命中检测
 	func _input(event: InputEvent) -> void:
 		if not visible:
 			return
 		var rect := get_global_rect()
+
+		# 触摸：按下/释放
 		if event is InputEventScreenTouch:
 			var inside := rect.has_point(event.position)
 			if event.pressed and inside:
-				_pressing = true
-				_press_pos = event.position
-				_scroll_start = scroll.scroll_vertical
-				_drag_moved = false
-				_velocity = 0.0
-				set_process(false)
+				_begin_press(event.position)
 				get_viewport().set_input_as_handled()
 			elif not event.pressed and _pressing:
-				if not _drag_moved:
-					var idx := _get_item_at(event.position)
-					if idx >= 0:
-						owner_btn._on_item_selected_from_panel(idx)
-				_pressing = false
-				if _drag_moved and abs(_velocity) > MIN_VELOCITY:
-					set_process(true)
-				else:
-					_drag_moved = false
+				_end_press(event.position)
 				get_viewport().set_input_as_handled()
 
+		# 触摸：拖动
 		elif event is InputEventScreenDrag and _pressing:
-			var delta_y: float = event.position.y - _press_pos.y
-			if abs(delta_y) > DRAG_THRESHOLD:
-				_drag_moved = true
-			if _drag_moved:
-				scroll.scroll_vertical = int(_scroll_start - delta_y)
-				# 惯性方向与拖动一致：手指下拖 velocity.y>0，scroll 应继续减小
-				_velocity = event.velocity.y
-				get_viewport().set_input_as_handled()
+			_update_drag(event.position, event.velocity.y)
+			get_viewport().set_input_as_handled()
 
-		# 桌面端鼠标滚轮支持
-		elif event is InputEventMouseButton and event.pressed and rect.has_point(event.position):
-			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				scroll.scroll_vertical -= 60
+		# 鼠标：按下（左键）/滚轮
+		elif event is InputEventMouseButton and rect.has_point(event.position):
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				if event.pressed:
+					_begin_press(event.position)
+				elif _pressing:
+					_end_press(event.position)
 				get_viewport().set_input_as_handled()
-			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				scroll.scroll_vertical += 60
-				get_viewport().set_input_as_handled()
+			elif event.pressed:
+				if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+					scroll.scroll_vertical -= 60
+					get_viewport().set_input_as_handled()
+				elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+					scroll.scroll_vertical += 60
+					get_viewport().set_input_as_handled()
+
+		# 鼠标：拖动
+		elif event is InputEventMouseMotion and _pressing:
+			_update_drag(event.position, event.velocity.y)
+			get_viewport().set_input_as_handled()
+
+	# 开始按下：记录起点与初始滚动位置
+	func _begin_press(pos: Vector2) -> void:
+		_pressing = true
+		_press_pos = pos
+		_scroll_start = scroll.scroll_vertical
+		_drag_moved = false
+		_velocity = 0.0
+		set_process(false)
+
+	# 拖动更新：超阈值后滚动并记录速度
+	func _update_drag(pos: Vector2, vel_y: float) -> void:
+		var delta_y: float = pos.y - _press_pos.y
+		if abs(delta_y) > DRAG_THRESHOLD:
+			_drag_moved = true
+		if _drag_moved:
+			scroll.scroll_vertical = int(_scroll_start - delta_y)
+			# 惯性方向与拖动一致：向下拖 vel_y>0，scroll 应继续减小
+			_velocity = vel_y
+
+	# 释放：未拖动则选中命中项，已拖动且有速度则启动惯性
+	func _end_press(pos: Vector2) -> void:
+		if not _drag_moved:
+			var idx := _get_item_at(pos)
+			if idx >= 0:
+				owner_btn._on_item_selected_from_panel(idx)
+		_pressing = false
+		if _drag_moved and abs(_velocity) > MIN_VELOCITY:
+			set_process(true)
+		else:
+			_drag_moved = false
 
 	func _process(delta: float) -> void:
 		if abs(_velocity) > MIN_VELOCITY:
