@@ -23,6 +23,7 @@ class State extends RefCounted:
 	var label: Label = null
 	var clip: Control = null
 	var full_text: String = ""
+	var _resized_callable: Callable
 
 
 ## 启动或重新计算滚动。
@@ -56,10 +57,12 @@ static func setup(label: Label, clip_container: Control, full_text: String,
 		full_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 	).x
 
-	# 容器尺寸变化时重新计算滚动
-	clip_container.resized.connect(func():
-		refresh(state)
-	)
+	# 容器尺寸变化时重新计算滚动（仅首次连接，防止重复累积）
+	if not (state._resized_callable.is_valid() and clip_container.resized.is_connected(state._resized_callable)):
+		var _cb := func():
+			refresh(state)
+		state._resized_callable = _cb
+		clip_container.resized.connect(_cb)
 
 	# 文字未溢出：不滚动
 	if text_width <= box_width:
@@ -85,6 +88,8 @@ static func setup(label: Label, clip_container: Control, full_text: String,
 static func stop(state: State) -> void:
 	if state == null:
 		return
+	if state._resized_callable.is_valid() and is_instance_valid(state.clip) and state.clip.resized.is_connected(state._resized_callable):
+		state.clip.resized.disconnect(state._resized_callable)
 	if state.tween != null and is_instance_valid(state.tween):
 		state.tween.kill()
 		state.tween = null

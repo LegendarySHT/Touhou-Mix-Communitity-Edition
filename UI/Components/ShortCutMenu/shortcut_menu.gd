@@ -54,6 +54,8 @@ func _ready() -> void:
 	EvtBus.favorite_midi_changed.connect(_refresh_favor_list)
 
 func _on_focus_enter(btn: Button):
+	if btn.button_pressed:
+		return
 	await get_tree().create_timer(0.1).timeout
 	if not btn.button_pressed:
 		btn.button_pressed = true
@@ -73,15 +75,15 @@ func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
 	tween.tween_property(btn, "custom_minimum_size", Vector2(120 + 310 * (1 if toggled_on else 0), 120), 0.45)
 
 	if _is_all_off():
-		tween.tween_property(page_container, "custom_minimum_size", Vector2.ZERO, 0.5)
+		tween.tween_property(page_container, "offset_transform_scale:y", 0.0, 0.5)
 		ani.animate_fade_out(page_container, 0.6, "menu_fade")
 		search_lineedit.text = ""
 	else:
-		tween.tween_property(page_container, "custom_minimum_size",Vector2(600, 700), 0.5)
+		tween.tween_property(page_container, "offset_transform_scale:y", 1.0, 0.5)
 		ani.animate_fade_in(page_container, 0, "menu_fade")
 
 	if toggled_on:
-		tween.tween_property(page, "position", Vector2(40, 50) + (Vector2(-605, 0) if btn == favor_list_button else Vector2.ZERO), 0.5)
+		tween.tween_property(page, "offset_transform_position:x", (-655 if btn == favor_list_button else 0), 0.5)
 
 func _is_all_off() -> bool:
 	if sort_button.button_pressed or favor_list_button.button_pressed:

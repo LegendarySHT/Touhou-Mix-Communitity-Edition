@@ -319,8 +319,7 @@ func _build_midi_page() -> void:
 				continue
 
 			var author := midi_data.artist_name if not midi_data.artist_name.is_empty() else "-"
-			var difficulty := _get_midi_difficulty(midi_id)
-			var name_text := "    %s  [%s]" % [midi_data.name, difficulty]
+			var name_text := "    %s" % midi_data.name
 
 			var item_node := _create_tree_item(name_text, author)
 			_midi_list.add_child(item_node)
@@ -357,26 +356,6 @@ func _on_data_loaded() -> void:
 	if Tab.MIDI == _current_tab:
 		_tab_data_built[Tab.MIDI] = false
 		_build_midi_page()
-
-
-func _get_midi_difficulty(midi_id: String) -> String:
-	var charts_index := FileSystemManager.instance.get_charts_index()
-	for folder_name in charts_index:
-		var meta: ChartMetadata = charts_index[folder_name]
-		if meta.id == midi_id:
-			return _parse_difficulty(meta.folder_name)
-	return "?"
-
-
-func _parse_difficulty(folder_name: String) -> String:
-	if "_Easy" in folder_name or "_easy" in folder_name:
-		return "Easy"
-	elif "_Normal" in folder_name or "_normal" in folder_name:
-		return "Normal"
-	elif "_Hard" in folder_name or "_hard" in folder_name:
-		return "Hard"
-	return "?"
-
 
 # ── MIDI 勾选逻辑 ──
 

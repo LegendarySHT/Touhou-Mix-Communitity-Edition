@@ -229,6 +229,10 @@ func _initialize_core_systems() -> void:
 	# 让出帧：6 个 PackedScene 实例化较重，让引擎先渲染 UI 再继续信号连接和数据加载
 	await get_tree().process_frame
 
+	# 13.5. 预加载 SoundFont 到后端（~30MB，同步阻塞 3-5 秒）
+	# 放在 UI 渲染后、信号连接/MIDI 数据加载前，确保阻塞发生在启动阶段而非用户交互阶段
+	midi_playback_manager._preload_soundfont_to_backend()
+
 	# 连接信号
 	_connect_signals()
 	

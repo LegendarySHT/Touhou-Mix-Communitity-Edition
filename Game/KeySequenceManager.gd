@@ -99,6 +99,8 @@ var all_notes: Array = []
 ## MIDI时间基准和BPM时间线（用于tick到毫秒的转换）
 var midi_timebase: int = 480  # 默认MIDI时间基准
 var bpm_timeline: Array = []  # BPM时间线数据
+var _tick_ms_cache: Dictionary = {}  # tick->ms cache, avoids repeated BPM timeline scans
+var _bpm_lookup: Array = []  # Pre-built BPM lookup table for O(1) segment search
 
 ## 生成的游戏键列表
 var game_sequences: Array[GameSequence] = []
@@ -160,48 +162,50 @@ func _ready() -> void:
 func set_midi_time_parameters(timebase: int, bpm_timeline_data: Array = []) -> void:
 	midi_timebase = timebase if timebase > 0 else 480
 	bpm_timeline = bpm_timeline_data.duplicate()
+	_tick_ms_cache.clear()  # Invalidate tick->ms cache when timeline changes
+	# Pre-build BPM lookup table: arrays of [tick, bpm, cumulative_ms] for fast O(1) field access
+	_bpm_lookup.clear()
+	var _cum: float = 0.0
+	for _i in range(bpm_timeline.size()):
+		var _e = bpm_timeline[_i]
+		var _tk: float = float(_e.get("tick", 0.0))
+		var _bpm: float = float(_e.get("bpm", 120.0))
+		_bpm_lookup.append([_tk, _bpm, _cum])
+		if _i + 1 < bpm_timeline.size():
+			var _nt: float = float(bpm_timeline[_i + 1].get("tick", _tk))
+			var _mspt: float = (60000.0 / _bpm) / float(midi_timebase)
+			_cum += (_nt - _tk) * _mspt
 	GLogger.info("MIDI time parameters set: timebase=%d, bpm_timeline_size=%d" % [midi_timebase, bpm_timeline.size()], "KeySequenceManager")
 
 ## 将MIDI tick转换为毫秒
 func _tick_to_ms(tick: float) -> float:
+	# Check cache first to avoid repeated BPM timeline scans
+	if _tick_ms_cache.has(tick):
+		return _tick_ms_cache[tick]
 	# 使用BPM时间线计算（如果可用）
+	var result: float
 	if bpm_timeline.size() > 0:
-		return _calculate_position_with_bpm_timeline(tick)
-	
-	# 后备：使用120 BPM（默认）
-	return (tick / float(midi_timebase)) * (60000.0 / 120.0)
+		result = _calculate_position_with_bpm_timeline(tick)
+	else:
+		# 后备：使用120 BPM（默认）
+		result = (tick / float(midi_timebase)) * (60000.0 / 120.0)
+	_tick_ms_cache[tick] = result
+	return result
 
 ## 使用BPM时间线计算位置
 func _calculate_position_with_bpm_timeline(tick: float) -> float:
-	if bpm_timeline.is_empty():
+	# Uses pre-built _bpm_lookup array of [tick, bpm, cumulative_ms]
+	# Array indexing is much faster than dict.get() in the hot loop
+	if _bpm_lookup.is_empty():
 		return (tick / float(midi_timebase)) * (60000.0 / 120.0)
-
-	var cumulative_time_ms: float = 0.0
-
-	# 与MidiPlaybackManager一致：按BPM段累计到当前tick
-	for i in range(bpm_timeline.size()):
-		var entry = bpm_timeline[i]
-		var entry_tick: float = float(entry.get("tick", 0.0))
-
-		var next_tempo_tick: float
-		if i + 1 < bpm_timeline.size():
-			next_tempo_tick = float(bpm_timeline[i + 1].get("tick", entry_tick))
-		else:
-			next_tempo_tick = tick + 1000000.0
-
-		if tick < next_tempo_tick:
-			var bpm = float(entry.get("bpm", 120.0))
-			var tick_delta = tick - entry_tick
-			var ms_per_tick = (60000.0 / bpm) / float(midi_timebase)
-			return cumulative_time_ms + tick_delta * ms_per_tick
-		else:
-			if i + 1 < bpm_timeline.size():
-				var bpm = float(entry.get("bpm", 120.0))
-				var tick_delta = float(bpm_timeline[i + 1].get("tick", entry_tick)) - entry_tick
-				var ms_per_tick = (60000.0 / bpm) / float(midi_timebase)
-				cumulative_time_ms += tick_delta * ms_per_tick
-
-	return cumulative_time_ms
+	for _i in range(_bpm_lookup.size()):
+		var _e = _bpm_lookup[_i]
+		var _next_tick: float = _bpm_lookup[_i + 1][0] if _i + 1 < _bpm_lookup.size() else INF
+		if tick < _next_tick:
+			var tick_delta = tick - _e[0]
+			var ms_per_tick = (60000.0 / _e[1]) / float(midi_timebase)
+			return _e[2] + tick_delta * ms_per_tick
+	return _bpm_lookup[-1][2]
 
 ## 将tick时长转换为毫秒时长（考虑BPM变化）
 func _tick_duration_to_ms(start_tick: float, duration_tick: float) -> float:
@@ -357,13 +361,18 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	_convert_blocks_to_game_sequences(all_blocks)
 
 	# Step 8: 添加背景序列（与Unity一致：输出单一背景序列）
-	bg_notes.sort_custom(func(a, b):
-		var a_start = _get_note_start_time_ms(a)
-		var b_start = _get_note_start_time_ms(b)
-		if a_start == b_start:
-			return _get_note_pitch(a) < _get_note_pitch(b)
-		return a_start < b_start
+	# Pre-compute start times: avoids O(N log N) _tick_to_ms calls during sort
+	var _bg_sorted: Array = []
+	for _bn in bg_notes:
+		_bg_sorted.append({"note": _bn, "time": _get_note_start_time_ms(_bn)})
+	_bg_sorted.sort_custom(func(a, b):
+		if a.time == b.time:
+			return _get_note_pitch(a.note) < _get_note_pitch(b.note)
+		return a.time < b.time
 	)
+	bg_notes.clear()
+	for _item in _bg_sorted:
+		bg_notes.append(_item.note)
 	var bg_seq = BackgroundSequence.new(0)
 	bg_seq.notes = bg_notes
 	background_sequences.append(bg_seq)

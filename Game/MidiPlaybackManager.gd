@@ -118,11 +118,6 @@ func _ready() -> void:
 		# 监听配置变更信号（新增，用于应对直接配置文件修改）
 		EvtBus.config_changed.connect(_on_config_changed)
 
-	# 启动后预加载 SoundFont 到后端
-	# 使用定时器延迟而非 call_deferred，让启动初始化和 UI 渲染先完成
-	# SoundFont 文件（~30MB）的读取和解析是 CPU 密集型操作，延迟可避免单帧卡顿
-	get_tree().create_timer(0.3).timeout.connect(_preload_soundfont_to_backend)
-
 ## 处理设置改变信号回调（当退出SettingView时触发）
 ## @param setting_name: 改变的设置名 ("*" 表示所有设置)
 ## @param value: 设置的新值（此时未使用，因为我们直接从配置文件读取）

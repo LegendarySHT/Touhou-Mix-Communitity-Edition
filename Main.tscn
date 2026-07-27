@@ -771,6 +771,10 @@ show_behind_parent = true
 clip_children = 2
 custom_minimum_size = Vector2(600, 700)
 layout_mode = 2
+offset_transform_enabled = true
+offset_transform_scale = Vector2(1, 0)
+offset_transform_pivot_ratio = Vector2(0.5, -0.15)
+offset_transform_visual_only = false
 theme_override_styles/panel = SubResource("StyleBoxFlat_sqvbp")
 
 [node name="Page" type="HBoxContainer" parent="skew/C/ShortCutMenu/Panel" unique_id=2123375734]
@@ -780,6 +784,9 @@ offset_top = 50.0
 offset_right = 1340.0
 offset_bottom = 750.0
 scale = Vector2(0.9, 0.9)
+offset_transform_enabled = true
+offset_transform_position = Vector2(-655, 0)
+offset_transform_visual_only = false
 mouse_filter = 2
 theme_override_constants/separation = 100
 metadata/_edit_lock_ = true

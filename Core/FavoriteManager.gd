@@ -20,6 +20,9 @@ func _ready() -> void:
 	EvtBus.midi_deleted.connect(_on_midi_deleted)
 	# 先加载收藏夹数据（不依赖 DataManager）
 	_load_favorites()
+	# 提前通知 UI 加载收藏夹列表（无需等待 MIDI 扫描完成）
+	# 使用 call_deferred 确保 ShortCutMenu 等 UI 已实例化并连接信号
+	call_deferred("_notify_favorites_loaded_early")
 
 
 # ========== 持久化 ==========
@@ -61,6 +64,12 @@ func _get_favorites_path() -> String:
 	return PathHelper.get_files_dir() + FAVORITES_FILE
 
 
+## 提前通知收藏夹已加载（在 MIDI 扫描完成之前）
+## UI 可立即显示收藏夹列表，封面图片在 MIDI 扫描完成后通过 favorites_updated 补充
+func _notify_favorites_loaded_early() -> void:
+	EvtBus.favorites_loaded.emit()
+
+
 ## DataManager 加载完成后验证，清理已不存在的 midi 引用
 func _on_data_loaded_complete() -> void:
 	_validate_favorites()
@@ -75,7 +84,7 @@ func _validate_favorites() -> void:
 			changed = true
 	if changed:
 		_save_favorites()
-	EvtBus.favorites_loaded.emit()
+	EvtBus.favorites_updated.emit()
 
 
 ## MIDI 删除时同步清理收藏夹中的引用
