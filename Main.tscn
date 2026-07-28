@@ -22,13 +22,12 @@
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
 [ext_resource type="PackedScene" uid="uid://xgcfhg1x2v6p" path="res://UI/Components/ShortCutMenu/favorListItem.tscn" id="20_devvj"]
 [ext_resource type="Texture2D" uid="uid://h6i2ju0tpkvl" path="res://Resources/icon/arrow-right.png" id="21_hhcpw"]
-[ext_resource type="Script" uid="uid://dly3k36hy880k" path="res://UI/Components/PopupWindow.gd" id="23_bg4s2"]
+[ext_resource type="Script" uid="uid://dly3k36hy880k" path="res://UI/Components/PopupWindow/PopupWindow.gd" id="23_bg4s2"]
 [ext_resource type="Script" uid="uid://bb04m122u3fvm" path="res://UI/Components/LeftTopBtn.gd" id="23_mxvw5"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 [ext_resource type="Script" uid="uid://c6mxoockmlm1a" path="res://UI/Components/FocusManager.gd" id="26_xrxkg"]
 [ext_resource type="Texture2D" uid="uid://ddy4iuv0wlfbq" path="res://Resources/Components/PopupWindow.png" id="27_hri7i"]
-[ext_resource type="Texture2D" uid="uid://bpgl1nsjuf8yf" path="res://Resources/Components/CancelBtn.png" id="28_5mvff"]
-[ext_resource type="Texture2D" uid="uid://1q15cy2pddpj" path="res://Resources/Components/ConfirmBtn.png" id="29_oye8v"]
+[ext_resource type="PackedScene" uid="uid://6x22q0274hxw" path="res://UI/Components/PopupWindow/PopupWindow.tscn" id="28_hri7i"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3rk5"]
 content_margin_left = 6.0
@@ -201,15 +200,13 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup_panel"]
-content_margin_left = 1.0
-content_margin_top = 2.0
-content_margin_right = 1.0
-content_margin_bottom = 2.0
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7g6l"]
+bg_color = Color(0, 0, 0, 0.44705883)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_panel"]
 bg_color = Color(0, 0, 0, 0.05)
@@ -313,7 +310,7 @@ PopupMenu/constants/item_start_padding = 10
 PopupMenu/constants/v_separation = 15
 PopupMenu/font_sizes/font_size = 42
 PopupMenu/styles/hover = SubResource("StyleBoxFlat_popup_hover")
-PopupMenu/styles/panel = SubResource("StyleBoxFlat_popup_panel")
+PopupMenu/styles/panel = SubResource("StyleBoxFlat_o7g6l")
 ProgressBar/colors/font_color = Color(0.875, 0.875, 0.875, 1)
 TabContainer/constants/icon_max_width = 5
 TabContainer/constants/icon_separation = 4
@@ -438,84 +435,14 @@ keycode = 85
 [sub_resource type="Shortcut" id="Shortcut_3b0ty"]
 events = [SubResource("InputEventKey_devvj")]
 
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3b0ty"]
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6vipk"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_w3rk5"]
 texture = ExtResource("27_hri7i")
-expand_margin_left = 80.0
-expand_margin_top = 80.0
-expand_margin_right = 80.0
-expand_margin_bottom = 80.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x3yn0"]
-draw_center = false
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_width_bottom = 5
-border_color = Color(0.8, 0.8, 0.8, 0.5294118)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7g6l"]
-bg_color = Color(0, 0, 0, 0.19607843)
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_width_bottom = 5
-border_color = Color(0.8, 0.8, 0.8, 0.5294118)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vi5kq"]
-bg_color = Color(1, 1, 1, 0.19607843)
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_width_bottom = 5
-border_color = Color(0.8, 0.8, 0.8, 0.5294118)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_40n85"]
-texture = ExtResource("28_5mvff")
-
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_5mvff"]
-load_path = "res://.godot/imported/CancelBtn.png-fb51b90adc315a392d0c0ce4d454cb7e.ctex"
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_oye8v"]
-texture = SubResource("CompressedTexture2D_5mvff")
-modulate_color = Color(0.8, 0.8, 0.8, 1)
-
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_oye8v"]
-load_path = "res://.godot/imported/CancelBtn.png-fb51b90adc315a392d0c0ce4d454cb7e.ctex"
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_sph85"]
-texture = SubResource("CompressedTexture2D_oye8v")
-modulate_color = Color(0.98039216, 0.98039216, 0.98039216, 1)
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_gb15f"]
-texture = ExtResource("29_oye8v")
-
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_o7g6l"]
-load_path = "res://.godot/imported/ConfirmBtn.png-41e783e6bcfdb1e53346e617b6103b0d.ctex"
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_vi5kq"]
-texture = SubResource("CompressedTexture2D_o7g6l")
-modulate_color = Color(0.8, 0.8, 0.8, 1)
-
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_5mkgo"]
-load_path = "res://.godot/imported/ConfirmBtn.png-41e783e6bcfdb1e53346e617b6103b0d.ctex"
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_3ccbu"]
-texture = SubResource("CompressedTexture2D_5mkgo")
-modulate_color = Color(0.98039216, 0.98039216, 0.98039216, 1)
+expand_margin_left = 35.0
+expand_margin_top = 35.0
+expand_margin_right = 35.0
+expand_margin_bottom = 35.0
 
 [node name="Main" type="Control" unique_id=1879436511]
 clip_contents = true
@@ -1214,121 +1141,6 @@ texture = ExtResource("21_hhcpw")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="PopupWindowBG" type="ColorRect" parent="." unique_id=1275441849]
-visible = false
-z_index = 99
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0, 0, 0, 0.84313726)
-script = ExtResource("23_bg4s2")
-
-[node name="Window" type="Panel" parent="PopupWindowBG" unique_id=449892969]
-custom_minimum_size = Vector2(800, 500)
-custom_maximum_size = Vector2(800, 500)
-propagate_maximum_size = true
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -250.0
-offset_top = -150.0
-offset_right = 250.0
-offset_bottom = 150.0
-grow_horizontal = 2
-grow_vertical = 2
-pivot_offset_ratio = Vector2(0.5, 0.5)
-theme_override_styles/panel = SubResource("StyleBoxEmpty_3b0ty")
-
-[node name="Style" type="PanelContainer" parent="PopupWindowBG/Window" unique_id=111139369]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxTexture_w3rk5")
-
-[node name="VBoxC" type="VBoxContainer" parent="PopupWindowBG/Window" unique_id=865508100]
-layout_mode = 1
-anchors_preset = -1
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = 40.0
-offset_right = -20.0
-offset_bottom = -40.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 20
-alignment = 1
-
-[node name="Content" type="VBoxContainer" parent="PopupWindowBG/Window/VBoxC" unique_id=1024175137]
-custom_minimum_size = Vector2(0, 300)
-layout_mode = 2
-size_flags_stretch_ratio = 2.0
-alignment = 1
-
-[node name="Label" type="Label" parent="PopupWindowBG/Window/VBoxC/Content" unique_id=1957175364]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_font_sizes/font_size = 36
-text = "请选择要删除的内容"
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 3
-
-[node name="OptionButton" type="OptionButton" parent="PopupWindowBG/Window/VBoxC/Content" unique_id=1532759313]
-custom_minimum_size = Vector2(0, 100)
-layout_mode = 2
-size_flags_vertical = 2
-focus_mode = 0
-theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_x3yn0")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_o7g6l")
-theme_override_styles/hover = SubResource("StyleBoxFlat_vi5kq")
-theme_override_constants/arrow_margin = 30
-alignment = 1
-selected = 0
-item_count = 2
-popup/item_0/text = "歌曲及人声音频"
-popup/item_0/id = 0
-popup/item_1/text = "仅歌曲"
-popup/item_1/id = 1
-
-[node name="Btns" type="HBoxContainer" parent="PopupWindowBG/Window/VBoxC" unique_id=1829572669]
-custom_minimum_size = Vector2(0, 100)
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_constants/separation = 150
-
-[node name="Cancel" type="Button" parent="PopupWindowBG/Window/VBoxC/Btns" unique_id=672683709]
-custom_minimum_size = Vector2(250, 0)
-layout_mode = 2
-focus_mode = 0
-theme_override_colors/font_color = Color(1, 1, 1, 0.61960787)
-theme_override_font_sizes/font_size = 48
-theme_override_styles/normal = SubResource("StyleBoxTexture_40n85")
-theme_override_styles/pressed = SubResource("StyleBoxTexture_oye8v")
-theme_override_styles/hover = SubResource("StyleBoxTexture_sph85")
-text = "取消"
-
-[node name="Confirm" type="Button" parent="PopupWindowBG/Window/VBoxC/Btns" unique_id=6080086]
-custom_minimum_size = Vector2(250, 0)
-layout_mode = 2
-focus_mode = 0
-theme_override_colors/font_color = Color(1, 1, 1, 0.61960787)
-theme_override_font_sizes/font_size = 48
-theme_override_styles/normal = SubResource("StyleBoxTexture_gb15f")
-theme_override_styles/pressed = SubResource("StyleBoxTexture_vi5kq")
-theme_override_styles/hover = SubResource("StyleBoxTexture_3ccbu")
-text = "确定"
-
 [node name="FocusManager" type="Control" parent="." unique_id=1592088624]
 visible = false
 layout_mode = 1
@@ -1340,8 +1152,42 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("26_xrxkg")
 
-[node name="TestNode" type="Node2D" parent="." unique_id=2008611241]
+[node name="PopupWindowBG" type="ColorRect" parent="." unique_id=1275441849]
 visible = false
+z_index = 99
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.84313726)
+
+[node name="PopupWindow" type="PopupPanel" parent="." unique_id=1234285949]
+gui_embed_subwindows = true
+oversampling_override = 1.0
+initial_position = 2
+size = Vector2i(800, 550)
+theme_override_styles/panel = SubResource("StyleBoxEmpty_6vipk")
+script = ExtResource("23_bg4s2")
+
+[node name="Style" type="PanelContainer" parent="PopupWindow" unique_id=1899183919]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 800.0
+offset_bottom = 550.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_transform_enabled = true
+theme_override_styles/panel = SubResource("StyleBoxTexture_w3rk5")
+
+[node name="TabC" parent="PopupWindow" unique_id=1542807723 instance=ExtResource("28_hri7i")]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 800.0
+offset_bottom = 550.0
+offset_transform_enabled = true
 
 [connection signal="text_submitted" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox/TextEdit" to="skew/C/ShortCutMenu" method="_on_search_query"]
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox/SearchBtn" to="skew/C/ShortCutMenu" method="_on_search_query"]
@@ -1350,5 +1196,3 @@ visible = false
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Ordering" to="skew/C/ShortCutMenu" method="_on_ordering_pressed"]
 [connection signal="pressed" from="RB_Btn/Button" to="RB_Btn" method="_on_button_pressed"]
 [connection signal="pressed" from="LT_Btn/Button" to="LT_Btn" method="_on_button_pressed"]
-[connection signal="pressed" from="PopupWindowBG/Window/VBoxC/Btns/Cancel" to="PopupWindowBG" method="_on_cancel_pressed"]
-[connection signal="pressed" from="PopupWindowBG/Window/VBoxC/Btns/Confirm" to="PopupWindowBG" method="_on_confirm_pressed"]

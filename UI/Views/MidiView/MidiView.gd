@@ -257,7 +257,7 @@ func _on_del_btn_pressed():
 	window.option_btn.add_item("删除人声音频", 0)
 	window.option_btn.add_item("重置设定", 1)
 	window.option_btn.add_item("删除曲包", 2)
-	window.show_del_selection()
+	window.set_message("请选择要删除的内容", true, true)
 
 	await window.window_close
 	if not window.confirm:

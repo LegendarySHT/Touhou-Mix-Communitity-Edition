@@ -98,7 +98,7 @@ func _handle_back_request() -> void:
 	# 主界面 → 显示退出确认
 	if state_manager.current_state == UIStateManager.UIState.ALBUM_VIEW:
 		if popup:
-			popup.show_exit_confirm()
+			popup.set_message("确定要退出游戏吗？", true, false)
 			await popup.window_close
 			if popup.confirm:
 				get_tree().quit()

@@ -1,0 +1,173 @@
+[gd_scene format=3 uid="uid://6x22q0274hxw"]
+
+[ext_resource type="Texture2D" uid="uid://bpgl1nsjuf8yf" path="res://Resources/Components/CancelBtn.png" id="3_wi0v8"]
+[ext_resource type="Texture2D" uid="uid://1q15cy2pddpj" path="res://Resources/Components/ConfirmBtn.png" id="4_yttj5"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qxcsx"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3b0ty"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x3yn0"]
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.8, 0.8, 0.8, 0.5294118)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7g6l"]
+bg_color = Color(0, 0, 0, 0.19607843)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.8, 0.8, 0.8, 0.5294118)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vi5kq"]
+bg_color = Color(1, 1, 1, 0.19607843)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.8, 0.8, 0.8, 0.5294118)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_40n85"]
+texture = ExtResource("3_wi0v8")
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_5mvff"]
+load_path = "res://.godot/imported/CancelBtn.png-fb51b90adc315a392d0c0ce4d454cb7e.ctex"
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_oye8v"]
+texture = SubResource("CompressedTexture2D_5mvff")
+modulate_color = Color(0.8, 0.8, 0.8, 1)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_oye8v"]
+load_path = "res://.godot/imported/CancelBtn.png-fb51b90adc315a392d0c0ce4d454cb7e.ctex"
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_sph85"]
+texture = SubResource("CompressedTexture2D_oye8v")
+modulate_color = Color(0.98039216, 0.98039216, 0.98039216, 1)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_gb15f"]
+texture = ExtResource("4_yttj5")
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_o7g6l"]
+load_path = "res://.godot/imported/ConfirmBtn.png-41e783e6bcfdb1e53346e617b6103b0d.ctex"
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_vi5kq"]
+texture = SubResource("CompressedTexture2D_o7g6l")
+modulate_color = Color(0.8, 0.8, 0.8, 1)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_5mkgo"]
+load_path = "res://.godot/imported/ConfirmBtn.png-41e783e6bcfdb1e53346e617b6103b0d.ctex"
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_3ccbu"]
+texture = SubResource("CompressedTexture2D_5mkgo")
+modulate_color = Color(0.98039216, 0.98039216, 0.98039216, 1)
+
+[node name="TabC" type="TabContainer" unique_id=1542807723]
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
+current_tab = 0
+tabs_visible = false
+
+[node name="Default" type="Panel" parent="." unique_id=599600559]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_3b0ty")
+metadata/_tab_index = 0
+
+[node name="VBoxC" type="VBoxContainer" parent="Default" unique_id=1117546412]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = 40.0
+offset_right = -40.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Content" type="VBoxContainer" parent="Default/VBoxC" unique_id=939838808]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+size_flags_stretch_ratio = 2.0
+alignment = 1
+
+[node name="Label" type="Label" parent="Default/VBoxC/Content" unique_id=543651907]
+custom_minimum_size = Vector2(600, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 36
+text = "请选择要删除的内容"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="OptionButton" type="OptionButton" parent="Default/VBoxC/Content" unique_id=899227788]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_vertical = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_x3yn0")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_o7g6l")
+theme_override_styles/hover = SubResource("StyleBoxFlat_vi5kq")
+theme_override_constants/arrow_margin = 30
+alignment = 1
+selected = 0
+item_count = 2
+popup/item_0/text = "歌曲及人声音频"
+popup/item_0/id = 0
+popup/item_1/text = "仅歌曲"
+popup/item_1/id = 1
+
+[node name="Btns" type="HBoxContainer" parent="Default/VBoxC" unique_id=760666686]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 150
+
+[node name="Cancel" type="Button" parent="Default/VBoxC/Btns" unique_id=84908568]
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 1, 1, 0.61960787)
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = SubResource("StyleBoxTexture_40n85")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_oye8v")
+theme_override_styles/hover = SubResource("StyleBoxTexture_sph85")
+text = "取消"
+
+[node name="Confirm" type="Button" parent="Default/VBoxC/Btns" unique_id=977904791]
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 1, 1, 0.61960787)
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = SubResource("StyleBoxTexture_gb15f")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_vi5kq")
+theme_override_styles/hover = SubResource("StyleBoxTexture_3ccbu")
+text = "确定"

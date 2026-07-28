@@ -229,7 +229,7 @@ func _on_favor_item_deleted(fav_id: String) -> void:
 	var fav := FavoriteManager.instance.get_favorite(fav_id)
 	var fav_name := fav.name if fav else ""
 	var popup := PopupWindow.instance
-	popup.set_message("确定要删除收藏夹 \"%s\" 吗？" % fav_name)
+	popup.set_message("确定要删除收藏夹 \"%s\" 吗？" % fav_name, true)
 	await popup.window_close
 	if popup.confirm:
 		FavoriteManager.instance.delete_favorite(fav_id)

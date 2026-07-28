@@ -151,19 +151,10 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wvkbu"]
-bg_color = Color(0, 0, 0, 0.44705883)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 6
-
 [sub_resource type="Theme" id="Theme_wvkbu"]
 OptionButton/styles/hover = SubResource("StyleBoxFlat_kpleu")
 OptionButton/styles/normal = SubResource("StyleBoxFlat_ewgot")
 OptionButton/styles/pressed = SubResource("StyleBoxFlat_j6yb4")
-PopupMenu/styles/panel = SubResource("StyleBoxFlat_wvkbu")
 
 [node name="MidiTrack" type="Panel" unique_id=1103190500]
 custom_minimum_size = Vector2(1600, 220)

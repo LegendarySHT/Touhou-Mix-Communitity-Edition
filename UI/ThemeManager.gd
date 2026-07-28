@@ -604,11 +604,6 @@ func _apply_main_theme(main: Node) -> void:
 	if sc_panel:
 		_modify_panel_color(sc_panel, "primary")
 
-	# 覆盖 ShortCutMenu Btns 的内联 Theme，使用根 Theme 的 Button 样式
-	var btns := main.get_node_or_null("skew/C/ShortCutMenu/Btns")
-	if btns:
-		btns.theme = main.theme
-
 	# PlayerInfo 面板 — 暗色 (primary_dark.darkened)
 	var info_panel := main.get_node_or_null("PlayerInfo/Info/Panel")
 	if info_panel:
@@ -678,9 +673,6 @@ func _refresh_theme_colors(thm: Theme) -> void:
 	# PopupMenu hover
 	var sb_ph := thm.get_stylebox("hover", "PopupMenu")
 	if sb_ph is StyleBoxFlat: sb_ph.bg_color = p
-	# PopupMenu panel
-	var sb_pn := thm.get_stylebox("panel", "PopupMenu")
-	if sb_pn is StyleBoxFlat: sb_pn.bg_color = pd
 
 	# ScrollBar grabbers
 	var sb_gr := thm.get_stylebox("grabber", "VScrollBar")

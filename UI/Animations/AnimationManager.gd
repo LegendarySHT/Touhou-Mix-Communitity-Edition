@@ -194,6 +194,16 @@ func animate_offset_back(target: Node, duration: float = DURATION_NORMAL,
 	tween.tween_property(target, "offset_transform_position", Vector2.ZERO, duration)
 	return tween
 
+## 创建 offset_transform_scale 缩放动画（用于 Control 节点的非破坏性缩放，不影响布局）
+func animate_offset_scale(target: Node, to_scale: Vector2, duration: float = DURATION_NORMAL,
+						  tween_id: String = "") -> Tween:
+	var tween = _create_tween(tween_id)
+	tween.set_ease(EASING_STANDARD)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	target.offset_transform_enabled = true
+	tween.tween_property(target, "offset_transform_scale", to_scale, duration)
+	return tween
+
 ## 延迟执行回调
 func delay_call(callback: Callable, delay: float, tween_id: String = "") -> Tween:
 	var tween = _create_tween(tween_id)
