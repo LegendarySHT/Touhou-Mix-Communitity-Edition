@@ -540,7 +540,10 @@ func _create_note(tp: FlowNote.NoteType, x: float, lane_idx: int = -1) -> Node:
 					i.get_node("core").modulate = cl
 	
 	_apply_note_glow(note_rect, cl, tp)
-	note_rect.position = Vector2(x, -note_rect.size.y)
+	# base position 只承载 x（轨道偏移），y 恒为 0；
+	# 动态下落 y 走 offset_transform_position，绕过 Control 布局重算
+	note_rect.position = Vector2(x, 0)
+	note_rect.offset_transform_position = Vector2.ZERO
 
 	return note_rect
 
@@ -587,7 +590,7 @@ func _spawn_note(note_index: int) -> void:
 		note_half = nt.long_tail_height / 2.0
 	
 	var target_pos_y = jl.position.y - note_half
-	nt.rect.position.y = target_pos_y - _note_fall_distance # 因为音符需要匀速所以动态起点
+	nt.rect.offset_transform_position.y = target_pos_y - _note_fall_distance
 
 	if nt.type == FlowNote.NoteType.Long:
 		active_notes.append(nt)
@@ -636,7 +639,7 @@ func _update_block_note_fall(note: FlowNote, current_time_ms: float) -> void:
 	var rect_ctrl := note.rect as Control
 	var half_height = rect_ctrl.size.y * 0.5
 	var center_y = _compute_center_y_by_judge_time(note.start_time, current_time_ms, half_height)
-	rect_ctrl.position.y = center_y - half_height
+	rect_ctrl.offset_transform_position.y = center_y - half_height
 
 	# 过线回调: 音符首次到达/超过判定线时触发 (原 Tween.finished 逻辑)
 	if not note.judge_line_passed and current_time_ms >= note.start_time:
@@ -686,7 +689,7 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float) -> void:
 	body.custom_minimum_size.y = max(0.0, head_top - tail_bottom)
 	# repeat 模式下，按 body 高度更新垂直重复次数
 	_update_long_body_v_repeat(note, body.custom_minimum_size.y)
-	note.rect.position.y = tail_top
+	note.rect.offset_transform_position.y = tail_top
 
 	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
 		var window_y = _cached_viewport_height
@@ -703,7 +706,7 @@ func _update_note_visibility(note: FlowNote) -> void:
 	if rect_ctrl == null:
 		return
 
-	var top_y := rect_ctrl.position.y
+	var top_y := rect_ctrl.position.y + rect_ctrl.offset_transform_position.y
 	var visual_height := rect_ctrl.size.y
 
 	if note.type == FlowNote.NoteType.Long and rect_ctrl.has_node("VBoxC"):
@@ -764,7 +767,8 @@ func _reset_note_for_reuse(note: Node, note_type: FlowNote.NoteType) -> void:
 	"""重用节点前的完整状态重置。避免上一次使用的残留（第2阶段关键）"""
 	
 	# ✅ P0: 位置、可见性、基础属性
-	note.position = Vector2.ZERO  # 关键：重置到原点（后续会在 _spawn_note 重新设置）
+	# base position 由 _create_note 重新设置，此处只需重置偏移变换
+	note.offset_transform_position = Vector2.ZERO
 	note.visible = true
 	note.modulate = Color.WHITE  # 清除任何颜色/透明残留
 	note.z_index = 0
@@ -945,7 +949,7 @@ func _return_note_to_pool(note: Node, tp: FlowNote.NoteType) -> void:
 		pool.append(note)
 	else:
 		# 池满时仍保留节点并加入池，避免隐藏孤儿节点和后续状态错乱
-		note.position = Vector2.ZERO
+		note.offset_transform_position = Vector2.ZERO
 		note.visible = false
 		pool.append(note)
 
@@ -1103,7 +1107,7 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	else:
 		_judge_note(note, true, judge_time_ms)
 	if note.type == FlowNote.NoteType.Long:
-		_hold_long_note(touch_id, note)
+		_hold_long_note(touch_id, note, pos.x)
 
 # 处理触摸松开 释放长条音符
 func _handle_release(touch_id: int, input_time_ms: float = -1.0, released_lane: int = -1) -> void:
@@ -1148,20 +1152,19 @@ func _handle_touch_drag(touch_id: int, pos: Vector2) -> void:
 	if not note.is_held or note.held_by_touch_id != touch_id:
 		return
 
-	# 只更新x位置，y位置保持与判定线对齐
-	note.rect.position.x = clamp(
-		pos.x - note.rect.size.x / 2,
-		float(parent_node.lane_padding),
-		size.x - float(parent_node.lane_padding) - note.rect.size.x
-	)
+	if is_nan(note.hold_press_x):
+		return  # 非触摸来源（键盘/自动模式）不跟踪手势
+
+	note.rect.offset_transform_position.x = pos.x - note.hold_press_x
 
 # 按住长条音符
 # 注意：调用方负责在调用此函数之前已通过 _judge_note() 完成判定
-func _hold_long_note(touch_id: int, note: FlowNote) -> void:
+func _hold_long_note(touch_id: int, note: FlowNote, press_x: float = NAN) -> void:
 	# 兜底：长条进入按住态后不应再走未判定 Miss 分支
 	note.is_judged = true
 	note.is_held = true
 	note.held_by_touch_id = touch_id
+	note.hold_press_x = press_x  # NAN 表示非触摸来源（键盘/自动模式），_handle_touch_drag 将跳过
 	# 为新长条分配唯一实例 ID（用于 ScoreCalculator 独立衰减链）
 	if note.long_instance_id < 0:
 		note.long_instance_id = FlowNote._gen_long_id()
@@ -1263,7 +1266,7 @@ func _get_note_center_y(note: FlowNote) -> float:
 	if note.type == FlowNote.NoteType.Long:
 		var head := note.rect.get_node("VBoxC/head") as Control
 		return head.global_position.y + head.size.y * 0.5
-	return note.rect.position.y + note.rect.size.y * 0.5
+	return note.rect.position.y + note.rect.offset_transform_position.y + note.rect.size.y * 0.5
 
 ## 键盘模式专用：在指定轨道范围内查找最合适的音符并完成判定
 ## 触摸模式请使用 _handle_press()（通过 NoteJudger 实现）
@@ -1430,7 +1433,7 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	judge_note.is_judged = true
 	var hit_pos := Vector2.ZERO
 	if judge_note.rect:
-		hit_pos = judge_note.rect.position + judge_note.rect.size / 2.0
+		hit_pos = judge_note.rect.position + judge_note.rect.offset_transform_position + judge_note.rect.size / 2.0
 	
 	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff],
 		block_type, timing_sec, signed_offset_sec)

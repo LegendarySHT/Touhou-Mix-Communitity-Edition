@@ -31,6 +31,7 @@ var cooldown: float = 0      	# 长按时的触发计时器
 var long_instance_id: int = -1  # 同一长条的唯一 ID（用于 ScoreCalculator 衰减链）
 var long_head_height: float = 0.0
 var long_tail_height: float = 0.0
+var hold_press_x: float = NAN  # 长条按住时记录的触摸 x（手势偏移基准；NAN 表示非触摸来源）
 var _cached_head: Control = null
 var _cached_tail: Control = null
 var _cached_body: Control = null

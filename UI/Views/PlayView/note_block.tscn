@@ -7,6 +7,8 @@
 custom_minimum_size = Vector2(150, 0)
 offset_right = 40.0
 offset_bottom = 40.0
+offset_transform_enabled = true
+offset_transform_visual_only = false
 mouse_filter = 2
 texture = ExtResource("1_tlp8l")
 expand_mode = 4

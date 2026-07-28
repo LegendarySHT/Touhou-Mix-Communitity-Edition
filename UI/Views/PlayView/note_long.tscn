@@ -15,6 +15,8 @@ self_modulate = Color(2, 2, 2, 1)
 offset_right = 100.0
 offset_bottom = 250.0
 size_flags_horizontal = 4
+offset_transform_enabled = true
+offset_transform_visual_only = false
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_fanli")
 
