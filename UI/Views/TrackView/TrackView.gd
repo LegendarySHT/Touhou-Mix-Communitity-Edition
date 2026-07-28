@@ -76,14 +76,15 @@ func _ready() -> void:
 	
 	if midi_vol_slider:
 		midi_vol_slider.min_value = 0
-		midi_vol_slider.max_value = 200  # 上限200% (+6dB), 允许用户在MeltySynth合成音量偏小时主动提升
+		midi_vol_slider.max_value = 100  # UI范围0-100%, 实际效果为2倍(新50%=旧100%, 新100%=旧200%/+6dB)
 		midi_vol_slider.step = 1
 	if vocal_vol_slider:
 		vocal_vol_slider.min_value = 0
-		vocal_vol_slider.max_value = 200  # 与midi音量上限保持一致
+		vocal_vol_slider.max_value = 100  # UI范围0-100%, 1:1映射到实际音量
 		vocal_vol_slider.step = 1
 
-	midi_vol_slider.value = db_to_linear(midi_playback_manager.midi_player_config["volume_db"]) * 100
+	# 反推MIDI音量slider值: 新UI值 = linear * 50 (因为实际效果是UI值的2倍)
+	midi_vol_slider.value = db_to_linear(midi_playback_manager.midi_player_config["volume_db"]) * 50
 	_set_display_midi_volume(midi_vol_slider.value)
 	
 	# 连接信号（检查防止重复连接）
@@ -381,11 +382,12 @@ func _on_volume_btn_toggled(toggle_on: bool, btn: TextureButton) -> void:
 func _on_midi_volume_changed(value: float) -> void:
 	if midi_playback_manager == null:
 		return
-	
-	# 转换为dB (-80 ~ 0)
-	var volume_db = linear_to_db(value / 100.0)
+
+	# MIDI音量实际效果为UI值的2倍: 新50%=旧100%(0dB), 新100%=旧200%(+6dB)
+	# 公式: linear = value / 50.0
+	var volume_db = linear_to_db(value / 50.0)
 	midi_playback_manager.set_volume_db(volume_db)
-	
+
 	# 更新标签
 	_set_display_midi_volume(value)
 
@@ -393,7 +395,7 @@ func _on_vocal_volume_changed(value: float) -> void:
 	if midi_playback_manager == null:
 		return
 
-	# 转换为dB (-80 ~ 0)
+	# 人声音量1:1映射: 新70%=旧70%
 	var volume_db = linear_to_db(value / 100.0)
 	midi_playback_manager.set_vocal_volume_db(volume_db)
 

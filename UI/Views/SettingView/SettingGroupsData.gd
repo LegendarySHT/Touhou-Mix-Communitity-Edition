@@ -174,7 +174,7 @@ static func get_setting_groups() -> Array:
 			"id": "default_midi_volume",
 			"name_en": "Default MIDI Volume",
 			"name_zh": "默认MIDI音量",
-			"description": "设置加载新MIDI时的默认MIDI音量，范围0-200 (100%为原始音量, 200%为+6dB增益)",
+			"description": "设置加载新MIDI时的默认MIDI音量，范围0-100 (50%为原始音量, 100%为+6dB增益)",
 			"type": "TYPE_LINE_EDIT",
 			"default_value": "50",
 			"unit": "%"
@@ -183,7 +183,7 @@ static func get_setting_groups() -> Array:
 			"id": "default_vocal_volume",
 			"name_en": "Default Vocal Volume",
 			"name_zh": "默认人声音量",
-			"description": "设置加载新MIDI时的默认人声音量，范围0-200",
+			"description": "设置加载新MIDI时的默认人声音量，范围0-100",
 			"type": "TYPE_LINE_EDIT",
 			"default_value": "50",
 			"unit": "%"

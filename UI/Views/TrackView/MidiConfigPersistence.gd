@@ -99,9 +99,11 @@ func restore_midi_data_config() -> void:
 	vocal_vol_slider.set_block_signals(false)
 
 	# 应用实际的播放音量，不只是更新UI
-	var midi_volume_db = linear_to_db(midi_vol / 100.0)
+	# MIDI音量实际效果为UI值的2倍: 新50%=旧100%(0dB), 新100%=旧200%(+6dB)
+	var midi_volume_db = linear_to_db(midi_vol / 50.0)
 	midi_playback_manager.set_volume_db(midi_volume_db)
 
+	# 人声音量1:1映射
 	var vocal_volume_db = linear_to_db(vocal_vol / 100.0)
 	midi_playback_manager.set_vocal_volume_db(vocal_volume_db)
 
