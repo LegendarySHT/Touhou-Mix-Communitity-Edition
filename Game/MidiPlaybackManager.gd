@@ -254,16 +254,55 @@ func load_midi(midi_data: MidiData) -> bool:
 		for i in range(current_midi_data.track_count):
 			current_midi_data.selected_track_indices.append(i)
 
-	# 初始化 selected_track_configs：新MIDI（从未配置过）默认启用所有 (track, channel) 对
-	# 这样直接进入 PlayView 也能正确生成音符，无需先经过 TrackView
-	# 注意：这里**不**设置 _track_config_initialized = true，留给 TrackView._init_master_note_displayer
-	# 在应用简介推荐轨道后再标记。否则 TrackView 会误判为"已配置"而跳过推荐轨道逻辑。
+	# 首次进入此 MIDI 的 TrackView 时，一次性完成：
+	# 1) 解析简介（提取音频偏移、推荐轨道）
+	# 2) 应用 vocal_offset_ms
+	# 3) 缓存 _desc_recommended_tracks
+	# 4) 根据 notes 应用推荐轨道到 selected_track_configs（无推荐则启用全部）
+	# 5) 标记 _track_config_initialized=true
+	# 6) 立即持久化到 JSON，避免下次启动重复解析
 	if not current_midi_data._track_config_initialized:
+		var desc_parse = MidiDescriptionParser.parse(current_midi_data.description)
+		GLogger.info("[DescParse] id=%s offset_ms=%d recommended=%s difficulties=%d" % [
+			current_midi_data.id,
+			desc_parse["audio_offset_ms"],
+			desc_parse["recommended_tracks"],
+			desc_parse["difficulties"].size()
+		], "MidiPlaybackManager")
+
+		# 应用音频偏移
+		if desc_parse["audio_offset_ms"] >= 0:
+			current_midi_data.vocal_offset_ms = desc_parse["audio_offset_ms"]
+
+		# 缓存推荐轨道
+		current_midi_data._desc_recommended_tracks.clear()
+		for t in desc_parse["recommended_tracks"]:
+			current_midi_data._desc_recommended_tracks.append(int(t))
+
+		# 根据 notes 应用推荐轨道
 		current_midi_data.selected_track_configs.clear()
+		var recommended := current_midi_data._desc_recommended_tracks
+		var use_recommendation := not recommended.is_empty()
 		for note in current_notes:
 			if note is MidiParser.Note and note.event != null:
-				current_midi_data.set_track_channel_enabled(note.event.track_index, note.event.channel, true)
-		GLogger.info("Initialized selected_track_configs with all (track, channel) pairs for new MIDI (deferred _track_config_initialized to TrackView)", "MidiPlaybackManager")
+				var should_enable := true
+				if use_recommendation:
+					should_enable = note.event.track_index in recommended
+				current_midi_data.set_track_channel_enabled(note.event.track_index, note.event.channel, should_enable)
+		# 回退：推荐轨道均不存在于 MIDI 时启用全部，避免无音符可见
+		if use_recommendation and current_midi_data.selected_track_configs.is_empty():
+			for note in current_notes:
+				if note is MidiParser.Note and note.event != null:
+					current_midi_data.set_track_channel_enabled(note.event.track_index, note.event.channel, true)
+			GLogger.info("Recommended tracks %s not found in MIDI, fell back to enabling all" % recommended, "MidiPlaybackManager")
+		elif use_recommendation:
+			GLogger.info("Enabled recommended tracks from description: %s" % recommended, "MidiPlaybackManager")
+		else:
+			GLogger.info("Initialized selected_track_configs with all (track, channel) pairs for new MIDI", "MidiPlaybackManager")
+
+		current_midi_data._track_config_initialized = true
+		# 立即持久化到 JSON，避免下次启动重复解析简介
+		_save_runtime_config_to_json(current_midi_data)
 	
 	# 加载到活跃后端
 	var backend = _get_active_backend()
@@ -315,6 +354,21 @@ func load_midi(midi_data: MidiData) -> bool:
 	_preload_vocal_async()
 
 	return true
+
+## 将 MIDI 运行时配置保存到 JSON 文件（合并模式）
+## 用于首次初始化后立即持久化，避免每次启动重复解析简介
+func _save_runtime_config_to_json(midi_data: MidiData) -> void:
+	var chart_id = midi_data.file_hash if not midi_data.file_hash.is_empty() else midi_data.id
+	var json_path = FileSystemManager.instance.get_chart_json_path(chart_id)
+	if json_path.is_empty():
+		GLogger.warning("Cannot save runtime config: JSON path not found for MIDI %s" % midi_data.id, "MidiPlaybackManager")
+		return
+	var runtime_config = midi_data.export_runtime_config()
+	var data_to_save = {"_runtime": runtime_config}
+	if ConfigManager.instance.save_json_file(json_path, data_to_save, true):
+		GLogger.info("Runtime config persisted to JSON for MIDI %s (initialized=true, tracks=%d)" % [midi_data.id, midi_data.selected_track_configs.size()], "MidiPlaybackManager")
+	else:
+		push_error("[MidiPlaybackManager] Failed to save runtime config to JSON for MIDI %s" % midi_data.id)
 
 ## 异步预载人声文件（call_deferred 避免阻塞当前帧，AudioStream 须在主线程创建）
 func _preload_vocal_async() -> void:

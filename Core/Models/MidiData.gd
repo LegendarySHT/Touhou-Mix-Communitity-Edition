@@ -295,19 +295,10 @@ func from_json(json_data: Dictionary) -> void:
 								"name": instr_data.get("name", "")
 							}
 
-	# 首次加载此 MIDI 时，从简介解析推荐配置
-	# - 音频偏移：直接应用到 vocal_offset_ms（即使人声文件尚未导入，后续导入时仍使用此值）
-	# - 推荐轨道：缓存到 _desc_recommended_tracks，由 TrackView 首次初始化时应用
-	if not _track_config_initialized:
-		var desc_parse = MidiDescriptionParser.parse(description)
-		print("[DescParse] id=%s initialized=false offset_ms=%d recommended=%s difficulties=%d desc_head=%s" % [id, desc_parse["audio_offset_ms"], desc_parse["recommended_tracks"], desc_parse["difficulties"].size(), description.left(80).replace("\n", "\\n")])
-		if desc_parse["audio_offset_ms"] >= 0:
-			vocal_offset_ms = desc_parse["audio_offset_ms"]
-		_desc_recommended_tracks.clear()
-		for t in desc_parse["recommended_tracks"]:
-			_desc_recommended_tracks.append(int(t))
-	else:
-		print("[DescParse] id=%s skipped (already initialized, has_runtime=%s)" % [id, json_data.has("_runtime")])
+	# 简介解析与推荐轨道应用统一在 MidiPlaybackManager.load_midi 中完成
+	# - 首次进入 TrackView 时解析简介、设置 vocal_offset_ms、应用推荐轨道、标记 _track_config_initialized=true 并持久化
+	# - from_json 只读取 _track_config_initialized（用于 MidiPlaybackManager 判断是否需要初始化）
+	# 这样避免 DataManager 加载阶段（每次启动）重复解析简介
 
 ## 设置选中的轨道
 func set_selected_tracks(track_indices: Array[int]) -> void:
