@@ -761,32 +761,51 @@ func _init_master_note_displayer() -> void:
 	# 初始化selected_track_configs - 如果是新MIDI（从未配置过），则默认将所有(track, channel)对设为启用
 	# 这是新MIDI的首次初始化，将完成enable按钮的最终状态设置
 	if not current_midi_data._track_config_initialized:
+		var recommended := current_midi_data._desc_recommended_tracks
+		var use_recommendation := not recommended.is_empty()
+		GLogger.info("[TrackView] first init: midi=%s recommended=%s use_rec=%s notes=%d" % [current_midi_data.id, recommended, use_recommendation, All_Notes.size()], "TrackView")
+
+		# 设置 (track, channel) 启用状态：有简介推荐时仅启用推荐轨道，否则启用全部（原逻辑）
 		for note in All_Notes:
-			current_midi_data.set_track_channel_enabled(note.track_index, note.channel, true)
+			var should_enable := true
+			if use_recommendation:
+				should_enable = note.track_index in recommended
+			current_midi_data.set_track_channel_enabled(note.track_index, note.channel, should_enable)
+
+		# 推荐轨道均不存在于 MIDI 时回退到启用全部，避免无音符可见
+		if use_recommendation and current_midi_data.selected_track_configs.is_empty():
+			for note in All_Notes:
+				current_midi_data.set_track_channel_enabled(note.track_index, note.channel, true)
+			print("[TrackView] Recommended tracks %s not found in MIDI, fell back to enabling all" % recommended)
+		elif use_recommendation:
+			print("[TrackView] Enabled recommended tracks from description: %s" % recommended)
+		else:
+			print("[TrackView] Initialized %d notes from all (track, channel) pairs as ENABLED" % All_Notes.size())
+
 		current_midi_data._track_config_initialized = true
-		print("[TrackView] Initialized %d notes from all (track, channel) pairs as ENABLED" % All_Notes.size())
-		
+
 		# 同时更新UI显示（更新enable按钮和文本）
 		for track_item in list_items:
 			if track_item is MidiTrack:
 				var track_idx = track_item.track_index
 				var channel = track_item.track_channel
-				
+
 				# 检查该(track, channel)是否有Note
 				var has_note = false
 				for note in All_Notes:
 					if note.track_index == track_idx and note.channel == channel:
 						has_note = true
 						break
-				
+
 				if has_note and track_item.enable_btn:
+					var is_enabled := current_midi_data.is_track_channel_selected(track_idx, channel)
 					track_item.enable_btn.set_block_signals(true)
-					track_item.enable_btn.button_pressed = true
+					track_item.enable_btn.button_pressed = is_enabled
 					track_item.enable_btn.set_block_signals(false)
 					if track_item.enable_btn_text:
-						track_item.enable_btn_text.text = "已启用"
+						track_item.enable_btn_text.text = "已启用" if is_enabled else "已禁用"
 					if track_item.note_display:
-						track_item.note_display.note_color = track_item.color_normal
+						track_item.note_display.note_color = track_item.color_normal if is_enabled else track_item.color_dark
 						track_item.note_display.update_color()
 	else:
 		# 旧MIDI：selected_track_configs已从JSON恢复（可能为空或有配置），只需要记录日志

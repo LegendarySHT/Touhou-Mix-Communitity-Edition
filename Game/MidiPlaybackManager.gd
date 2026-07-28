@@ -256,13 +256,14 @@ func load_midi(midi_data: MidiData) -> bool:
 
 	# 初始化 selected_track_configs：新MIDI（从未配置过）默认启用所有 (track, channel) 对
 	# 这样直接进入 PlayView 也能正确生成音符，无需先经过 TrackView
+	# 注意：这里**不**设置 _track_config_initialized = true，留给 TrackView._init_master_note_displayer
+	# 在应用简介推荐轨道后再标记。否则 TrackView 会误判为"已配置"而跳过推荐轨道逻辑。
 	if not current_midi_data._track_config_initialized:
 		current_midi_data.selected_track_configs.clear()
 		for note in current_notes:
 			if note is MidiParser.Note and note.event != null:
 				current_midi_data.set_track_channel_enabled(note.event.track_index, note.event.channel, true)
-		current_midi_data._track_config_initialized = true
-		GLogger.info("Initialized selected_track_configs with all (track, channel) pairs for new MIDI", "MidiPlaybackManager")
+		GLogger.info("Initialized selected_track_configs with all (track, channel) pairs for new MIDI (deferred _track_config_initialized to TrackView)", "MidiPlaybackManager")
 	
 	# 加载到活跃后端
 	var backend = _get_active_backend()

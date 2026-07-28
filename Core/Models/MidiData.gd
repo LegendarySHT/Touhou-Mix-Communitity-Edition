@@ -143,6 +143,11 @@ var track_channel_instrument_overrides: Dictionary = {}
 ## 标记：音轨配置是否曾被初始化过（用于区分"新MIDI"和"所有音轨禁用"两种情况）
 ## 该标记在第一次配置时被设为true，保存到JSON中，使得重新加载时不会误把禁用状态视为新MIDI
 var _track_config_initialized: bool = false
+
+## 从简介解析出的推荐轨道索引（仅首次加载时填充，运行时缓存，不持久化）
+## 用于 TrackView 首次初始化时设置默认启用的轨道；为空表示简介无推荐，按原逻辑启用全部
+var _desc_recommended_tracks: Array[int] = []
+
 ## 从JSON数据构造MIDI数据
 func from_json(json_data: Dictionary) -> void:
 	id = json_data.get("_id", "")
@@ -289,6 +294,20 @@ func from_json(json_data: Dictionary) -> void:
 								"program": instr_data.get("program", 0),
 								"name": instr_data.get("name", "")
 							}
+
+	# 首次加载此 MIDI 时，从简介解析推荐配置
+	# - 音频偏移：直接应用到 vocal_offset_ms（即使人声文件尚未导入，后续导入时仍使用此值）
+	# - 推荐轨道：缓存到 _desc_recommended_tracks，由 TrackView 首次初始化时应用
+	if not _track_config_initialized:
+		var desc_parse = MidiDescriptionParser.parse(description)
+		print("[DescParse] id=%s initialized=false offset_ms=%d recommended=%s difficulties=%d desc_head=%s" % [id, desc_parse["audio_offset_ms"], desc_parse["recommended_tracks"], desc_parse["difficulties"].size(), description.left(80).replace("\n", "\\n")])
+		if desc_parse["audio_offset_ms"] >= 0:
+			vocal_offset_ms = desc_parse["audio_offset_ms"]
+		_desc_recommended_tracks.clear()
+		for t in desc_parse["recommended_tracks"]:
+			_desc_recommended_tracks.append(int(t))
+	else:
+		print("[DescParse] id=%s skipped (already initialized, has_runtime=%s)" % [id, json_data.has("_runtime")])
 
 ## 设置选中的轨道
 func set_selected_tracks(track_indices: Array[int]) -> void:
