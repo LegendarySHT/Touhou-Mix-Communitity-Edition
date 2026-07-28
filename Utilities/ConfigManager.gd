@@ -166,8 +166,8 @@ func load_and_set_current(_file_path: String = "") -> Dictionary:
 # ============ 配置读取方法 ============
 
 ## 获取配置值（使用当前活跃配置或指定配置）
-## 简化用法：get_value("Audio", "master_volume", 80)
-## 兼容用法：get_value("Audio", "master_volume", 80, some_config)
+## 简化用法：get_value("Lane", "lane_count", 12)
+## 兼容用法：get_value("Lane", "lane_count", 12, some_config)
 func get_value(section: String, key: String, default: Variant = "", config: Variant = null) -> Variant:
 	if config == null or not (config is Dictionary):
 		config = _current_config
@@ -199,8 +199,8 @@ func get_string(section: String, key: String, default: String = "", config: Vari
 # ============ 配置写入方法 ============
 
 ## 设置配置值并发送变更通知（使用当前活跃配置或指定配置）
-## 简化用法：set_value_and_notify("Audio", "master_volume", 80)
-## 兼容用法：set_value_and_notify("Audio", "master_volume", 80, some_config)
+## 简化用法：set_value_and_notify("Lane", "lane_count", 12)
+## 兼容用法：set_value_and_notify("Lane", "lane_count", 12, some_config)
 func set_value_and_notify(section: String, key: String, value: Variant, config: Variant = null) -> void:
 	if config == null:
 		config = _current_config

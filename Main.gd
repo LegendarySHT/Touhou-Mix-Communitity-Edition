@@ -322,17 +322,6 @@ func _load_configuration() -> void:
 	
 	# 检查版本并迁移（如必要）
 	config_loader.check_and_migrate()
-	
-	# 应用音频设置
-	var master_vol = config_loader.get_int("Audio", "master_volume", 80)
-	var music_vol = config_loader.get_int("Audio", "music_volume", 80)
-	var sfx_vol = config_loader.get_int("Audio", "effects_volume", 80)
-	
-	logger.debug("Audio config: master=%d, music=%d, sfx=%d" % [master_vol, music_vol, sfx_vol], "Main")
-	
-	audio_manager.set_master_volume(master_vol)
-	audio_manager.set_music_volume(music_vol)
-	audio_manager.set_sfx_volume(sfx_vol)
 
 	# 应用HDR设置
 	var hdr_enabled = config_loader.get_int("Appearance", "hdr_2d", 0) == 1
@@ -418,51 +407,30 @@ func _reload_all_settings() -> void:
 	_is_reloading_settings = true
 	# 重新加载配置
 	config_loader.reload_config()
-	
-	# 应用音频设置
-	if audio_manager:
-		var master_vol = config_loader.get_int("Audio", "master_volume", 80)
-		var music_vol = config_loader.get_int("Audio", "music_volume", 80)
-		var sfx_vol = config_loader.get_int("Audio", "effects_volume", 80)
-		
-		audio_manager.set_master_volume(master_vol)
-		audio_manager.set_music_volume(music_vol)
-		audio_manager.set_sfx_volume(sfx_vol)
-	
+
 	# 应用Gameplay设置（包括SoundFont）
 	if midi_playback_manager:
 		var soundfont_name = config_loader.get_value("Gameplay", "soundfont_file", "GeneralUser-GS.sf2")
 		midi_playback_manager.set_soundfont(soundfont_name)
-	
+
 	# 应用显示设置
 	var fullscreen = config_loader.get_bool("Display", "fullscreen", true)
 	var vsync = config_loader.get_bool("Display", "vsync_enabled", true)
-	
+
 	if fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	else:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-	
+
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
-	
+
 	logger.info("All settings reloaded and applied", "Main")
 	_is_reloading_settings = false
 
 ## 应用单个设置项
 func _apply_single_setting(setting_name: String, value: Variant) -> void:
-	# 音频相关设置
-	if setting_name in ["master_volume", "music_volume", "effects_volume"]:
-		if audio_manager:
-			match setting_name:
-				"master_volume":
-					audio_manager.set_master_volume(int(value))
-				"music_volume":
-					audio_manager.set_music_volume(int(value))
-				"effects_volume":
-					audio_manager.set_sfx_volume(int(value))
-	
 	# SoundFont相关设置
-	elif setting_name == "soundfont_select":
+	if setting_name == "soundfont_select":
 		if midi_playback_manager:
 			var soundfont_name = str(value)
 			midi_playback_manager.set_soundfont(soundfont_name)
@@ -474,7 +442,7 @@ func _apply_single_setting(setting_name: String, value: Variant) -> void:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 		else:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-	
+
 	elif setting_name == "vsync_enabled":
 		var is_vsync = value in ["1", "true", "True", "yes", "Yes"]
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if is_vsync else DisplayServer.VSYNC_DISABLED)
@@ -488,22 +456,12 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		logger.info("Configuration changed (batch), reloading all settings", "Main")
 		_reload_all_settings()
 		return
-	
+
 	# 处理单个配置项变更
 	logger.debug("Configuration changed: [%s] %s = %s" % [section, key, str(value)], "Main")
-	
+
 	# 根据 section 和 key 应用相应的配置
 	match section:
-		"Audio":
-			if key in ["master_volume", "music_volume", "effects_volume"] and audio_manager:
-				match key:
-					"master_volume":
-						audio_manager.set_master_volume(int(value))
-					"music_volume":
-						audio_manager.set_music_volume(int(value))
-					"effects_volume":
-						audio_manager.set_sfx_volume(int(value))
-		
 		"Gameplay":
 			# MIDI播放管理器监听这些配置
 			if key == "soundfont_file" and midi_playback_manager:
