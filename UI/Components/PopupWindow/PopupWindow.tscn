@@ -4,8 +4,8 @@
 [ext_resource type="Texture2D" uid="uid://1q15cy2pddpj" path="res://Resources/Components/ConfirmBtn.png" id="4_yttj5"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qxcsx"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3b0ty"]
+content_margin_left = 50.0
+content_margin_right = 50.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x3yn0"]
 draw_center = false
@@ -19,7 +19,7 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7g6l"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5mkgo"]
 bg_color = Color(0, 0, 0, 0.19607843)
 border_width_left = 5
 border_width_top = 5
@@ -77,6 +77,41 @@ load_path = "res://.godot/imported/ConfirmBtn.png-41e783e6bcfdb1e53346e617b6103b
 texture = SubResource("CompressedTexture2D_5mkgo")
 modulate_color = Color(0.98039216, 0.98039216, 0.98039216, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3y6u5"]
+bg_color = Color(0.17641908, 0.17641911, 0.17641899, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_iygje"]
+bg_color = Color(0.3328805, 0.33288077, 0.3328806, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_v2jpq"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3or4"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yadmi"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6fqj7"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
+
 [node name="TabC" type="TabContainer" unique_id=1542807723]
 anchors_preset = -1
 anchor_right = 1.0
@@ -88,35 +123,23 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 0
+current_tab = 1
 tabs_visible = false
 
-[node name="Default" type="Panel" parent="." unique_id=599600559]
+[node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
+visible = false
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxEmpty_3b0ty")
-metadata/_tab_index = 0
-
-[node name="VBoxC" type="VBoxContainer" parent="Default" unique_id=1117546412]
-layout_mode = 1
-anchors_preset = -1
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 40.0
-offset_top = 40.0
-offset_right = -40.0
-offset_bottom = -40.0
-grow_horizontal = 2
-grow_vertical = 2
 theme_override_constants/separation = 20
 alignment = 1
+metadata/_tab_index = 0
 
-[node name="Content" type="VBoxContainer" parent="Default/VBoxC" unique_id=939838808]
+[node name="Content" type="VBoxContainer" parent="Default" unique_id=939838808]
 custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_stretch_ratio = 2.0
 alignment = 1
 
-[node name="Label" type="Label" parent="Default/VBoxC/Content" unique_id=543651907]
+[node name="Label" type="Label" parent="Default/Content" unique_id=543651907]
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 size_flags_vertical = 3
@@ -126,14 +149,14 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="OptionButton" type="OptionButton" parent="Default/VBoxC/Content" unique_id=899227788]
+[node name="OptionButton" type="OptionButton" parent="Default/Content" unique_id=899227788]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_vertical = 2
 focus_mode = 0
 theme_override_font_sizes/font_size = 32
 theme_override_styles/normal = SubResource("StyleBoxFlat_x3yn0")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_o7g6l")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_5mkgo")
 theme_override_styles/hover = SubResource("StyleBoxFlat_vi5kq")
 theme_override_constants/arrow_margin = 30
 alignment = 1
@@ -144,13 +167,13 @@ popup/item_0/id = 0
 popup/item_1/text = "仅歌曲"
 popup/item_1/id = 1
 
-[node name="Btns" type="HBoxContainer" parent="Default/VBoxC" unique_id=760666686]
+[node name="Btns" type="HBoxContainer" parent="Default" unique_id=760666686]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 150
 
-[node name="Cancel" type="Button" parent="Default/VBoxC/Btns" unique_id=84908568]
+[node name="Cancel" type="Button" parent="Default/Btns" unique_id=84908568]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 focus_mode = 0
@@ -161,7 +184,7 @@ theme_override_styles/pressed = SubResource("StyleBoxTexture_oye8v")
 theme_override_styles/hover = SubResource("StyleBoxTexture_sph85")
 text = "取消"
 
-[node name="Confirm" type="Button" parent="Default/VBoxC/Btns" unique_id=977904791]
+[node name="Confirm" type="Button" parent="Default/Btns" unique_id=977904791]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 focus_mode = 0
@@ -171,3 +194,90 @@ theme_override_styles/normal = SubResource("StyleBoxTexture_gb15f")
 theme_override_styles/pressed = SubResource("StyleBoxTexture_vi5kq")
 theme_override_styles/hover = SubResource("StyleBoxTexture_3ccbu")
 text = "确定"
+
+[node name="DelayAdjust" type="VBoxContainer" parent="." unique_id=887538536]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+metadata/_tab_index = 1
+
+[node name="Text" type="Label" parent="DelayAdjust" unique_id=579829843]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 36
+text = "请跟随节奏点击下方按钮或拖动输入延迟"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DelayIndicator" type="Panel" parent="DelayAdjust" unique_id=1970719727]
+custom_minimum_size = Vector2(600, 100)
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_3y6u5")
+
+[node name="CenterLine" type="PanelContainer" parent="DelayAdjust/DelayIndicator" unique_id=584782511]
+custom_minimum_size = Vector2(5, 0)
+layout_mode = 1
+anchors_preset = 13
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_transform_enabled = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_iygje")
+
+[node name="AdjustLine" type="PanelContainer" parent="DelayAdjust/DelayIndicator" unique_id=2043927068]
+visible = false
+custom_minimum_size = Vector2(5, 0)
+layout_mode = 1
+anchors_preset = 13
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_transform_enabled = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_v2jpq")
+
+[node name="HBoxC" type="HBoxContainer" parent="DelayAdjust" unique_id=283064756]
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+
+[node name="Value" type="Label" parent="DelayAdjust/HBoxC" unique_id=2053356333]
+custom_minimum_size = Vector2(100, 40)
+layout_mode = 2
+
+[node name="Unit" type="Label" parent="DelayAdjust/HBoxC" unique_id=1899889578]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "ms"
+
+[node name="Button" type="Button" parent="DelayAdjust" unique_id=666671536]
+custom_minimum_size = Vector2(250, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/normal = SubResource("StyleBoxFlat_c3or4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_yadmi")
+theme_override_styles/hover = SubResource("StyleBoxFlat_6fqj7")
+
+[node name="NoteSkinAdjust" type="VBoxContainer" parent="." unique_id=1358575653]
+visible = false
+layout_mode = 2
+alignment = 1
+metadata/_tab_index = 2
+
+[node name="ParticleAdjust" type="VBoxContainer" parent="." unique_id=1468523578]
+visible = false
+layout_mode = 2
+alignment = 1
+metadata/_tab_index = 3
+
+[node name="ImageAdjust" type="VBoxContainer" parent="." unique_id=1785822308]
+visible = false
+layout_mode = 2
+alignment = 1
+metadata/_tab_index = 4

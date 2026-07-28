@@ -542,6 +542,21 @@ func _apply_delview_theme(main: Node) -> void:
 
 	GLogger.debug("DelView theme applied", "ThemeManager")
 
+# ============ 弹出窗口主题 ============
+
+## 对 PopupWindow 的静态部分应用主题色
+## 由 refresh_all() 触发
+func _apply_popup_window_theme(main: Node) -> void:
+	var popup := main.get_node_or_null("PopupWindow")
+	if not popup:
+		return
+
+	# DelayAdjust/Button — primary 色调
+	var delay_btn := popup.delay_btn as Button
+	_style_button_set_bg_color(delay_btn, get_color("primary"))
+
+	GLogger.debug("PopupWindow theme applied", "ThemeManager")
+
 # ============ 全局刷新 ============
 
 ## 主题变更后调用：重建 Theme 资源 + 主界面组件 + 所有背景
@@ -563,6 +578,7 @@ func refresh_all() -> void:
 	_apply_score_theme(main)
 	_apply_track_theme(main)
 	_apply_play_theme(main)
+	_apply_popup_window_theme(main)
 	GLogger.info("主题刷新完成: %s" % _theme_name, "ThemeManager")
 
 func _on_theme_changed(preset_name: String) -> void:

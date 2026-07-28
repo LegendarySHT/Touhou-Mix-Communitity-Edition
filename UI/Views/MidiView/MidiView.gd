@@ -249,31 +249,24 @@ func _on_del_btn_pressed():
 	var midi_to_del: MidiData = midi_list.get_selection()
 
 	if not midi_to_del:
-		window.set_message("请先选择歌曲")
+		window.show_message("请先选择歌曲")
 		return
 
 	# 填充三档删除选项
-	window.option_btn.clear()
-	window.option_btn.add_item("删除人声音频", 0)
-	window.option_btn.add_item("重置设定", 1)
-	window.option_btn.add_item("删除曲包", 2)
-	window.set_message("请选择要删除的内容", true, true)
-
-	await window.window_close
-	if not window.confirm:
+	if not await window.show_message("请选择要删除的内容", true, ["删除曲包", "删除设定", "删除人声音频"]):
 		return
 
 	var chart_id: String = midi_to_del.file_hash if not midi_to_del.file_hash.is_empty() else midi_to_del.id
 	var json_path: String = FileSystemManager.instance.get_chart_json_path(chart_id)
 
-	match window.option_btn.get_selected_id():
-		0: # 删除人声音频文件，并清除 JSON 内人声相关设置
+	match window.get_selected():
+		"删除人声音频": # 删除人声音频文件，并清除 JSON 内人声相关设置
 			var vocal_path: String = midi_to_del.vocal_file_path
 			if vocal_path.is_empty():
-				window.set_message("该谱面没有设置人声音频")
+				window.show_message("该谱面没有设置人声音频")
 				return
 			if not FileSystemManager.instance.delete_file(vocal_path):
-				window.set_message("删除人声文件失败")
+				window.show_message("删除人声文件失败")
 				return
 			# 更新内存
 			midi_to_del.vocal_file_path = ""
@@ -289,7 +282,7 @@ func _on_del_btn_pressed():
 				ConfigManager.instance.save_json_file(json_path, {"_runtime": runtime_patch}, true)
 			GLogger.info("已删除人声音频: %s" % vocal_path, "MidiView")
 
-		1: # 重置设定：清除音轨/音量/静音/独奏配置，保留人声路径
+		"删除设定": # 重置设定：清除音轨/音量/静音/独奏配置，保留人声路径
 			# 更新内存
 			midi_to_del.selected_track_indices.clear()
 			midi_to_del.selected_track_configs.clear()
@@ -305,9 +298,9 @@ func _on_del_btn_pressed():
 				ConfigManager.instance.save_json_file(json_path, json_dict, false)
 			GLogger.info("已重置谱面设定: %s" % midi_to_del.name, "MidiView")
 
-		2: # 删除曲包：删除整个文件夹，并从内存中移除
+		"删除曲包": # 删除曲包：删除整个文件夹，并从内存中移除
 			if not FileSystemManager.instance.delete_chart(chart_id):
-				window.set_message("删除曲包文件夹失败")
+				window.show_message("删除曲包文件夹失败")
 				return
 			# 删除前先记录 song_id 和 album_id，用于判断是否被级联删除
 			var song_id_before: String = midi_to_del.song_data.id if midi_to_del.song_data else ""

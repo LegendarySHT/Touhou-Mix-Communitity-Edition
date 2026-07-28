@@ -436,12 +436,14 @@ keycode = 85
 events = [SubResource("InputEventKey_devvj")]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6vipk"]
+content_margin_left = 20.0
+content_margin_right = 20.0
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_w3rk5"]
 texture = ExtResource("27_hri7i")
-expand_margin_left = 35.0
+expand_margin_left = 55.0
 expand_margin_top = 35.0
-expand_margin_right = 35.0
+expand_margin_right = 55.0
 expand_margin_bottom = 35.0
 
 [node name="Main" type="Control" unique_id=1879436511]
@@ -1152,7 +1154,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("26_xrxkg")
 
-[node name="PopupWindowBG" type="ColorRect" parent="." unique_id=1275441849]
+[node name="PopupWindowShader" type="ColorRect" parent="." unique_id=1275441849]
 visible = false
 z_index = 99
 layout_mode = 1
@@ -1167,26 +1169,26 @@ color = Color(0, 0, 0, 0.84313726)
 gui_embed_subwindows = true
 oversampling_override = 1.0
 initial_position = 2
-size = Vector2i(800, 550)
+size = Vector2i(850, 600)
 theme_override_styles/panel = SubResource("StyleBoxEmpty_6vipk")
 script = ExtResource("23_bg4s2")
 
-[node name="Style" type="PanelContainer" parent="PopupWindow" unique_id=1899183919]
+[node name="WindowBG" type="PanelContainer" parent="PopupWindow" unique_id=1899183919]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = 800.0
-offset_bottom = 550.0
+offset_left = 20.0
+offset_right = -20.0
 grow_horizontal = 2
 grow_vertical = 2
 offset_transform_enabled = true
 theme_override_styles/panel = SubResource("StyleBoxTexture_w3rk5")
 
 [node name="TabC" parent="PopupWindow" unique_id=1542807723 instance=ExtResource("28_hri7i")]
-offset_left = 0.0
+offset_left = 20.0
 offset_top = 0.0
-offset_right = 800.0
-offset_bottom = 550.0
+offset_right = -20.0
+offset_bottom = 0.0
 offset_transform_enabled = true
 
 [connection signal="text_submitted" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox/TextEdit" to="skew/C/ShortCutMenu" method="_on_search_query"]
