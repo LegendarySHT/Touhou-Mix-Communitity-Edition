@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://b3wpw7ylic5wl" path="res://UI/Views/PlayView/note_slide.tscn" id="4_fyi7o"]
 [ext_resource type="Texture2D" uid="uid://1q15cy2pddpj" path="res://Resources/Components/ConfirmBtn.png" id="4_yttj5"]
 [ext_resource type="PackedScene" uid="uid://dnnxx5it0pnum" path="res://UI/Views/PlayView/note_long.tscn" id="5_v2710"]
+[ext_resource type="Script" uid="uid://c2ylo07cj00rw" path="res://UI/Components/TouchScrollOptionButton.gd" id="6_fyi7o"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qxcsx"]
 content_margin_left = 50.0
@@ -138,7 +139,7 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 2
+current_tab = 4
 tabs_visible = false
 
 [node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
@@ -281,6 +282,7 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_yadmi")
 theme_override_styles/hover = SubResource("StyleBoxFlat_6fqj7")
 
 [node name="NoteSkinAdjust" type="HBoxContainer" parent="." unique_id=1274646299]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
@@ -338,6 +340,7 @@ custom_minimum_size = Vector2(600, 60)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 0
+theme_override_font_sizes/font_size = 32
 alignment = 1
 
 [node name="Desc" type="Label" parent="NoteSkinAdjust/VBoxC" unique_id=420877033]
@@ -346,14 +349,386 @@ layout_mode = 2
 size_flags_vertical = 1
 text = "（显示皮肤介绍或者用来摆一些相关的设置项）"
 
-[node name="ParticleAdjust" type="VBoxContainer" parent="." unique_id=1468523578]
+[node name="ParticleAdjust" type="HBoxContainer" parent="." unique_id=392630132]
 visible = false
 layout_mode = 2
+theme_override_constants/separation = 40
 alignment = 1
 metadata/_tab_index = 3
 
-[node name="ImageAdjust" type="VBoxContainer" parent="." unique_id=1785822308]
-visible = false
+[node name="ParticlePreview" type="Panel" parent="ParticleAdjust" unique_id=167394996]
+custom_minimum_size = Vector2(500, 500)
+clip_contents = true
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_nhoxv")
+
+[node name="VBoxC" type="VBoxContainer" parent="ParticleAdjust" unique_id=881285097]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 50
+
+[node name="OptionButton" type="OptionButton" parent="ParticleAdjust/VBoxC" unique_id=1398312008]
+custom_minimum_size = Vector2(600, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 32
+alignment = 1
+
+[node name="OtherOptions" type="GridContainer" parent="ParticleAdjust/VBoxC" unique_id=1648522083]
+custom_minimum_size = Vector2(0, 390)
+layout_mode = 2
+columns = 2
+
+[node name="Label" type="Label" parent="ParticleAdjust/VBoxC/OtherOptions" unique_id=2032973593]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "粒子缩放"
+vertical_alignment = 1
+
+[node name="ValueLineEdit" type="HBoxContainer" parent="ParticleAdjust/VBoxC/OtherOptions" unique_id=43757917]
+custom_minimum_size = Vector2(200, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="LineEdit" type="LineEdit" parent="ParticleAdjust/VBoxC/OtherOptions/ValueLineEdit" unique_id=1158713396]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+placeholder_text = "num..."
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false
+
+[node name="Label" type="Label" parent="ParticleAdjust/VBoxC/OtherOptions/ValueLineEdit" unique_id=407175546]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 32
+text = "px"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ImageAdjust" type="HBoxContainer" parent="." unique_id=1231422975]
+layout_mode = 2
+theme_override_constants/separation = 40
 alignment = 1
 metadata/_tab_index = 4
+
+[node name="ImagePreview" type="Panel" parent="ImageAdjust" unique_id=1921701981]
+custom_minimum_size = Vector2(500, 500)
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_nhoxv")
+
+[node name="TextureRect" type="TextureRect" parent="ImageAdjust/ImagePreview" unique_id=364989521]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 5.0
+offset_top = 5.0
+offset_right = -5.0
+offset_bottom = -5.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 2
+stretch_mode = 5
+
+[node name="VBoxC" type="VBoxContainer" parent="ImageAdjust" unique_id=906626315]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 50
+
+[node name="ImgType" type="OptionButton" parent="ImageAdjust/VBoxC" unique_id=1982607628]
+custom_minimum_size = Vector2(600, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 32
+alignment = 1
+selected = 0
+item_count = 3
+popup/item_0/text = "图片"
+popup/item_0/id = 0
+popup/item_1/text = "渐变"
+popup/item_1/id = 1
+popup/item_2/text = "纯色"
+popup/item_2/id = 2
+
+[node name="OtherOptions" type="GridContainer" parent="ImageAdjust/VBoxC" unique_id=758230520]
+custom_minimum_size = Vector2(0, 390)
+layout_mode = 2
+theme_override_constants/h_separation = 15
+theme_override_constants/v_separation = 10
+columns = 2
+
+[node name="Label" type="Label" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=1684337188]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "图片源文件"
+vertical_alignment = 1
+
+[node name="ImgName" type="OptionButton" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=552600227]
+custom_minimum_size = Vector2(380, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+alignment = 1
+clip_text = true
+script = ExtResource("6_fyi7o")
+
+[node name="Label2" type="Label" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=391619869]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "填充方式"
+vertical_alignment = 1
+
+[node name="ImgFillMode" type="OptionButton" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=802482917]
+custom_minimum_size = Vector2(380, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+alignment = 1
+clip_text = true
+selected = 0
+item_count = 2
+popup/item_0/text = "覆盖"
+popup/item_0/id = 0
+popup/item_1/text = "适应"
+popup/item_1/id = 1
+
+[node name="Label3" type="Label" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=402177544]
+visible = false
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "起始颜色"
+vertical_alignment = 1
+
+[node name="StartColor" type="HBoxContainer" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=2057857977]
+visible = false
+custom_minimum_size = Vector2(200, 0)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="HexColor" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/StartColor" unique_id=142305028]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+theme_override_font_sizes/font_size = 48
+alignment = 1
+max_length = 10
+
+[node name="ColorPickerButton" type="ColorPickerButton" parent="ImageAdjust/VBoxC/OtherOptions/StartColor" unique_id=1080424707]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 4
+focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+color = Color(1, 1, 1, 1)
+edit_intensity = false
+
+[node name="Label4" type="Label" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=369163223]
+visible = false
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "结束颜色"
+vertical_alignment = 1
+
+[node name="EndColor" type="HBoxContainer" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=196350461]
+visible = false
+custom_minimum_size = Vector2(200, 0)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="HexColor" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/EndColor" unique_id=256376892]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+theme_override_font_sizes/font_size = 48
+alignment = 1
+max_length = 10
+
+[node name="ColorPickerButton" type="ColorPickerButton" parent="ImageAdjust/VBoxC/OtherOptions/EndColor" unique_id=1668393326]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 4
+focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+color = Color(1, 1, 1, 1)
+edit_intensity = false
+
+[node name="FromX" type="HBoxContainer" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=1243770668]
+visible = false
+custom_minimum_size = Vector2(200, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="Label" type="Label" parent="ImageAdjust/VBoxC/OtherOptions/FromX" unique_id=1454760622]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 32
+text = "起始 X"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LineEdit" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/FromX" unique_id=161880194]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+text = "0"
+placeholder_text = "0"
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false
+
+[node name="FromY" type="HBoxContainer" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=2036956595]
+visible = false
+custom_minimum_size = Vector2(200, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="Label" type="Label" parent="ImageAdjust/VBoxC/OtherOptions/FromY" unique_id=1109335913]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 32
+text = "起始 Y"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LineEdit" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/FromY" unique_id=1829100238]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+text = "0"
+placeholder_text = "0"
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false
+
+[node name="ToX" type="HBoxContainer" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=935149768]
+visible = false
+custom_minimum_size = Vector2(200, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="Label" type="Label" parent="ImageAdjust/VBoxC/OtherOptions/ToX" unique_id=788049504]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 32
+text = "结束 X"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LineEdit" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/ToX" unique_id=364713249]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+text = "0"
+placeholder_text = "0"
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false
+
+[node name="ToY" type="HBoxContainer" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=2086105144]
+visible = false
+custom_minimum_size = Vector2(200, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="Label" type="Label" parent="ImageAdjust/VBoxC/OtherOptions/ToY" unique_id=86928254]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 32
+text = "结束 Y"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LineEdit" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/ToY" unique_id=1395654105]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+text = "0"
+placeholder_text = "0"
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false
+
+[node name="Label5" type="Label" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=1723883049]
+visible = false
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "颜色"
+vertical_alignment = 1
+
+[node name="SolidColor" type="HBoxContainer" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=607608948]
+visible = false
+custom_minimum_size = Vector2(200, 0)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="HexColor" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/SolidColor" unique_id=1590330456]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+theme_override_font_sizes/font_size = 48
+alignment = 1
+max_length = 10
+
+[node name="ColorPickerButton" type="ColorPickerButton" parent="ImageAdjust/VBoxC/OtherOptions/SolidColor" unique_id=502049640]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 4
+focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
+color = Color(1, 1, 1, 1)
+edit_intensity = false
