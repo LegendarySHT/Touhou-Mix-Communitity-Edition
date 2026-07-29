@@ -479,12 +479,8 @@ func set_note_width(wid: float):
 		nt.custom_minimum_size = Vector2(wid, 0)
 		nt.size.x = wid  # 保留兼容性
 		if nt == nt_l:
-			nt.get_node("VBoxC").custom_minimum_size = Vector2(wid, 0)
-			nt.get_node("VBoxC").size.x = wid  # 保留兼容性
-			var hd = nt.get_node("VBoxC/head")
-			_note_max_size_y = _note_max_size_y if _note_max_size_y > hd.size.y else hd.size.y
-		else:
-			_note_max_size_y = _note_max_size_y if _note_max_size_y > nt.size.y else nt.size.y
+			nt = nt.get_node("VBoxC/head")
+		_note_max_size_y = _note_max_size_y if _note_max_size_y > nt.size.y else nt.size.y
 
 func clear_flow_area():
 	# 斩断 FlowNote ↔ GameSequence 的 RefCounted 循环引用，释放旧音符
@@ -666,7 +662,6 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float) -> void:
 
 	var head := note._cached_head as Control
 	var tail := note._cached_tail as Control
-	var body := note._cached_body as Control
 
 	if note.long_head_height <= 0.0:
 		note.long_head_height = head.size.y
@@ -686,9 +681,11 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float) -> void:
 	var tail_judge_y = tail_center  # 使用 tail 中心而非顶部判定，避免特效位置过低
 	var head_top = head_center - head_half
 
-	body.custom_minimum_size.y = max(0.0, head_top - tail_bottom)
+	# 修改根节点 size.y = tail_h + body_h + head_h（注意减去两端的长度）
+	var body_target_h = max(0.0, head_top - tail_bottom)
+	note.rect.size.y = note.long_tail_height + body_target_h + note.long_head_height
 	# repeat 模式下，按 body 高度更新垂直重复次数
-	_update_long_body_v_repeat(note, body.custom_minimum_size.y)
+	_update_long_body_v_repeat(note, body_target_h)
 	note.rect.offset_transform_position.y = tail_top
 
 	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
@@ -782,9 +779,11 @@ func _reset_note_for_reuse(note: Node, note_type: FlowNote.NoteType) -> void:
 			note.custom_minimum_size = Vector2(note_visual_width, 0)
 		FlowNote.NoteType.Long:
 			note.custom_minimum_size = Vector2(note_visual_width, 0)
-			# 长条还要重置内部 VBoxC
-			var vbox = note.get_node("VBoxC")
-			vbox.custom_minimum_size = Vector2(note_visual_width, 0)
+			note.size.x = note_visual_width
+			note.size.y = 0
+			var body = note.get_node_or_null("VBoxC/body")
+			if body:
+				body.custom_minimum_size.y = 0
 			# 清理长条的长条特有状态
 			note.set_meta("_needs_height_recalc", true)  # 标记需要在 _spawn_note 里重新计算
 	

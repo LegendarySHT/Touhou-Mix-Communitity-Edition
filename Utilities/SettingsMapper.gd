@@ -14,8 +14,7 @@ static var mappings: Dictionary = {
 	"display_debug_info": {"section": "General", "key": "display_debug_info", "value_type": "int"},
 	"language": {"section": "General", "key": "language", "value_type": "int"},
 	"server_address": {"section": "General", "key": "server_address", "value_type": "string"},
-	"reload_builtin_resources": {"section": "General", "key": "reload_builtin_resources", "value_type": "int"},
-	
+
 	# ========== 播放设置 ==========
 	"performing_mode": {"section": "Playback", "key": "performing_mode", "value_type": "int"},
 	"play_ready_animation": {"section": "Playback", "key": "play_ready_animation", "value_type": "int"},

@@ -79,17 +79,14 @@ static func get_setting_groups() -> Array:
 				"default_value": "thmix.org",
 			},
 			{
-				"id": "reload_builtin_resources",
-				"name_en": "Reload Built-in Resources",
-				"name_zh": "重置内置资源",
-				"description": "选择后，内置的资源将重新加载",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Off", "text_zh": "关闭"},
-					{"text_en": "On", "text_zh": "开启"}
-				]
-			}
+			"id": "reload_builtin_resources",
+			"name_en": "Reload Built-in Resources",
+			"name_zh": "重置内置资源",
+			"description": "点击后，内置的资源将重新加载",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_reload_builtin_resources"
+		}
 		]
 	},
 	{
@@ -205,7 +202,8 @@ static func get_setting_groups() -> Array:
 			"type": "TYPE_OPTION",
 			"default_value": "GeneralUser-GS.sf2",
 			"options": [],
-			"dynamic_options": true
+			"dynamic_options": true,
+			"options_provider": "_provide_soundfont_options"
 		},
 
 	]
@@ -614,7 +612,8 @@ static func get_setting_groups() -> Array:
 				"description": "选择界面主题配色方案",
 				"type": "TYPE_OPTION",
 				"default_value": "",
-				"dynamic_options": true
+				"dynamic_options": true,
+				"options_provider": "_provide_theme_preset_options"
 			},
 			{
 				"id": "randomize_block_color",
@@ -677,15 +676,14 @@ static func get_setting_groups() -> Array:
 				]
 			},
 			{
-				"id": "block_skin_preset",
-				"name_en": "Note Skin",
-				"name_zh": "音符外观设定",
-				"description": "直接选择已导入的或内置的音符皮肤的名称即可更换皮肤",
-				"type": "TYPE_OPTION",
-				"default_value": "旧版2 [内置]",
-				"options": [],
-				"dynamic_options": true
-			},
+			"id": "block_skin_preset",
+			"name_en": "Note Skin",
+			"name_zh": "音符外观设定",
+			"description": "点击按钮打开皮肤选择窗口",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_note_skin_adjust"
+		},
 			{
 				"id": "custom_background_image_size_mode",
 				"name_en": "Custom Background Image Size Mode",
@@ -732,15 +730,16 @@ static func get_setting_groups() -> Array:
 				]
 			},
 			{
-				"id": "play_background_image_file",
-				"name_en": "Play Background Image",
-				"name_zh": "游玩背景图片",
-				"description": "仅图片模式生效。图片列表来自用户目录 BackgroundImage。",
-				"type": "TYPE_OPTION",
-				"default_value": "",
-				"options": [],
-				"dynamic_options": true
-			},
+			"id": "play_background_image_file",
+			"name_en": "Play Background Image",
+			"name_zh": "游玩背景图片",
+			"description": "仅图片模式生效。图片列表来自用户目录 BackgroundImage。",
+			"type": "TYPE_OPTION",
+			"default_value": "",
+			"options": [],
+			"dynamic_options": true,
+			"options_provider": "_provide_background_image_options"
+		},
 			{
 				"id": "play_background_color",
 				"name_en": "Play Background Color",

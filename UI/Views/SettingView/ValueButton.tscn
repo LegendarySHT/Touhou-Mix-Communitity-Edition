@@ -1,0 +1,33 @@
+[gd_scene format=3 uid="uid://i06evrr1oefo"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u4lkb"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nhoxv"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0xnow"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+corner_detail = 5
+
+[node name="ValueButton" type="Button" unique_id=1925023272]
+custom_minimum_size = Vector2(200, 80)
+custom_maximum_size = Vector2(500, -1)
+offset_right = 200.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_u4lkb")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_nhoxv")
+theme_override_styles/hover = SubResource("StyleBoxFlat_0xnow")
+text = "点击设置"

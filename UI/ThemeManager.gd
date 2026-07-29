@@ -557,6 +557,20 @@ func _apply_popup_window_theme(main: Node) -> void:
 
 	GLogger.debug("PopupWindow theme applied", "ThemeManager")
 
+# ============ 设置视图主题 ============
+
+## 对 SettingView 中所有 TYPE_BUTTON 设置项应用主题色
+## 由 refresh_all() 触发
+func _apply_setting_view_theme(main: Node) -> void:
+	var setting_view := main.get_node_or_null("skew/C/SettingView")
+	if not setting_view:
+		return
+	var setting_list := setting_view.get_node_or_null("HBoxC/SettingList") as SettingList
+	if not setting_list:
+		return
+	setting_list.apply_button_theme(get_color("primary"))
+	GLogger.debug("SettingView theme applied", "ThemeManager")
+
 # ============ 全局刷新 ============
 
 ## 主题变更后调用：重建 Theme 资源 + 主界面组件 + 所有背景
@@ -579,6 +593,7 @@ func refresh_all() -> void:
 	_apply_track_theme(main)
 	_apply_play_theme(main)
 	_apply_popup_window_theme(main)
+	_apply_setting_view_theme(main)
 	GLogger.info("主题刷新完成: %s" % _theme_name, "ThemeManager")
 
 func _on_theme_changed(preset_name: String) -> void:

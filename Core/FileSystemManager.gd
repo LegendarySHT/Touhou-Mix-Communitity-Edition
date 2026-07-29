@@ -833,6 +833,28 @@ func rescan_resources() -> void:
 	GLogger.info("Rescanning resources...", "FileSystemMGR")
 	_scan_all_resources()
 
+## 重置内置资源：强制重新复制默认谱面、皮肤、背景图到 user:// 目录
+## 与 _check_and_copy_default_resources_async 不同，此方法不检查目录是否为空，强制覆盖
+func reload_default_resources() -> void:
+	GLogger.info("Reloading built-in resources...", "FileSystemMGR")
+
+	# 复制默认谱面（强制，不检查空目录）
+	GLogger.info("Copying default charts...", "FileSystemMGR")
+	await _copy_default_charts_async()
+
+	# 复制默认皮肤（强制）
+	GLogger.info("Copying default skins...", "FileSystemMGR")
+	await _copy_directory_recursive_async(SkinManager.DEFAULT_SKINS_SRC, SKINS_DIR)
+
+	# 复制默认背景图（强制）
+	GLogger.info("Copying default backgrounds...", "FileSystemMGR")
+	await _copy_directory_contents_async(DEFAULT_BACKGROUND_SRC, BACKGROUND_DIR, "jpg,jpeg,png,webp")
+
+	# 重新扫描所有资源
+	_scan_all_resources()
+
+	GLogger.info("Built-in resources reloaded", "FileSystemMGR")
+
 ## 验证谱面完整性
 func validate_chart(chart_id: String) -> bool:
 	if not charts_index.has(chart_id):

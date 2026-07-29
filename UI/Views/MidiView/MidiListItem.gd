@@ -437,10 +437,23 @@ func _apply_display() -> void:
 	info_node.get_node("MPP/Label").text = entry.get("mpp_str", "...")
 
 
-## 配置变更：Generator / Lane / Appearance 相关设置影响 Note 数量，清除所有条目的 Note 缓存
-func _on_config_changed(_key: String, section: String, _value: Variant) -> void:
-	var note_sections := ["Generator", "Lane", "Appearance"]
-	if section not in note_sections:
+## 配置变更：仅影响 Note 数量/连接关系的字段才清除缓存并重算
+## Appearance 段中只有 generate_short_connect / generate_instant_connect / instant_connect_max_time / block_size
+## 会影响谱面（连接合并、尺寸换算），block_skin_preset 等纯贴图字段不应触发重算
+func _on_config_changed(key: String, section: String, _value: Variant) -> void:
+	var should_recompute := false
+	match section:
+		"Generator", "Lane":
+			should_recompute = true
+		"Appearance":
+			# 仅这些字段影响 Note 数量或 MPP 显示
+			should_recompute = key in [
+				"generate_short_connect",
+				"generate_instant_connect",
+				"instant_connect_max_time",
+				"block_size",
+			]
+	if not should_recompute:
 		return
 	for mid_id in _info_cache.keys():
 		_info_cache[mid_id].erase("note_str")

@@ -3,8 +3,11 @@ class_name SettingList
 
 var item_separator: String = "res://UI/Views/SettingView/Seperator.tscn"
 var setting_items: Dictionary = {}  # 存储所有设置项，键为id，值为SettingItem
-var pending_config_updates: Dictionary = {}  # 待提交配置，键为 "section::key"
-var _popup_refresh_map: Dictionary = {}  # 下拉刷新回调，键为 setting_id，值为 Callable
+
+# 进入 SettingView 时的配置快照（setting_id → 原始值，类型已转换好）
+var _initial_config: Dictionary = {}
+# 当前待保存的配置（setting_id → 已转换好类型的最终值）
+var _pending_config: Dictionary = {}
 
 var setting_groups: Array = []
 
@@ -22,7 +25,7 @@ func _ready() -> void:
 		# await get_tree().process_frame
 		if tBtn.get_parent().has_meta("snaping"):
 			return
-		
+
 		if tBtn and not tBtn.button_pressed:
 			for b in btns:
 				b.set_block_signals(true)
@@ -35,17 +38,20 @@ func load_settings(setting: Dictionary = {}):
 	# 清空现有项目
 	clear_items()
 	setting_items.clear()
-	pending_config_updates.clear()
 	separators.clear()
-	
+
+	# 初始化配置快照和待保存配置
+	_initial_config = setting.duplicate(true)
+	_pending_config = setting.duplicate(true)
+
 	# 遍历所有分组
 	for group in setting_groups:
 		# 添加分隔符
 		_add_separator()
-		
+
 		# 添加该组的所有设置项
 		for setting_data in group.settings:
-			var init_value = setting.get(setting_data.id) if setting.get(setting_data.id) else ""
+			var init_value = _pending_config.get(setting_data.id, setting_data.default_value)
 			add_setting_item(setting_data, init_value)
 
 	# 初始化依赖可见性
@@ -75,10 +81,12 @@ func _get_current_para_sepa_idx():
 func _process(delta: float) -> void:
 	super._process(delta)
 
-func add_setting_item(setting_data: Dictionary, init_value: String = ""):
+func add_setting_item(setting_data: Dictionary, init_value: Variant = ""):
 	# 创建设置项
 	var setting_item: SettingItem = create_and_add_item(setting_data.id, "SettingItem")
-	
+	# 注入 SettingList 引用，供 on_click / options_provider 回调使用
+	setting_item.setting_list = self
+
 	# 解析值类型
 	var value_type: SettingItem.ValueType = SettingItem.ValueType.TYPE_LINE_EDIT
 	match setting_data.type:
@@ -88,212 +96,420 @@ func add_setting_item(setting_data: Dictionary, init_value: String = ""):
 			value_type = SettingItem.ValueType.TYPE_COLOR
 		"TYPE_LINE_EDIT":
 			value_type = SettingItem.ValueType.TYPE_LINE_EDIT
-	
+		"TYPE_BUTTON":
+			value_type = SettingItem.ValueType.TYPE_BUTTON
+
 	# 设置界面语言（这里假设使用中文，可以根据需要调整）
 	var language = "zh"  # 可以改为从全局设置获取
 	var display_name = setting_data["name_%s" % language] if language in ["en", "zh"] else setting_data.name_en
 	var description = setting_data.description
-	
+
 	# 设置初始值（从保存的数据或默认值）
-	var initial_value = init_value if init_value else setting_data.default_value
-	
-	# 调用setup_item方法
+	var initial_value = init_value if init_value != null and str(init_value) != "" else setting_data.default_value
+
+	# 读取 JSON 中声明的回调方法名
+	var on_click_method := String(setting_data.get("on_click", ""))
+	var options_provider_method := String(setting_data.get("options_provider", ""))
+
+	# 调用 setup_item 方法（传入回调方法名供自动连接）
 	setting_item.setup_item(
 		setting_data.id,
 		display_name,
 		description,
 		value_type,
-		initial_value
+		initial_value,
+		on_click_method,
+		options_provider_method
 	)
-	
-# 如果是指令类型的设置项，设置选项
-	match value_type:
-		SettingItem.ValueType.TYPE_OPTION:
-			var option_texts = []
-			
-			# 检查是否为动态options（由SettingView在runtime填充）
-			if setting_data.get("dynamic_options", false) and setting_data.get("options", []).is_empty():
-				# 动态options为空，先设置空列表，等SettingView调用update_soundfont_options()更新
-				option_texts = ["Loading..."]
-			elif setting_data.get("is_custom_easing", false):
-				# 自定义缓动选项，从EasingMapper动态生成
-				var easing_type = setting_data.get("easing_type", "func")  # "func" or "phase"
-				var easing_options = []
-				
-				if easing_type == "func":
-					easing_options = EasingMapper.get_func_options()
-				elif easing_type == "phase":
-					easing_options = EasingMapper.get_phase_options()
-				
-				# 提取显示名称
-				for easing_opt in easing_options:
-					option_texts.append(easing_opt.display_name)
-			else:
-				# 静态options，正常处理
-				for option in setting_data.options:
-					var option_text = option["text_%s" % language] if language in ["en", "zh"] else option.text_en
-					option_texts.append(option_text)
-			
-			# 设置选项，并选中初始值对应的索引
-			var default_index = 0
-			if setting_data.get("is_custom_easing", false) and initial_value is String:
-				var easing_type = setting_data.get("easing_type", "func")
-				var easing_options = []
-				if easing_type == "func":
-					easing_options = EasingMapper.get_func_options()
-				elif easing_type == "phase":
-					easing_options = EasingMapper.get_phase_options()
 
-				for i in range(easing_options.size()):
-					if easing_options[i].name.to_upper() == initial_value.to_upper():
-						default_index = i
-						break
-			elif initial_value is String and initial_value.is_valid_int():
-				default_index = int(initial_value)
-			elif initial_value is String:
-				var matched_index = -1
-				for i in range(setting_data.get("options", []).size()):
-					var option_data = setting_data.get("options", [])[i]
-					if option_data.has("value") and str(option_data["value"]).to_lower() == initial_value.to_lower():
-						matched_index = i
-						break
-				if matched_index >= 0:
-					default_index = matched_index
-				else:
-					var idx = option_texts.find(initial_value)
-					default_index = idx if idx >= 0 else 0
-			
-			setting_item.set_options(option_texts, default_index)
-	
-		# 如果是颜色类型的设置项，设置颜色选择器选项
-		SettingItem.ValueType.TYPE_COLOR:
-			var enable_alpha = setting_data.get("edit_alpha", false)
-			setting_item.set_color_picker_options(enable_alpha, false, false)
-			
-			# 设置初始颜色值
-			if initial_value is String:
-				if initial_value.is_valid_html_color():
-					setting_item.set_value(Color(initial_value))
-		SettingItem.ValueType.TYPE_LINE_EDIT:
-			if setting_data.get("unit"):
-				setting_item.set_line_edit_properties("", false, setting_data.unit)
+	# 处理未声明 options_provider 的 TYPE_OPTION（静态 options / dynamic_options 空列表 / 自定义缓动）
+	if value_type == SettingItem.ValueType.TYPE_OPTION and options_provider_method == "":
+		_setup_static_options(setting_item, setting_data, initial_value, language)
+	elif value_type == SettingItem.ValueType.TYPE_COLOR:
+		var enable_alpha = setting_data.get("edit_alpha", false)
+		setting_item.set_color_picker_options(enable_alpha, false, false)
+		# 设置初始颜色值
+		if initial_value is String and initial_value.is_valid_html_color():
+			setting_item.set_value(Color(initial_value))
+	elif value_type == SettingItem.ValueType.TYPE_LINE_EDIT:
+		if setting_data.get("unit"):
+			setting_item.set_line_edit_properties("", false, setting_data.unit)
 
-	# 连接值改变信号
+	# 连接值改变信号（按钮类型若声明了 on_click 则不走 value_changed，但仍连接以兼容）
 	setting_item.connect("value_changed", Callable(self, "_on_setting_value_changed"))
-	setting_item.option_popup_about_to_show.connect(_on_item_popup_about_to_show)
-	
+
 	# 存储到字典中
 	setting_items[setting_data.id] = setting_item
 
+# 为未声明 options_provider 的 TYPE_OPTION 设置静态选项
+func _setup_static_options(setting_item: SettingItem, setting_data: Dictionary, initial_value: Variant, language: String) -> void:
+	var option_texts = []
+
+	if setting_data.get("dynamic_options", false) and setting_data.get("options", []).is_empty():
+		# 动态 options 为空且未声明 provider，先占位
+		option_texts = ["Loading..."]
+	elif setting_data.get("is_custom_easing", false):
+		# 自定义缓动选项，从 EasingMapper 动态生成
+		var easing_type = setting_data.get("easing_type", "func")
+		var easing_options = []
+		if easing_type == "func":
+			easing_options = EasingMapper.get_func_options()
+		elif easing_type == "phase":
+			easing_options = EasingMapper.get_phase_options()
+		for easing_opt in easing_options:
+			option_texts.append(easing_opt.display_name)
+	else:
+		# 静态 options
+		for option in setting_data.options:
+			var option_text = option["text_%s" % language] if language in ["en", "zh"] else option.text_en
+			option_texts.append(option_text)
+
+	# 选中初始值对应的索引
+	var default_index = 0
+	if setting_data.get("is_custom_easing", false) and initial_value is String:
+		var easing_type = setting_data.get("easing_type", "func")
+		var easing_options = []
+		if easing_type == "func":
+			easing_options = EasingMapper.get_func_options()
+		elif easing_type == "phase":
+			easing_options = EasingMapper.get_phase_options()
+		for i in range(easing_options.size()):
+			if easing_options[i].name.to_upper() == initial_value.to_upper():
+				default_index = i
+				break
+	elif initial_value is String and initial_value.is_valid_int():
+		default_index = int(initial_value)
+	elif initial_value is String:
+		var matched_index = -1
+		for i in range(setting_data.get("options", []).size()):
+			var option_data = setting_data.get("options", [])[i]
+			if option_data.has("value") and str(option_data["value"]).to_lower() == initial_value.to_lower():
+				matched_index = i
+				break
+		if matched_index >= 0:
+			default_index = matched_index
+		else:
+			var idx = option_texts.find(initial_value)
+			default_index = idx if idx >= 0 else 0
+
+	setting_item.set_options(option_texts, default_index)
+
 func _on_setting_value_changed(id: String, value: Variant):
-	# 设置项值改变时的处理
+	# 按钮类型若声明了 on_click 已直接走 on_click 回调，不会触发此分支
+	# 未声明 on_click 的按钮会 emit value_changed(id, null)，此处忽略
+	var item: SettingItem = setting_items.get(id)
+	if item and item.value_type == SettingItem.ValueType.TYPE_BUTTON:
+		return
+
 	print("Setting '%s' changed to: %s" % [id, value])
 
-	# 主题预设 — 直接交给 ThemeManager
-	if id == "theme_preset":
+	# theme_preset 即时应用到 ThemeManager
+	if id == "theme_preset" and value is int:
 		if ThemeMGR:
 			var presets := ThemeMGR.get_available_presets()
 			if value >= 0 and value < presets.size():
 				ThemeMGR.apply_preset(presets[value])
+		_pending_config[id] = value
 		return
 
-	# 从SettingsMapper中查找该设置项对应的section和key
-	if id in SettingsMapper.mappings:
-		var setting_info = SettingsMapper.mappings[id]
-		var section = setting_info.get("section", "")
-		var key = setting_info.get("key", "")
-		var value_type = setting_info.get("value_type", "string")
-		
-		if not section.is_empty() and not key.is_empty():
-			# 根据配置类型转换值（确保类型匹配）
-			var converted_value = value
+	# 转换值（索引→实际值、类型转换）
+	var converted_value = _convert_setting_value(id, value)
+	if converted_value == null:
+		return  # 转换失败（如颜色不完整），跳过
 
-			# 特殊处理：play_background_mode 需要刷新相关项可见性
-			if id == "play_background_mode" and value is int:
-				converted_value = value
-				_refresh_play_background_visibility()
-			# 特殊处理：note_fall_mode 需要控制自定义缓动选项的可见性
-			elif id == "note_fall_mode" and value is int:
-				set_note_fall_mode_and_show_custom_options(value)
-				converted_value = value
-			# 特殊处理：soundfont_select 需要将索引转换为文件名
-			elif id == "soundfont_select" and value is int:
-				var display_text = get_option_text(id, value)
-				# 去掉 [内置] 标签和 .sf2 扩展名
-				var actual_name = display_text.split(" [")[0] if " [" in display_text else display_text
-				if actual_name.ends_with(".sf2"):
-					actual_name = actual_name.get_basename()
-				converted_value = actual_name
-				print("[SettingList] Converting soundfont_select index %d to '%s'" % [value, converted_value])
-			# 特殊处理：block_skin_preset 需要将索引转换为皮肤名称（保留 [内置] 标记）
-			elif id == "block_skin_preset" and value is int:
-				var display_text = get_option_text(id, value)
-				converted_value = display_text
-				print("[SettingList] Converting block_skin_preset index %d to '%s'" % [value, converted_value])
-			elif id == "play_background_image_file" and value is int:
-				converted_value = get_option_text(id, value)
-				print("[SettingList] Converting play_background_image_file index %d to '%s'" % [value, converted_value])
-			else:
-				match value_type:
-					"int":
-						converted_value = int(value) if value is not int else value
-					"float":
-						converted_value = float(value) if value is not float else value
-					"bool":
-						# 布尔值可能来自int或字符串
-						if value is int:
-							converted_value = value != 0
-						elif value is String:
-							converted_value = value.to_lower() in ["1", "true", "yes"]
-						else:
-							converted_value = bool(value)
-					"string":
-						converted_value = str(value)
-					"color":
-						# 颜色保持为Color类型，先校验格式避免编辑过程中的报错
-						if value is Color:
-							converted_value = value
-						elif str(value).is_valid_html_color():
-							converted_value = Color(str(value))
-						else:
-							return  # 颜色值不完整时静默跳过，等待用户输入完成
+	_pending_config[id] = converted_value
+	print("[SettingList] Pending config: %s = %s" % [id, str(converted_value)])
 
-			# 改为延迟提交：先缓存变更，退出SettingView时统一应用
-			var update_id = "%s::%s" % [section, key]
-			pending_config_updates[update_id] = {
-				"section": section,
-				"key": key,
-				"value": converted_value
-			}
-			print("[SettingList] Deferred config update: [%s] %s = %s (type: %s)" % [section, key, str(converted_value), value_type])
+	# 即时可见性刷新
+	if id == "play_background_mode":
+		_refresh_play_background_visibility()
+	elif id == "note_fall_mode":
+		set_note_fall_mode_and_show_custom_options(int(value))
 
+# 将 UI 控件返回的值转换为配置存储用的值（索引→文件名、类型转换等）
+# 返回 null 表示值不完整，调用方应跳过本次写入
+func _convert_setting_value(id: String, value: Variant) -> Variant:
+	# 自定义缓动选项：索引→名称（LINEAR / IN 等）
+	var setting_data := _find_setting_data(id)
+	if not setting_data.is_empty() and setting_data.get("is_custom_easing", false) and value is int:
+		var easing_type = setting_data.get("easing_type", "func")
+		var easing_options: Array = []
+		if easing_type == "func":
+			easing_options = EasingMapper.get_func_options()
+		elif easing_type == "phase":
+			easing_options = EasingMapper.get_phase_options()
+		if value >= 0 and value < easing_options.size():
+			return easing_options[value].name
+		return null
+
+	# soundfont_select: 索引→文件名（去 .sf2 和 [内置] 标签）
+	if id == "soundfont_select" and value is int:
+		var display_text = get_option_text(id, value)
+		var actual_name = display_text.split(" [")[0] if " [" in display_text else display_text
+		if actual_name.ends_with(".sf2"):
+			actual_name = actual_name.get_basename()
+		return actual_name
+	# play_background_image_file: 索引→文件名
+	if id == "play_background_image_file" and value is int:
+		return get_option_text(id, value)
+
+	# 其他走 SettingsMapper 类型转换
+	if SettingsMapper.mappings.has(id):
+		var info = SettingsMapper.mappings[id]
+		var value_type = info.get("value_type", "string")
+		match value_type:
+			"int":
+				return int(value) if value is not int else value
+			"float":
+				return float(value) if value is not float else value
+			"bool":
+				if value is int:
+					return value != 0
+				elif value is String:
+					return value.to_lower() in ["1", "true", "yes"]
+				else:
+					return bool(value)
+			"string":
+				return str(value)
+			"color":
+				if value is Color:
+					return value
+				elif str(value).is_valid_html_color():
+					return Color(str(value))
+				else:
+					return null  # 颜色不完整时跳过
+	# 未在 mappings 中的项（如 theme_preset）原样返回
+	return value
+
+# 在 setting_groups 中查找指定 id 的 setting_data 字典
+func _find_setting_data(id: String) -> Dictionary:
+	for group in setting_groups:
+		for setting_data in group.settings:
+			if setting_data.id == id:
+				return setting_data
+	return {}
+
+# 弹出皮肤修改窗口，关闭后将选中皮肤名缓存到 _pending_config
+# PopupWindow 内部已通过 ConfigManager.set_value_and_notify 即时应用到 PlayView
+# _pending_config 仅确保退出 SettingView 时保存到配置文件
+func _popup_note_skin_adjust() -> void:
+	var skin_name := await PopupWindow.instance.show_note_skin_adjust()
+	if skin_name.is_empty():
+		return
+	_pending_config["block_skin_preset"] = skin_name
+	print("[SettingList] block_skin_preset selected: '%s' (pending save)" % skin_name)
+
+# 重置内置资源：调用 FileSystemManager 重新复制默认资源
+func _reload_builtin_resources() -> void:
+	if FileSystemManager.instance:
+		print("[SettingList] Reloading built-in resources...")
+		await FileSystemManager.instance.reload_default_resources()
+		print("[SettingList] Built-in resources reloaded")
+	else:
+		push_warning("[SettingList] FileSystemManager not available")
+
+## ========== options_provider 方法（供 SettingListItem 通过 Callable 调用） ==========
+
+# 提供 theme_preset 选项
+func _provide_theme_preset_options() -> Array:
+	if not ThemeMGR:
+		return []
+	var presets := ThemeMGR.get_available_presets()
+	var texts: Array = []
+	for p in presets:
+		texts.append(p)
+	return texts
+
+# 提供 soundfont_select 选项
+func _provide_soundfont_options() -> Array:
+	var sf_list = _scan_all_soundfonts()
+	if sf_list.is_empty():
+		sf_list = ["GeneralUser-GS [内置]"]
+	return sf_list
+
+# 提供 play_background_image_file 选项
+func _provide_background_image_options() -> Array:
+	return _scan_background_images()
+
+## ========== 文件扫描方法（从 SettingView 移入） ==========
+
+## 扫描所有背景图片文件
+func _scan_background_images() -> Array[String]:
+	var result: Array[String] = []
+	var image_dir = PathHelper.get_background_dir()
+	var dir = DirAccess.open(image_dir)
+	if dir == null:
+		return result
+
+	dir.list_dir_begin()
+	var file_name = dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir() and not file_name.begins_with("."):
+			var ext = file_name.get_extension().to_lower()
+			if ext in ["jpg", "jpeg", "png", "webp"]:
+				result.append(file_name)
+		file_name = dir.get_next()
+	dir.list_dir_end()
+
+	result.sort()
+	return result
+
+## 扫描所有 SoundFont 文件（user 优先）
+func _scan_all_soundfonts() -> Array[String]:
+	var soundfonts: Dictionary = {}  # {filename_without_ext: {display_name, path, is_builtin}}
+
+	# 第一步：扫描用户音源目录（user 优先）
+	var user_dir = PathHelper.get_soundfont_dir()
+	if DirAccess.open(user_dir) != null:
+		var dir = DirAccess.open(user_dir)
+		if dir:
+			dir.list_dir_begin()
+			var file_name = dir.get_next()
+			while file_name != "":
+				if file_name.ends_with(".sf2"):
+					var font_name = file_name.get_basename()
+					soundfonts[font_name] = {
+						"display_name": font_name,
+						"path": user_dir.path_join(file_name),
+						"is_builtin": false
+					}
+				file_name = dir.get_next()
+			dir.list_dir_end()
+
+	# 第二步：扫描 res://Resources/Soundfont/（仅添加 user 中没有的）
+	var res_dir = "res://Resources/Soundfont/"
+	if DirAccess.open(res_dir) != null:
+		var dir = DirAccess.open(res_dir)
+		if dir:
+			dir.list_dir_begin()
+			var file_name = dir.get_next()
+			while file_name != "":
+				if file_name.ends_with(".sf2"):
+					var font_name = file_name.get_basename()
+					if not soundfonts.has(font_name):
+						soundfonts[font_name] = {
+							"display_name": font_name + " [内置]",
+							"path": res_dir.path_join(file_name),
+							"is_builtin": true
+						}
+				file_name = dir.get_next()
+			dir.list_dir_end()
+
+	# 第三步：整理返回列表
+	var result: Array[String] = []
+	for font_name in soundfonts.keys():
+		result.append(soundfonts[font_name]["display_name"])
+
+	# 排序：用户文件优先，内置文件在后
+	result.sort_custom(func(a: String, b: String) -> bool:
+		var a_is_builtin = " [内置]" in a
+		var b_is_builtin = " [内置]" in b
+		if a_is_builtin != b_is_builtin:
+			return a_is_builtin  # 内置的排在后面
+		return a < b
+	)
+
+	return result
+
+## 验证 SoundFont 文件是否存在
+func _verify_soundfont_exists(soundfont_name: String) -> bool:
+	var user_path = PathHelper.get_soundfont_dir().path_join(soundfont_name + ".sf2")
+	if FileAccess.file_exists(user_path):
+		return true
+	var res_path = ("res://Resources/Soundfont/").path_join(soundfont_name + ".sf2")
+	if ResourceLoader.exists(res_path):
+		return true
+	return false
+
+## 获取 SoundFont 的实际路径
+func _get_soundfont_path(soundfont_name: String) -> String:
+	var user_path = PathHelper.get_soundfont_dir().path_join(soundfont_name + ".sf2")
+	if FileAccess.file_exists(user_path):
+		return user_path
+	var res_path = ("res://Resources/Soundfont/").path_join(soundfont_name + ".sf2")
+	if ResourceLoader.exists(res_path):
+		return res_path
+	return ""
+
+## ========== 配置保存与应用 ==========
+
+## 退出 SettingView 时调用：emit config_changed 信号应用变更
+## 仅 emit 与 _initial_config 不同的项
 func apply_pending_config_updates() -> int:
 	var emitted_count = 0
-	if pending_config_updates.is_empty():
-		return emitted_count
-
 	if EvtBus == null:
 		push_warning("[SettingList] EventBus is null, skip applying pending config updates")
-		pending_config_updates.clear()
 		return emitted_count
 
-	for update_key in pending_config_updates.keys():
-		var update = pending_config_updates[update_key]
-		if update is Dictionary:
-			var section = update.get("section", "")
-			var key = update.get("key", "")
-			if section.is_empty() or key.is_empty():
-				continue
-			EvtBus.config_changed.emit(key, section, update.get("value", null))
-			emitted_count += 1
+	for setting_id in _pending_config:
+		if not SettingsMapper.mappings.has(setting_id):
+			continue  # theme_preset 等不在 mappings 中的跳过
+		var mapping = SettingsMapper.mappings[setting_id]
+		var section = mapping.get("section", "")
+		var key = mapping.get("key", "")
+		if section.is_empty() or key.is_empty():
+			continue
+		var value = _pending_config[setting_id]
+		var old_value = _initial_config.get(setting_id, null)
+		# 仅 emit 变更项
+		if str(old_value) == str(value):
+			continue
+		EvtBus.config_changed.emit(key, section, value)
+		emitted_count += 1
 
-	pending_config_updates.clear()
 	return emitted_count
 
+## 是否有待保存的变更
 func has_pending_changes() -> bool:
-	return not pending_config_updates.is_empty()
+	for setting_id in _pending_config:
+		var old_value = _initial_config.get(setting_id, null)
+		if str(old_value) != str(_pending_config[setting_id]):
+			return true
+	return false
 
+## 获取当前所有待保存配置的副本（供外部查询用）
+func get_all_settings_as_json() -> Dictionary:
+	return _pending_config.duplicate(true)
 
+## 获取特定设置项的待保存值
+func get_setting_value(setting_id: String) -> Variant:
+	return _pending_config.get(setting_id, null)
+
+## 设置特定设置项的值（同时更新 _pending_config）
+func set_setting_value(setting_id: String, value: Variant) -> bool:
+	if setting_items.has(setting_id):
+		var setting_item = setting_items[setting_id]
+		setting_item.set_value(value)
+		_pending_config[setting_id] = value
+		return true
+	return false
+
+## 获取指定选项型设置的显示文本
+func get_option_text(setting_id: String, index: int) -> String:
+	if not setting_items.has(setting_id):
+		return ""
+	var setting_item = setting_items[setting_id]
+	if setting_item == null:
+		return ""
+	if not setting_item.value_node or not (setting_item.value_node is OptionButton):
+		return ""
+	var option_btn: OptionButton = setting_item.value_node
+	if index < 0 or index >= option_btn.item_count:
+		return ""
+	return option_btn.get_item_text(index)
+
+## 重置所有设置为默认值
+func reset_to_defaults():
+	for setting_id in setting_items:
+		for group in setting_groups:
+			for setting_data in group.settings:
+				if setting_data.id == setting_id:
+					var setting_item = setting_items[setting_id]
+					if setting_item:
+						setting_item.set_value(setting_data.default_value)
+					break
+
+## ========== 可见性控制 ==========
 
 func _refresh_play_background_visibility() -> void:
 	var mode_index = 0
@@ -323,203 +539,31 @@ func _refresh_play_background_visibility() -> void:
 				if item.value_node:
 					item.value_node.visible = _is_visible
 
-
-
-func get_all_settings_as_json() -> Dictionary:
-	# 返回所有设置项的当前值，格式为 {"设置项ID": "值", ...}
-	var result = {}
-	
-	for setting_id in setting_items.keys():
-		var setting_item = setting_items[setting_id]
-		if setting_item:
-			var value = setting_item.get_value()
-			# 将值转换为字符串
-			if value is int or value is float:
-				result[setting_id] = str(value)
-			elif value is Color:
-				result[setting_id] = value.to_html()
-			else:
-				result[setting_id] = str(value)
-	
-	return result
-
-# 获取特定设置项的值
-func get_setting_value(setting_id: String) -> Variant:
-	if setting_items.has(setting_id):
-		var setting_item = setting_items[setting_id]
-		return setting_item.get_value()
-	return null
-
-# 设置特定设置项的值
-func set_setting_value(setting_id: String, value: Variant) -> bool:
-	if setting_items.has(setting_id):
-		var setting_item = setting_items[setting_id]
-		setting_item.set_value(value)
-		return true
-	return false
-
-# 获取指定选项型设置的显示文本
-func get_option_text(setting_id: String, index: int) -> String:
-	if not setting_items.has(setting_id):
-		return ""
-	var setting_item = setting_items[setting_id]
-	if setting_item == null:
-		return ""
-	if not setting_item.value_node or not (setting_item.value_node is OptionButton):
-		return ""
-	var option_btn: OptionButton = setting_item.value_node
-	if index < 0 or index >= option_btn.item_count:
-		return ""
-	return option_btn.get_item_text(index)
-
-# 重置所有设置为默认值
-func reset_to_defaults():
-	for setting_id in setting_items:
-		# 查找默认值
-		for group in setting_groups:
-			for setting_data in group.settings:
-				if setting_data.id == setting_id:
-					var setting_item = setting_items[setting_id]
-					if setting_item:
-						setting_item.set_value(setting_data.default_value)
-					break
-
-
-## 更新soundfont_select的选项（由SettingView调用）
-func update_soundfont_options(soundfont_list: Array, current_selection: String = "") -> void:
-	"""
-	更新soundfont_select的选项列表
-	
-	Args:
-		soundfont_list: 格式为 ["GeneralUser-GS [内置]", "CustomFont", ...]
-		current_selection: 当前应该选中的soundfont名称（不带标签）
-	"""
-	if not setting_items.has("soundfont_select"):
-		push_warning("[SettingList] soundfont_select setting item not found")
-		return
-	
-	var setting_item = setting_items["soundfont_select"]
-	if setting_item == null:
-		push_warning("[SettingList] soundfont_select setting item is null")
-		return
-	
-	# 更新options
-	if soundfont_list.is_empty():
-		setting_item.set_options(["No Sound Fonts Available"], 0)
-		return
-	
-	setting_item.set_options(soundfont_list, 0)
-	
-	# 尝试选中current_selection
-	if not current_selection.is_empty():
-		for i in range(soundfont_list.size()):
-			# 处理带标签的情况（e.g., "GeneralUser-GS [内置]"）
-			var display_name = soundfont_list[i]
-			var font_name = display_name.split(" [")[0]  # 移除 [内置] 标签
-			
-			if font_name == current_selection or display_name == current_selection:
-				setting_item.set_value(i)
-				break
-
-
-
-## 更新theme_preset的选项（由SettingView调用）
-func update_theme_preset_options() -> void:
-	if not ThemeMGR:
-		return
-	var item = setting_items.get("theme_preset")
-	if not item:
-		return
-
-	var presets := ThemeMGR.get_available_presets()
-	var texts: Array[String] = []
-	for p in presets:
-		texts.append(p)
-
-	var current := ThemeMGR.get_theme_name()
-	var idx = max(0, presets.find(current))
-	item.set_options(texts, idx)
-
-func update_background_image_options(image_files: Array, current_selection: String = "") -> void:
-	if not setting_items.has("play_background_image_file"):
-		return
-
-	var setting_item = setting_items["play_background_image_file"]
-	if setting_item == null:
-		return
-
-	if image_files.is_empty():
-		setting_item.set_options([""], 0)
-		return
-
-	setting_item.set_options(image_files, 0)
-
-	if not current_selection.is_empty():
-		var target_index = image_files.find(current_selection)
-		if target_index >= 0:
-			setting_item.set_value(target_index)
-
-
-## 更新音符皮肤选项
-func update_note_skin_options(skin_list: Array, current_selection: String = "") -> void:
-	"""
-	更新音符皮肤选择器的选项列表
-	
-	Args:
-		skin_list: 皮肤名称列表
-		current_selection: 当前选中的皮肤名称
-	"""
-	if not setting_items.has("block_skin_preset"):
-		push_warning("[SettingList] block_skin_preset setting item not found")
-		return
-	
-	var setting_item = setting_items["block_skin_preset"]
-	if setting_item == null:
-		return
-	
-	# 更新选项
-	if skin_list.is_empty():
-		setting_item.set_options(["旧版2 [内置]"], 0)
-		return
-	
-	setting_item.set_options(skin_list, 0)
-	
-	# 尝试选中当前选择
-	if not current_selection.is_empty():
-		var target_index = skin_list.find(current_selection)
-		if target_index >= 0:
-			setting_item.set_value(target_index)
-
 ## 设置下落模式和控制自定义缓动选项的可见性
 func set_note_fall_mode_and_show_custom_options(mode: int) -> void:
-	"""
-	设置下落模式并控制自定义缓动选项的可见性
-	
-	Args:
-		mode: 0=匀速, 1=加速下落, 2=自定义
-	"""
 	var custom_easing_ids = [
 		"note_fall_easing_before_func",
 		"note_fall_easing_before_phase",
 		"note_fall_easing_after_func",
 		"note_fall_easing_after_phase"
 	]
-	
+
 	for easing_id in custom_easing_ids:
 		if setting_items.has(easing_id):
 			var setting_item = setting_items[easing_id]
 			if setting_item and setting_item.value_node:
-				# 当模式为2（自定义）时显示，否则隐藏
 				setting_item.visible = (mode == 2)
 				if setting_item.value_node:
 					setting_item.value_node.visible = (mode == 2)
 
-## 注册下拉弹出前的刷新回调（由 SettingView 调用）
-func register_popup_refresh(setting_id: String, refresh_callable: Callable) -> void:
-	_popup_refresh_map[setting_id] = refresh_callable
+## ========== 主题化 ==========
 
-## 下拉弹出前刷新选项
-func _on_item_popup_about_to_show(id: String) -> void:
-	if _popup_refresh_map.has(id):
-		var cb: Callable = _popup_refresh_map[id]
-		cb.call()
+## 对所有 TYPE_BUTTON 设置项应用主题色（由 ThemeManager 调用）
+func apply_button_theme(color: Color) -> void:
+	for setting_id in setting_items:
+		var item: SettingItem = setting_items[setting_id]
+		if item and item.value_type == SettingItem.ValueType.TYPE_BUTTON and item.value_node is Button:
+			var btn := item.value_node as Button
+			btn.get_theme_stylebox("normal").bg_color = color
+			btn.get_theme_stylebox("pressed").bg_color = color.darkened(0.25)
+			btn.get_theme_stylebox("hover").bg_color = color.lightened(0.15)

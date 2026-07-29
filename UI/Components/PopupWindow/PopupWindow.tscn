@@ -1,7 +1,10 @@
 [gd_scene format=3 uid="uid://6x22q0274hxw"]
 
+[ext_resource type="PackedScene" uid="uid://3ofq4u0124qy" path="res://UI/Views/PlayView/note_block.tscn" id="3_6fqj7"]
 [ext_resource type="Texture2D" uid="uid://bpgl1nsjuf8yf" path="res://Resources/Components/CancelBtn.png" id="3_wi0v8"]
+[ext_resource type="PackedScene" uid="uid://b3wpw7ylic5wl" path="res://UI/Views/PlayView/note_slide.tscn" id="4_fyi7o"]
 [ext_resource type="Texture2D" uid="uid://1q15cy2pddpj" path="res://Resources/Components/ConfirmBtn.png" id="4_yttj5"]
+[ext_resource type="PackedScene" uid="uid://dnnxx5it0pnum" path="res://UI/Views/PlayView/note_long.tscn" id="5_v2710"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qxcsx"]
 content_margin_left = 50.0
@@ -123,11 +126,10 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 1
+current_tab = 0
 tabs_visible = false
 
 [node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
@@ -196,6 +198,7 @@ theme_override_styles/hover = SubResource("StyleBoxTexture_3ccbu")
 text = "确定"
 
 [node name="DelayAdjust" type="VBoxContainer" parent="." unique_id=887538536]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
@@ -264,11 +267,70 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_c3or4")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_yadmi")
 theme_override_styles/hover = SubResource("StyleBoxFlat_6fqj7")
 
-[node name="NoteSkinAdjust" type="VBoxContainer" parent="." unique_id=1358575653]
+[node name="NoteSkinAdjust" type="HBoxContainer" parent="." unique_id=1274646299]
 visible = false
 layout_mode = 2
+theme_override_constants/separation = 40
 alignment = 1
 metadata/_tab_index = 2
+
+[node name="NotePreview" type="Panel" parent="NoteSkinAdjust" unique_id=422870283]
+custom_minimum_size = Vector2(500, 500)
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="HBoxC" type="HBoxContainer" parent="NoteSkinAdjust/NotePreview" unique_id=1744970574]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -175.0
+offset_right = 200.0
+offset_bottom = 175.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_transform_enabled = true
+theme_override_constants/separation = 80
+alignment = 1
+
+[node name="VBoxC" type="VBoxContainer" parent="NoteSkinAdjust/NotePreview/HBoxC" unique_id=701466565]
+layout_mode = 2
+theme_override_constants/separation = 50
+alignment = 1
+
+[node name="block" parent="NoteSkinAdjust/NotePreview/HBoxC/VBoxC" unique_id=1716205642 instance=ExtResource("3_6fqj7")]
+layout_mode = 2
+offset_transform_position = Vector2(0, -40)
+
+[node name="slide" parent="NoteSkinAdjust/NotePreview/HBoxC/VBoxC" unique_id=425160628 instance=ExtResource("4_fyi7o")]
+layout_mode = 2
+offset_transform_position = Vector2(0, 40)
+
+[node name="long" parent="NoteSkinAdjust/NotePreview/HBoxC" unique_id=193727071 instance=ExtResource("5_v2710")]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+
+[node name="VBoxC" type="VBoxContainer" parent="NoteSkinAdjust" unique_id=2130040965]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 50
+
+[node name="OptionButton" type="OptionButton" parent="NoteSkinAdjust/VBoxC" unique_id=1861163997]
+custom_minimum_size = Vector2(600, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+alignment = 1
+
+[node name="Desc" type="Label" parent="NoteSkinAdjust/VBoxC" unique_id=420877033]
+custom_minimum_size = Vector2(0, 390)
+layout_mode = 2
+size_flags_vertical = 1
 
 [node name="ParticleAdjust" type="VBoxContainer" parent="." unique_id=1468523578]
 visible = false
