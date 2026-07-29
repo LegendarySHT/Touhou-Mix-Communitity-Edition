@@ -342,7 +342,7 @@ func _on_skin_option_selected(_index: int) -> void:
 
 # 弹出皮肤修改窗口
 func show_note_skin_adjust() -> String:
-	size = Vector2(1700, 800)
+	size = Vector2(1500, 700)
 	_tab_c.current_tab = 2
 	_refresh_skin_options()
 	var current := ConfigManager.instance.get_string("Appearance", "block_skin_preset", "旧版2 [内置]")
