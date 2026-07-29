@@ -249,90 +249,42 @@ static func get_setting_groups() -> Array:
 				"default_value": "0.8"
 			},
 			{
-				"id": "perfect_spark_preset",
-				"name_en": "Perfect Spark Preset",
-				"name_zh": "Perfect特效设定",
-				"description": "点击选框或左右两旁的按钮更改按键特效的样式",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "None", "text_zh": "无"},
-					{"text_en": "Block", "text_zh": "方块"}
-				]
-			},
-			{
-				"id": "perfect_spark_scaling",
-				"name_en": "Perfect Spark Scaling",
-				"name_zh": "Perfect特效大小",
-				"description": "调整按键特效的半径",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "50",
-				"unit": "px"
-			},
-			{
-				"id": "great_spark_preset",
-				"name_en": "Great Spark Preset",
-				"name_zh": "Great特效设定",
-				"description": "同【Perfect特效设定】",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "None", "text_zh": "无"},
-					{"text_en": "Block", "text_zh": "方块"}
-				]
-			},
-			{
-				"id": "great_spark_scaling",
-				"name_en": "Great Spark Scaling",
-				"name_zh": "Great特效大小",
-				"description": "调整按键特效的半径",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "50",
-				"unit": "px"
-			},
-			{
-				"id": "good_spark_preset",
-				"name_en": "Good Spark Preset",
-				"name_zh": "Good特效设定",
-				"description": "同【Perfect特效设定】",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "None", "text_zh": "无"},
-					{"text_en": "Block", "text_zh": "方块"}
-				]
-			},
-			{
-				"id": "good_spark_scaling",
-				"name_en": "Good Spark Scaling",
-				"name_zh": "Good特效大小",
-				"description": "调整按键特效的半径",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "50",
-				"unit": "px"
-			},
-			{
-				"id": "bad_spark_preset",
-				"name_en": "Bad Spark Preset",
-				"name_zh": "Bad特效设定",
-				"description": "同【Perfect特效设定】",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "None", "text_zh": "无"},
-					{"text_en": "Block", "text_zh": "方块"}
-				]
-			},
-			{
-				"id": "bad_spark_scaling",
-				"name_en": "Bad Spark Scaling",
-				"name_zh": "Bad特效大小",
-				"description": "调整按键特效的半径",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "1.0",
-				"unit": "px"
-			}
-		]
+			"id": "perfect_spark",
+			"name_en": "Perfect Spark",
+			"name_zh": "Perfect特效设定",
+			"description": "点击按钮打开窗口，调整 Perfect 判定的按键特效样式与大小",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_perfect_spark_adjust"
+		},
+		{
+			"id": "great_spark",
+			"name_en": "Great Spark",
+			"name_zh": "Great特效设定",
+			"description": "点击按钮打开窗口，调整 Great 判定的按键特效样式与大小",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_great_spark_adjust"
+		},
+		{
+			"id": "good_spark",
+			"name_en": "Good Spark",
+			"name_zh": "Good特效设定",
+			"description": "点击按钮打开窗口，调整 Good 判定的按键特效样式与大小",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_good_spark_adjust"
+		},
+		{
+			"id": "bad_spark",
+			"name_en": "Bad Spark",
+			"name_zh": "Bad特效设定",
+			"description": "点击按钮打开窗口，调整 Bad 判定的按键特效样式与大小",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_bad_spark_adjust"
+		}
+	]
 	},
 	{
 		"name": "判定设置",
@@ -614,9 +566,36 @@ static func get_setting_groups() -> Array:
 				"default_value": "",
 				"dynamic_options": true,
 				"options_provider": "_provide_theme_preset_options"
-			},
-			{
-				"id": "randomize_block_color",
+		},
+		{
+			"id": "block_size",
+			"name_en": "Block Size",
+			"name_zh": "音符尺寸大小",
+			"description": "设置可游玩区域容纳的音符数量，数值越大音符越小。例如：设置为6.5表示可游玩区域宽度正好为6.5个音符宽度。",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "6.5",
+			"unit": "个音符"
+		},
+		{
+			"id": "note_glow_intensity",
+			"name_en": "Note Glow Intensity",
+			"name_zh": "音符发光强度",
+			"description": "控制音符周围的发光效果强度，[0, 2]",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "0.5",
+			"range": [0.0, 2.0, 0.1]
+		},
+		{
+			"id": "note_glow_size",
+			"name_en": "Note Glow Size",
+			"name_zh": "音符发光范围",
+			"description": "控制音符发光效果的范围大小，[0, 30]",
+			"type": "TYPE_LINE_EDIT",
+			"default_value": "5.0",
+			"range": [1.0, 12.0, 1.0]
+		},
+		{
+			"id": "randomize_block_color",
 				"name_en": "Randomize Block Color",
 				"name_zh": "随机音符顏色",
 				"description": "随机设置下落音符的颜色。由于光柱特效的颜色与音符的颜色相同，所以当玩家使用自定义皮肤时该设置项相当于随机设置光柱特效的颜色",
@@ -685,15 +664,6 @@ static func get_setting_groups() -> Array:
 			"on_click": "_popup_note_skin_adjust"
 		},
 			{
-			"id": "play_background",
-			"name_en": "Play Background",
-			"name_zh": "游玩界面背景",
-			"description": "点击修改游玩界面背景。支持封面、图片、渐变、纯色四种类型。",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_play_background_adjust"
-		},
-		{
 			"id": "main_background",
 			"name_en": "Main Background",
 			"name_zh": "主界面背景",
@@ -748,34 +718,16 @@ static func get_setting_groups() -> Array:
 			"on_click": "_popup_setting_background_adjust"
 		},
 		{
-			"id": "block_size",
-				"name_en": "Block Size",
-				"name_zh": "音符尺寸大小",
-				"description": "设置可游玩区域容纳的音符数量，数值越大音符越小。例如：设置为6.5表示可游玩区域宽度正好为6.5个音符宽度。",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "6.5",
-				"unit": "个音符"
-			},
-			{
-				"id": "note_glow_intensity",
-				"name_en": "Note Glow Intensity",
-				"name_zh": "音符发光强度",
-				"description": "控制音符周围的发光效果强度，[0, 2]",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "0.5",
-				"range": [0.0, 2.0, 0.1]
-			},
-			{
-				"id": "note_glow_size",
-				"name_en": "Note Glow Size",
-				"name_zh": "音符发光范围",
-				"description": "控制音符发光效果的范围大小，[0, 30]",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "5.0",
-				"range": [1.0, 12.0, 1.0]
-			},
-			{
-				"id": "background_image_flash_color",
+			"id": "play_background",
+			"name_en": "Play Background",
+			"name_zh": "游玩界面背景",
+			"description": "点击修改游玩界面背景。支持封面、图片、渐变、纯色四种类型。",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_play_background_adjust"
+		},
+		{
+			"id": "background_image_flash_color",
 				"name_en": "Background Image Flash Color",
 				"name_zh": "背景闪光颜色",
 				"description": "修改打击音符时背景发光的颜色",

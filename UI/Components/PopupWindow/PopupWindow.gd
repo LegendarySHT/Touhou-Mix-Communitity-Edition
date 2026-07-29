@@ -123,10 +123,12 @@ func show_note_skin_adjust() -> String:
 	return _note_skin_adjust.get_selected_skin()
 
 # 弹出粒子设置窗口
-func show_particle_adjust() -> Dictionary:
+# judge_type: Perfect / Great / Good / Bad，决定编辑哪个判定类型的特效
+# 返回 Dictionary 字段见 ParticleAdjust.get_result
+func show_particle_adjust(judge_type: String = "Perfect") -> Dictionary:
 	size = Vector2(1500, 700)
 	_tab_c.current_tab = 3
-	_particle_adjust.init_adjust()
+	_particle_adjust.init_adjust(judge_type)
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 	# 等待窗口进入动画完成，避免 ParticlePreview 在 scale 0→1 过程中粒子位置错位
 	await get_tree().create_timer(_POPUP_ANIM_DURATION).timeout

@@ -290,6 +290,35 @@ func _popup_note_skin_adjust() -> void:
 	_pending_config["block_skin_preset"] = skin_name
 	print("[SettingList] block_skin_preset selected: '%s' (pending save)" % skin_name)
 
+# ===== 各判定类型特效设置弹窗入口 =====
+# 4 个按钮分别对应 Perfect/Great/Good/Bad，调用统一的 _popup_spark_adjust(judge_type)
+# ParticleAdjust 内部已通过 ConfigManager.set_value_and_notify 即时保存到对应字段
+# _pending_config 同步缓存，确保退出 SettingView 时 diff 保存到 settings.ini
+
+func _popup_perfect_spark_adjust() -> void:
+	await _popup_spark_adjust("Perfect")
+
+func _popup_great_spark_adjust() -> void:
+	await _popup_spark_adjust("Great")
+
+func _popup_good_spark_adjust() -> void:
+	await _popup_spark_adjust("Good")
+
+func _popup_bad_spark_adjust() -> void:
+	await _popup_spark_adjust("Bad")
+
+## 统一的特效设置弹窗入口
+## judge_type: Perfect / Great / Good / Bad
+## 关闭后将 preset 和 scaling 缓存到 _pending_config，由 save_config_to_file diff 保存
+func _popup_spark_adjust(judge_type: String) -> void:
+	var result := await PopupWindow.instance.show_particle_adjust(judge_type)
+	if result.is_empty():
+		return
+	var judge_lower := judge_type.to_lower()
+	_pending_config[judge_lower + "_spark_preset"] = result.get("preset", 0)
+	_pending_config[judge_lower + "_spark_scaling"] = result.get("scaling", 50)
+	print("[SettingList] %s spark updated: preset=%s scaling=%s (pending save)" % [judge_type, result.get("preset"), result.get("scaling")])
+
 # ===== 各视图背景设置弹窗入口 =====
 # 每个视图一个 TYPE_BUTTON 入口，调用统一的 _popup_view_background_adjust(view_name)
 # 配置即时保存到 theme.ini 的 [backgrounds] 段（由 ThemeManager.set_view_background 处理）

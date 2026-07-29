@@ -41,7 +41,7 @@ static var mappings: Dictionary = {
 	"good_spark_preset": {"section": "Lane", "key": "good_spark_preset", "value_type": "int"},
 	"good_spark_scaling": {"section": "Lane", "key": "good_spark_scaling", "value_type": "int"},
 	"bad_spark_preset": {"section": "Lane", "key": "bad_spark_preset", "value_type": "int"},
-	"bad_spark_scaling": {"section": "Lane", "key": "bad_spark_scaling", "value_type": "float"},
+	"bad_spark_scaling": {"section": "Lane", "key": "bad_spark_scaling", "value_type": "int"},
 	
 	# ========== 判定设置 ==========
 	"touch_judging_criteria": {"section": "Judge", "key": "touch_judging_criteria", "value_type": "int"},

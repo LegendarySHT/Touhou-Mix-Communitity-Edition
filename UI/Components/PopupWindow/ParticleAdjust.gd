@@ -3,6 +3,7 @@ extends HBoxContainer
 class_name ParticleAdjust
 
 @onready var _particle_preview: Panel = $ParticlePreview
+@onready var _title_label: Label = $VBoxC/Title
 @onready var _particle_type_btn: OptionButton = $VBoxC/OptionButton
 @onready var _particle_scaling_edit: LineEdit = $VBoxC/OtherOptions/ValueLineEdit/LineEdit
 
@@ -19,6 +20,10 @@ var _particle_preview_timer: Timer = null
 ## 粒子预览自动播放间隔（秒）
 const _PARTICLE_PREVIEW_INTERVAL: float = 1.8
 
+## 当前正在编辑的判定类型（Perfect / Great / Good / Bad）
+## 由 PopupWindow.show_particle_adjust 传入，决定读写哪个 spark 配置字段
+var _judge_type: String = "Perfect"
+
 func _ready() -> void:
 	_particle_type_btn.item_selected.connect(_on_particle_preset_selected)
 	_particle_scaling_edit.text_changed.connect(_on_particle_scaling_changed)
@@ -32,16 +37,22 @@ func _init_particle_preview() -> void:
 	add_child(_particle_preview_timer)
 
 ## 由 PopupWindow.show_particle_adjust 调用：填充选项 + 选中当前配置值
-func init_adjust() -> void:
+## judge_type: Perfect / Great / Good / Bad，决定读写哪个 spark 配置字段
+func init_adjust(judge_type: String = "Perfect") -> void:
+	_judge_type = judge_type
+	# 更新窗口标题
+	_title_label.text = "%s 特效设定" % judge_type
 	# 填充粒子样式选项（None/Block/...）
 	_particle_type_btn.clear()
 	for _name in _PARTICLE_PRESETS:
 		_particle_type_btn.add_item(_name)
 	# 选中当前配置值
-	var current_preset: int = ConfigManager.instance.get_int("Lane", "perfect_spark_preset", 0)
+	var preset_key := "%s_spark_preset" % judge_type.to_lower()
+	var current_preset: int = ConfigManager.instance.get_int("Lane", preset_key, 0)
 	_particle_type_btn.selected = clampi(current_preset, 0, _PARTICLE_PRESETS.size() - 1)
 	# 显示当前缩放值（临时断开信号避免回环）
-	var current_scaling: int = ConfigManager.instance.get_int("Lane", "perfect_spark_scaling", 50)
+	var scaling_key := "%s_spark_scaling" % judge_type.to_lower()
+	var current_scaling: int = ConfigManager.instance.get_int("Lane", scaling_key, 50)
 	_particle_scaling_edit.text_changed.disconnect(_on_particle_scaling_changed)
 	_particle_scaling_edit.text = str(current_scaling)
 	_particle_scaling_edit.text_changed.connect(_on_particle_scaling_changed)
@@ -83,27 +94,27 @@ func stop_preview() -> void:
 	if _particle_preview_timer and not _particle_preview_timer.is_stopped():
 		_particle_preview_timer.stop()
 
-## 切换粒子样式：即时保存到配置并播放一次预览
+## 切换粒子样式：即时保存到对应判定类型的配置字段并播放一次预览
 func _on_particle_preset_selected(_index: int) -> void:
-	# preset 配置对应 Lane 段的 *_spark_preset 字段
-	# 当前预览页只展示一种样式，统一保存到 perfect_spark_preset
-	# （未来扩展为多种粒子样式时，可在此处分发到不同字段）
+	# preset 配置对应 Lane 段的 {judge_type_lower}_spark_preset 字段
 	var preset_value: int = _particle_type_btn.selected
-	ConfigManager.instance.set_value_and_notify("Lane", "perfect_spark_preset", preset_value)
+	var preset_key := "%s_spark_preset" % _judge_type.to_lower()
+	ConfigManager.instance.set_value_and_notify("Lane", preset_key, preset_value)
 	_play_preview_particle()
 
-## 缩放值修改：即时保存到配置并播放一次预览
+## 缩放值修改：即时保存到对应判定类型的配置字段并播放一次预览
 func _on_particle_scaling_changed(new_text: String) -> void:
 	if not new_text.is_valid_int():
 		return
-	# 当前预览页只展示一种样式，统一保存到 perfect_spark_scaling
 	var value := int(new_text)
-	ConfigManager.instance.set_value_and_notify("Lane", "perfect_spark_scaling", value)
+	var scaling_key := "%s_spark_scaling" % _judge_type.to_lower()
+	ConfigManager.instance.set_value_and_notify("Lane", scaling_key, value)
 	_play_preview_particle()
 
 ## 返回当前粒子设置（供 PopupWindow.show_particle_adjust 返回）
 func get_result() -> Dictionary:
 	return {
+		"judge_type": _judge_type,
 		"preset": _particle_type_btn.selected,
 		"preset_name": _PARTICLE_PRESETS[_particle_type_btn.selected],
 		"scaling": int(_particle_scaling_edit.text) if _particle_scaling_edit.text.is_valid_int() else 0,

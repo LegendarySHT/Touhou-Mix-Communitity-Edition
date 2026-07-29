@@ -373,7 +373,17 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_nhoxv")
 [node name="VBoxC" type="VBoxContainer" parent="ParticleAdjust" unique_id=881285097]
 layout_mode = 2
 size_flags_vertical = 4
-theme_override_constants/separation = 50
+theme_override_constants/separation = 30
+
+[node name="Title" type="Label" parent="ParticleAdjust/VBoxC" unique_id=1398312007]
+custom_minimum_size = Vector2(600, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 1
+theme_override_font_sizes/font_size = 36
+text = "Perfect 特效设定"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="OptionButton" type="OptionButton" parent="ParticleAdjust/VBoxC" unique_id=1398312008]
 custom_minimum_size = Vector2(600, 60)
@@ -384,7 +394,7 @@ theme_override_font_sizes/font_size = 32
 alignment = 1
 
 [node name="OtherOptions" type="GridContainer" parent="ParticleAdjust/VBoxC" unique_id=1648522083]
-custom_minimum_size = Vector2(0, 390)
+custom_minimum_size = Vector2(0, 320)
 layout_mode = 2
 columns = 2
 
@@ -554,7 +564,6 @@ layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 4
 color = Color(1, 1, 1, 1)
-edit_intensity = true
 
 [node name="Label4" type="Label" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=369163223]
 visible = false
@@ -585,7 +594,6 @@ layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 4
 color = Color(1, 1, 1, 1)
-edit_intensity = true
 
 [node name="FromX" type="HBoxContainer" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=1243770668]
 visible = false
@@ -728,7 +736,6 @@ layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 4
 color = Color(1, 1, 1, 1)
-edit_intensity = true
 
 [node name="Label6" type="Label" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=828262861]
 visible = false
