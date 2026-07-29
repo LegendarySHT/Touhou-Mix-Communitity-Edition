@@ -93,6 +93,7 @@ var lane_count: int = 12
 var lane_padding: int = 100 # 左右填充安全区
 var keyboard_mode: bool = false
 var key_map: Array[Key] = []
+var key_display_names: Array[String] = []
 
 var judge_line_offset_y: int = 250
 
@@ -650,6 +651,9 @@ func _load_lane_parameters() -> void:
 	# 加载键盘键位字符串（默认 "A,S,D,F,J,K,L,;"）
 	var keyboard_keys_str = config_mgr.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")
 	key_map = ConfigParser.parse_keyboard_keys(keyboard_keys_str)
+	# 加载键盘键位显示名称（与 key_map 对齐，空字符串=使用按键默认名）
+	var keyboard_names_str = config_mgr.get_string("Lane", "keyboard_mode_display_names", "")
+	key_display_names = ConfigParser.parse_keyboard_display_names(keyboard_names_str, key_map.size())
 	
 	GLogger.info(
 		"PlayView lane parameters loaded: lane_count=%d, lane_padding=%d, keyboard_mode=%s, key_map_size=%d" % 
@@ -703,10 +707,23 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 				var new_keys = ConfigParser.parse_keyboard_keys(str(value))
 				if new_keys.size() != key_map.size() or _are_keys_different(new_keys, key_map):
 					key_map = new_keys
+					# 键位变化时同步重算 display_names（按新 key 数量对齐）
+					key_display_names = ConfigParser.parse_keyboard_display_names(
+						ConfigManager.instance.get_string("Lane", "keyboard_mode_display_names", ""),
+						key_map.size()
+					)
 					# 仅在键盘模式时需要重初始化
 					if keyboard_mode:
 						should_reinit = true
 					GLogger.info("PlayView keyboard_mode_keys updated: %d keys" % key_map.size(), "PlayView")
+
+		"keyboard_mode_display_names":
+			if section == "Lane":
+				key_display_names = ConfigParser.parse_keyboard_display_names(str(value), key_map.size())
+				# 仅在键盘模式时需要重初始化（刷新标签文本）
+				if keyboard_mode:
+					should_reinit = true
+				GLogger.info("PlayView keyboard_mode_display_names updated: %d names" % key_display_names.size(), "PlayView")
 
 		"flash_alpha":
 			if section == "Lane":
@@ -743,7 +760,7 @@ func _reinit_lane_display() -> void:
 	
 	# 如果启用了键盘模式，显示键位提示
 	if keyboard_mode and key_map.size() > 0:
-		lane_area.init_key_display(key_map)
+		lane_area.init_key_display(key_map, key_display_names)
 	
 	GLogger.info("PlayView lane display reinitialized", "PlayView")
 
@@ -1110,7 +1127,7 @@ func _init_lane_display():
 	lane_area.init_beam(get_lane_count(), self)
 	lane_area.set_beam_alpha(beam_alpha)
 	if keyboard_mode:
-		lane_area.init_key_display(key_map)
+		lane_area.init_key_display(key_map, key_display_names)
 
 const color_map = {
 	"Perfect": Color.PURPLE,

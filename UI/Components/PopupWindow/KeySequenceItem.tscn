@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://du2aaexpkl4ba"]
+
+[ext_resource type="Script" uid="uid://txvxvkg1fy62" path="res://UI/Components/PopupWindow/KeySequenceItem.gd" id="1_kseq"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_i6pqd"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qooou"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8eqkv"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_3y6u5"]
+
+[node name="KeySequenceItem" type="Button" unique_id=456885052]
+custom_minimum_size = Vector2(180, 120)
+size_flags_horizontal = 4
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_i6pqd")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qooou")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8eqkv")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_3y6u5")
+text = "KeyName"
+text_overrun_behavior = 3
+script = ExtResource("1_kseq")

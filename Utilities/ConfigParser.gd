@@ -91,11 +91,17 @@ static func parse_keyboard_keys(key_string: String) -> Array[Key]:
 		var without_prefix = key_part_stripped
 		if key_part_stripped.begins_with("KEY_"):
 			without_prefix = key_part_stripped.substr(4)
-		
+
 		if without_prefix in KEY_NAME_MAP:
 			keys.append(KEY_NAME_MAP[without_prefix])
 			continue
-		
+
+		# 兜底：用 OS.find_keycode_from_string 解析（支持 "Space"/"Semicolon"/"Comma" 等 OS.get_keycode_string 输出）
+		var os_keycode := OS.find_keycode_from_string(key_part_stripped)
+		if os_keycode != Key.KEY_NONE:
+			keys.append(os_keycode)
+			continue
+
 		# 无法识别，记录警告
 		GLogger.warning(
 			"Cannot parse keyboard key: '%s'" % key_part_stripped,
@@ -118,3 +124,17 @@ static func _get_default_keyboard_keys() -> Array[Key]:
 		Key.KEY_A, Key.KEY_S, Key.KEY_D, Key.KEY_F,
 		Key.KEY_J, Key.KEY_K, Key.KEY_L, Key.KEY_SEMICOLON
 	]
+
+## 将逗号分隔的显示名字符串解析为数组
+## 与 keys 数组对齐：若长度不一致按 key_count 补齐/截断
+## 空字符串或缺失段一律返回空字符串（=使用按键默认名）
+static func parse_keyboard_display_names(names_string: String, key_count: int) -> Array[String]:
+	var names: Array[String] = []
+	if names_string.is_empty():
+		for i in key_count:
+			names.append("")
+		return names
+	var parts := names_string.split(",", true)
+	for i in key_count:
+		names.append(parts[i].strip_edges() if i < parts.size() else "")
+	return names

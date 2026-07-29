@@ -33,6 +33,7 @@ static var mappings: Dictionary = {
 	"lane_count": {"section": "Lane", "key": "lane_count", "value_type": "int"},
 	"keyboard_mode": {"section": "Lane", "key": "keyboard_mode", "value_type": "int"},
 	"keyboard_mode_keys": {"section": "Lane", "key": "keyboard_mode_keys", "value_type": "string"},
+	"keyboard_mode_display_names": {"section": "Lane", "key": "keyboard_mode_display_names", "value_type": "string"},
 	"flash_alpha": {"section": "Lane", "key": "flash_alpha", "value_type": "float"},
 	"perfect_spark_preset": {"section": "Lane", "key": "perfect_spark_preset", "value_type": "int"},
 	"perfect_spark_scaling": {"section": "Lane", "key": "perfect_spark_scaling", "value_type": "int"},

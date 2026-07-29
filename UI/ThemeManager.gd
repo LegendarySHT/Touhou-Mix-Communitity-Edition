@@ -566,6 +566,17 @@ func _apply_popup_window_theme(main: Node) -> void:
 	var delay_btn := popup.delay_btn as Button
 	_style_button_set_bg_color(delay_btn, get_color("primary"))
 
+	# KBModeAdjust/AddBtn — primary 色调（静态按钮）
+	var kb_add_btn := popup.get_node_or_null("TabC/KBModeAdjust/KeySequence/VFlowC/AddBtn") as Button
+	if kb_add_btn:
+		_style_button_set_bg_color(kb_add_btn, get_color("primary"))
+
+	# KBModeAdjust 中动态创建的 KeySequenceItem — 委托给 KBModeAdjust.apply_button_theme
+	# （_rebuild_items 重建时也会调用此方法，确保新 item 即时应用主题色）
+	var kb_mode_adjust := popup.get_node_or_null("TabC/KBModeAdjust") as KBModeAdjust
+	if kb_mode_adjust:
+		kb_mode_adjust.apply_button_theme(get_color("primary"))
+
 	GLogger.debug("PopupWindow theme applied", "ThemeManager")
 
 # ============ 设置视图主题 ============

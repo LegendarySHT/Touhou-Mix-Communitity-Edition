@@ -199,12 +199,16 @@ func init_beam(lane_count: int, parent_node) -> void:
 	set_beam_alpha(_beam_alpha_scale)
 
 
-func init_key_display(key_map: Array[Key]) -> void:
+func init_key_display(key_map: Array[Key], display_names: Array[String] = []) -> void:
 	if _key_label_overlay:
 		_key_label_overlay.queue_free()
 	_key_label_overlay = Control.new()
 	_key_label_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_key_label_overlay)
+
+	# key_map 为空时无需创建任何标签（也避免 label 泄漏）
+	if key_map.is_empty():
+		return
 
 	var beam_width: float = _beam_note_width + 20.0
 	var label := Label.new()
@@ -216,7 +220,9 @@ func init_key_display(key_map: Array[Key]) -> void:
 
 	for i in range(key_map.size()):
 		var nl: Label = label if i == key_map.size() - 1 else label.duplicate()
-		nl.text = OS.get_keycode_string(key_map[i])
+		# 优先使用自定义显示名，为空则回退到按键默认名
+		var custom_name := display_names[i] if i < display_names.size() else ""
+		nl.text = custom_name if not custom_name.is_empty() else OS.get_keycode_string(key_map[i])
 		var beam_node: Node2D = get_lane_by_idx(i) as Node2D
 		if beam_node == null:
 			continue

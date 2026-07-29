@@ -19,6 +19,7 @@ static var instance: PopupWindow
 @onready var _note_skin_adjust: NoteSkinAdjust = $TabC/NoteSkinAdjust
 @onready var _particle_adjust: ParticleAdjust = $TabC/ParticleAdjust
 @onready var _image_adjust: ImageAdjust = $TabC/ImageAdjust
+@onready var _kb_mode_adjust: KBModeAdjust = $TabC/KBModeAdjust
 
 ## 主题管理器通过此 getter 访问 DelayAdjust 中的 delay_btn（保持外部 API 不变）
 var delay_btn: Button:
@@ -46,6 +47,7 @@ func _ready() -> void:
 	popup_hide.connect(func() -> void:
 		_delay_adjust.stop_calibration()
 		_particle_adjust.stop_preview()
+		_kb_mode_adjust._cancel_recording()
 		_window_popup_animate(false)
 	)
 
@@ -148,3 +150,22 @@ func show_image_adjust(view_name: String = "", allow_cover: bool = false) -> Dic
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 	await window_close
 	return _image_adjust.get_result()
+
+# 弹出键位设置窗口
+## current_keys / current_display_names：由调用方从 pending 配置传入，未传则回退到配置文件
+## 返回 Dictionary: {"keys": "A,S,D,F,...", "display_names": "P1,,,..."}
+## 关闭即返回当前编辑状态（无取消路径，调用方不应依赖空返回值判断取消）
+func show_kb_mode_adjust(current_keys: String = "", current_display_names: String = "") -> Dictionary:
+	size = Vector2(1500, 700)
+	_tab_c.current_tab = 5
+	# 优先使用传入的 pending 值；为空时回退到配置文件（兼容直接调用）
+	var keys_str := current_keys if not current_keys.is_empty() else \
+		ConfigManager.instance.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")
+	var names_str := current_display_names if not current_display_names.is_empty() else \
+		ConfigManager.instance.get_string("Lane", "keyboard_mode_display_names", "")
+	_kb_mode_adjust.init_adjust(keys_str, names_str)
+	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
+	await window_close
+	# 兜底取消录入状态（popup_hide 已调用，此处再保险一次）
+	_kb_mode_adjust._cancel_recording()
+	return _kb_mode_adjust.get_result()

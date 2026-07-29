@@ -204,7 +204,7 @@ func _on_setting_value_changed(id: String, value: Variant):
 	if item and item.value_type == SettingItem.ValueType.TYPE_BUTTON:
 		return
 
-	print("Setting '%s' changed to: %s" % [id, value])
+	GLogger.info("Setting '%s' changed to: %s" % [id, value], "SettingList")
 
 	# theme_preset 即时应用到 ThemeManager
 	if id == "theme_preset" and value is int:
@@ -221,7 +221,7 @@ func _on_setting_value_changed(id: String, value: Variant):
 		return  # 转换失败（如颜色不完整），跳过
 
 	_pending_config[id] = converted_value
-	print("[SettingList] Pending config: %s = %s" % [id, str(converted_value)])
+	GLogger.info("Pending config: %s = %s" % [id, str(converted_value)], "SettingList")
 
 	# 即时可见性刷新
 	if id == "note_fall_mode":
@@ -294,7 +294,30 @@ func _popup_note_skin_adjust() -> void:
 	if skin_name.is_empty():
 		return
 	_pending_config["block_skin_preset"] = skin_name
-	print("[SettingList] block_skin_preset selected: '%s' (pending save)" % skin_name)
+	GLogger.info("block_skin_preset selected: '%s' (pending save)" % skin_name, "SettingList")
+
+# ===== 键位设置弹窗入口 =====
+# 弹出键位设置窗口，关闭后将 keys/display_names 缓存到 _pending_config
+# 实际应用延迟到退出 SettingView 时由 apply_pending_config_updates 统一 emit config_changed
+# （与其他 TYPE_BUTTON 设置一致，避免在 SettingView 中频繁触发 PlayView 重建轨道）
+# 打开弹窗时从 _pending_config 读取当前值传入，确保未保存的修改能接着改
+func _popup_kb_mode_adjust() -> void:
+	var pending_keys := String(_pending_config.get("keyboard_mode_keys", ""))
+	var pending_names := String(_pending_config.get("keyboard_mode_display_names", ""))
+	var result := await PopupWindow.instance.show_kb_mode_adjust(pending_keys, pending_names)
+	var keys_str := String(result.get("keys", ""))
+	var names_str := String(result.get("display_names", ""))
+	_pending_config["keyboard_mode_keys"] = keys_str
+	_pending_config["keyboard_mode_display_names"] = names_str
+	GLogger.info("keyboard_mode_keys updated: %s (pending save)" % keys_str, "SettingList")
+
+# 弹出延迟校准窗口，校准结果写入 judge_time_offset（pending 保存）
+# DelayAdjust 内部用 MidiPlaybackManager 实时合成 GM 鼓组节拍音，与 PlayView 演奏模式同音频路径
+func _popup_delay_adjust() -> void:
+	var current := int(_pending_config.get("judge_time_offset", 0))
+	var new_delay := await PopupWindow.instance.show_delay_adjust(current)
+	_pending_config["judge_time_offset"] = new_delay
+	GLogger.info("judge_time_offset calibrated: %d ms (pending save)" % new_delay, "SettingList")
 
 # ===== 各判定类型特效设置弹窗入口 =====
 # 4 个按钮分别对应 Perfect/Great/Good/Bad，调用统一的 _popup_spark_adjust(judge_type)
@@ -323,7 +346,7 @@ func _popup_spark_adjust(judge_type: String) -> void:
 	var judge_lower := judge_type.to_lower()
 	_pending_config[judge_lower + "_spark_preset"] = result.get("preset", 0)
 	_pending_config[judge_lower + "_spark_scaling"] = result.get("scaling", 50)
-	print("[SettingList] %s spark updated: preset=%s scaling=%s (pending save)" % [judge_type, result.get("preset"), result.get("scaling")])
+	GLogger.info("%s spark updated: preset=%s scaling=%s (pending save)" % [judge_type, result.get("preset"), result.get("scaling")], "SettingList")
 
 # ===== 各视图背景设置弹窗入口 =====
 # 每个视图一个 TYPE_BUTTON 入口，调用统一的 _popup_view_background_adjust(view_name)
@@ -385,14 +408,14 @@ func _popup_view_background_adjust(view_name: String) -> void:
 	# 即时保存到 theme.ini + 轻量刷新背景（refresh_backgrounds，不触发完整主题刷新）
 	# PlayView 的 cover 模式由 PlayView 在切回 PLAY_VIEW 时通过 _apply_play_background 处理
 	ThemeMGR.set_view_background(view_name, config)
-	print("[SettingList] %s background updated: type=%s" % [view_name, type_str])
+	GLogger.info("%s background updated: type=%s" % [view_name, type_str], "SettingList")
 
 # 重置内置资源：调用 FileSystemManager 重新复制默认资源
 func _reload_builtin_resources() -> void:
 	if FileSystemManager.instance:
-		print("[SettingList] Reloading built-in resources...")
+		GLogger.info("Reloading built-in resources...", "SettingList")
 		await FileSystemManager.instance.reload_default_resources()
-		print("[SettingList] Built-in resources reloaded")
+		GLogger.info("Built-in resources reloaded", "SettingList")
 	else:
 		push_warning("[SettingList] FileSystemManager not available")
 

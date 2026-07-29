@@ -10,6 +10,8 @@
 [ext_resource type="Script" uid="uid://c2ylo07cj00rw" path="res://UI/Components/TouchScrollOptionButton.gd" id="6_fyi7o"]
 [ext_resource type="Script" uid="uid://cyad78ab6lgat" path="res://UI/Components/PopupWindow/ParticleAdjust.gd" id="6_ukd1n"]
 [ext_resource type="Script" uid="uid://birrx3o1ktn31" path="res://UI/Components/PopupWindow/ImageAdjust.gd" id="6_v2710"]
+[ext_resource type="Script" uid="uid://bybph8jhlvdlx" path="res://UI/Components/PopupWindow/KBModeAdjust.gd" id="11_krk8y"]
+[ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="13_ff7qk"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qxcsx"]
 content_margin_left = 50.0
@@ -127,6 +129,27 @@ border_width_top = 5
 border_width_right = 5
 border_width_bottom = 5
 border_blend = true
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2xvos"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_i6pqd"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qooou"]
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8eqkv"]
 corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_right = 12
@@ -761,3 +784,101 @@ placeholder_text = "0"
 alignment = 1
 max_length = 64
 emoji_menu_enabled = false
+
+[node name="KBModeAdjust" type="VBoxContainer" parent="." unique_id=1259222601]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+script = ExtResource("11_krk8y")
+metadata/_tab_index = 5
+
+[node name="Label" type="Label" parent="KBModeAdjust" unique_id=1123434922]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "拖动按键排序或点击后编辑"
+horizontal_alignment = 1
+
+[node name="KeySequence" type="Panel" parent="KBModeAdjust" unique_id=190815192]
+custom_minimum_size = Vector2(0, 280)
+propagate_maximum_size = true
+layout_mode = 2
+size_flags_stretch_ratio = 2.0
+mouse_filter = 1
+
+[node name="VFlowC" type="HFlowContainer" parent="KBModeAdjust/KeySequence" unique_id=353801252]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 10.0
+offset_bottom = 10.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_stretch_ratio = 2.0
+alignment = 1
+
+[node name="InsertPlace" type="Panel" parent="KBModeAdjust/KeySequence/VFlowC" unique_id=52975815]
+visible = false
+custom_minimum_size = Vector2(5, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_2xvos")
+
+[node name="AddBtn" type="Button" parent="KBModeAdjust/KeySequence/VFlowC" unique_id=689911902]
+custom_minimum_size = Vector2(120, 120)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_i6pqd")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qooou")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8eqkv")
+icon = ExtResource("13_ff7qk")
+text_overrun_behavior = 3
+icon_alignment = 1
+
+[node name="KeyName" type="Label" parent="KBModeAdjust" unique_id=1038300598]
+custom_minimum_size = Vector2(500, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 32
+text = "当前按键： {实际按键名称}"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyDisplayName" type="HBoxContainer" parent="KBModeAdjust" unique_id=1907774268]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+
+[node name="Label" type="Label" parent="KBModeAdjust/KeyDisplayName" unique_id=1466136219]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 2
+theme_override_font_sizes/font_size = 32
+text = "按键显示名称"
+vertical_alignment = 1
+
+[node name="LineEdit" type="LineEdit" parent="KBModeAdjust/KeyDisplayName" unique_id=1905301229]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+
+[node name="KeyConfig" type="HBoxContainer" parent="KBModeAdjust" unique_id=911674633]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+
+[node name="Label" type="Label" parent="KBModeAdjust/KeyConfig" unique_id=1618923801]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 2
+theme_override_font_sizes/font_size = 32
+text = "输入按键"
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="KBModeAdjust/KeyConfig" unique_id=353692426]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
