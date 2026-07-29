@@ -259,6 +259,31 @@ static func get_setting_groups() -> Array:
 				"default_value": "0.8"
 			},
 			{
+				"id": "beam_width_mode",
+				"name_en": "Beam Width Mode",
+				"name_zh": "轨道光效宽度模式",
+				"description": "控制轨道光效的宽度依据：跟随音符宽度会在音符宽度基础上增加边距，跟随轨道间距会填满轨道间隔",
+				"type": "TYPE_OPTION",
+				"default_value": "0",
+				"options": [
+					{"text_en": "Note Width", "text_zh": "跟随音符宽度"},
+					{"text_en": "Lane Spacing", "text_zh": "跟随轨道间距"}
+				]
+			},
+			{
+				"id": "lane_effect_quality",
+				"name_en": "Lane Effect Quality",
+				"name_zh": "轨道光效质量",
+				"description": "控制轨道光效的渲染策略。推荐使用Shader模式以降低Tween和GPU混合开销；Discard模式会更激进地裁剪弱贡献像素。",
+				"type": "TYPE_OPTION",
+				"default_value": "1",
+				"options": [
+					{"text_en": "Legacy", "text_zh": "传统"},
+					{"text_en": "Shader", "text_zh": "Shader"},
+					{"text_en": "Shader + Discard", "text_zh": "Shader + 剔除"}
+				]
+			},
+			{
 				"id": "perfect_spark",
 				"name_en": "Perfect Spark",
 				"name_zh": "Perfect特效设定",
@@ -569,6 +594,15 @@ static func get_setting_groups() -> Array:
 				"options_provider": "_provide_theme_preset_options"
 			},
 			{
+				"id": "block_skin_preset",
+				"name_en": "Note Skin",
+				"name_zh": "音符外观设定",
+				"description": "点击按钮打开皮肤选择窗口",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_note_skin_adjust"
+			},
+			{
 				"id": "block_size",
 				"name_en": "Block Size",
 				"name_zh": "音符尺寸大小",
@@ -576,6 +610,18 @@ static func get_setting_groups() -> Array:
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "6.5",
 				"unit": "个音符"
+			},
+			{
+				"id": "custom_block_skin_texture_filter_mode",
+				"name_en": "Custom Block Skin Texture Filter Mode",
+				"name_zh": "皮肤纹理过滤模式",
+				"description": "更改对音符皮肤的渲染方式",
+				"type": "TYPE_OPTION",
+				"default_value": "0",
+				"options": [
+					{"text_en": "Nearest", "text_zh": "Nearest"},
+					{"text_en": "Bilinear", "text_zh": "Bilinear"}
+				]
 			},
 			{
 				"id": "note_glow_intensity",
@@ -594,75 +640,6 @@ static func get_setting_groups() -> Array:
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "5.0",
 				"range": [1.0, 12.0, 1.0]
-			},
-			{
-				"id": "randomize_block_color",
-				"name_en": "Randomize Block Color",
-				"name_zh": "随机音符顏色",
-				"description": "随机设置下落音符的颜色。由于光柱特效的颜色与音符的颜色相同，所以当玩家使用自定义皮肤时该设置项相当于随机设置光柱特效的颜色",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Off", "text_zh": "关闭"},
-					{"text_en": "On", "text_zh": "开启"}
-				]
-			},
-			{
-				"id": "sync_color_across_block_type",
-				"name_en": "Sync Color Across Block Type",
-				"name_zh": "统一音符颜色",
-				"description": "使点块、滑块和长条的颜色统一，同时也会统一光柱特效的颜色，但打开此项后音符颜色无法随机",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Off", "text_zh": "关闭"},
-					{"text_en": "On", "text_zh": "开启"}
-				]
-			},
-			{
-				"id": "instant_block_color",
-				"name_en": "Instant Block Color",
-				"name_zh": "更改滑块颜色",
-				"description": "通过输入RGB颜色编码或颜色的英文名字来改变滑块及其光柱特效颜色",
-				"type": "TYPE_COLOR",
-				"default_value": "#FF6B6B"
-			},
-			{
-				"id": "short_block_color",
-				"name_en": "Short Block Color",
-				"name_zh": "更改点块颜色",
-				"description": "通过输入RGB颜色编码或颜色的英文名字来改变点块及其光柱特效颜色",
-				"type": "TYPE_COLOR",
-				"default_value": "#4ECDC4"
-			},
-			{
-				"id": "long_block_color",
-				"name_en": "Long Block Color",
-				"name_zh": "更改长条颜色",
-				"description": "通过输入RGB颜色编码或颜色的英文名字来改变长条及其光柱特效颜色",
-				"type": "TYPE_COLOR",
-				"default_value": "#45B7D1"
-			},
-			{
-				"id": "custom_block_skin_texture_filter_mode",
-				"name_en": "Custom Block Skin Texture Filter Mode",
-				"name_zh": "皮肤纹理过滤模式",
-				"description": "更改对音符皮肤的渲染方式",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Nearest", "text_zh": "Nearest"},
-					{"text_en": "Bilinear", "text_zh": "Bilinear"}
-				]
-			},
-			{
-				"id": "block_skin_preset",
-				"name_en": "Note Skin",
-				"name_zh": "音符外观设定",
-				"description": "点击按钮打开皮肤选择窗口",
-				"type": "TYPE_BUTTON",
-				"default_value": null,
-				"on_click": "_popup_note_skin_adjust"
 			},
 			{
 				"id": "main_background",
@@ -746,18 +723,6 @@ static func get_setting_groups() -> Array:
 				"default_value": "#000000FF"
 			},
 			{
-				"id": "beam_width_mode",
-				"name_en": "Beam Width Mode",
-				"name_zh": "轨道光效宽度模式",
-				"description": "控制轨道光效的宽度依据：跟随音符宽度会在音符宽度基础上增加边距，跟随轨道间距会填满轨道间隔",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Note Width", "text_zh": "跟随音符宽度"},
-					{"text_en": "Lane Spacing", "text_zh": "跟随轨道间距"}
-				]
-			},
-			{
 				"id": "judge_line_thickness",
 				"name_en": "Judge Line Thickness",
 				"name_zh": "判定线粗细",
@@ -809,19 +774,6 @@ static func get_setting_groups() -> Array:
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
-				]
-			},
-			{
-				"id": "lane_effect_quality",
-				"name_en": "Lane Effect Quality",
-				"name_zh": "轨道光效质量",
-				"description": "控制轨道光效的渲染策略。推荐使用Shader模式以降低Tween和GPU混合开销；Discard模式会更激进地裁剪弱贡献像素。",
-				"type": "TYPE_OPTION",
-				"default_value": "1",
-				"options": [
-					{"text_en": "Legacy", "text_zh": "传统"},
-					{"text_en": "Shader", "text_zh": "Shader"},
-					{"text_en": "Shader + Discard", "text_zh": "Shader + 剔除"}
 				]
 			}
 		]

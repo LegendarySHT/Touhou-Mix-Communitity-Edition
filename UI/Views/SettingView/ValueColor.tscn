@@ -8,8 +8,10 @@ offset_bottom = 80.0
 theme_override_constants/separation = 20
 
 [node name="HexColor" type="LineEdit" parent="." unique_id=142305028]
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 theme_override_font_sizes/font_size = 48
