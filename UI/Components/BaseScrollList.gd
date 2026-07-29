@@ -22,6 +22,9 @@ enum ScrollControlState {
 ## 工作状态，当不处于该状态时停止处理操作
 var work_state: UIStateManager.UIState = UIStateManager.UIState.NONE
 
+## 列表项 _process 是否已启用（缓存 _on_state_changed 计算结果，避免重复遍历）
+var _items_process_enabled: bool = true
+
 ## 正在拖动滚动条（内部状态，对外通过 scroll_control_state 统一查询）
 var _is_dragging_bar: bool = false
 
@@ -89,13 +92,24 @@ func _on_v_scrollbar_changed(_value: float):
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == work_state
-	
+
 	# TRACK_VIEW 和 SETTINGS_VIEW 不需要 BaseScrollList 的触摸/滚动逻辑
 	if work_state in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
 		enable = false
-	
+
+	# 状态未变化时提前返回，避免重复遍历 list_items 和无谓的 set_process 调用
+	if enable == _items_process_enabled:
+		return
+
+	_items_process_enabled = enable
 	set_process(enable)
 	set_process_input(enable)
+
+	# 同步停用/恢复列表项的 _process（如 CoverListItemBase 的封面视差）
+	# 避免不可见视图的列表项每帧仍跑 _process，造成显著开销
+	for item in list_items:
+		if is_instance_valid(item):
+			item.set_process(enable)
 
 	# 聚焦列表项
 	if enable:
@@ -246,6 +260,8 @@ func add_list_item(item: ListItemBase) -> void:
 		return
 
 	container.add_child(item)
+	# 同步父列表的 _process 状态，避免不可见视图中新建的项每帧仍跑 _process
+	item.set_process(is_processing())
 	list_items.append(item)
 
 ## 创建并添加列表项

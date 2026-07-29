@@ -213,6 +213,11 @@ func _build_midi_page() -> void:
 	_midi_album_order.clear()
 	_midi_album_midi_map.clear()
 
+	# 显示加载中并让 UI 先响应一帧（避免进入动画被同步构建阻塞）
+	_update_item_sum("加载中...")
+	_update_midi_toggle_state()
+	await get_tree().process_frame
+
 	# 构建 chart_id → path 映射
 	var charts_index := FileSystemManager.instance.get_charts_index()
 	for folder_name in charts_index:
@@ -259,6 +264,13 @@ func _build_midi_page() -> void:
 
 	print("[DelView] Albums to display: %d" % album_midi_map.size())
 
+	# 预建 midi_id → name 缓存，加速排序与过滤时的名称查找（避免每次都查 dm.midis）
+	var midi_name_cache: Dictionary = {}
+	for midi_id in accounted_midis:
+		var md: MidiData = dm.midis.get(midi_id)
+		if md:
+			midi_name_cache[midi_id] = md.name
+
 	# 排序专辑
 	var album_ids := album_midi_map.keys()
 	album_ids.sort_custom(func(a, b):
@@ -273,6 +285,8 @@ func _build_midi_page() -> void:
 	_midi_album_order = album_ids
 
 	var total_count := 0
+	var items_since_yield := 0
+	const YIELD_INTERVAL := 20  # 每 20 个节点 yield 一次，保证 UI 不卡且能看到渐进加载
 
 	for idx in album_ids.size():
 		var album_id: String = album_ids[idx]
@@ -285,11 +299,11 @@ func _build_midi_page() -> void:
 			album_name = album_id
 
 		var midi_ids: Array = album_midi_map[album_id]
-		# 排序专辑内的 MIDI
+		# 排序专辑内的 MIDI（用预建缓存，避免每次比较都查 dm.midis + as 转换）
 		midi_ids.sort_custom(func(a, b):
-			var ma := dm.midis[a] as MidiData
-			var mb := dm.midis[b] as MidiData
-			return ma.name < mb.name if _tab_sort_ascending[_current_tab] else ma.name > mb.name
+			var na: String = midi_name_cache.get(a, "")
+			var nb: String = midi_name_cache.get(b, "")
+			return na < nb if _tab_sort_ascending[_current_tab] else na > nb
 		)
 		_midi_album_midi_map[album_id] = midi_ids
 
@@ -297,10 +311,8 @@ func _build_midi_page() -> void:
 		var album_match := _search_query.is_empty() or _search_query.to_lower() in album_name.to_lower()
 		var filtered_count := 0
 		for midi_id in midi_ids:
-			var midi_data: MidiData = dm.midis.get(midi_id)
-			if not midi_data:
-				continue
-			if not _search_query.is_empty() and not album_match and not _search_query.to_lower() in midi_data.name.to_lower():
+			var midi_name: String = midi_name_cache.get(midi_id, "")
+			if not _search_query.is_empty() and not album_match and not _search_query.to_lower() in midi_name.to_lower():
 				continue
 			filtered_count += 1
 
@@ -314,13 +326,15 @@ func _build_midi_page() -> void:
 		# 连接勾选信号
 		var root_cb := root_node.get_node("CheckBox") as CheckBox
 		root_cb.toggled.connect(_on_midi_root_checkbox_toggled.bind(album_id))
+		items_since_yield += 1
 
 		for midi_id in midi_ids:
 			var midi_data: MidiData = dm.midis.get(midi_id)
 			if not midi_data:
 				continue
 
-			if not _search_query.is_empty() and not album_match and not _search_query.to_lower() in midi_data.name.to_lower():
+			var midi_name: String = midi_name_cache.get(midi_id, "")
+			if not _search_query.is_empty() and not album_match and not _search_query.to_lower() in midi_name.to_lower():
 				continue
 
 			var author := midi_data.artist_name if not midi_data.artist_name.is_empty() else "-"
@@ -336,9 +350,14 @@ func _build_midi_page() -> void:
 			item_cb.toggled.connect(_on_midi_item_checkbox_toggled.bind(midi_id, album_id))
 
 			total_count += 1
-
-		if idx % 3 == 2:  # 每 3 个专辑 yield 一次
-			await get_tree().process_frame
+			items_since_yield += 1
+			if items_since_yield >= YIELD_INTERVAL:
+				items_since_yield = 0
+				await get_tree().process_frame
+				# 构建期间切了 Tab，中止
+				if _current_tab != Tab.MIDI:
+					_build_loading = false
+					return
 
 	# 构建期间切了 Tab，不覆写当前页面的 header
 	if _current_tab != Tab.MIDI:
@@ -1455,6 +1474,7 @@ func _apply_scrolls_to_container(container: VBoxContainer) -> void:
 	if container.get_child_count() == 0:
 		return
 	await get_tree().process_frame
+	var processed := 0
 	for child in container.get_children():
 		var left_label := child.get_node_or_null("LeftLabel/label") as Label
 		var left_clip := child.get_node_or_null("LeftLabel") as Control
@@ -1464,6 +1484,9 @@ func _apply_scrolls_to_container(container: VBoxContainer) -> void:
 		var right_clip := child.get_node_or_null("RightLabel") as Control
 		if right_label and right_clip:
 			TextScrollHelper.setup(right_label, right_clip, right_label.text)
+		processed += 1
+		if processed % 30 == 0:
+			await get_tree().process_frame
 
 
 func _set_indeterminate(cb: CheckBox, indeterminate: bool) -> void:

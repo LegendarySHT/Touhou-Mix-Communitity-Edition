@@ -160,7 +160,7 @@ func _load_midi(midi: MidiData) -> void:
 	# 清空独奏状态
 	solo_pairs.clear()
 	solo_mute_snapshot.clear()
-	
+
 	# 清空现有的轨道
 	clear_items()
 
@@ -168,9 +168,12 @@ func _load_midi(midi: MidiData) -> void:
 	await get_tree().process_frame
 	container.custom_minimum_size.y = 0
 	container.size.y = 0
-	
+
 # 【关键】在加载MIDI之前先检测人声文件，确保vocal_file_path已设置
 	_vocal_controller.detect_vocal_file(current_midi_data)
+	# 在执行同步耗时的 load_midi 之前先让 UI 渲染一帧
+	# （此时转场动画刚启动，避免被 MIDI 解析/JSON 写入阻塞导致首帧卡顿）
+	await get_tree().process_frame
 	# 加载MIDI到播放管理器
 	if not midi_playback_manager.load_midi(midi):
 		push_error("Failed to load MIDI: " + midi.name)
@@ -184,6 +187,8 @@ func _load_midi(midi: MidiData) -> void:
 
 	# 新增：从加载的 MIDI 和 SoundFont 提取可用乐器选项
 	_extract_instruments_from_midi()
+	# 提取乐器列表是同步操作（遍历 SoundFont presets），让它后让出一帧给 UI
+	await get_tree().process_frame
 
 	# 恢复用户配置的数据部分（音量值、进度条、独奏状态）
 	_config_persistence.restore_midi_data_config()
@@ -193,7 +198,7 @@ func _load_midi(midi: MidiData) -> void:
 	if all_notes.is_empty():
 		push_warning("No notes found in MIDI")
 		return
-	
+
 	# 在一次遍历中过滤并转换为显示格式（notes已按时间顺序）
 	All_Notes.clear()
 	for note in all_notes:
@@ -208,6 +213,8 @@ func _load_midi(midi: MidiData) -> void:
 				evt.channel
 			)
 			All_Notes.append(display_note)
+	# 构建 All_Notes 后让出一帧，避免 _init_master_note_displayer 紧接其后再阻塞
+	await get_tree().process_frame
 
 	# 初始化总览的音符显示器
 	_init_master_note_displayer()
@@ -252,34 +259,31 @@ func _create_track_views() -> void:
 		push_warning("No track info available")
 		return
 	
-	# 第1步：聚合每个track中包含的所有unique channels
-	var track_channel_groups: Dictionary = {}  # {track_idx: [ch0, ch1, ...]}
+	# 第1步：一次遍历 All_Notes，按 (track_index, channel) 分组收集 notes
+	# 旧实现用 N 次 All_Notes.filter()，复杂度 O(N × T × C)；这里降为 O(N)
+	# 由于 All_Notes 已按时间排序，每组 notes 自然保持时间顺序
+	var track_channel_notes: Dictionary = {}  # {track_idx: {channel: Array}}
 	for note in All_Notes:
-		if not track_channel_groups.has(note.track_index):
-			track_channel_groups[note.track_index] = []
-		if note.channel not in track_channel_groups[note.track_index]:
-			track_channel_groups[note.track_index].append(note.channel)
-	
-	# 第2步：按channel升序、track升序排序，构建(track, channel)列表
+		if not track_channel_notes.has(note.track_index):
+			track_channel_notes[note.track_index] = {}
+		var by_track: Dictionary = track_channel_notes[note.track_index]
+		if not by_track.has(note.channel):
+			by_track[note.channel] = []
+		(by_track[note.channel] as Array).append(note)
+
+	# 第2步：构建(track, channel)列表，按 channel 升序、track 升序
 	var track_channel_pairs: Array = []  # [{track: int, channel: int, notes: Array}, ...]
-	
-	for track_idx in track_channel_groups.keys():
-		var channels = track_channel_groups[track_idx]
-		channels.sort()  # channel升序
-		
+
+	for track_idx in track_channel_notes.keys():
+		var channels = track_channel_notes[track_idx].keys()
+		channels.sort()  # channel 升序
 		for ch in channels:
-			# 过滤该(track, channel)的所有notes
-			var pair_notes: Array[NoteDisplayer.NoteEvent] = All_Notes.filter(
-				func(note):
-					return note.track_index == track_idx and note.channel == ch
-			)
-			
 			track_channel_pairs.append({
 				"track": track_idx,
 				"channel": ch,
-				"notes": pair_notes
+				"notes": track_channel_notes[track_idx][ch]
 			})
-	
+
 	# 按(channel asc, track asc)排序
 	track_channel_pairs.sort_custom(func(a, b):
 		if a["channel"] != b["channel"]:
@@ -295,14 +299,14 @@ func _create_track_views() -> void:
 	for pair in track_channel_pairs:
 		var track_idx = pair["track"]
 		var channel = pair["channel"]
-		var pair_notes = pair["notes"]
-		
-		if pair_notes.is_empty():
+		var pair_notes_raw: Array = pair["notes"]
+
+		if pair_notes_raw.is_empty():
 			continue
-		
+
 		# 获取track名称
 		var track_name = track_name_map.get(track_idx, "Track %d" % track_idx)
-		
+
 		# 创建MidiTrack UI项
 		var track_scene = create_and_add_item(track_name, "MidiTrack") as MidiTrack
 		track_scene.setup_track(self, track_idx, track_name, instrument_options, channel, current_midi_data)
@@ -311,6 +315,9 @@ func _create_track_views() -> void:
 		_set_track_instrument_from_midi_data(track_scene, track_idx, channel)
 
 		# 初始化该(track, channel)对的音符显示
+		# Dictionary 中存的是普通 Array，需转换为 typed array 以匹配 _init_track_note_displayer 签名
+		var pair_notes: Array[NoteDisplayer.NoteEvent] = []
+		pair_notes.assign(pair_notes_raw)
 		_init_track_note_displayer(track_scene, track_idx, channel, pair_notes)
 		await get_tree().process_frame
 
@@ -894,9 +901,19 @@ func _on_latency_changed(new_text: String) -> void:
 
 	print("[TrackView] Latency offset changed to %d ms" % offset_ms)
 
+## 缓存上次提取乐器列表时使用的 SoundFont 路径
+## 乐器列表只依赖 SoundFont（与 MIDI 文件无关），同 SoundFont 下无需重复提取
+var _instruments_soundfont_path: String = ""
+
 ## 从当前加载的 MIDI 和 SoundFont 提取可用的乐器选项
 func _extract_instruments_from_midi() -> void:
 	if midi_playback_manager == null:
+		return
+
+	# 缓存命中：SoundFont 未变且已提取过，直接跳过
+	var current_sf_path: String = midi_playback_manager.current_soundfont_path
+	if not current_sf_path.is_empty() and current_sf_path == _instruments_soundfont_path \
+			and not instrument_options.is_empty():
 		return
 
 	var presets_list = midi_playback_manager.get_presets_list()
@@ -944,6 +961,9 @@ func _extract_instruments_from_midi() -> void:
 
 	print("[TrackView] 已提取 %d 个常规乐器, %d 个鼓组乐器" %
 		[regular_instruments.size(), drum_instruments.size()])
+
+	# 提取成功后记录所用 SoundFont 路径，供下次进入时跳过重复提取
+	_instruments_soundfont_path = current_sf_path
 
 ## 根据 MIDI 数据设置轨道的正确乐器
 func _set_track_instrument_from_midi_data(track_scene: MidiTrack, track_idx: int, channel: int) -> void:

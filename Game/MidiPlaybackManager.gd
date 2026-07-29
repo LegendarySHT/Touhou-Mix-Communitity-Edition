@@ -1143,12 +1143,18 @@ func _on_midi_finished() -> void:
 func get_track_infos() -> Array:
 	if current_midi_data == null or current_notes.is_empty():
 		return []
-	
-	# 重新解析以获取完整轨道信息
+
+	# 优先使用 load_midi() 中已缓存的 _runtime_track_infos，避免重复解析 MIDI 文件
+	# （MIDI 解析是同步文件 I/O + 数据结构构建，开销很大）
+	if not current_midi_data._runtime_track_infos.is_empty():
+		return current_midi_data._runtime_track_infos
+
+	# 回退：缓存缺失时才重新解析
 	var parse_result = MidiParser.load_and_parse_midi(current_midi_data.midi_file_path)
 	if parse_result["success"]:
+		current_midi_data._runtime_track_infos = parse_result["track_infos"]
 		return parse_result["track_infos"]
-	
+
 	return []
 
 ## ========== Note分类接口 ==========
