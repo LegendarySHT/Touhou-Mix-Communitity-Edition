@@ -580,7 +580,32 @@ func _apply_setting_view_theme(main: Node) -> void:
 	if not setting_list:
 		return
 	setting_list.apply_button_theme(get_color("primary"))
+
+	# ShortCut 导航按钮（Btn1-6）：focus 样式 = pressed + 白边
+	# 这些按钮没有 theme_override_styles，使用全局 Theme 的 Button 样式（focus 默认是 lightened(0.1)，与 pressed 差异大）
+	# 直接修改全局 Theme 的 focus StyleBox 会污染所有按钮，因此给每个按钮单独加 theme_override_styles
+	var shortcut_btn := setting_view.get_node_or_null("HBoxC/ShortCut")
+	if shortcut_btn:
+		var pressed_color := get_color("primary").darkened(0.25)
+		for b in shortcut_btn.get_children():
+			if b is Button:
+				_apply_shortcut_focus_style(b, pressed_color)
 	GLogger.debug("SettingView theme applied", "ThemeManager")
+
+## 给 ShortCut 按钮设置 focus 样式：复制 pressed 样式 + 白色边框
+## 通过 theme_override_styles/focus 独立覆盖，不影响其他按钮和共享 Theme 资源
+func _apply_shortcut_focus_style(btn: Button, pressed_color: Color) -> void:
+	# 取当前 pressed 样式做副本（可能是全局 Theme 的引用，必须 duplicate 才能独立修改）
+	var sb := btn.get_theme_stylebox("pressed")
+	if sb is StyleBoxFlat:
+		var dup := (sb as StyleBoxFlat).duplicate() as StyleBoxFlat
+		dup.bg_color = pressed_color
+		dup.border_color = Color.WHITE
+		dup.border_width_left = 4
+		dup.border_width_right = 4
+		dup.border_width_top = 4
+		dup.border_width_bottom = 4
+		btn.add_theme_stylebox_override("focus", dup)
 
 # ============ 全局刷新 ============
 

@@ -30,6 +30,9 @@ func _ready() -> void:
 			for b in btns:
 				b.set_block_signals(true)
 				b.call_deferred("set_block_signals", false)
+				# 取消所有 ShortCut 按钮的焦点，避免 focus 样式残留
+				# release_focus 内部会判断是否持有焦点，对未持有焦点的按钮调用是安全的
+				b.release_focus()
 			tBtn.button_pressed = true
 	)
 
@@ -67,13 +70,16 @@ func _add_separator():
 		separators.append(separator)
 
 func _get_current_para_sepa_idx():
-	var lower: int = separators.filter(func (s):
-		if s.global_position.y >= -s.size.y/2:
-			return true
-		return false
-	).size()
-	lower = clampi(lower+1, 1, separators.size())
-	return separators.size() - lower
+	# 每个分组的分界线是 separators[2*idx]（_add_separator 给每个分组添加两个 separator）
+	# 当分界线越过视口中线（向上越过进入上半屏）时切换到对应按钮
+	# 即：找到第一个仍在视口下半屏的分界线，它的前一个分组就是当前分组
+	var viewport_mid_y := get_global_rect().get_center().y
+	var group_count := separators.size() / 2
+	for i in range(group_count):
+		if separators[i * 2].global_position.y > viewport_mid_y:
+			return max(i - 1, 0)
+	# 所有分界线都已越过中线，已滚动到最后一个分组
+	return group_count - 1
 
 func _process(delta: float) -> void:
 	super._process(delta)
