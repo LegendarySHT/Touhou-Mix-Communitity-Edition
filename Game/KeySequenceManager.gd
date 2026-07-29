@@ -81,6 +81,10 @@ class VirtualTouch:
 	var last_press_time_ms: float = -INF  # 最后按下的时间
 	var holding_block: BlockInfo = null  # 正在按住的LONG块
 	var last_press_block: BlockInfo = null  # 最后按下的块对象
+	# 手部模型字段
+	var hand: int = 1  # 0=左手, 1=右手, -1=无归属（键盘模式或max_touch_count=1）
+	var home_x: float = 0.0  # 当前绑定的原位X坐标
+	var hand_home_positions: Array[float] = []  # 本手所有原位X列表
 
 	func _init(idx: int) -> void:
 		index = idx
@@ -89,6 +93,9 @@ class VirtualTouch:
 		last_press_time_ms = -INF
 		holding_block = null
 		last_press_block = null
+		hand = 1
+		home_x = 0.0
+		hand_home_positions = []
 
 ## 临时音符对象（generate_keys 流水线中间格式）
 ## 替代旧版 Dictionary（每音符 7 个 StringName key + Variant 装箱，6 万音符约 16.8MB 临时内存）
@@ -154,6 +161,11 @@ var generate_instant_connect: bool = true  # 是否生成INSTANT连块
 var generate_short_connect: bool = true  # 是否生成SHORT连块
 var max_instant_connect_seconds: float = 1.0  # INSTANT连块最大间隔（秒）
 var min_block_spacing: int = 1  # 并排音符最小横向间距（轨道数，0=关闭）
+
+# ========== 手部模型常量 ==========
+const HOME_BIAS_COEFF: float = 0.4  # 原位偏好系数：偏离原位的惩罚权重
+const CROSS_HAND_PENALTY_MULT: float = 2.0  # 跨手惩罚倍数（× screen_width）
+var hand_model_enabled: bool = true  # 手部模型是否启用（键盘模式关闭）
 
 func _ready() -> void:
 	if instance == null:
@@ -293,6 +305,7 @@ func _load_config_parameters() -> void:
 	var keyboard_mode_enabled = config_manager.get_int("Lane", "keyboard_mode", 0) == 1
 	if keyboard_mode_enabled:
 		max_touch_move_velocity = 999999.0
+		hand_model_enabled = false  # 键盘模式禁用手部模型
 		# 键盘模式下，有效轨道数 = 键盘按键数，保证 KeySequenceManager 与 PlayView 一致
 		var keyboard_keys_str = config_manager.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")
 		var key_map = ConfigParser.parse_keyboard_keys(keyboard_keys_str)
@@ -740,10 +753,8 @@ func _assign_touches_and_judge_types(blocks: Array[BlockInfo], bg_notes: Array) 
 	if blocks.is_empty():
 		return
 	
-	# 初始化虚拟触点
-	var touches: Array[VirtualTouch] = []
-	for i in range(max_touch_count):
-		touches.append(VirtualTouch.new(i))
+	# 初始化虚拟触点（含手部归属与原位分配）
+	var touches: Array[VirtualTouch] = _init_touches_with_hands()
 
 	# 与Unity一致：按批次处理触点匹配与块类型判定
 	var blocks_by_batch: Dictionary = {}
@@ -773,15 +784,16 @@ func _assign_touches_and_judge_types(blocks: Array[BlockInfo], bg_notes: Array) 
 	# 按批次分组重新执行间距校验，将冲突块移入背景（优先保留高音，与去重逻辑一致）
 	_reconcile_spacing_after_clamp(blocks, bg_notes)
 
-## 虚拟触点匹配 - 迭代枚举所有严格递增触点组合，找成本最小的分配方案（Unity兼容版本）
-## 替代原递归回溯 _find_optimal_matching：用字典序组合枚举避免调用栈问题
+## 虚拟触点匹配 - 迭代枚举所有严格递增触点组合，找成本最小的分配方案
+## 替代原递归回溯 _find_optimal_matching：用字典序组合枚举避免调用栈问题（Android 大音符量崩溃）
 ## 原递归语义：枚举所有 C(n_touches, n_blocks) 个严格递增触点索引序列，
 ## 仅完整分配（所有块都有触点）才计算成本；块数 > 触点数时全 -1
+## 手部模型：跨手重罚、原位偏好；第一遍带硬约束剪枝（冷却+速度），无解时回退纯软惩罚兜底
 func _match_blocks_to_touches(blocks_in_group: Array[BlockInfo], touches: Array[VirtualTouch]) -> void:
 	if blocks_in_group.is_empty():
 		return
 
-	# 按X位置排序块（为了后续匹配）
+	# 按X位置排序块（左→右，与触点递增索引对应：左手触点在前，右手在后）
 	var sorted_blocks = blocks_in_group.duplicate()
 	sorted_blocks.sort_custom(func(a, b): return a.x < b.x)
 
@@ -803,46 +815,14 @@ func _match_blocks_to_touches(blocks_in_group: Array[BlockInfo], touches: Array[
 			sorted_blocks[i].touch_index = -1
 		return
 
-	# 迭代枚举所有 C(n_touches, n_blocks) 个严格递增触点索引组合
-	# 组合以字典序生成：[0,1,...,k-1] → [0,1,...,k-2,k] → ... → [n-k,...,n-1]
-	var k: int = n_blocks
-	var combo: Array = []
-	combo.resize(k)
-	for i in range(k):
-		combo[i] = i
+	# 第一遍：带硬约束（冷却+速度），跳过不满足约束的组合
+	var found_valid = _enumerate_match_pass(sorted_blocks, touches, true, min_matching_touch_index)
 
-	var min_cost: float = INF
-
-	while true:
-		# 计算当前组合的成本（移动距离 + 速度违规惩罚）
-		var total_cost: float = 0.0
-		for i in range(k):
-			var blk: BlockInfo = sorted_blocks[i]
-			var touch: VirtualTouch = touches[combo[i]]
-			var move_distance = abs(touch.last_press_x - blk.x)
-			total_cost += move_distance
-			# 速度违规惩罚：使匹配优先选择不超速的分配方案
-			if touch.last_press_time_ms >= 0:
-				var time_delta_sec = (blk.start_time_ms - touch.last_press_time_ms) / 1000.0
-				if time_delta_sec > 0:
-					var max_feasible = max_touch_move_velocity * time_delta_sec
-					if move_distance > max_feasible:
-						total_cost += (move_distance - max_feasible) * 10.0
-
-		if total_cost < min_cost:
-			min_cost = total_cost
-			for i in range(k):
-				min_matching_touch_index[i] = combo[i]
-
-		# 生成下一个组合（字典序）
-		var idx: int = k - 1
-		while idx >= 0 and combo[idx] == n_touches - k + idx:
-			idx -= 1
-		if idx < 0:
-			break
-		combo[idx] += 1
-		for j in range(idx + 1, k):
-			combo[j] = combo[j - 1] + 1
+	# 回退：硬约束过严导致无解时，不带硬约束（仅软惩罚）再跑一遍，保证总有解
+	if not found_valid:
+		for i in range(n_blocks):
+			min_matching_touch_index[i] = -1
+		_enumerate_match_pass(sorted_blocks, touches, false, min_matching_touch_index)
 
 	# Unity bug: 匹配结果按start_time顺序应用（而非x顺序）
 	# 这会导致当批次中有2个块且x顺序与start_time顺序不一致时，
@@ -854,6 +834,89 @@ func _match_blocks_to_touches(blocks_in_group: Array[BlockInfo], touches: Array[
 	# 应用最优分配
 	for i in range(n_blocks):
 		sorted_blocks[i].touch_index = min_matching_touch_index[i]
+
+## 单次字典序组合枚举：找成本最小的完整分配方案
+## use_hard_constraint=true 时跳过任一分配不满足冷却/速度约束的组合（剪枝）
+## 成本 = 移动距离 + 速度违规惩罚 + 跨手惩罚 + 偏离原位惩罚
+## 返回是否找到至少一个有效完整分配；最优组合写入 out_matching
+func _enumerate_match_pass(
+	sorted_blocks: Array,
+	touches: Array[VirtualTouch],
+	use_hard_constraint: bool,
+	out_matching: Array
+) -> bool:
+	var k: int = sorted_blocks.size()
+	var n_touches: int = touches.size()
+
+	# 组合以字典序生成：[0,1,...,k-1] → [0,1,...,k-2,k] → ... → [n-k,...,n-1]
+	var combo: Array = []
+	combo.resize(k)
+	for i in range(k):
+		combo[i] = i
+
+	var min_cost: float = INF
+	var found_valid: bool = false
+
+	while true:
+		# 硬约束剪枝：全部满足冷却+速度才作为候选
+		if use_hard_constraint:
+			var valid: bool = true
+			for i in range(k):
+				if not _can_assign_block_to_touch(sorted_blocks[i], touches[combo[i]]):
+					valid = false
+					break
+			if not valid:
+				# 跳过当前组合，直接生成下一个组合（字典序）
+				var skip_idx: int = k - 1
+				while skip_idx >= 0 and combo[skip_idx] == n_touches - k + skip_idx:
+					skip_idx -= 1
+				if skip_idx < 0:
+					break
+				combo[skip_idx] += 1
+				for j in range(skip_idx + 1, k):
+					combo[j] = combo[j - 1] + 1
+				continue
+
+		# 计算当前组合的成本
+		var total_cost: float = 0.0
+		for i in range(k):
+			var blk: BlockInfo = sorted_blocks[i]
+			var touch: VirtualTouch = touches[combo[i]]
+			# 使用有效位置（含释放后回归原位）计算移动距离
+			var touch_x = _get_touch_current_x(touch, blk.start_time_ms)
+			var move_distance = abs(touch_x - blk.x)
+			total_cost += move_distance
+			# 速度违规惩罚：使匹配优先选择不超速的分配方案
+			if touch.last_press_time_ms >= 0:
+				var time_delta_sec = (blk.start_time_ms - touch.last_press_time_ms) / 1000.0
+				if time_delta_sec > 0:
+					var max_feasible = max_touch_move_velocity * time_delta_sec
+					if move_distance > max_feasible:
+						total_cost += (move_distance - max_feasible) * 10.0
+			# 手部模型：跨手重罚 + 偏离原位惩罚
+			if hand_model_enabled and touch.hand >= 0 and max_touch_count >= 2:
+				var block_hand = _get_block_hand(blk.x)
+				if block_hand != touch.hand:
+					total_cost += screen_width * CROSS_HAND_PENALTY_MULT
+				total_cost += abs(touch.home_x - blk.x) * HOME_BIAS_COEFF
+
+		if total_cost < min_cost:
+			min_cost = total_cost
+			for i in range(k):
+				out_matching[i] = combo[i]
+			found_valid = true
+
+		# 生成下一个组合（字典序）
+		var idx: int = k - 1
+		while idx >= 0 and combo[idx] == n_touches - k + idx:
+			idx -= 1
+		if idx < 0:
+			break
+		combo[idx] += 1
+		for j in range(idx + 1, k):
+			combo[j] = combo[j - 1] + 1
+
+	return found_valid
 
 ## 检查块是否可以分配给该触点（考虑冷却和移动速度约束）
 func _can_assign_block_to_touch(block: BlockInfo, touch: VirtualTouch) -> bool:
@@ -874,15 +937,16 @@ func _can_assign_block_to_touch(block: BlockInfo, touch: VirtualTouch) -> bool:
 		if block.start_time_ms - touch.last_press_block.end_time_ms < (cooldown_seconds * 1000.0):
 			return false
 	
-	# 检查移动速度约束
+	# 检查移动速度约束（使用有效位置：含释放后回归原位）
 	if touch.last_press_time_ms >= 0:
 		var time_delta = (block.start_time_ms - touch.last_press_time_ms) / 1000.0
 		if time_delta > 0:
-			var distance = abs(block.x - touch.last_press_x)
+			var touch_x = _get_touch_current_x(touch, block.start_time_ms)
+			var distance = abs(block.x - touch_x)
 			var required_speed = distance / time_delta
 			if required_speed > max_touch_move_velocity:
 				return false
-	
+
 	return true
 
 ## Step D: 块类型判定与触点状态管理（Unity兼容版本）
@@ -905,26 +969,33 @@ func _judge_block_type(block: BlockInfo, touches: Array[VirtualTouch]) -> void:
 	
 	# ========== 第2步：检查冷却期（触点可用性） ==========
 	if not touch.is_free:
-		# ✅ 修正：检查触点是否从hold状态释放
+		# 检查触点是否从hold状态释放
 		if touch.holding_block == null and block.start_time_ms > touch.last_press_time_ms + (cooldown_seconds * 1000.0):
 			touch.is_free = true
 			touch.last_press_block = null
 		else:
-			# ✅ 修正：触点仍被占用，连接到前一个块
+			# 触点仍被占用，连接到前一个块（用于连块判定）
 			block.prev_block = touch.last_press_block
-			var time_delta_ms = block.start_time_ms - touch.last_press_time_ms
-			var time_delta_sec = time_delta_ms / 1000.0
+
+	# ========== 第2.5步：移动速度约束（对所有已使用触点生效，不论是否空闲） ==========
+	# 修复：原实现仅在 not touch.is_free 时钳制，触点冷却释放后约束失效，
+	# 导致短时间内音符水平偏移过远。现在只要触点曾经按下过就施加速度约束。
+	# 使用有效位置（含释放后回归原位），与匹配阶段 _can_assign_block_to_touch 保持一致。
+	if touch.last_press_time_ms >= 0:
+		var time_delta_sec = (block.start_time_ms - touch.last_press_time_ms) / 1000.0
+		if time_delta_sec > 0:
+			var touch_x = _get_touch_current_x(touch, block.start_time_ms)
 			var max_offset = max_touch_move_velocity * time_delta_sec
-			var distance = abs(block.x - touch.last_press_x)
+			var distance = abs(block.x - touch_x)
 			if distance > max_offset:
-					# 限制块位置：先按最大偏移钳制 x，再吸附到最近轨道中心
-					if block.x > touch.last_press_x:
-						block.x = touch.last_press_x + max_offset
-					else:
-						block.x = touch.last_press_x - max_offset
-					# 同步更新 lane，使速度约束真正影响最终音符轨道
-					block.lane = _calculate_lane_from_x(block.x)
-					block.x = _calculate_lane_position(block.lane)
+				# 限制块位置：先按最大偏移钳制 x，再吸附到最近轨道中心
+				if block.x > touch_x:
+					block.x = touch_x + max_offset
+				else:
+					block.x = touch_x - max_offset
+				# 同步更新 lane，使速度约束真正影响最终音符轨道
+				block.lane = _calculate_lane_from_x(block.x)
+				block.x = _calculate_lane_position(block.lane)
 	
 	# ========== 第3步：检查是否在LONG块内 ==========
 	if touch.holding_block != null:
@@ -1046,6 +1117,127 @@ func _calculate_lane_from_x(x: float) -> int:
 		return 0
 	var lane = int(round((x - lane_start) / lane_spacing))
 	return clampi(lane, 0, lane_count - 1)
+
+
+## ========== 手部模型方法 ==========
+
+## 初始化虚拟触点并分配手部归属与原位
+func _init_touches_with_hands() -> Array[VirtualTouch]:
+	var touches: Array[VirtualTouch] = []
+
+	# 键盘模式或手部模型关闭：使用原有逻辑（无手部归属）
+	if not hand_model_enabled or max_touch_count <= 0:
+		for i in range(max_touch_count):
+			touches.append(VirtualTouch.new(i))
+		return touches
+
+	# 每只手的原位数（各手均向上取整）
+	var home_per_hand: int = ceili(float(max_touch_count) / 2.0)
+
+	# 计算左右手的车道区域
+	var half_lane: int = lane_count / 2
+	var left_lanes = _distribute_home_lanes(0, half_lane - 1, home_per_hand)
+	var right_lanes = _distribute_home_lanes(half_lane, lane_count - 1, home_per_hand)
+
+	# 转换为X坐标
+	var left_home_xs: Array[float] = []
+	for lane in left_lanes:
+		left_home_xs.append(_calculate_lane_position(lane))
+	var right_home_xs: Array[float] = []
+	for lane in right_lanes:
+		right_home_xs.append(_calculate_lane_position(lane))
+
+	# 所有原位（max_touch_count=1 时单触点可使用双手原位）
+	var all_home_xs: Array[float] = []
+	all_home_xs.append_array(left_home_xs)
+	all_home_xs.append_array(right_home_xs)
+
+	if max_touch_count == 1:
+		# 单触点：无手部归属，可使用所有原位
+		var touch = VirtualTouch.new(0)
+		touch.hand = -1
+		touch.hand_home_positions = all_home_xs
+		touch.home_x = _calculate_lane_position(lane_count / 2)  # 屏幕中心
+		touch.last_press_x = touch.home_x
+		touches.append(touch)
+		return touches
+
+	# max_touch_count >= 2：按 ceil(left)/floor(right) 分配触点
+	var left_count: int = ceili(float(max_touch_count) / 2.0)
+	var right_count: int = max_touch_count - left_count
+
+	var touch_idx = 0
+	for i in range(left_count):
+		var touch = VirtualTouch.new(touch_idx)
+		touch.hand = 0  # 左手
+		touch.hand_home_positions = left_home_xs.duplicate()
+		touch.home_x = left_home_xs[mini(i, left_home_xs.size() - 1)]
+		touch.last_press_x = touch.home_x
+		touches.append(touch)
+		touch_idx += 1
+	for i in range(right_count):
+		var touch = VirtualTouch.new(touch_idx)
+		touch.hand = 1  # 右手
+		touch.hand_home_positions = right_home_xs.duplicate()
+		touch.home_x = right_home_xs[mini(i, right_home_xs.size() - 1)]
+		touch.last_press_x = touch.home_x
+		touches.append(touch)
+		touch_idx += 1
+
+	return touches
+
+## 在车道区间 [lane_start, lane_end] 内均匀分布 count 个原位车道
+func _distribute_home_lanes(lane_start: int, lane_end: int, count: int) -> Array[int]:
+	var lanes: Array[int] = []
+	if count <= 0 or lane_end < lane_start:
+		return lanes
+	if count == 1:
+		lanes.append((lane_start + lane_end) / 2)
+		return lanes
+	var span = lane_end - lane_start
+	for i in range(count):
+		var lane = lane_start + int(round(float(i) * float(span) / float(count - 1)))
+		lanes.append(clampi(lane, lane_start, lane_end))
+	return lanes
+
+## 计算触点在指定时间的有效X位置（考虑释放后回归原位，不修改触点状态）
+func _get_touch_current_x(touch: VirtualTouch, at_time_ms: float) -> float:
+	if touch.last_press_time_ms < 0:
+		return touch.home_x  # 从未使用过，在原位
+	if not touch.is_free or touch.holding_block != null:
+		return touch.last_press_x  # 占用中，位置不变
+	# 已释放：向最近原位回归
+	if not hand_model_enabled or touch.hand_home_positions.is_empty():
+		return touch.last_press_x  # 无原位模型
+	var nearest_home = _get_nearest_home_x(touch, touch.last_press_x)
+	var elapsed_sec = (at_time_ms - touch.last_press_time_ms) / 1000.0
+	if elapsed_sec <= 0:
+		return touch.last_press_x
+	var max_offset = max_touch_move_velocity * elapsed_sec
+	var distance = abs(nearest_home - touch.last_press_x)
+	if distance <= max_offset:
+		return nearest_home  # 已回到原位
+	if nearest_home > touch.last_press_x:
+		return touch.last_press_x + max_offset
+	else:
+		return touch.last_press_x - max_offset
+
+## 获取触点本手原位池中距 from_x 最近的原位X
+func _get_nearest_home_x(touch: VirtualTouch, from_x: float) -> float:
+	if touch.hand_home_positions.is_empty():
+		return touch.home_x
+	var nearest = touch.hand_home_positions[0]
+	var min_dist = abs(nearest - from_x)
+	for hx in touch.hand_home_positions:
+		var d = abs(hx - from_x)
+		if d < min_dist:
+			min_dist = d
+			nearest = hx
+	return nearest
+
+## 判断块的X位置属于哪只手（0=左手, 1=右手）
+func _get_block_hand(block_x: float) -> int:
+	return 0 if block_x < screen_width * 0.5 else 1
 
 
 ## 获取游戏序列列表
