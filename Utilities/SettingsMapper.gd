@@ -29,6 +29,7 @@ static var mappings: Dictionary = {
 	"default_midi_volume": {"section": "Gameplay", "key": "default_midi_volume", "value_type": "int"},
 	"default_vocal_volume": {"section": "Gameplay", "key": "default_vocal_volume", "value_type": "int"},
 	"audio_sync_threshold": {"section": "Gameplay", "key": "audio_sync_threshold", "value_type": "int"},
+	"audio_playback_delay": {"section": "Gameplay", "key": "audio_playback_delay", "value_type": "int"},
 
 	"lane_count": {"section": "Lane", "key": "lane_count", "value_type": "int"},
 	"keyboard_mode": {"section": "Lane", "key": "keyboard_mode", "value_type": "int"},
@@ -52,7 +53,6 @@ static var mappings: Dictionary = {
 	"block_judging_width": {"section": "Judge", "key": "block_judging_width", "value_type": "float"},
 	"min_block_spacing": {"section": "Judge", "key": "min_block_spacing", "value_type": "int"},
 	"canvas_horizontal_padding": {"section": "Judge", "key": "canvas_horizontal_padding", "value_type": "int"},
-	"judge_time_offset": {"section": "Judge", "key": "judge_time_offset", "value_type": "int"},
 	"perfect_time": {"section": "Judge", "key": "perfect_time", "value_type": "float"},
 	"great_time": {"section": "Judge", "key": "great_time", "value_type": "float"},
 	"good_time": {"section": "Judge", "key": "good_time", "value_type": "float"},

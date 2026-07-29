@@ -484,7 +484,12 @@ public partial class MeltySynthPlayer
 					Pitch = pitch,
 					Velocity = velocity
 				});
-				Interlocked.Increment(ref _manualActiveVoiceCount);
+				// self-heal：若计数器为负（历史重复 note_off 导致），强制重置为 1
+				// 否则 shouldRenderManual 永远为 false，manual synth 不渲染
+				if (Interlocked.Increment(ref _manualActiveVoiceCount) <= 0)
+				{
+					_manualActiveVoiceCount = 1;
+				}
 			}
 
 			public void EnqueueNoteOff(int virtualId, int pitch)
@@ -496,7 +501,10 @@ public partial class MeltySynthPlayer
 					Pitch = pitch,
 					Velocity = 0
 				});
-				Interlocked.Decrement(ref _manualActiveVoiceCount);
+				// 原子 decrement 后若为负（重复 note_off 导致），强制 clamp 到 0
+				// 避免 shouldRenderManual 永久 false 使 manual synth 不渲染
+				if (Interlocked.Decrement(ref _manualActiveVoiceCount) < 0)
+					Interlocked.Exchange(ref _manualActiveVoiceCount, 0);
 			}
 
 			// ====================================================================

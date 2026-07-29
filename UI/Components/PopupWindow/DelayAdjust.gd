@@ -24,16 +24,36 @@ var _stable_count: int = 0
 ## 上一个样本值（用于差值计算）
 var _last_sample: float = NAN
 
-## AdjustLine 单向运动范围（绝对值，单位：像素，1 像素 = 1 ms）
-const _ADJUST_LINE_RANGE: float = 310.0
-## AdjustLine 单程时间
-const _ADJUST_LINE_DURATION: float = 1.0
-## 进入稳定状态所需连续稳定次数（3个连续样本 = _stable_count >= 2 时开始移动 CenterLine）
+## AdjustLine 单向运动范围（绝对值，单位：像素）
+const _ADJUST_LINE_RANGE: float = 310
+## 单段时间（每拍 0.5s，4 拍循环 = 3 轻 + 1 重 = 2.0s）
+const _BEAT_SEGMENT_SEC: float = 0.5
+## 动画速度 = RANGE/2 ÷ SEGMENT = 155/0.5 = 310px/s，用于 px↔ms 互转
+const _ANIM_SPEED: float = _ADJUST_LINE_RANGE * 0.5 / _BEAT_SEGMENT_SEC
+## 延迟显示范围（±ms），超过此范围的延迟值会被 clamp 到边界
+const _MAX_DELAY_MS: float = 300.0
+## 进入稳定状态所需连续稳定次数（3个连续样本 = _stable_count >= 2 时开始移动 CenterLine 和 LineEdit）
 const _STABLE_START_THRESHOLD: int = 2
 ## 校准完成所需连续稳定次数（8个连续样本 = _stable_count >= 7 时完成）
 const _CALIB_DONE_STABLE: int = 7
 ## 样本间允许的最大差值（ms），超过则视为不稳定
 const _STABLE_MAX_DIFF: float = 50.0
+
+# ===== 节拍音配置（GM 鼓组，channel 9）=====
+# 重拍：Closed Hi-Hat（清脆响亮，穿透力强）；轻拍：Side Stick（军鼓击边，短促轻巧）
+const _BEAT_CHANNEL: int = 9           # GM 标准鼓组通道
+const _BEAT_TRACK: int = 0
+const _BEAT_HARD_PITCH: int = 42       # Closed Hi-Hat（重拍，清脆响亮）
+const _BEAT_HARD_VEL: int = 115
+const _BEAT_SOFT_PITCH: int = 37       # Side Stick（轻拍，军鼓击边短促）
+const _BEAT_SOFT_VEL: int = 60
+const _BEAT_DURATION_SEC: float = 0.12 # 单拍发声时长（note_off 延迟，避免叠音）
+# 待清理的 note_off entry 列表（stop_calibration 时强制停音）
+# 每个 entry = {pitch, done, mp}，done 标志防止 SceneTreeTimer 自然超时重复触发 note_off
+var _beat_off_timers: Array = []
+# 校准前保存的 MidiPlaybackManager 音量（dB），stop_calibration 时恢复
+# 避免校准期间修改的全局音量污染后续 PlayView 播放
+var _saved_volume_db: float = NAN
 
 func _ready() -> void:
 	delay_btn.pressed.connect(_on_delay_btn_pressed)
@@ -47,57 +67,103 @@ func start_calibration(current_delay: int = 0) -> void:
 
 	_delay_value.text = str(current_delay)
 	_update_center_line(float(_delay_value.text))
+
+	# 确保 SoundFont 已加载到后端合成器（trigger_note_on 依赖 SoundFont）
+	# 设置页打开 DelayAdjust 时未调用 play()，SoundFont 可能尚未懒加载到 synth
+	var mp = MidiPlaybackManager.instance
+	if mp:
+		mp.ensure_soundfont_loaded()
+		_saved_volume_db = mp.midi_player_config.get("volume_db", -20.0)
+		var midi_vol = ConfigManager.instance.get_int("Gameplay", "default_midi_volume", 50)
+		mp.set_volume_db(linear_to_db(clamp(midi_vol, 0, 100) / 100.0))
 	# 启动 AdjustLine 单向循环动画
 	# AdjustLine 本身不可见，仅作为位置跟踪器，点击时在当前位置生成残影
-	_adjust_line.offset_transform_position = Vector2(_ADJUST_LINE_RANGE, 0)
 	if _adjust_line_tween and _adjust_line_tween.is_valid():
 		_adjust_line_tween.kill()
 	_adjust_line_tween = AniMGR.create_sequence("popup_adjust_line_loop")
 	_adjust_line_tween.set_loops()
+	_adjust_line.offset_transform_position.x = 0
 	_adjust_line_tween.set_trans(Tween.TRANS_LINEAR)
 
-	# 三个轻拍音一个重拍音
-	_adjust_line_tween.tween_callback(func(): _adjust_line.offset_transform_position = Vector2(_ADJUST_LINE_RANGE, 0))
-	_adjust_line_tween.tween_property(_adjust_line, "offset_transform_position:x", _ADJUST_LINE_RANGE / 2, _ADJUST_LINE_DURATION / 4)
-	_adjust_line_tween.tween_callback(func(): _play_beat_sound())
-	_adjust_line_tween.tween_property(_adjust_line, "offset_transform_position:x", 0, _ADJUST_LINE_DURATION / 4)
-	_adjust_line_tween.tween_callback(func(): _play_beat_sound(true))
-	_adjust_line_tween.tween_property(_adjust_line, "offset_transform_position:x", -_ADJUST_LINE_RANGE / 2, _ADJUST_LINE_DURATION / 4)
-	_adjust_line_tween.tween_callback(func(): _play_beat_sound())
-	_adjust_line_tween.tween_property(_adjust_line, "offset_transform_position:x", -_ADJUST_LINE_RANGE, _ADJUST_LINE_DURATION / 4)
-	_adjust_line_tween.tween_callback(func(): _play_beat_sound())
-
-# 停止校准：终止动画
+	# 4 拍循环：轻-轻-轻-重
+	_adjust_line_tween.tween_property(_adjust_line, "offset_transform_position:x", -_ADJUST_LINE_RANGE / 2, _BEAT_SEGMENT_SEC)
+	_adjust_line_tween.tween_callback(func(): _play_beat_sound(false))
+	_adjust_line_tween.tween_property(_adjust_line, "offset_transform_position:x", - _ADJUST_LINE_RANGE, _BEAT_SEGMENT_SEC)
+	_adjust_line_tween.tween_callback(func(): _play_beat_sound(false))
+	_adjust_line_tween.tween_callback(func(): _adjust_line.offset_transform_position.x = _ADJUST_LINE_RANGE)
+	_adjust_line_tween.tween_property(_adjust_line, "offset_transform_position:x", _ADJUST_LINE_RANGE / 2, _BEAT_SEGMENT_SEC)
+	_adjust_line_tween.tween_callback(func(): _play_beat_sound(false))
+	_adjust_line_tween.tween_property(_adjust_line, "offset_transform_position:x", 0, _BEAT_SEGMENT_SEC)
+	_adjust_line_tween.tween_callback(func(): _on_hard_beat_triggered())
+	
+# 停止校准：终止动画 + 停止所有节拍音 + 恢复音量
 func stop_calibration() -> void:
 	if not _calib_active:
 		return
 	_calib_active = false
 	if _adjust_line_tween and _adjust_line_tween.is_valid():
 		_adjust_line_tween.kill()
-	_adjust_line_tween = null
+		_adjust_line_tween = null
+	_stop_all_beat_sounds()
+	# 恢复校准前的全局音量，避免污染后续 PlayView 播放
+	if not is_nan(_saved_volume_db):
+		var mp = MidiPlaybackManager.instance
+		if mp:
+			mp.set_volume_db(_saved_volume_db)
+		_saved_volume_db = NAN
 
-## 占位函数：AdjustLine 经过 0 时调用，正常应播放节拍音
-## TODO: 接入实际音频播放
+# 停止所有节拍音：对每个未完成的 entry 直接触发 note_off 并标记 done
+# done 标志防止 SceneTreeTimer 自然超时时重复触发 note_off（会导致 _manualActiveVoiceCount 变负）
+func _stop_all_beat_sounds() -> void:
+	for entry in _beat_off_timers:
+		if entry["done"]:
+			continue
+		entry["done"] = true
+		if is_instance_valid(entry["mp"]) and entry["mp"].midi_player:
+			entry["mp"].midi_player.call("trigger_note_off", entry["pitch"], 0, _BEAT_CHANNEL, _BEAT_TRACK)
+	_beat_off_timers.clear()
+
+## 播放节拍音：通过 MidiPlaybackManager 实时合成 GM 鼓组
+## 与 PlayView 演奏模式音符走同一音频路径（trigger_note_on），确保延迟特性一致
 func _play_beat_sound(hard: bool = false) -> void:
-	# 重音
-	if hard:
-		pass
-	else:
-		pass
+	var mp = MidiPlaybackManager.instance
+	if not mp or not mp.midi_player:
+		return
+	var pitch: int = _BEAT_HARD_PITCH if hard else _BEAT_SOFT_PITCH
+	var vel: int = _BEAT_HARD_VEL if hard else _BEAT_SOFT_VEL
+	mp.midi_player.call("trigger_note_on", pitch, vel, _BEAT_CHANNEL, _BEAT_TRACK)
+	# 延迟 note_off，避免叠音；用 SceneTreeTimer 不依赖本节点生命周期
+	var timer := get_tree().create_timer(_BEAT_DURATION_SEC)
+	# entry 持有 pitch/done/mp，done 标志防止自然超时与 _stop_all_beat_sounds 重复触发
+	var entry := {"pitch": pitch, "done": false, "mp": mp}
+	_beat_off_timers.append(entry)
+	timer.timeout.connect(func() -> void:
+		if entry["done"]:
+			return
+		entry["done"] = true
+		_beat_off_timers.erase(entry)
+		if is_instance_valid(mp) and mp.midi_player:
+			mp.midi_player.call("trigger_note_off", pitch, 0, _BEAT_CHANNEL, _BEAT_TRACK)
+	)
 
 ## 获取当前延迟值（用于 PopupWindow.show_delay_adjust 返回）
 func get_delay_value() -> int:
 	return int(_delay_value.text)
 
-# 点击校准按钮：记录当前 AdjustLine 位置作为延迟样本
+# 重拍触发：播放重拍音（用户应在此刻点击）
+# 重拍在 AdjustLine 中心(0) 触发，点击时用 AdjustLine 位置算延迟，与动画完全同步
+func _on_hard_beat_triggered() -> void:
+	_play_beat_sound(true)
+
+# 点击校准按钮：用 AdjustLine 当前位置换算延迟，px → ms 由 _ANIM_SPEED 转换
 func _on_delay_btn_pressed() -> void:
 	if not _calib_active:
 		return
 	var click_x: float = _adjust_line.offset_transform_position.x
-	# 生成 AdjustLine 残影并播放淡出动画（视觉反馈）
+	# 生成残影：直接用 AdjustLine 当前位置，残影直观反映点击时刻 AdjustLine 的位置
 	_spawn_adjust_line_ghost(click_x)
-	# 记录样本：左（负 x）= 正延迟，右（正 x）= 负延迟 → 取反
-	var delay: float = -click_x
+	# px → ms：除以速度 _ANIM_SPEED 乘 1000，取反使 x<0→正值
+	var delay: float = -click_x / _ANIM_SPEED * 1000.0
 	_calib_samples.append(delay)
 	# 稳定性检测：与前一个样本的差值 ≤ 50ms → 计数器 +1，否则归零
 	if not is_nan(_last_sample):
@@ -135,9 +201,12 @@ func _compute_stable_average() -> float:
 		sum += _calib_samples[i]
 	return sum / float(_calib_samples.size() - start)
 
-# 更新 CenterLine 位置（中间=0，左=正延迟，右=负延迟，1像素=1ms）
+# 更新 CenterLine 位置（坐标映射与 _on_delay_btn_pressed 互逆）
+# clamp 到 ±_MAX_DELAY_MS 避免越出 DelayIndicator 容器边界
 func _update_center_line(delay_ms: float) -> void:
-	_center_line.offset_transform_position = Vector2(-delay_ms, 0)
+	var clamped: float = clampf(delay_ms, -_MAX_DELAY_MS, _MAX_DELAY_MS)
+	# ms → px：乘 _ANIM_SPEED 除 1000，与 _on_delay_btn_pressed 互逆
+	_center_line.offset_transform_position = Vector2(-clamped * _ANIM_SPEED / 1000.0, 0)
 
 # 统一设置延迟值：更新 Label 和 CenterLine
 func _set_delay_value(delay_ms: float) -> void:
@@ -158,12 +227,12 @@ func _input(event: InputEvent) -> void:
 	var rect := _delay_indicator.get_global_rect()
 	if not rect.has_point(event.position):
 		return
-	# 计算手指相对于 DelayIndicator 中心的 x 偏移（1 像素 = 1 ms）
+	# 计算手指相对于 DelayIndicator 中心的 x 偏移（px），下转 ms）
 	var local_x: float = event.position.x - rect.get_center().x
-	# 限制在面板范围内
-	local_x = clampf(local_x, -rect.size.x / 2.0, rect.size.x / 2.0)
-	# 左 = 正延迟，右 = 负延迟 → 取反
-	_set_delay_value(-local_x)
+	# px → ms：除以 _ANIM_SPEED 乘 1000，取反使左侧→正延迟
+	var delay: float = -local_x / _ANIM_SPEED * 1000.0
+	delay = clampf(delay, -_MAX_DELAY_MS, _MAX_DELAY_MS)
+	_set_delay_value(delay)
 
 # 校准完成：停止动画并请求 PopupWindow 隐藏
 func _finish_calibration() -> void:

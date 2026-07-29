@@ -26,6 +26,7 @@ custom_minimum_size = Vector2(200, 80)
 custom_maximum_size = Vector2(500, -1)
 offset_right = 200.0
 offset_bottom = 80.0
+size_flags_vertical = 4
 theme_override_font_sizes/font_size = 32
 theme_override_styles/normal = SubResource("StyleBoxFlat_u4lkb")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_nhoxv")

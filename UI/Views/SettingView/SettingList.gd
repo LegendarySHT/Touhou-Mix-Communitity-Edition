@@ -311,13 +311,13 @@ func _popup_kb_mode_adjust() -> void:
 	_pending_config["keyboard_mode_display_names"] = names_str
 	GLogger.info("keyboard_mode_keys updated: %s (pending save)" % keys_str, "SettingList")
 
-# 弹出延迟校准窗口，校准结果写入 judge_time_offset（pending 保存）
+# 弹出延迟校准窗口，校准结果写入 audio_playback_delay（pending 保存）
 # DelayAdjust 内部用 MidiPlaybackManager 实时合成 GM 鼓组节拍音，与 PlayView 演奏模式同音频路径
 func _popup_delay_adjust() -> void:
-	var current := int(_pending_config.get("judge_time_offset", 0))
+	var current := int(_pending_config.get("audio_playback_delay", 0))
 	var new_delay := await PopupWindow.instance.show_delay_adjust(current)
-	_pending_config["judge_time_offset"] = new_delay
-	GLogger.info("judge_time_offset calibrated: %d ms (pending save)" % new_delay, "SettingList")
+	_pending_config["audio_playback_delay"] = new_delay
+	GLogger.info("audio_playback_delay calibrated: %d ms (pending save)" % new_delay, "SettingList")
 
 # ===== 各判定类型特效设置弹窗入口 =====
 # 4 个按钮分别对应 Perfect/Great/Good/Bad，调用统一的 _popup_spark_adjust(judge_type)

@@ -31,6 +31,12 @@ var _midi_data_for_filter: Object = null  # 用于 channel 级别过滤
 
 var note_color: Color
 
+## 音频延迟补偿（毫秒，正值=音频输出有延迟需延后视觉，负值=音频提前需提前视觉）
+## 与 PlayView.FlowArea 保持一致：TrackView 存在人声/MIDI 同步播放场景，
+## 视觉音符需与音频到达耳朵的时刻对齐，否则会出现"看到的音符"与"听到的声音"错位
+## 来源：ConfigManager [Gameplay] audio_playback_delay，由 DelayAdjust 校准得出
+var _audio_playback_delay_ms: float = 0.0
+
 # 诊断计数（用于周期性输出日志）
 #var _diagnostic_frame_count: int = 0
 #var _last_logged_tick: float = 0.0
@@ -52,13 +58,31 @@ class NoteEvent:
 		channel = ch
 
 func _ready():
-	
+
 	if size.y > 250:
 		lane_count = 24
-	_on_flow_area_resized()	
+	_on_flow_area_resized()
 
 	flow_area.resized.connect(_on_flow_area_resized)
-	
+
+	# 初始化音频延迟补偿，并监听配置变更
+	# 与 PlayView.FlowArea 保持一致，使 TrackView 的视觉音符与音频时序对齐
+	_audio_playback_delay_ms = float(ConfigManager.instance.get_int("Gameplay", "audio_playback_delay", 0))
+	if EvtBus and not EvtBus.config_changed.is_connected(_on_config_changed):
+		EvtBus.config_changed.connect(_on_config_changed)
+
+
+func _exit_tree() -> void:
+	# NoteDisplayer 实例随 MidiTrack 销毁时断开信号，避免引用悬空
+	if EvtBus and EvtBus.config_changed.is_connected(_on_config_changed):
+		EvtBus.config_changed.disconnect(_on_config_changed)
+
+
+## 配置变更回调：仅关注 audio_playback_delay，实时更新延迟补偿值
+func _on_config_changed(key: String, section: String, value: Variant) -> void:
+	if section == "Gameplay" and key == "audio_playback_delay":
+		_audio_playback_delay_ms = float(value)
+
 
 func _on_flow_area_resized():
 	area_height = flow_area.get_rect().size.y
@@ -84,8 +108,12 @@ func _process(_delta):
 	# 【修复】直接从MidiPlaybackManager获取tick，确保与实际播放位置同步
 	var midi_mgr_ref = midi_mgr
 	var ct: float = 0.0
-	
-	ct = midi_mgr_ref.position
+
+	# 应用音频延迟补偿：将播放位置减去延迟后转换为 tick
+	# 与 PlayView.FlowArea.set_current_time 逻辑一致（time_ms - _audio_playback_delay_ms）
+	# 使视觉音符的通过时刻与音频到达耳朵的时刻对齐
+	var delayed_ms: float = midi_mgr_ref.get_position_ms() - _audio_playback_delay_ms
+	ct = midi_mgr_ref._calculate_tick_from_position_with_bpm_timeline(delayed_ms, midi_mgr_ref.midi_timebase)
 	
 	# 【诊断日志】每60帧输出一次tick対比信息
 	#_diagnostic_frame_count += 1

@@ -1072,6 +1072,9 @@ public partial class MeltySynthPlayer : Node
 		{
 			// 正常路径：无锁入队，音频线程在 FillPcmDataDirect 中处理
 			_audioOutput.EnqueueNoteOn(virtualId, pitch, scaledVelocity);
+			// 确保 audio device 已启动：非播放状态（如 DelayAdjust 校准）下 _Process 不渲染，
+			// audio device 可能处于停止状态，入队的音符不会被消费。此处强制启动。
+			RequestAudioOutputPlay();
 		}
 		else
 		{

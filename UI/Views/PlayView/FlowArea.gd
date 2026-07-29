@@ -102,6 +102,13 @@ var parent_node: Node = null
 ## 用于确保note判定与MIDI播放位置完全同步
 var _synced_current_time: float = 0.0
 
+## 音频延迟补偿（毫秒，正值=音频输出有延迟需延后视觉/判定，负值=音频提前需提前视觉/判定）
+## 来自 ConfigManager [Gameplay] audio_playback_delay，由 DelayAdjust 校准得出
+## 应用方式：仅在 set_current_time 和 _get_realtime_position_ms 两个入口减去此值
+## _judge_note 的 input_time_ms 已来自上述入口（或 note.start_time 与 current_time 同坐标系），不再二次减
+## 效果：音符视觉下落与判定时机同步延后/提前，使点击时机与音频到达耳朵的时刻对齐
+var _audio_playback_delay_ms: float = 0.0
+
 # 修改为从PlayView传入的音符列表
 var notes_list: Array[FlowNote] = []  # 移除测试用的音符
 var note_idx: int = 0
@@ -135,6 +142,8 @@ func init_flow_area():
 	judge_mode = ConfigManager.instance.get_int("Judge", "touch_judging_criteria", NoteJudger.JudgeMode.BEST_TIMING_FIFO)
 	check_slide_when_finger_up = ConfigManager.instance.get_int("Judge", "check_instant_blocks_when_finger_up", 1) == 1
 	only_perfect_slides = ConfigManager.instance.get_int("Judge", "only_perfect_instant_blocks_before_judge", 0) == 1
+	# 判定时间偏移（由 DelayAdjust 校准得出，影响判定时机与音符视觉下落）
+	_audio_playback_delay_ms = float(ConfigManager.instance.get_int("Gameplay", "audio_playback_delay", 0))
 	
 	# 从配置读取比例系数
 	var block_size_ratio = ConfigManager.instance.get_float("Appearance", "block_size", 6.5)
@@ -226,6 +235,10 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	if section == "Playback" and key == "auto_mode":
 		auto_mode = int(value) == 1
 		GLogger.info("FlowArea auto_mode updated: %s" % ("ON" if auto_mode else "OFF"), "FlowArea")
+		return
+
+	if section == "Gameplay" and key == "audio_playback_delay":
+		_audio_playback_delay_ms = float(value)
 		return
 
 	if section == "Judge":
@@ -1392,12 +1405,12 @@ func _generate_particle(type: String, pos: Vector2, scl: int = 200) -> void:
 ## 【方案C】同步当前播放时间（毫秒）
 ## 由 PlayView._process() 每帧调用，确保 FlowArea 的时间与 MIDI 播放位置完全同步
 func set_current_time(time_ms: float) -> void:
-	_synced_current_time = time_ms
+	_synced_current_time = time_ms - _audio_playback_delay_ms
 
 func _get_realtime_position_ms() -> float:
 	var playback_mgr = MidiPlaybackManager.instance
 	if playback_mgr:
-		return playback_mgr.get_realtime_position_ms()
+		return playback_mgr.get_realtime_position_ms() - _audio_playback_delay_ms
 	return _synced_current_time
 
 func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_time_ms: float = -1.0,
@@ -1406,6 +1419,8 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	if judge_note.is_judged:
 		return
 
+	# input_time_ms 已来自 _get_realtime_position_ms()（已减 offset）或 note.start_time（与 current_time 同坐标系）
+	# 无需再次减 offset，直接使用即可避免双重减法
 	var judge_time_ms := input_time_ms if input_time_ms >= 0.0 else _get_realtime_position_ms()
 	var time_diff = judge_note.start_time - judge_time_ms  # 毫秒，优先使用事件时刻的实时播放位置
 	var abs_diff = abs(time_diff)

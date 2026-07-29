@@ -159,6 +159,15 @@ static func get_setting_groups() -> Array:
 				]
 			},
 			{
+				"id": "audio_playback_delay",
+				"name_en": "Audio Playback Delay",
+				"name_zh": "音频延迟校准",
+				"description": "校准音频输出延迟，使声音到达耳朵的时机与音符判定对齐。点击后跟随节拍点击校准",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_delay_adjust"
+			},
+			{
 				"id": "max_polyphony",
 				"name_en": "Max Polyphony",
 				"name_zh": "最大复音数",
@@ -168,45 +177,45 @@ static func get_setting_groups() -> Array:
 				"unit": "音符"
 			},
 			{
-			"id": "default_midi_volume",
-			"name_en": "Default MIDI Volume",
-			"name_zh": "默认MIDI音量",
-			"description": "设置加载新MIDI时的默认MIDI音量，范围0-100 (50%为原始音量, 100%为+6dB增益)",
-			"type": "TYPE_LINE_EDIT",
-			"default_value": "50",
-			"unit": "%"
-		},
-		{
-			"id": "default_vocal_volume",
-			"name_en": "Default Vocal Volume",
-			"name_zh": "默认人声音量",
-			"description": "设置加载新MIDI时的默认人声音量，范围0-100",
-			"type": "TYPE_LINE_EDIT",
-			"default_value": "50",
-			"unit": "%"
-		},
-		{
-			"id": "audio_sync_threshold",
-			"name_en": "Audio Sync Threshold",
-			"name_zh": "音频不同步阈值",
-			"description": "MIDI与人声进度差值超过此阈值时自动对齐",
-			"type": "TYPE_LINE_EDIT",
-			"default_value": "200",
-			"unit": "ms"
-		},
-		{
-			"id": "soundfont_select",
-			"name_en": "Sound Font",
-			"name_zh": "音源选择",
-			"description": "选择MIDI播放时使用的SoundFont音源文件。",
-			"type": "TYPE_OPTION",
-			"default_value": "GeneralUser-GS.sf2",
-			"options": [],
-			"dynamic_options": true,
-			"options_provider": "_provide_soundfont_options"
-		},
+				"id": "default_midi_volume",
+				"name_en": "Default MIDI Volume",
+				"name_zh": "默认MIDI音量",
+				"description": "设置加载新MIDI时的默认MIDI音量，范围0-100 (50%为原始音量, 100%为+6dB增益)",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "50",
+				"unit": "%"
+			},
+			{
+				"id": "default_vocal_volume",
+				"name_en": "Default Vocal Volume",
+				"name_zh": "默认人声音量",
+				"description": "设置加载新MIDI时的默认人声音量，范围0-100",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "50",
+				"unit": "%"
+			},
+			{
+				"id": "audio_sync_threshold",
+				"name_en": "Audio Sync Threshold",
+				"name_zh": "音频不同步阈值",
+				"description": "MIDI与人声进度差值超过此阈值时自动对齐",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "200",
+				"unit": "ms"
+			},
+			{
+				"id": "soundfont_select",
+				"name_en": "Sound Font",
+				"name_zh": "音源选择",
+				"description": "选择MIDI播放时使用的SoundFont音源文件。",
+				"type": "TYPE_OPTION",
+				"default_value": "GeneralUser-GS.sf2",
+				"options": [],
+				"dynamic_options": true,
+				"options_provider": "_provide_soundfont_options"
+			},
 
-	]
+		]
 	},
 	{
 		"name": "轨道设置",
@@ -236,9 +245,10 @@ static func get_setting_groups() -> Array:
 				"id": "keyboard_mode_keys",
 				"name_en": "Keyboard Mode Keys",
 				"name_zh": "键盘键位设置",
-				"description": "设置用于点击的键盘按键，不同内容间的英文逗号分隔",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "A,S,D,F,J,K,L,;"
+				"description": "点击按钮打开窗口，设置键盘按键顺序、显示名称和按键绑定",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_kb_mode_adjust"
 			},
 			{
 				"id": "flash_alpha",
@@ -249,42 +259,42 @@ static func get_setting_groups() -> Array:
 				"default_value": "0.8"
 			},
 			{
-			"id": "perfect_spark",
-			"name_en": "Perfect Spark",
-			"name_zh": "Perfect特效设定",
-			"description": "点击按钮打开窗口，调整 Perfect 判定的按键特效样式与大小",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_perfect_spark_adjust"
-		},
-		{
-			"id": "great_spark",
-			"name_en": "Great Spark",
-			"name_zh": "Great特效设定",
-			"description": "点击按钮打开窗口，调整 Great 判定的按键特效样式与大小",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_great_spark_adjust"
-		},
-		{
-			"id": "good_spark",
-			"name_en": "Good Spark",
-			"name_zh": "Good特效设定",
-			"description": "点击按钮打开窗口，调整 Good 判定的按键特效样式与大小",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_good_spark_adjust"
-		},
-		{
-			"id": "bad_spark",
-			"name_en": "Bad Spark",
-			"name_zh": "Bad特效设定",
-			"description": "点击按钮打开窗口，调整 Bad 判定的按键特效样式与大小",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_bad_spark_adjust"
-		}
-	]
+				"id": "perfect_spark",
+				"name_en": "Perfect Spark",
+				"name_zh": "Perfect特效设定",
+				"description": "点击按钮打开窗口，调整 Perfect 判定的按键特效样式与大小",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_perfect_spark_adjust"
+			},
+			{
+				"id": "great_spark",
+				"name_en": "Great Spark",
+				"name_zh": "Great特效设定",
+				"description": "点击按钮打开窗口，调整 Great 判定的按键特效样式与大小",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_great_spark_adjust"
+			},
+			{
+				"id": "good_spark",
+				"name_en": "Good Spark",
+				"name_zh": "Good特效设定",
+				"description": "点击按钮打开窗口，调整 Good 判定的按键特效样式与大小",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_good_spark_adjust"
+			},
+			{
+				"id": "bad_spark",
+				"name_en": "Bad Spark",
+				"name_zh": "Bad特效设定",
+				"description": "点击按钮打开窗口，调整 Bad 判定的按键特效样式与大小",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_bad_spark_adjust"
+			}
+		]
 	},
 	{
 		"name": "判定设置",
@@ -362,15 +372,6 @@ static func get_setting_groups() -> Array:
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "100",
 				"unit": "px"
-			},
-			{
-				"id": "judge_time_offset",
-				"name_en": "Judge Time Offset",
-				"name_zh": "按键判定延迟偏移",
-				"description": "调整判定提前或延后的时间，不会使音符提前或延后生成",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "0",
-				"unit": "ms"
 			},
 			{
 				"id": "perfect_time",
@@ -566,36 +567,36 @@ static func get_setting_groups() -> Array:
 				"default_value": "",
 				"dynamic_options": true,
 				"options_provider": "_provide_theme_preset_options"
-		},
-		{
-			"id": "block_size",
-			"name_en": "Block Size",
-			"name_zh": "音符尺寸大小",
-			"description": "设置可游玩区域容纳的音符数量，数值越大音符越小。例如：设置为6.5表示可游玩区域宽度正好为6.5个音符宽度。",
-			"type": "TYPE_LINE_EDIT",
-			"default_value": "6.5",
-			"unit": "个音符"
-		},
-		{
-			"id": "note_glow_intensity",
-			"name_en": "Note Glow Intensity",
-			"name_zh": "音符发光强度",
-			"description": "控制音符周围的发光效果强度，[0, 2]",
-			"type": "TYPE_LINE_EDIT",
-			"default_value": "0.5",
-			"range": [0.0, 2.0, 0.1]
-		},
-		{
-			"id": "note_glow_size",
-			"name_en": "Note Glow Size",
-			"name_zh": "音符发光范围",
-			"description": "控制音符发光效果的范围大小，[0, 30]",
-			"type": "TYPE_LINE_EDIT",
-			"default_value": "5.0",
-			"range": [1.0, 12.0, 1.0]
-		},
-		{
-			"id": "randomize_block_color",
+			},
+			{
+				"id": "block_size",
+				"name_en": "Block Size",
+				"name_zh": "音符尺寸大小",
+				"description": "设置可游玩区域容纳的音符数量，数值越大音符越小。例如：设置为6.5表示可游玩区域宽度正好为6.5个音符宽度。",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "6.5",
+				"unit": "个音符"
+			},
+			{
+				"id": "note_glow_intensity",
+				"name_en": "Note Glow Intensity",
+				"name_zh": "音符发光强度",
+				"description": "控制音符周围的发光效果强度，[0, 2]",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "0.5",
+				"range": [0.0, 2.0, 0.1]
+			},
+			{
+				"id": "note_glow_size",
+				"name_en": "Note Glow Size",
+				"name_zh": "音符发光范围",
+				"description": "控制音符发光效果的范围大小，[0, 30]",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "5.0",
+				"range": [1.0, 12.0, 1.0]
+			},
+			{
+				"id": "randomize_block_color",
 				"name_en": "Randomize Block Color",
 				"name_zh": "随机音符顏色",
 				"description": "随机设置下落音符的颜色。由于光柱特效的颜色与音符的颜色相同，所以当玩家使用自定义皮肤时该设置项相当于随机设置光柱特效的颜色",
@@ -655,79 +656,79 @@ static func get_setting_groups() -> Array:
 				]
 			},
 			{
-			"id": "block_skin_preset",
-			"name_en": "Note Skin",
-			"name_zh": "音符外观设定",
-			"description": "点击按钮打开皮肤选择窗口",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_note_skin_adjust"
-		},
+				"id": "block_skin_preset",
+				"name_en": "Note Skin",
+				"name_zh": "音符外观设定",
+				"description": "点击按钮打开皮肤选择窗口",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_note_skin_adjust"
+			},
 			{
-			"id": "main_background",
-			"name_en": "Main Background",
-			"name_zh": "主界面背景",
-			"description": "点击修改主界面背景。",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_main_background_adjust"
-		},
-		{
-			"id": "store_background",
-			"name_en": "Store Background",
-			"name_zh": "商店界面背景",
-			"description": "点击修改商店界面背景。",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_store_background_adjust"
-		},
-		{
-			"id": "score_background",
-			"name_en": "Score Background",
-			"name_zh": "结算界面背景",
-			"description": "点击修改结算界面背景。",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_score_background_adjust"
-		},
-		{
-			"id": "track_background",
-			"name_en": "Track Background",
-			"name_zh": "音轨编辑界面背景",
-			"description": "点击修改音轨编辑界面背景。",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_track_background_adjust"
-		},
-		{
-			"id": "midi_background",
-			"name_en": "Midi Background",
-			"name_zh": "谱面详情界面背景",
-			"description": "点击修改谱面详情界面背景。",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_midi_background_adjust"
-		},
-		{
-			"id": "setting_background",
-			"name_en": "Setting Background",
-			"name_zh": "设置界面背景",
-			"description": "点击修改设置界面背景。",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_setting_background_adjust"
-		},
-		{
-			"id": "play_background",
-			"name_en": "Play Background",
-			"name_zh": "游玩界面背景",
-			"description": "点击修改游玩界面背景。支持封面、图片、渐变、纯色四种类型。",
-			"type": "TYPE_BUTTON",
-			"default_value": null,
-			"on_click": "_popup_play_background_adjust"
-		},
-		{
-			"id": "background_image_flash_color",
+				"id": "main_background",
+				"name_en": "Main Background",
+				"name_zh": "主界面背景",
+				"description": "点击修改主界面背景。",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_main_background_adjust"
+			},
+			{
+				"id": "store_background",
+				"name_en": "Store Background",
+				"name_zh": "商店界面背景",
+				"description": "点击修改商店界面背景。",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_store_background_adjust"
+			},
+			{
+				"id": "score_background",
+				"name_en": "Score Background",
+				"name_zh": "结算界面背景",
+				"description": "点击修改结算界面背景。",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_score_background_adjust"
+			},
+			{
+				"id": "track_background",
+				"name_en": "Track Background",
+				"name_zh": "音轨编辑界面背景",
+				"description": "点击修改音轨编辑界面背景。",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_track_background_adjust"
+			},
+			{
+				"id": "midi_background",
+				"name_en": "Midi Background",
+				"name_zh": "谱面详情界面背景",
+				"description": "点击修改谱面详情界面背景。",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_midi_background_adjust"
+			},
+			{
+				"id": "setting_background",
+				"name_en": "Setting Background",
+				"name_zh": "设置界面背景",
+				"description": "点击修改设置界面背景。",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_setting_background_adjust"
+			},
+			{
+				"id": "play_background",
+				"name_en": "Play Background",
+				"name_zh": "游玩界面背景",
+				"description": "点击修改游玩界面背景。支持封面、图片、渐变、纯色四种类型。",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_play_background_adjust"
+			},
+			{
+				"id": "background_image_flash_color",
 				"name_en": "Background Image Flash Color",
 				"name_zh": "背景闪光颜色",
 				"description": "修改打击音符时背景发光的颜色",
@@ -825,4 +826,4 @@ static func get_setting_groups() -> Array:
 			}
 		]
 	}
-	]
+]

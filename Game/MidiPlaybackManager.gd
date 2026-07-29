@@ -294,9 +294,9 @@ func load_midi(midi_data: MidiData) -> bool:
 			for note in current_notes:
 				if note is MidiParser.Note and note.event != null:
 					current_midi_data.set_track_channel_enabled(note.event.track_index, note.event.channel, true)
-			GLogger.info("Recommended tracks %s not found in MIDI, fell back to enabling all" % recommended, "MidiPlaybackManager")
+			GLogger.info("Recommended tracks %s not found in MIDI, fell back to enabling all" % [recommended], "MidiPlaybackManager")
 		elif use_recommendation:
-			GLogger.info("Enabled recommended tracks from description: %s" % recommended, "MidiPlaybackManager")
+			GLogger.info("Enabled recommended tracks from description: %s" % [recommended], "MidiPlaybackManager")
 		else:
 			GLogger.info("Initialized selected_track_configs with all (track, channel) pairs for new MIDI", "MidiPlaybackManager")
 
@@ -629,11 +629,17 @@ func _preload_soundfont_to_backend() -> void:
 		return
 	if midi_player == null or current_soundfont_path.is_empty():
 		return
-	
+
 	print("[MidiPlaybackManager] Pre-loading SoundFont: %s" % current_soundfont_path)
 	midi_player.set_soundfont(current_soundfont_path)
 	_soundfont_preloaded_to_backend = true
 	print("[MidiPlaybackManager] SoundFont pre-loaded successfully")
+
+## 确保 SoundFont 已加载到后端合成器
+## 供 trigger_note_on 等即时音符播放场景（如 DelayAdjust 校准）调用，
+## 因为 set_soundfont() 在非播放状态不会立即加载到后端（懒加载机制）
+func ensure_soundfont_loaded() -> void:
+	_preload_soundfont_to_backend()
 
 ## 设置音源文件
 func set_soundfont(soundfont_name: String) -> bool:
