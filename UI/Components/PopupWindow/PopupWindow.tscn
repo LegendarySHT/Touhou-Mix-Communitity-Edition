@@ -1,11 +1,15 @@
 [gd_scene format=3 uid="uid://6x22q0274hxw"]
 
 [ext_resource type="PackedScene" uid="uid://3ofq4u0124qy" path="res://UI/Views/PlayView/note_block.tscn" id="3_6fqj7"]
+[ext_resource type="Script" uid="uid://dy3ing4k0ohsf" path="res://UI/Components/PopupWindow/NoteSkinAdjust.gd" id="3_gghdr"]
 [ext_resource type="Texture2D" uid="uid://bpgl1nsjuf8yf" path="res://Resources/Components/CancelBtn.png" id="3_wi0v8"]
+[ext_resource type="Script" uid="uid://bouqpji0hyu7b" path="res://UI/Components/PopupWindow/DelayAdjust.gd" id="3_xybxw"]
 [ext_resource type="PackedScene" uid="uid://b3wpw7ylic5wl" path="res://UI/Views/PlayView/note_slide.tscn" id="4_fyi7o"]
 [ext_resource type="Texture2D" uid="uid://1q15cy2pddpj" path="res://Resources/Components/ConfirmBtn.png" id="4_yttj5"]
 [ext_resource type="PackedScene" uid="uid://dnnxx5it0pnum" path="res://UI/Views/PlayView/note_long.tscn" id="5_v2710"]
 [ext_resource type="Script" uid="uid://c2ylo07cj00rw" path="res://UI/Components/TouchScrollOptionButton.gd" id="6_fyi7o"]
+[ext_resource type="Script" uid="uid://cyad78ab6lgat" path="res://UI/Components/PopupWindow/ParticleAdjust.gd" id="6_ukd1n"]
+[ext_resource type="Script" uid="uid://birrx3o1ktn31" path="res://UI/Components/PopupWindow/ImageAdjust.gd" id="6_v2710"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qxcsx"]
 content_margin_left = 50.0
@@ -139,11 +143,10 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 4
+current_tab = 0
 tabs_visible = false
 
 [node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
@@ -216,6 +219,7 @@ visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
+script = ExtResource("3_xybxw")
 metadata/_tab_index = 1
 
 [node name="Text" type="Label" parent="DelayAdjust" unique_id=579829843]
@@ -286,6 +290,7 @@ visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
+script = ExtResource("3_gghdr")
 metadata/_tab_index = 2
 
 [node name="NotePreview" type="Panel" parent="NoteSkinAdjust" unique_id=422870283]
@@ -354,6 +359,7 @@ visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
+script = ExtResource("6_ukd1n")
 metadata/_tab_index = 3
 
 [node name="ParticlePreview" type="Panel" parent="ParticleAdjust" unique_id=167394996]
@@ -417,9 +423,11 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="ImageAdjust" type="HBoxContainer" parent="." unique_id=1231422975]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
+script = ExtResource("6_v2710")
 metadata/_tab_index = 4
 
 [node name="ImagePreview" type="Panel" parent="ImageAdjust" unique_id=1921701981]
@@ -457,13 +465,15 @@ size_flags_vertical = 0
 theme_override_font_sizes/font_size = 32
 alignment = 1
 selected = 0
-item_count = 3
+item_count = 4
 popup/item_0/text = "图片"
 popup/item_0/id = 0
 popup/item_1/text = "渐变"
 popup/item_1/id = 1
 popup/item_2/text = "纯色"
 popup/item_2/id = 2
+popup/item_3/text = "封面"
+popup/item_3/id = 3
 
 [node name="OtherOptions" type="GridContainer" parent="ImageAdjust/VBoxC" unique_id=758230520]
 custom_minimum_size = Vector2(0, 390)
@@ -485,8 +495,6 @@ custom_minimum_size = Vector2(380, 60)
 custom_maximum_size = Vector2(500, -1)
 layout_mode = 2
 size_flags_vertical = 4
-focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
-focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 mouse_filter = 1
 theme_override_font_sizes/font_size = 32
 alignment = 1
@@ -506,8 +514,6 @@ custom_minimum_size = Vector2(380, 60)
 custom_maximum_size = Vector2(500, -1)
 layout_mode = 2
 size_flags_vertical = 4
-focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
-focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 mouse_filter = 1
 theme_override_font_sizes/font_size = 32
 alignment = 1
@@ -538,8 +544,6 @@ theme_override_constants/separation = 20
 [node name="HexColor" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/StartColor" unique_id=142305028]
 layout_mode = 2
 size_flags_horizontal = 3
-focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
-focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 theme_override_font_sizes/font_size = 48
 alignment = 1
 max_length = 10
@@ -549,9 +553,8 @@ custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 4
-focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 color = Color(1, 1, 1, 1)
-edit_intensity = false
+edit_intensity = true
 
 [node name="Label4" type="Label" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=369163223]
 visible = false
@@ -572,8 +575,6 @@ theme_override_constants/separation = 20
 [node name="HexColor" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/EndColor" unique_id=256376892]
 layout_mode = 2
 size_flags_horizontal = 3
-focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
-focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 theme_override_font_sizes/font_size = 48
 alignment = 1
 max_length = 10
@@ -583,9 +584,8 @@ custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 4
-focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 color = Color(1, 1, 1, 1)
-edit_intensity = false
+edit_intensity = true
 
 [node name="FromX" type="HBoxContainer" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=1243770668]
 visible = false
@@ -718,8 +718,6 @@ theme_override_constants/separation = 20
 [node name="HexColor" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/SolidColor" unique_id=1590330456]
 layout_mode = 2
 size_flags_horizontal = 3
-focus_neighbor_left = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
-focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 theme_override_font_sizes/font_size = 48
 alignment = 1
 max_length = 10
@@ -729,6 +727,30 @@ custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 4
-focus_next = NodePath("/root/Main/skew/C/SettingView/HBoxC/ShortCut")
 color = Color(1, 1, 1, 1)
-edit_intensity = false
+edit_intensity = true
+
+[node name="Label6" type="Label" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=828262861]
+visible = false
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "封面模糊程度"
+vertical_alignment = 1
+
+[node name="BlurIntensity" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=771795892]
+visible = false
+custom_minimum_size = Vector2(200, 60)
+custom_maximum_size = Vector2(500, -1)
+propagate_maximum_size = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 1
+mouse_default_cursor_shape = 0
+theme_override_font_sizes/font_size = 32
+text = "0.0"
+placeholder_text = "0"
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false

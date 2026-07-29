@@ -685,72 +685,70 @@ static func get_setting_groups() -> Array:
 			"on_click": "_popup_note_skin_adjust"
 		},
 			{
-				"id": "custom_background_image_size_mode",
-				"name_en": "Custom Background Image Size Mode",
-				"name_zh": "背景尺寸模式",
-				"description": "更改背景图片适配屏幕的方式",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Cover", "text_zh": "覆盖"},
-					{"text_en": "Fit", "text_zh": "适应"}
-				]
-			},
-			{
-				"id": "play_background_mode",
-				"name_en": "Play Background Mode",
-				"name_zh": "游玩背景类型",
-				"description": "选择游玩界面背景来源：曲包封面、用户图片或纯色。",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Cover", "text_zh": "封面"},
-					{"text_en": "Image", "text_zh": "图片"},
-					{"text_en": "Solid", "text_zh": "纯色"}
-				]
-			},
-			{
-				"id": "play_background_cover_blur",
-				"name_en": "Cover Blur",
-				"name_zh": "封面模糊程度",
-				"description": "仅封面模式生效。0.0 表示不模糊，1.0 表示最强模糊。",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "0.35"
-			},
-			{
-				"id": "play_background_size_mode",
-				"name_en": "Play Background Size Mode",
-				"name_zh": "游玩背景尺寸模式",
-				"description": "封面/图片模式生效。覆盖会等比填满，拉伸会按屏幕比例拉伸。",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Cover", "text_zh": "覆盖"},
-					{"text_en": "Stretch", "text_zh": "拉伸"}
-				]
-			},
-			{
-			"id": "play_background_image_file",
-			"name_en": "Play Background Image",
-			"name_zh": "游玩背景图片",
-			"description": "仅图片模式生效。图片列表来自用户目录 BackgroundImage。",
-			"type": "TYPE_OPTION",
-			"default_value": "",
-			"options": [],
-			"dynamic_options": true,
-			"options_provider": "_provide_background_image_options"
+			"id": "play_background",
+			"name_en": "Play Background",
+			"name_zh": "游玩界面背景",
+			"description": "点击修改游玩界面背景。支持封面、图片、渐变、纯色四种类型。",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_play_background_adjust"
 		},
-			{
-				"id": "play_background_color",
-				"name_en": "Play Background Color",
-				"name_zh": "游玩背景颜色",
-				"description": "仅纯色模式生效。用于设置游玩背景纯色。",
-				"type": "TYPE_COLOR",
-				"edit_alpha": true,
-				"default_value": "#10121AFF"
-			},
-			{
-				"id": "block_size",
+		{
+			"id": "main_background",
+			"name_en": "Main Background",
+			"name_zh": "主界面背景",
+			"description": "点击修改主界面背景。",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_main_background_adjust"
+		},
+		{
+			"id": "store_background",
+			"name_en": "Store Background",
+			"name_zh": "商店界面背景",
+			"description": "点击修改商店界面背景。",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_store_background_adjust"
+		},
+		{
+			"id": "score_background",
+			"name_en": "Score Background",
+			"name_zh": "结算界面背景",
+			"description": "点击修改结算界面背景。",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_score_background_adjust"
+		},
+		{
+			"id": "track_background",
+			"name_en": "Track Background",
+			"name_zh": "音轨编辑界面背景",
+			"description": "点击修改音轨编辑界面背景。",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_track_background_adjust"
+		},
+		{
+			"id": "midi_background",
+			"name_en": "Midi Background",
+			"name_zh": "谱面详情界面背景",
+			"description": "点击修改谱面详情界面背景。",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_midi_background_adjust"
+		},
+		{
+			"id": "setting_background",
+			"name_en": "Setting Background",
+			"name_zh": "设置界面背景",
+			"description": "点击修改设置界面背景。",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_setting_background_adjust"
+		},
+		{
+			"id": "block_size",
 				"name_en": "Block Size",
 				"name_zh": "音符尺寸大小",
 				"description": "设置可游玩区域容纳的音符数量，数值越大音符越小。例如：设置为6.5表示可游玩区域宽度正好为6.5个音符宽度。",
@@ -775,18 +773,6 @@ static func get_setting_groups() -> Array:
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "5.0",
 				"range": [1.0, 12.0, 1.0]
-			},
-			{
-				"id": "background_image_preset",
-				"name_en": "Background Image Preset",
-				"name_zh": "背景图像设定",
-				"description": "设置打歌过程中的背景图像",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "None", "text_zh": "无"},
-					{"text_en": "Default", "text_zh": "默认"}
-				]
 			},
 			{
 				"id": "background_image_flash_color",

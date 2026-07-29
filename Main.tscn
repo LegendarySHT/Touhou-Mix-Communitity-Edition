@@ -330,6 +330,14 @@ VScrollBar/styles/grabber = SubResource("StyleBoxFlat_grabber")
 VScrollBar/styles/grabber_highlight = SubResource("StyleBoxFlat_grabber_hl")
 VScrollBar/styles/scroll = SubResource("StyleBoxFlat_scroll")
 
+[sub_resource type="Gradient" id="Gradient_mxvw5"]
+interpolation_mode = 2
+colors = PackedColorArray(0, 0.28235295, 0.6862745, 1, 0.39607844, 0.43137255, 0.8352941, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_xrxkg"]
+gradient = SubResource("Gradient_mxvw5")
+fill_to = Vector2(1, 1)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg4s2"]
 bg_color = Color(0.35644194, 0.4824527, 0.6469952, 1)
 border_width_left = 8
@@ -354,14 +362,6 @@ expand_margin_bottom = 6.0
 shadow_color = Color(0, 0, 0, 0.24313726)
 shadow_size = 12
 shadow_offset = Vector2(2, 2)
-
-[sub_resource type="Gradient" id="Gradient_mxvw5"]
-interpolation_mode = 2
-colors = PackedColorArray(0, 0.28235295, 0.6862745, 1, 0.39607844, 0.43137255, 0.8352941, 1)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_xrxkg"]
-gradient = SubResource("Gradient_mxvw5")
-fill_to = Vector2(1, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5mvff"]
 draw_center = false
@@ -463,6 +463,33 @@ track_view_path = "res://UI/Views/TrackView/TrackView.tscn"
 play_view_path = "res://UI/Views/PlayView/PlayView.tscn"
 score_view_path = "res://UI/Views/ScoreView/ScoreView.tscn"
 setting_view_path = "res://UI/Views/SettingView/SettingView.tscn"
+
+[node name="Background" type="TextureRect" parent="." unique_id=1350904646]
+z_index = -2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_xrxkg")
+expand_mode = 3
+metadata/_edit_lock_ = true
+
+[node name="Background2" type="TextureRect" parent="." unique_id=1594491345]
+visible = false
+z_index = -2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_xrxkg")
+expand_mode = 3
+metadata/_edit_lock_ = true
 
 [node name="PlayerInfo" type="Control" parent="." unique_id=453758657]
 layout_mode = 1
@@ -581,18 +608,6 @@ theme_override_constants/margin_top = 10
 [node name="ProgressBar" type="ProgressBar" parent="PlayerInfo/Info/Panel/skew/Data/MC" unique_id=2019959707]
 layout_mode = 2
 
-[node name="Background" type="TextureRect" parent="." unique_id=1350904646]
-z_index = -2
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-texture = SubResource("GradientTexture2D_xrxkg")
-metadata/_edit_lock_ = true
-
 [node name="skew" type="Node2D" parent="." unique_id=761664000]
 editor_description = "用来摆放需要倾斜的组件的"
 skew = 0.2617994
@@ -701,7 +716,7 @@ clip_children = 2
 custom_minimum_size = Vector2(600, 700)
 layout_mode = 2
 offset_transform_enabled = true
-offset_transform_scale = Vector2(1, 0)
+offset_transform_scale = Vector2(1, 0.001)
 offset_transform_pivot_ratio = Vector2(0.5, -0.15)
 offset_transform_visual_only = false
 theme_override_styles/panel = SubResource("StyleBoxFlat_sqvbp")

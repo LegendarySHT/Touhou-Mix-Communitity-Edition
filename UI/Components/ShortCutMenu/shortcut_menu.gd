@@ -75,10 +75,16 @@ func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
 	tween.tween_property(btn, "custom_minimum_size", Vector2(120 + 310 * (1 if toggled_on else 0), 120), 0.45)
 
 	if _is_all_off():
+		# 缩小:开启 visual_only,让 offset_transform 不进入布局/输入矩阵,避免 scale=0 触发 affine_inverse 报错
+		page_container.set_offset_transform_visual_only(true)
 		tween.tween_property(page_container, "offset_transform_scale:y", 0.0, 0.5)
 		ani.animate_fade_out(page_container, 0.6, "menu_fade")
 		search_lineedit.text = ""
 	else:
+		# 变大:关闭 visual_only;若起始 scale 为 0,先设为极小值避免 scale=0 + visual_only=false 触发报错
+		page_container.set_offset_transform_visual_only(false)
+		if page_container.offset_transform_scale.y == 0.0:
+			page_container.set_offset_transform_scale(Vector2(page_container.offset_transform_scale.x, 0.001))
 		tween.tween_property(page_container, "offset_transform_scale:y", 1.0, 0.5)
 		ani.animate_fade_in(page_container, 0, "menu_fade")
 

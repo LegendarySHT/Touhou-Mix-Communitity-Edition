@@ -49,11 +49,7 @@ extends Control
 # @onready var env: WorldEnvironment = $FlowArea/SVP/WorldEnvironment
 # @onready var current_env: Environment = env.environment
 
-const PLAY_BG_MODE_COVER := 0
-const PLAY_BG_MODE_IMAGE := 1
-const PLAY_BG_MODE_SOLID := 2
-const PLAY_BG_SIZE_COVER := 0
-const PLAY_BG_SIZE_STRETCH := 1
+# 背景配置走 ThemeManager（theme.ini [backgrounds] 段），不再从 config.ini 读取
 const BG_BLUR_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundBlur.gdshader"
 const BG_FLASH_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundFlash.gdshader"
 
@@ -157,7 +153,7 @@ func _ready() -> void:
 	if not EvtBus.config_changed.is_connected(_on_config_changed):
 		EvtBus.config_changed.connect(_on_config_changed)
 	_set_debug_overlay_visible(show_debug_info)
-	
+
 	# env.environment = null
 
 func _notification(what: int) -> void:
@@ -233,19 +229,12 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 
 	if enable:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
+		# 从设置界面切回时，背景配置可能已变更，重新应用 play 背景（含 cover 模式烘焙）
+		if _oldState == UIStateManager.UIState.SETTINGS_VIEW and current_midi != null:
+			_apply_play_background()
 
 ## 新增：配置变更回调
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
-	if section == "Appearance" and key in [
-		"play_background_mode",
-		"play_background_cover_blur",
-		"play_background_size_mode",
-		"play_background_image_file",
-		"play_background_color"
-	]:
-		_apply_play_background()
-		return
-
 	if section == "Appearance" and key == "background_dim_color":
 		_apply_background_dim()
 		return
@@ -924,15 +913,14 @@ func _apply_play_background(p_cover: Texture2D = null, p_has_custom_cover: bool 
 
 	_apply_background_dim()
 
-	var mode = ConfigManager.instance.get_int("Appearance", "play_background_mode", PLAY_BG_MODE_COVER)
-	var size_mode = ConfigManager.instance.get_int("Appearance", "play_background_size_mode", PLAY_BG_SIZE_COVER)
-	var blur_strength = ConfigManager.instance.get_float("Appearance", "play_background_cover_blur", 0.35)
-	var image_file = ConfigManager.instance.get_string("Appearance", "play_background_image_file", "")
-	var color_html = ConfigManager.instance.get_string("Appearance", "play_background_color", "#10121AFF")
+	# 背景配置统一从 ThemeManager 读取（theme.ini [backgrounds] 段）
+	var bg_config := ThemeMGR.get_view_background("play")
+	var bg_type: String = bg_config.get("type", "gradient")
 
-	_apply_background_size_mode(size_mode)
-
-	if mode == PLAY_BG_MODE_COVER:
+	if bg_type == "cover":
+		# 封面模式：PlayView 独有逻辑（曲包封面 + 模糊烘焙）
+		# ThemeManager 的 apply_background 对 cover 类型不实际应用，留给 PlayView 处理
+		var blur_strength := float(bg_config.get("cover_blur", 0.35))
 		# 优先使用调用方传入的封面（避免重复加载和 charts_index 扫描）
 		var cover_texture: Texture2D = p_cover
 		var has_custom: bool = p_has_custom_cover
@@ -944,31 +932,17 @@ func _apply_play_background(p_cover: Texture2D = null, p_has_custom_cover: bool 
 			background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 			background.texture = _prepare_background_texture(cover_texture)
 			background.modulate = Color.WHITE
+			background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 			_set_cover_blur_material(blur_strength)
 			return
-		_apply_background_solid(color_html)
+		# 无封面可用，降级到纯色（使用 play 段的 solid_color）
+		var fallback_color: String = bg_config.get("solid_color", "#10121AFF")
+		_apply_background_solid(fallback_color)
 		return
 
-	if mode == PLAY_BG_MODE_IMAGE:
-		var texture = _load_user_background_texture(image_file)
-		if texture:
-			background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-			background.texture = texture
-			background.modulate = Color.WHITE
-			_clear_cover_blur_material()
-			return
-		# 图片不存在时自动降级纯色
-		_apply_background_solid(color_html)
-		return
-
-	_apply_background_solid(color_html)
-
-
-func _apply_background_size_mode(size_mode: int) -> void:
-	if size_mode == PLAY_BG_SIZE_STRETCH:
-		background.stretch_mode = TextureRect.STRETCH_SCALE
-	else:
-		background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	# image / solid / gradient 委托给 ThemeManager 统一应用
+	ThemeMGR.apply_background(background, "play")
+	_clear_cover_blur_material()
 
 
 func _apply_background_solid(color_html: String) -> void:
@@ -1094,23 +1068,6 @@ func _flash_background() -> void:
 	_flash_tween = create_tween()
 	_flash_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_flash_tween.tween_method(_set_flash_progress.bind(mat), 1.0, 0.0, 1)
-
-func _load_user_background_texture(file_name: String) -> Texture2D:
-	if file_name.is_empty():
-		return null
-
-	var full_path = PathHelper.get_background_dir().path_join(file_name)
-	if not FileAccess.file_exists(full_path):
-		return null
-
-	var image = Image.load_from_file(full_path)
-	if image == null:
-		return null
-	if not image.has_mipmaps():
-		image.generate_mipmaps()
-
-	return ImageTexture.create_from_image(image)
-
 
 func _prepare_background_texture(source_texture: Texture2D) -> Texture2D:
 	if source_texture == null:

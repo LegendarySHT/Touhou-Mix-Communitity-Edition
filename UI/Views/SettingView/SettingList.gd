@@ -54,9 +54,6 @@ func load_settings(setting: Dictionary = {}):
 			var init_value = _pending_config.get(setting_data.id, setting_data.default_value)
 			add_setting_item(setting_data, init_value)
 
-	# 初始化依赖可见性
-	_refresh_play_background_visibility()
-
 var separators = []
 @onready var separator_scene = load(item_separator)
 func _add_separator():
@@ -221,9 +218,7 @@ func _on_setting_value_changed(id: String, value: Variant):
 	print("[SettingList] Pending config: %s = %s" % [id, str(converted_value)])
 
 	# 即时可见性刷新
-	if id == "play_background_mode":
-		_refresh_play_background_visibility()
-	elif id == "note_fall_mode":
+	if id == "note_fall_mode":
 		set_note_fall_mode_and_show_custom_options(int(value))
 
 # 将 UI 控件返回的值转换为配置存储用的值（索引→文件名、类型转换等）
@@ -249,10 +244,6 @@ func _convert_setting_value(id: String, value: Variant) -> Variant:
 		if actual_name.ends_with(".sf2"):
 			actual_name = actual_name.get_basename()
 		return actual_name
-	# play_background_image_file: 索引→文件名
-	if id == "play_background_image_file" and value is int:
-		return get_option_text(id, value)
-
 	# 其他走 SettingsMapper 类型转换
 	if SettingsMapper.mappings.has(id):
 		var info = SettingsMapper.mappings[id]
@@ -299,6 +290,68 @@ func _popup_note_skin_adjust() -> void:
 	_pending_config["block_skin_preset"] = skin_name
 	print("[SettingList] block_skin_preset selected: '%s' (pending save)" % skin_name)
 
+# ===== 各视图背景设置弹窗入口 =====
+# 每个视图一个 TYPE_BUTTON 入口，调用统一的 _popup_view_background_adjust(view_name)
+# 配置即时保存到 theme.ini 的 [backgrounds] 段（由 ThemeManager.set_view_background 处理）
+# 不走 _pending_config（不走 config.ini），因此退出 SettingView 时无需 diff 保存
+
+func _popup_play_background_adjust() -> void:
+	await _popup_view_background_adjust("play")
+
+func _popup_main_background_adjust() -> void:
+	await _popup_view_background_adjust("main")
+
+func _popup_store_background_adjust() -> void:
+	await _popup_view_background_adjust("store")
+
+func _popup_score_background_adjust() -> void:
+	await _popup_view_background_adjust("score")
+
+func _popup_track_background_adjust() -> void:
+	await _popup_view_background_adjust("track")
+
+func _popup_midi_background_adjust() -> void:
+	await _popup_view_background_adjust("midi")
+
+func _popup_setting_background_adjust() -> void:
+	await _popup_view_background_adjust("setting")
+
+## 统一的视图背景设置弹窗
+## view_name: main/store/score/play/track/midi/setting
+## 仅 play 视图允许选择"封面"类型（allow_cover=true）
+func _popup_view_background_adjust(view_name: String) -> void:
+	var allow_cover := (view_name == "play")
+	var result := await PopupWindow.instance.show_image_adjust(view_name, allow_cover)
+	if result.is_empty():
+		return
+	# 转换为 ThemeManager 期望的格式（值统一为 String，与 theme.ini 读取时一致）
+	var type_str := "image"
+	match int(result.get("type", 0)):
+		ImageAdjust.IMG_TYPE_IMAGE: type_str = "image"
+		ImageAdjust.IMG_TYPE_GRADIENT: type_str = "gradient"
+		ImageAdjust.IMG_TYPE_SOLID: type_str = "solid"
+		ImageAdjust.IMG_TYPE_COVER: type_str = "cover"
+	var config: Dictionary = {
+		"type": type_str,
+		"image_path": str(result.get("image_file", "")),
+		"image_stretch": "cover" if int(result.get("fill_mode", 0)) == 0 else "fit",
+		"solid_color": (result.get("solid_color") as Color).to_html(true),
+		"gradient_top": (result.get("start_color") as Color).to_html(true),
+		"gradient_bottom": (result.get("end_color") as Color).to_html(true),
+	}
+	var from: Vector2 = result.get("from", Vector2(0, 0))
+	var to: Vector2 = result.get("to", Vector2(0, 1))
+	config["gradient_from_x"] = str(from.x)
+	config["gradient_from_y"] = str(from.y)
+	config["gradient_to_x"] = str(to.x)
+	config["gradient_to_y"] = str(to.y)
+	if allow_cover:
+		config["cover_blur"] = str(result.get("cover_blur", 0.35))
+	# 即时保存到 theme.ini + 轻量刷新背景（refresh_backgrounds，不触发完整主题刷新）
+	# PlayView 的 cover 模式由 PlayView 在切回 PLAY_VIEW 时通过 _apply_play_background 处理
+	ThemeMGR.set_view_background(view_name, config)
+	print("[SettingList] %s background updated: type=%s" % [view_name, type_str])
+
 # 重置内置资源：调用 FileSystemManager 重新复制默认资源
 func _reload_builtin_resources() -> void:
 	if FileSystemManager.instance:
@@ -327,32 +380,7 @@ func _provide_soundfont_options() -> Array:
 		sf_list = ["GeneralUser-GS [内置]"]
 	return sf_list
 
-# 提供 play_background_image_file 选项
-func _provide_background_image_options() -> Array:
-	return _scan_background_images()
-
 ## ========== 文件扫描方法（从 SettingView 移入） ==========
-
-## 扫描所有背景图片文件
-func _scan_background_images() -> Array[String]:
-	var result: Array[String] = []
-	var image_dir = PathHelper.get_background_dir()
-	var dir = DirAccess.open(image_dir)
-	if dir == null:
-		return result
-
-	dir.list_dir_begin()
-	var file_name = dir.get_next()
-	while file_name != "":
-		if not dir.current_is_dir() and not file_name.begins_with("."):
-			var ext = file_name.get_extension().to_lower()
-			if ext in ["jpg", "jpeg", "png", "webp"]:
-				result.append(file_name)
-		file_name = dir.get_next()
-	dir.list_dir_end()
-
-	result.sort()
-	return result
 
 ## 扫描所有 SoundFont 文件（user 优先）
 func _scan_all_soundfonts() -> Array[String]:
@@ -510,34 +538,6 @@ func reset_to_defaults():
 					break
 
 ## ========== 可见性控制 ==========
-
-func _refresh_play_background_visibility() -> void:
-	var mode_index = 0
-	if setting_items.has("play_background_mode"):
-		var mode_item = setting_items["play_background_mode"]
-		if mode_item:
-			mode_index = int(mode_item.get_value())
-
-	var show_cover_only = mode_index == 0
-	var show_image_only = mode_index == 1
-	var show_color_only = mode_index == 2
-	var show_size_mode = mode_index == 0 or mode_index == 1
-
-	var visibility_rules = {
-		"play_background_cover_blur": show_cover_only,
-		"play_background_image_file": show_image_only,
-		"play_background_color": show_color_only,
-		"play_background_size_mode": show_size_mode
-	}
-
-	for setting_id in visibility_rules.keys():
-		if setting_items.has(setting_id):
-			var item = setting_items[setting_id]
-			if item:
-				var _is_visible = visibility_rules[setting_id]
-				item.visible = _is_visible
-				if item.value_node:
-					item.value_node.visible = _is_visible
 
 ## 设置下落模式和控制自定义缓动选项的可见性
 func set_note_fall_mode_and_show_custom_options(mode: int) -> void:

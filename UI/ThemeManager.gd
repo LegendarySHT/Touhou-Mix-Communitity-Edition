@@ -18,6 +18,11 @@ func _ready() -> void:
 	load_theme()
 	if EvtBus:
 		EvtBus.theme_changed.connect(_on_theme_changed)
+	# 监听 UI 状态变化，触发主背景交叉淡入淡出
+	if UiStatMGR:
+		UiStatMGR.state_changed.connect(_on_state_changed_for_bg)
+	# 延迟初始化主背景节点引用，确保 /root/Main 已就绪
+	call_deferred("_init_main_bg_nodes")
 
 # ============ 配置路径 ============
 
@@ -174,8 +179,9 @@ func set_view_background(view_name: String, config: Dictionary) -> void:
 		_backgrounds[prefix + key] = config[key]
 	GLogger.info("背景设置已更新: %s" % view_name, "ThemeManager")
 	save_theme()
-	if EvtBus:
-		EvtBus.theme_changed.emit(_theme_name)
+	# 仅刷新背景（不 emit theme_changed，避免触发 refresh_all 完整主题刷新导致卡顿）
+	# PlayView 的 cover 模式由 PlayView 自己在切回 PLAY_VIEW 时通过 _apply_play_background 处理
+	refresh_backgrounds()
 
 func apply_background(texture_rect: TextureRect, view_name: String) -> void:
 	if texture_rect == null:
@@ -185,10 +191,15 @@ func apply_background(texture_rect: TextureRect, view_name: String) -> void:
 	var bg_type: String = _backgrounds.get(prefix + "type", "gradient")
 
 	match bg_type:
+		"cover":
+			# 封面模式由 PlayView 自己处理（需要曲包封面 + 模糊烘焙）
+			# ThemeManager 不实际应用，仅作为配置占位，让 PlayView 完全接管
+			return
 		"solid":
 			var color_str: String = _backgrounds.get(prefix + "solid_color", "#0D1020")
-			texture_rect.texture = null
-			texture_rect.modulate = Color(color_str) if color_str.is_valid_html_color() else Color("#0D1020")
+			var solid_color := Color(color_str) if color_str.is_valid_html_color() else Color("#0D1020")
+			texture_rect.texture = _create_solid_gradient_texture(solid_color)
+			texture_rect.modulate = Color.WHITE
 		"image":
 			var img_path: String = _backgrounds.get(prefix + "image_path", "")
 			if not img_path.is_empty():
@@ -665,9 +676,9 @@ func _apply_list_theme(main: Node) -> void:
 # ============ 内部：背景批量应用 ============
 
 func _apply_all_backgrounds(main: Node) -> void:
-	# 各视图背景 → TextureRect 节点路径映射
+	# 独立背景节点（score/store/play 有自己的 Background 子节点）
+	# main/midi/track/setting 共享主场景的 Background / Background2，由 _switch_main_bg 切换
 	var bg_map := {
-		"main": "Background",
 		"score": "ScoreView/BackGround",
 		"store": "Store/Background",
 		"play": "PlayView/Background",
@@ -678,11 +689,96 @@ func _apply_all_backgrounds(main: Node) -> void:
 		if rect:
 			apply_background(rect, view_name)
 
+	# 主背景节点：应用当前 view_name 的背景（首次或主题刷新时）
+	if _active_bg and not _current_main_bg_view.is_empty():
+		apply_background(_active_bg, _current_main_bg_view)
+
 func get_theme_name() -> String:
 	return _theme_name
 
 func is_loaded() -> bool:
 	return _loaded
+
+# ============ 主背景交叉淡入淡出切换 ============
+
+# 主背景交叉淡入淡出状态
+var _active_bg: TextureRect = null       # 当前可见的背景节点（初始为 Background）
+var _inactive_bg: TextureRect = null      # 备用背景节点（初始为 Background2）
+var _current_main_bg_view: String = "main" # 当前主背景所属的 view_name
+var _bg_switch_tween: Tween = null        # 切换补间
+const _BG_SWITCH_DURATION := 0.4         # 交叉淡入淡出时长（秒）
+
+## 初始化主背景节点引用（延迟调用确保 Main 就绪）
+func _init_main_bg_nodes() -> void:
+	var main := get_node_or_null("/root/Main")
+	if not main:
+		return
+	_active_bg = main.get_node_or_null("Background")
+	_inactive_bg = main.get_node_or_null("Background2")
+	if _active_bg and _inactive_bg:
+		_active_bg.modulate.a = 1.0
+		_active_bg.visible = true
+		_inactive_bg.modulate.a = 0.0
+		_inactive_bg.visible = false
+		# 应用初始背景（main 组）
+		apply_background(_active_bg, "main")
+		_current_main_bg_view = "main"
+
+## UIState → 主背景组映射（空字符串表示不切主背景，使用独立节点）
+func _get_bg_view_name_for_state(state: int) -> String:
+	match state:
+		UIStateManager.UIState.ALBUM_VIEW, \
+		UIStateManager.UIState.SONG_VIEW, \
+		UIStateManager.UIState.SORTED_VIEW:
+			return "main"
+		UIStateManager.UIState.MIDI_VIEW:
+			return "midi"
+		UIStateManager.UIState.TRACK_VIEW:
+			return "track"
+		UIStateManager.UIState.SETTINGS_VIEW:
+			return "setting"
+		_:
+			return ""
+
+## state_changed 回调：触发主背景交叉淡入淡出
+func _on_state_changed_for_bg(_old_state: int, new_state: int) -> void:
+	var target_view := _get_bg_view_name_for_state(new_state)
+	if target_view.is_empty():
+		return  # PLAY_VIEW/SCORE_VIEW/STORE_VIEW 等有独立背景节点，不切主背景
+	if target_view == _current_main_bg_view:
+		return  # 同组内不切换（如 main 组内 AlbumView↔SongView）
+	_switch_main_bg(target_view)
+
+## 交叉淡入淡出切换主背景到 target_view
+func _switch_main_bg(target_view: String) -> void:
+	if not _active_bg or not _inactive_bg:
+		return
+	# 杀掉正在进行的切换补间，并同步状态（避免补间中途被 kill 时角色未交换导致闪烁）
+	if _bg_switch_tween and _bg_switch_tween.is_valid():
+		_bg_switch_tween.kill()
+		# 补间未完成时，active 仍是当前可见节点，强制对齐状态
+		_active_bg.modulate.a = 1.0
+		_active_bg.visible = true
+		_inactive_bg.modulate.a = 0.0
+		_inactive_bg.visible = false
+	# 把新背景应用到 inactive 节点
+	_inactive_bg.visible = true
+	_inactive_bg.modulate.a = 0.0
+	apply_background(_inactive_bg, target_view)
+	# 交叉淡入淡出（inactive 0→1，active 1→0）
+	_bg_switch_tween = create_tween()
+	_bg_switch_tween.set_parallel(true)
+	_bg_switch_tween.tween_property(_inactive_bg, "modulate:a", 1.0, _BG_SWITCH_DURATION)
+	_bg_switch_tween.tween_property(_active_bg, "modulate:a", 0.0, _BG_SWITCH_DURATION)
+	_bg_switch_tween.chain()
+	_bg_switch_tween.tween_callback(func():
+		_active_bg.visible = false
+		# 交换 active/inactive 角色，下次切换时新背景应用到刚变成 inactive 的节点
+		var tmp := _active_bg
+		_active_bg = _inactive_bg
+		_inactive_bg = tmp
+	)
+	_current_main_bg_view = target_view
 
 # ============ Theme 颜色刷新 ============
 
@@ -756,8 +852,9 @@ func _apply_gradient(texture_rect: TextureRect, prefix: String) -> void:
 	var bottom_color := Color(bottom_str) if bottom_str.is_valid_html_color() else Color("#0A0F1E")
 
 	var gradient := Gradient.new()
-	gradient.add_point(0.0, top_color)
-	gradient.add_point(1.0, bottom_color)
+	# 用 set_color 替换默认黑白点，而非 add_point 追加导致 4 个点
+	gradient.set_color(0, top_color)
+	gradient.set_color(1, bottom_color)
 
 	var tex := GradientTexture2D.new()
 	tex.gradient = gradient
@@ -775,11 +872,23 @@ func _apply_gradient(texture_rect: TextureRect, prefix: String) -> void:
 	texture_rect.texture = tex
 	texture_rect.modulate = Color.WHITE
 
+## 创建单色 GradientTexture2D（两个点都设为同色，避免 texture=null 时 modulate 失效）
+func _create_solid_gradient_texture(color: Color) -> GradientTexture2D:
+	var g := Gradient.new()
+	g.set_color(0, color)
+	g.set_color(1, color)
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.width = 4
+	tex.height = 4
+	return tex
+
 func _parse_stretch_mode(mode: String) -> TextureRect.StretchMode:
 	match mode:
 		"scale": return TextureRect.STRETCH_SCALE
 		"tile": return TextureRect.STRETCH_TILE
 		"cover": return TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		"fit": return TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		"center": return TextureRect.STRETCH_KEEP_CENTERED
 		"keep": return TextureRect.STRETCH_KEEP
 	return TextureRect.STRETCH_KEEP_ASPECT_COVERED
