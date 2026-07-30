@@ -122,6 +122,8 @@ func show_note_skin_adjust() -> String:
 	_note_skin_adjust.init_adjust()
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 	await window_close
+	# 关闭时持久化皮肤配置（颜色/光效/长条模式等）并触发 FlowArea 重载
+	_note_skin_adjust.save_config()
 	return _note_skin_adjust.get_selected_skin()
 
 # 弹出粒子设置窗口

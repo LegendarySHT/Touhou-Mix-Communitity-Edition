@@ -77,7 +77,7 @@ func find_best_note(click_pos: Vector2, active_notes: Array, judge_line_y: float
 ## 其他音符使用 rect 自身中心点
 func _get_note_center(note: Object) -> Vector2:
 	var rect: Control = note.rect as Control
-	var center_x: float = rect.position.x + rect.size.x * 0.5
+	var center_x: float = rect.global_position.x + rect.size.x * 0.5 #全局坐标包含offset_transform
 	var center_y: float
 
 	# NoteType.Long == 2（不直接引用 FlowArea.NoteType 以避免循环依赖）
@@ -85,6 +85,6 @@ func _get_note_center(note: Object) -> Vector2:
 		var head: Control = rect.get_node("VBoxC/head") as Control
 		center_y = head.global_position.y + head.size.y * 0.5
 	else:
-		center_y = rect.position.y + rect.size.y * 0.5
+		center_y = rect.global_position.y + rect.size.y * 0.5
 
 	return Vector2(center_x, center_y)

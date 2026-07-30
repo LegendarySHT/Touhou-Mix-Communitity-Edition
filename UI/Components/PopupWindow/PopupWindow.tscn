@@ -175,10 +175,11 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 0
+current_tab = 2
 tabs_visible = false
 
 [node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
@@ -320,7 +321,6 @@ action_mode = 0
 shortcut = SubResource("Shortcut_krk8y")
 
 [node name="NoteSkinAdjust" type="HBoxContainer" parent="." unique_id=1274646299]
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
@@ -382,11 +382,163 @@ size_flags_vertical = 0
 theme_override_font_sizes/font_size = 32
 alignment = 1
 
-[node name="Desc" type="Label" parent="NoteSkinAdjust/VBoxC" unique_id=420877033]
+[node name="OtherOptions" type="GridContainer" parent="NoteSkinAdjust/VBoxC" unique_id=991880897]
 custom_minimum_size = Vector2(0, 390)
 layout_mode = 2
-size_flags_vertical = 1
-text = "（显示皮肤介绍或者用来摆一些相关的设置项）"
+columns = 2
+
+[node name="Label" type="Label" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=720374811]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "长条连接模式"
+vertical_alignment = 1
+
+[node name="LConnMode" type="OptionButton" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=979878409]
+custom_minimum_size = Vector2(0, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 32
+alignment = 1
+clip_text = true
+selected = 0
+item_count = 2
+popup/item_0/text = "边缘连接"
+popup/item_0/id = 0
+popup/item_1/text = "中心连接"
+popup/item_1/id = 1
+script = ExtResource("6_fyi7o")
+
+[node name="Label2" type="Label" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=1254937753]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "长条延伸模式"
+vertical_alignment = 1
+
+[node name="LRepeatMode" type="OptionButton" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=642993795]
+custom_minimum_size = Vector2(0, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 32
+alignment = 1
+clip_text = true
+selected = 0
+item_count = 2
+popup/item_0/text = "拉伸"
+popup/item_0/id = 0
+popup/item_1/text = "重复"
+popup/item_1/id = 1
+script = ExtResource("6_fyi7o")
+
+[node name="EnableLightEffect" type="CheckBox" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=450356471]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "启用光效"
+icon_alignment = 1
+expand_icon = true
+
+[node name="CustomColor" type="CheckBox" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=87240000]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "自定义颜色"
+icon_alignment = 1
+expand_icon = true
+
+[node name="BlockColor" type="HBoxContainer" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=1630462659]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="CheckBox" type="CheckBox" parent="NoteSkinAdjust/VBoxC/OtherOptions/BlockColor" unique_id=1429706027]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "点块颜色"
+icon_alignment = 1
+expand_icon = true
+
+[node name="ColorPickerButton" type="ColorPickerButton" parent="NoteSkinAdjust/VBoxC/OtherOptions/BlockColor" unique_id=1026028364]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 4
+color = Color(1, 1, 1, 1)
+edit_alpha = false
+
+[node name="RandomBlockColor" type="CheckBox" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=312345729]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "随机颜色"
+icon_alignment = 1
+expand_icon = true
+
+[node name="SlideColor" type="HBoxContainer" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=1679494995]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="CheckBox" type="CheckBox" parent="NoteSkinAdjust/VBoxC/OtherOptions/SlideColor" unique_id=1982843514]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "滑块颜色"
+icon_alignment = 1
+expand_icon = true
+
+[node name="ColorPickerButton" type="ColorPickerButton" parent="NoteSkinAdjust/VBoxC/OtherOptions/SlideColor" unique_id=1278397054]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 4
+color = Color(1, 1, 1, 1)
+edit_alpha = false
+
+[node name="RandomSlideColor" type="CheckBox" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=806157401]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "随机颜色"
+icon_alignment = 1
+expand_icon = true
+
+[node name="LongColor" type="HBoxContainer" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=1547100993]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="CheckBox" type="CheckBox" parent="NoteSkinAdjust/VBoxC/OtherOptions/LongColor" unique_id=1834320634]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "长条颜色"
+icon_alignment = 1
+expand_icon = true
+
+[node name="ColorPickerButton" type="ColorPickerButton" parent="NoteSkinAdjust/VBoxC/OtherOptions/LongColor" unique_id=1796792946]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 4
+color = Color(1, 1, 1, 1)
+edit_alpha = false
+
+[node name="RandomLongColor" type="CheckBox" parent="NoteSkinAdjust/VBoxC/OtherOptions" unique_id=342383807]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "随机颜色"
+icon_alignment = 1
+expand_icon = true
 
 [node name="ParticleAdjust" type="HBoxContainer" parent="." unique_id=392630132]
 visible = false

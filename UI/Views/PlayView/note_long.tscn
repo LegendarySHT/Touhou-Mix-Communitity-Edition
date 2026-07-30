@@ -34,6 +34,8 @@ theme_override_constants/separation = 0
 [node name="tail" type="TextureRect" parent="VBoxC" unique_id=189974738]
 layout_mode = 2
 size_flags_vertical = 8
+offset_transform_enabled = true
+offset_transform_visual_only = false
 mouse_filter = 2
 texture = ExtResource("1_xtbtg")
 expand_mode = 5
@@ -85,6 +87,8 @@ expand_mode = 1
 [node name="head" type="TextureRect" parent="VBoxC" unique_id=163416007]
 layout_mode = 2
 size_flags_vertical = 0
+offset_transform_enabled = true
+offset_transform_visual_only = false
 mouse_filter = 2
 texture = ExtResource("3_5p25v")
 expand_mode = 5

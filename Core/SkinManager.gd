@@ -15,10 +15,11 @@ const DEFAULT_SKINS_SRC = "res://Resources/Skins/"
 ## 皮肤配置文件名（放置在皮肤包目录下）
 const SKIN_CONFIG_FILE = "skin.ini"
 
-## 皮肤配置默认光晕大小（与 config.ini 中的全局默认值对齐：short/instant=5.0，long=5.0+3=8.0）
-const SKIN_GLOW_SIZE_DEFAULT_SHORT = 5.0
-const SKIN_GLOW_SIZE_DEFAULT_INSTANT = 5.0
-const SKIN_GLOW_SIZE_DEFAULT_LONG = 8.0
+## 长条连接模式常量
+const LONG_CONNECT_MODE_EDGE = "edge"
+const LONG_CONNECT_MODE_CENTER = "center"
+const LONG_F_MODE_REPEAT = "repeat"
+const LONG_F_MODE_STRETCH = "stretch"
 
 ## ========== 资源索引 ==========
 ## 皮肤索引 {skin_name: SkinMetadata}
@@ -137,67 +138,60 @@ func _load_skin_config_from_file(config_path: String) -> Dictionary:
 
 	return _normalize_skin_config(raw)
 
-## 根据皮肤目录中的 core 贴图存在情况生成默认配置
-## 规则：
-##   有 core 贴图 → glow_use_custom_size=false（光晕大小跟随全局设置），glow_size 写入全局默认值作为参考
-##   无 core 贴图 → glow_use_custom_size=true，glow_size=0（用自定义 0 禁用光晕）
-func _generate_default_skin_config(skin_path: String) -> Dictionary:
-	var has_short_core = _skin_file_exists(skin_path, SKIN_TEXTURES["short_core"])
-	var has_instant_core = _skin_file_exists(skin_path, SKIN_TEXTURES["instant_core"])
-	var has_long_core = _skin_file_exists(skin_path, SKIN_TEXTURES["long_b_core"]) \
-		or _skin_file_exists(skin_path, SKIN_TEXTURES["long_f_core"]) \
-		or _skin_file_exists(skin_path, SKIN_TEXTURES["long_t_core"])
-
+## 生成默认皮肤配置
+## 新结构：[general] 全局开关 + [short/instant/long] 各类型颜色/随机 + [long] 长条连接模式
+func _generate_default_skin_config(_skin_path: String) -> Dictionary:
 	return {
-		"short": {
-			"glow_use_custom_color": false,
-			"glow_custom_color": Color.WHITE,
-			"glow_use_custom_size": (not has_short_core),
-			"glow_size": SKIN_GLOW_SIZE_DEFAULT_SHORT if has_short_core else 0.0
+		"general": {
+			"enable_glow": false,
+			"custom_color": false
 		},
-		"instant": {
-			"glow_use_custom_color": false,
-			"glow_custom_color": Color.WHITE,
-			"glow_use_custom_size": (not has_instant_core),
-			"glow_size": SKIN_GLOW_SIZE_DEFAULT_INSTANT if has_instant_core else 0.0
-		},
-		"long": {
-			"glow_use_custom_color": false,
-			"glow_custom_color": Color.WHITE,
-			"glow_use_custom_size": (not has_long_core),
-			"glow_size": SKIN_GLOW_SIZE_DEFAULT_LONG if has_long_core else 0.0,
-			"long_f_mode": "repeat"
-		}
+		"short": _default_note_section(),
+		"instant": _default_note_section(),
+		"long": _default_note_section(true)
 	}
 
-## 检查皮肤目录下某个贴图文件是否存在
-## 兼容 res://（ResourceLoader.exists）与 user://（FileAccess.file_exists）
-func _skin_file_exists(skin_path: String, file_name: String) -> bool:
-	var file_path = skin_path.path_join(file_name)
-	if file_path.begins_with("res://"):
-		return ResourceLoader.exists(file_path)
-	return FileAccess.file_exists(file_path)
+## 单个音符类型的默认配置节
+func _default_note_section(is_long: bool = false) -> Dictionary:
+	var sec: Dictionary = {
+		"enable_color": false,
+		"color": Color.WHITE,
+		"random_color": false
+	}
+	if is_long:
+		sec["long_connect_mode"] = LONG_CONNECT_MODE_EDGE
+		sec["long_f_mode"] = LONG_F_MODE_REPEAT
+	return sec
 
 ## 将解析得到的 {section: {key: str}} 规范化为带类型的结构化 Dictionary
 ## 缺失的键使用默认值补全，确保下游可以安全读取
 func _normalize_skin_config(raw: Dictionary) -> Dictionary:
 	return {
-		"short": _normalize_note_section(raw.get("short", {}), SKIN_GLOW_SIZE_DEFAULT_SHORT, false),
-		"instant": _normalize_note_section(raw.get("instant", {}), SKIN_GLOW_SIZE_DEFAULT_INSTANT, false),
-		"long": _normalize_note_section(raw.get("long", {}), SKIN_GLOW_SIZE_DEFAULT_LONG, true)
+		"general": _normalize_general_section(raw.get("general", {})),
+		"short": _normalize_note_section(raw.get("short", {}), false),
+		"instant": _normalize_note_section(raw.get("instant", {}), false),
+		"long": _normalize_note_section(raw.get("long", {}), true)
+	}
+
+## 规范化 [general] 节
+func _normalize_general_section(section_raw: Dictionary) -> Dictionary:
+	return {
+		"enable_glow": _parse_bool(section_raw.get("enable_glow", "false")),
+		"custom_color": _parse_bool(section_raw.get("custom_color", "false"))
 	}
 
 ## 规范化单个键型的配置节
-func _normalize_note_section(section_raw: Dictionary, default_size: float, is_long: bool) -> Dictionary:
+func _normalize_note_section(section_raw: Dictionary, is_long: bool) -> Dictionary:
 	var result: Dictionary = {
-		"glow_use_custom_color": _parse_bool(section_raw.get("glow_use_custom_color", "false")),
-		"glow_custom_color": _parse_color(section_raw.get("glow_custom_color", "#ffffff")),
-		"glow_use_custom_size": _parse_bool(section_raw.get("glow_use_custom_size", "false")),
-		"glow_size": _parse_float(section_raw.get("glow_size", str(default_size)))
+		"enable_color": _parse_bool(section_raw.get("enable_color", "false")),
+		"color": _parse_color(section_raw.get("color", "#ffffff")),
+		"random_color": _parse_bool(section_raw.get("random_color", "false"))
 	}
 	if is_long:
-		var mode = section_raw.get("long_f_mode", "repeat")
-		result["long_f_mode"] = "stretch" if mode == "stretch" else "repeat"
+		var connect_mode = section_raw.get("long_connect_mode", LONG_CONNECT_MODE_EDGE)
+		result["long_connect_mode"] = LONG_CONNECT_MODE_CENTER if connect_mode == LONG_CONNECT_MODE_CENTER else LONG_CONNECT_MODE_EDGE
+		var f_mode = section_raw.get("long_f_mode", LONG_F_MODE_REPEAT)
+		result["long_f_mode"] = LONG_F_MODE_STRETCH if f_mode == LONG_F_MODE_STRETCH else LONG_F_MODE_REPEAT
 	return result
 
 ## 将字符串解析为 bool（接受 "true"/"false"/"1"/"0"）
@@ -206,14 +200,6 @@ func _parse_bool(value) -> bool:
 		return value
 	var s = str(value).to_lower()
 	return s == "true" or s == "1"
-
-## 将字符串解析为 float（无效输入返回 0.0）
-func _parse_float(value) -> float:
-	if value is float:
-		return value
-	if value is int:
-		return float(value)
-	return str(value).to_float()
 
 ## 将字符串解析为 Color（接受 "#RRGGBB" / "#RRGGBBAA" / 颜色名）
 func _parse_color(value) -> Color:
@@ -239,17 +225,25 @@ func _save_skin_config_to_file(config_path: String, config: Dictionary) -> void:
 ## 将配置 Dictionary 序列化为 INI 文本
 func _serialize_skin_config(config: Dictionary) -> String:
 	var lines: Array = ["# 自动生成的皮肤配置文件 - 可手动编辑", ""]
+	# [general] 节
+	if config.has("general"):
+		lines.append("[general]")
+		var gen = config["general"]
+		lines.append("enable_glow=%s" % str(gen.get("enable_glow", false)).to_lower())
+		lines.append("custom_color=%s" % str(gen.get("custom_color", false)).to_lower())
+		lines.append("")
+	# 各音符类型节
 	for section in ["short", "instant", "long"]:
 		if not config.has(section):
 			continue
 		lines.append("[%s]" % section)
 		var sec = config[section]
-		lines.append("glow_use_custom_color=%s" % str(sec.get("glow_use_custom_color", false)).to_lower())
-		lines.append("glow_custom_color=%s" % _color_to_hex(sec.get("glow_custom_color", Color.WHITE)))
-		lines.append("glow_use_custom_size=%s" % str(sec.get("glow_use_custom_size", false)).to_lower())
-		lines.append("glow_size=%s" % str(sec.get("glow_size", 0.0)))
+		lines.append("enable_color=%s" % str(sec.get("enable_color", false)).to_lower())
+		lines.append("color=%s" % _color_to_hex(sec.get("color", Color.WHITE)))
+		lines.append("random_color=%s" % str(sec.get("random_color", false)).to_lower())
 		if section == "long":
-			lines.append("long_f_mode=%s" % str(sec.get("long_f_mode", "repeat")))
+			lines.append("long_connect_mode=%s" % str(sec.get("long_connect_mode", LONG_CONNECT_MODE_EDGE)))
+			lines.append("long_f_mode=%s" % str(sec.get("long_f_mode", LONG_F_MODE_REPEAT)))
 		lines.append("")
 	return "\n".join(lines)
 
@@ -258,7 +252,7 @@ func _color_to_hex(col: Color) -> String:
 	return "#%02x%02x%02x" % [int(round(col.r * 255)), int(round(col.g * 255)), int(round(col.b * 255))]
 
 ## 获取指定皮肤的配置 Dictionary
-## 返回结构：{short:{...}, instant:{...}, long:{...}}；查找不到时返回空 Dictionary
+## 返回结构：{general:{...}, short:{...}, instant:{...}, long:{...}}；查找不到时返回空 Dictionary
 func get_skin_config(skin_name: String) -> Dictionary:
 	var skin_data: SkinMetadata = skins_index.get(skin_name, null)
 	if skin_data == null:
@@ -270,6 +264,83 @@ func get_skin_config(skin_name: String) -> Dictionary:
 			GLogger.warning("Skin config not found: %s" % skin_name, "SkinMGR")
 			return {}
 	return skin_data.config
+
+## 获取长条连接模式（"edge" 边缘连接 / "center" 中心连接）
+func get_long_connect_mode(skin_name: String) -> String:
+	var config = get_skin_config(skin_name)
+	if config.is_empty():
+		return LONG_CONNECT_MODE_EDGE
+	var long_sec: Dictionary = config.get("long", {})
+	var mode = long_sec.get("long_connect_mode", LONG_CONNECT_MODE_EDGE)
+	return LONG_CONNECT_MODE_CENTER if mode == LONG_CONNECT_MODE_CENTER else LONG_CONNECT_MODE_EDGE
+
+## 获取长条中部贴图延伸模式（"repeat" 垂直重复 / "stretch" 竖直拉伸）
+func get_long_f_mode(skin_name: String) -> String:
+	var config = get_skin_config(skin_name)
+	if config.is_empty():
+		return LONG_F_MODE_REPEAT
+	var long_sec: Dictionary = config.get("long", {})
+	var mode = long_sec.get("long_f_mode", LONG_F_MODE_REPEAT)
+	return LONG_F_MODE_STRETCH if mode == LONG_F_MODE_STRETCH else LONG_F_MODE_REPEAT
+
+## 判断皮肤是否启用光效（[general] enable_glow）
+func is_glow_enabled(skin_name: String) -> bool:
+	var config = get_skin_config(skin_name)
+	if config.is_empty():
+		return false
+	var gen: Dictionary = config.get("general", {})
+	return bool(gen.get("enable_glow", false))
+
+## 判断皮肤是否启用自定义颜色主开关（[general] custom_color）
+func is_custom_color_enabled(skin_name: String) -> bool:
+	var config = get_skin_config(skin_name)
+	if config.is_empty():
+		return false
+	var gen: Dictionary = config.get("general", {})
+	return bool(gen.get("custom_color", false))
+
+## 获取指定音符类型的颜色配置
+## note_type_key ∈ {"short", "instant", "long"}
+## 返回 {enable_color: bool, color: Color, random_color: bool}
+func get_note_color_config(skin_name: String, note_type_key: String) -> Dictionary:
+	var config = get_skin_config(skin_name)
+	if config.is_empty():
+		return {"enable_color": false, "color": Color.WHITE, "random_color": false}
+	var sec: Dictionary = config.get(note_type_key, {})
+	return {
+		"enable_color": bool(sec.get("enable_color", false)),
+		"color": sec.get("color", Color.WHITE),
+		"random_color": bool(sec.get("random_color", false))
+	}
+
+## 将工作副本配置保存到 skin.ini（用户皮肤写 user://，内置皮肤写 res://）
+## 同时更新 skins_index 中的内存配置
+## 返回是否写入成功（内置皮肤在导出环境下 res:// 只读，可能写入失败）
+func save_skin_config(skin_name: String, config: Dictionary) -> bool:
+	var skin_data: SkinMetadata = skins_index.get(skin_name, null)
+	if skin_data == null:
+		if skin_name.ends_with(" [内置]"):
+			var pure_name = skin_name.substr(0, skin_name.length() - 8)
+			skin_data = skins_index.get(pure_name, null)
+		if skin_data == null:
+			GLogger.warning("save_skin_config: skin not found: %s" % skin_name, "SkinMGR")
+			return false
+
+	# 规范化一次，确保字段完整
+	var normalized = _normalize_skin_config({
+		"general": config.get("general", {}),
+		"short": config.get("short", {}),
+		"instant": config.get("instant", {}),
+		"long": config.get("long", {})
+	})
+
+	var config_path = skin_data.path.path_join(SKIN_CONFIG_FILE)
+	_save_skin_config_to_file(config_path, normalized)
+
+	# 更新内存中的配置
+	skin_data.config = normalized
+	GLogger.info("Saved skin config: %s" % config_path, "SkinMGR")
+	return true
 
 ## 获取所有可用皮肤列表
 func get_available_skins() -> Array:

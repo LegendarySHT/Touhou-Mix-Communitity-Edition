@@ -36,12 +36,26 @@ var _skin_has_short_core: bool = true
 var _skin_has_instant_core: bool = true
 var _skin_has_long_core: bool = true
 
-# 当前皮肤的光晕配置（来自 skin.ini）
-# 结构: {short:{glow_use_custom_color,glow_custom_color,glow_size}, instant:{...}, long:{...,long_f_mode}}
+# 当前皮肤的完整配置（来自 skin.ini 新结构）
+# {general:{enable_glow,custom_color}, short:{enable_color,color,random_color}, instant:{...}, long:{...,long_connect_mode,long_f_mode}}
 var _skin_config: Dictionary = {}
+
+# 光效总开关（来自 [general] enable_glow）
+var _is_glow_enabled: bool = false
 
 # long-f 中部贴图应用方式："repeat"（水平拉伸+垂直重复）或 "stretch"（竖直拉伸）
 var _long_f_mode: String = "repeat"
+
+# 长条连接模式："edge"（边缘连接，默认）或 "center"（中心连接）
+var _long_connect_mode: String = "edge"
+
+# 随机颜色（由 PlayView 在 _prepare_game 时生成并传入）
+# 结构: {note_type_key: Color}，仅在该类型启用 random_color 时存在对应键
+var _random_colors: Dictionary = {}
+
+# 最终解析出的音符颜色（结合 custom_color 主开关 + enable_color + random_color）
+# 结构: {note_type_key: Color}，键为 "short"/"instant"/"long"
+var _resolved_colors: Dictionary = {}
 
 # 判定参数（毫秒）- 与 ScoreCalculator.JUDGE_WINDOWS（秒）对应
 var judge_windows: Dictionary = {
@@ -179,9 +193,9 @@ func init_flow_area():
 	spark_scalings["Bad"] = ConfigManager.instance.get_float("Lane", "bad_spark_scaling", 50)
 	_init_particle_pool()
 	_init_note_pool()
-	set_note_color(FlowNote.NoteType.Block, note_color_short)
-	set_note_color(FlowNote.NoteType.Slide, note_color_slide)
-	set_note_color(FlowNote.NoteType.Long, note_color_long)
+	# 应用解析后的颜色（由 load_note_skin + PlayView 随机颜色生成共同决定）
+	# 池刚初始化时只有模板颜色，refresh_note_colors 会同步更新池中节点
+	refresh_note_colors()
 
 	set_note_width(note_visual_width)
 
@@ -374,8 +388,11 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 	var skin_textures = {}
 	if SkinMGR:
 		skin_textures = SkinMGR.get_skin_textures(skin_name)
-		# 加载皮肤级配置（光晕颜色/大小、long-f 应用方式）
+		# 加载皮肤完整配置（新结构）
 		_skin_config = SkinMGR.get_skin_config(skin_name)
+		# 读取光效总开关与长条连接模式
+		_is_glow_enabled = SkinMGR.is_glow_enabled(skin_name)
+		_long_connect_mode = SkinMGR.get_long_connect_mode(skin_name)
 
 	# 更新core贴图标记
 	_skin_has_short_core = skin_textures.has("short_core")
@@ -402,10 +419,63 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 	# 应用 long-f 中部贴图模式（repeat / stretch）
 	_apply_long_f_mode()
 
+	# 解析音符颜色（基于新皮肤配置 + 已有 _random_colors）
+	_resolve_note_colors()
+	# 重新应用颜色到模板（load_note_skin 后 _init_note_pool 会用新模板重建）
+	set_note_color(FlowNote.NoteType.Block, _resolved_colors.get("short", Color.WHITE))
+	set_note_color(FlowNote.NoteType.Slide, _resolved_colors.get("instant", Color.WHITE))
+	set_note_color(FlowNote.NoteType.Long, _resolved_colors.get("long", Color.WHITE))
+
 	# 清空音符对象池，使下次 _init_note_pool 用新皮肤纹理重建节点
 	_clear_and_free_note_pools()
 
-	print("[FlowArea] Loaded note skin: %s, core flags: short=%s, instant=%s, long=%s" % [skin_name, _skin_has_short_core, _skin_has_instant_core, _skin_has_long_core])
+	print("[FlowArea] Loaded note skin: %s, glow=%s, connect_mode=%s, core flags: short=%s, instant=%s, long=%s" % [skin_name, _is_glow_enabled, _long_connect_mode, _skin_has_short_core, _skin_has_instant_core, _skin_has_long_core])
+
+## 根据 _skin_config + _random_colors 解析出最终音符颜色
+## 规则：
+##   custom_color 主开关 OFF → 该类型 color = Color.WHITE
+##   主开关 ON + enable_color ON + random_color ON → color = _random_colors[key]
+##   主开关 ON + enable_color ON + random_color OFF → color = config[key].color
+##   主开关 ON + enable_color OFF → color = Color.WHITE
+func _resolve_note_colors() -> void:
+	_resolved_colors.clear()
+	var custom_color_on: bool = false
+	if _skin_config.has("general"):
+		custom_color_on = bool(_skin_config["general"].get("custom_color", false))
+
+	for key in ["short", "instant", "long"]:
+		var color := Color.WHITE
+		if custom_color_on and _skin_config.has(key):
+			var sec: Dictionary = _skin_config[key]
+			if bool(sec.get("enable_color", false)):
+				if bool(sec.get("random_color", false)) and _random_colors.has(key):
+					color = _random_colors[key]
+				else:
+					color = sec.get("color", Color.WHITE)
+		_resolved_colors[key] = color
+
+## 重新解析颜色并应用到模板 + 对象池中所有节点（用于随机颜色刷新等场景）
+## 当对象池已存在（如 retry）时，set_note_color 只改模板不影响池中已创建节点，
+## 此方法会遍历池中节点同步更新 core.modulate 和光效颜色
+func refresh_note_colors() -> void:
+	_resolve_note_colors()
+	set_note_color(FlowNote.NoteType.Block, _resolved_colors.get("short", Color.WHITE))
+	set_note_color(FlowNote.NoteType.Slide, _resolved_colors.get("instant", Color.WHITE))
+	set_note_color(FlowNote.NoteType.Long, _resolved_colors.get("long", Color.WHITE))
+	# 同步更新池中已存在的节点
+	for note in _note_pool_block:
+		if is_instance_valid(note):
+			note.get_node("core").modulate = _resolved_colors.get("short", Color.WHITE)
+			_apply_note_glow(note, _resolved_colors.get("short", Color.WHITE), FlowNote.NoteType.Block)
+	for note in _note_pool_slide:
+		if is_instance_valid(note):
+			note.get_node("core").modulate = _resolved_colors.get("instant", Color.WHITE)
+			_apply_note_glow(note, _resolved_colors.get("instant", Color.WHITE), FlowNote.NoteType.Slide)
+	for note in _note_pool_long:
+		if is_instance_valid(note):
+			for i in note.get_node("VBoxC").get_children():
+				i.get_node("core").modulate = _resolved_colors.get("long", Color.WHITE)
+			_apply_note_glow(note, _resolved_colors.get("long", Color.WHITE), FlowNote.NoteType.Long)
 
 # 根据皮肤配置设置 long-f 中部贴图的应用方式
 # repeat → 水平拉伸+垂直重复（用 shader 实现）；stretch → 竖直拉伸（默认 STRETCH_SCALE）
@@ -530,31 +600,41 @@ var _note_fall_speed: float = 0
 var _note_fall_distance: float = 0
 
 func _create_note(tp: FlowNote.NoteType, x: float, lane_idx: int = -1) -> Node:
-	var cl: Color = parent_node.get_lane_color(lane_idx)
-	
 	# 改为从池中取而不是 duplicate()
 	var note_rect: Node = _get_note_from_pool(tp)
 	note_rect.visible = true  # 从池中取出后立即可见
-	
+
+	# _reset_note_for_reuse 会将 core.modulate 重置为 WHITE，此处需重新应用解析后的颜色
+	# 颜色由 _resolved_colors 决定（custom_color + enable_color + random_color 综合解析）
+	var resolved_color := _get_resolved_color_for_type(tp)
 	match tp:
 		FlowNote.NoteType.Block:
-			if lane_idx != -1:
-				note_rect.get_node("core").modulate = cl
+			note_rect.get_node("core").modulate = resolved_color
 		FlowNote.NoteType.Slide:
-			if lane_idx != -1:
-				note_rect.get_node("core").modulate = cl
+			note_rect.get_node("core").modulate = resolved_color
 		FlowNote.NoteType.Long:
-			if lane_idx != -1:
-				for i in note_rect.get_node("VBoxC").get_children():
-					i.get_node("core").modulate = cl
-	
-	_apply_note_glow(note_rect, cl, tp)
+			for i in note_rect.get_node("VBoxC").get_children():
+				i.get_node("core").modulate = resolved_color
+
+	# 应用光效（颜色由 _resolved_colors 决定）
+	_apply_note_glow(note_rect, resolved_color, tp)
 	# base position 只承载 x（轨道偏移），y 恒为 0；
 	# 动态下落 y 走 offset_transform_position，绕过 Control 布局重算
 	note_rect.position = Vector2(x, 0)
 	note_rect.offset_transform_position = Vector2.ZERO
 
 	return note_rect
+
+## 根据 NoteType 返回 _resolved_colors 中对应的颜色
+func _get_resolved_color_for_type(tp: FlowNote.NoteType) -> Color:
+	match tp:
+		FlowNote.NoteType.Block:
+			return _resolved_colors.get("short", Color.WHITE)
+		FlowNote.NoteType.Slide:
+			return _resolved_colors.get("instant", Color.WHITE)
+		FlowNote.NoteType.Long:
+			return _resolved_colors.get("long", Color.WHITE)
+	return Color.WHITE
 
 func _spawn_note(note_index: int) -> void:
 	if note_index >= notes_list.size():
@@ -595,7 +675,7 @@ func _spawn_note(note_index: int) -> void:
 		if _long_f_mode == "repeat":
 			_ensure_independent_repeat_material(nt._cached_body)
 			_ensure_independent_repeat_material(nt.rect.get_node_or_null("VBoxC/body/core"))
-		_apply_note_glow(nt.rect, parent_node.get_lane_color(nt.lane), FlowNote.NoteType.Long)
+		_apply_note_glow(nt.rect, _resolved_colors.get("long", Color.WHITE), FlowNote.NoteType.Long)
 		note_half = nt.long_tail_height / 2.0
 	
 	var target_pos_y = jl.position.y - note_half
@@ -694,12 +774,33 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float) -> void:
 	var tail_judge_y = tail_center  # 使用 tail 中心而非顶部判定，避免特效位置过低
 	var head_top = head_center - head_half
 
-	# 修改根节点 size.y = tail_h + body_h + head_h（注意减去两端的长度）
-	var body_target_h = max(0.0, head_top - tail_bottom)
-	note.rect.size.y = note.long_tail_height + body_target_h + note.long_head_height
+	# 长条连接模式：edge（边缘连接，body 从 tail_bottom 到 head_top）
+	# 或 center（中心连接，body 从 tail_center 到 head_center，head/tail 各向 body 偏移半高）
+	var body_target_h: float
+	var root_offset_y: float
+	if _long_connect_mode == "center":
+		# 中心连接：body 覆盖纯时长距离（head_center - tail_center）
+		body_target_h = max(0.0, head_center - tail_center)
+		note.rect.size.y = note.long_tail_height + body_target_h + note.long_head_height
+		# tail 向 body 靠拢半高（下移半个 tail 高度）
+		tail.offset_transform_position.y = note.long_tail_height * 0.5
+		# head 向 body 靠拢半高（上移半个 head 高度）
+		head.offset_transform_position.y = -note.long_head_height * 0.5
+		# root 锚定：使 tail 的视觉中心 = tail_center
+		# root 顶部 = tail_center - tail_half - tail_half（因为 tail 中心相对 root 顶部偏移 tail_half + tail.offset）
+		# 简化：root 顶部 = tail_top - tail_half（让 tail 的视觉中心落在 tail_center）
+		root_offset_y = tail_top - note.long_tail_height * 0.5
+	else:
+		# 边缘连接（默认）：body 从 tail_bottom 到 head_top
+		body_target_h = max(0.0, head_top - tail_bottom)
+		note.rect.size.y = note.long_tail_height + body_target_h + note.long_head_height
+		tail.offset_transform_position.y = 0.0
+		head.offset_transform_position.y = 0.0
+		root_offset_y = tail_top
+
 	# repeat 模式下，按 body 高度更新垂直重复次数
 	_update_long_body_v_repeat(note, body_target_h)
-	note.rect.offset_transform_position.y = tail_top
+	note.rect.offset_transform_position.y = root_offset_y
 
 	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
 		var window_y = _cached_viewport_height
@@ -797,6 +898,13 @@ func _reset_note_for_reuse(note: Node, note_type: FlowNote.NoteType) -> void:
 			var body = note.get_node_or_null("VBoxC/body")
 			if body:
 				body.custom_minimum_size.y = 0
+			# 重置 head/tail 的 offset_transform_position（center 模式会修改它）
+			var head_node = note.get_node_or_null("VBoxC/head")
+			if head_node:
+				head_node.offset_transform_position = Vector2.ZERO
+			var tail_node = note.get_node_or_null("VBoxC/tail")
+			if tail_node:
+				tail_node.offset_transform_position = Vector2.ZERO
 			# 清理长条的长条特有状态
 			note.set_meta("_needs_height_recalc", true)  # 标记需要在 _spawn_note 里重新计算
 	
@@ -813,22 +921,13 @@ func _reset_note_for_reuse(note: Node, note_type: FlowNote.NoteType) -> void:
 		child.modulate = Color.WHITE
 
 func _apply_note_glow(note_root: Node, c: Color, note_type: FlowNote.NoteType = FlowNote.NoteType.Block) -> void:
-	if glow_intensity <= 0.0:
+	# 光效总开关关闭 → 清除 material 并返回
+	if not _is_glow_enabled or glow_intensity <= 0.0:
+		_clear_glow(note_root)
 		return
 
-	# 读取当前键型的皮肤配置
-	var section = _get_skin_glow_section(note_type)
-	# glow_use_custom_size=true 时使用皮肤配置的 glow_size；=false 时使用全局 glow_size
-	var use_custom_size: bool = bool(section.get("glow_use_custom_size", false))
-	var skin_glow_size: float = float(section.get("glow_size", 0.0))
-	# 仅在自定义模式下，glow_size<=0 表示关闭光晕（用户显式禁用）
-	if use_custom_size and skin_glow_size <= 0.0:
-		return
-	# 若使用自定义颜色，则替换光晕颜色（不影响 core 染色）
+	# 光效颜色 = 音符颜色（已是 _resolved_colors 中的值，或白色）
 	var glow_color = c
-	if section.get("glow_use_custom_color", false) and section.has("glow_custom_color"):
-		glow_color = section["glow_custom_color"]
-
 	if note_root is Panel:
 		var vbox = note_root.get_node_or_null("VBoxC")
 		if vbox:
@@ -839,21 +938,21 @@ func _apply_note_glow(note_root: Node, c: Color, note_type: FlowNote.NoteType = 
 		return
 	_ensure_glow_child(note_root, glow_color, note_type)
 
-# 根据键型获取皮肤配置中对应的光晕配置节
-func _get_skin_glow_section(note_type: FlowNote.NoteType) -> Dictionary:
-	var key = "short"
-	match note_type:
-		FlowNote.NoteType.Block:
-			key = "short"
-		FlowNote.NoteType.Slide:
-			key = "instant"
-		FlowNote.NoteType.Long:
-			key = "long"
-		_:
-			key = "short"
-	if _skin_config.has(key):
-		return _skin_config[key]
-	return {}
+## 清除音符节点的光效 material（关闭光效时调用）
+func _clear_glow(note_root: Node) -> void:
+	if note_root is Panel:
+		var vbox = note_root.get_node_or_null("VBoxC")
+		if vbox:
+			for child in vbox.get_children():
+				if child is TextureRect:
+					var glow = child.get_node_or_null("_glow")
+					if glow and glow.material:
+						glow.material = null
+		return
+	if note_root is TextureRect:
+		var glow = note_root.get_node_or_null("_glow")
+		if glow and glow.material:
+			glow.material = null
 
 func _ensure_glow_child(tr_: TextureRect, col: Color, note_type: FlowNote.NoteType = FlowNote.NoteType.Block, uv_center: Vector2 = Vector2(0.5, 0.5)) -> void:
 	var glow: ColorRect = tr_.get_node_or_null("_glow")
@@ -869,21 +968,15 @@ func _ensure_glow_child(tr_: TextureRect, col: Color, note_type: FlowNote.NoteTy
 	mat2.set_shader_parameter("glow_intensity", glow_intensity)
 	mat2.set_shader_parameter("note_uv_center", uv_center)
 
-	# 光晕大小：glow_use_custom_size=true 用皮肤配置 glow_size；=false 用全局 glow_size（long 保留 +3 偏移）
-	var section = _get_skin_glow_section(note_type)
-	var use_custom_size: bool = bool(section.get("glow_use_custom_size", false))
-	var skin_glow_size: float = float(section.get("glow_size", 0.0))
-
+	# 光晕大小：使用全局 glow_size（long 保留 +3 偏移以视觉加粗）
 	match note_type:
 		FlowNote.NoteType.Long:
 			mat2.set_shader_parameter("glow_stretch", 0.6)
-			var size_val = skin_glow_size if use_custom_size else (glow_size + 3)
-			mat2.set_shader_parameter("glow_size", size_val)
+			mat2.set_shader_parameter("glow_size", glow_size + 3)
 			mat2.set_shader_parameter("note_uv_half", Vector2(0.25, 0.1667))
 		_:
 			mat2.set_shader_parameter("glow_stretch", 1.0)
-			var size_val = skin_glow_size if use_custom_size else glow_size
-			mat2.set_shader_parameter("glow_size", size_val)
+			mat2.set_shader_parameter("glow_size", glow_size)
 			mat2.set_shader_parameter("note_uv_half", Vector2(0.1667, 0.1667))
 
 func set_glow_params(intensity: float, size_val: float) -> void:
@@ -917,11 +1010,11 @@ func _init_note_pool() -> void:
 		_note_pool_long.append(note_node)
 
 	for note in _note_pool_block:
-		_apply_note_glow(note, note_color_short, FlowNote.NoteType.Block)
+		_apply_note_glow(note, _resolved_colors.get("short", Color.WHITE), FlowNote.NoteType.Block)
 	for note in _note_pool_slide:
-		_apply_note_glow(note, note_color_slide, FlowNote.NoteType.Slide)
+		_apply_note_glow(note, _resolved_colors.get("instant", Color.WHITE), FlowNote.NoteType.Slide)
 	for note in _note_pool_long:
-		_apply_note_glow(note, note_color_long, FlowNote.NoteType.Long)
+		_apply_note_glow(note, _resolved_colors.get("long", Color.WHITE), FlowNote.NoteType.Long)
 
 func _get_note_from_pool(tp: FlowNote.NoteType) -> Node:
 	"""从池中获取一个音符节点，如果池空则创建新的"""
@@ -1457,7 +1550,7 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 		_remove_note(judge_note)
 
 	# 特效
-	var light_color = note_color_short if judge_note.type == FlowNote.NoteType.Block else (note_color_slide if judge_note.type == FlowNote.NoteType.Slide else note_color_long)
+	var light_color = _get_resolved_color_for_type(judge_note.type)
 	get_parent().lane_area.light_lane(judge_note.lane, light_color)
 	
 	var preset = spark_presets.get(result, 0)

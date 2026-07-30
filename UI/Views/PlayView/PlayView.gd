@@ -324,11 +324,40 @@ func _on_skin_resources_ready() -> void:
 func _do_load_note_skin() -> void:
 	# 从配置加载皮肤设置
 	var skin_name = ConfigManager.instance.get_string("Appearance", "block_skin_preset", "旧版2 [内置]")
-	
+
 	# 应用皮肤
 	if flow_area and flow_area.has_method("load_note_skin"):
 		flow_area.load_note_skin(skin_name)
 		print("[PlayView] Loaded note skin: %s" % skin_name)
+
+## 根据当前皮肤的 random_color 配置生成随机颜色并推送到 FlowArea
+## 仅在 custom_color 主开关 + 该类型 enable_color + random_color 均开启时生成
+## 必须在 flow_area.init_flow_area() 之前调用，使对象池节点用新颜色重建
+func _regenerate_random_note_colors() -> void:
+	if not flow_area:
+		return
+	var skin_name = ConfigManager.instance.get_string("Appearance", "block_skin_preset", "旧版2 [内置]")
+	var skin_config = SkinMGR.get_skin_config(skin_name)
+	if skin_config.is_empty():
+		return
+	var custom_color_on := false
+	if skin_config.has("general"):
+		custom_color_on = bool(skin_config["general"].get("custom_color", false))
+	if not custom_color_on:
+		# 主开关关闭，清空随机颜色（_resolve_note_colors 会回退到 WHITE）
+		flow_area._random_colors = {}
+		return
+
+	var random_colors: Dictionary = {}
+	for key in ["short", "instant", "long"]:
+		if not skin_config.has(key):
+			continue
+		var sec: Dictionary = skin_config[key]
+		if bool(sec.get("enable_color", false)) and bool(sec.get("random_color", false)):
+			# 生成饱和度较高的随机颜色，避免过暗或过灰
+			random_colors[key] = Color.from_hsv(randf(), randf_range(0.6, 1.0), 1.0)
+	flow_area._random_colors = random_colors
+	print("[PlayView] Generated random note colors: %s" % str(random_colors.keys()))
 
 func _set_debug_overlay_visible(_is_visible: bool) -> void:
 	if debug_info_label == null:
@@ -437,6 +466,9 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 		if sync_threshold != null:
 			playback_mgr.set_sync_threshold(float(sync_threshold))
 			print("[PlayView] Audio sync threshold set to %.0f ms" % float(sync_threshold))
+
+	# 生成随机颜色（若皮肤配置启用）— 必须在 init_flow_area 前完成，使对象池节点用新颜色重建
+	_regenerate_random_note_colors()
 
 	_init_display()
 	flow_area.init_flow_area()
