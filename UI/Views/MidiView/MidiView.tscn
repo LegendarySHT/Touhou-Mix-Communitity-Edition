@@ -301,6 +301,7 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 4
 size_flags_vertical = 0
+offset_transform_enabled = true
 theme_override_constants/separation = 9
 metadata/_edit_use_anchors_ = true
 

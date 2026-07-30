@@ -115,7 +115,7 @@ func _show_midi_list(_index: int = -1) -> void:
 		need_snap = true
 		# 指示器移到选中项
 		if indicator and selected_item != -1:
-			create_tween().tween_property(indicator, "position", Vector2(30, 100 - selected_item * 24), 0.35)
+			create_tween().tween_property(indicator, "offset_transform_position:y", 100 - selected_item * 24, 0.35)
 
 func _previous() -> void:
 	if current_midis.size() != 1:
@@ -169,5 +169,5 @@ func remove_selected_midi():
 	for item in list_items:
 		item.set_expanded(true)
 	if indicator:
-		indicator.position = Vector2(30, 100 - selected_item * 24)
+		indicator.offset_transform_position.y = 100 - selected_item * 24
 	need_snap = true

@@ -11,17 +11,27 @@ var current_albums: Array[AlbumData] = []
 @onready var data_manager: DataManager = DataMGR
 @onready var event_bus: EventBus = EvtBus
 
-## 列表刷新控制
-var _refresh_id: int = 0
+## 列表刷新控制（LazyListLoader 负责增量让帧 + 取消）
+var _loader: LazyListLoader
+var _album_build_counter: int = 0
+var _album_build_bg: ButtonGroup
 @onready var _loading_node: Control = get_parent().get_node("Loading") if get_parent() else null
 
 func _ready() -> void:
 	if not data_manager or not event_bus:
 		push_error("AlbumView: Missing manager instances")
 		return
-	
+
 	work_state = UIStateManager.UIState.ALBUM_VIEW
 	snap_offset_y = 100
+	# 设置直接相邻状态：切到不在此集合的状态时释放所有列表项封面
+	# ALBUM_VIEW 相邻：SONG_VIEW（点进专辑）、SORTED_VIEW/STORE_VIEW/SETTINGS_VIEW（侧栏切换）
+	set_adjacent_states([
+		UIStateManager.UIState.SONG_VIEW,
+		UIStateManager.UIState.SORTED_VIEW,
+		UIStateManager.UIState.STORE_VIEW,
+		UIStateManager.UIState.SETTINGS_VIEW,
+	])
 
 	# 连接事件
 	data_manager.data_loaded.connect(_load_albums)
@@ -34,24 +44,27 @@ func _ready() -> void:
 	)
 	modulate.a = 0.0
 
+	# 创建懒加载器（每 3 个专辑让一帧，匹配原有 counter % 3 节奏）
+	_loader = LazyListLoader.new(3)
+	_loader.first_step_completed.connect(_on_album_first_step)
+
 	super._ready()
 
 ## 加载专辑数据（异步，避免阻塞主线程）
 func _load_albums() -> void:
 	if not data_manager:
 		return
-	
-	_refresh_id += 1
-	var my_id := _refresh_id
-	
+
+	# 取消上一轮 in-flight build
+	_loader.cancel()
 	current_albums = data_manager.get_sorted_albums()
-	
+
 	# 启动 Loading 动画
 	if _loading_node:
 		_loading_node.start_rotation()
-	
+
 	# 异步刷新列表项（内部在首个 item 出现时自动停止 Loading）
-	await _refresh_display_async(my_id)
+	await _refresh_display_async()
 
 ## 配置变更时重新排序（deferred，避免阻塞 save 流程）
 func _on_config_changed(key: String, section: String, _value: Variant) -> void:
@@ -59,49 +72,51 @@ func _on_config_changed(key: String, section: String, _value: Variant) -> void:
 		call_deferred("_load_albums")
 
 
-## 异步刷新显示（逐帧创建列表项，避免卡顿）
-func _refresh_display_async(refresh_id: int) -> void:
+## 异步刷新显示（LazyListLoader 增量让帧 + 取消机制）
+func _refresh_display_async() -> void:
 	clear_items()
-	await get_tree().process_frame
-	
+
 	var is_active := UiStatMGR.current_state == UIStateManager.UIState.ALBUM_VIEW
 	var no_items := get_node_or_null("/root/Main/skew/C/NoItems")
-	
+
 	if current_albums.is_empty():
 		if _loading_node:
 			_loading_node.stop_rotation()
 		if no_items and is_active:
 			no_items.visible = true
 		return
-	
+
 	# 列表非空，隐藏空提示
 	if no_items:
 		no_items.visible = false
-	
-	var counter := 0
-	var bg := ButtonGroup.new()
-	for album in current_albums:
-		if refresh_id != _refresh_id:
-			return  # 被新的刷新请求中断
-		
-		var item = create_and_add_item(album.id, "album")
-		item.setup_with_album(self, album, counter, bg)
-		counter += 1
-		
-		# 第一批出来后立即隐藏 Loading
-		if counter == 1 and _loading_node:
-			_loading_node.stop_rotation()
-			create_tween().tween_property(self, "modulate:a", 1.0, 0.3)
-		
-		# 每 3 个专辑释放一帧，保持 UI 响应
-		if counter % 3 == 0:
-			await get_tree().process_frame
-	
-	if refresh_id != _refresh_id:
-		return
-	
-	if counter:
+
+	_album_build_counter = 0
+	_album_build_bg = ButtonGroup.new()
+	var completed: bool = await _loader.build(current_albums.size(), _create_album_item)
+	if not completed:
+		return  # 被取消（新的 _load_albums 触发）
+	if _album_build_counter:
 		_connect_head_and_tail()
+		# 列表构建完成，触发封面涟漪加载（首次进入或刷新后）
+		trigger_cover_chain()
+
+
+## AlbumView 工厂：创建一个专辑列表项
+func _create_album_item(index: int) -> Variant:
+	var album: AlbumData = current_albums[index]
+	var item = create_and_add_item(album.id, "album")
+	if item:
+		item.setup_with_album(self, album, _album_build_counter, _album_build_bg)
+		_album_build_counter += 1
+		return [item]
+	return []
+
+
+## 首个专辑项出现时：停止 Loading + fade-in
+func _on_album_first_step() -> void:
+	if _loading_node:
+		_loading_node.stop_rotation()
+	create_tween().tween_property(self, "modulate:a", 1.0, 0.3)
 
 func _process(delta):
 	super._process(delta)

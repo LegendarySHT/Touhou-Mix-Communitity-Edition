@@ -19,8 +19,14 @@ func _ready() -> void:
 	if not data_manager or not event_bus:
 		push_error("SongView: Missing manager instances")
 		return
-	
+
 	work_state = UIStateManager.UIState.SONG_VIEW
+	# 设置直接相邻状态：切到不在此集合的状态时释放所有列表项封面
+	# SONG_VIEW 相邻：ALBUM_VIEW（返回）、MIDI_VIEW（点进歌曲）
+	set_adjacent_states([
+		UIStateManager.UIState.ALBUM_VIEW,
+		UIStateManager.UIState.MIDI_VIEW,
+	])
 	# 连接事件
 	event_bus.album_selected.connect(_load_songs)
 	event_bus.midi_deleted.connect(func(_id): if not current_album_id.is_empty(): _load_songs(current_album_id))
@@ -79,6 +85,8 @@ func _refresh_display() -> void:
 		if item:
 			item.setup_with_song(self, song, counter, bg)
 			counter += 1
+	# 列表构建完成，触发封面涟漪加载
+	trigger_cover_chain()
 
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)

@@ -47,8 +47,11 @@ var soundfonts_index: Dictionary = {}
 ## 背景图索引 {background_name: String(path)}
 var backgrounds_index: Dictionary = {}
 
-## 封面纹理缓存 {cover_path: Texture2D}
-## 避免同一封面文件被反复从磁盘加载（尤其是 user:// 路径每次都会创建新 ImageTexture）
+## 封面纹理弱引用缓存 {cover_path: WeakRef}
+## 用 WeakRef 而非强引用：列表项释放 cover_texture.texture=null 后，
+## Texture 引用计数归零自动 GC，缓存中的 WeakRef 随之失效，下次重新加载
+## 多列表项共享同一 Texture 时，只要任一项仍引用，WeakRef 即有效（命中缓存零开销）
+## WeakRef 失效时 _load_cover_with_cache 会自动 erase 条目，Dictionary 不会无限增长
 var _cover_texture_cache: Dictionary = {}
 
 ## ========== 反向索引 ==========
@@ -888,16 +891,21 @@ func get_cover_by_midiData(midi: MidiData) -> Texture2D:
 		return _load_cover_with_cache(path)
 	return _load_cover_with_cache(DEFAULT_COVER_PATH)
 
-## 带缓存的封面纹理加载
-## 同 path 多次调用只从磁盘加载一次，后续直接返回缓存引用
+## 带弱引用缓存的封面纹理加载
+## 同 path 多次调用：若上次加载的 Texture 仍被列表项引用（WeakRef 有效），直接返回，零读盘开销
+## 若 Texture 已被 GC（所有列表项都释放了），WeakRef 失效，重新从磁盘加载并清理失效条目
 func _load_cover_with_cache(path: String) -> Texture2D:
 	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
-	# 命中缓存：直接返回（res:// 有 ResourceLoader 内建缓存，user:// 靠本字典）
+	# 命中缓存：通过 WeakRef 取回 Texture
 	if _cover_texture_cache.has(path):
-		var cached = _cover_texture_cache[path]
-		if is_instance_valid(cached):
-			return cached
-		_cover_texture_cache.erase(path)  # 已失效的弱引用清理
+		var weak := _cover_texture_cache[path] as WeakRef
+		if weak:
+			var cached = weak.get_ref()
+			if cached and is_instance_valid(cached):
+				# WeakRef 仍有效（有列表项引用此 Texture）：直接返回
+				return cached
+		# WeakRef 失效（Texture 已被 GC）：清理缓存条目
+		_cover_texture_cache.erase(path)
 
 	var texture: Texture2D = null
 	# 区分 res:// 和 user:// 路径
@@ -915,10 +923,12 @@ func _load_cover_with_cache(path: String) -> Texture2D:
 			return _load_cover_with_cache(DEFAULT_COVER_PATH)
 
 	if texture:
-		_cover_texture_cache[path] = texture
+		# 缓存 WeakRef：不持有强引用，Texture 随列表项引用计数归零自动 GC
+		_cover_texture_cache[path] = weakref(texture)
 	return texture
 
 ## 清除封面纹理缓存（封面文件更新后调用）
+## 注：WeakRef 方案下，Texture 生命周期由列表项引用计数决定，此方法仅清空 Dictionary 条目
 func clear_cover_cache() -> void:
 	_cover_texture_cache.clear()
 

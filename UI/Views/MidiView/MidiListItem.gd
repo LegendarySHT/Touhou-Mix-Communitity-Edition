@@ -137,7 +137,7 @@ func on_item_button_toggled(toggled_on: bool):
 		else:
 			parent_node.need_snap = true
 			# 指示器移到新选中项
-			create_tween().tween_property(indicator_node, "position", Vector2(30, 100 - item_index * 24), 0.35)
+			create_tween().tween_property(indicator_node, "offset_transform_position:y", 100 - item_index * 24, 0.35)
 		_update_data_display()
 
 ## 设置展开/收起（由 MidiList._show_midi_list 批量调用）

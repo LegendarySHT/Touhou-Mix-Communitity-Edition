@@ -14,6 +14,11 @@ var _last_scroll_vertical := 0
 
 func _ready() -> void:
 	work_state = UIStateManager.UIState.STORE_VIEW
+	# 设置直接相邻状态：切到不在此集合的状态时释放所有列表项封面
+	# STORE_VIEW 相邻：ALBUM_VIEW（侧栏返回）
+	set_adjacent_states([
+		UIStateManager.UIState.ALBUM_VIEW,
+	])
 	super._ready()
 
 	# TopBar/Bottom 的进入动画由 AnimationManager.animate_ui_in("Store_View") 负责，

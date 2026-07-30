@@ -31,8 +31,8 @@ border_width_bottom = 5
 border_color = Color(0.97, 0.97, 0.97, 0.6392157)
 
 [node name="MidiNode" type="MarginContainer" unique_id=1152888699]
-clip_contents = true
 custom_minimum_size = Vector2(900, 150)
+clip_contents = true
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -42,13 +42,14 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
+offset_transform_enabled = true
 script = ExtResource("1_sx7kd")
 metadata/index = 0
 metadata/_edit_use_anchors_ = true
 
 [node name="Panel" type="Panel" parent="." unique_id=1010215680]
-clip_contents = true
 custom_minimum_size = Vector2(900, 150)
+clip_contents = true
 layout_mode = 2
 mouse_filter = 1
 
@@ -60,6 +61,7 @@ offset_bottom = 900.0
 grow_horizontal = 2
 pivot_offset = Vector2(0, 350)
 size_flags_vertical = 0
+offset_transform_enabled = true
 mouse_filter = 2
 texture = ExtResource("2_aaj07")
 expand_mode = 5

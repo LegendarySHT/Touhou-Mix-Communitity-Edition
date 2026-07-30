@@ -26,22 +26,31 @@ func _ready() -> void:
 
 	await init_finished
 	enable_selected_animation(button, parent_node)
+	# 直接开始加载封面（不等列表构建完毕）
+	start_cover_load()
 
 # 设置midi数据 传入无效值时重置
 func set_display(midi: MidiData = null) -> void:
+	var midi_changed: bool = midi_data != midi
 	midi_data = midi
 	var enable:bool = true if midi else false
 	get_node("CoverPanel").visible = enable
 	get_node("InfoPanel").visible = enable
 	if enable:
-		cover_texture.texture = _load_midi_cover(midi)
 		title_text.text = midi.name
 		author_text.text = midi.artist_name
 		uploader.text = midi.uploader_name
 		album_name.text = "null" if not midi.album_data else midi.album_data.name
 		song_name.text = "null" if not midi.song_data else midi.song_data.name
+	# midi 变化（含从 null 切到非 null）时刷新封面：先释放旧封面，再立即加载新封面
+	if midi_changed:
+		release_cover()
+		if enable:
+			start_cover_load()
 	init_finished.emit()
 
-# 封面加载
-func _load_midi_cover(midi: MidiData):
-	return FileSystemManager.instance.get_cover_by_midiData(midi)	
+## 重写基类虚函数：返回 MIDI 封面 Texture2D
+func _get_cover_texture() -> Texture2D:
+	if not midi_data:
+		return null
+	return FileSystemManager.instance.get_cover_by_midiData(midi_data)

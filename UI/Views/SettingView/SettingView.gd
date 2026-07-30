@@ -236,6 +236,11 @@ func switch_page(direction: int = 0):
 
 	setting_page.visible = op
 	delete_page.visible = not op
+	# DelView 生命周期钩子：进入时触发懒加载构建，返回设置主页时保留节点
+	if op:
+		delete_page.on_exited_to_setting_list()
+	else:
+		delete_page.on_entered()
 
 func has_pending_changes() -> bool:
 	return setting_list and setting_list.has_pending_changes()
@@ -243,3 +248,4 @@ func has_pending_changes() -> bool:
 func switch_page_instant() -> void:
 	setting_page.visible = true
 	delete_page.visible = false
+	delete_page.on_exited_to_setting_list()

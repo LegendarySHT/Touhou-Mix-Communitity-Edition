@@ -35,7 +35,10 @@ func _ready() -> void:
 	album_name_label.text = " %s" % album_data.name if album_data.name else "Unknown"
 	song_count_label.text = "%d" % album_data.song_ids.size()
 
-	_load_cover_image()
+	# 直接开始加载封面（不等列表构建完毕）
+	# 命中 WeakRef 缓存时零开销；未命中时同步读盘，但每项创建间隔由 LazyListLoader 控制不阻塞
+	# 列表的 trigger_cover_chain 仍处理"释放后重载"场景（状态切换回视图时）
+	start_cover_load()
 	# 启动文字滚动动画（如名称过长）
 	call_deferred("setup_name_scroll")
 
@@ -48,30 +51,27 @@ func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: Button
 
 	button = get_node(ALBUMBUTTON)
 	button.button_group = bg
-	
+
 	enable_selected_animation(button, parent)
 
 	_init_fin.emit()
 
-## 加载封面图片：选择专辑下首个存在封面的 MIDI，否则默认
-func _load_cover_image() -> void:
-	if not cover_texture:
-		push_error("Cover texture not found.")
-		return
-
+## 重写基类虚函数：返回专辑封面 Texture2D
+## 选择专辑下首个歌曲的首个 MIDI 的封面，否则由 FileSystemManager 返回默认封面
+func _get_cover_texture() -> Texture2D:
+	if not album_data:
+		return null
 	var fs_mgr := FileSystemManager.instance
 	var data_mgr := DataMGR
 	if not fs_mgr or not data_mgr:
-		push_error("FileSystemManager or DataManager not found.")
-		return
-
+		return null
 	var songs := data_mgr.get_songs_by_album(album_data.id)
 	if songs.is_empty():
-		return
+		return null
 	var midis := data_mgr.get_midis_by_song(songs[0].id)
 	if midis.is_empty():
-		return
-	cover_texture.texture = fs_mgr.get_cover_by_midiData(midis[0])
+		return null
+	return fs_mgr.get_cover_by_midiData(midis[0])
 
 ## 专辑按钮切换回调
 func on_item_button_toggled(toggled_on: bool) -> void:

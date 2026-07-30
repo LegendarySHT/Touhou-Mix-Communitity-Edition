@@ -42,6 +42,11 @@ var scroll_control_state: ScrollControlState:
 var list_items: Array[ListItemBase] = []
 var selected_item: int = -1 # 选中的项，或者snap的目标项
 
+## 本列表"工作状态"对应的"直接相邻状态"集合
+## 切到不在此集合的状态时，释放所有列表项封面
+## 由子类在 _ready 中通过 set_adjacent_states 设置
+var _adjacent_states: Array[UIStateManager.UIState] = []
+
 ## snap相关
 var need_snap: bool = false # 吸附请求标志
 var snap_offset_y: float = 500 # 吸附偏移量
@@ -80,6 +85,11 @@ func _ready() -> void:
 
 func _on_scroll_stable():
 	_scroll_stable = true
+	# 滚动稳定后，若视区内仍有 pending 项，重新触发涟漪（起点为视区中心最近 pending 项）
+	# 覆盖"用户快速滚到远处，涟漪未传到"的场景
+	# trigger_cover_chain 全程同步无 await，无需重入防护
+	if _items_process_enabled:
+		trigger_cover_chain()
 
 ## 外部查询：当前是否正在滚动（用于封面视差等效果）
 func is_scrolling() -> bool:
@@ -90,12 +100,26 @@ func _on_v_scrollbar_changed(_value: float):
 	if work_state in [UIStateManager.UIState.ALBUM_VIEW] and _is_dragging_bar:
 		call_deferred("reset_selection")
 
+## 设置直接相邻状态（用于判定状态切换时是否释放封面）
+## 子类在 _ready 中调用，传入与本视图直接相邻的所有 UIState
+func set_adjacent_states(states: Array[UIStateManager.UIState]) -> void:
+	_adjacent_states = states
+
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == work_state
 
 	# TRACK_VIEW 和 SETTINGS_VIEW 不需要 BaseScrollList 的触摸/滚动逻辑
 	if work_state in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
 		enable = false
+
+	# 状态切换封面释放/重载逻辑（仅对设置了邻接状态的列表生效）
+	if work_state != UIStateManager.UIState.NONE and not _adjacent_states.is_empty():
+		if state == work_state:
+			# 回到本视图：触发涟漪加载（起点为 selected_item 或视区中心最近 pending 项）
+			_schedule_cover_reload()
+		elif not (state in _adjacent_states):
+			# 切到不直接相邻的状态：立即释放所有封面
+			_release_all_covers()
 
 	# 状态未变化时提前返回，避免重复遍历 list_items 和无谓的 set_process 调用
 	if enable == _items_process_enabled:
@@ -114,6 +138,104 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	# 聚焦列表项
 	if enable:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
+
+## 释放所有列表项封面（切到不直接相邻状态时调用）
+## FileSystemManager 用 WeakRef 缓存 Texture：列表项 texture=null 后引用计数归零，
+## Texture 自动 GC，无需手动 clear_cover_cache
+func _release_all_covers() -> void:
+	for item in list_items:
+		if is_instance_valid(item) and item is CoverListItemBase:
+			(item as CoverListItemBase).release_cover()
+
+## 回到本视图时，触发涟漪加载
+## 起点确定顺序：selected_item（若 pending）→ 视区中心最近 pending 项 → 第一个 pending 项
+func _schedule_cover_reload() -> void:
+	# 标记所有未加载项为 pending（release_cover 已标记，这里兼容首次进入）
+	for item in list_items:
+		if is_instance_valid(item) and item is CoverListItemBase:
+			(item as CoverListItemBase).request_cover_load()
+	# 延迟一帧触发，确保布局已稳定（global_position 有效）
+	call_deferred("trigger_cover_chain")
+
+## 触发涟漪加载：确定起点项并调用其 start_cover_load
+## 起点加载完后 emit cover_loaded，由 _on_item_cover_loaded 转发给相邻 pending 项
+## 全程同步无 await，无需重入防护
+func trigger_cover_chain() -> void:
+	if not _items_process_enabled:
+		return
+	if list_items.is_empty():
+		return
+
+	var start_idx: int = -1
+	# 1. 优先 selected_item（若 pending）
+	if selected_item >= 0 and selected_item < list_items.size():
+		var sel := list_items[selected_item] as CoverListItemBase
+		if sel and is_instance_valid(sel) and sel._cover_load_pending:
+			start_idx = selected_item
+	# 2. 视区中心最近的 pending 项
+	if start_idx < 0:
+		start_idx = _find_nearest_pending_to_view_center()
+	# 3. fallback：第一个 pending 项
+	if start_idx < 0:
+		start_idx = _find_first_pending()
+
+	if start_idx >= 0:
+		var start_item := list_items[start_idx] as CoverListItemBase
+		if start_item and is_instance_valid(start_item):
+			start_item.start_cover_load()
+
+## 找视区中心最近的 pending 项索引
+func _find_nearest_pending_to_view_center() -> int:
+	var view_center_y: float = global_position.y + size.y * 0.5
+	var best_idx: int = -1
+	var best_dist: float = INF
+	for i in list_items.size():
+		var item := list_items[i]
+		if not is_instance_valid(item) or not (item is CoverListItemBase):
+			continue
+		var cb := item as CoverListItemBase
+		if not cb._cover_load_pending:
+			continue
+		var dist: float = abs(cb.global_position.y + cb.size.y * 0.5 - view_center_y)
+		if dist < best_dist:
+			best_dist = dist
+			best_idx = i
+	return best_idx
+
+## 找第一个 pending 项索引（视区中心找不到时 fallback）
+func _find_first_pending() -> int:
+	for i in list_items.size():
+		var item := list_items[i]
+		if not is_instance_valid(item) or not (item is CoverListItemBase):
+			continue
+		if (item as CoverListItemBase)._cover_load_pending:
+			return i
+	return -1
+
+## 收到列表项 cover_loaded 信号：转发给相邻（idx±1）的 pending 项
+## 用 call_deferred 传播，避免同帧递归过深；命中缓存零开销，未命中自然分散到下一帧
+func _on_item_cover_loaded(idx: int) -> void:
+	if not _items_process_enabled:
+		return
+	# 向下查找第一个 pending 项（跳过已加载区域，避免涟漪在已加载区断裂）
+	_trigger_next_pending_from(idx + 1, 1)
+	# 向上查找第一个 pending 项
+	_trigger_next_pending_from(idx - 1, -1)
+
+## 从 start_idx 沿 direction 方向查找第一个 pending 项并触发加载
+## 跳过已加载/非 CoverListItemBase 项，确保涟漪能跨越已加载区域传到 pending 项
+## 每个方向只触发一个 pending 项，等它加载完 emit 信号后继续传播（自然分帧）
+func _trigger_next_pending_from(start_idx: int, direction: int) -> void:
+	var i: int = start_idx
+	while i >= 0 and i < list_items.size():
+		var item := list_items[i]
+		if is_instance_valid(item) and item is CoverListItemBase:
+			var cb := item as CoverListItemBase
+			if cb._cover_load_pending:
+				# call_deferred 传播：命中缓存时同帧完成，未命中时自然分散到下一帧
+				cb.call_deferred("start_cover_load")
+				return  # 只触发第一个 pending 项，等它加载完再继续传播
+		i += direction
 
 func _process(delta: float) -> void:
 	if container == null:
@@ -263,6 +385,9 @@ func add_list_item(item: ListItemBase) -> void:
 	# 同步父列表的 _process 状态，避免不可见视图中新建的项每帧仍跑 _process
 	item.set_process(is_processing())
 	list_items.append(item)
+	# 连接封面加载完成信号，用于涟漪传播到相邻 pending 项
+	if item is CoverListItemBase:
+		(item as CoverListItemBase).cover_loaded.connect(_on_item_cover_loaded)
 
 ## 创建并添加列表项
 func create_and_add_item(item_id: String, item_type: String = "") -> ListItemBase:
