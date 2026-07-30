@@ -288,9 +288,10 @@ func _modify_button_colors(btn: Button, pri_light: Color, fancy_focus: bool) -> 
 				sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.4)
 
 ## 修改 albumNode 的 item_instance 上的共享 StyleBoxFlat
+## AlbumButton 本身即根节点 Button（原 Panel + 子 Button 已合并）
 func _style_album_instance(item: Control, pri_light: Color) -> void:
 	# AlbumButton — pressed/hover/focus 的颜色
-	var btn := item.get_node_or_null("AlbumButton") as Button
+	var btn := item as Button
 	if btn:
 		_modify_button_colors(btn, pri_light, true)
 
@@ -302,6 +303,7 @@ func _style_album_instance(item: Control, pri_light: Color) -> void:
 			sb.bg_color = pri_light
 
 ## 修改 songNode 的 item_instance
+## SongButton 本身即根节点 Button（原 Panel + 子 Button 已合并）
 func _style_song_instance(item: Control, pri_light: Color) -> void:
 	# HBoxC/SongCount — normal StyleBoxFlat.bg_color（共享引用，duplicate 子项自动同步）
 	var song_count := item.get_node_or_null("HBoxC/SongCount") as Label
@@ -311,22 +313,23 @@ func _style_song_instance(item: Control, pri_light: Color) -> void:
 			sb.bg_color = pri_light
 
 	# SongButton
-	var btn := item.get_node_or_null("SongButton") as Button
+	var btn := item as Button
 	if btn:
 		_modify_button_colors(btn, pri_light, true)
 
 ## 修改 sortedMidiNode 的 item_instance
-## 边框已合并进 Button 的 normal/pressed/hover StyleBoxFlat，无需单独 Border 节点
+## MidiNode 本身即 Button（原 Panel + 子 Button 已合并），直接对 item 应用样式
 func _style_sorted_midi_instance(item: Control, pri_light: Color) -> void:
-	# Button（简洁焦点，不修改 shadow）
-	var btn := item.get_node_or_null("Button") as Button
-	if btn:
-		_modify_button_colors(btn, pri_light, false)
-		# 边框颜色应用到 normal/pressed/hover（原 Border 节点的职责）
-		for state in ["normal", "hover", "pressed"]:
-			var sb := btn.get_theme_stylebox(state)
-			if sb is StyleBoxFlat:
-				sb.border_color = pri_light
+	var btn := item as Button
+	if not btn:
+		return
+	# 简洁焦点，不修改 shadow
+	_modify_button_colors(btn, pri_light, false)
+	# 边框颜色应用到 normal/pressed/hover（原 Border 节点的职责）
+	for state in ["normal", "hover", "pressed"]:
+		var sb := btn.get_theme_stylebox(state)
+		if sb is StyleBoxFlat:
+			sb.border_color = pri_light
 
 
 ## 统一设置按钮三种状态的 bg_color（通过 Theme 的 StyleBoxFlat 引用）

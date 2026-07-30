@@ -57,7 +57,7 @@ func setup_with_song(parent: SongView, song: SongData, index: int, bg: ButtonGro
 	item_type = "song"
 	item_index = index
 
-	button = get_node("SongButton")
+	button = self
 	button.button_group = bg
 
 	enable_selected_animation(button, parent)

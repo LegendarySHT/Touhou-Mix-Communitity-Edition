@@ -4,7 +4,8 @@ extends ListItemBase
 var player_uid
 
 func _ready() -> void:
-	get_node("Button").pressed.connect(_on_btn_pressed)
+	# ScoreNode 本身即 Button（原 Panel + 子 Button 已合并）
+	self.pressed.connect(_on_btn_pressed)
 
 func setup_score(rank, score, scoreRank, accuracy, pp: float, perfect_ctn: int, great_ctn: int, good_ctn: int, bad_ctn: int, miss_ctn: int):
 	get_node("Rank").text = str(rank)

@@ -5,10 +5,9 @@ extends CoverListItemBase
 class_name SortedMidiListItem
 
 ## 引用节点
-@onready var status_label: Label = $HBoxC/status
+@onready var status_label: Label = $MidiName/status
 @onready var midi_name_label: Label = $MidiName
-@onready var author_label: Label = $HBoxC/Author
-@onready var line: Line2D = $HBoxC/Line2D
+@onready var author_label: Label = $MidiName/Author
 # cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
 
 @onready var state_manager:UIStateManager = UiStatMGR
@@ -58,9 +57,9 @@ func setup_with_midi(midi: MidiData, index: int, bg:ButtonGroup) -> void:
 	item_type = "sorted_midi"
 	item_index = index
 
-	# 初始化按钮（复用时 button 已存在，跳过重复初始化）
+	# 初始化按钮（MidiNode 本身即 Button，复用时已初始化，跳过重复初始化）
 	if not button:
-		button = get_node("Button")
+		button = self
 		enable_selected_animation(button, get_node("/root/Main/skew/C/SortedMidisList"))
 	button.button_group = bg
 

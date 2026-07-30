@@ -9,7 +9,6 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 @onready var midi_name_label: Label = $VBoxC/NameBox/MidiName
 @onready var name_box: Control = $VBoxC/NameBox
 @onready var author_label: Label = $VBoxC/HBoxC/Author
-@onready var line: Line2D = $VBoxC/Line2D
 @onready var cover: TextureRect = $cover
 
 ## MIDI数据
@@ -86,7 +85,7 @@ func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg: ButtonGro
 	item_type = "midi"
 	item_index = index
 
-	button = get_node("Button")
+	button = self
 	button.button_group = bg
 
 	init_btn(button, parent)
@@ -150,9 +149,7 @@ func set_expanded(expanded: bool) -> void:
 	expand_tween.set_trans(Tween.TRANS_QUINT)
 	expand_tween.set_parallel(true)
 	expand_tween.tween_property(self, "custom_minimum_size", Vector2(750, 150 + 240 * expa), 0.35)
-	expand_tween.tween_property(get_node("VBoxC/MC"), "theme_override_constants/margin_bottom", 20 * expa, 0.15)
 	expand_tween.tween_property(midi_name_label, "theme_override_font_sizes/font_size", 30 + 10 * expa, 0.25)
-	expand_tween.tween_property(line, "position", Vector2(-50, 12 - 5 * expa), 0.15)
 	# 指示器颜色
 	var indicator_node := get_node(INDICATOR)
 	var primary_dark := Color(0.129, 0.412, 0.702)

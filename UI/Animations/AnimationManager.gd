@@ -423,8 +423,8 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 
 				copy.position = skew.to_local(sItem.global_position)
 
-				# 设置节点
-				var button: Button = copy.get_node("AlbumButton")
+				# 设置节点（AlbumButton 即根节点本身，原 Panel + 子 Button 已合并）
+				var button := copy as Button
 				button.button_group=null
 				button.toggle_mode=false
 
@@ -572,7 +572,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 
 			# 不要问为什么在播放动画的地方做初始化
 			if SS:
-				var button=SS.get_node("AlbumButton")
+				var button := SS as Button
 				var ui: UIStateManager = UiStatMGR
 				button.pressed.connect(func() -> void:
 					ui.change_state(ui.UIState.ALBUM_VIEW))

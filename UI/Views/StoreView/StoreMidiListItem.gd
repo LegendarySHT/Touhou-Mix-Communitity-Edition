@@ -1,11 +1,21 @@
 extends CoverListItemBase
 
+const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
+
 # cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
-@onready var title_text:Label = $InfoPanel/MidiName
-@onready var author_text:Label = $InfoPanel/Author
+# MidiName / Author 在 CoverPanel/Panel 下；Uploader / AlbumName / SongName 在 InfoPanel 下
+@onready var title_text:Label = $CoverPanel/Panel/MidiName
+@onready var author_text:Label = $CoverPanel/Panel/Author
 @onready var uploader:Label = $InfoPanel/Uploader
 @onready var album_name:Label = $InfoPanel/AlbumName
 @onready var song_name:Label = $InfoPanel/SongName
+
+# 文字滚动状态（每 Label 独立）
+var _title_scroll_state: TextScrollHelper.State = null
+var _author_scroll_state: TextScrollHelper.State = null
+var _uploader_scroll_state: TextScrollHelper.State = null
+var _album_scroll_state: TextScrollHelper.State = null
+var _song_scroll_state: TextScrollHelper.State = null
 
 signal init_finished
 
@@ -15,7 +25,8 @@ var midi_data:MidiData
 func _ready() -> void:
 	cover_texture = $CoverPanel/cover
 	_parallax_enabled = false
-	button = get_node_or_null("Button")
+	# StoreMidiNode 本身即 Button（原 PanelContainer + 子 Button 已合并）
+	button = self
 	parent_node = get_node("/root/Main/Store/StoreMidiList")
 
 	# 直接bind参数会传初始化时的值有点难绷
@@ -47,7 +58,22 @@ func set_display(midi: MidiData = null) -> void:
 		release_cover()
 		if enable:
 			start_cover_load()
+	# 文本变化后重算滚动（仅在有数据时）
+	if enable:
+		call_deferred("_setup_text_scrolls")
 	init_finished.emit()
+
+## 启动/重算所有标签的文字滚动
+## await 一帧让布局稳定，确保 clip 容器 size 正确
+func _setup_text_scrolls() -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().process_frame
+	_title_scroll_state = TextScrollHelper.setup(title_text, title_text.get_parent(), title_text.text, _title_scroll_state)
+	_author_scroll_state = TextScrollHelper.setup(author_text, author_text.get_parent(), author_text.text, _author_scroll_state)
+	_uploader_scroll_state = TextScrollHelper.setup(uploader, uploader.get_parent(), uploader.text, _uploader_scroll_state)
+	_album_scroll_state = TextScrollHelper.setup(album_name, album_name.get_parent(), album_name.text, _album_scroll_state)
+	_song_scroll_state = TextScrollHelper.setup(song_name, song_name.get_parent(), song_name.text, _song_scroll_state)
 
 ## 重写基类虚函数：返回 MIDI 封面 Texture2D
 func _get_cover_texture() -> Texture2D:

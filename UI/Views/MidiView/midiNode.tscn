@@ -4,8 +4,6 @@
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_jdrqc"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_jdrqc"]
 
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yxlt8"]
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yxlt8"]
 draw_center = false
 border_width_left = 5
@@ -14,24 +12,22 @@ border_width_right = 5
 border_width_bottom = 5
 border_blend = true
 
-[node name="MidiNode" type="Panel" unique_id=1462937211]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3y6u5"]
+bg_color = Color(1, 1, 1, 1)
+
+[node name="MidiNode" type="Button" unique_id=188973569]
 custom_minimum_size = Vector2(750, 150)
 clip_contents = true
 anchors_preset = -1
-anchor_right = 0.9479167
-anchor_bottom = 1.0
-offset_top = -381.5
-offset_right = -1020.0
-offset_bottom = -1271.5
-grow_horizontal = 2
+offset_right = 8.0
+offset_bottom = 8.0
 grow_vertical = 2
-pivot_offset = Vector2(0, 75)
-size_flags_vertical = 0
 mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxEmpty_yxlt8")
+theme_override_styles/focus = SubResource("StyleBoxFlat_yxlt8")
+toggle_mode = true
+flat = true
 script = ExtResource("1_t5w3i")
 metadata/index = 0
-metadata/_edit_use_anchors_ = true
 
 [node name="cover" type="TextureRect" parent="." unique_id=1008069035]
 custom_minimum_size = Vector2(0, 150)
@@ -41,23 +37,25 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 texture = ExtResource("2_jdrqc")
 expand_mode = 5
 stretch_mode = 6
 
 [node name="VBoxC" type="VBoxContainer" parent="." unique_id=567127082]
+custom_minimum_size = Vector2(0, 110)
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -114.0
+offset_top = -93.0
 grow_horizontal = 2
 grow_vertical = 0
-alignment = 1
+mouse_filter = 2
 
 [node name="NameBox" type="Control" parent="VBoxC" unique_id=2113026605]
-custom_minimum_size = Vector2(700, 50)
+custom_minimum_size = Vector2(700, 45)
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 4
@@ -71,29 +69,29 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 1
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
 theme_override_fonts/font = ExtResource("3_jdrqc")
 theme_override_font_sizes/font_size = 30
 text = "Midi Name"
+vertical_alignment = 1
 
-[node name="Line2D" type="Line2D" parent="VBoxC" unique_id=491699227]
-position = Vector2(-50, 12)
-points = PackedVector2Array(70, 45, 780, 45)
-width = 6.0
-end_cap_mode = 2
+[node name="Line" type="Panel" parent="VBoxC" unique_id=2102406377]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_3y6u5")
 
 [node name="HBoxC" type="HBoxContainer" parent="VBoxC" unique_id=1276140823]
 custom_minimum_size = Vector2(700, 0)
 layout_mode = 2
 size_flags_horizontal = 4
+mouse_filter = 2
 
 [node name="Author" type="Label" parent="VBoxC/HBoxC" unique_id=282130580]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 8
-mouse_filter = 1
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
@@ -107,27 +105,8 @@ clip_text = true
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
-mouse_filter = 1
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
 theme_override_font_sizes/font_size = 30
 text = "Pending"
 horizontal_alignment = 2
-
-[node name="MC" type="MarginContainer" parent="VBoxC" unique_id=810258023]
-layout_mode = 2
-size_flags_vertical = 8
-theme_override_constants/margin_bottom = 0
-
-[node name="Button" type="Button" parent="." unique_id=188973569]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 1
-theme_override_styles/focus = SubResource("StyleBoxFlat_yxlt8")
-toggle_mode = true
-flat = true
-metadata/index = 0

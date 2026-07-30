@@ -1,61 +1,49 @@
 [gd_scene format=3 uid="uid://cmg2kkhga3yj5"]
 
 [ext_resource type="Script" uid="uid://dye4gnjw1k7du" path="res://UI/Views/AlbumView/AlbumListItem.gd" id="1_pxpjj"]
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_wrosb"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_j1pth"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fljdd"]
-bg_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-corner_detail = 5
-
-[sub_resource type="ImageTexture" id="ImageTexture_pxpjj"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_f1sag"]
-corner_radius_top_left = 65
-corner_radius_top_right = 65
-corner_radius_bottom_right = 65
-corner_radius_bottom_left = 65
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pxpjj"]
 draw_center = false
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_width_bottom = 5
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
 border_color = Color(0.41568628, 0.59607846, 1, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 corner_detail = 5
+expand_margin_bottom = 1.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j1pth"]
 bg_color = Color(0.18098986, 0.36878055, 0.8004749, 0.24705882)
 draw_center = false
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_width_bottom = 5
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 corner_detail = 5
+expand_margin_bottom = 1.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4cpa4"]
 bg_color = Color(0.28210002, 0.4809351, 0.91, 0.14509805)
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_width_bottom = 5
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 corner_detail = 5
+expand_margin_bottom = 1.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xpu1h"]
 draw_center = false
@@ -64,114 +52,33 @@ border_width_top = 8
 border_width_right = 8
 border_width_bottom = 8
 border_color = Color(0.97, 0.97, 0.97, 0.6392157)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 corner_detail = 5
-expand_margin_left = 3.0
-expand_margin_top = 3.0
-expand_margin_right = 3.0
-expand_margin_bottom = 3.0
+expand_margin_bottom = 1.0
 shadow_color = Color(0.31, 0.7354999, 1, 0.6)
 shadow_size = 10
 
-[node name="AlbumNode" type="Panel" unique_id=123505267]
-clip_children = 1
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_wrosb"]
+content_margin_top = 15.0
+color = Color(1, 1, 1, 1)
+grow_begin = -15.0
+grow_end = -15.0
+thickness = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_f1sag"]
+corner_radius_top_left = 65
+corner_radius_top_right = 65
+corner_radius_bottom_right = 65
+corner_radius_bottom_left = 65
+
+[node name="AlbumNode" type="Button" unique_id=1523238690]
 custom_minimum_size = Vector2(600, 150)
+clip_contents = true
 offset_right = 600.0
 offset_bottom = 150.0
-size_flags_horizontal = 0
-size_flags_vertical = 0
-offset_transform_enabled = true
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_fljdd")
-script = ExtResource("1_pxpjj")
-metadata/index = 0
-
-[node name="cover" type="TextureRect" parent="." unique_id=1027177707]
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 600.0
-grow_horizontal = 2
-pivot_offset = Vector2(0, 350)
-size_flags_vertical = 0
-offset_transform_enabled = true
-mouse_filter = 2
-texture = SubResource("ImageTexture_pxpjj")
-expand_mode = 5
-stretch_mode = 6
-metadata/_edit_use_anchors_ = true
-
-[node name="DecoratedLine" type="Line2D" parent="." unique_id=1372001257]
-position = Vector2(120, -335)
-scale = Vector2(0.867977, 0.838323)
-points = PackedVector2Array(-80, 777, 880, 777)
-end_cap_mode = 2
-
-[node name="NameBox" type="Control" parent="." unique_id=1507697287]
-custom_minimum_size = Vector2(0, 50)
-clip_contents = true
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 5.0
-offset_top = -55.0
-offset_right = -5.0
-offset_bottom = -8.0
-grow_horizontal = 2
-grow_vertical = 0
-offset_transform_enabled = true
-offset_transform_pivot_ratio = Vector2(0, 1)
-mouse_filter = 2
-
-[node name="AlbumName" type="Label" parent="NameBox" unique_id=1507697288]
-layout_mode = 1
-anchors_preset = -1
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 15.0
-offset_right = -15.0
-offset_bottom = -5.0
-grow_horizontal = 2
-grow_vertical = 2
-offset_transform_enabled = true
-mouse_filter = 1
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
-theme_override_constants/shadow_outline_size = 5
-theme_override_fonts/font = ExtResource("3_j1pth")
-theme_override_font_sizes/font_size = 25
-text = "Album Title"
-vertical_alignment = 2
-
-[node name="SongCount" type="Label" parent="." unique_id=1363493962]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -140.0
-offset_top = 10.0
-offset_right = -10.0
-offset_bottom = 140.0
-grow_horizontal = 0
-mouse_filter = 1
-theme_override_font_sizes/font_size = 60
-theme_override_styles/normal = SubResource("StyleBoxFlat_f1sag")
-text = "9"
-horizontal_alignment = 1
-vertical_alignment = 1
-metadata/_edit_use_anchors_ = true
-
-[node name="AlbumButton" type="Button" parent="." unique_id=1523238690]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
 focus_next = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
@@ -181,4 +88,77 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_j1pth")
 theme_override_styles/hover = SubResource("StyleBoxFlat_4cpa4")
 theme_override_styles/focus = SubResource("StyleBoxFlat_xpu1h")
 toggle_mode = true
+script = ExtResource("1_pxpjj")
 metadata/index = 0
+
+[node name="cover" type="TextureRect" parent="." unique_id=944910888]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 600.0
+grow_horizontal = 2
+pivot_offset = Vector2(0, 350)
+size_flags_vertical = 0
+offset_transform_enabled = true
+mouse_filter = 2
+texture = ExtResource("2_wrosb")
+expand_mode = 5
+stretch_mode = 6
+
+[node name="NameBox" type="Panel" parent="." unique_id=1931946045]
+self_modulate = Color(1, 1, 1, 0)
+show_behind_parent = true
+custom_minimum_size = Vector2(0, 70)
+clip_contents = true
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 9.0
+offset_top = -58.0
+offset_right = -12.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+offset_transform_enabled = true
+offset_transform_pivot_ratio = Vector2(0, 1)
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxLine_wrosb")
+
+[node name="AlbumName" type="Label" parent="NameBox" unique_id=1315589163]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_transform_enabled = true
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_outline_size = 5
+theme_override_fonts/font = ExtResource("3_j1pth")
+theme_override_font_sizes/font_size = 25
+text = "Album Title"
+vertical_alignment = 2
+
+[node name="SongCount" type="Label" parent="." unique_id=549591743]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -140.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 140.0
+grow_horizontal = 0
+theme_override_font_sizes/font_size = 60
+theme_override_styles/normal = SubResource("StyleBoxFlat_f1sag")
+text = "9"
+horizontal_alignment = 1
+vertical_alignment = 1
