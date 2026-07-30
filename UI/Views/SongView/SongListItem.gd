@@ -7,7 +7,7 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 ## 引用节点（需要根据实际场景结构调整）
 @onready var song_name_label: Label = $HBoxC/PN/NameBox/SongName
 @onready var name_box: Control = $HBoxC/PN/NameBox
-@onready var midi_count_label: Label = $HBoxC/CountBase/SongCount
+@onready var midi_count_label: Label = $HBoxC/SongCount
 @onready var cover: TextureRect = $HBoxC/PN/cover
 
 @onready var animation_manager: AnimationManager = AniMGR

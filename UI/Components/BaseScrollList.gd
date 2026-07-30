@@ -310,14 +310,3 @@ func _connect_head_and_tail() -> void:
 	node_h.focus_neighbor_left = node_t.get_path()
 	node_t.focus_neighbor_bottom = node_h.get_path()
 	node_t.focus_neighbor_right = node_h.get_path()
-
-## 刷新已有列表项的非共享属性颜色（如 albumNode 的 CountBase.self_modulate）
-## StyleBoxFlat 已在 item_instance 上修改，duplicate() 共享引用，无需逐项刷新
-func refresh_item_colors() -> void:
-	if ThemeMGR == null:
-		return
-	var pri_light := ThemeMGR.get_color("primary_light")
-	for item in list_items:
-		var count_base := item.get_node_or_null("PN/CountBase") as TextureRect
-		if count_base:
-			count_base.self_modulate = pri_light

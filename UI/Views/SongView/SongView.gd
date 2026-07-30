@@ -109,7 +109,7 @@ func _update_ss_count() -> void:
 	var ss_node = get_node_or_null("/root/Main/skew/SS")
 	if not is_instance_valid(ss_node):
 		return
-	var count_label = ss_node.get_node_or_null("CountBase/SongCount")
+	var count_label = ss_node.get_node_or_null("SongCount")
 	if is_instance_valid(count_label):
 		count_label.text = "%d" % album_data.song_ids.size()
 

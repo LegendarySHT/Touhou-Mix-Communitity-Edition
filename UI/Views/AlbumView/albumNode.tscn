@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://dye4gnjw1k7du" path="res://UI/Views/AlbumView/AlbumListItem.gd" id="1_pxpjj"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_j1pth"]
-[ext_resource type="Texture2D" uid="uid://co2vcj4yav5cd" path="res://Resources/icon/Count_Base.png" id="4_4cpa4"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fljdd"]
 bg_color = Color(1, 1, 1, 1)
@@ -13,6 +12,12 @@ corner_radius_bottom_left = 12
 corner_detail = 5
 
 [sub_resource type="ImageTexture" id="ImageTexture_pxpjj"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_f1sag"]
+corner_radius_top_left = 65
+corner_radius_top_right = 65
+corner_radius_bottom_right = 65
+corner_radius_bottom_left = 65
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pxpjj"]
 draw_center = false
@@ -109,6 +114,7 @@ end_cap_mode = 2
 custom_minimum_size = Vector2(0, 50)
 clip_contents = true
 layout_mode = 1
+anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -141,36 +147,22 @@ theme_override_font_sizes/font_size = 25
 text = "Album Title"
 vertical_alignment = 2
 
-[node name="CountBase" type="TextureRect" parent="." unique_id=465678710]
-self_modulate = Color(0.3647059, 0.6784314, 1, 1)
+[node name="SongCount" type="Label" parent="." unique_id=1363493962]
 layout_mode = 1
-anchors_preset = 1
+anchors_preset = -1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -145.0
-offset_top = 5.0
-offset_right = -5.0
-offset_bottom = 145.0
+offset_left = -140.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 140.0
 grow_horizontal = 0
-texture = ExtResource("4_4cpa4")
-
-[node name="SongCount" type="Label" parent="CountBase" unique_id=1363493962]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -16.5
-offset_top = -34.0
-offset_right = 16.5
-offset_bottom = 34.0
-grow_horizontal = 2
-grow_vertical = 2
-pivot_offset = Vector2(20, 42)
+mouse_filter = 1
 theme_override_font_sizes/font_size = 60
+theme_override_styles/normal = SubResource("StyleBoxFlat_f1sag")
 text = "9"
 horizontal_alignment = 1
+vertical_alignment = 1
 metadata/_edit_use_anchors_ = true
 
 [node name="AlbumButton" type="Button" parent="." unique_id=1523238690]
