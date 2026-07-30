@@ -54,8 +54,14 @@ func load_settings(setting: Dictionary = {}):
 
 		# 添加该组的所有设置项
 		for setting_data in group.settings:
+			# 跳过未实装的设置项（不创建 UI，实装后改 not_implemented=false 即可恢复）
+			if setting_data.get("not_implemented", false):
+				continue
 			var init_value = _pending_config.get(setting_data.id, setting_data.default_value)
 			add_setting_item(setting_data, init_value)
+
+	# 应用高级设置项可见性（根据 show_advanced_settings 的值）
+	_apply_advanced_visibility()
 
 var separators = []
 @onready var separator_scene = load(item_separator)
@@ -226,6 +232,8 @@ func _on_setting_value_changed(id: String, value: Variant):
 	# 即时可见性刷新
 	if id == "note_fall_mode":
 		set_note_fall_mode_and_show_custom_options(int(value))
+	elif id == "show_advanced_settings":
+		_apply_advanced_visibility()
 
 # 将 UI 控件返回的值转换为配置存储用的值（索引→文件名、类型转换等）
 # 返回 null 表示值不完整，调用方应跳过本次写入
@@ -596,6 +604,24 @@ func reset_to_defaults():
 					break
 
 ## ========== 可见性控制 ==========
+
+## 根据 show_advanced_settings 的值显示/隐藏所有标记为 advanced 的设置项
+## 高级设置项与 SettingItem（Key VBoxContainer）和其 value_node 是 grid 容器中的兄弟节点，需同时切换
+func _apply_advanced_visibility() -> void:
+	var show_advanced := int(_pending_config.get("show_advanced_settings", "0")) == 1
+	for group in setting_groups:
+		for setting_data in group.settings:
+			if not setting_data.get("advanced", false):
+				continue
+			var setting_id: String = setting_data.id
+			if not setting_items.has(setting_id):
+				continue
+			var setting_item: SettingItem = setting_items[setting_id]
+			if setting_item == null:
+				continue
+			setting_item.visible = show_advanced
+			if setting_item.value_node:
+				setting_item.value_node.visible = show_advanced
 
 ## 设置下落模式和控制自定义缓动选项的可见性
 func set_note_fall_mode_and_show_custom_options(mode: int) -> void:

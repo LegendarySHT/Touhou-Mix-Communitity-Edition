@@ -1,5 +1,11 @@
 ## 设置项分组静态数据
 ## 从 SettingList.gd 外移，纯数据无逻辑
+##
+## 设置项可选标记：
+## - "not_implemented": true  → 该项暂未实装，load_settings 时跳过创建 UI（不显示、不保存）
+##                              实装后改为 false 或删除该行即可恢复显示
+## - "advanced": true         → 该项为高级设置，由 "show_advanced_settings" 开关控制可见性
+##                              默认隐藏，开启"显示高级设置项"后显示
 class_name SettingGroupsData
 extends RefCounted
 
@@ -35,12 +41,25 @@ static func get_setting_groups() -> Array:
 				"option_values": ["asc", "desc"]
 			},
 			{
+				"id": "show_advanced_settings",
+				"name_en": "Show Advanced Settings",
+				"name_zh": "显示高级设置项",
+				"description": "控制是否显示部分玩家通常不需要调整的设置项（如显示调试信息、使用系统时钟、最大复音数、轨道光效质量）",
+				"type": "TYPE_OPTION",
+				"default_value": "0",
+				"options": [
+					{"text_en": "Off", "text_zh": "关闭"},
+					{"text_en": "On", "text_zh": "开启"}
+				]
+			},
+			{
 				"id": "display_debug_info",
 				"name_en": "Display Debug Info",
 				"name_zh": "显示调试信息",
 				"description": "在游玩界面实时显示FPS、渲染和内存状态",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
+				"advanced": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
@@ -53,6 +72,7 @@ static func get_setting_groups() -> Array:
 				"description": "选择no后，需要网络的功能不会运作",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
+				"not_implemented": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
@@ -65,6 +85,7 @@ static func get_setting_groups() -> Array:
 				"description": "选择游戏界面的语言",
 				"type": "TYPE_OPTION",
 				"default_value": "1",
+				"not_implemented": true,
 				"options": [
 					{"text_en": "English", "text_zh": "英文"},
 					{"text_en": "Chinese", "text_zh": "中文"}
@@ -77,6 +98,7 @@ static func get_setting_groups() -> Array:
 				"description": "输入服务器的地址",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "thmix.org",
+				"not_implemented": true,
 			},
 			{
 			"id": "reload_builtin_resources",
@@ -111,6 +133,7 @@ static func get_setting_groups() -> Array:
 				"description": "关闭后，音乐开始前不会有准备动画",
 				"type": "TYPE_OPTION",
 				"default_value": "1",
+				"not_implemented": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
@@ -123,6 +146,7 @@ static func get_setting_groups() -> Array:
 				"description": "调整音乐的播放倍率，数值越大速度越快",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "1.0",
+				"not_implemented": true,
 				"unit": "x"
 			},
 			{
@@ -153,6 +177,7 @@ static func get_setting_groups() -> Array:
 				"description": "通过使用系统时钟(硬件时钟)来提高精度，如果游戏内音频时而提前时而延后可以启用",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
+				"advanced": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
@@ -174,6 +199,7 @@ static func get_setting_groups() -> Array:
 				"description": "设置同时发声的最大音符数，较高的值音质更好但占用更多CPU资源，建议值：32/64/96/128",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "96",
+				"advanced": true,
 				"unit": "音符"
 			},
 			{
@@ -344,6 +370,7 @@ static func get_setting_groups() -> Array:
 				"description": "调整判定线距离屏幕底部的距离",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "200",
+				"not_implemented": true,
 				"unit": "px"
 			},
 			{
@@ -380,6 +407,7 @@ static func get_setting_groups() -> Array:
 				"description": "控制perfect评分的判定时间范围",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "0.05",
+				"not_implemented": true,
 				"unit": "ms"
 			},
 			{
@@ -389,6 +417,7 @@ static func get_setting_groups() -> Array:
 				"description": "控制great评分的判定时间范围",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "0.1",
+				"not_implemented": true,
 				"unit": "ms"
 			},
 			{
@@ -398,6 +427,7 @@ static func get_setting_groups() -> Array:
 				"description": "控制good评分的判定时间范围",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "0.15",
+				"not_implemented": true,
 				"unit": "ms"
 			},
 			{
@@ -407,6 +437,7 @@ static func get_setting_groups() -> Array:
 				"description": "控制bad评分的判定时间范围",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "0.2",
+				"not_implemented": true,
 				"unit": "ms"
 			}
 		]
@@ -602,6 +633,7 @@ static func get_setting_groups() -> Array:
 				"description": "随机设置下落音符的颜色。由于光柱特效的颜色与音符的颜色相同，所以当玩家使用自定义皮肤时该设置项相当于随机设置光柱特效的颜色",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
+				"not_implemented": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
@@ -614,6 +646,7 @@ static func get_setting_groups() -> Array:
 				"description": "使点块、滑块和长条的颜色统一，同时也会统一光柱特效的颜色，但打开此项后音符颜色无法随机",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
+				"not_implemented": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
@@ -625,7 +658,8 @@ static func get_setting_groups() -> Array:
 				"name_zh": "更改滑块颜色",
 				"description": "通过输入RGB颜色编码或颜色的英文名字来改变滑块及其光柱特效颜色",
 				"type": "TYPE_COLOR",
-				"default_value": "#FF6B6B"
+				"default_value": "#FF6B6B",
+				"not_implemented": true
 			},
 			{
 				"id": "short_block_color",
@@ -633,7 +667,8 @@ static func get_setting_groups() -> Array:
 				"name_zh": "更改点块颜色",
 				"description": "通过输入RGB颜色编码或颜色的英文名字来改变点块及其光柱特效颜色",
 				"type": "TYPE_COLOR",
-				"default_value": "#4ECDC4"
+				"default_value": "#4ECDC4",
+				"not_implemented": true
 			},
 			{
 				"id": "long_block_color",
@@ -641,7 +676,8 @@ static func get_setting_groups() -> Array:
 				"name_zh": "更改长条颜色",
 				"description": "通过输入RGB颜色编码或颜色的英文名字来改变长条及其光柱特效颜色",
 				"type": "TYPE_COLOR",
-				"default_value": "#45B7D1"
+				"default_value": "#45B7D1",
+				"not_implemented": true
 			},
 			{
 				"id": "custom_block_skin_texture_filter_mode",
@@ -650,6 +686,7 @@ static func get_setting_groups() -> Array:
 				"description": "更改对音符皮肤的渲染方式",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
+				"not_implemented": true,
 				"options": [
 					{"text_en": "Nearest", "text_zh": "Nearest"},
 					{"text_en": "Bilinear", "text_zh": "Bilinear"}
@@ -764,6 +801,7 @@ static func get_setting_groups() -> Array:
 				"description": "调整判定线厚度，不影响判定，只影响外观",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "2",
+				"not_implemented": true,
 				"unit": "px"
 			},
 			{
@@ -773,6 +811,7 @@ static func get_setting_groups() -> Array:
 				"description": "选择是否生成连接线，连接并排下落的点块、滑块和长条",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
+				"not_implemented": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
@@ -785,6 +824,7 @@ static func get_setting_groups() -> Array:
 				"description": "选择是否生成连接线，连接同一下落轨道内的时间差在设定范围内的数的音符",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
+				"not_implemented": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
@@ -797,6 +837,7 @@ static func get_setting_groups() -> Array:
 				"description": "设置被连接音符之间的最大时间间隔",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "0.5",
+				"not_implemented": true,
 				"unit": "s"
 			},
 			{
@@ -818,6 +859,7 @@ static func get_setting_groups() -> Array:
 				"description": "控制轨道光效的渲染策略。推荐使用Shader模式以降低Tween和GPU混合开销；Discard模式会更激进地裁剪弱贡献像素。",
 				"type": "TYPE_OPTION",
 				"default_value": "1",
+				"advanced": true,
 				"options": [
 					{"text_en": "Legacy", "text_zh": "传统"},
 					{"text_en": "Shader", "text_zh": "Shader"},
