@@ -7,7 +7,7 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 ## 引用节点路径
 @onready var album_name_label: Label = $NameBox/AlbumName
 @onready var name_box: Control = $NameBox
-@onready var song_count_label: Label = $CountBase/SongCount
+@onready var song_count_label: Label = $SongCount
 # cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
 
 ## 专辑数据

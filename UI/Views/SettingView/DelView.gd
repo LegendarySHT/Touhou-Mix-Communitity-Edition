@@ -1096,6 +1096,8 @@ func _on_bg_delete_selected() -> void:
 
 	for item in to_delete:
 		if FileSystemManager.instance.delete_background(item["path"]):
+			# 同步清除 ThemeManager 的背景图片缓存，避免缓存指向已删除文件
+			ThemeMGR.invalidate_background_cache(item["name"])
 			print("[DelView] 已删除背景: %s" % item["name"])
 		else:
 			push_error("[DelView] 删除失败: %s" % item["path"])

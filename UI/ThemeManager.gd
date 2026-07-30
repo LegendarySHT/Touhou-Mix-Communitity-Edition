@@ -8,7 +8,7 @@
 ## 外部接口：
 ##   ThemeMGR.get_color("primary")
 ##   ThemeMGR.apply_preset("pink")
-##   ThemeMGR.refresh_all()          # 主题变更后刷新全部
+##   ThemeMGR.refresh_theme_only()   # 主题变更后刷新主题色（不刷新背景）
 ##   ThemeMGR.refresh_backgrounds()  # 仅刷新背景（给设置界面）
 class_name ThemeManager
 extends Node
@@ -40,7 +40,9 @@ var _backgrounds: Dictionary = {}
 var _presets: Dictionary = {}
 var _theme_name: String = "default"
 var _loaded: bool = false
-var _background_texture_cache: Dictionary = {}  # {file_name: Texture2D}
+
+# 背景图片纹理缓存（file_name → Texture2D），避免主题切换时重复 Image.load_from_file 同步阻塞
+var _bg_image_cache: Dictionary = {}
 
 # 固定色 — 不从预设中读取
 const PANEL_BG := Color("#161A2E")       # 面板背景
@@ -61,8 +63,12 @@ func get_color(key: String, default: Color = Color.WHITE) -> Color:
 	return default
 
 func set_color(key: String, value: Color) -> void:
+	# 注意：此方法会立即同步落盘 + 触发完整主题刷新（含 4 帧分帧），
+	# 不适合连接到颜色选择器拖动等高频回调（每帧调用会堆叠 I/O 与 refresh 协程）。
 	_palette[key.to_lower()] = value
 	GLogger.info("Theme color changed: %s = %s" % [key, value.to_html(true)], "ThemeManager")
+	save_theme()
+	refresh_theme_only()
 	if EvtBus:
 		EvtBus.theme_changed.emit(_theme_name)
 
@@ -90,9 +96,12 @@ func apply_preset(preset_name: String) -> void:
 	_theme_name = preset_name
 	GLogger.info("主题预设已应用: %s (%d 色)" % [preset_name, _palette.size()], "ThemeManager")
 
+	# apply_preset 自身负责 save + refresh；emit theme_changed 仅通知外部监听者
+	# _on_theme_changed 收到信号时 _theme_name 已等于 preset_name，会跳过 re-apply 并跳过重复 save/refresh
+	save_theme()
+	refresh_theme_only()
 	if EvtBus:
 		EvtBus.theme_changed.emit(_theme_name)
-	save_theme()
 
 func set_palette_colors(pri: Color, pri_light: Color, pri_dark: Color) -> void:
 	_palette["primary"] = pri
@@ -100,9 +109,10 @@ func set_palette_colors(pri: Color, pri_light: Color, pri_dark: Color) -> void:
 	_palette["primary_dark"] = pri_dark
 	_theme_name = "custom"
 	GLogger.info("主题色已自定义设置", "ThemeManager")
+	save_theme()
+	refresh_theme_only()
 	if EvtBus:
 		EvtBus.theme_changed.emit(_theme_name)
-	save_theme()
 
 # ============ 主题加载/保存 ============
 
@@ -180,7 +190,7 @@ func set_view_background(view_name: String, config: Dictionary) -> void:
 		_backgrounds[prefix + key] = config[key]
 	GLogger.info("背景设置已更新: %s" % view_name, "ThemeManager")
 	save_theme()
-	# 仅刷新背景（不 emit theme_changed，避免触发 refresh_all 完整主题刷新导致卡顿）
+	# 仅刷新背景（不 emit theme_changed，避免触发 refresh_theme_only 完整主题刷新导致卡顿）
 	# PlayView 的 cover 模式由 PlayView 自己在切回 PLAY_VIEW 时通过 _apply_play_background 处理
 	refresh_backgrounds()
 
@@ -218,12 +228,12 @@ func apply_background(texture_rect: TextureRect, view_name: String) -> void:
 func load_background_image(file_name: String) -> Texture2D:
 	if file_name.is_empty():
 		return null
-	# 缓存命中检查
-	if _background_texture_cache.has(file_name):
-		var cached = _background_texture_cache[file_name]
+	# 缓存命中检查（同时校验纹理是否仍有效，避免引用已释放资源）
+	if _bg_image_cache.has(file_name):
+		var cached = _bg_image_cache[file_name]
 		if is_instance_valid(cached):
 			return cached
-		_background_texture_cache.erase(file_name)
+		_bg_image_cache.erase(file_name)
 	var full_path := PathHelper.get_background_dir().path_join(file_name)
 	if not FileAccess.file_exists(full_path):
 		return null
@@ -232,12 +242,16 @@ func load_background_image(file_name: String) -> Texture2D:
 		return null
 	var tex := ImageTexture.create_from_image(img)
 	if tex:
-		_background_texture_cache[file_name] = tex
+		_bg_image_cache[file_name] = tex
 	return tex
 
-## 清空背景纹理缓存（主题切换/背景文件变更时调用）
-func clear_background_cache() -> void:
-	_background_texture_cache.clear()
+## 清除背景图片缓存（删除背景文件后调用，避免缓存指向已删除的文件）
+## 传空字符串清空全部缓存，否则只清除指定 file_name
+func invalidate_background_cache(file_name: String = "") -> void:
+	if file_name.is_empty():
+		_bg_image_cache.clear()
+	else:
+		_bg_image_cache.erase(file_name)
 
 # ============ 样式工具方法 ============
 
@@ -273,24 +287,26 @@ func _modify_button_colors(btn: Button, pri_light: Color, fancy_focus: bool) -> 
 				sb.border_color = pri_light
 				sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.4)
 
-## 修改 albumNode 的 item_instance 上的共享 StyleBoxFlat 和 self_modulate
+## 修改 albumNode 的 item_instance 上的共享 StyleBoxFlat
 func _style_album_instance(item: Control, pri_light: Color) -> void:
 	# AlbumButton — pressed/hover/focus 的颜色
 	var btn := item.get_node_or_null("AlbumButton") as Button
 	if btn:
 		_modify_button_colors(btn, pri_light, true)
 
-	# CountBase — self_modulate 是属性非共享资源，设在 item_instance 上让 duplicate() 自动带过去
-	var count_base := item.get_node_or_null("CountBase") as TextureRect
-	if count_base:
-		count_base.self_modulate = pri_light
+	# SongCount — normal StyleBoxFlat.bg_color（共享引用，duplicate 子项自动同步）
+	var song_count := item.get_node_or_null("SongCount") as Label
+	if song_count:
+		var sb := song_count.get_theme_stylebox("normal")
+		if sb is StyleBoxFlat:
+			sb.bg_color = pri_light
 
 ## 修改 songNode 的 item_instance
 func _style_song_instance(item: Control, pri_light: Color) -> void:
-	# HBoxC/CountBase — bg_color
-	var count_base := item.get_node_or_null("HBoxC/CountBase") as PanelContainer
-	if count_base:
-		var sb := count_base.get_theme_stylebox("panel")
+	# HBoxC/SongCount — normal StyleBoxFlat.bg_color（共享引用，duplicate 子项自动同步）
+	var song_count := item.get_node_or_null("HBoxC/SongCount") as Label
+	if song_count:
+		var sb := song_count.get_theme_stylebox("normal")
 		if sb is StyleBoxFlat:
 			sb.bg_color = pri_light
 
@@ -570,7 +586,7 @@ func _apply_delview_theme(main: Node) -> void:
 # ============ 弹出窗口主题 ============
 
 ## 对 PopupWindow 的静态部分应用主题色
-## 由 refresh_all() 触发
+## 由 refresh_theme_only() 触发
 func _apply_popup_window_theme(main: Node) -> void:
 	var popup := main.get_node_or_null("PopupWindow")
 	if not popup:
@@ -596,7 +612,7 @@ func _apply_popup_window_theme(main: Node) -> void:
 # ============ 设置视图主题 ============
 
 ## 对 SettingView 中所有 TYPE_BUTTON 设置项应用主题色
-## 由 refresh_all() 触发
+## 由 refresh_theme_only() 触发
 func _apply_setting_view_theme(main: Node) -> void:
 	var setting_view := main.get_node_or_null("skew/C/SettingView")
 	if not setting_view:
@@ -634,26 +650,43 @@ func _apply_shortcut_focus_style(btn: Button, pressed_color: Color) -> void:
 
 # ============ 全局刷新 ============
 
-## 主题变更后调用：重建 Theme 资源 + 主界面组件 + 所有背景
-func refresh_all() -> void:
+## 刷新主题色（不刷新背景）
+## 仅应用调色板、Theme 资源、各视图/弹窗的 StyleBox 与 self_modulate；
+## 不调用 _apply_all_backgrounds，因为背景与主题色独立，切换主题不应触发背景重新加载（避免 Image.load_from_file 同步阻塞）。
+## 若需要刷新背景，调用 refresh_backgrounds()。
+##
+## 注意：本函数是协程（含 await get_tree().process_frame），但调用方无需 await：
+## - 主题色挨个帧更新在视觉上可接受；
+## - 真正的痛点是 godot 内部对 StyleBox/Theme 的批量重绘卡顿，分帧是把卡顿摊到多帧而非消除。
+## - 短时间内连续调用会并发执行多个协程，但 _palette 已是终态值，每帧的阶段幂等。
+func refresh_theme_only() -> void:
 	var main := get_node_or_null("/root/Main")
 	if not main:
 		return
 
-	clear_background_cache()
+	# 第一阶段：全局 Theme 资源 + 主框架主题（最可能触发大面积重绘，单独一帧）
+	# 注意：切换主题色不再清空背景缓存，背景与主题色独立（避免 Image.load_from_file 同步阻塞）
 	_refresh_theme_colors(main.theme)
 	var skew_part: Control = main.get_node_or_null("skew/C")
 	if skew_part.theme != main.theme:
 		skew_part.theme = main.theme  # 让子节点继承更新后的 Theme （因为skew会导致子节点不继承theme）
 	_apply_main_theme(main)
 	_apply_delview_theme(main)
-	_apply_all_backgrounds(main)
+	await get_tree().process_frame
+
+	# 第二阶段：列表主题（含 item_instance 的 StyleBoxFlat 修改，子项自动同步）
 	_apply_list_theme(main)
 	_apply_store_theme(main)
+	await get_tree().process_frame
+
+	# 第三阶段：各视图主题
 	_apply_midi_theme(main)
 	_apply_score_theme(main)
 	_apply_track_theme(main)
 	_apply_play_theme(main)
+	await get_tree().process_frame
+
+	# 第四阶段：弹窗与设置页主题
 	_apply_popup_window_theme(main)
 	_apply_setting_view_theme(main)
 	GLogger.info("主题刷新完成: %s" % _theme_name, "ThemeManager")
@@ -668,8 +701,14 @@ func _on_theme_changed(preset_name: String) -> void:
 				_palette[key.to_lower()] = Color(val)
 		_theme_name = preset_name
 		GLogger.info("主题预设已应用: %s (%d 色)" % [preset_name, _palette.size()], "ThemeManager")
-	save_theme()
-	refresh_all()
+		# 外部驱动的预设切换：re-apply 后需要 save + refresh
+		save_theme()
+		refresh_theme_only()
+	# 若 _theme_name == preset_name，说明是内部已 emit 的通知，无需重复 save+refresh：
+	# - apply_preset / load_theme 自身已完成 save+refresh_theme_only 后再 emit
+	# - set_color / set_palette_colors 同理（_theme_name 保持不变或改为 "custom"，
+	#   但 emit 时 preset_name 等于 _theme_name，故也走此跳过分支）
+	# 此处跳过避免了双重 save/refresh 导致的卡顿
 
 ## 仅刷新背景（设置界面修改背景配置后调用）
 func refresh_backgrounds() -> void:
@@ -702,23 +741,21 @@ func _apply_main_theme(main: Node) -> void:
 	if info_panel:
 		_modify_panel_color(info_panel, "primary_dark")
 
-## 修改三个列表容器的 item_instance 共享 StyleBoxFlat，并刷新已有项的非共享属性
+## 修改三个列表容器的 item_instance 共享 StyleBoxFlat（duplicate 子项自动同步，无需逐项刷新）
 func _apply_list_theme(main: Node) -> void:
 	var pri_light := get_color("primary_light")
 
-	# AlbumList — 修改 item_instance 共享样式 + 刷新已有项 self_modulate
+	# AlbumList
 	var album_view := main.get_node_or_null("skew/C/AlbumList") as BaseScrollList
 	if album_view and album_view.item_instance:
 		_style_album_instance(album_view.item_instance, pri_light)
-		if album_view.has_method("refresh_item_colors"):
-			album_view.refresh_item_colors()
 
-	# SongList — 修改 item_instance 共享样式（全部在 StyleBox 中，无需逐项刷新）
+	# SongList
 	var song_view := main.get_node_or_null("skew/C/SongList") as BaseScrollList
 	if song_view and song_view.item_instance:
 		_style_song_instance(song_view.item_instance, pri_light)
 
-	# SortedMidisList — 修改 item_instance 共享样式
+	# SortedMidisList
 	var sorted_view := main.get_node_or_null("skew/C/SortedMidisList") as BaseScrollList
 	if sorted_view and sorted_view.item_instance:
 		_style_sorted_midi_instance(sorted_view.item_instance, pri_light)

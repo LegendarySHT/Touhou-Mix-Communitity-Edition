@@ -29,6 +29,9 @@ const KEY_ITEM_SCENE := preload("res://UI/Components/PopupWindow/KeySequenceItem
 @onready var _display_name_edit: LineEdit = $KeyDisplayName/LineEdit
 @onready var _key_config_btn: Button = $KeyConfig/Button
 
+## 共享模板（不进场景树），子项用 duplicate() 复用其 StyleBoxFlat 引用
+var _item_instance: KeySequenceItem = null
+
 # 数据：每个 item 为 {"key": Key, "display_name": String}
 var _items: Array = []
 var _selected_index: int = -1
@@ -49,6 +52,8 @@ func _ready() -> void:
 	_add_btn.pressed.connect(_on_add_btn_pressed)
 	_key_config_btn.pressed.connect(_on_key_config_btn_pressed)
 	_display_name_edit.text_changed.connect(_on_display_name_changed)
+	_item_instance = KEY_ITEM_SCENE.instantiate()
+	apply_button_theme(ThemeMGR.get_color("primary"))
 
 
 ## 由 PopupWindow.show_kb_mode_adjust 调用：解析配置字符串并重建 UI
@@ -104,7 +109,7 @@ func _rebuild_items() -> void:
 
 	# 实例化新的 KeySequenceItem
 	for i in _items.size():
-		var item: KeySequenceItem = KEY_ITEM_SCENE.instantiate()
+		var item: KeySequenceItem = _item_instance.duplicate() as KeySequenceItem
 		_hbox.add_child(item)
 		_hbox.move_child(item, i)  # 插入到 InsertPlace 之前
 		item.button_group = _shared_button_group
@@ -123,20 +128,15 @@ func _rebuild_items() -> void:
 		_hbox.move_child(_insert_place, insert_idx)
 	_insert_place.visible = false
 
-	# 应用主题色到新建的 KeySequenceItem（AddBtn 是静态的，由 ThemeManager 直接处理）
-	apply_button_theme(ThemeMGR.get_color("primary"))
 
-
-## 由 ThemeManager._apply_popup_window_theme 调用，也由 _rebuild_items 内部调用
-## 给所有 KeySequenceItem 应用 primary 色调（保留 tscn 中的圆角等样式）
+## 只改 _item_instance 上的 StyleBoxFlat，duplicate 出的子项共享引用自动同步，无需遍历
 func apply_button_theme(color: Color) -> void:
-	for child in _hbox.get_children():
-		if child is KeySequenceItem:
-			var btn := child as Button
-			# 显式 cast 为 StyleBoxFlat：get_theme_stylebox 静态返回 StyleBox 基类，无 bg_color 属性
-			(btn.get_theme_stylebox("normal") as StyleBoxFlat).bg_color = color
-			(btn.get_theme_stylebox("pressed") as StyleBoxFlat).bg_color = color.darkened(0.25)
-			(btn.get_theme_stylebox("hover") as StyleBoxFlat).bg_color = color.lightened(0.15)
+	if not _item_instance:
+		return
+	# 显式 cast 为 StyleBoxFlat：get_theme_stylebox 静态返回 StyleBox 基类，无 bg_color 属性
+	(_item_instance.get_theme_stylebox("normal") as StyleBoxFlat).bg_color = color
+	(_item_instance.get_theme_stylebox("pressed") as StyleBoxFlat).bg_color = color.darkened(0.25)
+	(_item_instance.get_theme_stylebox("hover") as StyleBoxFlat).bg_color = color.lightened(0.15)
 
 
 ## 将 Key 枚举转为可被 ConfigParser.parse_keyboard_keys 解析的字符串

@@ -80,7 +80,7 @@ func setup_item(ID: String, content: String, desc: String, valueType: ValueType,
 				line_edit.connect("text_changed", Callable(self, "_on_text_changed"))
 
 		ValueType.TYPE_BUTTON:
-			v_node = load(item_value_button).instantiate()
+			v_node = setting_list.make_value_button()
 			var btn: Button = v_node
 			# 若声明了 on_click，直接连接到 SettingList 上的方法（绕过 value_changed 信号）
 			if on_click_method != "" and setting_list:
@@ -88,12 +88,6 @@ func setup_item(ID: String, content: String, desc: String, valueType: ValueType,
 			else:
 				# 回退：未声明 on_click 时走原 value_changed 流程
 				btn.connect("pressed", Callable(self, "_on_button_pressed"))
-			# 创建时立即应用当前主题色
-			if ThemeMGR:
-				var color := ThemeMGR.get_color("primary")
-				btn.get_theme_stylebox("normal").bg_color = color
-				btn.get_theme_stylebox("pressed").bg_color = color.darkened(0.25)
-				btn.get_theme_stylebox("hover").bg_color = color.lightened(0.15)
 
 	value_node = v_node
 

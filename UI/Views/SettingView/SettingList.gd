@@ -4,6 +4,9 @@ class_name SettingList
 var item_separator: String = "res://UI/Views/SettingView/Seperator.tscn"
 var setting_items: Dictionary = {}  # 存储所有设置项，键为id，值为SettingItem
 
+const VALUE_BUTTON_SCENE := preload("res://UI/Views/SettingView/ValueButton.tscn")
+var _value_button_instance: Button = null
+
 # 进入 SettingView 时的配置快照（setting_id → 原始值，类型已转换好）
 var _initial_config: Dictionary = {}
 # 当前待保存的配置（setting_id → 已转换好类型的最终值）
@@ -15,6 +18,8 @@ func _ready() -> void:
 	setting_groups = SettingGroupsData.get_setting_groups()
 	work_state = UIStateManager.UIState.SETTINGS_VIEW
 	super._ready()
+	_value_button_instance = VALUE_BUTTON_SCENE.instantiate()
+	apply_button_theme(ThemeMGR.get_color("primary"))
 	get_v_scroll_bar().value_changed.connect(func (_v):
 		var btns = get_parent().get_parent().short_cut_btn.get_children()
 		var idx = _get_current_para_sepa_idx()
@@ -115,6 +120,9 @@ func add_setting_item(setting_data: Dictionary, init_value: Variant = ""):
 
 	# 设置初始值（从保存的数据或默认值）
 	var initial_value = init_value if init_value != null and str(init_value) != "" else setting_data.default_value
+	# theme_preset 不持久化到 INI，从 ThemeManager 读取当前主题名作为初始值，确保下拉框选中当前主题
+	if setting_data.id == "theme_preset" and (initial_value == null or str(initial_value) == "") and ThemeMGR:
+		initial_value = ThemeMGR.get_theme_name()
 
 	# 读取 JSON 中声明的回调方法名
 	var on_click_method := String(setting_data.get("on_click", ""))
@@ -642,12 +650,14 @@ func set_note_fall_mode_and_show_custom_options(mode: int) -> void:
 
 ## ========== 主题化 ==========
 
-## 对所有 TYPE_BUTTON 设置项应用主题色（由 ThemeManager 调用）
+## 通过 StyleBoxFlat 共享引用自动同步，无需遍历 setting_items
 func apply_button_theme(color: Color) -> void:
-	for setting_id in setting_items:
-		var item: SettingItem = setting_items[setting_id]
-		if item and item.value_type == SettingItem.ValueType.TYPE_BUTTON and item.value_node is Button:
-			var btn := item.value_node as Button
-			btn.get_theme_stylebox("normal").bg_color = color
-			btn.get_theme_stylebox("pressed").bg_color = color.darkened(0.25)
-			btn.get_theme_stylebox("hover").bg_color = color.lightened(0.15)
+	if not _value_button_instance:
+		return
+	(_value_button_instance.get_theme_stylebox("normal") as StyleBoxFlat).bg_color = color
+	(_value_button_instance.get_theme_stylebox("pressed") as StyleBoxFlat).bg_color = color.darkened(0.25)
+	(_value_button_instance.get_theme_stylebox("hover") as StyleBoxFlat).bg_color = color.lightened(0.15)
+
+## 供 SettingListItem.setup_item 调用：duplicate 出共享 instance 的副本作为 TYPE_BUTTON 的 value_node
+func make_value_button() -> Button:
+	return _value_button_instance.duplicate() as Button

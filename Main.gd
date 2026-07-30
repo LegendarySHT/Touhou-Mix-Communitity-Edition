@@ -234,9 +234,9 @@ func _init_ui() -> void:
 	move_child(left_top ,-1)
 	left_top.z_index = 20
 
-	# 应用主题（Theme 资源 + 主界面组件 + 所有背景）
+	# 应用主题（Theme 资源 + 主界面组件；背景不在此刷新，由各视图/refresh_backgrounds 处理）
 	if ThemeMGR:
-		ThemeMGR.refresh_all()
+		ThemeMGR.refresh_theme_only()
 
 ## 连接核心系统信号
 func _connect_signals() -> void:

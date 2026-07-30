@@ -23,7 +23,11 @@ static var instance: PopupWindow
 
 ## 主题管理器通过此 getter 访问 DelayAdjust 中的 delay_btn（保持外部 API 不变）
 var delay_btn: Button:
-	get: return _delay_adjust.delay_btn
+	get:
+		# PopupWindow._ready 尚未执行时（如 ThemeManager 启动期间 refresh_theme_only 提前触发）_delay_adjust 为 null
+		if _delay_adjust == null:
+			return null
+		return _delay_adjust.delay_btn
 
 signal window_close
 
