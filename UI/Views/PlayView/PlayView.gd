@@ -808,8 +808,8 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 	if playback_mgr == null:
 		return
 	
-	# 应用全局音量
-	playback_mgr.set_volume_db(linear_to_db(float(midi_data.midi_volume) / 100.0))
+	# 应用全局音量 (MIDI音量实际效果为UI值的2倍: 50%=0dB, 100%=+6dB)
+	playback_mgr.set_volume_db(linear_to_db(float(midi_data.midi_volume) / 50.0))
 	
 	# 应用轨道-通道的静音状态
 	# track_channel_mute_state: {track_idx: {channel: bool}}

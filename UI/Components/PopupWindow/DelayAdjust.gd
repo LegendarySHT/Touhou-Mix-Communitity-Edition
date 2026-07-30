@@ -75,7 +75,8 @@ func start_calibration(current_delay: int = 0) -> void:
 		mp.ensure_soundfont_loaded()
 		_saved_volume_db = mp.midi_player_config.get("volume_db", -20.0)
 		var midi_vol = ConfigManager.instance.get_int("Gameplay", "default_midi_volume", 50)
-		mp.set_volume_db(linear_to_db(clamp(midi_vol, 0, 100) / 100.0))
+		# MIDI音量实际效果为UI值的2倍: 50%=0dB, 100%=+6dB
+		mp.set_volume_db(linear_to_db(clamp(midi_vol, 0, 100) / 50.0))
 	# 启动 AdjustLine 单向循环动画
 	# AdjustLine 本身不可见，仅作为位置跟踪器，点击时在当前位置生成残影
 	if _adjust_line_tween and _adjust_line_tween.is_valid():
