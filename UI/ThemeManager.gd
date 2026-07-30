@@ -40,6 +40,7 @@ var _backgrounds: Dictionary = {}
 var _presets: Dictionary = {}
 var _theme_name: String = "default"
 var _loaded: bool = false
+var _background_texture_cache: Dictionary = {}  # {file_name: Texture2D}
 
 # 固定色 — 不从预设中读取
 const PANEL_BG := Color("#161A2E")       # 面板背景
@@ -217,13 +218,26 @@ func apply_background(texture_rect: TextureRect, view_name: String) -> void:
 func load_background_image(file_name: String) -> Texture2D:
 	if file_name.is_empty():
 		return null
+	# 缓存命中检查
+	if _background_texture_cache.has(file_name):
+		var cached = _background_texture_cache[file_name]
+		if is_instance_valid(cached):
+			return cached
+		_background_texture_cache.erase(file_name)
 	var full_path := PathHelper.get_background_dir().path_join(file_name)
 	if not FileAccess.file_exists(full_path):
 		return null
 	var img := Image.load_from_file(full_path)
 	if img == null:
 		return null
-	return ImageTexture.create_from_image(img)
+	var tex := ImageTexture.create_from_image(img)
+	if tex:
+		_background_texture_cache[file_name] = tex
+	return tex
+
+## 清空背景纹理缓存（主题切换/背景文件变更时调用）
+func clear_background_cache() -> void:
+	_background_texture_cache.clear()
 
 # ============ 样式工具方法 ============
 
@@ -626,6 +640,7 @@ func refresh_all() -> void:
 	if not main:
 		return
 
+	clear_background_cache()
 	_refresh_theme_colors(main.theme)
 	var skew_part: Control = main.get_node_or_null("skew/C")
 	if skew_part.theme != main.theme:

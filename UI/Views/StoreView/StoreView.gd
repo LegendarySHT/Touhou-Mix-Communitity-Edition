@@ -16,33 +16,47 @@ func _ready() -> void:
 	work_state = UIStateManager.UIState.STORE_VIEW
 	super._ready()
 
-	# 初始移出屏幕
-	_top_bar.offset_top = -_top_bar.size.y
-	_top_bar.offset_bottom = 0
-	_bottom_bar.offset_top = 0
-	_bottom_bar.offset_bottom = _bottom_bar.size.y
+	# TopBar/Bottom 的进入动画由 AnimationManager.animate_ui_in("Store_View") 负责，
+	# 这里不再设置 offset_top/offset_bottom 或调用 _toggle_top/_toggle_bottom，
+	# 避免与 AnimationManager 的 offset_transform_position 动画冲突（懒加载时序下两者同时执行会导致 UI 异常）
+	# _toggle_top/_toggle_bottom 仅在 _process 滚动检测时使用
 
+	_load_demo_data()
+
+	UiStatMGR.state_changed.connect(_on_state)
+
+## 加载演示数据（创建列表项 + 填充前 5 个 midi）
+## 首次 _ready 和重新进入 STORE_VIEW（列表为空时）调用
+func _load_demo_data() -> void:
 	for i in range(36):
 		create_and_add_item("%d" % i, "StoreMidiItem")
 
-	await EvtBus.data_loaded_complete
+	# 懒加载兼容：若数据已加载完成（启动后首次进入 StoreView），不再 await 一次性信号
+	if DataMGR.is_loading:
+		await EvtBus.data_loaded_complete
 	var test_midis:Array[MidiData] = DataMGR.get_all_midis()
-	
+
 	#演示代码
 	for i in range(5):
 		if i < test_midis.size():
 			container.get_child(i).set_display(test_midis[i])
 
 	_last_scroll_vertical = scroll_vertical
-	# 入场动画
-	_toggle_top(true)
-	_toggle_bottom(true)
 
-	UiStatMGR.state_changed.connect(_on_state)
-
-func _on_state(_old: UIStateManager.UIState, new: UIStateManager.UIState) -> void:
+func _on_state(old: UIStateManager.UIState, new: UIStateManager.UIState) -> void:
 	if new == UIStateManager.UIState.STORE_VIEW:
+		# 重新进入时若列表项已被 _cleanup 清空，重新加载演示数据
+		if list_items.is_empty():
+			_load_demo_data()
 		return_to_top()
+	# 退出 STORE_VIEW 时释放列表项
+	if old == UIStateManager.UIState.STORE_VIEW and new != UIStateManager.UIState.STORE_VIEW:
+		_cleanup()
+
+## 释放视图内部资源（列表项），保留节点壳和信号连接
+## 重新进入时由 _on_state 检测列表为空并调用 _load_demo_data 重新加载
+func _cleanup() -> void:
+	clear_items()
 
 func return_to_top() -> void:
 	if _scroll_tween and _scroll_tween.is_running():

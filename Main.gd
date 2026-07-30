@@ -199,7 +199,8 @@ func _initialize_core_systems() -> void:
 	# 13. 初始化并加载UI（确保各管理器已就绪）
 	_init_ui()
 
-	# 让出帧：6 个 PackedScene 实例化较重，让引擎先渲染 UI 再继续信号连接和数据加载
+	# 让出帧：让引擎先渲染 Main.tscn 内嵌视图，再继续信号连接和数据加载
+	# （6 个 _init_ui 视图已改为懒加载，启动阶段不再实例化）
 	await get_tree().process_frame
 
 	# 13.5. 预加载 SoundFont 到后端（~30MB，同步阻塞 3-5 秒）
@@ -218,34 +219,10 @@ func _initialize_core_systems() -> void:
 	print("=== Core Systems Initialized ===")
 
 func _init_ui() -> void:
-	# Midi详细界面 (不提前初始化的话，内部的midi list可能收不到信号)
-	var Main = get_node_or_null("/root/Main")
-	var SkewArea = Main.get_node("skew/C")
-
-	var info_window = load(midi_view_path).instantiate()
-	info_window.visible = false
-	SkewArea.add_child(info_window)
-
-	# Midi商店
-	var store_page = load(store_view_path).instantiate()
-	store_page.visible = false
-	store_page.z_index = 10
-	Main.add_child(store_page)
-
-	# 音轨界面
-	var track_list = load(track_view_path).instantiate()
-	track_list.visible = false
-	SkewArea.add_child(track_list)
-	
-	# 设置界面
-	var setting_page = load(setting_view_path).instantiate()
-	setting_page.visible = false
-	SkewArea.add_child(setting_page)
-
-	# 结算界面
-	var score_page = load(score_view_path).instantiate()
-	score_page.visible = false
-	Main.add_child(score_page)
+	# 6 个视图（MidiView/StoreView/TrackView/SettingView/ScoreView/PlayView）改为懒加载，
+	# 由 UIStateManager.ensure_view_loaded() 在首次 change_state 时实例化
+	# 3 个 Main.tscn 内嵌视图（AlbumView/SongView/SortedMidiView）保持预加载
+	# 注：z_index 处理（STORE_VIEW=10, PLAY_VIEW=21）已迁移到 UIStateManager.ensure_view_loaded()
 
 	# 移动返回按钮到上层
 	var right_bottom = get_node("RB_Btn")
@@ -256,12 +233,6 @@ func _init_ui() -> void:
 	var left_top = get_node("LT_Btn")
 	move_child(left_top ,-1)
 	left_top.z_index = 20
-	
-	# 播放界面
-	var play_page = load(play_view_path).instantiate()
-	play_page.visible = false
-	play_page.z_index = 21
-	Main.add_child(play_page)
 
 	# 应用主题（Theme 资源 + 主界面组件 + 所有背景）
 	if ThemeMGR:
@@ -351,7 +322,7 @@ func _load_midi_data() -> void:
 ## 数据加载完成回调
 func _on_data_loaded() -> void:
 	logger.info("MIDI data loaded successfully", "Main")
-	
+
 	# 发送数据就绪事件
 	event_bus.data_loaded_complete.emit()
 

@@ -99,12 +99,22 @@ func _on_song_selected(song_id: String) -> void:
 
 
 # UI 状态变化：进入 MIDI_VIEW 时若 FavorPanel 可见，用当前选中 midi 刷新
-func _on_state_changed(_old_state: int, new_state: int) -> void:
+func _on_state_changed(old_state: int, new_state: int) -> void:
 	if new_state == UIStateManager.UIState.MIDI_VIEW and _favor_panel_visible and favor_panel:
 		var midi: MidiData = midi_list.get_selection()
 		if midi:
 			favor_panel.show_with_midi(midi)
 		_last_midi_selection = midi_list.selected_item
+	# 退出 MIDI_VIEW 回歌曲列表时释放列表项
+	if old_state == UIStateManager.UIState.MIDI_VIEW and new_state != UIStateManager.UIState.MIDI_VIEW:
+		if new_state != UIStateManager.UIState.TRACK_VIEW and new_state != UIStateManager.UIState.PLAY_VIEW:
+			_cleanup()
+
+## 释放视图内部资源（midi 列表项），保留节点壳和信号连接
+## 重新进入时由 song_selected 信号重新加载
+func _cleanup() -> void:
+	if midi_list:
+		midi_list.clear_items()
 
 
 # 轮询检测 midi_list 内部切换（prev/next/list 展开按钮不发出信号）
@@ -126,8 +136,10 @@ func _on_click_start_btn() -> void:
 		return
 	print("选择歌曲： %s" % midi.name)
 
-	EvtBus.start_game_with.emit(midi)
+	# 先 change_state 触发 PlayView 懒加载（_ready 连接 start_game_with 信号），
+	# 再用 call_deferred emit，确保信号不丢失（与 _on_click_track_btn 模式一致）
 	UiStatMGR.change_state(UIStateManager.UIState.PLAY_VIEW)
+	EvtBus.start_game_with.emit.call_deferred(midi)
 
 func _on_click_track_btn():
 	var midi:MidiData = midi_list.get_selection()

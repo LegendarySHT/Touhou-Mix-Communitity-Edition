@@ -71,8 +71,17 @@ func _ready() -> void:
 	get_window().size_changed.connect(func():
 		c.size.x = get_viewport().get_visible_rect().size.x
 	)
-
+	UiStatMGR.state_changed.connect(_on_state_changed)
 	animate(false)
+
+func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
+	# 退出 SCORE_VIEW 时停止循环动画，节省 CPU
+	if old_state == UIStateManager.UIState.SCORE_VIEW and new_state != UIStateManager.UIState.SCORE_VIEW:
+		_cleanup()
+
+## 释放视图内部资源（循环动画 Tween），保留节点壳
+func _cleanup() -> void:
+	_kill_loop_ani()
 
 func set_display(result: ScoreData):
 	data_area.get_node("PerfectCtn").text = str(result.count.Perfect)

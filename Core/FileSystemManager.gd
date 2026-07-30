@@ -831,6 +831,7 @@ func is_valid_audio_file(file_path: String) -> bool:
 ## 重新扫描资源（热重载）
 func rescan_resources() -> void:
 	GLogger.info("Rescanning resources...", "FileSystemMGR")
+	clear_cover_cache()
 	_scan_all_resources()
 
 ## 重置内置资源：强制重新复制默认谱面、皮肤、背景图到 user:// 目录
@@ -1076,6 +1077,7 @@ func delete_chart(chart_id: String) -> bool:
 		_hash_to_folder.erase(jd.get("hash", ""))
 		_hash_to_folder.erase(jd.get("file_hash", ""))
 	charts_index.erase(folder_name)
+	clear_cover_cache()
 	GLogger.info("Deleted chart: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
 	return true
 

@@ -28,6 +28,8 @@ const LONG_F_MODE_STRETCH = "stretch"
 ## 皮肤索引 {skin_name: SkinMetadata}
 var skins_index: Dictionary = {}
 var _scan_requested: bool = false
+## 皮肤贴图缓存 {skin_name: Dictionary{texture_key: Texture2D}}
+var _skin_textures_cache: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("singleton")
@@ -403,6 +405,10 @@ const SKIN_TEXTURES = {
 
 ## 获取指定皮肤的贴图字典
 func get_skin_textures(skin_name: String) -> Dictionary:
+	# 缓存命中检查
+	if _skin_textures_cache.has(skin_name):
+		return _skin_textures_cache[skin_name]
+
 	var result: Dictionary = {}
 
 	# 获取皮肤数据
@@ -438,7 +444,18 @@ func get_skin_textures(skin_name: String) -> Dictionary:
 					var texture = ImageTexture.create_from_image(image)
 					result[texture_key] = texture
 
+	# 缓存结果（非空时）
+	if not result.is_empty():
+		_skin_textures_cache[skin_name] = result
+
 	return result
+
+## 清空皮肤贴图缓存（皮肤切换/删除/重扫时调用）
+func clear_skin_cache(skin_name: String = "") -> void:
+	if skin_name.is_empty():
+		_skin_textures_cache.clear()
+	else:
+		_skin_textures_cache.erase(skin_name)
 
 ## 获取默认皮肤的贴图
 func get_default_skin_textures() -> Dictionary:

@@ -38,9 +38,16 @@ func _on_state_enter():
 			if not is_mobile:
 				get_node("/root/Main/skew/C/SettingView").short_cut_btn.grab_focus()
 		ui.UIState.STORE_VIEW:
-			var first_btn: Button = get_node("/root/Main/Store/StoreMidiList").get_child(0).get_child(0).button
-			if _last_input_was_keyboard:
-				first_btn.grab_focus()
+			# 防御性检查：列表项可能已被 _cleanup 清空（懒加载重新进入时）
+			var store_list = get_node_or_null("/root/Main/Store/StoreMidiList")
+			if store_list and store_list.get_child_count() > 0:
+				var container_node = store_list.get_child(0)
+				if container_node and container_node.get_child_count() > 0:
+					var first_item = container_node.get_child(0)
+					if first_item and "button" in first_item:
+						var first_btn: Button = first_item.button
+						if _last_input_was_keyboard and is_instance_valid(first_btn):
+							first_btn.grab_focus()
 
 # func _input(event: InputEvent) -> void:
 # 	if ui.current_state in [ui.UIState.ALBUM_VIEW, ui.UIState.SONG_VIEW, ui.UIState.SORTED_VIEW]:

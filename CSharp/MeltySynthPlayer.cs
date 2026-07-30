@@ -1370,6 +1370,15 @@ public partial class MeltySynthPlayer : Node
 		// 清理旧的乐器覆盖配置，防止状态在不同 MIDI 之间错误延续
 		track_channel_instruments.Clear();
 		_virtualChannelInstruments.Clear();
+		// 清理虚拟通道的音量/CC/音色等状态，防止旧歌配置残留到新歌
+		_virtualChannelVolumes.Clear();
+		_virtualChannelCurrentBank.Clear();
+		_virtualChannelCurrentProgram.Clear();
+		_virtualChannelCc7.Clear();
+		_virtualChannelCc11.Clear();
+		_virtualChannelCc10.Clear();
+		_virtualChannelPitchBend.Clear();
+		_channelStateAppliedToManual.Clear();
 		// GD.Print($"[MeltySynthPlayer] MIDI file loaded, cleared instrument overrides, _sequencerStarted reset to false");
 		// 注意：不在这里调用 Play()，而是等待明确的 play() 调用
 		// 这样可以与 MidiPlayer (Addon) 的行为保持一致

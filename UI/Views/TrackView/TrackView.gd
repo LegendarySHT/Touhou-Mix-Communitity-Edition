@@ -844,9 +844,10 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 		if midi_playback_manager:
 			if new_state == ui_stat_mgr.UIState.MIDI_VIEW:
 				midi_playback_manager.stop()
+				_cleanup()
 			elif new_state == ui_stat_mgr.UIState.SETTINGS_VIEW:
 				midi_playback_manager.pause()
-			
+
 		_set_note_displayers_process(false)
 		# 收起主面板的展开状态
 		get_node("MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button").button_pressed = false
@@ -858,6 +859,13 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 			midi_playback_manager.resume()
 			_set_note_displayers_process(true)
 			print("[TrackView] Reloaded MIDI after returning from settings")
+
+## 释放视图内部资源（列表项、音符数据），保留节点壳和信号连接
+## 重新进入时由 _load_midi 重新加载数据
+func _cleanup() -> void:
+	clear_items()
+	All_Notes.clear()
+	_set_note_displayers_process(false)
 
 ## 初始化Latency输入框（从MidiData读取偏移值）
 func _init_latency_edit() -> void:

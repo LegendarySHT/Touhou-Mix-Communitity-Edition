@@ -350,7 +350,9 @@ func get_comp(ui_part_name: String) -> Node:
 	if node:
 		return node
 	else:
-		push_error("[AniMGR] COMP %s Not Found" % ui_part_name)
+		# 懒加载视图未实例化时返回 null 是合法状态（调用方均用 is_instance_valid 检查）
+		# 用 debug 而非 push_error，避免每次切换视图时对未加载视图产生噪音
+		GLogger.debug("[AniMGR] COMP %s Not Found" % ui_part_name, "AniMGR")
 		return null
 
 var _SS = "/root/Main/skew/SS"

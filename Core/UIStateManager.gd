@@ -35,6 +35,29 @@ signal state_changed(old_state: UIState, new_state: UIState)
 ## 最大历史记录深度
 const MAX_HISTORY_DEPTH: int = 10
 
+## 可懒加载的视图路径（UIState → PackedScene 路径）
+const LAZY_VIEW_PATHS := {
+	UIState.MIDI_VIEW: "res://UI/Views/MidiView/MidiView.tscn",
+	UIState.STORE_VIEW: "res://UI/Views/StoreView/MidiStore.tscn",
+	UIState.TRACK_VIEW: "res://UI/Views/TrackView/TrackView.tscn",
+	UIState.SETTINGS_VIEW: "res://UI/Views/SettingView/SettingView.tscn",
+	UIState.PLAY_VIEW: "res://UI/Views/PlayView/PlayView.tscn",
+	UIState.SCORE_VIEW: "res://UI/Views/ScoreView/ScoreView.tscn",
+}
+
+## 视图父节点路径（与 Main.tscn 结构对应）
+const LAZY_VIEW_PARENTS := {
+	UIState.MIDI_VIEW: "/root/Main/skew/C",
+	UIState.STORE_VIEW: "/root/Main",
+	UIState.TRACK_VIEW: "/root/Main/skew/C",
+	UIState.SETTINGS_VIEW: "/root/Main/skew/C",
+	UIState.PLAY_VIEW: "/root/Main",
+	UIState.SCORE_VIEW: "/root/Main",
+}
+
+## 已加载的懒加载视图实例 {UIState: Node}
+var _loaded_lazy_views: Dictionary = {}
+
 var signal_conn:bool = false
 
 var transition_version: int = 0
@@ -52,25 +75,61 @@ func _ready() -> void:
 func _on_data_loaded() -> void:
 	_data_ready = true
 
-# func _process(delta: float) -> void:
-# 	# 连接场景退出信号
-# 	if not signal_conn:
-# 		var ANI: AnimationManager = AniMGR
-# 		if ANI:
-# 			ANI.scene_transition_fin.connect(_scene_transition_exit)
-# 			signal_conn = true
+## 确保懒加载视图已实例化（首次进入对应 state 时调用）
+## 返回实例化的节点，失败返回 null
+func ensure_view_loaded(state: UIState) -> Node:
+	if _loaded_lazy_views.has(state):
+		var existing = _loaded_lazy_views[state]
+		if is_instance_valid(existing):
+			return existing
+		_loaded_lazy_views.erase(state)
+	if not LAZY_VIEW_PATHS.has(state):
+		return null
+	var packed: PackedScene = load(LAZY_VIEW_PATHS[state])
+	if packed == null:
+		push_error("Failed to load view: %s" % LAZY_VIEW_PATHS[state])
+		return null
+	var instance: Node = packed.instantiate()
+	var parent: Node = get_node_or_null(LAZY_VIEW_PARENTS[state])
+	if parent == null:
+		push_error("Parent not found for view: %s" % state)
+		return null
+	# 特殊 z_index 处理（与原 Main._init_ui 逻辑一致）
+	match state:
+		UIState.STORE_VIEW:
+			instance.z_index = 10
+		UIState.PLAY_VIEW:
+			instance.z_index = 21
+	instance.visible = false
+	parent.add_child(instance)
+	# 恢复原 _init_ui 的 move_child(RB_Btn/LT_Btn, -1) 行为：
+	# 对于 z_index < 20 的 Main 直接子视图（StoreView=10, ScoreView=0），
+	# 需确保 RB_Btn(z_index=20)/LT_Btn(z_index=20) 在场景树末尾，
+	# 否则全屏 ScrollContainer 会拦截按钮的点击输入。
+	# PlayView(z_index=21) 高于按钮，且 PlayView 时按钮不可见，无需移动。
+	if parent == get_node_or_null("/root/Main") and instance.z_index < 20:
+		for btn_path in ["/root/Main/RB_Btn", "/root/Main/LT_Btn"]:
+			var btn := get_node_or_null(btn_path)
+			if btn != null and btn.get_parent() == parent:
+				parent.move_child(btn, -1)
+	_loaded_lazy_views[state] = instance
+	return instance
 
 ## 转换状态
 func change_state(new_state: UIState, stash_state: bool = true) -> void:
 	if new_state == current_state:
 		GLogger.warning("can not change state", "UiStatMGR")
 		return
-	
+
 	if not _data_ready:
 		return
-	
+
+	# 确保目标视图已加载（懒加载）
+	if LAZY_VIEW_PATHS.has(new_state):
+		ensure_view_loaded(new_state)
+
 	var old_state = current_state
-	
+
 	# 发出状态退出信号)
 	# state_exiting.emit(old_state)
 	# 记录历史
@@ -78,7 +137,7 @@ func change_state(new_state: UIState, stash_state: bool = true) -> void:
 		if state_history.size() >= MAX_HISTORY_DEPTH:
 			state_history.pop_front()
 		state_history.append(old_state)
-	
+
 	# 更新状态
 	previous_state = old_state
 	current_state = new_state

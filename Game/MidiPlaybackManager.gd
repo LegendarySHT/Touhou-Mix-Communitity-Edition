@@ -195,7 +195,17 @@ func load_midi(midi_data: MidiData) -> bool:
 	if midi_data == null:
 		push_error("MidiData is null")
 		return false
-	
+
+	# 清理上一首歌的人声预加载资源（若新歌无人声或路径不同，旧 stream 会一直驻留）
+	if current_midi_data != null and _vocal_preload_path != "":
+		if current_midi_data.vocal_file_path != midi_data.vocal_file_path:
+			_preloaded_vocal_stream = null
+			_vocal_preload_path = ""
+			_vocal_initialized = false
+			var am := AudioManager.instance
+			if am != null and am.vocal_player != null:
+				am.vocal_player.stream = null
+
 	# 保存当前MIDI数据
 	current_midi_data = midi_data
 	
@@ -354,6 +364,32 @@ func load_midi(midi_data: MidiData) -> bool:
 	_preload_vocal_async()
 
 	return true
+
+## 显式卸载当前 MIDI 资源（释放人声 stream、停止后端、清理引用）
+## MidiData.parsed_notes 保留（由 DataManager 管理生命周期，用于 retry 跳过重复解析）
+func unload_midi() -> void:
+	# 释放人声
+	_preloaded_vocal_stream = null
+	_vocal_preload_path = ""
+	_vocal_initialized = false
+	var am := AudioManager.instance
+	if am != null and am.vocal_player != null:
+		am.vocal_player.stream = null
+	# 停止后端
+	var backend := _get_active_backend()
+	if backend != null:
+		backend.stop()
+	# 清理引用（MidiData.parsed_notes 保留，由 DataManager 管理）
+	current_midi_data = null
+	current_notes = []
+	bpm_timeline = []
+	cached_track_channel_instruments.clear()
+	midi_timebase = 480
+	duration_ms = 0.0
+	is_playing = false
+	is_paused = false
+	position = 0.0
+	position_ms = 0.0
 
 ## 将 MIDI 运行时配置保存到 JSON 文件（合并模式）
 ## 用于首次初始化后立即持久化，避免每次启动重复解析简介

@@ -19,6 +19,11 @@ enum ShowStat {
 
 func _ready():
 	instance = self
+	# RB_Btn 旋转 30° 后，内部 Button 的本地 rect 在全局坐标中与可见图标位置可能不重合，
+	# 导致点击可见图标时 Button 不响应。设置 RB_Btn 为 STOP 接收 _gui_input 作为后备：
+	# 点击落在 Button 本地 rect 内由 Button 处理（pressed 信号）；
+	# 落在 Button rect 外但在 RB_Btn rect 内（如旋转后偏移的图标）由 _gui_input 处理。
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	ui.state_changed.connect(_on_state_change)
 
 	eb.page_right.connect(func ():
@@ -29,6 +34,15 @@ func _ready():
 		if ui.current_state == ui.UIState.SETTINGS_VIEW:
 			switch_display(ShowStat.ARROW_RIGHT)
 	)
+
+## 后备点击处理：Button 旋转后部分可见图标落在 Button 本地 rect 外，
+## 此处捕获 RB_Btn 整个 rect 内的左键点击，确保图标可点。
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton \
+			and event.button_index == MOUSE_BUTTON_LEFT \
+			and event.pressed:
+		_on_button_pressed()
+		accept_event()
 
 func _on_state_change(_old_state, new_state: UIStateManager.UIState):
 	if new_state in [ui.UIState.ALBUM_VIEW, ui.UIState.SONG_VIEW]:

@@ -223,6 +223,8 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 			playback_mgr.clear_manual_control_notes()
 		flow_area.clear_flow_area()
 		game_sequences.clear()
+		if key_sequence_mgr:
+			key_sequence_mgr.clear_sequences()
 		_teardown_blur_bake_viewport()
 		# 重置状态，供下次 _prepare_game 使用
 		_is_finishing_game = false
