@@ -811,12 +811,14 @@ func _locate_soundfont(soundfont_name: String) -> String:
 	var user_path = PathHelper.get_soundfont_dir().path_join(soundfont_name + ".sf2")
 	if FileAccess.file_exists(user_path):
 		return user_path
-	
+
 	# 第二步：检查res://Resources/Soundfont/
+	# 注意：SF2 不是 Godot 注册的资源类型，必须用 FileAccess.file_exists() 检查
+	# ResourceLoader.exists() 对 SF2 永远返回 false，会导致内置音源定位失败
 	var res_path = "res://Resources/Soundfont/".path_join(soundfont_name + ".sf2")
-	if ResourceLoader.exists(res_path):
+	if FileAccess.file_exists(res_path):
 		return res_path
-	
+
 	return ""
 
 
