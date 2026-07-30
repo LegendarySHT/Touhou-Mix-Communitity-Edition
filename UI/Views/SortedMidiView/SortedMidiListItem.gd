@@ -18,6 +18,9 @@ var midi_data: MidiData
 ## 选择动画补间
 var select_tween: Tween
 
+## 刷新入场动画补间（复用时从左侧滑入）
+var _refresh_ani_tween: Tween
+
 signal _init_fin
 
 var _has_ready: bool = false
@@ -41,6 +44,48 @@ func _refresh_display() -> void:
 	# 释放可能残留的旧封面后重新加载
 	release_cover()
 	start_cover_load()
+
+	# 复用刷新（非首次）时，若自然位置在可见区域内则播放滑入动画
+	if _has_ready:
+		_play_refresh_slide_in()
+
+## 复用刷新时的滑入动画：offset_transform_position_ratio.x 从 -2 回到 0
+## 仅当项自然位置（ratio=0）与父级可见区域重合时播放；不可见则直接归零
+func _play_refresh_slide_in() -> void:
+	if _refresh_ani_tween:
+		_refresh_ani_tween.kill()
+		_refresh_ani_tween = null
+
+	# 强制取消父级惯性滚动：set_v_scroll 内部会调 _cancel_drag()
+	# 列表项多时循环每帧处理一项，入口停滚无法保证轮到屏幕项时位置仍稳定；
+	# 此处紧贴动画播放前停滚，确保可见性判断基于稳定的 global_position
+	var sc := parent_node as ScrollContainer
+	if sc:
+		sc.scroll_vertical = sc.scroll_vertical
+
+	# 临时重置 x ratio 到 0，检测自然位置是否可见
+	offset_transform_position_ratio.x = 0.0
+	var in_view := _is_in_viewport()
+
+	if in_view:
+		# 可见：从左侧 -2 滑入到 0
+		offset_transform_position_ratio.x = -2.0
+		_refresh_ani_tween = create_tween()
+		_refresh_ani_tween.tween_property(
+			self, "offset_transform_position_ratio:x", 0.0, 0.4
+		).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	else:
+		# 不可见：保持 0，无动画
+		offset_transform_position_ratio.x = 0.0
+
+## 检测自身全局矩形是否与父级（ScrollContainer）可见区域相交
+func _is_in_viewport() -> bool:
+	if not parent_node or not is_instance_valid(parent_node):
+		return false
+	var parent_ctrl := parent_node as Control
+	if not parent_ctrl or parent_ctrl.size.y <= 0.0:
+		return false
+	return get_global_rect().intersects(parent_ctrl.get_global_rect())
 
 ## 重写基类虚函数：返回 MIDI 封面 Texture2D
 func _get_cover_texture() -> Texture2D:
