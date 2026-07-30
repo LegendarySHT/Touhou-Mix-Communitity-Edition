@@ -8,7 +8,7 @@ signal finish_requested
 @onready var _delay_indicator: Panel = $DelayIndicator
 @onready var _center_line: PanelContainer = $DelayIndicator/CenterLine
 @onready var _adjust_line: PanelContainer = $DelayIndicator/AdjustLine
-@onready var _delay_value: Label = $HBoxC/Value
+@onready var _delay_value: LineEdit = $HBoxC/Value
 # 主题管理器通过 PopupWindow.delay_btn getter 转发访问
 @onready var delay_btn: Button = $Button
 
@@ -23,6 +23,10 @@ var _adjust_line_tween: Tween = null
 var _stable_count: int = 0
 ## 上一个样本值（用于差值计算）
 var _last_sample: float = NAN
+## 上一个有效的延迟输入文本（用于过滤非法字符后回退）
+var _prev_delay_text: String = "0"
+## 程序化设置 _delay_value.text 时的递归守卫标志，避免触发 text_changed 重复更新
+var _setting_delay_text: bool = false
 
 ## AdjustLine 单向运动范围（绝对值，单位：像素）
 const _ADJUST_LINE_RANGE: float = 310
@@ -57,6 +61,9 @@ var _saved_volume_db: float = NAN
 
 func _ready() -> void:
 	delay_btn.pressed.connect(_on_delay_btn_pressed)
+	_delay_value.text_changed.connect(_on_delay_text_changed)
+	_delay_value.text_submitted.connect(_on_delay_text_submitted)
+	_delay_value.focus_exited.connect(_on_delay_focus_exited)
 
 # 启动校准：重置数据 + 启动 AdjustLine 单向循环动画
 func start_calibration(current_delay: int = 0) -> void:
@@ -66,6 +73,7 @@ func start_calibration(current_delay: int = 0) -> void:
 	_last_sample = NAN
 
 	_delay_value.text = str(current_delay)
+	_prev_delay_text = _delay_value.text
 	_update_center_line(float(_delay_value.text))
 
 	# 确保 SoundFont 已加载到后端合成器（trigger_note_on 依赖 SoundFont）
@@ -148,8 +156,12 @@ func _play_beat_sound(hard: bool = false) -> void:
 	)
 
 ## 获取当前延迟值（用于 PopupWindow.show_delay_adjust 返回）
+# 容错：空文本或非法输入回退为 0，并 clamp 到 ±_MAX_DELAY_MS
 func get_delay_value() -> int:
-	return int(_delay_value.text)
+	var text := _delay_value.text.strip_edges()
+	if text.is_empty() or text == "-":
+		return 0
+	return clampi(text.to_int(), -int(_MAX_DELAY_MS), int(_MAX_DELAY_MS))
 
 # 重拍触发：播放重拍音（用户应在此刻点击）
 # 重拍在 AdjustLine 中心(0) 触发，点击时用 AdjustLine 位置算延迟，与动画完全同步
@@ -181,6 +193,51 @@ func _on_delay_btn_pressed() -> void:
 	if _stable_count >= _CALIB_DONE_STABLE:
 		_finish_calibration()
 
+# ===== 手动输入延迟值（LineEdit 信号处理）=====
+# text_changed：实时校验输入，过滤非法字符，并同步 CenterLine 位置
+func _on_delay_text_changed(new_text: String) -> void:
+	if _setting_delay_text:
+		return
+	# 合法输入：空、单独 '-'、或 [-]?数字（≤4 字符）
+	if new_text.is_empty() or new_text == "-" or (new_text.is_valid_int() and new_text.length() <= 4):
+		_prev_delay_text = new_text
+		# 有效整数时同步 CenterLine；空或 '-' 时保留上次位置
+		if new_text.is_valid_int() and not new_text.is_empty():
+			_update_center_line(float(new_text.to_int()))
+	else:
+		# 非法输入，回退到上一个有效文本
+		_setting_delay_text = true
+		_delay_value.text = _prev_delay_text
+		_delay_value.caret_column = _prev_delay_text.length()
+		_setting_delay_text = false
+
+# text_submitted（回车）：完成编辑，clamp 并格式化
+func _on_delay_text_submitted(_submitted_text: String) -> void:
+	_finalize_delay_text()
+	# 回车后释放焦点，避免 LineEdit 持续拦截 Space 等按键（按钮的快捷键）
+	_delay_value.release_focus()
+
+# focus_exited：失焦时完成编辑
+func _on_delay_focus_exited() -> void:
+	_finalize_delay_text()
+
+# 完成编辑：空值或单独 '-' 置 0，超范围 clamp，重新写回文本与 CenterLine
+func _finalize_delay_text() -> void:
+	var text := _delay_value.text.strip_edges()
+	if text.is_empty() or text == "-":
+		_setting_delay_text = true
+		_delay_value.text = "0"
+		_setting_delay_text = false
+		_prev_delay_text = "0"
+		_update_center_line(0.0)
+		return
+	var val: int = clampi(text.to_int(), -int(_MAX_DELAY_MS), int(_MAX_DELAY_MS))
+	_setting_delay_text = true
+	_delay_value.text = str(val)
+	_setting_delay_text = false
+	_prev_delay_text = _delay_value.text
+	_update_center_line(float(val))
+
 # 在指定位置生成 AdjustLine 残影（点击瞬间的视觉反馈，1秒淡出）
 func _spawn_adjust_line_ghost(pos_x: float) -> void:
 	var ghost: PanelContainer = _adjust_line.duplicate()
@@ -209,9 +266,12 @@ func _update_center_line(delay_ms: float) -> void:
 	# ms → px：乘 _ANIM_SPEED 除 1000，与 _on_delay_btn_pressed 互逆
 	_center_line.offset_transform_position = Vector2(-clamped * _ANIM_SPEED / 1000.0, 0)
 
-# 统一设置延迟值：更新 Label 和 CenterLine
+# 统一设置延迟值：更新 LineEdit 和 CenterLine（程序化设置，避开 text_changed 重复更新）
 func _set_delay_value(delay_ms: float) -> void:
+	_setting_delay_text = true
 	_delay_value.text = str(roundi(delay_ms))
+	_setting_delay_text = false
+	_prev_delay_text = _delay_value.text
 	_update_center_line(delay_ms)
 
 # 手动拖动 DelayIndicator：在面板范围内点击/拖动 → CenterLine 移动到手指位置并更新延迟

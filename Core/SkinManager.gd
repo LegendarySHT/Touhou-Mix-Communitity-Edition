@@ -9,6 +9,9 @@ class_name SkinManager
 static var SKINS_DIR: String:
 	get: return PathHelper.get_skins_dir()
 
+static var BUILTIN_CONFIG_DIR: String:
+	get: return PathHelper.get_builtin_skin_config_dir()
+
 ## 默认资源源目录
 const DEFAULT_SKINS_SRC = "res://Resources/Skins/"
 
@@ -100,27 +103,45 @@ func _load_skin_metadata(skin_path: String, skin_name: String, is_builtin: bool 
 	return metadata
 
 ## 加载或自动生成皮肤配置
-## 用户皮肤（user://）若缺失 skin.ini 会自动写入磁盘；内置皮肤（res://）仅返回内存配置
+## - 用户皮肤（user://）：加载 skin.ini，缺失则生成并写入磁盘
+## - 内置皮肤（res://）：加载 res:// 中的 skin.ini（缺失则生成默认值，不写盘），
+##   然后检查内置皮肤覆盖目录中的 {name}.ini 是否存在，存在则用其覆盖
 func _load_or_generate_skin_config(skin_path: String, is_builtin: bool) -> Dictionary:
 	var config_path = skin_path.path_join(SKIN_CONFIG_FILE)
 
 	# 1. 尝试加载已存在的 skin.ini
-	if FileAccess.file_exists(config_path):
-		var loaded = _load_skin_config_from_file(config_path)
-		if not loaded.is_empty():
-			return loaded
-		# 加载失败（文件损坏等）：回退到自动生成，并打印警告
-		GLogger.warning("Skin config corrupted, regenerating: %s" % config_path, "SkinMGR")
+	var config: Dictionary = {}
+	if PathHelper.file_exists(config_path):
+		config = _load_skin_config_from_file(config_path)
+		if config.is_empty():
+			# 加载失败（文件损坏等）：回退到自动生成，并打印警告
+			GLogger.warning("Skin config corrupted, regenerating: %s" % config_path, "SkinMGR")
+			config = _generate_default_skin_config(skin_path)
+	else:
+		# 2. 自动生成默认配置
+		config = _generate_default_skin_config(skin_path)
+		# 用户皮肤写入磁盘；内置皮肤跳过（res:// 在导出后为只读）
+		if not is_builtin:
+			_save_skin_config_to_file(config_path, config)
+			GLogger.info("Generated skin config: %s" % config_path, "SkinMGR")
 
-	# 2. 自动生成默认配置
-	var config = _generate_default_skin_config(skin_path)
-
-	# 3. 用户皮肤写入磁盘；内置皮肤跳过（res:// 在导出后为只读）
-	if not is_builtin:
-		_save_skin_config_to_file(config_path, config)
-		GLogger.info("Generated skin config: %s" % config_path, "SkinMGR")
+	# 3. 内置皮肤：检查覆盖配置，存在则用其替代
+	if is_builtin:
+		var pure_name = skin_path.get_file()
+		var override_path = _get_builtin_config_path(pure_name)
+		if PathHelper.file_exists(override_path):
+			var override = _load_skin_config_from_file(override_path)
+			if not override.is_empty():
+				GLogger.info("Loaded builtin skin override config: %s" % override_path, "SkinMGR")
+				return override
+			GLogger.warning("Builtin skin override config corrupted, using default: %s" % override_path, "SkinMGR")
 
 	return config
+
+## 获取内置皮肤覆盖配置文件路径
+## pure_name 为不含 [内置] 后缀的皮肤文件夹名
+func _get_builtin_config_path(pure_name: String) -> String:
+	return BUILTIN_CONFIG_DIR.path_join(pure_name + ".ini")
 
 ## 从文件加载皮肤配置并解析为结构化 Dictionary
 ## 返回空 Dictionary 表示加载/解析失败
@@ -313,9 +334,11 @@ func get_note_color_config(skin_name: String, note_type_key: String) -> Dictiona
 		"random_color": bool(sec.get("random_color", false))
 	}
 
-## 将工作副本配置保存到 skin.ini（用户皮肤写 user://，内置皮肤写 res://）
-## 同时更新 skins_index 中的内存配置
-## 返回是否写入成功（内置皮肤在导出环境下 res:// 只读，可能写入失败）
+## 将工作副本配置保存到磁盘并更新内存配置
+## - 用户皮肤（user://）：写入皮肤包目录下的 skin.ini
+## - 内置皮肤（res://）：写入 user://skin/builtin_skin_config/{name}.ini 覆盖文件
+##   （res:// 在导出后为只读，故用 user:// 下的覆盖文件持久化修改）
+## 返回是否成功写入磁盘
 func save_skin_config(skin_name: String, config: Dictionary) -> bool:
 	var skin_data: SkinMetadata = skins_index.get(skin_name, null)
 	if skin_data == null:
@@ -334,11 +357,24 @@ func save_skin_config(skin_name: String, config: Dictionary) -> bool:
 		"long": config.get("long", {})
 	})
 
+	# 始终更新内存配置（保证本次会话内生效）
+	skin_data.config = normalized
+
+	# 内置皮肤写入覆盖文件（res:// 在导出后为只读）
+	if skin_data.is_builtin:
+		var pure_name = skin_data.path.get_file()
+		var override_path = _get_builtin_config_path(pure_name)
+		# 确保覆盖目录存在
+		if not PathHelper.ensure_dir_exists(BUILTIN_CONFIG_DIR):
+			GLogger.error("Failed to create builtin config dir: %s" % BUILTIN_CONFIG_DIR, "SkinMGR")
+			return false
+		_save_skin_config_to_file(override_path, normalized)
+		GLogger.info("Saved builtin skin override config: %s" % override_path, "SkinMGR")
+		return true
+
+	# 用户皮肤写入皮肤包目录
 	var config_path = skin_data.path.path_join(SKIN_CONFIG_FILE)
 	_save_skin_config_to_file(config_path, normalized)
-
-	# 更新内存中的配置
-	skin_data.config = normalized
 	GLogger.info("Saved skin config: %s" % config_path, "SkinMGR")
 	return true
 
@@ -396,7 +432,7 @@ func get_skin_textures(skin_name: String) -> Dictionary:
 				result[texture_key] = load(file_path)
 		else:
 			# 用户目录资源动态加载 - 先检查文件是否存在
-			if FileAccess.file_exists(file_path):
+			if PathHelper.file_exists(file_path):
 				var image = Image.load_from_file(file_path)
 				if image:
 					var texture = ImageTexture.create_from_image(image)
@@ -433,7 +469,7 @@ func remove_skin(skin_name: String) -> bool:
 
 	var deleted := false
 	# 删除皮肤目录
-	if DirAccess.dir_exists_absolute(meta.path):
+	if PathHelper.dir_exists(meta.path):
 		deleted = FileSystemManager.instance.delete_directory_recursive(meta.path)
 		if not deleted:
 			GLogger.warning("remove_skin: failed to delete dir: %s" % meta.path, "SkinMGR")

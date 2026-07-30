@@ -53,6 +53,11 @@ static func get_charts_dir() -> String:
 static func get_skins_dir() -> String:
 	return get_files_dir() + "Skins/"
 
+## 内置皮肤配置覆盖目录
+## res:// 在导出后为只读，内置皮肤的修改持久化到此目录
+static func get_builtin_skin_config_dir() -> String:
+	return get_files_dir() + "Skins/builtin_skin_config/"
+
 ## 音源目录
 static func get_soundfont_dir() -> String:
 	return get_files_dir() + "Soundfont/"
