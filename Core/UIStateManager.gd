@@ -113,6 +113,8 @@ func ensure_view_loaded(state: UIState) -> Node:
 			if btn != null and btn.get_parent() == parent:
 				parent.move_child(btn, -1)
 	_loaded_lazy_views[state] = instance
+	# 主题色由视图自身 _ready 注册到 ThemeMGR._theme_appliers 并自调 apply_theme() 完成，
+	# 不再需要在此手动补应用（见 ThemeManager.register_theme_applier）
 	return instance
 
 ## 转换状态

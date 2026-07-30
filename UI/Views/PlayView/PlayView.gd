@@ -157,6 +157,45 @@ func _ready() -> void:
 
 	# env.environment = null
 
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	if not menu or not menu.theme:
+		return
+	var theme := menu.theme
+	var p := ThemeMGR.get_color("primary")
+	ThemeMGR._theme_button_set_color(theme, p)
+	# 基础按钮阴影
+	var normal := theme.get_stylebox("normal", "Button")
+	if normal is StyleBoxFlat:
+		normal.shadow_color = Color(p.r, p.g, p.b, 0.3)
+		normal.shadow_size = 8
+	var hover := theme.get_stylebox("hover", "Button")
+	if hover is StyleBoxFlat:
+		var hc := p.lightened(0.15)
+		hover.shadow_color = Color(hc.r, hc.g, hc.b, 0.35)
+		hover.shadow_size = 12
+	# Continue 按钮：比其他按钮更亮
+	if continue_btn:
+		var sb_n := continue_btn.get_theme_stylebox("normal")
+		if sb_n is StyleBoxFlat:
+			sb_n.bg_color = p.lightened(0.15)
+		var sb_h := continue_btn.get_theme_stylebox("hover")
+		if sb_h is StyleBoxFlat:
+			sb_h.bg_color = p.lightened(0.30)
+	# Quit 按钮：pressed 状态用 danger 色
+	if quit_btn:
+		var sb_p := quit_btn.get_theme_stylebox("pressed")
+		if sb_p is StyleBoxFlat:
+			sb_p.bg_color = ThemeMGR.DANGER_COLOR
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
 		_auto_pause_on_background("app_notification_%d" % what)

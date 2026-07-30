@@ -27,6 +27,9 @@ var _prev_tab_idx: int = 0
 var _is_animating: bool = false
 # 上一次 midi_list 选中索引，用于检测内部切换
 var _last_midi_selection: int = -1
+# 退回 SongView 时标记，等退出动画完毕后由 restore_panel_state() 执行清理
+# 避免动画播放过程中列表已被清空
+var _pending_cleanup: bool = false
 
 # midi信息框左边的三个按钮
 @onready var left_btns: Array[Button] = [$LeftArea/InfoWindow/HBoxC/Left/PreviBtn, $LeftArea/InfoWindow/HBoxC/Left/Fold/Btn, $LeftArea/InfoWindow/HBoxC/Left/NextBtn]
@@ -82,6 +85,19 @@ func _ready() -> void:
 	info_btn.pressed.connect(_on_info_btn_pressed)
 	delete_btn.pressed.connect(_on_del_btn_pressed)
 
+	# 注册主题应用者并首次着色
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	ThemeMGR._style_midi_individual_nodes(self)
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
+
 # MIDI 选择变化：加载列表，若收藏夹面板可见则同步刷新
 func _on_midi_selected(_midi_id: String, midi: MidiData) -> void:
 	midi_list.load_midi([midi])
@@ -105,10 +121,13 @@ func _on_state_changed(old_state: int, new_state: int) -> void:
 		if midi:
 			favor_panel.show_with_midi(midi)
 		_last_midi_selection = midi_list.selected_item
-	# 退出 MIDI_VIEW 回歌曲列表时释放列表项
-	if old_state == UIStateManager.UIState.MIDI_VIEW and new_state != UIStateManager.UIState.MIDI_VIEW:
-		if new_state != UIStateManager.UIState.TRACK_VIEW and new_state != UIStateManager.UIState.PLAY_VIEW:
-			_cleanup()
+	# 仅在退回 SongView 时标记清理（去 TrackView/PlayView 等需保留以便返回时仍可见）
+	# 实际清理延迟到退出动画完毕后由 restore_panel_state() 执行，避免动画播放过程中列表已被清空
+	if old_state == UIStateManager.UIState.MIDI_VIEW and new_state == UIStateManager.UIState.SONG_VIEW:
+		_pending_cleanup = true
+	# 重新进入 MidiView 时清除残留的 pending 标志（防止上次退出动画被中断导致残留）
+	elif new_state == UIStateManager.UIState.MIDI_VIEW:
+		_pending_cleanup = false
 
 ## 释放视图内部资源（midi 列表项），保留节点壳和信号连接
 ## 重新进入时由 song_selected 信号重新加载
@@ -237,23 +256,23 @@ func _hide_favor_panel(exiting_page: bool = false) -> void:
 func _on_info_btn_pressed():
 	if midi_list.selected_item == -1:
 		return
-	
-	showing_info = not showing_info
-	# 窗口部分
-	description.visible = showing_info
-	midi_list.visible = not showing_info
+	_set_info_visible(not showing_info)
 
+## 设置展开简介面板的可见性（true=展开简介隐藏列表，false=显示列表收起简介）
+## _on_info_btn_pressed 和 restore_panel_state 共用此函数
+func _set_info_visible(v: bool) -> void:
+	showing_info = v
+	# 窗口部分
+	description.visible = v
+	midi_list.visible = not v
 	# 禁用按钮，防止点击
 	for btn in left_btns:
-		btn.disabled = showing_info
-	delete_btn.disabled = showing_info
-
-	midi_list.get_parent().get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL if showing_info else SIZE_FILL
-
+		btn.disabled = v
+	delete_btn.disabled = v
+	midi_list.get_parent().get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL if v else SIZE_FILL
 	# 数据区
-	detail_data_area.visible = not showing_info
-	redirect_btns.visible = showing_info
-
+	detail_data_area.visible = not v
+	redirect_btns.visible = v
 	midi_list.need_snap = true
 
 func _on_del_btn_pressed():
@@ -343,7 +362,15 @@ func _on_del_btn_pressed():
 			GLogger.info("已删除曲包: %s" % midi_to_del.name, "MidiView")
 
 # 退出界面时恢复页面状态
+# 由 AnimationManager 在 Midi_Info_View 退出动画完毕后调用
 func restore_panel_state() -> void:
 	if _favor_panel_visible:
 		_hide_favor_panel(true)
 	get_node("OptionPanel/VBoxC/TabBtn/Rank").button_pressed=true
+	# 重置展开简介状态（若已展开则收起）
+	if showing_info:
+		_set_info_visible(false)
+	# 退出动画完毕，执行延迟的列表清理
+	if _pending_cleanup:
+		_pending_cleanup = false
+		_cleanup()

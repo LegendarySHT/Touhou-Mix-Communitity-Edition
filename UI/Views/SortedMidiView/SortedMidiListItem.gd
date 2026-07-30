@@ -5,10 +5,10 @@ extends CoverListItemBase
 class_name SortedMidiListItem
 
 ## 引用节点
-@onready var status_label: Label = $Panel/HBoxC/status
-@onready var midi_name_label: Label = $Panel/MidiName
-@onready var author_label: Label = $Panel/HBoxC/Author
-@onready var line: Line2D = $Panel/HBoxC/Line2D
+@onready var status_label: Label = $HBoxC/status
+@onready var midi_name_label: Label = $MidiName
+@onready var author_label: Label = $HBoxC/Author
+@onready var line: Line2D = $HBoxC/Line2D
 # cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
 
 @onready var state_manager:UIStateManager = UiStatMGR
@@ -24,7 +24,7 @@ signal _init_fin
 var _has_ready: bool = false
 
 func _ready() -> void:
-	cover_texture = $Panel/cover
+	cover_texture = $cover
 	await _init_fin
 	_refresh_display()
 	_has_ready = true
@@ -34,7 +34,7 @@ func _ready() -> void:
 ## 新建节点 _cover_loaded=false，release_cover 仅置空 null texture（无副作用）
 func _refresh_display() -> void:
 	# 显示MIDI信息
-	get_node("Panel/Data").text = "%d %d %d %d" % [midi_data.download_count, midi_data.trial_count, midi_data.up_count, midi_data.love_count]
+	get_node("Data").text = "%d %d %d %d" % [midi_data.download_count, midi_data.trial_count, midi_data.up_count, midi_data.love_count]
 	status_label.text = midi_data.status
 	midi_name_label.text = midi_data.name.strip_edges()
 	author_label.text = midi_data.artist_name if not midi_data.artist_name.is_empty() else "Unknown"
@@ -60,7 +60,7 @@ func setup_with_midi(midi: MidiData, index: int, bg:ButtonGroup) -> void:
 
 	# 初始化按钮（复用时 button 已存在，跳过重复初始化）
 	if not button:
-		button = get_node("Panel/Button")
+		button = get_node("Button")
 		enable_selected_animation(button, get_node("/root/Main/skew/C/SortedMidisList"))
 	button.button_group = bg
 

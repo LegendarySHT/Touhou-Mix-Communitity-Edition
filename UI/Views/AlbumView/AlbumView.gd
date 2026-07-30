@@ -50,6 +50,20 @@ func _ready() -> void:
 
 	super._ready()
 
+	# 注册主题色应用器，由 ThemeManager 在主题切换时广播调用
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	if item_instance:
+		ThemeMGR._style_album_instance(item_instance, ThemeMGR.get_color("primary_light"))
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
+
 ## 加载专辑数据（异步，避免阻塞主线程）
 func _load_albums() -> void:
 	if not data_manager:

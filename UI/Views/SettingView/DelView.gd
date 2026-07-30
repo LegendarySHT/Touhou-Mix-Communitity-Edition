@@ -126,6 +126,29 @@ func _ready() -> void:
 	_select_toggle.disabled = true
 	_delete_btn.disabled = true
 
+	# 注册主题应用者并首次着色
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	var sidebar := get_node_or_null("SideBar") as VBoxContainer
+	if sidebar:
+		ThemeMGR._theme_button_set_color(sidebar.theme, ThemeMGR.get_color("primary"))
+		var pressed := sidebar.theme.get_stylebox("pressed", "Button")
+		if pressed:
+			pressed.bg_color = ThemeMGR.get_color("primary_dark").darkened(0.5)
+	var top_panel := get_node_or_null("Content/PC") as PanelContainer
+	if top_panel:
+		var sb := top_panel.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.bg_color = ThemeMGR.get_color("primary_dark")
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
+
 
 # ============================================================
 # 生命周期（由 SettingView 调用）

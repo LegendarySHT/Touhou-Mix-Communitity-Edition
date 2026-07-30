@@ -74,6 +74,31 @@ func _ready() -> void:
 	UiStatMGR.state_changed.connect(_on_state_changed)
 	animate(false)
 
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	# LevelingProgress — 透明 primary_dark
+	if info:
+		var sb := info.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			var a = sb.bg_color.a
+			var pd := ThemeMGR.get_color("primary_dark")
+			sb.bg_color = Color(pd.r, pd.g, pd.b, a)
+	# Btns — 透明 primary_light
+	if btns:
+		var sb := btns.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			var a = sb.bg_color.a
+			var pl := ThemeMGR.get_color("primary_light")
+			sb.bg_color = Color(pl.r, pl.g, pl.b, a)
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
+
 func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	# 退出 SCORE_VIEW 时停止循环动画，节省 CPU
 	if old_state == UIStateManager.UIState.SCORE_VIEW and new_state != UIStateManager.UIState.SCORE_VIEW:

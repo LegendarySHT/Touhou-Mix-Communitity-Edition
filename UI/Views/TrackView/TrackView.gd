@@ -154,6 +154,45 @@ func _ready() -> void:
 
 	super._ready()
 
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	var p := ThemeMGR.get_color("primary")
+	var pl := ThemeMGR.get_color("primary_light")
+	# TotalView panel -> primary
+	var total_view := get_node_or_null("MC/VBox/TotalView") as Panel
+	if total_view:
+		var sb := total_view.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.bg_color = p
+	# noteTotal panel -> primary_light
+	var note_total := get_node_or_null("MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal") as Panel
+	if note_total:
+		var sb := note_total.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.bg_color = pl
+	# VocalEnableBtn button states
+	if vocal_enable_btn:
+		var sb_n := vocal_enable_btn.get_theme_stylebox("normal")
+		if sb_n is StyleBoxFlat:
+			sb_n.bg_color = p
+		var sb_h := vocal_enable_btn.get_theme_stylebox("hover")
+		if sb_h is StyleBoxFlat:
+			sb_h.bg_color = p.lightened(0.15)
+		var sb_p := vocal_enable_btn.get_theme_stylebox("pressed")
+		if sb_p is StyleBoxFlat:
+			sb_p.bg_color = ThemeMGR.DANGER_COLOR
+		var sb_hp := vocal_enable_btn.get_theme_stylebox("hover_pressed")
+		if sb_hp is StyleBoxFlat:
+			sb_hp.bg_color = ThemeMGR.DANGER_COLOR.lightened(0.2)
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
+
 # 加载并播放midi
 func _load_midi(midi: MidiData) -> void:
 	current_midi_data = midi

@@ -235,8 +235,30 @@ func _init_ui() -> void:
 	left_top.z_index = 20
 
 	# 应用主题（Theme 资源 + 主界面组件；背景不在此刷新，由各视图/refresh_backgrounds 处理）
+	# Main 注册为主题应用者，首次自调 apply_theme，再由 refresh_theme_only 广播给所有已注册视图/组件
 	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
 		ThemeMGR.refresh_theme_only()
+
+## 应用主题色到主框架组件（由 ThemeManager 广播调用 + _init_ui 首次自调）
+func apply_theme() -> void:
+	# LT_Btn — 蓝 (primary)
+	var lt := get_node_or_null("LT_Btn")
+	if lt:
+		ThemeMGR._modify_panel_color(lt, "primary")
+	# RB_Btn — 淡蓝 (primary_light)
+	var rb := get_node_or_null("RB_Btn")
+	if rb:
+		ThemeMGR._modify_panel_color(rb, "primary_light")
+	# ShortCutMenu 面板 — 蓝 (primary)
+	var sc_panel := get_node_or_null("skew/C/ShortCutMenu/Panel")
+	if sc_panel:
+		ThemeMGR._modify_panel_color(sc_panel, "primary")
+	# PlayerInfo 面板 — 暗色 (primary_dark)
+	var info_panel := get_node_or_null("PlayerInfo/Info/Panel")
+	if info_panel:
+		ThemeMGR._modify_panel_color(info_panel, "primary_dark")
 
 ## 连接核心系统信号
 func _connect_signals() -> void:

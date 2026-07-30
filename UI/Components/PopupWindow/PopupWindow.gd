@@ -55,6 +55,28 @@ func _ready() -> void:
 		_window_popup_animate(false)
 	)
 
+	# 注册主题应用者并首次着色
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	# DelayAdjust/Button — primary 色调
+	var delay_btn_node := delay_btn as Button
+	ThemeMGR._style_button_set_bg_color(delay_btn_node, ThemeMGR.get_color("primary"))
+	# KBModeAdjust/AddBtn — primary 色调（静态按钮）
+	var kb_add_btn := get_node_or_null("TabC/KBModeAdjust/KeySequence/VFlowC/AddBtn") as Button
+	if kb_add_btn:
+		ThemeMGR._style_button_set_bg_color(kb_add_btn, ThemeMGR.get_color("primary"))
+	# KBModeAdjust 中动态创建的 KeySequenceItem — 委托给 KBModeAdjust.apply_button_theme
+	if _kb_mode_adjust:
+		_kb_mode_adjust.apply_button_theme(ThemeMGR.get_color("primary"))
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
+
 func _on_cancel_pressed() -> void:
 	_confirm = false
 	hide()
