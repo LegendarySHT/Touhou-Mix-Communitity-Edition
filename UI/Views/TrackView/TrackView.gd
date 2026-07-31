@@ -12,9 +12,6 @@ class_name TrackView
 # 切换人声启用状态按钮
 @onready var vocal_enable_btn: Button = $MC/VBox/VolumeView/HBoxC/VBoxC2/VocalEnableBtn
 
-# FileDialog 用于导入人声文件（动态创建）
-var file_dialog: FileDialog = null
-
 @onready var latency_edit: LineEdit = $MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC/Latency
 @onready var midi_vol_btn: TextureButton = $MC/VBox/VolumeView/HBoxC/GridC/midiVolIcon
 @onready var midi_vol_slider: HSlider = $MC/VBox/VolumeView/HBoxC/GridC/midiVolSlider
@@ -63,31 +60,10 @@ func _ready() -> void:
 		push_error("MidiPlaybackManager not initialized in Main! MIDI features will not work.")
 		return
 
-	# 初始化UI
-	# 确保音量滑块的范围正确（0-100）
-	# 动态创建FileDialog
-	if file_dialog == null:
-		file_dialog = FileDialog.new()
-		file_dialog.name = "VocalFileDialog"
-		add_child(file_dialog)
-		file_dialog.filters = PackedStringArray(["Audio Files (*.mp3,*.wav,*.ogg,*.flac) ; *.mp3,*.wav,*.ogg,*.flac", "All Files ; *"])
-		file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-		file_dialog.access = FileDialog.ACCESS_FILESYSTEM
-		file_dialog.use_native_dialog = true
-	
-	if midi_vol_slider:
-		midi_vol_slider.min_value = 0
-		midi_vol_slider.max_value = 100  # UI范围0-100%, 实际效果为2倍(新50%=旧100%, 新100%=旧200%/+6dB)
-		midi_vol_slider.step = 1
-	if vocal_vol_slider:
-		vocal_vol_slider.min_value = 0
-		vocal_vol_slider.max_value = 100  # UI范围0-100%, 1:1映射到实际音量
-		vocal_vol_slider.step = 1
-
 	# 反推MIDI音量slider值: 新UI值 = linear * 50 (因为实际效果是UI值的2倍)
 	midi_vol_slider.value = db_to_linear(midi_playback_manager.midi_player_config["volume_db"]) * 50
 	_set_display_midi_volume(midi_vol_slider.value)
-	
+
 	# 连接信号（检查防止重复连接）
 	if not EvtBus.is_connected("enter_track_view_with", Callable(self, "_load_midi")):
 		EvtBus.enter_track_view_with.connect(_load_midi)
@@ -105,12 +81,16 @@ func _ready() -> void:
 	if not vocal_vol_btn.is_connected("toggled", Callable(self, "_on_volume_btn_toggled")):
 		vocal_vol_btn.toggled.connect(_on_volume_btn_toggled.bind(vocal_vol_btn))
 
-	# 初始化子系统控制器
+	# midi_vol_slider/vocal_vol_slider.value_changed、progress_bar 三个信号、
+	# vocal_import_btn.pressed、vocal_enable_btn.toggled、latency_edit.text_changed
+	# 已在 TrackView.tscn 中连接
+
+	# 初始化子系统控制器（file_dialog 由 controller 惰性创建，不再传入）
 	if _vocal_controller == null:
 		_vocal_controller = VocalTrackController.new()
 		_vocal_controller.name = "VocalTrackController"
 		add_child(_vocal_controller)
-		_vocal_controller.setup(self, file_dialog, vocal_import_btn, vocal_enable_btn,
+		_vocal_controller.setup(self, null, vocal_import_btn, vocal_enable_btn,
 			vocal_vol_btn, vocal_vol_slider, vocal_vol_label)
 
 	if _config_persistence == null:
@@ -118,11 +98,6 @@ func _ready() -> void:
 		_config_persistence.name = "MidiConfigPersistence"
 		add_child(_config_persistence)
 		_config_persistence.setup(self)
-
-	# 连接FileDialog信号（动态创建节点，无法在 tscn 中连接）
-	if file_dialog:
-		if not file_dialog.is_connected("file_selected", Callable(_vocal_controller, "on_vocal_file_selected")):
-			file_dialog.file_selected.connect(_vocal_controller.on_vocal_file_selected)
 
 	super._ready()
 

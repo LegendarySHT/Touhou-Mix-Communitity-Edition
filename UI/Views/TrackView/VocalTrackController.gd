@@ -27,16 +27,33 @@ func setup(track_view: TrackView, file_dialog: FileDialog, vocal_import_btn: Tex
 	_vocal_vol_label = vocal_vol_label
 
 
+## 惰性创建并获取 FileDialog
+## 首次调用时同步初始化原生对话框（Windows 上 shell 组件初始化约 2-3 秒），
+## 因此推迟到用户首次点击"导入人声"时才创建，避免 TrackView._ready 卡顿
+func _ensure_file_dialog() -> FileDialog:
+	if _file_dialog and is_instance_valid(_file_dialog):
+		return _file_dialog
+	_file_dialog = FileDialog.new()
+	_file_dialog.name = "VocalFileDialog"
+	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_file_dialog.use_native_dialog = true
+	_file_dialog.filters = PackedStringArray(["Audio Files (*.mp3,*.wav,*.ogg,*.flac) ; *.mp3,*.wav,*.ogg,*.flac", "All Files ; *"])
+	# file_selected 信号连接（动态创建节点，无法在 tscn 中连接）
+	_file_dialog.file_selected.connect(on_vocal_file_selected)
+	_track_view.add_child(_file_dialog)
+	return _file_dialog
+
+
 ## 打开FileDialog导入人声文件
 func on_vocal_import_btn_pressed() -> void:
-	if not _file_dialog:
-		push_error("[TrackView] FileDialog not initialized")
-		return
-
 	var current_midi_data = _track_view.current_midi_data
 	if not current_midi_data:
 		push_warning("[TrackView] No MIDI data loaded, cannot import vocal file")
 		return
+
+	# 惰性创建 FileDialog（首次调用时初始化，之后复用）
+	var file_dialog := _ensure_file_dialog()
 
 	# 获取当前曲包文件夹路径
 	var filesystem_mgr = FileSystemManager.instance
@@ -49,13 +66,13 @@ func on_vocal_import_btn_pressed() -> void:
 		chart_folder = FileSystemManager.CHARTS_DIR
 
 	# 配置FileDialog
-	_file_dialog.current_dir = chart_folder
-	_file_dialog.current_file = ""
-	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	_file_dialog.filters = PackedStringArray(["Audio Files (*.mp3,*.wav,*.ogg,*.flac) ; *.mp3,*.wav,*.ogg,*.flac", "All Files ; *"])
+	file_dialog.current_dir = chart_folder
+	file_dialog.current_file = ""
+	file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	file_dialog.filters = PackedStringArray(["Audio Files (*.mp3,*.wav,*.ogg,*.flac) ; *.mp3,*.wav,*.ogg,*.flac", "All Files ; *"])
 
 	# 显示对话框（对于原生对话框，直接调用popup_centered_clamped）
-	_file_dialog.popup_centered_clamped(Vector2(1024, 768), 0.7)
+	file_dialog.popup_centered_clamped(Vector2(1024, 768), 0.7)
 
 	GLogger.info("Opening vocal import dialog at: %s" % chart_folder, "TrackView")
 
