@@ -28,6 +28,11 @@ signal theme_changed(theme_name: String)
 
 ## ========== 文件系统事件 ==========
 signal midi_deleted(midi_id: String)
+## charts 扫描缓存后台校验完成
+## 参数：是否有变化（true 时 UI 应刷新列表）
+## 启动时先从缓存恢复 charts_index 让用户立即操作，后台 worker 校验文件状态
+## 校验完成后 emit 此信号；changed=true 表示发现了新增/删除/修改的文件夹，UI 需刷新
+signal charts_cache_validated(changed: bool)
 
 ## ========== 收藏夹事件 ==========
 ## 收藏夹数据加载并验证完成

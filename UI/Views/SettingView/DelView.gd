@@ -342,6 +342,15 @@ func _build_midi_page() -> void:
 	_update_item_sum("加载中...")
 	_update_midi_toggle_state()
 
+	# 等待 FileSystemManager 扫描 + 后台缓存校验全部完成
+	# 防止用户在 charts_index 重建期间删除条目，导致 rescan 与校验协程并发 clobber
+	if FileSystemManager.instance.is_busy():
+		_update_item_sum("资源扫描中...")
+		await FileSystemManager.instance.await_busy_done()
+		# 等待期间若 tab 切走 / 退出 DelView，放弃构建
+		if _current_tab != Tab.MIDI or not _delview_entered:
+			return
+
 	var dm := DataMGR
 	if dm.midi_tree.is_empty() and dm.midis.is_empty():
 		if dm.is_loading:

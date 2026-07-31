@@ -37,6 +37,10 @@ const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 ## .import 文件后缀（Godot 导出后，res:// 中的图片以 xxx.jpg.import 形式存在）
 const IMPORT_SUFFIX = ".import"
 
+## charts 扫描分片大小：每片包含的目录数
+## 2000 谱面 → ~32 片，由 WorkerThreadPool 按核心数调度，足够并行粒度
+const CHART_SCAN_CHUNK_SIZE := 64
+
 ## ========== 资源索引 ==========
 ## 谱面索引 {chart_id: ChartMetadata}
 var charts_index: Dictionary = {}
@@ -67,9 +71,22 @@ var audio_files_index: Array[Dictionary] = []
 var is_initialized: bool = false
 var is_scanning: bool = false
 var resources_scanned: bool = false  ## 标记资源扫描是否已完成
+## 后台缓存校验进行中标志（fire-and-forget 协程 _await_cache_validation 运行期间为 true）
+## 此期间 charts_index 可能被协程 clear + 重建，外部若要安全读取/删除需 await await_busy_done()
+var _is_validating: bool = false
 
 ## ========== 信号 ==========
 signal resources_ready
+
+## 是否正忙于扫描或后台校验（外部判断 charts_index 是否稳定）
+func is_busy() -> bool:
+	return is_scanning or _is_validating
+
+## 等待扫描 + 后台校验全部完成（charts_index 稳定可读）
+## DelView 构建页 / rescan 前调用，防止与后台校验协程并发 clobber charts_index
+func await_busy_done() -> void:
+	while is_scanning or _is_validating:
+		await get_tree().process_frame
 
 func _ready() -> void:
 	if instance == null:
@@ -491,152 +508,637 @@ func _copy_directory_recursive_async(src_dir: String, dest_dir: String) -> void:
 	GLogger.info("Recursively copied %d files from %s" % [copied_count, src_dir], "FileSystemMGR")
 
 
-## 扫描所有资源
+## 扫描所有资源（两阶段：快速缓存恢复 + 后台校验）
+## 阶段 A（主线程，<1秒）：读缓存 → 构建 charts_index → 启动 skins/sf/bg 并行扫描 → emit resources_ready
+## 阶段 B（后台 worker）：校验 charts 缓存有效性 → 发现差异时 emit charts_cache_validated
+## 用户在阶段 A 后即可操作，阶段 B 异步刷新 UI
 func _scan_all_resources() -> void:
 	if is_scanning:
 		return
-	
+	# 若后台缓存校验仍在进行，先等其完成再开始 rescan，避免与校验协程并发 clobber charts_index
+	while _is_validating:
+		await get_tree().process_frame
+
 	is_scanning = true
-	GLogger.info("Scanning all resources...", "FileSystemMGR")
+	var t_start := Time.get_ticks_usec()
+	GLogger.info("Scanning all resources (cache + parallel)...", "FileSystemMGR")
 
-	await scan_charts()
-	await SkinMGR.scan_skins()
-	await get_tree().process_frame
-	scan_soundfonts()
-	await get_tree().process_frame
-	await scan_backgrounds()
-	await get_tree().process_frame
-
-	is_scanning = false
-	resources_scanned = true
-	resources_ready.emit()
-
-	is_initialized = true
-
-	GLogger.info("Directory structure initialized", "FileSystemMGR")
-
-## 扫描谱面目录
-## 仅扫描新的谱面文件夹格式（每个文件夹一个谱面）
-func scan_charts() -> void:
-	# await get_tree().process_frame
+	# 清空所有索引（主线程，避免 worker 并发写）
 	charts_index.clear()
 	_chart_id_to_folder.clear()
 	_hash_to_folder.clear()
 	audio_files_index.clear()
-	
+	SkinMGR.clear_index()
+	soundfonts_index.clear()
+	backgrounds_index.clear()
+
+	# === 阶段 A.1：主线程列出所有 charts 目录 + 加载缓存 ===
+	var all_chart_folders := _list_chart_folder_names()
+	var cached_charts := _load_charts_cache()
+
+	# 阶段 A.2：从缓存恢复 charts_index（缓存命中的文件夹直接用缓存数据）
+	# 新增文件夹（缓存中没有的）暂时跳过，由后台校验 worker 扫描
+	var all_charts_data: Dictionary = {}
+	for folder_name in all_chart_folders:
+		if cached_charts.has(folder_name):
+			all_charts_data[folder_name] = cached_charts[folder_name]
+	var cache_hit_count := all_charts_data.size()
+
+	# 缓存策略决策：
+	# - 缓存命中率 > 0（有缓存数据）：走快速路径，后台校验增量
+	# - 缓存命中率为 0（首次启动或缓存失效）：走全量扫描路径，前台等待完成
+	# 避免首次启动时用户看到空列表等 18 秒
+	var use_fast_path := cache_hit_count > 0
+	if use_fast_path:
+		GLogger.info("Charts cache: %d/%d hit, %d new (will scan in background)" % [
+			cache_hit_count, all_chart_folders.size(),
+			all_chart_folders.size() - cache_hit_count
+		], "FileSystemMGR")
+	else:
+		GLogger.info("Charts cache empty or miss, full scan mode", "FileSystemMGR")
+
+	# 阶段 A.3：构建 charts_index + 反向索引 + audio_files_index（主线程，纯 CPU）
+	# 快速路径：用缓存数据构建，让 resources_ready 时 charts_index 已有数据
+	# 全量路径：跳过（_scan_charts_full_sync 会从 worker 结果构建）
+	if use_fast_path:
+		_build_charts_index_from_data(all_charts_data, [])
+
+	# === 阶段 A.4：启动 skins/sf/bg 并行扫描 ===
+	var skins_rw: Dictionary = {}
+	var skins_task := WorkerThreadPool.add_task(
+		func(): SkinMGR._build_skins_index_worker(skins_rw),
+		false, "ScanSkins"
+	)
+	var sf_rw: Dictionary = {}
+	var sf_task := WorkerThreadPool.add_task(
+		func(): _scan_soundfonts_worker(sf_rw),
+		false, "ScanSoundfonts"
+	)
+	var bg_rw: Dictionary = {}
+	var bg_task := WorkerThreadPool.add_task(
+		func(): _scan_backgrounds_worker(bg_rw),
+		false, "ScanBackgrounds"
+	)
+
+	# === 阶段 A.5：charts 扫描 ===
+	# 快速路径：启动后台校验 worker（不阻塞 emit resources_ready）
+	# 全量路径：调用 _scan_charts_full_sync 同步扫描 + 构建索引 + 保存缓存
+	if use_fast_path:
+		_start_charts_cache_validation(all_chart_folders, cached_charts)
+	else:
+		await _scan_charts_full_sync()
+
+	# === 阶段 A.6：等待 skins/sf/bg 完成 ===
+	# 快速路径：只等 skins/sf/bg（charts 已从缓存恢复）
+	# 全量路径：_scan_charts_full_sync 已完成，只等 skins/sf/bg
+	var simple_tasks := [skins_task, sf_task, bg_task]
+	while not _all_simple_tasks_completed(simple_tasks):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(skins_task)
+	WorkerThreadPool.wait_for_task_completion(sf_task)
+	WorkerThreadPool.wait_for_task_completion(bg_task)
+
+	# 合并 skins/sf/bg 结果
+	var skins_data: Dictionary = skins_rw.get("skins", {})
+	for skin_key in skins_data:
+		SkinMGR.skins_index[skin_key] = SkinMetadata.from_dict(skins_data[skin_key])
+	for log_entry in skins_rw.get("logs", []):
+		if log_entry.get("is_warning", true):
+			GLogger.warning(log_entry.msg, "SkinMGR")
+		else:
+			GLogger.info(log_entry.msg, "SkinMGR")
+	soundfonts_index = sf_rw.get("soundfonts", {})
+	for w in sf_rw.get("warnings", []):
+		GLogger.warning(w, "FileSystemMGR")
+	backgrounds_index = bg_rw.get("backgrounds", {})
+	for w in bg_rw.get("warnings", []):
+		GLogger.warning(w, "FileSystemMGR")
+
+	# === 阶段 A.7：emit resources_ready，用户可立即操作 ===
+	# 快速路径：charts_index 已从缓存恢复，后台校验仍在进行，完成后会 emit charts_cache_validated
+	# 全量路径：charts_index 已从 worker 结果构建完成
+	is_scanning = false
+	resources_scanned = true
+	resources_ready.emit()
+	is_initialized = true
+
+	var t_end := Time.get_ticks_usec()
+	if use_fast_path:
+		GLogger.info("Resources ready in %.0fms (charts=%d from cache, skins=%d, sf=%d, bg=%d)" % [
+			(t_end - t_start) / 1000.0,
+			charts_index.size(), SkinMGR.skins_index.size(),
+			soundfonts_index.size(), backgrounds_index.size()
+		], "FileSystemMGR")
+	else:
+		GLogger.info("Directory structure initialized in %.0fms (charts=%d, skins=%d, sf=%d, bg=%d)" % [
+			(t_end - t_start) / 1000.0,
+			charts_index.size(), SkinMGR.skins_index.size(),
+			soundfonts_index.size(), backgrounds_index.size()
+		], "FileSystemMGR")
+
+## 启动 charts 缓存后台校验（worker 线程）
+## 校验缓存条目有效性 + 扫描新增文件夹 → 主线程合并差异 → emit charts_cache_validated
+## 不阻塞启动流程，用户在 resources_ready 后即可操作
+func _start_charts_cache_validation(all_chart_folders: Array, cached_charts: Dictionary) -> void:
+	var rw: Dictionary = {}
+	var task_id := WorkerThreadPool.add_task(
+		func(): _validate_charts_cache_worker(cached_charts, all_chart_folders, rw),
+		false, "ValidateChartsCache"
+	)
+	# 后台轮询，不阻塞启动主流程
+	_await_cache_validation(task_id, rw, cached_charts)
+
+## 后台 await 缓存校验完成，处理差异后 emit 信号
+## 通过 _is_validating 标志保护：期间 DelView / rescan 等可通过 await_busy_done() 等待
+func _await_cache_validation(task_id: int, rw: Dictionary, cached_charts: Dictionary) -> void:
+	_is_validating = true
+	while not WorkerThreadPool.is_task_completed(task_id):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(task_id)
+
+	var changed_folders: Array = rw.get("changed_folders", [])
+	var removed_folders: Array = rw.get("removed_folders", [])
+	var new_folders: Array = rw.get("new_folders", [])
+	var is_clean: bool = rw.get("is_clean", true)
+
+	GLogger.info("Charts cache validation: %d changed, %d removed, %d new (clean=%s)" % [
+		changed_folders.size(), removed_folders.size(), new_folders.size(), is_clean
+	], "FileSystemMGR")
+
+	# 无任何变化 → 不刷新 UI
+	if is_clean:
+		# 仍 emit 一次（changed=false），让监听方知道校验已完成
+		_is_validating = false
+		if EvtBus:
+			EvtBus.charts_cache_validated.emit(false)
+		return
+
+	# 有变化：扫描新增 + 变化的文件夹，更新 charts_index，emit 信号刷新 UI
+	var folders_to_scan: Array = []
+	for f in new_folders:
+		folders_to_scan.append(f)
+	for f in changed_folders:
+		folders_to_scan.append(f)
+
+	# 启动 worker 扫描新增 + 变化的文件夹
+	var chart_tasks := _start_charts_scan_tasks(folders_to_scan)
+	while not _all_chart_tasks_completed(chart_tasks):
+		await get_tree().process_frame
+	for t in chart_tasks:
+		WorkerThreadPool.wait_for_task_completion(t.id)
+
+	# 合并结果：移除已删除文件夹 + 更新变化的 + 添加新增的
+	# 1. 移除已删除的
+	for folder_name in removed_folders:
+		cached_charts.erase(folder_name)
+	# 2. 更新变化的（先移除旧的，下面会被新的覆盖）
+	for folder_name in changed_folders:
+		cached_charts.erase(folder_name)
+	# 3. 添加新增/重扫的
+	for t in chart_tasks:
+		var task_rw: Dictionary = t.result
+		var charts_data: Dictionary = task_rw.get("charts", {})
+		for folder_name in charts_data.keys():
+			cached_charts[folder_name] = charts_data[folder_name]
+
+	# 重建 charts_index（主线程）
+	charts_index.clear()
+	_chart_id_to_folder.clear()
+	_hash_to_folder.clear()
+	# audio_files_index 全部来自 charts，直接 clear 重建
+	audio_files_index.clear()
+	_build_charts_index_from_data(cached_charts, chart_tasks)
+
+	# 保存更新后的缓存
+	_save_charts_cache(cached_charts)
+
+	_is_validating = false
+	# emit 信号通知 UI 刷新
+	if EvtBus:
+		EvtBus.charts_cache_validated.emit(true)
+	GLogger.info("Charts cache validation done: charts=%d (refreshed)" % charts_index.size(), "FileSystemMGR")
+
+## 检查所有 simple task（单个 task_id 数组）是否全部完成
+func _all_simple_tasks_completed(task_ids: Array) -> bool:
+	for tid in task_ids:
+		if not WorkerThreadPool.is_task_completed(tid):
+			return false
+	return true
+
+## 扫描谱面目录（公共 API，并行分片）
+## 仅扫描新的谱面文件夹格式（每个文件夹一个谱面）
+## 通过 WorkerThreadPool 分片并行扫描，主线程 await 全部完成
+## 注意：此方法不走缓存（用于 DelView 删除资源后的强制重扫），启动时走 _scan_all_resources 的缓存路径
+func scan_charts() -> void:
+	await _scan_charts_full_sync()
+
+## 全量扫描 charts 并构建索引 + 保存缓存（公共逻辑）
+## 内部：list folders → start chunk tasks → await → collect → clear+build index → save cache
+## 由 scan_charts() 公共 API 和 _scan_all_resources() 全量路径复用
+## 返回：扫描耗时（毫秒），用于调用方日志
+func _scan_charts_full_sync() -> float:
+	var t_start := Time.get_ticks_usec()
+
+	var all_chart_folders := _list_chart_folder_names()
+	if all_chart_folders.is_empty():
+		GLogger.info("No charts to scan", "FileSystemMGR")
+		charts_index.clear()
+		_chart_id_to_folder.clear()
+		_hash_to_folder.clear()
+		audio_files_index.clear()
+		return 0.0
+
+	var chart_tasks := _start_charts_scan_tasks(all_chart_folders)
+
+	# 主线程轮询 await，保持 UI 响应
+	while not _all_chart_tasks_completed(chart_tasks):
+		await get_tree().process_frame
+
+	# wait_for_task_completion 仅做线程 join（瞬时）
+	for t in chart_tasks:
+		WorkerThreadPool.wait_for_task_completion(t.id)
+
+	# 从 worker 结果收集所有 charts data（不走缓存，完整扫描）
+	var all_charts_data: Dictionary = {}
+	for t in chart_tasks:
+		var rw: Dictionary = t.result
+		var charts_data: Dictionary = rw.get("charts", {})
+		for folder_name in charts_data.keys():
+			all_charts_data[folder_name] = charts_data[folder_name]
+
+	# 重建 charts_index（全量扫描结果）
+	charts_index.clear()
+	_chart_id_to_folder.clear()
+	_hash_to_folder.clear()
+	audio_files_index.clear()
+	_build_charts_index_from_data(all_charts_data, chart_tasks)
+
+	# 保存缓存（DelView 重扫后也更新缓存，保持一致）
+	_save_charts_cache(all_charts_data)
+
+	var elapsed_ms := (Time.get_ticks_usec() - t_start) / 1000.0
+	GLogger.info("Scanned %d charts in %.0fms" % [
+		charts_index.size(), elapsed_ms
+	], "FileSystemMGR")
+	return elapsed_ms
+
+## 主线程一次性列出所有 chart 文件夹名（避免 worker 并发 DirAccess 同一目录）
+func _list_chart_folder_names() -> Array:
+	var folder_names: Array = []
 	var dir = DirAccess.open(CHARTS_DIR)
 	if dir == null:
-		GLogger.warning("Failed to open charts directory", "FileSystemMGR")
-		return
-	
+		GLogger.warning("Failed to open charts directory: %s" % CHARTS_DIR, "FileSystemMGR")
+		return folder_names
 	dir.list_dir_begin()
 	var folder_name = dir.get_next()
-	var count = 0
-	
 	while folder_name != "":
 		if dir.current_is_dir() and not folder_name.begins_with("."):
-			var chart_path = CHARTS_DIR.path_join(folder_name)
-			var metadata = _load_chart_metadata(chart_path, folder_name)
-
-			if metadata != null and not metadata.is_empty():
-				charts_index[folder_name] = ChartMetadata.from_dict(metadata)
-				count += 1
-
-				# 构建反向索引
-				var chart_meta = charts_index[folder_name]
-				var meta_id: String = chart_meta.id
-				if not meta_id.is_empty():
-					_chart_id_to_folder[meta_id] = folder_name
-				var json_data = chart_meta.data
-				if json_data is Dictionary:
-					var fh: String = json_data.get("file_hash", "")
-					if not fh.is_empty():
-						_hash_to_folder[fh] = folder_name
-					var ah: String = json_data.get("hash", "")
-					if not ah.is_empty() and ah != fh:
-						_hash_to_folder[ah] = folder_name
-		
+			folder_names.append(folder_name)
 		folder_name = dir.get_next()
-		if count % 5 == 0:
-			await get_tree().process_frame
-	
 	dir.list_dir_end()
+	return folder_names
 
-	GLogger.info("Scanned %d charts" % count, "FileSystemMGR")
+## ========== charts 扫描缓存 ==========
+## 缓存扫描结果到 user://files/.charts_scan_cache.json
+## 避免每次启动都对 2000+ 谱面文件夹做完整 I/O 扫描
+## 缓存策略：对比当前文件夹列表，只扫描新增文件夹，未变的从缓存恢复
+
+## charts 扫描缓存文件路径
+func _get_charts_cache_path() -> String:
+	return BASE_DIR.path_join(".charts_scan_cache.json")
+
+## charts 缓存版本号
+## bump 触发条件：metadata dict 字段结构变化（如新增/删除 _json_mtime / audio_entries 等）
+## 版本不匹配时缓存被丢弃，走全量扫描路径
+const CHARTS_CACHE_VERSION := 2
+
+## 加载 charts 扫描缓存
+## 返回 {folder_name: metadata_dict}，加载失败返回空 Dictionary
+## metadata_dict 是 _load_chart_metadata 返回的完整字典（包含 data/cover_path/audio_entries 等）
+func _load_charts_cache() -> Dictionary:
+	var cache_path := _get_charts_cache_path()
+	if not FileAccess.file_exists(cache_path):
+		return {}
+	var t_start := Time.get_ticks_usec()
+	var file = FileAccess.open(cache_path, FileAccess.READ)
+	if file == null:
+		return {}
+	var content = file.get_as_text()
+	file.close()
+	var cache = JSON.parse_string(content)
+	if cache == null or not (cache is Dictionary):
+		GLogger.warning("Charts cache corrupted, ignoring", "FileSystemMGR")
+		return {}
+	var cached_version := int(cache.get("version", 0))
+	if cached_version != CHARTS_CACHE_VERSION:
+		GLogger.info("Charts cache version %d != %d, ignoring (full scan)" % [
+			cached_version, CHARTS_CACHE_VERSION
+		], "FileSystemMGR")
+		return {}
+	var charts: Dictionary = cache.get("charts", {})
+	var t_end := Time.get_ticks_usec()
+	GLogger.info("Loaded charts cache: %d entries in %.0fms" % [
+		charts.size(), (t_end - t_start) / 1000.0
+	], "FileSystemMGR")
+	return charts
+
+## 保存 charts 扫描缓存
+## charts_data: {folder_name: metadata_dict}
+func _save_charts_cache(charts_data: Dictionary) -> void:
+	var cache_path := _get_charts_cache_path()
+	var cache = {
+		"version": CHARTS_CACHE_VERSION,
+		"charts": charts_data
+	}
+	var file = FileAccess.open(cache_path, FileAccess.WRITE)
+	if file == null:
+		GLogger.warning("Failed to write charts cache: %s" % cache_path, "FileSystemMGR")
+		return
+	# 紧凑格式减小文件大小（2294 条约 1-3MB）
+	file.store_string(JSON.stringify(cache))
+	file.close()
+	GLogger.info("Saved charts cache: %d entries" % charts_data.size(), "FileSystemMGR")
+
+## 后台校验缓存 worker：检查每个缓存条目的文件夹是否仍然存在 + json/mid mTime 是否变化
+## 纯文件 I/O，不调 GLogger / 不写全局字段，结果通过 result_wrapper 回传
+## result_wrapper 返回字段：
+##   - changed_folders: Array[String] — 缓存失效的文件夹名（mTime 变化或 json/mid 缺失），需重扫
+##   - removed_folders: Array[String] — 文件夹已被删除的，需从缓存移除
+##   - new_folders: Array[String] — 当前存在但缓存中没有的新文件夹，需扫描
+##   - is_clean: bool — true 表示无任何变化（完全干净，无需刷新 UI）
+func _validate_charts_cache_worker(cached_charts: Dictionary, current_folders: Array, result_wrapper: Dictionary) -> void:
+	var changed: Array = []
+	var removed: Array = []
+	var new_set: Dictionary = {}  # current_folders 转 set 加速查询
+	for f in current_folders:
+		new_set[f] = true
+
+	# 1. 检查缓存中的文件夹：是否存在 + mTime 是否变化
+	for folder_name in cached_charts.keys():
+		if not new_set.has(folder_name):
+			removed.append(folder_name)
+			continue
+		var meta: Dictionary = cached_charts[folder_name]
+		var chart_path = CHARTS_DIR.path_join(folder_name)
+		var chart_id = folder_name.split("_")[0]
+		var json_path = chart_path.path_join(chart_id + ".json")
+		var mid_path = chart_path.path_join(chart_id + ".mid")
+		# 检查 json/mid 是否存在
+		if not FileAccess.file_exists(json_path) or not FileAccess.file_exists(mid_path):
+			changed.append(folder_name)
+			new_set.erase(folder_name)
+			continue
+		# 对比 mTime：json 或 mid 文件被修改（内容变化）→ 标记需重扫
+		var cached_json_mtime: int = int(meta.get("_json_mtime", 0))
+		var cached_mid_mtime: int = int(meta.get("_mid_mtime", 0))
+		var cur_json_mtime := FileAccess.get_modified_time(json_path)
+		var cur_mid_mtime := FileAccess.get_modified_time(mid_path)
+		if cur_json_mtime != cached_json_mtime or cur_mid_mtime != cached_mid_mtime:
+			changed.append(folder_name)
+		new_set.erase(folder_name)  # 从 new_set 移除，剩余的就是新增文件夹
+
+	# 2. new_set 中剩余的是新增文件夹（缓存中没有的）
+	var new_folders: Array = new_set.keys()
+
+	result_wrapper["changed_folders"] = changed
+	result_wrapper["removed_folders"] = removed
+	result_wrapper["new_folders"] = new_folders
+	result_wrapper["is_clean"] = changed.is_empty() and removed.is_empty() and new_folders.is_empty()
+
+## 启动 charts 分片扫描的多个 worker task
+## 返回 [{id: task_id, result: result_wrapper}, ...]
+## 主线程在启动后 await 全部完成，再调用 _build_charts_index_from_data 合并
+func _start_charts_scan_tasks(all_chart_folders: Array) -> Array:
+	var chart_tasks: Array = []
+	if all_chart_folders.is_empty():
+		return chart_tasks
+	for i in range(0, all_chart_folders.size(), CHART_SCAN_CHUNK_SIZE):
+		var chunk: Array = all_chart_folders.slice(i, i + CHART_SCAN_CHUNK_SIZE)
+		var rw: Dictionary = {}
+		var tid := WorkerThreadPool.add_task(
+			func(): _scan_charts_chunk_worker(chunk, rw),
+			false, "ScanChartsChunk"
+		)
+		chart_tasks.append({"id": tid, "result": rw})
+	return chart_tasks
+
+## 检查所有 charts task 是否全部完成
+func _all_chart_tasks_completed(chart_tasks: Array) -> bool:
+	for t in chart_tasks:
+		if not WorkerThreadPool.is_task_completed(t.id):
+			return false
+	return true
+
+## 在 worker 线程中扫描一组 chart 文件夹
+## 全部为纯文件 I/O + Dictionary 操作，无引擎 API 调用（不调 GLogger / 不写全局字段）
+## 结果通过 result_wrapper 回传，由主线程 _build_charts_index_from_data 合并
+## 反向索引 / audio_entries 由主线程统一从 metadata dict 提取，worker 不再单独构建
+func _scan_charts_chunk_worker(folder_names: Array, result_wrapper: Dictionary) -> void:
+	var local_charts: Dictionary = {}          # folder_name → metadata Dictionary
+	var local_warnings: Array = []
+	var t_start := Time.get_ticks_usec()
+
+	for folder_name in folder_names:
+		var chart_path = CHARTS_DIR.path_join(folder_name)
+		var metadata = _load_chart_metadata(chart_path, folder_name)
+
+		# _load_chart_metadata 出错时返回 {"_warnings": [...]}，没有 "id" 字段
+		# 只收集有效 metadata（有 id 字段）
+		if not metadata.has("id"):
+			var ws = metadata.get("_warnings", [])
+			for w in ws:
+				local_warnings.append(w)
+			continue
+
+		local_charts[folder_name] = metadata
+
+		# 收集 warnings（有效 metadata 也可能有 warnings，如 .mid 缺失但 metadata 仍返回）
+		# 收集后立即 erase：避免 _warnings 字段被写入缓存文件膨胀体积
+		var ws2 = metadata.get("_warnings", [])
+		for w in ws2:
+			local_warnings.append(w)
+		if not ws2.is_empty():
+			metadata.erase("_warnings")
+
+	# 性能诊断：单分片耗时 + 平均每文件夹耗时（写入 result_wrapper，主线程统一打印）
+	var elapsed_ms := (Time.get_ticks_usec() - t_start) / 1000.0
+	result_wrapper["chunk_elapsed_ms"] = elapsed_ms
+	result_wrapper["chunk_folder_count"] = folder_names.size()
+
+	result_wrapper["charts"] = local_charts
+	result_wrapper["warnings"] = local_warnings
+
+## 从 charts metadata dict 构建 charts_index + 反向索引 + audio_files_index
+## 主线程调用：统一处理缓存恢复和 worker 新扫描的结果
+## all_charts_data: {folder_name: metadata_dict}（缓存恢复 + worker 新扫描合并后的完整集合）
+## chart_tasks: worker 结果（用于打印性能诊断 + warnings）
+func _build_charts_index_from_data(all_charts_data: Dictionary, chart_tasks: Array) -> void:
+	# 性能诊断：打印新增文件夹的扫描耗时（缓存命中的不计时）
+	var total_chunk_ms := 0.0
+	var max_chunk_ms := 0.0
+	var total_new_folders := 0
+	for t in chart_tasks:
+		var rw: Dictionary = t.result
+		var chunk_ms: float = rw.get("chunk_elapsed_ms", 0.0)
+		var folder_count: int = rw.get("chunk_folder_count", 0)
+		total_chunk_ms += chunk_ms
+		if chunk_ms > max_chunk_ms:
+			max_chunk_ms = chunk_ms
+		total_new_folders += folder_count
+	if total_new_folders > 0:
+		GLogger.info("Charts scan: %d new folders in %d chunks, sum=%.0fms max=%.0fms avg/folder=%.2fms" % [
+			total_new_folders, chart_tasks.size(), total_chunk_ms, max_chunk_ms,
+			total_chunk_ms / total_new_folders
+		], "FileSystemMGR")
+
+	# 构建 charts_index + 反向索引 + audio_files_index
+	# 统一从 metadata dict 收集 audio_entries（缓存和 worker 结果处理方式一致）
+	for folder_name in all_charts_data.keys():
+		var meta_dict: Dictionary = all_charts_data[folder_name]
+		# 跳过无效 metadata（_load_chart_metadata 出错时返回 {"_warnings": [...]}）
+		if not meta_dict.has("id"):
+			continue
+		charts_index[folder_name] = ChartMetadata.from_dict(meta_dict)
+
+		# 构建反向索引
+		var chart_meta: ChartMetadata = charts_index[folder_name]
+		var meta_id: String = chart_meta.id
+		if not meta_id.is_empty():
+			_chart_id_to_folder[meta_id] = folder_name
+		var json_data = chart_meta.data
+		if json_data is Dictionary:
+			var fh: String = json_data.get("file_hash", "")
+			if not fh.is_empty():
+				_hash_to_folder[fh] = folder_name
+			var ah: String = json_data.get("hash", "")
+			if not ah.is_empty() and ah != fh:
+				_hash_to_folder[ah] = folder_name
+
+		# 收集 audio 条目（统一从 metadata dict 提取，不再依赖 worker 的单独 audio 数组）
+		var entries = meta_dict.get("audio_entries", [])
+		for e in entries:
+			audio_files_index.append(e)
+
+	# 打印 worker 收集的 warnings（主线程安全调用 GLogger）
+	for t in chart_tasks:
+		var rw: Dictionary = t.result
+		for w in rw.get("warnings", []):
+			GLogger.warning(w, "FileSystemMGR")
 
 ## 加载谱面元数据（从谱面文件夹）
 ## 文件夹命名格式：{hash}_{song_name}_{difficulty}/
 ## 文件命名格式：{hash}.json, {hash}.mid, {hash}-cover.jpg
+## 纯函数：无全局副作用，错误信息通过返回字典的 _warnings 数组返回，audio 条目通过 audio_entries 字段返回
+## 由调用方决定如何处理（写入 audio_files_index / 打印日志），便于在 worker 线程安全调用
+##
+## 性能优化：单次 DirAccess 遍历一次性收集 json/mid/audio/cover，避免多次独立 stat
+## 在 Android emmc/ufs 存储上，readdir 走系统目录缓存，比单独 stat 快一个数量级
 func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary:
+	var warnings: Array = []
 	# 从文件夹名称提取 chart_id（哈希值）
 	var chart_id = folder_name.split("_")[0]
-	var json_path = chart_path.path_join(chart_id + ".json")
-	
-	# 检查必需文件是否存在
-	if not FileAccess.file_exists(json_path):
-		GLogger.warning("Chart folder %s missing JSON file: %s" % [folder_name, json_path], "FileSystemMGR")
-		return {}
-	
-	# 读取 JSON 元数据
-	var metadata = _load_chart_from_json(json_path, chart_id)
-	if metadata.is_empty():
-		return {}
-	
-	# 验证谱面完整性（检查 .mid 文件）
-	var mid_path = chart_path.path_join(chart_id + ".mid")
-	if not FileAccess.file_exists(mid_path):
-		GLogger.warning("Chart %s missing MIDI file: %s" % [chart_id, mid_path], "FileSystemMGR")
-		metadata["is_complete"] = false
-		return metadata
-	
-	# 音频文件不是必需的，但会查找
-	var audio_extensions = ["ogg", "mp3", "wav", "flac"]
-	var has_audio = false
+	var json_name = chart_id + ".json"
+	var mid_name = chart_id + ".mid"
+
+	# 从文件夹名提取 song_name（用于 audio 条目）
 	var _song_name = folder_name
 	var _hash_idx = _song_name.find("_")
 	if _hash_idx >= 0:
 		_song_name = _song_name.substr(_hash_idx + 1)
-	for ext in audio_extensions:
-		var audio_path = chart_path.path_join(chart_id + "." + ext)
-		if FileAccess.file_exists(audio_path):
-			audio_files_index.append({
-				"file_name": chart_id + "." + ext,
-				"path": audio_path,
-				"format": ext,
-				"chart_id": chart_id,
-				"song_name": _song_name,
-			})
-			if not has_audio:
-				metadata["audio_path"] = audio_path
-				has_audio = true
-			# 不 break，收集所有音频文件到 audio_files_index
-	# 查找封面图（可选）- 搜索所有可能的封面文件
+
+	# === 单次 DirAccess 遍历，一次性收集所有需要的文件 ===
+	var json_path: String = ""
+	var mid_path: String = ""
+	var cover_path: String = ""
+	var audio_entries: Array = []
+	var has_audio = false
+
 	var dir = DirAccess.open(chart_path)
-	if dir:
-		dir.list_dir_begin()
-		var file_name = dir.get_next()
-		while file_name != "":
-			if not dir.current_is_dir():
+	if dir == null:
+		warnings.append("Failed to open chart folder: %s" % chart_path)
+		return {"_warnings": warnings}
+
+	# 预期音频文件名（小写匹配，避免大小写问题）
+	var audio_ext_map = {
+		(chart_id + ".ogg").to_lower(): "ogg",
+		(chart_id + ".mp3").to_lower(): "mp3",
+		(chart_id + ".wav").to_lower(): "wav",
+		(chart_id + ".flac").to_lower(): "flac",
+	}
+
+	dir.list_dir_begin()
+	var file_name = dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir():
+			if file_name == json_name:
+				json_path = chart_path.path_join(file_name)
+			elif file_name == mid_name:
+				mid_path = chart_path.path_join(file_name)
+			else:
 				var lower_name = file_name.to_lower()
-				# 检查是否是封面文件（包含 cover 或 thumbnail，且是图片格式）
-				if (lower_name.contains("cover") or lower_name.contains("thumbnail")) and \
+				# 音频文件匹配（chart_id.{ext}）
+				if audio_ext_map.has(lower_name):
+					var ext = audio_ext_map[lower_name]
+					audio_entries.append({
+						"file_name": file_name,
+						"path": chart_path.path_join(file_name),
+						"format": ext,
+						"chart_id": chart_id,
+						"song_name": _song_name,
+					})
+					if not has_audio:
+						has_audio = true
+				# 封面图匹配（包含 cover/thumbnail + 图片扩展）
+				elif cover_path.is_empty() and \
+				   (lower_name.contains("cover") or lower_name.contains("thumbnail")) and \
 				   (lower_name.ends_with(".jpg") or lower_name.ends_with(".jpeg") or \
 					lower_name.ends_with(".png") or lower_name.ends_with(".webp")):
-					metadata["cover_path"] = chart_path.path_join(file_name)
-					break
-			file_name = dir.get_next()
-		dir.list_dir_end()
-	
+					cover_path = chart_path.path_join(file_name)
+		file_name = dir.get_next()
+	dir.list_dir_end()
+
+	# === 检查必需文件 ===
+	if json_path.is_empty():
+		warnings.append("Chart folder %s missing JSON file: %s" % [folder_name, chart_path.path_join(json_name)])
+		return {"_warnings": warnings}
+
+	# === 读取 JSON 元数据 ===
+	var metadata = _load_chart_from_json(json_path, chart_id, warnings)
+	if metadata.is_empty():
+		return {"_warnings": warnings}
+
+	# === MIDI 文件检查 ===
+	if mid_path.is_empty():
+		warnings.append("Chart %s missing MIDI file: %s" % [chart_id, chart_path.path_join(mid_name)])
+		metadata["is_complete"] = false
+		metadata["_warnings"] = warnings
+		return metadata
+
+	# === 设置可选字段 ===
+	if not cover_path.is_empty():
+		metadata["cover_path"] = cover_path
+	if has_audio:
+		# audio_entries 已按遍历顺序填充，第一个作为 audio_path
+		metadata["audio_path"] = audio_entries[0]["path"]
+
 	metadata["is_complete"] = has_audio  # 仅当有音频文件时才算完整
 	metadata["path"] = chart_path
 	metadata["folder_name"] = folder_name
+	metadata["audio_entries"] = audio_entries
+	# 记录 json + mid 文件的 mTime（Unix 时间戳），用于后台缓存校验
+	# 校验时对比 mTime，变化则重扫该文件夹
+	metadata["_json_mtime"] = FileAccess.get_modified_time(json_path)
+	metadata["_mid_mtime"] = FileAccess.get_modified_time(mid_path)
+	if not warnings.is_empty():
+		metadata["_warnings"] = warnings
 	return metadata
 
 ## 从 JSON 文件加载谱面数据
-func _load_chart_from_json(json_path: String, chart_id: String) -> Dictionary:
+## 纯函数：错误信息追加到 warnings 数组由调用方处理，避免在 worker 线程调用 GLogger
+func _load_chart_from_json(json_path: String, chart_id: String, warnings: Array = []) -> Dictionary:
 	var file = FileAccess.open(json_path, FileAccess.READ)
 	if file == null:
-		GLogger.warning("Failed to open chart JSON: %s" % json_path, "FileSystemMGR")
+		warnings.append("Failed to open chart JSON: %s" % json_path)
 		return {}
 	
 	var content = file.get_as_text()
@@ -644,7 +1146,7 @@ func _load_chart_from_json(json_path: String, chart_id: String) -> Dictionary:
 	file.close()
 	
 	if json == null:
-		GLogger.warning("Failed to parse chart JSON: %s" % json_path, "FileSystemMGR")
+		warnings.append("Failed to parse chart JSON: %s" % json_path)
 		return {}
 	
 	# Normalize JSON format (merge song/album/author + source* into 3 fields)
@@ -661,10 +1163,35 @@ func _load_chart_from_json(json_path: String, chart_id: String) -> Dictionary:
 		"is_complete": false
 	}
 
-## 扫描音源目录
+## 扫描音源目录（公共 API，worker 线程扫描）
+## 在 worker 中扫描用户目录和内置目录，主线程合并到 soundfonts_index
 func scan_soundfonts() -> void:
 	soundfonts_index.clear()
-	
+	var t_start := Time.get_ticks_usec()
+	var rw: Dictionary = {}
+	var task_id := WorkerThreadPool.add_task(
+		func(): _scan_soundfonts_worker(rw),
+		false, "ScanSoundfonts"
+	)
+	while not WorkerThreadPool.is_task_completed(task_id):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(task_id)
+	soundfonts_index = rw.get("soundfonts", {})
+	for w in rw.get("warnings", []):
+		GLogger.warning(w, "FileSystemMGR")
+	var t_end := Time.get_ticks_usec()
+	GLogger.info("Scanned %d soundfonts in %.0fms" % [
+		soundfonts_index.size(), (t_end - t_start) / 1000.0
+	], "FileSystemMGR")
+
+## 在 worker 线程中扫描音源目录
+## 扫描 SOUNDFONT_DIR（用户）和 res://Resources/Soundfont/（内置）
+## 用户目录优先级高于内置目录（同名不覆盖）
+## 纯文件 I/O，结果通过 result_wrapper 回传，主线程合并
+func _scan_soundfonts_worker(result_wrapper: Dictionary) -> void:
+	var local_soundfonts: Dictionary = {}
+	var local_warnings: Array = []
+
 	# 辅助函数：扫描单个目录
 	var _scan_dir = func(dir_path: String, is_builtin: bool):
 		var dir = DirAccess.open(dir_path)
@@ -676,58 +1203,79 @@ func scan_soundfonts() -> void:
 			if not dir.current_is_dir() and file_name.ends_with(".sf2"):
 				var sf_path = dir_path.path_join(file_name)
 				var sf_name = file_name.get_basename()
-				
+
 				# 如果用户目录有同名文件，内置版本不覆盖
-				if is_builtin and soundfonts_index.has(sf_name):
+				if is_builtin and local_soundfonts.has(sf_name):
 					file_name = dir.get_next()
 					continue
-				
+
 				var size_mb = 0.0
 				var f = FileAccess.open(sf_path, FileAccess.READ)
 				if f:
 					size_mb = snapped(f.get_length() / 1048576.0, 0.1)
 					f.close()
-				
-				soundfonts_index[sf_name] = {
+
+				local_soundfonts[sf_name] = {
 					"path": sf_path,
 					"size_mb": size_mb,
 					"is_builtin": is_builtin,
 				}
 			file_name = dir.get_next()
 		dir.list_dir_end()
-	
+
 	# 先扫描用户目录，再扫描内置目录
 	_scan_dir.call(SOUNDFONT_DIR, false)
 	_scan_dir.call("res://Resources/Soundfont/", true)
-	
-	GLogger.info("Scanned %d soundfonts" % soundfonts_index.size(), "FileSystemMGR")
 
-## 扫描背景图目录
+	result_wrapper["soundfonts"] = local_soundfonts
+	result_wrapper["warnings"] = local_warnings
+
+## 扫描背景图目录（公共 API，worker 线程扫描）
 func scan_backgrounds() -> void:
 	backgrounds_index.clear()
-	
+	var t_start := Time.get_ticks_usec()
+	var rw: Dictionary = {}
+	var task_id := WorkerThreadPool.add_task(
+		func(): _scan_backgrounds_worker(rw),
+		false, "ScanBackgrounds"
+	)
+	while not WorkerThreadPool.is_task_completed(task_id):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(task_id)
+	backgrounds_index = rw.get("backgrounds", {})
+	for w in rw.get("warnings", []):
+		GLogger.warning(w, "FileSystemMGR")
+	var t_end := Time.get_ticks_usec()
+	GLogger.info("Scanned %d backgrounds in %.0fms" % [
+		backgrounds_index.size(), (t_end - t_start) / 1000.0
+	], "FileSystemMGR")
+
+## 在 worker 线程中扫描背景图目录
+## 纯文件 I/O，结果通过 result_wrapper 回传，主线程合并
+func _scan_backgrounds_worker(result_wrapper: Dictionary) -> void:
+	var local_backgrounds: Dictionary = {}
+	var local_warnings: Array = []
+
 	var dir = DirAccess.open(BACKGROUND_DIR)
 	if dir == null:
-		GLogger.warning("Failed to open background directory", "FileSystemMGR")
+		local_warnings.append("Failed to open background directory: %s" % BACKGROUND_DIR)
+		result_wrapper["backgrounds"] = local_backgrounds
+		result_wrapper["warnings"] = local_warnings
 		return
-	
+
 	dir.list_dir_begin()
 	var file_name = dir.get_next()
-	var count = 0
-	
 	while file_name != "":
 		if not dir.current_is_dir():
 			var ext = file_name.get_extension().to_lower()
 			if ext in ["jpg", "jpeg", "png", "webp"]:
 				var bg_path = BACKGROUND_DIR.path_join(file_name)
-				backgrounds_index[file_name.get_basename()] = bg_path
-				count += 1
+				local_backgrounds[file_name.get_basename()] = bg_path
 		file_name = dir.get_next()
-		if count % 20 == 0:
-			await get_tree().process_frame
-	
 	dir.list_dir_end()
-	GLogger.info("Scanned %d backgrounds" % count, "FileSystemMGR")
+
+	result_wrapper["backgrounds"] = local_backgrounds
+	result_wrapper["warnings"] = local_warnings
 
 ## ========== 公共查询接口 ==========
 
@@ -832,10 +1380,11 @@ func is_valid_audio_file(file_path: String) -> bool:
 	return valid_extensions.has(file_ext)
 
 ## 重新扫描资源（热重载）
+## 协程：内部 await _scan_all_resources()，调用方需 await 此函数
 func rescan_resources() -> void:
 	GLogger.info("Rescanning resources...", "FileSystemMGR")
 	clear_cover_cache()
-	_scan_all_resources()
+	await _scan_all_resources()
 
 ## 重置内置资源：强制重新复制默认谱面、皮肤、背景图到 user:// 目录
 ## 与 _check_and_copy_default_resources_async 不同，此方法不检查目录是否为空，强制覆盖
@@ -855,7 +1404,7 @@ func reload_default_resources() -> void:
 	await _copy_directory_contents_async(DEFAULT_BACKGROUND_SRC, BACKGROUND_DIR, "jpg,jpeg,png,webp")
 
 	# 重新扫描所有资源
-	_scan_all_resources()
+	await _scan_all_resources()
 
 	GLogger.info("Built-in resources reloaded", "FileSystemMGR")
 
