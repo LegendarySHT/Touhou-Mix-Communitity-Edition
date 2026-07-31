@@ -108,6 +108,15 @@ static func get_setting_groups() -> Array:
 			"type": "TYPE_BUTTON",
 			"default_value": null,
 			"on_click": "_reload_builtin_resources"
+		},
+		{
+			"id": "online_test",
+			"name_en": "Online Test",
+			"name_zh": "在线功能测试",
+			"description": "点击打开在线功能测试面板（临时验证用，后续替换为正式登录界面）",
+			"type": "TYPE_BUTTON",
+			"default_value": null,
+			"on_click": "_popup_online_test"
 		}
 		]
 	},

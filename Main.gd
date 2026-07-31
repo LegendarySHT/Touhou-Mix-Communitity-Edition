@@ -16,6 +16,8 @@ var key_sequence_manager: KeySequenceManager
 var config_loader: ConfigManager
 var logger: GameLogger
 var filesystem_manager: FileSystemManager
+var net_manager: NetManager
+var auth_manager: AuthManager
 var _is_reloading_settings: bool = false
 
 # UI组件路径
@@ -195,6 +197,19 @@ func _initialize_core_systems() -> void:
 	add_child(key_sequence_manager)
 	if logger:
 		logger.info("KeySequenceManager initialized", "Main")
+
+	# 12.5. 初始化网络与认证管理器（必须在 ConfigManager 之后，UI 之前）
+	net_manager = NetManager.new()
+	net_manager.name = "NetManager"
+	add_child(net_manager)
+	if logger:
+		logger.info("NetManager initialized", "Main")
+
+	auth_manager = AuthManager.new()
+	auth_manager.name = "AuthManager"
+	add_child(auth_manager)
+	if logger:
+		logger.info("AuthManager initialized", "Main")
 
 	# 13. 初始化并加载UI（确保各管理器已就绪）
 	_init_ui()
