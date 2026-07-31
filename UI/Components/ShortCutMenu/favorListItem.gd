@@ -50,18 +50,6 @@ var _touch_start_pos: Vector2 = Vector2.ZERO
 var _touch_pending: bool = false   # 是否有待释放的触摸
 var _touch_on_name: bool = false   # 触摸起点是否在 name Label 上（用于保证按下与释放由同一控件处理）
 
-
-func _ready() -> void:
-	# 连接管理按钮信号
-	delete_btn.pressed.connect(_on_delete_pressed)
-	# 点击名称区域进入重命名模式
-	name_label.gui_input.connect(_on_name_label_gui_input)
-	# 拦截删除按钮的触摸事件，防止向上冒泡触发列表项点击
-	delete_btn.gui_input.connect(_on_delete_btn_gui_input)
-	# 连接 LineEdit 信号
-	name_edit.text_submitted.connect(_on_rename_submitted)
-	name_edit.focus_exited.connect(_on_rename_focus_exited)
-
 ## 点击名称区域：进入重命名模式
 ## 仅在"按下后未发生明显移动"时才判定为点击，避免滚动误触
 ## name Label 设为 MOUSE_FILTER_PASS，事件会继续冒泡至 _gui_input，通过 _touch_pending 守卫避免重复处理

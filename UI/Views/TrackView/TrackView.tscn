@@ -405,3 +405,11 @@ layout_mode = 2
 theme_override_constants/margin_right = 60
 
 [connection signal="toggled" from="MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button" to="." method="_on_expand_master_area_btn_toggled"]
+[connection signal="value_changed" from="MC/VBox/VolumeView/HBoxC/GridC/midiVolSlider" to="." method="_on_midi_volume_changed"]
+[connection signal="value_changed" from="MC/VBox/VolumeView/HBoxC/GridC/vocalVolSlider" to="." method="_on_vocal_volume_changed"]
+[connection signal="pressed" from="MC/VBox/VolumeView/HBoxC/VBoxC2/VocalImportBtn" to="." method="_on_vocal_import_btn_pressed"]
+[connection signal="toggled" from="MC/VBox/VolumeView/HBoxC/VBoxC2/VocalEnableBtn" to="." method="_on_vocal_enable_btn_toggled"]
+[connection signal="text_changed" from="MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC/Latency" to="." method="_on_latency_changed"]
+[connection signal="drag_started" from="MC/VBox/TotalView/MC/VBoxC/playArea/progressBar" to="." method="_on_progress_bar_drag_started"]
+[connection signal="drag_ended" from="MC/VBox/TotalView/MC/VBoxC/playArea/progressBar" to="." method="_on_progress_bar_drag_ended"]
+[connection signal="value_changed" from="MC/VBox/TotalView/MC/VBoxC/playArea/progressBar" to="." method="_on_progress_bar_value_changed"]

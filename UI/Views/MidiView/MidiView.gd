@@ -63,11 +63,6 @@ func _ready() -> void:
 	# 监听 UI 状态变化，进入 MIDI_VIEW 时若 FavorPanel 可见则刷新
 	UiStatMGR.state_changed.connect(_on_state_changed)
 
-	# 连接主要按钮事件
-	play_btn.pressed.connect(_on_click_start_btn)
-	track_view_btn.pressed.connect(_on_click_track_btn)
-	favor_list_btn.pressed.connect(_on_click_favor_list_btn)
-
 	# 按钮的焦点逻辑
 	for i in left_btns:
 		i.focus_entered.connect(func():
@@ -83,10 +78,6 @@ func _ready() -> void:
 				i.z_index = 0
 			b.z_index += 1).bind(btn)
 			)
-
-	# 连接右侧按钮事件
-	info_btn.pressed.connect(_on_info_btn_pressed)
-	delete_btn.pressed.connect(_on_del_btn_pressed)
 
 	# 注册主题应用者并首次着色
 	if ThemeMGR:

@@ -45,20 +45,12 @@ const IMG_TYPE_COVER: int = 3
 const _PREVIEW_BG_BLUR_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundBlur.gdshader"
 
 func _ready() -> void:
-	# 图片设置：类型切换 + 各控件变化
-	_img_type_btn.item_selected.connect(_on_img_type_selected)
-	_img_name_btn.item_selected.connect(_on_img_name_selected)
-	_img_fill_mode_btn.item_selected.connect(_on_img_fill_mode_selected)
 	_start_color_btn.color_changed.connect(_on_color_picker_changed.bind(_start_color_edit))
 	_start_color_edit.text_changed.connect(_on_hex_color_changed.bind(_start_color_btn))
 	_end_color_btn.color_changed.connect(_on_color_picker_changed.bind(_end_color_edit))
 	_end_color_edit.text_changed.connect(_on_hex_color_changed.bind(_end_color_btn))
 	_solid_color_btn.color_changed.connect(_on_color_picker_changed.bind(_solid_color_edit))
 	_solid_color_edit.text_changed.connect(_on_hex_color_changed.bind(_solid_color_btn))
-	for edit in [_from_x_edit, _from_y_edit, _to_x_edit, _to_y_edit]:
-		edit.text_changed.connect(_on_gradient_coords_changed)
-	# 封面模糊输入
-	_cover_blur_edit.text_changed.connect(_on_cover_blur_changed)
 
 ## 由 PopupWindow.show_image_adjust 调用：
 ## view_name: 视图名称（main/store/score/play/track/midi/setting），用于从 ThemeManager 读取当前配置初始化控件

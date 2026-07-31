@@ -8,6 +8,7 @@ signal finish_requested
 @onready var _delay_indicator: Panel = $DelayIndicator
 @onready var _center_line: PanelContainer = $DelayIndicator/CenterLine
 @onready var _adjust_line: PanelContainer = $DelayIndicator/AdjustLine
+@onready var _shadow_line: PanelContainer = $DelayIndicator/ShadowLine
 @onready var _delay_value: LineEdit = $HBoxC/Value
 # 主题管理器通过 PopupWindow.delay_btn getter 转发访问
 @onready var delay_btn: Button = $Button
@@ -19,6 +20,8 @@ var _calib_active: bool = false
 var _calib_samples: Array[float] = []
 ## AdjustLine 循环动画 Tween 引用
 var _adjust_line_tween: Tween = null
+## ShadowLine 残影淡出 Tween 引用（点击校准时复用 ShadowLine 显示残影，避免动态创建节点）
+var _shadow_tween: Tween = null
 ## 连续稳定样本计数（与前一个样本差值 ≤ _STABLE_MAX_DIFF 的连续次数）
 var _stable_count: int = 0
 ## 上一个样本值（用于差值计算）
@@ -58,12 +61,6 @@ var _beat_off_timers: Array = []
 # 校准前保存的 MidiPlaybackManager 音量（dB），stop_calibration 时恢复
 # 避免校准期间修改的全局音量污染后续 PlayView 播放
 var _saved_volume_db: float = NAN
-
-func _ready() -> void:
-	delay_btn.pressed.connect(_on_delay_btn_pressed)
-	_delay_value.text_changed.connect(_on_delay_text_changed)
-	_delay_value.text_submitted.connect(_on_delay_text_submitted)
-	_delay_value.focus_exited.connect(_on_delay_focus_exited)
 
 # 启动校准：重置数据 + 启动 AdjustLine 单向循环动画
 func start_calibration(current_delay: int = 0) -> void:
@@ -113,6 +110,12 @@ func stop_calibration() -> void:
 	if _adjust_line_tween and _adjust_line_tween.is_valid():
 		_adjust_line_tween.kill()
 		_adjust_line_tween = null
+	# 清理残影 tween + 隐藏 ShadowLine，防止弹窗关闭时残影残留
+	if _shadow_tween and _shadow_tween.is_valid():
+		_shadow_tween.kill()
+	_shadow_tween = null
+	_shadow_line.visible = false
+	_shadow_line.modulate.a = 1.0
 	_stop_all_beat_sounds()
 	# 恢复校准前的全局音量，避免污染后续 PlayView 播放
 	if not is_nan(_saved_volume_db):
@@ -238,16 +241,20 @@ func _finalize_delay_text() -> void:
 	_prev_delay_text = _delay_value.text
 	_update_center_line(float(val))
 
-# 在指定位置生成 AdjustLine 残影（点击瞬间的视觉反馈，1秒淡出）
+# 在指定位置显示 AdjustLine 残影（点击瞬间的视觉反馈，1秒淡出）
+# 复用预先存在的 ShadowLine 节点，避免动态 duplicate + queue_free 在手机上因 tween 被杀导致节点累积
 func _spawn_adjust_line_ghost(pos_x: float) -> void:
-	var ghost: PanelContainer = _adjust_line.duplicate()
-	ghost.visible = true
-	ghost.offset_transform_position = Vector2(pos_x, 0)
-	_delay_indicator.add_child(ghost)
-	var ghost_tween := AniMGR.animate_fade_out(ghost, 1.0, "popup_adjust_ghost_%d" % Time.get_ticks_msec())
-	ghost_tween.finished.connect(func() -> void:
-		if is_instance_valid(ghost):
-			ghost.queue_free()
+	# 杀掉上一次未完成的残影 tween，避免新旧 tween 同时改 modulate 冲突
+	if _shadow_tween and _shadow_tween.is_valid():
+		_shadow_tween.kill()
+	_shadow_line.offset_transform_position = Vector2(pos_x, 0)
+	_shadow_line.modulate.a = 1.0
+	_shadow_line.visible = true
+	_shadow_tween = create_tween()
+	_shadow_tween.tween_property(_shadow_line, "modulate:a", 0.0, 1.0)
+	_shadow_tween.finished.connect(func() -> void:
+		_shadow_line.visible = false
+		_shadow_line.modulate.a = 1.0
 	)
 
 # 计算当前稳定窗口内样本的平均值（窗口 = _stable_count + 1 个连续稳定样本）

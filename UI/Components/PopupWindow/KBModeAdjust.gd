@@ -49,9 +49,6 @@ var _suppress_display_name_signal: bool = false
 
 
 func _ready() -> void:
-	_add_btn.pressed.connect(_on_add_btn_pressed)
-	_key_config_btn.pressed.connect(_on_key_config_btn_pressed)
-	_display_name_edit.text_changed.connect(_on_display_name_changed)
 	_item_instance = KEY_ITEM_SCENE.instantiate()
 	apply_button_theme(ThemeMGR.get_color("primary"))
 

@@ -91,7 +91,7 @@ func _ready() -> void:
 	# 连接信号（检查防止重复连接）
 	if not EvtBus.is_connected("enter_track_view_with", Callable(self, "_load_midi")):
 		EvtBus.enter_track_view_with.connect(_load_midi)
-	
+
 	if not ui_stat_mgr.is_connected("state_changed", Callable(self, "_on_ui_state_changed")):
 		ui_stat_mgr.state_changed.connect(_on_ui_state_changed)
 
@@ -99,28 +99,11 @@ func _ready() -> void:
 	if midi_playback_manager.midi_player and not midi_playback_manager.midi_player.is_connected("soundfont_changed", Callable(self, "_on_soundfont_changed")):
 		midi_playback_manager.midi_player.soundfont_changed.connect(_on_soundfont_changed)
 
-	# 音量（检查防止重复连接）
 	if not midi_vol_btn.is_connected("toggled", Callable(self, "_on_volume_btn_toggled")):
 		midi_vol_btn.toggled.connect(_on_volume_btn_toggled.bind(midi_vol_btn))
-	
+
 	if not vocal_vol_btn.is_connected("toggled", Callable(self, "_on_volume_btn_toggled")):
 		vocal_vol_btn.toggled.connect(_on_volume_btn_toggled.bind(vocal_vol_btn))
-	
-	if not midi_vol_slider.is_connected("value_changed", Callable(self, "_on_midi_volume_changed")):
-		midi_vol_slider.value_changed.connect(_on_midi_volume_changed)
-	
-	if not vocal_vol_slider.is_connected("value_changed", Callable(self, "_on_vocal_volume_changed")):
-		vocal_vol_slider.value_changed.connect(_on_vocal_volume_changed)
-
-	# Progress bar（检查防止重复连接）
-	if not progress_bar.is_connected("drag_started", Callable(self, "_on_progress_bar_drag_started")):
-		progress_bar.drag_started.connect(_on_progress_bar_drag_started)
-	
-	if not progress_bar.is_connected("drag_ended", Callable(self, "_on_progress_bar_drag_ended")):
-		progress_bar.drag_ended.connect(_on_progress_bar_drag_ended)
-	
-	if not progress_bar.is_connected("value_changed", Callable(self, "_on_progress_bar_value_changed")):
-		progress_bar.value_changed.connect(_on_progress_bar_value_changed)
 
 	# 初始化子系统控制器
 	if _vocal_controller == null:
@@ -136,22 +119,10 @@ func _ready() -> void:
 		add_child(_config_persistence)
 		_config_persistence.setup(self)
 
-	# 连接人声导入和启用信号（检查防止重复连接）
-	if not vocal_import_btn.is_connected("pressed", Callable(_vocal_controller, "on_vocal_import_btn_pressed")):
-		vocal_import_btn.pressed.connect(_vocal_controller.on_vocal_import_btn_pressed)
-
-	if not vocal_enable_btn.is_connected("toggled", Callable(_vocal_controller, "on_vocal_enable_btn_toggled")):
-		vocal_enable_btn.toggled.connect(_vocal_controller.on_vocal_enable_btn_toggled)
-
-	# 连接FileDialog信号（使用file_selected而不是files_selected，因为是单文件模式）
+	# 连接FileDialog信号（动态创建节点，无法在 tscn 中连接）
 	if file_dialog:
 		if not file_dialog.is_connected("file_selected", Callable(_vocal_controller, "on_vocal_file_selected")):
 			file_dialog.file_selected.connect(_vocal_controller.on_vocal_file_selected)
-
-	# 连接Latency输入框信号（检查防止重复连接）
-	if latency_edit:
-		if not latency_edit.is_connected("text_changed", Callable(self, "_on_latency_changed")):
-			latency_edit.text_changed.connect(_on_latency_changed)
 
 	super._ready()
 
@@ -414,6 +385,14 @@ func _on_vocal_volume_changed(value: float) -> void:
 
 	# 更新标签
 	_vocal_controller.set_display_vocal_volume(value)
+
+## VocalImportBtn.pressed 代理（信号已在 tscn 中连接到 self）
+func _on_vocal_import_btn_pressed() -> void:
+	_vocal_controller.on_vocal_import_btn_pressed()
+
+## VocalEnableBtn.toggled 代理（信号已在 tscn 中连接到 self）
+func _on_vocal_enable_btn_toggled(toggle_on: bool) -> void:
+	_vocal_controller.on_vocal_enable_btn_toggled(toggle_on)
 
 func _on_expand_master_area_btn_toggled(is_expanded: bool) -> void:
 	var node: Panel = $MC/VBox/TotalView

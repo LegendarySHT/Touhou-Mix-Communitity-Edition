@@ -119,8 +119,8 @@ func get_selected() -> String:
 
 # 用默认窗口显示消息，要获取确认状态需await
 func show_message(message: String, cancel_visible: bool = false, options: Array = []) -> bool:
-	size = Vector2(850, 600)
 	_tab_c.current_tab = 0
+	size = Vector2(850, 600)
 	_message.text = message
 	_cancel_btn.modulate.a = 0 if not cancel_visible else 1
 	_set_option(options)
@@ -131,8 +131,8 @@ func show_message(message: String, cancel_visible: bool = false, options: Array 
 
 # 弹出延迟校准窗口
 func show_delay_adjust(current_delay: int = 0) -> int:
-	size = Vector2(850, 600)
 	_tab_c.current_tab = 1
+	size = Vector2(850, 600)
 	_delay_adjust.start_calibration(current_delay)
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 
@@ -143,8 +143,8 @@ func show_delay_adjust(current_delay: int = 0) -> int:
 
 # 弹出皮肤修改窗口
 func show_note_skin_adjust() -> String:
-	size = Vector2(1500, 700)
 	_tab_c.current_tab = 2
+	size = Vector2(1500, 700)
 	_note_skin_adjust.init_adjust()
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 	await window_close
@@ -156,8 +156,8 @@ func show_note_skin_adjust() -> String:
 # judge_type: Perfect / Great / Good / Bad，决定编辑哪个判定类型的特效
 # 返回 Dictionary 字段见 ParticleAdjust.get_result
 func show_particle_adjust(judge_type: String = "Perfect") -> Dictionary:
-	size = Vector2(1500, 700)
 	_tab_c.current_tab = 3
+	size = Vector2(1500, 700)
 	_particle_adjust.init_adjust(judge_type)
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 	# 等待窗口进入动画完成，避免 ParticlePreview 在 scale 0→1 过程中粒子位置错位
@@ -172,8 +172,8 @@ func show_particle_adjust(judge_type: String = "Perfect") -> Dictionary:
 ## allow_cover: 是否允许选择"封面"类型（仅 play 视图为 true）
 ## 返回 Dictionary 字段见 ImageAdjust.get_result
 func show_image_adjust(view_name: String = "", allow_cover: bool = false) -> Dictionary:
-	size = Vector2(1500, 700)
 	_tab_c.current_tab = 4
+	size = Vector2(1500, 700)
 	_image_adjust.init_adjust(view_name, allow_cover)
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 	await window_close
@@ -184,8 +184,8 @@ func show_image_adjust(view_name: String = "", allow_cover: bool = false) -> Dic
 ## 返回 Dictionary: {"keys": "A,S,D,F,...", "display_names": "P1,,,..."}
 ## 关闭即返回当前编辑状态（无取消路径，调用方不应依赖空返回值判断取消）
 func show_kb_mode_adjust(current_keys: String = "", current_display_names: String = "") -> Dictionary:
-	size = Vector2(1500, 700)
 	_tab_c.current_tab = 5
+	size = Vector2(1500, 700)
 	# 优先使用传入的 pending 值；为空时回退到配置文件（兼容直接调用）
 	var keys_str := current_keys if not current_keys.is_empty() else \
 		ConfigManager.instance.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")

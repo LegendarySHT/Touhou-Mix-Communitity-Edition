@@ -227,3 +227,5 @@ theme_override_font_sizes/font_size = 18
 text = "
 pp"
 horizontal_alignment = 1
+
+[connection signal="pressed" from="." to="." method="_on_btn_pressed"]

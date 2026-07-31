@@ -175,11 +175,10 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 2
+current_tab = 0
 tabs_visible = false
 
 [node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
@@ -296,6 +295,19 @@ grow_vertical = 2
 offset_transform_enabled = true
 theme_override_styles/panel = SubResource("StyleBoxFlat_v2jpq")
 
+[node name="ShadowLine" type="PanelContainer" parent="DelayAdjust/DelayIndicator" unique_id=677715461]
+visible = false
+custom_minimum_size = Vector2(5, 0)
+layout_mode = 1
+anchors_preset = 13
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_transform_enabled = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_v2jpq")
+
 [node name="HBoxC" type="HBoxContainer" parent="DelayAdjust" unique_id=283064756]
 layout_mode = 2
 size_flags_horizontal = 4
@@ -305,12 +317,12 @@ alignment = 1
 custom_minimum_size = Vector2(120, 40)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
+placeholder_text = "0"
 alignment = 1
 max_length = 4
-caret_blink = true
-select_all_on_focus = true
 emoji_menu_enabled = false
-placeholder_text = "0"
+select_all_on_focus = true
+caret_blink = true
 
 [node name="Unit" type="Label" parent="DelayAdjust/HBoxC" unique_id=1899889578]
 layout_mode = 2
@@ -328,6 +340,7 @@ action_mode = 0
 shortcut = SubResource("Shortcut_krk8y")
 
 [node name="NoteSkinAdjust" type="HBoxContainer" parent="." unique_id=1274646299]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
@@ -1052,3 +1065,19 @@ vertical_alignment = 1
 [node name="Button" type="Button" parent="KBModeAdjust/KeyConfig" unique_id=353692426]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
+
+[connection signal="focus_exited" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_focus_exited"]
+[connection signal="text_changed" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_text_changed"]
+[connection signal="text_submitted" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_text_submitted"]
+[connection signal="pressed" from="DelayAdjust/Button" to="DelayAdjust" method="_on_delay_btn_pressed"]
+[connection signal="item_selected" from="ImageAdjust/VBoxC/ImgType" to="ImageAdjust" method="_on_img_type_selected"]
+[connection signal="item_selected" from="ImageAdjust/VBoxC/OtherOptions/ImgName" to="ImageAdjust" method="_on_img_name_selected"]
+[connection signal="item_selected" from="ImageAdjust/VBoxC/OtherOptions/ImgFillMode" to="ImageAdjust" method="_on_img_fill_mode_selected"]
+[connection signal="text_changed" from="ImageAdjust/VBoxC/OtherOptions/FromX/LineEdit" to="ImageAdjust" method="_on_gradient_coords_changed"]
+[connection signal="text_changed" from="ImageAdjust/VBoxC/OtherOptions/FromY/LineEdit" to="ImageAdjust" method="_on_gradient_coords_changed"]
+[connection signal="text_changed" from="ImageAdjust/VBoxC/OtherOptions/ToX/LineEdit" to="ImageAdjust" method="_on_gradient_coords_changed"]
+[connection signal="text_changed" from="ImageAdjust/VBoxC/OtherOptions/ToY/LineEdit" to="ImageAdjust" method="_on_gradient_coords_changed"]
+[connection signal="text_changed" from="ImageAdjust/VBoxC/OtherOptions/BlurIntensity" to="ImageAdjust" method="_on_cover_blur_changed"]
+[connection signal="pressed" from="KBModeAdjust/KeySequence/VFlowC/AddBtn" to="KBModeAdjust" method="_on_add_btn_pressed"]
+[connection signal="text_changed" from="KBModeAdjust/KeyDisplayName/LineEdit" to="KBModeAdjust" method="_on_display_name_changed"]
+[connection signal="pressed" from="KBModeAdjust/KeyConfig/Button" to="KBModeAdjust" method="_on_key_config_btn_pressed"]

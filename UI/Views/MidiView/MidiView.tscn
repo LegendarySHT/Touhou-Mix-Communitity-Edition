@@ -785,3 +785,8 @@ stretch_mode = 5
 [connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/PreviBtn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_previous"]
 [connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/Fold/Btn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_show_midi_list"]
 [connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/NextBtn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_next"]
+[connection signal="pressed" from="LeftArea/MainBtn/PlayBtn" to="." method="_on_click_start_btn"]
+[connection signal="pressed" from="LeftArea/MainBtn/TrackViewBtn" to="." method="_on_click_track_btn"]
+[connection signal="pressed" from="LeftArea/MainBtn/FavorListBtn" to="." method="_on_click_favor_list_btn"]
+[connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Right/InfoBtn" to="." method="_on_info_btn_pressed"]
+[connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Right/DelBtn" to="." method="_on_del_btn_pressed"]

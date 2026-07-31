@@ -127,18 +127,13 @@ func _ready() -> void:
 	UiStatMGR.state_changed.connect(_on_state_changed)
 	_on_state_changed(UiStatMGR.UIState.NONE, UiStatMGR.current_state)
 
-	progress_bar.value_changed.connect(_on_top_progress_bar_value_changed)
-
 	flow_area.note_judged.connect(_on_note_judged)
 	flow_area.long_holding.connect(_on_long_holding)
 	flow_area.parent_node = self
 
-	menu_btn.pressed.connect(show_or_hide_menu)
-	continue_btn.pressed.connect(show_or_hide_menu)
 	retry_btn.pressed.connect(func ():
 		_prepare_game()
 	)
-	quit_btn.pressed.connect(_on_quit_pressed)
 	
 	# 初始化MIDI播放管理器
 	if playback_mgr == null:
