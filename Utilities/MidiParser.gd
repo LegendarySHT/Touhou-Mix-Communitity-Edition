@@ -22,95 +22,42 @@ class NoteEvent:
 	func _to_string() -> String:
 		return "NoteEvent(pitch=%d, vel=%d, start=%.0f, dur=%.0f)" % [pitch, velocity, start_time, duration]
 
-## Note 基类 - 包含生命周期管理（noteOn/noteOff）和状态查询（isOn/isOff）
+## Note - MIDI 音符对象，持有原始 NoteEvent 数据
+## 说明：原 AutoPlayNote / ManualControlNote 子类已移除——外部消费者均直接调用
+## midi_player.trigger_note_on/off，不依赖 Note 的 start/stop 方法；
+## 原 is_on/is_off/note_index 字段无任何消费者，一并移除以缩小对象头（6万音符省 ~3-4 MB）
 class Note:
 	## 原始Note事件数据
 	var event: NoteEvent
-	
-	## noteOn事件（不是实际的SMF事件对象，而是Note对象触发的标记）
-	var is_on: bool = false
-	## noteOff事件（不是实际的SMF事件对象，而是Note对象触发的标记）
-	var is_off: bool = false
-	
-	## Note在所有notes数组中的原始索引
-	var note_index: int = -1
-	
-	func _init(note_evt: NoteEvent, idx: int = -1) -> void:
+
+	func _init(note_evt: NoteEvent) -> void:
 		event = note_evt
-		note_index = idx
-	
-	## 查询Note是否已发送noteOn
-	func is_playing() -> bool:
-		return is_on and not is_off
-	
-	## 查询Note是否已发送noteOff
-	func has_finished() -> bool:
-		return is_off
-	
+
 	func _to_string() -> String:
-		var status = "stopped"
-		if is_on and not is_off:
-			status = "playing"
-		elif is_off:
-			status = "finished"
-		return "Note(pitch=%d, start=%.0f, dur=%.0f, status=%s)" % [event.pitch, event.start_time_ms, event.duration_ms, status]
-
-## AutoPlayNote - 由MIDI播放器内部自动控制播放的Note
-class AutoPlayNote extends Note:
-	func _init(note_evt: NoteEvent, idx: int = -1) -> void:
-		super._init(note_evt, idx)
-
-## ManualControlNote - 由游戏逻辑手动调用start()/stop()方法的Note
-## 需要在MIDI播放器中标记以跳过其播放，由游戏通过trigger_note_on/off控制
-class ManualControlNote extends Note:
-	## MIDI播放器引用（用于手动触发noteOn/off）
-	var midi_player: Node = null
-	
-	func _init(note_evt: NoteEvent, idx: int = -1) -> void:
-		super._init(note_evt, idx)
-	
-	## 手动触发noteOn - 直接调用MidiPlayer的接口以最小化延迟
-	func start() -> void:
-		if midi_player == null or not midi_player.has_method("trigger_note_on"):
-			push_warning("ManualControlNote: MidiPlayer not available or missing trigger_note_on method")
-			return
-		
-		is_on = true
-		midi_player.trigger_note_on(event.pitch, event.velocity, event.channel, event.track_index)
-	
-	## 手动触发noteOff
-	func stop() -> void:
-		if midi_player == null or not midi_player.has_method("trigger_note_off"):
-			push_warning("ManualControlNote: MidiPlayer not available or missing trigger_note_off method")
-			return
-		
-		is_off = true
-		midi_player.trigger_note_off(event.pitch, event.velocity, event.channel, event.track_index)
+		return "Note(pitch=%d, start=%.0f, dur=%.0f)" % [event.pitch, event.start_time, event.duration]
 
 ## MIDI轨道信息
+## 说明：原 note_count 字段无外部消费者（TrackView 用的是 UI 文本 note_count_passed），
+## 已移除；events 在 MidiPlaybackManager 提取乐器后会被 clear，释放 SMF 原始事件内存
 class TrackInfo:
 	var index: int              # 轨道索引
 	var name: String            # 轨道名称
-	var note_count: int         # 音符数量
 	var events: Array           # 包含的所有MIDI事件
-	
+
 	func _init(idx: int, n: String = "") -> void:
 		index = idx
 		name = n if not n.is_empty() else "Track %d" % idx
-		note_count = 0
 		events = []
 
 ## 加载并解析MIDI文件
-## 返回: {success: bool, notes: Array[Note], bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary], note_events: Array[NoteEvent]}
+## 返回: {success: bool, notes: Array[Note], bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary]}
 ## 说明:
-##   - notes: 包含Note对象（Note/AutoPlayNote/ManualControlNote）的数组，用于游戏逻辑
-##   - note_events: 包含原始NoteEvent的数组，用于向后兼容或调试
+##   - notes: 包含 Note 对象的数组，用于游戏逻辑
 ##   - bpm_timeline 格式: [{tick: int, bpm: float, time_ms: float}, ...]
 static func load_and_parse_midi(file_path: String) -> Dictionary:
 	var result = {
 		"success": false,
 		"notes": [],                  # Array[Note]
-		"note_events": [],            # Array[NoteEvent] - 向后兼容
 		"bpm": 120.0,
 		"duration": 0.0,
 		"track_infos": [],
@@ -222,10 +169,9 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 							note_data["channel"]
 						)
 						notes.append(note_event)
-						track_info.note_count += 1
 						note_on_map.erase(found_key)
-					if current_tick > max_end_tick:
-						max_end_tick = current_tick
+				if current_tick > max_end_tick:
+					max_end_tick = current_tick
 			
 			# 处理音符结束事件
 			elif event.type == SMF.MIDIEventType.note_off:
@@ -251,7 +197,6 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 						note_data["channel"]
 					)
 					notes.append(note_event)
-					track_info.note_count += 1
 					note_on_map.erase(found_key)
 					
 				# 更新最大tick
@@ -273,9 +218,6 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 			note_data["channel"]
 		)
 		notes.append(note_event)
-		var track_idx = note_data["track_index"]
-		if track_idx < track_infos.size():
-			track_infos[track_idx].note_count += 1
 	
 	# 精确计算BPM时间线中的实际时间
 	_calculate_bpm_timeline_time(bpm_timeline, smf_data.timebase)
@@ -283,15 +225,12 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 	# 使用BPM时间线精确计算总时长
 	var actual_duration: float = _calculate_duration_with_bpm_timeline(max_end_tick, bpm_timeline, smf_data.timebase)
 	
-	# 将NoteEvent转换为Note对象（默认都是AutoPlayNote，游戏通过classify_notes分类）
+	# 将NoteEvent转换为Note对象
 	var note_objects: Array[Note] = []
-	for idx in range(notes.size()):
-		var note_evt = notes[idx]
-		var note_obj = AutoPlayNote.new(note_evt, idx)
-		note_objects.append(note_obj)
+	for note_evt in notes:
+		note_objects.append(Note.new(note_evt))
 	
 	result["notes"] = note_objects
-	result["note_events"] = notes  # 保留原始NoteEvent用于向后兼容
 	result["duration"] = actual_duration
 	result["track_infos"] = track_infos
 	result["bpm_timeline"] = bpm_timeline

@@ -262,9 +262,10 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 			playback_mgr.clear_manual_control_notes()
 		flow_area.clear_flow_area()
 		game_sequences.clear()
-		if key_sequence_mgr:
-			key_sequence_mgr.clear_sequences()
 		_teardown_blur_bake_viewport()
+		# 不 unload_midi / 不 clear_sequences / 不 clear_parsed_notes：
+		# 同一 MIDI 在 MidiView/TrackView/PlayView 间切换时复用解析数据与 GameSequence 缓存，
+		# 避免反复重解析/重生成。离开 MidiView 或切换 MidiList 项时才彻底清理
 		# 重置状态，供下次 _prepare_game 使用
 		_is_finishing_game = false
 		is_pause = true
@@ -515,12 +516,17 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	flow_area.init_flow_area()
 	auto_label.visible = flow_area.auto_mode
 
-	# 此 0.8s await 期间 MIDI 已加载完毕、人声预载已由 call_deferred 启动
+	# 提前启动 generate_keys 的 worker 线程（主线程筛选音符 + 后台线程跑 generate_keys）
+	# 800ms await 期间 worker 并行执行 generate_keys，充分利用主线程空闲期
+	# 避免 await 后一帧内塞入 generate_keys + convert 造成 300-900ms 卡顿
+	var gen_task_id := _start_generate_game_sequences(midi)
+
+	# 此 0.8s await 期间 MIDI 已加载完毕、人声预载已由 call_deferred 启动、generate_keys 在 worker 跑
 	await get_tree().create_timer(0.8).timeout
 
-	# 生成游戏键序列（若缓存命中，此处很快）
-	_generate_game_sequences(midi)
-	print("[PlayView] After _generate_game_sequences, game_sequences.size() = %d" % game_sequences.size())
+	# 等待 generate_keys worker 完成（通常 800ms 已够，此处多为一帧内返回）+ 后续处理
+	await _finish_generate_game_sequences(midi, gen_task_id)
+	print("[PlayView] After _finish_generate_game_sequences, game_sequences.size() = %d" % game_sequences.size())
 
 	# 将生成的游戏序列转换为FlowArea所需的音符格式
 	var flow_notes = _convert_game_sequences_to_flow_notes(game_sequences)
@@ -608,40 +614,53 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowNote]:
 	
 	return flow_notes
 
-## 生成游戏序列
-func _generate_game_sequences(midi_data: MidiData) -> void:
+## 启动游戏序列生成（主线程筛选音符 + 启动 worker 线程跑 generate_keys）
+## 返回 worker task_id（-1 表示未启动，如缺 key_sequence_mgr 或无启用音符）
+## 调用方后续通过 await _finish_generate_game_sequences(midi, task_id) 等待完成并做后续处理
+func _start_generate_game_sequences(midi_data: MidiData) -> int:
 	if key_sequence_mgr == null:
 		GLogger.warning("KeySequenceManager not available", "PlayView")
-		return
-	
+		return -1
+
 	if midi_data.parsed_notes.is_empty():
 		GLogger.warning("No parsed notes available for key generation", "PlayView")
-		return
-	
-	# 设置MIDI时间参数
+		return -1
+
+	# 设置屏幕宽度（影响 lane 位置和 cache_key，必须在 generate_keys 之前调用）
+	# set_midi_time_parameters 由 generate_keys 内部调用，此处省略避免重复清空 _tick_ms_cache
 	if playback_mgr != null:
-		key_sequence_mgr.set_midi_time_parameters(playback_mgr.midi_timebase, playback_mgr.bpm_timeline)
 		key_sequence_mgr.set_screen_size(lane_area.size.x)
-	
-	# 按启用的(track, channel)筛选音符
+
+	# 按启用的(track, channel)筛选音符（主线程，30-100ms）
 	var enabled_notes = _filter_notes_by_enabled_track_channels(midi_data.parsed_notes, midi_data)
-	
+
 	if enabled_notes.is_empty():
 		GLogger.warning("No notes in enabled (track, channel) pairs", "PlayView")
+		return -1
+
+	# 启动 worker 线程跑 generate_keys（不 await，立即返回 task_id）
+	# 传入 midi_id 和 enabled_pairs 以启用缓存命中
+	var task_id := key_sequence_mgr.start_generate_keys_async(
+		enabled_notes, current_midi.id, current_midi.selected_track_configs
+	)
+	return task_id
+
+## 等待游戏序列生成完成 + 后续处理（分类提交、缓存序列）
+## 若 task_id == -1 表示未启动生成，直接清空 game_sequences
+func _finish_generate_game_sequences(midi_data: MidiData, task_id: int) -> void:
+	if task_id == -1:
+		game_sequences.clear()
 		return
-	
-	# 调用键序列管理器生成游戏键（传入 midi_id 和 enabled_pairs 以启用缓存命中）
-	var success = key_sequence_mgr.generate_keys(enabled_notes, current_midi.id, current_midi.selected_track_configs)
-	if not success:
-		GLogger.warning("Failed to generate game keys", "PlayView")
-		return
-	
-	# 新增：获取KeySequenceManager统计的真实分类结果
+
+	# 等待 worker 完成（每帧让出，通常 800ms await 后已完成）
+	await key_sequence_mgr.await_generate_keys(task_id)
+
+	# 获取KeySequenceManager统计的真实分类结果
 	var classification = key_sequence_mgr.get_last_notes_classification()
 	var manual_control_notes = classification["manual_control_notes"]
 	var auto_play_notes = classification["auto_play_notes"]
-	
-	# 新增：将真实分类提交给MidiPlaybackManager
+
+	# 将真实分类提交给MidiPlaybackManager
 	# 仅在演奏模式开启时下发手动控制；关闭时必须清空以恢复自动播放
 	if playback_mgr:
 		if play_mode:
@@ -658,13 +677,13 @@ func _generate_game_sequences(midi_data: MidiData) -> void:
 				[manual_control_notes.size(), auto_play_notes.size()],
 				"PlayView"
 			)
-	
+
 	# 缓存生成的游戏序列
 	var raw_sequences = key_sequence_mgr.get_game_sequences()
 	print("[PlayView] get_game_sequences returned %d items" % raw_sequences.size())
 	game_sequences = raw_sequences
 	print("[PlayView] game_sequences assigned, size = %d" % game_sequences.size())
-	
+
 	GLogger.info("Generated %d game sequences for play mode" % game_sequences.size(), "PlayView")
 
 ## 按启用的(track, channel)筛选音符

@@ -133,11 +133,8 @@ var track_channel_volume_config: Dictionary = {}
 ## 独奏状态 (track:channel -> true)
 var solo_pairs: Dictionary = {}
 
-## 轨道-通道的乐器映射 {track_idx: {channel: {bank: int, program: int}}}
-## 在 MIDI 解析时填充，用于在 UI 中显示正确的乐器
-var track_channel_instruments: Dictionary = {}
 ## 用户自定义的轨道-通道音色覆盖 {track_idx: {channel: {bank: int, program: int, name: String}}}
-## 区别于 track_channel_instruments（MIDI解析的原始值），此字段专门存储用户覆盖配置
+## 专门存储用户覆盖配置（持久化到 JSON）；MIDI 解析的原始乐器值由 MidiPlaybackManager.cached_track_channel_instruments 持有
 var track_channel_instrument_overrides: Dictionary = {}
 
 ## 标记：音轨配置是否曾被初始化过（用于区分"新MIDI"和"所有音轨禁用"两种情况）
@@ -328,9 +325,13 @@ func set_track_channel_enabled(track_idx: int, channel: int, enabled: bool) -> v
 func set_soundfont(soundfont_name: String) -> void:
 	use_soundfont = soundfont_name
 
-## 清空已解析的音符列表
+## 清空已解析的音符列表与轨道信息（释放内存）
+## 保留 bpm/bpm_timeline/duration_ms/midi_timebase 等轻量字段，下次 load_midi 时
+## 仅需重新解析 MIDI 文件填充 parsed_notes + _runtime_track_infos（已通过 preparse_midi_async 线程化）
+## 调用时机：TrackView/PlayView 退出后，且无人需要原始 Note 数据时
 func clear_parsed_notes() -> void:
 	parsed_notes.clear()
+	_runtime_track_infos.clear()
 
 ## ========== (Track, Channel) 静音接口 ==========
 
@@ -382,19 +383,6 @@ func export_runtime_config() -> Dictionary:
 		"_track_config_initialized": _track_config_initialized,
 		"saved_at": Time.get_ticks_msec()
 	}
-
-## 获取轨道-通道的乐器 (bank, program)
-func get_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
-	if track_channel_instruments.has(track_index):
-		if track_channel_instruments[track_index].has(channel):
-			return track_channel_instruments[track_index][channel]
-	return {"bank": 0, "program": 0}
-
-## 设置轨道-通道的乐器
-func set_track_channel_instrument(track_index: int, channel: int, bank: int, program: int) -> void:
-	if not track_channel_instruments.has(track_index):
-		track_channel_instruments[track_index] = {}
-	track_channel_instruments[track_index][channel] = {"bank": bank, "program": program}
 
 ## ========== 用户乐器覆盖接口 ==========
 

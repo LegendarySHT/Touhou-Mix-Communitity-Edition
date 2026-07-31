@@ -129,6 +129,12 @@ func on_item_button_toggled(toggled_on: bool):
 		primary_dark = ThemeMGR.get_color("primary_dark")
 	create_tween().tween_property(indicator_node.get_child(item_index), "color", primary_dark if toggled_on else Color(1, 1, 1), 0.15)
 	if toggled_on:
+		# 切换到新 MIDI 项时，清理上一个 MIDI 的运行时缓存（parsed_notes + GameSequence + 播放管理器）
+		# 避免浏览多个大 MIDI 后 parsed_notes 累积导致内存增长
+		if parent_node.selected_item != -1 and parent_node.selected_item != item_index:
+			var prev_midi = parent_node.get_selection()
+			if prev_midi != null:
+				parent_node.cleanup_midi_cache(prev_midi)
 		parent_node.selected_item = item_index
 		# 收起状态点击 → 自动展开全部；展开状态 → 直接吸附
 		if parent_node._collapsed:
@@ -266,6 +272,11 @@ func _on_parse_done(result: Dictionary) -> void:
 	if midi.bpm_timeline.is_empty():
 		midi.bpm_timeline = result.get("bpm_timeline", [])
 		midi.midi_timebase = result.get("timebase", 480)
+	# 同步回填 _runtime_track_infos，使 MidiPlaybackManager.preparse_midi_async 缓存命中
+	# （命中条件：parsed_notes + _runtime_track_infos 同时非空，见 MidiPlaybackManager.gd:431）
+	# 缺失此行会导致进入 TrackView 时 worker 线程重新解析整个 MIDI，造成 ~18MB 临时峰值
+	if midi._runtime_track_infos.is_empty():
+		midi._runtime_track_infos = result.get("track_infos", [])
 
 	# 构建并缓存 Time / BPM 字段
 	var entry: Dictionary = _info_cache.get(midi.id, {})
@@ -398,12 +409,16 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 		pm.midi_timebase = entry.get("timebase", midi.midi_timebase)
 		need_restore = true
 
-	ksm.generate_keys(filtered, midi.id, enabled_pairs)
+	# 异步生成（WorkerThreadPool 后台线程），避免 6 万音符时主线程阻塞 200-800ms
+	# worker 期间主线程 await 让出，pm.bpm_timeline 不会被其他地方修改（本函数是 MidiView 选中项触发的）
+	await ksm.generate_keys_async(filtered, midi.id, enabled_pairs)
 
 	if need_restore:
 		pm.bpm_timeline = saved_timeline
 		pm.midi_timebase = saved_timebase
 
+	# 切换项守卫：await 期间用户可能已切到其他 MIDI 项，本 item 不再是选中项
+	# 仍写入 _info_cache（缓存供下次使用），但 _apply_display 会自行判断是否刷新共享面板
 	var count: int = ksm.game_sequences.size()
 	if count > 0 and midi.duration_ms > 0:
 		entry["note_str"] = "%d" % count

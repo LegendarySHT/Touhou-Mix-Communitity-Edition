@@ -299,6 +299,8 @@ func classify_sequences(midi_data: MidiData, all_midi_notes: Array) -> bool:
 ## 实现完整的批次合并、去重、虚拟触点匹配、块类型判定、连块生成算法
 ## 注意：传入的game_notes应该已经被筛选为只包含启用的音轨的音符
 ## PlayView会根据TrackView中的selected_track_configs筛选出启用的音轨，然后传入这里
+## 线程安全：本方法可在 WorkerThreadPool 后台线程执行（仅访问 self 字段与 MidiPlaybackManager.instance 静态字段，
+## 不访问场景树）。调用期间主线程不得读写 KeySequenceManager 的任何字段。
 func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> bool:
 	# 构造缓存键（midi_id + 启用轨道对哈希 + 屏幕宽度）
 	var pairs_hash := ""
@@ -330,17 +332,17 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	# Step 1: 转换Note对象为统一格式（确保start_time_ms和duration_ms为毫秒）
 	var converted_notes = _convert_notes_to_internal_format(game_notes)
 
-	# Step 2: 按时间排序Note
-	var sorted_notes = converted_notes.duplicate()
-	sorted_notes.sort_custom(func(a, b):
+	# Step 2: 按时间排序Note（in-place 排序，避免 duplicate 整个数组）
+	# 6 万音符时 duplicate 会产生 ~24MB 临时内存峰值
+	converted_notes.sort_custom(func(a, b):
 		if a["start_time_ms"] == b["start_time_ms"]:
 			return a.get("channel", 0) < b.get("channel", 0)
 		return a["start_time_ms"] < b["start_time_ms"]
 	)
 
 	# Step 3: 执行批次合并（Step A）
-	var batches := _batch_notes_by_coalesce(sorted_notes)
-	GLogger.info("Batch merge: created %d batches from %d notes" % [batches.size(), sorted_notes.size()], "KeySequenceManager")
+	var batches := _batch_notes_by_coalesce(converted_notes)
+	GLogger.info("Batch merge: created %d batches from %d notes" % [batches.size(), converted_notes.size()], "KeySequenceManager")
 
 	# Step 4: 为每个批次执行去重（Step B）
 	var all_blocks: Array[BlockInfo] = []
@@ -361,18 +363,25 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	_convert_blocks_to_game_sequences(all_blocks)
 
 	# Step 8: 添加背景序列（与Unity一致：输出单一背景序列）
-	# Pre-compute start times: avoids O(N log N) _tick_to_ms calls during sort
-	var _bg_sorted: Array = []
-	for _bn in bg_notes:
-		_bg_sorted.append({"note": _bn, "time": _get_note_start_time_ms(_bn)})
-	_bg_sorted.sort_custom(func(a, b):
-		if a.time == b.time:
-			return _get_note_pitch(a.note) < _get_note_pitch(b.note)
-		return a.time < b.time
+	# 预计算 start_time_ms 到 PackedFloat32Array，避免排序时反复调用 _get_note_start_time_ms
+	# 同时避免为每个 note 构建 Dictionary 包装（6 万音符时省 ~5-10MB 临时内存）
+	var bg_count := bg_notes.size()
+	var bg_times := PackedFloat32Array()
+	bg_times.resize(bg_count)
+	for i in range(bg_count):
+		bg_times[i] = _get_note_start_time_ms(bg_notes[i])
+	# 按预计算时间排序索引数组，再用排序后的索引重建 bg_notes
+	var bg_indices := range(bg_count)
+	bg_indices.sort_custom(func(a, b):
+		if bg_times[a] == bg_times[b]:
+			return _get_note_pitch(bg_notes[a]) < _get_note_pitch(bg_notes[b])
+		return bg_times[a] < bg_times[b]
 	)
-	bg_notes.clear()
-	for _item in _bg_sorted:
-		bg_notes.append(_item.note)
+	var sorted_bg_notes: Array = []
+	sorted_bg_notes.resize(bg_count)
+	for i in range(bg_count):
+		sorted_bg_notes[i] = bg_notes[bg_indices[i]]
+	bg_notes = sorted_bg_notes
 	var bg_seq = BackgroundSequence.new(0)
 	bg_seq.notes = bg_notes
 	background_sequences.append(bg_seq)
@@ -387,6 +396,46 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	_cached_manual_notes = last_manual_control_notes.duplicate()
 	_cached_auto_notes = last_auto_play_notes.duplicate()
 
+	return true
+
+## generate_keys 任务 ID（-1 表示无任务），用于 await generate_keys_async
+var _generate_task_id: int = -1
+
+## 启动 generate_keys 的 worker 线程（不 await，立即返回 task_id）
+## 调用方后续通过 await_generate_keys(task_id) 等待完成
+## 适用于"启动 worker → 主线程做其他事 → 等待 worker 完成"的并行场景
+func start_generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> int:
+	# 等待上一个未完成的任务（防御性，正常不应发生）
+	if _generate_task_id != -1:
+		WorkerThreadPool.wait_for_task_completion(_generate_task_id)
+		_generate_task_id = -1
+
+	var task_id := WorkerThreadPool.add_task(
+		func(): generate_keys(game_notes, midi_id, enabled_pairs),
+		false,
+		"KeySequenceManager.generate_keys"
+	)
+	_generate_task_id = task_id
+	return task_id
+
+## 等待 generate_keys worker 完成（每帧让出主线程）
+func await_generate_keys(task_id: int) -> void:
+	# task_id == -1 表示 start_generate_keys_async 未启动任务（如 enabled_notes 为空）
+	# 直接返回，避免 is_task_completed(-1) 报 "Invalid Task ID" 错误
+	if task_id == -1:
+		return
+	while not WorkerThreadPool.is_task_completed(task_id):
+		await Engine.get_main_loop().process_frame
+	WorkerThreadPool.wait_for_task_completion(task_id)
+	if _generate_task_id == task_id:
+		_generate_task_id = -1
+
+## 异步生成游戏键（WorkerThreadPool 后台线程执行 generate_keys）
+## 调用期间主线程不得访问 KeySequenceManager 的任何字段
+## 本方法是 start_generate_keys_async + await_generate_keys 的便捷封装
+func generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> bool:
+	var task_id := start_generate_keys_async(game_notes, midi_id, enabled_pairs)
+	await await_generate_keys(task_id)
 	return true
 
 ## 将Note对象转换为内部格式（确保使用毫秒单位）
@@ -1028,13 +1077,26 @@ func get_last_notes_classification() -> Dictionary:
 		"auto_play_notes": last_auto_play_notes.duplicate()
 	}
 
-## 清空所有序列
+## 清空所有序列（PlayView 退出时调用）
+## 同步清空 _cached_*，避免单 slot 缓存常驻（约 3-15 MB GameSequence + 引用数组）
+## 下次进入 PlayView 时 generate_keys 会重新生成并填充缓存
 func clear_sequences() -> void:
 	game_sequences.clear()
 	background_sequences.clear()
 	all_notes.clear()
 	next_key_id = 0
 	current_midi_data = null
+	# 同步清空单 slot 缓存，避免 PlayView 退出后僵尸内存驻留
+	_cache_key = ""
+	_cached_sequences.clear()
+	_cached_background_sequences.clear()
+	_cached_manual_notes.clear()
+	_cached_auto_notes.clear()
+	# 同步清空 BPM 时间线相关的查找缓存（6 万音符 MIDI 的 _tick_ms_cache 可达 5-12 MB）
+	# set_midi_time_parameters 下次调用时会重建 _bpm_lookup 与 _tick_ms_cache
+	_tick_ms_cache.clear()
+	_bpm_lookup.clear()
+	bpm_timeline.clear()
 
 ## 统计信息
 func get_statistics() -> Dictionary:
@@ -1055,7 +1117,12 @@ func _count_background_notes() -> int:
 ## 配置变更回调（新增）
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	# 任何影响音符生成的配置变更都应清除缓存，避免返回旧结果
+	# 同步清空 _cached_* 释放内存，否则旧 GameSequence 会常驻（_cache_key="" 但数组仍持有引用）
 	_cache_key = ""
+	_cached_sequences.clear()
+	_cached_background_sequences.clear()
+	_cached_manual_notes.clear()
+	_cached_auto_notes.clear()
 
 	# 处理 Lane 相关配置变更
 	if section == "Lane":

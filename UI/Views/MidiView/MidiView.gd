@@ -21,6 +21,9 @@ extends HBoxContainer
 const ICON_FAVOR_LIST := "res://Resources/icon/midiInfoPage/addToList.png"
 const ICON_BACK := "res://Resources/icon/midiInfoPage/back.png"
 
+# MidiListItem 脚本引用（用于访问其 static var _info_cache）
+const _MidiListItem = preload("res://UI/Views/MidiView/MidiListItem.gd")
+
 # 收藏夹面板状态
 var _favor_panel_visible: bool = false
 var _prev_tab_idx: int = 0
@@ -121,19 +124,32 @@ func _on_state_changed(old_state: int, new_state: int) -> void:
 		if midi:
 			favor_panel.show_with_midi(midi)
 		_last_midi_selection = midi_list.selected_item
-	# 仅在退回 SongView 时标记清理（去 TrackView/PlayView 等需保留以便返回时仍可见）
+	# 离开 MidiView 去 SONG_VIEW/ALBUM_VIEW/SORTED_VIEW 时标记清理
+	# （去 TrackView/PlayView/ScoreView/SettingsView 不清理，同一 MIDI 复用解析数据）
 	# 实际清理延迟到退出动画完毕后由 restore_panel_state() 执行，避免动画播放过程中列表已被清空
-	if old_state == UIStateManager.UIState.MIDI_VIEW and new_state == UIStateManager.UIState.SONG_VIEW:
+	if old_state == UIStateManager.UIState.MIDI_VIEW and new_state in [
+		UIStateManager.UIState.SONG_VIEW,
+		UIStateManager.UIState.ALBUM_VIEW,
+		UIStateManager.UIState.SORTED_VIEW,
+	]:
 		_pending_cleanup = true
 	# 重新进入 MidiView 时清除残留的 pending 标志（防止上次退出动画被中断导致残留）
 	elif new_state == UIStateManager.UIState.MIDI_VIEW:
 		_pending_cleanup = false
 
-## 释放视图内部资源（midi 列表项），保留节点壳和信号连接
+## 释放视图内部资源（midi 列表项 + 当前 MIDI 运行时缓存），保留节点壳和信号连接
 ## 重新进入时由 song_selected 信号重新加载
 func _cleanup() -> void:
 	if midi_list:
+		# 先清理当前 MIDI 的运行时缓存（parsed_notes + GameSequence + 播放管理器）
+		# 同一 MIDI 在 MidiView/TrackView/PlayView 间切换时已保留缓存，此处是真正离开 MidiView 时释放
+		var midi = midi_list.get_selection()
+		if midi != null:
+			midi_list.cleanup_midi_cache(midi)
 		midi_list.clear_items()
+	# 清空 MidiListItem 的静态信息缓存（_info_cache），避免浏览多个大 MIDI 后
+	# bpm_timeline 等字段累积导致长期内存泄漏（每条 1+ MB）
+	_MidiListItem._info_cache.clear()
 
 
 # 轮询检测 midi_list 内部切换（prev/next/list 展开按钮不发出信号）

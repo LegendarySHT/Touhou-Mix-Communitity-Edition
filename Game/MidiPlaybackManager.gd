@@ -62,6 +62,15 @@ var _vocal_initialized: bool = false
 var _preloaded_vocal_stream: AudioStream = null
 var _vocal_preload_path: String = ""
 
+## 人声预加载 worker 任务 ID（-1 表示无任务）
+## _preload_vocal_async 入队，await_vocal_preload 出队并收集结果
+var _vocal_preload_task_id: int = -1
+## 正在加载的任务对应的文件路径（用于判断是否需要为新路径启动新任务）
+var _vocal_preload_task_path: String = ""
+## 每个任务独立的结果 holder（Dictionary），避免旧任务竞争写入共享变量
+## 启动新任务时替换此引用，旧任务的 holder 自然被 GC
+var _vocal_preload_result_holder: Dictionary = {}
+
 ## 音频不同步阈值（毫秒）
 var sync_threshold_ms: float = 200.0
 
@@ -205,6 +214,8 @@ func load_midi(midi_data: MidiData) -> bool:
 			var am := AudioManager.instance
 			if am != null and am.vocal_player != null:
 				am.vocal_player.stream = null
+	# 注意：不在此清理 _vocal_preload_task_id / _vocal_preload_task_path / _vocal_preload_result_holder
+	# _preload_vocal_async 会根据新路径判断是否启动新任务，旧任务结果通过 holder 替换自然丢弃
 
 	# 保存当前MIDI数据
 	current_midi_data = midi_data
@@ -368,9 +379,15 @@ func load_midi(midi_data: MidiData) -> bool:
 ## 显式卸载当前 MIDI 资源（释放人声 stream、停止后端、清理引用）
 ## MidiData.parsed_notes 保留（由 DataManager 管理生命周期，用于 retry 跳过重复解析）
 func unload_midi() -> void:
+	# join 并清理运行中的 vocal 预加载任务，避免 Task 结构体泄漏
+	if _vocal_preload_task_id != -1:
+		WorkerThreadPool.wait_for_task_completion(_vocal_preload_task_id)
+		_vocal_preload_task_id = -1
+		_vocal_preload_task_path = ""
 	# 释放人声
 	_preloaded_vocal_stream = null
 	_vocal_preload_path = ""
+	_vocal_preload_result_holder = {}
 	_vocal_initialized = false
 	var am := AudioManager.instance
 	if am != null and am.vocal_player != null:
@@ -406,7 +423,62 @@ func _save_runtime_config_to_json(midi_data: MidiData) -> void:
 	else:
 		push_error("[MidiPlaybackManager] Failed to save runtime config to JSON for MIDI %s" % midi_data.id)
 
-## 异步预载人声文件（call_deferred 避免阻塞当前帧，AudioStream 须在主线程创建）
+## 在 worker 线程中预解析 MIDI，使后续 load_midi() 命中缓存跳过同步解析
+## 主线程在 await 期间可继续渲染转场动画，避免首次进入 TrackView 时的解析卡顿
+## TrackView._load_midi 在调用 load_midi 之前 await 本方法
+func preparse_midi_async(midi_data: MidiData) -> bool:
+	# 缓存命中检查（与 load_midi 内部条件一致）
+	if not midi_data.parsed_notes.is_empty() and not midi_data._runtime_track_infos.is_empty():
+		return true  # 已缓存，无需预解析
+
+	var midi_file_path := _locate_midi_file(midi_data)
+	if midi_file_path.is_empty():
+		push_error("[MidiPlaybackManager] Cannot locate MIDI file for: %s" % midi_data.id)
+		return false
+
+	# 预先写入路径，让 load_midi 内部的缓存检查 (midi_data.midi_file_path == midi_file_path) 命中
+	midi_data.midi_file_path = midi_file_path
+
+	# 在 worker 线程中执行昂贵的 MIDI 解析（纯文件 I/O + 数据结构构建，无引擎 API 调用）
+	var result_wrapper := {"parse": null}
+	var task_id := WorkerThreadPool.add_task(func():
+		result_wrapper["parse"] = MidiParser.load_and_parse_midi(midi_file_path)
+	, false, "MIDI Preparse")
+
+	# 主线程轮询任务完成状态，期间继续渲染转场动画（非阻塞）
+	while not WorkerThreadPool.is_task_completed(task_id):
+		await Engine.get_main_loop().process_frame
+
+	# 任务已完成，wait_for_task_completion 仅做线程 join（瞬时返回）
+	WorkerThreadPool.wait_for_task_completion(task_id)
+
+	var parse_result: Dictionary = result_wrapper["parse"]
+	if not parse_result.get("success", false):
+		push_error("[MidiPlaybackManager] Failed to parse MIDI file: %s" % midi_file_path)
+		return false
+
+	# 写入 midi_data 字段，load_midi 后续会命中缓存跳过同步解析
+	midi_data.parsed_notes = parse_result["notes"]
+	# 与 load_midi 一致：duplicate() 防止后续修改影响原解析结果
+	midi_data.bpm_timeline = parse_result.get("bpm_timeline", []).duplicate()
+	midi_data.midi_timebase = parse_result.get("timebase", 480)
+	midi_data._runtime_track_infos = parse_result["track_infos"]
+	midi_data.track_count = parse_result["track_infos"].size()
+	midi_data.bpm = parse_result["bpm"]
+	midi_data.duration_ms = parse_result["duration"]
+
+	# 排序（与 load_midi 内部一致，保证后续行为完全等价）
+	midi_data.parsed_notes.sort_custom(func(a, b) -> bool:
+		var a_time = a.event.start_time if a is MidiParser.Note and a.event else 0
+		var b_time = b.event.start_time if b is MidiParser.Note and b.event else 0
+		return a_time < b_time
+	)
+
+	GLogger.info("MIDI preparse completed (threaded): %d notes, duration=%.0fms" % [midi_data.parsed_notes.size(), midi_data.duration_ms], "MidiPlaybackManager")
+	return true
+
+## 异步预载人声文件（线程化，避免主线程解码卡顿）
+## AudioStream 的静态工厂方法（load_from_file）是线程安全的，可在 worker 中调用
 func _preload_vocal_async() -> void:
 	if current_midi_data == null or current_midi_data.vocal_file_path.is_empty():
 		return
@@ -414,22 +486,60 @@ func _preload_vocal_async() -> void:
 		return
 	var path = current_midi_data.vocal_file_path
 	if path == _vocal_preload_path and _preloaded_vocal_stream != null:
-		return  # 已预加载
+		return  # 已预加载完成
+	# 同路径任务已在跑则不重复入队
+	if _vocal_preload_task_id != -1 and _vocal_preload_task_path == path:
+		return
+	# 旧任务（不同路径）仍在跑：必须先 join 旧任务，否则 Godot 4.7 的 Task 结构体会泄漏
+	# 旧任务通常已完成（vocal 文件加载很快），wait_for_task_completion 瞬时返回
+	# 极端情况下旧任务未完成会短暂阻塞主线程，但优于内存泄漏
+	if _vocal_preload_task_id != -1:
+		WorkerThreadPool.wait_for_task_completion(_vocal_preload_task_id)
+		_vocal_preload_task_id = -1
+		_vocal_preload_task_path = ""
+
 	_vocal_preload_path = path
 	_preloaded_vocal_stream = null
-	_do_load_vocal.call_deferred(path)
+	_vocal_preload_task_path = path
 
-func _do_load_vocal(path: String) -> void:
+	# 每个任务使用独立的 holder，避免旧任务竞争写入共享变量
+	var result_holder: Dictionary = {"stream": null}
+	_vocal_preload_result_holder = result_holder
+	# 在 worker 线程中加载人声文件，主线程不阻塞
+	_vocal_preload_task_id = WorkerThreadPool.add_task(func():
+		result_holder["stream"] = _do_load_vocal_sync(path)
+	, false, "VocalPreload")
+
+## 同步加载人声文件（可在 worker 线程中调用，返回 AudioStream 或 null）
+func _do_load_vocal_sync(path: String) -> AudioStream:
 	if not FileAccess.file_exists(path):
-		return
+		return null
 	var ext = path.get_extension().to_lower()
 	match ext:
 		"mp3":
-			_preloaded_vocal_stream = AudioStreamMP3.load_from_file(path)
+			return AudioStreamMP3.load_from_file(path)
 		"ogg":
-			_preloaded_vocal_stream = AudioStreamOggVorbis.load_from_file(path)
+			return AudioStreamOggVorbis.load_from_file(path)
 		"wav":
-			_preloaded_vocal_stream = AudioStreamWAV.load_from_file(path)
+			return AudioStreamWAV.load_from_file(path)
+	return null
+
+## 等待人声预加载完成（非阻塞，每帧检查一次）
+## TrackView._load_midi 在 play() 之前 await 本方法，确保 start_vocal_playback
+## 不会回退到同步加载导致 MIDI/人声不同步
+func await_vocal_preload() -> void:
+	if _vocal_preload_task_id == -1:
+		return  # 无预加载任务（可能无人声或已加载）
+	# 轮询任务完成状态，期间主线程继续渲染
+	while not WorkerThreadPool.is_task_completed(_vocal_preload_task_id):
+		await Engine.get_main_loop().process_frame
+	# 收集结果并清理任务 ID
+	WorkerThreadPool.wait_for_task_completion(_vocal_preload_task_id)
+	_vocal_preload_task_id = -1
+	_vocal_preload_task_path = ""
+	# 从本任务独立的 holder 读取结果
+	_preloaded_vocal_stream = _vocal_preload_result_holder.get("stream", null)
+	_vocal_preload_result_holder = {}
 
 ## 播放MIDI
 func play() -> void:
@@ -1134,6 +1244,12 @@ func _extract_track_channel_instruments(track_infos: Array) -> void:
 	
 	print("[MidiPlaybackManager] Extracted instruments for %d tracks from MIDI file" % cached_track_channel_instruments.size())
 
+	# 提取完成后清空 TrackInfo.events，释放 SMF 原始事件 chunk 内存（6 万音符 MIDI 约 30 MB）
+	# events 仅用于本函数提取乐器信息，之后无任何消费者；name/note_count 等轻量字段保留
+	for track_info in track_infos:
+		if track_info and track_info.events.size() > 0:
+			track_info.events.clear()
+
 ## 辅助函数：定位MIDI文件路径
 func _locate_midi_file(midi_data: MidiData) -> String:
 	# 使用FileSystemManager的文件索引来定位MIDI文件
@@ -1230,12 +1346,11 @@ func classify_notes(all_notes: Array, manual_track_indices: Array[int] = []) -> 
 		if note is MidiParser.Note:
 			# 检查note的轨道是否在手动控制列表中
 			if note.event.track_index in manual_tracks_set:
-				# 转换为ManualControlNote
-				var manual_note = MidiParser.ManualControlNote.new(note.event, note.note_index)
-				manual_note.midi_player = midi_player
-				result["manual_control_notes"].append(manual_note)
+				# 手动控制音符：播放器端通过 set_manually_controlled_notes 标记跳过自动播放，
+				# 由游戏逻辑直接调用 trigger_note_on/off，无需额外的 Note 子类
+				result["manual_control_notes"].append(note)
 			else:
-				# 保持为AutoPlayNote
+				# 自动播放音符
 				result["auto_play_notes"].append(note)
 		else:
 			# 非Note类型，默认为自动播放
@@ -1248,7 +1363,7 @@ func classify_notes(all_notes: Array, manual_track_indices: Array[int] = []) -> 
 
 ## 设置MidiPlayer的手动控制note标记
 ## 游戏完成分类后，应调用此方法通知MidiPlayer哪些note需要手动控制
-## @param	manual_control_notes	Note或ManualControlNote数组
+## @param	manual_control_notes	Note数组（需手动控制的音符）
 func set_manual_control_notes(manual_control_notes: Array) -> void:
 	if midi_player == null:
 		push_warning("[MidiPlaybackManager] MidiPlayer not initialized")
@@ -1260,7 +1375,7 @@ func set_manual_control_notes(manual_control_notes: Array) -> void:
 	var manually_controlled: Dictionary = {}
 	
 	for note in manual_control_notes:
-		# 支持普通Note和ManualControlNote两种类型
+		# 所有 note 均为 MidiParser.Note 类型
 		if note is MidiParser.Note and note.event:
 			var track_index = note.event.track_index
 			var channel = note.event.channel
@@ -1483,8 +1598,10 @@ func set_sync_threshold(threshold_ms: float) -> void:
 	sync_threshold_ms = clamp(threshold_ms, 1.0, 100000.0)
 
 ## 重置同步检查位置（在开始新播放时调用）
+# 设为负数确保播放开始后第一次 _sync_vocal_with_midi 就会立即检查同步
+# 而不是等 100ms 间隔过去，避免 MIDI/人声启动延迟差异在前 100ms 内不被纠正
 func reset_sync_state() -> void:
-	last_sync_check_pos_ms = 0.0
+	last_sync_check_pos_ms = -1000.0
 
 ## 配置变更回调（新增）
 func _on_config_changed(key: String, section: String, value: Variant) -> void:

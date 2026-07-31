@@ -61,8 +61,22 @@ func get_selection() -> MidiData:
 	if selected_item == -1:
 		print("未选择Midi")
 		return null
-	
+
 	return current_midis[selected_item]
+
+## 清理指定 MIDI 的运行时缓存（parsed_notes + GameSequence + 播放管理器）
+## 用于切换 MidiList 项或离开 MidiView 时释放内存，避免浏览多个大 MIDI 后累积
+## 注意：仅当 pm.current_midi_data == midi 时才 unload，避免误清其他 MIDI 的播放状态
+func cleanup_midi_cache(midi: MidiData) -> void:
+	if midi == null:
+		return
+	var ksm := KeySequenceManager.instance
+	if ksm != null:
+		ksm.clear_sequences()
+	var pm := MidiPlaybackManager.instance
+	if pm != null and pm.current_midi_data == midi and pm.has_method("unload_midi"):
+		pm.unload_midi()
+	midi.clear_parsed_notes()
 
 func get_focus_node_path() -> NodePath:
 	var node = get_selected_node()
