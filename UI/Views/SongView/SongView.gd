@@ -9,6 +9,11 @@ var current_songs: Array[SongData] = []
 ## 当前已选中的专辑 ID
 var current_album_id: String = ""
 
+## 标记 _load_songs 刚被调用（album_selected 触发，先于 state_changed）
+## 用于跳过 state_changed lambda 中的冗余 _refresh_from_data 重建
+## （_load_songs 已创建列表项，lambda 再重建会导致封面加载被中断重发）
+var _load_songs_just_called: bool = false
+
 ## 管理器引用
 @onready var data_manager: DataManager = DataMGR
 @onready var event_bus: EventBus = EvtBus
@@ -31,8 +36,13 @@ func _ready() -> void:
 	event_bus.album_selected.connect(_load_songs)
 	event_bus.midi_deleted.connect(func(_id): if not current_album_id.is_empty(): _load_songs(current_album_id))
 	# 回到 SongView 时自动刷新，确保删除等操作后数据最新
+	# 但 _load_songs 已处理首次进入和 album_selected 触发的场景，
+	# 需跳过冗余重建避免封面加载被中断
 	state_manager.state_changed.connect(func(_old, new):
 		if new == UIStateManager.UIState.SONG_VIEW and not current_album_id.is_empty():
+			if _load_songs_just_called:
+				_load_songs_just_called = false
+				return  # _load_songs 已创建列表项,跳过冗余重建
 			call_deferred("_refresh_from_data")
 	)
 
@@ -56,6 +66,7 @@ func _exit_tree() -> void:
 func _load_songs(album_id: String) -> void:
 	if not data_manager:
 		return
+	_load_songs_just_called = true  # 标记,供 state_changed lambda 跳过冗余重建
 	current_album_id = album_id
 	current_songs = data_manager.get_songs_by_album(album_id)
 	_refresh_display()
@@ -99,7 +110,7 @@ func _refresh_display() -> void:
 		if item:
 			item.setup_with_song(self, song, counter, bg)
 			counter += 1
-	# 列表构建完成，触发封面涟漪加载
+	# 列表构建完成，触发未加载项的封面加载
 	trigger_cover_chain()
 
 func _gui_input(event: InputEvent) -> void:

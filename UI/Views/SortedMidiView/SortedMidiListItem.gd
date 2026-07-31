@@ -32,8 +32,9 @@ func _ready() -> void:
 	_has_ready = true
 
 ## 刷新显示数据并重新加载封面（新建与复用共用）
-## 复用时先 release_cover 释放旧 texture，再 start_cover_load 加载新封面；
-## 新建节点 _cover_loaded=false，release_cover 仅置空 null texture（无副作用）
+## 复用时先 switch_cover_data 重置加载状态（保留旧 texture 显示），再 start_cover_load 加载新封面；
+## 新建节点 _cover_loaded=false 无需 switch_cover_data（避免冗余操作）
+## 注:新建项若 path 暂不可用,start_cover_load 直接 return,由列表 trigger_cover_chain 统一重试
 func _refresh_display() -> void:
 	# 显示MIDI信息
 	get_node("Data").text = "%d %d %d %d" % [midi_data.download_count, midi_data.trial_count, midi_data.up_count, midi_data.love_count]
@@ -41,8 +42,9 @@ func _refresh_display() -> void:
 	midi_name_label.text = midi_data.name.strip_edges()
 	author_label.text = midi_data.artist_name if not midi_data.artist_name.is_empty() else "Unknown"
 
-	# 释放可能残留的旧封面后重新加载
-	release_cover()
+	# 仅复用项（_has_ready=true）需要重置加载状态；新建项 _cover_loaded=false 直接加载
+	if _has_ready:
+		switch_cover_data()
 	start_cover_load()
 
 	# 复用刷新（非首次）时，若自然位置在可见区域内则播放滑入动画
@@ -92,6 +94,15 @@ func _get_cover_texture() -> Texture2D:
 	if not midi_data:
 		return null
 	return FileSystemManager.instance.get_cover_by_midiData(midi_data)
+
+## 重写基类虚函数：返回封面文件路径（主线程调用，供异步加载器使用）
+func _resolve_cover_path() -> String:
+	if not midi_data:
+		return ""
+	var fs_mgr := FileSystemManager.instance
+	if not fs_mgr:
+		return ""
+	return fs_mgr.get_cover_path_by_midiData(midi_data)
 
 ## 从MidiData初始化显示
 ## 新建节点（_has_ready=false）：emit _init_fin 触发 _ready 中的 await 继续

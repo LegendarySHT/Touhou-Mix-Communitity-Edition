@@ -53,11 +53,15 @@ func set_display(midi: MidiData = null) -> void:
 		uploader.text = midi.uploader_name
 		album_name.text = "null" if not midi.album_data else midi.album_data.name
 		song_name.text = "null" if not midi.song_data else midi.song_data.name
-	# midi 变化（含从 null 切到非 null）时刷新封面：先释放旧封面，再立即加载新封面
+	# midi 变化（含从 null 切到非 null）时刷新封面
 	if midi_changed:
-		release_cover()
 		if enable:
+			# 切到新 midi：保留旧 texture 显示直到新封面加载完成
+			switch_cover_data()
 			start_cover_load()
+		else:
+			# 切到 null：彻底释放封面 texture，避免不可见项持有 Texture 引用阻止 GC
+			release_cover()
 	# 文本变化后重算滚动（仅在有数据时）
 	if enable:
 		call_deferred("_setup_text_scrolls")
@@ -80,3 +84,12 @@ func _get_cover_texture() -> Texture2D:
 	if not midi_data:
 		return null
 	return FileSystemManager.instance.get_cover_by_midiData(midi_data)
+
+## 重写基类虚函数：返回封面文件路径（主线程调用，供异步加载器使用）
+func _resolve_cover_path() -> String:
+	if not midi_data:
+		return ""
+	var fs_mgr := FileSystemManager.instance
+	if not fs_mgr:
+		return ""
+	return fs_mgr.get_cover_path_by_midiData(midi_data)

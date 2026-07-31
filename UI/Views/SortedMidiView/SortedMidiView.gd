@@ -16,10 +16,19 @@ var current_midis: Array[MidiData] = []
 ## 空结果提示节点
 @onready var no_items_node: Label = get_node_or_null("/root/Main/skew/C/NoItems")
 
-## 是否正在加载
-var _is_loading: bool = false
-
 var item_bg: ButtonGroup = null
+
+## 加载 generation 计数器（单调递增）
+## 每次 _load_sorted_midis 调用递增,使之前在途的加载循环自动失效
+## 替代旧的 _is_loading + _load_abort 机制,消除多调用重叠时的竞态:
+##   旧机制问题:_is_loading 既做互斥又做取消,Call 2 置 false 取消 Call 1 时
+##   会误打开闸门让 Call 3 跳过互斥检查,导致 Call 1/Call 3 并发修改 list_items
+##   且 Call 2 永久 await _load_abort 挂起(协程泄漏)
+## 新机制:每次调用获得唯一 generation,循环中校验 generation 一致性,
+##   旧循环自然退出,无信号 await,无并发
+var _load_generation: int = 0
+
+var _ignore_sort_finished_signal: bool = false
 
 func _ready() -> void:
 	if not dm or not eb or not se:
@@ -60,8 +69,8 @@ func _exit_tree() -> void:
 func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	super._on_state_changed(old_state, new_state)
 	if new_state in [UIStateManager.UIState.ALBUM_VIEW, UIStateManager.UIState.SONG_VIEW]:
-		# 退回专辑/歌曲视图：清空列表，释放节点
-		_is_loading = false
+		# 退回专辑/歌曲视图：递增 generation 使在途加载失效,清空列表,释放节点
+		_load_generation += 1
 		clear_items()
 		current_midis.clear()
 
@@ -78,8 +87,6 @@ func on_item_button_confirmed(index: int) -> void:
 		sm.change_state(UIStateManager.UIState.MIDI_VIEW)
 		eb.emit_midi_selected(midi.id, midi)
 
-signal _load_abort
-var _ignore_sort_finished_signal: bool = false
 ## 加载排序的MIDI列表（启动新的加载任务）
 ## 复用机制：切换内容时不全量清空，先尝试替换现有项的数据，多余项从尾部清理，不足项新建
 func _load_sorted_midis(refectch: bool = true) -> void:
@@ -90,11 +97,9 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 		print("Missing manager instances")
 		return
 
-	# 检查是否已经有加载任务在进行
-	if _is_loading:
-		# 中断当前的加载任务
-		_is_loading = false
-		await _load_abort
+	# 递增 generation,使之前在途的加载循环自动失效(旧循环检测到 generation 不匹配后 return)
+	_load_generation += 1
+	var my_generation := _load_generation
 
 	if not item_bg:
 		item_bg = ButtonGroup.new()
@@ -111,21 +116,26 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 		for i in range(existing_count - 1, target_count - 1, -1):
 			var extra_item: ListItemBase = list_items[i]
 			if is_instance_valid(extra_item):
+				# 先释放封面：清空 _loading_path 使在途回调失效，避免帧末 free 前回调浪费 CPU
+				if extra_item is CoverListItemBase:
+					(extra_item as CoverListItemBase).release_cover()
 				extra_item.queue_free()
 			list_items.remove_at(i)
 		# 等待多余项实际释放，避免下帧悬挂引用
 		await get_tree().process_frame
+		# await 后校验:若期间被新调用取代,静默退出
+		if my_generation != _load_generation:
+			return
 
 	# 重置选中与吸附状态（复用项内容已变，原选中索引不再有效）
 	selected_item = -1
 	need_snap = false
 	_snap_active = false
 
-	_is_loading = true
 	var counter = 0
 	for midi in current_midis:
-		if not _is_loading:
-			_load_abort.emit()
+		# generation 校验:若期间被新调用取代,静默退出(新调用会自行构建列表)
+		if my_generation != _load_generation:
 			return
 
 		var node: SortedMidiListItem
@@ -140,9 +150,9 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 
 		await get_tree().process_frame
 
-	_is_loading = false
-	# 列表构建完成，触发封面涟漪加载
-	trigger_cover_chain()
+	# 最终校验:仅当本次 generation 仍为最新时触发未加载项的封面加载
+	if my_generation == _load_generation:
+		trigger_cover_chain()
 
 ## 搜索查询改变
 func _on_search_query_changed(query: String) -> void:

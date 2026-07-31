@@ -31,7 +31,8 @@ func _ready() -> void:
 	midi_count_label.text = "%d" % song_data.midi_ids.size()
 
 	# 直接开始加载封面（不等列表构建完毕）
-	# 命中 WeakRef 缓存时零开销；未命中时同步读盘，但每项创建间隔由 SongView 控制
+	# 命中 WeakRef 缓存时零开销同步应用；未命中则入 CoverLoader 异步队列，不阻塞主线程
+	# 列表的 trigger_cover_chain 仍处理"释放后重载"场景（状态切换回视图时）与 path 暂不可用的重试
 	start_cover_load()
 	# 启动文字滚动动画（如名称过长）
 	call_deferred("_setup_name_scroll")
@@ -95,3 +96,17 @@ func _get_cover_texture() -> Texture2D:
 	if midis.is_empty():
 		return null
 	return fs_mgr.get_cover_by_midiData(midis[0])
+
+## 重写基类虚函数：返回封面文件路径（主线程调用，供异步加载器使用）
+## 路径查询在主线程完成，后台线程只负责读盘
+func _resolve_cover_path() -> String:
+	if not song_data:
+		return ""
+	var fs_mgr := FileSystemManager.instance
+	var data_mgr := DataMGR
+	if not fs_mgr or not data_mgr:
+		return ""
+	var midis := data_mgr.get_midis_by_song(song_data.id)
+	if midis.is_empty():
+		return ""
+	return fs_mgr.get_cover_path_by_midiData(midis[0])

@@ -111,7 +111,7 @@ func _refresh_display_async() -> void:
 		return  # 被取消（新的 _load_albums 触发）
 	if _album_build_counter:
 		_connect_head_and_tail()
-		# 列表构建完成，触发封面涟漪加载（首次进入或刷新后）
+		# 列表构建完成，触发未加载项的封面加载（首次进入或刷新后）
 		trigger_cover_chain()
 
 

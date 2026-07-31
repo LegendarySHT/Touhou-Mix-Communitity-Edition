@@ -891,6 +891,46 @@ func get_cover_by_midiData(midi: MidiData) -> Texture2D:
 		return _load_cover_with_cache(path)
 	return _load_cover_with_cache(DEFAULT_COVER_PATH)
 
+## 查询封面文件路径（不读盘，主线程调用，供异步加载器使用）
+## 返回 path 字符串：命中返回 metadata.cover_path，未命中或为空返回默认封面路径
+## 与 _load_cover_with_cache 的回退行为一致：user:// 文件不存在时回退到默认封面
+## 避免异步加载器读到 null 后无回退逻辑导致封面空白
+func get_cover_path_by_midiData(midi: MidiData) -> String:
+	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
+	if not midi:
+		return DEFAULT_COVER_PATH
+	var result = _lookup_chart(midi.file_hash)
+	if result.is_empty():
+		result = _lookup_chart(midi.id)
+	if not result.is_empty():
+		var path: String = result["metadata"].cover_path
+		if path.is_empty():
+			return DEFAULT_COVER_PATH
+		# user:// 路径校验文件存在性：不存在则回退到默认封面（与旧 _load_cover_with_cache 一致）
+		if not path.begins_with("res://") and not FileAccess.file_exists(path):
+			return DEFAULT_COVER_PATH
+		return path
+	return DEFAULT_COVER_PATH
+
+## 主线程查 WeakRef 缓存，命中返回 Texture，未命中返回 null
+## 供 CoverListItemBase 在入队异步加载前先查缓存
+func get_cached_cover_texture(path: String) -> Texture2D:
+	if _cover_texture_cache.has(path):
+		var weak := _cover_texture_cache[path] as WeakRef
+		if weak:
+			var cached = weak.get_ref()
+			if cached and is_instance_valid(cached):
+				return cached
+		# WeakRef 失效：清理缓存条目
+		_cover_texture_cache.erase(path)
+	return null
+
+## 主线程写入 WeakRef 缓存（供 CoverLoader 回调调用）
+## 不持有强引用，Texture 随列表项引用计数归零自动 GC
+func _cache_cover_texture(path: String, tex: Texture2D) -> void:
+	if tex:
+		_cover_texture_cache[path] = weakref(tex)
+
 ## 带弱引用缓存的封面纹理加载
 ## 同 path 多次调用：若上次加载的 Texture 仍被列表项引用（WeakRef 有效），直接返回，零读盘开销
 ## 若 Texture 已被 GC（所有列表项都释放了），WeakRef 失效，重新从磁盘加载并清理失效条目

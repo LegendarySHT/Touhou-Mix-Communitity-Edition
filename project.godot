@@ -26,6 +26,7 @@ AniMGR="*res://UI/Animations/AnimationManager.gd"
 GLogger="*res://Utilities/Logger.gd"
 ThemeMGR="*res://UI/ThemeManager.gd"
 SkinMGR="*res://Core/SkinManager.gd"
+CoverLoader="*res://UI/Components/CoverLoader.gd"
 
 [display]
 

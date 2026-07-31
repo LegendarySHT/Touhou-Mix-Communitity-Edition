@@ -85,9 +85,8 @@ func _ready() -> void:
 
 func _on_scroll_stable():
 	_scroll_stable = true
-	# 滚动稳定后，若视区内仍有 pending 项，重新触发涟漪（起点为视区中心最近 pending 项）
-	# 覆盖"用户快速滚到远处，涟漪未传到"的场景
-	# trigger_cover_chain 全程同步无 await，无需重入防护
+	# 滚动稳定后，若视区内仍有未加载封面的项，重新触发加载
+	# 覆盖"用户快速滚到远处，初次触发未覆盖"的场景
 	if _items_process_enabled:
 		trigger_cover_chain()
 
@@ -115,7 +114,7 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	# 状态切换封面释放/重载逻辑（仅对设置了邻接状态的列表生效）
 	if work_state != UIStateManager.UIState.NONE and not _adjacent_states.is_empty():
 		if state == work_state:
-			# 回到本视图：触发涟漪加载（起点为 selected_item 或视区中心最近 pending 项）
+			# 回到本视图：触发未加载项的封面加载
 			_schedule_cover_reload()
 		elif not (state in _adjacent_states):
 			# 切到不直接相邻的状态：立即释放所有封面
@@ -147,95 +146,55 @@ func _release_all_covers() -> void:
 		if is_instance_valid(item) and item is CoverListItemBase:
 			(item as CoverListItemBase).release_cover()
 
-## 回到本视图时，触发涟漪加载
-## 起点确定顺序：selected_item（若 pending）→ 视区中心最近 pending 项 → 第一个 pending 项
+## 回到本视图时，延迟一帧触发未加载项的封面加载
+## 延迟确保布局已稳定（global_position 有效，_resolve_cover_path 依赖的数据就绪）
 func _schedule_cover_reload() -> void:
-	# 标记所有未加载项为 pending（release_cover 已标记，这里兼容首次进入）
-	for item in list_items:
-		if is_instance_valid(item) and item is CoverListItemBase:
-			(item as CoverListItemBase).request_cover_load()
-	# 延迟一帧触发，确保布局已稳定（global_position 有效）
 	call_deferred("trigger_cover_chain")
 
-## 触发涟漪加载：确定起点项并调用其 start_cover_load
-## 起点加载完后 emit cover_loaded，由 _on_item_cover_loaded 转发给相邻 pending 项
-## 全程同步无 await，无需重入防护
+## 封面分帧入队的批次大小（每批入队后让一帧，避免瞬间锁竞争）
+const COVER_BATCH_SIZE := 10
+
+## trigger_cover_chain 的 generation 守卫
+## 每次新调用递增，使旧的 in-flight async 循环自然退出
+var _cover_chain_generation: int = 0
+
+## 触发所有未加载封面的列表项调 start_cover_load
+## 按列表顺序入队 CoverLoader，后台线程 FIFO 消费；start_cover_load 内部去重，重复调用安全
+## 分帧入队：每 COVER_BATCH_SIZE 项让一帧，避免 100+ 项瞬间入队造成的 Mutex 锁竞争
+## 被选中项优先同步加载：命中 WeakRef 缓存立即应用，user:// 立即入队 CoverLoader 排在分帧任务之前
+## 同步入口 + 内部 async 实现，调用方无需 await；generation 守卫防止快速连调时多协程并发
 func trigger_cover_chain() -> void:
 	if not _items_process_enabled:
 		return
 	if list_items.is_empty():
 		return
-
-	var start_idx: int = -1
-	# 1. 优先 selected_item（若 pending）
+	_cover_chain_generation += 1
+	# 被选中项优先同步加载（命中缓存立即应用，user:// 立即入队 CoverLoader FIFO）
+	# 在分帧循环之前调用，保证被选中项的入队顺序早于其他项，后台线程先消费
 	if selected_item >= 0 and selected_item < list_items.size():
-		var sel := list_items[selected_item] as CoverListItemBase
-		if sel and is_instance_valid(sel) and sel._cover_load_pending:
-			start_idx = selected_item
-	# 2. 视区中心最近的 pending 项
-	if start_idx < 0:
-		start_idx = _find_nearest_pending_to_view_center()
-	# 3. fallback：第一个 pending 项
-	if start_idx < 0:
-		start_idx = _find_first_pending()
+		var sel := list_items[selected_item]
+		if is_instance_valid(sel) and sel is CoverListItemBase:
+			var sel_cb := sel as CoverListItemBase
+			if not sel_cb._cover_loaded:
+				sel_cb.start_cover_load()
+	_trigger_cover_chain_async(_cover_chain_generation)
 
-	if start_idx >= 0:
-		var start_item := list_items[start_idx] as CoverListItemBase
-		if start_item and is_instance_valid(start_item):
-			start_item.start_cover_load()
-
-## 找视区中心最近的 pending 项索引
-func _find_nearest_pending_to_view_center() -> int:
-	var view_center_y: float = global_position.y + size.y * 0.5
-	var best_idx: int = -1
-	var best_dist: float = INF
-	for i in list_items.size():
-		var item := list_items[i]
-		if not is_instance_valid(item) or not (item is CoverListItemBase):
+## async 实现：遍历列表项分帧入队
+## my_gen 不匹配时静默退出（被新调用取代）
+func _trigger_cover_chain_async(my_gen: int) -> void:
+	var batch := 0
+	for item in list_items:
+		if my_gen != _cover_chain_generation:
+			return  # 被新调用取代，静默退出
+		if not is_instance_valid(item):
 			continue
-		var cb := item as CoverListItemBase
-		if not cb._cover_load_pending:
-			continue
-		var dist: float = abs(cb.global_position.y + cb.size.y * 0.5 - view_center_y)
-		if dist < best_dist:
-			best_dist = dist
-			best_idx = i
-	return best_idx
-
-## 找第一个 pending 项索引（视区中心找不到时 fallback）
-func _find_first_pending() -> int:
-	for i in list_items.size():
-		var item := list_items[i]
-		if not is_instance_valid(item) or not (item is CoverListItemBase):
-			continue
-		if (item as CoverListItemBase)._cover_load_pending:
-			return i
-	return -1
-
-## 收到列表项 cover_loaded 信号：转发给相邻（idx±1）的 pending 项
-## 用 call_deferred 传播，避免同帧递归过深；命中缓存零开销，未命中自然分散到下一帧
-func _on_item_cover_loaded(idx: int) -> void:
-	if not _items_process_enabled:
-		return
-	# 向下查找第一个 pending 项（跳过已加载区域，避免涟漪在已加载区断裂）
-	_trigger_next_pending_from(idx + 1, 1)
-	# 向上查找第一个 pending 项
-	_trigger_next_pending_from(idx - 1, -1)
-
-## 从 start_idx 沿 direction 方向查找第一个 pending 项并触发加载
-## 跳过已加载/非 CoverListItemBase 项，确保涟漪能跨越已加载区域传到 pending 项
-## 每个方向只触发一个 pending 项，等它加载完 emit 信号后继续传播（自然分帧）
-func _trigger_next_pending_from(start_idx: int, direction: int) -> void:
-	var i: int = start_idx
-	while i >= 0 and i < list_items.size():
-		var item := list_items[i]
-		if is_instance_valid(item) and item is CoverListItemBase:
+		if item is CoverListItemBase:
 			var cb := item as CoverListItemBase
-			if cb._cover_load_pending:
-				# call_deferred 传播：命中缓存时同帧完成，未命中时自然分散到下一帧
-				cb.call_deferred("start_cover_load")
-				return  # 只触发第一个 pending 项，等它加载完再继续传播
-		i += direction
+			if not cb._cover_loaded:
+				cb.start_cover_load()
+				batch += 1
+				if batch % COVER_BATCH_SIZE == 0:
+					await get_tree().process_frame
 
 func _process(delta: float) -> void:
 	if container == null:
@@ -385,9 +344,6 @@ func add_list_item(item: ListItemBase) -> void:
 	# 同步父列表的 _process 状态，避免不可见视图中新建的项每帧仍跑 _process
 	item.set_process(is_processing())
 	list_items.append(item)
-	# 连接封面加载完成信号，用于涟漪传播到相邻 pending 项
-	if item is CoverListItemBase:
-		(item as CoverListItemBase).cover_loaded.connect(_on_item_cover_loaded)
 
 ## 创建并添加列表项
 func create_and_add_item(item_id: String, item_type: String = "") -> ListItemBase:
@@ -405,6 +361,12 @@ func create_and_add_item(item_id: String, item_type: String = "") -> ListItemBas
 func clear_items() -> void:
 	if container == null:
 		return
+
+	# 先释放所有封面：立即清空 _loading_path，使在途回调自然失效
+	# queue_free 是延迟的，若不主动 release_cover，帧末 free 之前回调可能仍到达并设置 texture
+	for item in list_items:
+		if item and is_instance_valid(item) and item is CoverListItemBase:
+			(item as CoverListItemBase).release_cover()
 
 	for item in list_items:
 		if item:

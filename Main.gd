@@ -70,6 +70,10 @@ func _process(_delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		_handle_back_request()
+	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
+		# 应用退出时关闭 CoverLoader 线程池，确保所有后台线程 wait_to_finish
+		if CoverLoader:
+			CoverLoader.shutdown()
 
 ## 桌面端 Esc 键（仅在无其他控件消费事件时触发）
 func _unhandled_input(event: InputEvent) -> void:
