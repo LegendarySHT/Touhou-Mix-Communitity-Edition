@@ -18,6 +18,7 @@ var logger: GameLogger
 var filesystem_manager: FileSystemManager
 var net_manager: NetManager
 var auth_manager: AuthManager
+var score_manager: ScoreManager
 var _is_reloading_settings: bool = false
 
 # UI组件路径
@@ -213,6 +214,13 @@ func _initialize_core_systems() -> void:
 	add_child(auth_manager)
 	if logger:
 		logger.info("AuthManager initialized", "Main")
+
+	# 12.6. 初始化成绩管理器（必须在 NetManager 和 AuthManager 之后）
+	score_manager = ScoreManager.new()
+	score_manager.name = "ScoreManager"
+	add_child(score_manager)
+	if logger:
+		logger.info("ScoreManager initialized", "Main")
 
 	# 13. 初始化并加载UI（确保各管理器已就绪）
 	_init_ui()

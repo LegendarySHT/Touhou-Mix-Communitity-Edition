@@ -2,6 +2,84 @@ extends BaseScrollList
 
 class_name ScoreList
 
-func _ready() -> void:
-	var node = create_and_add_item("1", "score")
-	node.setup_score(1, 99999, "SS", 99.99, 19.01, 1000, 100, 1, 0, 0)
+## 排行榜单次加载条数
+const LOAD_LIMIT := 50
+
+## 当前关联的 MIDI（用于刷新）
+var _current_midi: MidiData = null
+
+## 加载中标记
+var _loading: bool = false
+
+## 加载排行榜数据
+## midi: 要查询的 MidiData（使用 file_hash 作为 key）
+func load_scores(midi: MidiData) -> void:
+	_current_midi = midi
+	clear_items()
+
+	# 在线模式关闭或未连接时，不加载
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		_show_message("在线模式未开启")
+		return
+
+	if midi == null or midi.file_hash.is_empty():
+		_show_message("无法获取 MIDI 信息")
+		return
+
+	if ScoreManager.instance == null:
+		_show_message("成绩服务未就绪")
+		return
+
+	_loading = true
+	_show_message("加载中...")
+
+	var result = await ScoreManager.instance.get_leaderboard(midi.file_hash, LOAD_LIMIT, 0)
+	_loading = false
+
+	if not result.get("ok", false):
+		_show_message("加载失败")
+		return
+
+	var data = result.get("data")
+	if data == null or not data is Dictionary:
+		_show_message("数据格式错误")
+		return
+
+	var scores = data.get("scores", [])
+	if scores.is_empty():
+		_show_message("暂无成绩记录")
+		return
+
+	clear_items()
+	for i in range(scores.size()):
+		var s = scores[i]
+		var node = create_and_add_item(str(s.get("id", i)), "score")
+		var rank_pos := i + 1  # 排名从 1 开始
+		var accuracy_pct := float(s.get("accuracy", 0.0)) * 100.0
+		node.setup_score(
+			rank_pos,
+			int(s.get("totalScore", 0)),
+			str(s.get("rank", "F")),
+			accuracy_pct,
+			float(s.get("pp", 0.0)),
+			int(s.get("perfectCount", 0)),
+			int(s.get("greatCount", 0)),
+			int(s.get("goodCount", 0)),
+			int(s.get("badCount", 0)),
+			int(s.get("missCount", 0))
+		)
+		# 填充玩家名
+		var username = s.get("username")
+		var name_label = node.get_node_or_null("Name")
+		if name_label:
+			name_label.text = username if username != null and not str(username).is_empty() else "Anonymous"
+
+## 显示提示信息（无数据/加载中/错误时）
+func _show_message(msg: String) -> void:
+	clear_items()
+	# 复用 scoreNode 结构，setup_score 传 0 值，把 Name 设为提示文本
+	var node = create_and_add_item("msg", "score")
+	node.setup_score(0, 0, "-", 0.0, 0.0, 0, 0, 0, 0, 0)
+	var name_label = node.get_node_or_null("Name")
+	if name_label:
+		name_label.text = msg

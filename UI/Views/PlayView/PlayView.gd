@@ -901,6 +901,22 @@ func _on_game_finished() -> void:
 	# 进入结算界面（资源清理已统一由 _on_state_changed 处理）
 	get_node("/root/Main/ScoreView").set_display(play_result)
 	UiStatMGR.change_state(UIStateManager.UIState.SCORE_VIEW, false)
+	# 异步上传成绩（不阻塞结算界面）
+	_upload_score_async(current_midi, snap)
+
+## 异步上传成绩（fire-and-forget，失败仅记日志）
+func _upload_score_async(midi: MidiData, snapshot: Dictionary) -> void:
+	if midi == null or midi.file_hash.is_empty():
+		return
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		return
+	if ScoreManager.instance == null:
+		return
+	var result = await ScoreManager.instance.upload_score(midi, snapshot)
+	if result.get("ok", false):
+		GLogger.info("Score uploaded: midi=%s pp=%s" % [midi.file_hash, str(snapshot.get("pp", 0))], "PlayView")
+	else:
+		GLogger.warning("Score upload failed: %s" % result.get("error", "unknown"), "PlayView")
 
 ## 退出游戏
 func _on_quit_pressed() -> void:
