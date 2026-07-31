@@ -302,20 +302,24 @@ func classify_sequences(midi_data: MidiData, all_midi_notes: Array) -> bool:
 ## 线程安全：本方法可在 WorkerThreadPool 后台线程执行（仅访问 self 字段与 MidiPlaybackManager.instance 静态字段，
 ## 不访问场景树）。调用期间主线程不得读写 KeySequenceManager 的任何字段。
 func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> bool:
-	# 构造缓存键（midi_id + 启用轨道对哈希 + 屏幕宽度）
+	# 构造缓存键（midi_id + 启用轨道对哈希）
+	# 注意：screen_width 不进 cache_key。它只影响 _judge_block_type 速度限制里极少数音符的
+	# lane 钳制，且防窗口变化的设计实际没生效（PlayView 的 size_changed 不重算 generate_keys）。
+	# FlowArea 显示位置由 viewport 宽度算，与 KSM 的 screen_width 无关。
+	# 加入 cache_key 会导致 MidiView(默认1920) 与 PlayView(lane_area.size.x) 调用永远 miss。
 	var pairs_hash := ""
 	for k in enabled_pairs.keys():
 		pairs_hash += str(k) + ","
-	var cache_key := "%s|%s|%d" % [midi_id, pairs_hash.hash(), int(screen_width)]
+	var cache_key := "%s|%s" % [midi_id, pairs_hash.hash()]
 	if cache_key == _cache_key and not _cached_sequences.is_empty():
 		# 命中缓存，直接复用（选歌预览与 PlayView 重复生成时命中）
 		game_sequences = _cached_sequences.duplicate()
 		background_sequences = _cached_background_sequences.duplicate()
 		last_manual_control_notes = _cached_manual_notes.duplicate()
 		last_auto_play_notes = _cached_auto_notes.duplicate()
-		print("Generating keys from %d game notes... (cached)" % game_notes.size())
+		GLogger.debug("generate_keys HIT cache, reuse %d sequences" % game_sequences.size(), "KSM")
 		return true
-	print("Generating keys from %d game notes..." % game_notes.size())
+	GLogger.debug("generate_keys MISS cache, regenerating...", "KSM")
 	if game_notes.is_empty():
 		game_sequences.clear()
 		return true
@@ -398,43 +402,57 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 
 	return true
 
-## generate_keys 任务 ID（-1 表示无任务），用于 await generate_keys_async
+## 单任务模式：同一时间只允许一个 generate_keys worker 运行
+## 新任务启动前必须等待旧任务完成（防止并发写入 game_sequences 等共享字段）
 var _generate_task_id: int = -1
+var _generate_done_flag: Dictionary = {}  # worker 写 "done":true，主线程读
+var _generate_task_waited: bool = false   # wait_for_task_completion 是否已调（幂等保护）
 
-## 启动 generate_keys 的 worker 线程（不 await，立即返回 task_id）
-## 调用方后续通过 await_generate_keys(task_id) 等待完成
-## 适用于"启动 worker → 主线程做其他事 → 等待 worker 完成"的并行场景
-func start_generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> int:
-	# 等待上一个未完成的任务（防御性，正常不应发生）
-	if _generate_task_id != -1:
+## 清理当前 task（幂等：多处调用安全，wait_for_task_completion 只调一次）
+func _wait_and_cleanup_current_task() -> void:
+	if _generate_task_id == -1:
+		return
+	if not _generate_task_waited:
 		WorkerThreadPool.wait_for_task_completion(_generate_task_id)
-		_generate_task_id = -1
+		_generate_task_waited = true
+	_generate_task_id = -1
+	_generate_task_waited = false
 
-	var task_id := WorkerThreadPool.add_task(
-		func(): generate_keys(game_notes, midi_id, enabled_pairs),
+## 启动 generate_keys worker（async，调用方须 await）
+## 若有旧任务在跑，先等它完成再启动新任务
+func start_generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> int:
+	# 等待旧任务完成（用 done_flag 轮询 + await 让出主线程，不阻塞动画）
+	if _generate_task_id != -1:
+		while not _generate_done_flag.get("done", false):
+			await Engine.get_main_loop().process_frame
+		_wait_and_cleanup_current_task()
+
+	_generate_done_flag = {"done": false}
+	_generate_task_id = WorkerThreadPool.add_task(
+		func():
+			generate_keys(game_notes, midi_id, enabled_pairs)
+			_generate_done_flag["done"] = true,
 		false,
 		"KeySequenceManager.generate_keys"
 	)
-	_generate_task_id = task_id
-	return task_id
+	return _generate_task_id
 
 ## 等待 generate_keys worker 完成（每帧让出主线程）
 func await_generate_keys(task_id: int) -> void:
-	# task_id == -1 表示 start_generate_keys_async 未启动任务（如 enabled_notes 为空）
-	# 直接返回，避免 is_task_completed(-1) 报 "Invalid Task ID" 错误
+	# task_id == -1 表示未启动任务（如 enabled_notes 为空）
 	if task_id == -1:
 		return
-	while not WorkerThreadPool.is_task_completed(task_id):
+	# while 同时检查 task_id 是否仍为当前任务：若已被新任务替换，说明旧任务已被
+	# start_generate_keys_async 内部清理，直接返回
+	while task_id == _generate_task_id and not _generate_done_flag.get("done", false):
 		await Engine.get_main_loop().process_frame
-	WorkerThreadPool.wait_for_task_completion(task_id)
-	if _generate_task_id == task_id:
-		_generate_task_id = -1
+	if task_id != _generate_task_id:
+		return
+	_wait_and_cleanup_current_task()
 
-## 异步生成游戏键（WorkerThreadPool 后台线程执行 generate_keys）
-## 调用期间主线程不得访问 KeySequenceManager 的任何字段
-## 本方法是 start_generate_keys_async + await_generate_keys 的便捷封装
+## 异步生成游戏键（start_generate_keys_async + await_generate_keys 的便捷封装）
 func generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> bool:
-	var task_id := start_generate_keys_async(game_notes, midi_id, enabled_pairs)
+	var task_id := await start_generate_keys_async(game_notes, midi_id, enabled_pairs)
 	await await_generate_keys(task_id)
 	return true
 

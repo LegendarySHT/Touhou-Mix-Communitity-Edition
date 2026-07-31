@@ -307,6 +307,20 @@ func is_track_channel_selected(track_idx: int, channel: int) -> bool:
 		return false
 	return channel in selected_track_configs[track_idx]
 
+## 获取扁平化的 (track, channel) 启用对，键格式为 "track:channel"，值固定为 true
+## 用于 KeySequenceManager.generate_keys 的 cache_key 一致性（MidiListItem 与 PlayView 必须用同一格式）
+## 注意：返回空字典时，调用方需结合 _track_config_initialized 判断语义：
+##   - _track_config_initialized == true → 用户主动禁用了所有轨道（显示 0 / 报错）
+##   - _track_config_initialized == false → 从未进过 TrackView，应视为"全部启用"
+func get_enabled_pairs_flat() -> Dictionary:
+	var pairs: Dictionary = {}
+	for track_index in selected_track_configs.keys():
+		var channels = selected_track_configs[track_index]
+		if channels is Array:
+			for ch in channels:
+				pairs["%d:%d" % [int(track_index), int(ch)]] = true
+	return pairs
+
 ## 设置指定(track, channel)的启用状态
 func set_track_channel_enabled(track_idx: int, channel: int, enabled: bool) -> void:
 	if enabled:

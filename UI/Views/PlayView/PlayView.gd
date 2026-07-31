@@ -165,15 +165,15 @@ func _ready() -> void:
 func apply_theme() -> void:
 	if not menu or not menu.theme:
 		return
-	var theme := menu.theme
+	var btn_theme := menu.theme
 	var p := ThemeMGR.get_color("primary")
-	ThemeMGR._theme_button_set_color(theme, p)
+	ThemeMGR._theme_button_set_color(btn_theme, p)
 	# 基础按钮阴影
-	var normal := theme.get_stylebox("normal", "Button")
+	var normal := btn_theme.get_stylebox("normal", "Button")
 	if normal is StyleBoxFlat:
 		normal.shadow_color = Color(p.r, p.g, p.b, 0.3)
 		normal.shadow_size = 8
-	var hover := theme.get_stylebox("hover", "Button")
+	var hover := btn_theme.get_stylebox("hover", "Button")
 	if hover is StyleBoxFlat:
 		var hc := p.lightened(0.15)
 		hover.shadow_color = Color(hc.r, hc.g, hc.b, 0.35)
@@ -475,12 +475,22 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	_last_playback_position = -1.0
 	_position_stall_frames = 0
 
+	# 先初始化显示并显示歌曲信息面板
+	_init_display()
+
 	# 重置 ScoreCalculator
 	if score_calc:
 		score_calc.reset()
+	# 生成随机颜色（若皮肤配置启用）— 必须在 init_flow_area 前完成，使对象池节点用新颜色重建
+	_regenerate_random_note_colors()
+	flow_area.init_flow_area()
+	auto_label.visible = flow_area.auto_mode
 
-	# 【优化】先启动 MIDI 加载（含人声预加载），与显示初始化并行执行
-	# 原代码中 await 0.8s 在 MIDI 加载之前，这段 0.8s 是纯空闲等待
+	# 线程化预解析 MIDI：将昂贵的文件 I/O + 数据结构构建移到 worker 线程
+	# 主线程在 await 期间继续渲染歌曲信息面板 + 转场动画
+	if not await playback_mgr.preparse_midi_async(midi):
+		push_error("Failed to preparse MIDI: " + midi.name)
+	# 加载 MIDI（此时已命中解析缓存，仅做配置应用 + 后端加载）
 	_load_and_convert_midi_notes(midi)
 
 	# 确保游戏模式下不循环播放
@@ -509,22 +519,14 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 			playback_mgr.set_sync_threshold(float(sync_threshold))
 			print("[PlayView] Audio sync threshold set to %.0f ms" % float(sync_threshold))
 
-	# 生成随机颜色（若皮肤配置启用）— 必须在 init_flow_area 前完成，使对象池节点用新颜色重建
-	_regenerate_random_note_colors()
-
-	_init_display()
-	flow_area.init_flow_area()
-	auto_label.visible = flow_area.auto_mode
-
 	# 提前启动 generate_keys 的 worker 线程（主线程筛选音符 + 后台线程跑 generate_keys）
-	# 800ms await 期间 worker 并行执行 generate_keys，充分利用主线程空闲期
-	# 避免 await 后一帧内塞入 generate_keys + convert 造成 300-900ms 卡顿
-	var gen_task_id := _start_generate_game_sequences(midi)
+	# 通常 MidiView 已触发过 generate_keys，此处命中缓存直接返回（0ms）
+	# 若未命中（如跳过 MidiView 直接进 PlayView），worker 线程跑，主线程不阻塞
+	# 若 MidiView 的 worker 还在跑，await 会让出主线程，转场动画继续播放
+	var gen_task_id := await _start_generate_game_sequences(midi)
 
-	# 此 0.8s await 期间 MIDI 已加载完毕、人声预载已由 call_deferred 启动、generate_keys 在 worker 跑
-	await get_tree().create_timer(0.8).timeout
-
-	# 等待 generate_keys worker 完成（通常 800ms 已够，此处多为一帧内返回）+ 后续处理
+	# 等待 generate_keys worker 完成（每帧让出主线程，动画继续推进）
+	# 完成后做后续处理（分类提交、缓存序列）
 	await _finish_generate_game_sequences(midi, gen_task_id)
 	print("[PlayView] After _finish_generate_game_sequences, game_sequences.size() = %d" % game_sequences.size())
 
@@ -540,7 +542,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 设置进度条最大值
 	progress_bar.max_value = current_midi.duration_ms
 
-	# 等待显示准备界面
+	# 歌曲信息面板已显示足够时间（preparse + generate_keys 期间），现在淡出
 	await get_tree().create_timer(1).timeout
 	await AniMGR.animate_fade_out(center_bg, 1).finished
 
@@ -617,6 +619,7 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowNote]:
 ## 启动游戏序列生成（主线程筛选音符 + 启动 worker 线程跑 generate_keys）
 ## 返回 worker task_id（-1 表示未启动，如缺 key_sequence_mgr 或无启用音符）
 ## 调用方后续通过 await _finish_generate_game_sequences(midi, task_id) 等待完成并做后续处理
+## 注意：本函数是 async（start_generate_keys_async 内部等待旧任务时需让出主线程）
 func _start_generate_game_sequences(midi_data: MidiData) -> int:
 	if key_sequence_mgr == null:
 		GLogger.warning("KeySequenceManager not available", "PlayView")
@@ -626,10 +629,9 @@ func _start_generate_game_sequences(midi_data: MidiData) -> int:
 		GLogger.warning("No parsed notes available for key generation", "PlayView")
 		return -1
 
-	# 设置屏幕宽度（影响 lane 位置和 cache_key，必须在 generate_keys 之前调用）
-	# set_midi_time_parameters 由 generate_keys 内部调用，此处省略避免重复清空 _tick_ms_cache
-	if playback_mgr != null:
-		key_sequence_mgr.set_screen_size(lane_area.size.x)
+	# screen_width 已不进 cache_key，且 lane_area.size.x 永远是 40（Lane 节点 anchors_preset=0 不拉伸）
+	# 不再调用 set_screen_size：读 lane_area.size.x 没意义，KSM 内部用默认 1920 即可
+	# （仅影响 _judge_block_type 速度限制的边缘场景，FlowArea 显示位置由 viewport 宽度算）
 
 	# 按启用的(track, channel)筛选音符（主线程，30-100ms）
 	var enabled_notes = _filter_notes_by_enabled_track_channels(midi_data.parsed_notes, midi_data)
@@ -638,10 +640,14 @@ func _start_generate_game_sequences(midi_data: MidiData) -> int:
 		GLogger.warning("No notes in enabled (track, channel) pairs", "PlayView")
 		return -1
 
-	# 启动 worker 线程跑 generate_keys（不 await，立即返回 task_id）
+	# 启动 worker 线程跑 generate_keys
 	# 传入 midi_id 和 enabled_pairs 以启用缓存命中
-	var task_id := key_sequence_mgr.start_generate_keys_async(
-		enabled_notes, current_midi.id, current_midi.selected_track_configs
+	# enabled_pairs 必须是扁平的 {"track:channel": true} 格式（MidiData.get_enabled_pairs_flat）
+	# 与 MidiListItem 一致，否则 cache_key 中的 pairs_hash 不同会导致缓存 miss
+	# await start_generate_keys_async：若 MidiView 的 worker 还在跑，这里会让出主线程等待
+	# 旧实现不 await 会导致 OS.delay_msec 同步 sleep 卡死转场动画
+	var task_id := await key_sequence_mgr.start_generate_keys_async(
+		enabled_notes, current_midi.id, midi_data.get_enabled_pairs_flat()
 	)
 	return task_id
 

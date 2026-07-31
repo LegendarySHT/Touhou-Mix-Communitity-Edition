@@ -182,6 +182,7 @@ func animate_offset_to(target: Node, to_offset: Vector2, duration: float = DURAT
 	tween.set_ease(EASING_STANDARD)
 	tween.set_trans(Tween.TRANS_CUBIC)
 	target.offset_transform_enabled = true
+	target.offset_transform_visual_only = false
 	tween.tween_property(target, "offset_transform_position", to_offset, duration)
 	return tween
 

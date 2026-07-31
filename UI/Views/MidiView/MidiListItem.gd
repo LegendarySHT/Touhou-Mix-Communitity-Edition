@@ -359,13 +359,7 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 	#   2. 用户在 TrackView 逐一禁用了所有轨道（_track_config_initialized == true）→ 显示 0
 	var configs_initialized: bool = midi._track_config_initialized \
 			or not midi.selected_track_configs.is_empty()
-	var enabled_pairs: Dictionary = {}
-	if configs_initialized:
-		for track_index in midi.selected_track_configs.keys():
-			var channels = midi.selected_track_configs[track_index]
-			if channels is Array:
-				for ch in channels:
-					enabled_pairs["%d:%d" % [int(track_index), int(ch)]] = true
+	var enabled_pairs: Dictionary = midi.get_enabled_pairs_flat() if configs_initialized else {}
 
 	# 声明 entry 变量，传递缓存数据
 	var entry: Dictionary = _info_cache.get(midi.id, {})
