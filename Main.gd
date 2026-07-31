@@ -202,8 +202,11 @@ func _initialize_core_systems() -> void:
 	net_manager = NetManager.new()
 	net_manager.name = "NetManager"
 	add_child(net_manager)
+	# 读取 online_mode 配置并启动连接
+	var online_mode := ConfigManager.instance.get_int("General", "online_mode", 0)
+	net_manager.set_online_mode(online_mode == 1)
 	if logger:
-		logger.info("NetManager initialized", "Main")
+		logger.info("NetManager initialized (online_mode=%d)" % online_mode, "Main")
 
 	auth_manager = AuthManager.new()
 	auth_manager.name = "AuthManager"
@@ -421,6 +424,10 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 
 	# 根据 section 和 key 应用相应的配置
 	match section:
+		"General":
+			if key == "online_mode" and net_manager:
+				net_manager.set_online_mode(int(value) == 1)
+
 		"Gameplay":
 			# MIDI播放管理器监听这些配置
 			if key == "soundfont_file" and midi_playback_manager:

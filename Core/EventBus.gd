@@ -53,6 +53,8 @@ signal online_status_changed(online: bool, message: String)
 ## 请求开始/结束（用于 UI 显示 loading）
 signal online_request_started(endpoint: String)
 signal online_request_finished(endpoint: String, success: bool)
+## 连接状态变化（携带延迟数值）：state 对应 NetManager.ConnectState 枚举值，latency_ms=-1 表示未知
+signal online_state_changed(state: int, latency_ms: int)
 @warning_ignore_restore("unused_signal")
 
 func _ready() -> void:
