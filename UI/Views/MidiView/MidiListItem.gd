@@ -1,6 +1,6 @@
 ## MIDI列表项组件
-## 继承自 ListItemBase，显示MIDI谱面信息
-extends ListItemBase
+## 继承自 CoverListItemBase，显示MIDI谱面信息（封面走 CoverLoader 异步加载）
+extends CoverListItemBase
 
 const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 
@@ -9,7 +9,6 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 @onready var midi_name_label: Label = $VBoxC/NameBox/MidiName
 @onready var name_box: Control = $VBoxC/NameBox
 @onready var author_label: Label = $VBoxC/HBoxC/Author
-@onready var cover: TextureRect = $cover
 
 ## MIDI数据
 var midi_data: MidiData
@@ -34,12 +33,17 @@ var _compute_thread: Thread = null
 var _thread_target_midi: MidiData = null
 
 func _ready() -> void:
+	# MidiListItem 不使用封面视差滚动（封面静态显示，与 SongListItem 一致）
+	_parallax_enabled = false
+	# 给基类 cover_texture 赋值，启用 CoverLoader 异步加载/释放机制
+	cover_texture = $cover
 	if EvtBus:
 		EvtBus.config_changed.connect(_on_config_changed)
 	if UiStatMGR:
 		UiStatMGR.state_changed.connect(_on_ui_state_changed)
 
 func _notification(what: int) -> void:
+	super._notification(what)
 	if what == NOTIFICATION_EXIT_TREE:
 		if EvtBus and EvtBus.config_changed.is_connected(_on_config_changed):
 			EvtBus.config_changed.disconnect(_on_config_changed)
@@ -91,28 +95,24 @@ func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg: ButtonGro
 	init_btn(button, parent)
 
 	_update_display()
-	_load_cover_image()
-	
+	# 启动封面异步加载（命中 WeakRef 缓存时同步应用零开销；未命中入 CoverLoader 队列）
+	# 替代旧版同步 Image.load_from_file：6 万音符 MIDI 视图滚动时主线程不再读盘阻塞
+	start_cover_load()
+
 	btn_confirmed.connect(parent._show_midi_list)
 
 	# if index == 0:
 	# 	button.button_pressed = true
 
-## 加载封面图片
-func _load_cover_image() -> void:
-	if not cover:
-		cover = get_node_or_null("cover")
-	
-	if not cover:
-		print("[MidiListItem] Cover node not found!")
-		return
-	
-	# 从 FileSystemManager 获取封面路径
-	var fs_manager = FileSystemManager.instance
-	if not fs_manager:
-		print("[MidiListItem] FileSystemManager not found, using default cover")
-		return
-	cover.texture = fs_manager.get_cover_by_midiData(midi_data)
+## 重写基类虚函数：返回封面文件路径（主线程调用，供异步加载器使用）
+## 路径查询在主线程完成，后台线程只负责读盘
+func _resolve_cover_path() -> String:
+	if not midi_data:
+		return ""
+	var fs_mgr := FileSystemManager.instance
+	if not fs_mgr:
+		return ""
+	return fs_mgr.get_cover_path_by_midiData(midi_data)
 
 ## 按钮切换回调
 func on_item_button_toggled(toggled_on: bool):
@@ -277,6 +277,18 @@ func _on_parse_done(result: Dictionary) -> void:
 	# 缺失此行会导致进入 TrackView 时 worker 线程重新解析整个 MIDI，造成 ~18MB 临时峰值
 	if midi._runtime_track_infos.is_empty():
 		midi._runtime_track_infos = result.get("track_infos", [])
+		# 过滤 TrackInfo.events：只保留乐器相关事件（control_change / program_change），
+		# 丢弃 note_on/note_off 等音符事件（已存入 parsed_notes，TrackInfo.events 中占比 >90%）
+		# 6 万音符 MIDI 的 events 从 ~30MB 降到 ~1MB，且 _extract_track_channel_instruments 仍可正常工作
+		for track_info in midi._runtime_track_infos:
+			if track_info and track_info.events.size() > 0:
+				var filtered_events: Array = []
+				for event_chunk in track_info.events:
+					var evt = event_chunk.event
+					if evt and (evt.type == SMF.MIDIEventType.control_change
+							or evt.type == SMF.MIDIEventType.program_change):
+						filtered_events.append(event_chunk)
+				track_info.events = filtered_events
 
 	# 构建并缓存 Time / BPM 字段
 	var entry: Dictionary = _info_cache.get(midi.id, {})

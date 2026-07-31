@@ -95,7 +95,10 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 	
 	# 解析所有轨道
 	var notes: Array[NoteEvent] = []
-	var note_on_map: Dictionary = {}  # 用于匹配NoteOn和NoteOff事件
+	# note_on_map: {channel: {pitch: [{pitch, velocity, start_tick, track_index, channel}, ...]}}
+	# 嵌套字典实现 O(1) 查找，替代旧版字符串 key + begins_with 线性扫描
+	# 原版每个 note_off 都遍历整个 note_on_map.keys() 用 begins_with 匹配，6 万音符约 4.5 亿次字符串比较
+	var note_on_map: Dictionary = {}
 	var track_infos: Array[TrackInfo] = []
 	var max_end_tick: int = 0  # 最大的tick值（而不是时间）
 	var bpm_timeline: Array[Dictionary] = []  # BPM变化时间线 [{tick, bpm, time_ms}, ...]
@@ -140,65 +143,29 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 			# 处理音符开始事件
 			elif event.type == SMF.MIDIEventType.note_on:
 				if event.velocity > 0:
-					# 创建唯一键来追踪NoteOn/Off对
-					var key = "%d_%d_%d" % [channel, event.note, current_tick]
-					note_on_map[key] = {
+					# 嵌套字典：{channel: {pitch: [note_data, ...]}}
+					# 替代旧版字符串 key + begins_with 线性扫描（O(N²)→O(1)）
+					if not note_on_map.has(channel):
+						note_on_map[channel] = {}
+					var pitch_map: Dictionary = note_on_map[channel]
+					if not pitch_map.has(event.note):
+						pitch_map[event.note] = []
+					pitch_map[event.note].append({
 						"pitch": event.note,
 						"velocity": event.velocity,
 						"start_tick": current_tick,
 						"track_index": track_idx,
 						"channel": channel
-					}
+					})
 				else:
 					# velocity 为0的 note_on 等同 note_off
-					var note_value = event.note
-					var found_key = ""
-					for stored_key in note_on_map.keys():
-						if stored_key.begins_with("%d_%d" % [channel, note_value]):
-							found_key = stored_key
-							break
-					if not found_key.is_empty():
-						var note_data = note_on_map[found_key]
-						var duration = current_tick - note_data["start_tick"]
-						var note_event = NoteEvent.new(
-							note_data["pitch"],
-							note_data["velocity"],
-							note_data["start_tick"],
-							duration,
-							note_data["track_index"],
-							note_data["channel"]
-						)
-						notes.append(note_event)
-						note_on_map.erase(found_key)
+					_note_off_match(note_on_map, channel, event.note, current_tick, notes)
 				if current_tick > max_end_tick:
 					max_end_tick = current_tick
-			
+
 			# 处理音符结束事件
 			elif event.type == SMF.MIDIEventType.note_off:
-				var note_value = event.note
-				var found_key = ""
-				# 搜索最接近的NoteOn
-				for stored_key in note_on_map.keys():
-					if stored_key.begins_with("%d_%d" % [channel, note_value]):
-						found_key = stored_key
-						break
-				
-				if found_key != "":
-					var note_data = note_on_map[found_key]
-					var duration = current_tick - note_data["start_tick"]
-					
-					# 创建NoteEvent对象
-					var note_event = NoteEvent.new(
-						note_data["pitch"],
-						note_data["velocity"],
-						note_data["start_tick"],
-						duration,
-						note_data["track_index"],
-						note_data["channel"]
-					)
-					notes.append(note_event)
-					note_on_map.erase(found_key)
-					
+				_note_off_match(note_on_map, channel, event.note, current_tick, notes)
 				# 更新最大tick
 				if current_tick > max_end_tick:
 					max_end_tick = current_tick
@@ -206,37 +173,80 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 		track_infos.append(track_info)
 	
 	# 处理未匹配的NoteOn（没有对应的NoteOff）
-	for key in note_on_map.keys():
-		var note_data = note_on_map[key]
-		# 假设持续时间为100ms
-		var note_event = NoteEvent.new(
-			note_data["pitch"],
-			note_data["velocity"],
-			note_data["start_tick"],
-			100.0,
-			note_data["track_index"],
-			note_data["channel"]
-		)
-		notes.append(note_event)
-	
+	# 嵌套字典遍历：{channel: {pitch: [note_data, ...]}}
+	# 未匹配 NoteOn 的回退持续时间为 100 tick（NoteEvent.duration 字段单位为 tick，非毫秒）
+	for channel_key in note_on_map.keys():
+		var pitch_map: Dictionary = note_on_map[channel_key]
+		for pitch_key in pitch_map.keys():
+			var pending_list: Array = pitch_map[pitch_key]
+			for note_data in pending_list:
+				var note_event = NoteEvent.new(
+					note_data["pitch"],
+					note_data["velocity"],
+					note_data["start_tick"],
+					100.0,
+					note_data["track_index"],
+					note_data["channel"]
+				)
+				notes.append(note_event)
+			pending_list.clear()
+		pitch_map.clear()
+
 	# 精确计算BPM时间线中的实际时间
 	_calculate_bpm_timeline_time(bpm_timeline, smf_data.timebase)
-	
+
 	# 使用BPM时间线精确计算总时长
 	var actual_duration: float = _calculate_duration_with_bpm_timeline(max_end_tick, bpm_timeline, smf_data.timebase)
-	
+
+	# 在 MidiParser 末尾统一按 start_time 排序，确保所有调用方拿到的 parsed_notes 都已排序
+	# 这样 KeySequenceManager.generate_keys 的 Step 2 排序可以跳过（parsed_notes 已单调递增）
+	notes.sort_custom(func(a, b) -> bool:
+		return a.start_time < b.start_time
+	)
+
 	# 将NoteEvent转换为Note对象
 	var note_objects: Array[Note] = []
 	for note_evt in notes:
 		note_objects.append(Note.new(note_evt))
-	
+
 	result["notes"] = note_objects
 	result["duration"] = actual_duration
 	result["track_infos"] = track_infos
 	result["bpm_timeline"] = bpm_timeline
 	result["success"] = true
-	
+
 	return result
+
+## note_off 匹配：从嵌套字典 note_on_map 中查找 (channel, pitch) 最早的 NoteOn
+## 计算持续时间并构造 NoteEvent 加入 notes 列表
+## 替代旧版 begins_with 字符串扫描，查找复杂度 O(1)
+static func _note_off_match(
+	note_on_map: Dictionary, channel: int, pitch: int,
+	current_tick: int, notes: Array
+) -> void:
+	if not note_on_map.has(channel):
+		return
+	var pitch_map: Dictionary = note_on_map[channel]
+	if not pitch_map.has(pitch):
+		return
+	var pending_list: Array = pitch_map[pitch]
+	if pending_list.is_empty():
+		pitch_map.erase(pitch)
+		return
+	# FIFO：取最早的 NoteOn（与原 begins_with break 行为一致）
+	var note_data: Dictionary = pending_list.pop_front()
+	var duration = current_tick - note_data["start_tick"]
+	var note_event = NoteEvent.new(
+		note_data["pitch"],
+		note_data["velocity"],
+		note_data["start_tick"],
+		duration,
+		note_data["track_index"],
+		note_data["channel"]
+	)
+	notes.append(note_event)
+	if pending_list.is_empty():
+		pitch_map.erase(pitch)
 
 ## 从已解析的音符列表中提取特定轨道的Note
 static func extract_notes_by_track(all_notes: Array, track_indices: Array[int]) -> Array:
@@ -275,10 +285,12 @@ static func get_track_info(track_infos: Array, track_index: int) -> MidiParser.T
 	return null
 
 ## 按时间排序Note
+## 注意：NoteEvent.start_time 单位为 tick（非毫秒）
+## 修复字段名 BUG：旧版误用 start_time_ms（NoteEvent 无此字段，会返回 null 导致排序失效）
 static func sort_notes_by_time(notes: Array) -> Array:
 	var sorted_notes = notes.duplicate()
 	sorted_notes.sort_custom(func(a, b):
-		return a.start_time_ms < b.start_time_ms
+		return a.start_time < b.start_time
 	)
 	return sorted_notes
 

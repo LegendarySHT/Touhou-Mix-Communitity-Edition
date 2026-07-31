@@ -21,6 +21,15 @@ var _prev_scroll: int = 0  # 上帧滚动位置，变化说明有人在动列表
 func _ready() -> void:
 	work_state = UIStateManager.UIState.MIDI_VIEW
 	snap_offset_y = 0
+	# 设置直接相邻状态：切到不在此集合的状态时释放所有列表项封面
+	# MIDI_VIEW 相邻：SONG_VIEW（返回歌曲列表）、TRACK_VIEW/PLAY_VIEW/SCORE_VIEW（演奏流程）
+	# 切到 ALBUM_VIEW（级联删除跳转）/ SORTED_VIEW / STORE_VIEW / SETTINGS_VIEW 时释放封面
+	set_adjacent_states([
+		UIStateManager.UIState.SONG_VIEW,
+		UIStateManager.UIState.TRACK_VIEW,
+		UIStateManager.UIState.PLAY_VIEW,
+		UIStateManager.UIState.SCORE_VIEW,
+	])
 
 	super._ready()
 
