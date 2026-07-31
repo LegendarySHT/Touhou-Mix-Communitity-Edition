@@ -26,7 +26,8 @@ var buckets: Array[TrackNoteBucket] = []
 # MIDI 最大 end_tick（所有 bucket 中最后一个音符的结束 tick）
 # 用于检测 ct 异常：循环播放时 Sequencer.Position 可能继续增长而不跳回 0，
 # 导致 ct 超过所有音符的 end_tick，active_notes 被清空。此时跳过移除操作等待循环恢复
-var _max_end_tick: int = 0
+# 类型为 float 与 NoteState.start_tick/end_tick 对齐
+var _max_end_tick: float = 0.0
 # 上一帧的 ct，用于检测 ct 回退（循环跳回 0）时重置 cursor
 var _last_ct: float = -1.0
 
@@ -47,14 +48,9 @@ var _audio_playback_delay_ms: float = 0.0
 # 批量绘制节点（单 Node2D 替代 N 个 ColorRect，参考 LaneEffect.BeamNode 设计）
 var _draw_node: NoteDrawNode = null
 
-# 单个音符的最小渲染信息（仅绘制必需字段，与音频播放用的 MidiParser.Note 解耦）
-# 使用 tick 作为时间单位，与 MIDI 原始数据一致，ct 也从 ms 转成 tick 保证同参考系
-class NoteRenderInfo:
-	extends RefCounted
-	var pitch: int = 0        # 决定 y 坐标（lane_index）
-	var start_tick: int = 0   # 判定 is_passed + 懒生成
-	var end_tick: int = 0     # 判定离开视野 + 计算 x + 宽度 w
-	# 无 track_index/channel/color/duration：这些都在 bucket 级
+# 单个音符的最小渲染信息已移除：直接复用 MidiParser.NoteEvent，避免冗余副本
+# NoteEvent 字段：pitch / start_time (tick, float) / duration (tick, float) / track_index / channel / velocity
+# 渲染时按需读取，不额外包装 NoteRenderInfo
 
 # 音轨级容器（持有该 (track, channel) 的元数据 + 音符列表）
 # 过滤粒度从「每音符」提升到「每音轨」：master 模式下整 bucket 启用/禁用
@@ -63,17 +59,18 @@ class TrackNoteBucket:
 	var track_index: int = 0
 	var channel: int = 0
 	var hue: float = 0.0              # 颜色色相（由 track_index 查 colors_set 一次）
-	var notes: Array[NoteRenderInfo] = []  # 按 start_tick 升序（_build_buckets 中排序）
+	var notes: Array[MidiParser.NoteEvent] = []  # 按 start_time 升序（_build_buckets 中排序）
 	var cursor: int = 0               # 懒生成游标（指向下一个待生成的音符）
 	var is_enabled: bool = true       # master 用：该音轨是否启用
 
 # 音符运行时状态（替代 ColorRect + meta Dictionary）
 # 使用 RefCounted 自动管理生命周期，无需 queue_free
+# start_tick / end_tick 为 tick 单位（float，与 NoteEvent.start_time 一致）
 class NoteState:
 	extends RefCounted
 	var pitch: int = 0
-	var start_tick: int = 0
-	var end_tick: int = 0
+	var start_tick: float = 0.0
+	var end_tick: float = 0.0
 	var bucket: TrackNoteBucket = null  # 反向引用所在 bucket（_draw 查 hue）
 	var is_passed: bool = false
 	# 位置和尺寸字段（_process 写入，_draw 读取，同线程无竞争）
@@ -206,7 +203,7 @@ func _process(_delta):
 	for b in buckets:
 		if is_master and not b.is_enabled:
 			continue
-		while b.cursor < b.notes.size() and b.notes[b.cursor].start_tick < view_right_bound:
+		while b.cursor < b.notes.size() and b.notes[b.cursor].start_time < view_right_bound:
 			_create_note(b.notes[b.cursor], b)
 			b.cursor += 1
 
@@ -242,16 +239,18 @@ func _process(_delta):
 	if _draw_node:
 		_draw_node.queue_redraw()
 
-func _create_note(info: NoteRenderInfo, bucket: TrackNoteBucket):
+func _create_note(note_evt: MidiParser.NoteEvent, bucket: TrackNoteBucket):
 	var state := NoteState.new()
 	# 反转lane_index，使高音在上（Y值小），低音在下（Y值大）
-	var lane_index: int = lane_count - 1 - ((info.pitch - 21) % lane_count)
-	state.pitch = info.pitch
-	state.start_tick = info.start_tick
-	state.end_tick = info.end_tick
+	var lane_index: int = lane_count - 1 - ((note_evt.pitch - 21) % lane_count)
+	var start_tick := float(note_evt.start_time)
+	var end_tick := start_tick + float(note_evt.duration)
+	state.pitch = note_evt.pitch
+	state.start_tick = start_tick
+	state.end_tick = end_tick
 	state.bucket = bucket
 	state.is_passed = false
-	state.w = (info.end_tick - info.start_tick) * scale_factor
+	state.w = (end_tick - start_tick) * scale_factor
 	state.h = lane_height * 0.8
 	state.y = (lane_height * lane_index) + (lane_height - state.h) / 2.0
 	state.x = -state.w  # 初始在视野左侧外
@@ -261,23 +260,22 @@ func _create_note(info: NoteRenderInfo, bucket: TrackNoteBucket):
 ## 初始化 displayer
 ## master: 传入所有 buckets，由 sync_from_midi_data 控制 bucket.is_enabled
 ## 子 displayer: 传入单个 bucket 的数组，bucket.is_enabled 恒 true
-func init_displayer_with_buckets(mn: Node, track_buckets: Array[TrackNoteBucket]) -> void:
+## max_end_tick: 由调用方从 MidiData 直接传入（preparse 已缓存），避免遍历所有音符
+func init_displayer_with_buckets(mn: Node, track_buckets: Array[TrackNoteBucket], max_end_tick: float = 0.0) -> void:
 	# 清空活动音符状态（RefCounted 自动释放，无需 queue_free）
 	active_notes.clear()
 	master_node = mn
 	buckets = track_buckets
 
+	# 直接复用调用方传入的 max_end_tick（来自 MidiData.max_end_tick，preparse 已缓存）
+	# 替代旧版遍历所有音符取 max end_tick 的 O(N) 扫描
+	_max_end_tick = max_end_tick
+
 	# 重置每个 bucket 的游标；子 displayer 永远启用
-	_max_end_tick = 0
 	for b in buckets:
 		b.cursor = 0
 		if not is_master:
 			b.is_enabled = true
-		# 计算 MIDI 最大 end_tick（用于检测 ct 异常）
-		# 遍历所有音符取最大 end_tick，不能只取最后一个（排序按 start_tick，end_tick 最大值可能在中间）
-		for n in b.notes:
-			if n.end_tick > _max_end_tick:
-				_max_end_tick = n.end_tick
 
 	# 计算初始 passed/total（master 模式下只统计 enabled bucket）
 	var passed_count := 0
@@ -290,7 +288,7 @@ func init_displayer_with_buckets(mn: Node, track_buckets: Array[TrackNoteBucket]
 			continue
 		total_count += b.notes.size()
 		for n in b.notes:
-			if n.start_tick < ct:
+			if n.start_time < ct:
 				passed_count += 1
 			else:
 				break  # bucket 内已排序，提前退出
@@ -328,15 +326,16 @@ func reset_playhead_position(target_ms: float) -> void:
 	var view_right_bound = target_tick + area_width / scale_factor
 
 	# 每 bucket 独立查找首个 end_tick >= target_tick 的音符，再生成视野内音符
+	# NoteEvent 无 end_tick 字段，按 start_time + duration 计算
 	for b in buckets:
 		if is_master and not b.is_enabled:
 			b.cursor = b.notes.size()  # 跳过整个 bucket
 			continue
 		var i = 0
-		while i < b.notes.size() and b.notes[i].end_tick < target_tick:
+		while i < b.notes.size() and (b.notes[i].start_time + b.notes[i].duration) < target_tick:
 			i += 1
 		# 从 i 开始生成视野内音符
-		while i < b.notes.size() and b.notes[i].start_tick < view_right_bound:
+		while i < b.notes.size() and b.notes[i].start_time < view_right_bound:
 			_create_note(b.notes[i], b)
 			i += 1
 		b.cursor = i
@@ -347,7 +346,7 @@ func reset_playhead_position(target_ms: float) -> void:
 		if is_master and not b.is_enabled:
 			continue
 		for n in b.notes:
-			if n.start_tick < target_tick:
+			if n.start_time < target_tick:
 				passed_count += 1
 			else:
 				break  # bucket 内已排序，可以提前退出
@@ -407,7 +406,7 @@ func sync_from_midi_data(midi_data: MidiData) -> void:
 				continue
 			total += b.notes.size()
 			for n in b.notes:
-				if n.start_tick < ct:
+				if n.start_time < ct:
 					passed += 1
 				else:
 					break

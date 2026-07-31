@@ -22,20 +22,6 @@ class NoteEvent:
 	func _to_string() -> String:
 		return "NoteEvent(pitch=%d, vel=%d, start=%.0f, dur=%.0f)" % [pitch, velocity, start_time, duration]
 
-## Note - MIDI 音符对象，持有原始 NoteEvent 数据
-## 说明：原 AutoPlayNote / ManualControlNote 子类已移除——外部消费者均直接调用
-## midi_player.trigger_note_on/off，不依赖 Note 的 start/stop 方法；
-## 原 is_on/is_off/note_index 字段无任何消费者，一并移除以缩小对象头（6万音符省 ~3-4 MB）
-class Note:
-	## 原始Note事件数据
-	var event: NoteEvent
-
-	func _init(note_evt: NoteEvent) -> void:
-		event = note_evt
-
-	func _to_string() -> String:
-		return "Note(pitch=%d, start=%.0f, dur=%.0f)" % [event.pitch, event.start_time, event.duration]
-
 ## MIDI轨道信息
 ## 说明：原 note_count 字段无外部消费者（TrackView 用的是 UI 文本 note_count_passed），
 ## 已移除；events 在 MidiPlaybackManager 提取乐器后会被 clear，释放 SMF 原始事件内存
@@ -50,19 +36,21 @@ class TrackInfo:
 		events = []
 
 ## 加载并解析MIDI文件
-## 返回: {success: bool, notes: Array[Note], bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary]}
+## 返回: {success: bool, notes: Array[NoteEvent], bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary], max_end_tick: int}
 ## 说明:
-##   - notes: 包含 Note 对象的数组，用于游戏逻辑
+##   - notes: NoteEvent 数组，按 start_time 升序排序（所有消费者直接读字段，无需 .event 解包）
 ##   - bpm_timeline 格式: [{tick: int, bpm: float, time_ms: float}, ...]
+##   - max_end_tick: 所有音符 end_tick 的最大值，用于 NoteDisplayer ct 异常保护
 static func load_and_parse_midi(file_path: String) -> Dictionary:
 	var result = {
 		"success": false,
-		"notes": [],                  # Array[Note]
+		"notes": [],                  # Array[NoteEvent]
 		"bpm": 120.0,
 		"duration": 0.0,
 		"track_infos": [],
 		"timebase": 480,
-		"bpm_timeline": []  # BPM变化时间线
+		"bpm_timeline": [],  # BPM变化时间线
+		"max_end_tick": 0,
 	}
 	
 	# 检查文件是否存在
@@ -204,18 +192,28 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 		return a.start_time < b.start_time
 	)
 
-	# 将NoteEvent转换为Note对象
-	var note_objects: Array[Note] = []
-	for note_evt in notes:
-		note_objects.append(Note.new(note_evt))
-
-	result["notes"] = note_objects
+	result["notes"] = notes
 	result["duration"] = actual_duration
 	result["track_infos"] = track_infos
 	result["bpm_timeline"] = bpm_timeline
+	result["max_end_tick"] = max_end_tick
 	result["success"] = true
 
 	return result
+
+## 按 (track, channel) 分组构建 { "track:channel": Array[NoteEvent] }
+## notes 必须已按 start_time 升序排序（load_and_parse_midi 末尾保证）
+## 每 bucket 内天然有序，调用方无需再 sort
+## 用于 TrackView._build_buckets 与 preparse_midi_async worker，消除重复循环
+static func build_track_channel_notes(notes: Array) -> Dictionary:
+	var grouping: Dictionary = {}
+	for note in notes:
+		if note is NoteEvent:
+			var key := "%d:%d" % [note.track_index, note.channel]
+			if not grouping.has(key):
+				grouping[key] = []
+			grouping[key].append(note)
+	return grouping
 
 ## note_off 匹配：从嵌套字典 note_on_map 中查找 (channel, pitch) 最早的 NoteOn
 ## 计算持续时间并构造 NoteEvent 加入 notes 列表

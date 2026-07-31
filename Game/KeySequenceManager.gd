@@ -28,7 +28,7 @@ class GameSequence:
 	var block_type: int = BlockType.INSTANT  # 块类型（INSTANT/SHORT/LONG）
 	var pitch_list: Array[int] = []  # 同lane合并的所有pitch列表（便于同时发出多个音）
 	var connected_prev: bool = false  # 是否与前一块连接
-	var original_notes: Array[MidiParser.Note] = []  # 保留该块包含的原始Note列表
+	var original_notes: Array[MidiParser.NoteEvent] = []  # 保留该块包含的原始 NoteEvent 列表
 	var flow_note_ref: Object = null  # 新增：指向对应的FlowArea.Note（演奏模式使用）
 	var lane: int = -1  # 视觉轨道索引（可能因 max_touch_move_velocity 限制而偏离 pitch % lane_count）
 	
@@ -47,15 +47,15 @@ class GameSequence:
 ## 背景序列（背景伴奏）
 class BackgroundSequence:
 	var track_index: int        # 所在轨道
-	var notes: Array            # 包含的所有Note（MidiParser.NoteEvent）
-	
+	var notes: Array            # 包含的所有 NoteEvent
+
 	func _init(track: int) -> void:
 		track_index = track
 		notes = []
 
 ## 块信息（生成后的块对象）
 class BlockInfo:
-	var notes: Array[MidiParser.Note] = []  # 合并后该块包含的所有原始Note对象
+	var notes: Array[MidiParser.NoteEvent] = []  # 合并后该块包含的所有原始 NoteEvent 对象
 	var batch: int = -1          # 批次编号（用于与Unity一致的连块语义）
 	var lane: int = 0           # 轨道编号（由pitch计算）
 	var x: float = 0.0          # 屏幕X位置
@@ -100,7 +100,7 @@ class TempNote:
 	var channel: int = 0
 	var start_time_ms: float = 0.0
 	var duration_ms: float = 0.0
-	var original_note: Variant = null  # MidiParser.Note 引用
+	var original_note: MidiParser.NoteEvent = null  # 直接引用 NoteEvent
 
 ## 当前MIDI数据
 var current_midi_data: MidiData
@@ -498,27 +498,14 @@ func generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs:
 	await await_generate_keys(task_id)
 	return true
 
-## 将Note对象转换为内部格式（确保使用毫秒单位）
+## 将 NoteEvent 对象转换为内部格式（确保使用毫秒单位）
 ## 返回 Array[TempNote]，替代旧版 Array[Dictionary]
 ## TempNote 字段直接访问比 Dictionary.get 哈希查找快 5-10 倍，内存占用降 ~40%
 func _convert_notes_to_internal_format(game_notes: Array) -> Array:
 	var converted: Array = []
 
 	for note in game_notes:
-		# 处理Note对象（包含event: NoteEvent）
-		if note is MidiParser.Note:
-			var evt = note.event
-			var tn := TempNote.new()
-			tn.pitch = evt.pitch
-			tn.velocity = evt.velocity
-			tn.track_index = evt.track_index
-			tn.channel = evt.channel
-			tn.start_time_ms = _tick_to_ms(evt.start_time)
-			tn.duration_ms = _tick_duration_to_ms(evt.start_time, evt.duration)
-			tn.original_note = note
-			converted.append(tn)
-		elif note is MidiParser.NoteEvent:
-			# 兼容直接传入 NoteEvent 的路径
+		if note is MidiParser.NoteEvent:
 			var tn := TempNote.new()
 			tn.pitch = note.pitch
 			tn.velocity = note.velocity
@@ -700,97 +687,23 @@ func _reconcile_spacing_after_clamp(blocks: Array[BlockInfo], bg_notes: Array) -
 			write_idx += 1
 	blocks.resize(write_idx)
 
-## 将各种中间格式的note统一追加到背景列表
-## 优先保留 MidiParser.Note（便于后续精确分类）；其次使用 NoteEvent；最后兜底字典
-func _append_note_to_background(note_data: Variant, bg_notes: Array) -> void:
+## 将 NoteEvent 追加到背景列表
+func _append_note_to_background(note_data: MidiParser.NoteEvent, bg_notes: Array) -> void:
 	if note_data == null:
 		return
-
-	if note_data is MidiParser.Note:
-		bg_notes.append(note_data)
-		return
-
-	if note_data is MidiParser.NoteEvent:
-		bg_notes.append(note_data)
-		return
-
-	if note_data is Dictionary:
-		if note_data.has("original_note"):
-			var original_note = note_data["original_note"]
-			if original_note is MidiParser.Note or original_note is MidiParser.NoteEvent:
-				bg_notes.append(original_note)
-				return
-		bg_notes.append(note_data)
-		return
-
 	bg_notes.append(note_data)
 
-## 提取note所属轨道索引（兼容 Note / NoteEvent / Dictionary）
-func _get_note_track_index(note_data: Variant) -> int:
-	if note_data == null:
-		return 0
+## 提取 NoteEvent 所属轨道索引
+func _get_note_track_index(note_data: MidiParser.NoteEvent) -> int:
+	return note_data.track_index
 
-	if note_data is MidiParser.Note:
-		if note_data.event:
-			return note_data.event.track_index
-		return 0
+## 提取 NoteEvent 起始时间（毫秒）
+func _get_note_start_time_ms(note_data: MidiParser.NoteEvent) -> float:
+	return _tick_to_ms(note_data.start_time)
 
-	if note_data is MidiParser.NoteEvent:
-		return note_data.track_index
-
-	if note_data is Dictionary:
-		if note_data.has("track_index"):
-			return int(note_data.get("track_index", 0))
-		if note_data.has("original_note") and note_data["original_note"] is MidiParser.Note:
-			var original_note = note_data["original_note"]
-			if original_note.event:
-				return original_note.event.track_index
-
-	return 0
-
-## 提取note起始时间（毫秒，兼容 Note / NoteEvent / Dictionary）
-func _get_note_start_time_ms(note_data: Variant) -> float:
-	if note_data == null:
-		return 0.0
-
-	if note_data is MidiParser.Note:
-		if note_data.event:
-			return _tick_to_ms(note_data.event.start_time)
-		return 0.0
-
-	if note_data is MidiParser.NoteEvent:
-		return _tick_to_ms(note_data.start_time)
-
-	if note_data is Dictionary:
-		if note_data.has("start_time_ms"):
-			return float(note_data.get("start_time_ms", 0.0))
-		if note_data.has("start_time"):
-			return _tick_to_ms(float(note_data.get("start_time", 0.0)))
-
-	return 0.0
-
-## 提取note音高（兼容 Note / NoteEvent / Dictionary）
-func _get_note_pitch(note_data: Variant) -> int:
-	if note_data == null:
-		return 0
-
-	if note_data is MidiParser.Note:
-		if note_data.event:
-			return int(note_data.event.pitch)
-		return 0
-
-	if note_data is MidiParser.NoteEvent:
-		return int(note_data.pitch)
-
-	if note_data is Dictionary:
-		if note_data.has("pitch"):
-			return int(note_data.get("pitch", 0))
-		if note_data.has("original_note") and note_data["original_note"] is MidiParser.Note:
-			var original_note = note_data["original_note"]
-			if original_note.event:
-				return int(original_note.event.pitch)
-
-	return 0
+## 提取 NoteEvent 音高
+func _get_note_pitch(note_data: MidiParser.NoteEvent) -> int:
+	return int(note_data.pitch)
 
 ## Step C/D: 虚拟触点匹配和块类型判定
 func _assign_touches_and_judge_types(blocks: Array[BlockInfo], bg_notes: Array) -> void:
@@ -1048,32 +961,31 @@ func _convert_blocks_to_game_sequences(blocks: Array[BlockInfo]) -> void:
 	for block in blocks:
 		if block.notes.is_empty():
 			continue
-		
-		# 使用第一个note作为主note
-		var main_note = block.notes[0]
-		if main_note == null or main_note.event == null:
+
+		# 使用第一个 NoteEvent 作为主 note（block.notes 现为 Array[NoteEvent]）
+		var main_note: MidiParser.NoteEvent = block.notes[0]
+		if main_note == null:
 			continue
-		
-		var evt = main_note.event
-		var octave_info = MidiParser.get_note_octave_and_relative_pitch(evt.pitch)
-		
+
+		var octave_info = MidiParser.get_note_octave_and_relative_pitch(main_note.pitch)
+
 		var game_seq = GameSequence.new(
 			0,  # note_index
 			next_key_id,
-			evt.pitch,
+			main_note.pitch,
 			block.start_time_ms,
 			block.duration_ms,
 			block.x,
 			octave_info["octave"],
-			evt.velocity
+			main_note.velocity
 		)
-		
+
 		game_seq.block_type = block.type
 		game_seq.pitch_list = block.pitch_list.duplicate()
 		game_seq.connected_prev = block.connected_prev
 		game_seq.original_notes = block.notes.duplicate()
 		game_seq.lane = block.lane
-		
+
 		game_sequences.append(game_seq)
 		next_key_id += 1
 

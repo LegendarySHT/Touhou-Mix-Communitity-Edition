@@ -1430,19 +1430,18 @@ func _trigger_midi_notes_from_sequence(game_seq: Object) -> void:
 	
 	# 触发原始notes中的所有MIDI音符
 	for note in game_seq.original_notes:
-		if note is MidiParser.Note and note.event:
-			var evt = note.event
-			var track_idx := int(evt.track_index)
-			
+		if note is MidiParser.NoteEvent:
+			var track_idx := int(note.track_index)
+
 			# 触发note_on
 			if midi_player.has_method("trigger_note_on"):
-				midi_player.call("trigger_note_on", evt.pitch, evt.velocity, evt.channel, track_idx)
+				midi_player.call("trigger_note_on", note.pitch, note.velocity, note.channel, track_idx)
 			elif midi_player.has_method("note_on"):
-				midi_player.note_on(evt.channel, evt.pitch, evt.velocity)
+				midi_player.note_on(note.channel, note.pitch, note.velocity)
 
 			# 非阻塞调度 note_off（避免循环内 await 导致后续音符串行延后）
 			var delay_seconds = (game_seq.duration_ms / 1000.0) if game_seq.duration_ms > 0 else 0.1
-			_schedule_note_off(midi_player, evt.pitch, evt.velocity, evt.channel, delay_seconds, track_idx)
+			_schedule_note_off(midi_player, note.pitch, note.velocity, note.channel, delay_seconds, track_idx)
 
 func _schedule_note_off(midi_player: Object, pitch: int, velocity: int, channel: int, delay_seconds: float, track_index: int = 0) -> void:
 	var timer = get_tree().create_timer(max(delay_seconds, 0.01))

@@ -47,9 +47,6 @@ var _vocal_controller: VocalTrackController = null
 var _config_persistence: MidiConfigPersistence = null
 
 
-# 用于存储所有音符的列表（直接引用 MidiParser.Note，避免冗余复制）
-var All_Notes: Array = []
-
 # 按 (track, channel) 分组的音轨容器（由 _build_buckets 一次性构建）
 # master_note_displayer 直接引用；子 displayer 在 _init_track_note_displayer 中独立构建
 var _all_buckets: Array[NoteDisplayer.TrackNoteBucket] = []
@@ -242,20 +239,14 @@ func _load_midi(midi: MidiData) -> void:
 	_config_persistence.restore_midi_data_config()
 
 	# 加载音符
-	var all_notes = midi_playback_manager.current_notes
-	if all_notes.is_empty():
-		push_warning("No notes found in MIDI")
+	# runtime_track_channel_notes 由 MidiListItem worker 线程预构建（或 preparse_midi_async 构建）
+	# _build_buckets 直接复用，无需主线程遍历 current_notes
+	if current_midi_data.runtime_track_channel_notes.is_empty():
+		push_warning("No track_channel_notes available (preparse may have failed)")
 		return
-
-	# 直接引用 MidiParser.Note，不再复制为 NoteDisplayer.NoteEvent（消除冗余副本）
-	# notes 已按时间顺序排序；过滤掉 event 为 null 的异常 Note
-	All_Notes.clear()
-	for note in all_notes:
-		if note is MidiParser.Note and note.event != null:
-			All_Notes.append(note)
-	# 按 (track, channel) 分组构建 TrackNoteBucket（All_Notes 已排序，每 bucket 内自然有序）
+	# 按 (track, channel) 分组构建 TrackNoteBucket（主线程仅 O(Buckets)）
 	_build_buckets()
-	# 构建 All_Notes 后让出一帧，避免 _init_master_note_displayer 紧接其后再阻塞
+	# 构建 buckets 后让出一帧，避免 _init_master_note_displayer 紧接其后再阻塞
 	await get_tree().process_frame
 
 	# 先设置 is_master 标志，确保 init_displayer_with_buckets 内的 is_master 分支正确执行
@@ -641,7 +632,8 @@ func _update_master_note_displayer() -> void:
 		return
 
 	# 传入全部 buckets（未过滤），由 sync_from_midi_data 控制 bucket.is_enabled
-	master_note_displayer.init_displayer_with_buckets(self, _all_buckets)
+	# max_end_tick 直接读 MidiData（preparse 已缓存），避免遍历所有音符
+	master_note_displayer.init_displayer_with_buckets(self, _all_buckets, current_midi_data.max_end_tick)
 	if not current_midi_data.selected_track_configs.is_empty():
 		master_note_displayer.sync_from_midi_data(current_midi_data)
 
@@ -765,8 +757,9 @@ func _init_master_note_displayer() -> void:
 	
 	_reset_player()
 
-	# 获取所有音符	
-	if All_Notes.is_empty():
+	# 获取所有音符
+	# All_Notes 已删除，改用 _all_buckets 判断（runtime_track_channel_notes 为空时 _build_buckets 已 return）
+	if _all_buckets.is_empty():
 		push_warning("No notes found in selected tracks")
 		return
 	
@@ -780,43 +773,42 @@ func _init_master_note_displayer() -> void:
 		# 理论上不应走到这里（load_midi 已设置 _track_config_initialized=true），防御性日志
 		push_warning("[TrackView] Unexpected: _track_config_initialized is false, selected_track_configs may be incomplete")
 	
-	print("[TrackView] Master note displayer: %d total notes (time-sorted)" % All_Notes.size())
-	# 初始化主音符显示器（传入所有 buckets），随后按 selected_track_configs 过滤可见性
-	master_note_displayer.init_displayer_with_buckets(self, _all_buckets)
+	# 统计音符总数（从 buckets 汇总）
+	var total_notes = 0
+	for bucket in _all_buckets:
+		total_notes += bucket.notes.size()
+	print("[TrackView] Master note displayer: %d total notes across %d buckets" % [total_notes, _all_buckets.size()])
+	# 初始化主音符显示器（传入所有 buckets + max_end_tick 从 MidiData 直接读取），随后按 selected_track_configs 过滤可见性
+	master_note_displayer.init_displayer_with_buckets(self, _all_buckets, current_midi_data.max_end_tick)
 	if not current_midi_data.selected_track_configs.is_empty():
 		master_note_displayer.sync_from_midi_data(current_midi_data)
 
 ## 按 (track, channel) 分组构建 TrackNoteBucket
-## 注意：MidiParser 的 notes 数组按 note_off 的 tick 顺序 append（配对完成时），
-## 而非按 note_on 的 start_tick 顺序。长音符的 note_off 很晚才发生，
-## 会被 append 到数组末尾，但 start_tick 很早。懒生成按数组顺序推进 cursor
-## 会跳过长音符，后来突然生成，表现为"突然冒出长音符"。
-## 修复：每 bucket 内按 start_tick 升序排序，保证懒生成按时间顺序生成。
+## 直接复用 MidiListItem worker 线程预构建的 runtime_track_channel_notes（主线程仅 O(Buckets)）
+## worker 遍历已排序的 parsed_notes 构建 grouping，每 bucket 内天然按 start_time 升序
+## 数据来源保证：MidiListItem._parse_thread_func 构建 → preparse_midi_async 缓存命中时已存在
 func _build_buckets() -> void:
 	_all_buckets.clear()
-	var bucket_map: Dictionary = {}  # "track:channel" -> TrackNoteBucket
-	for note in All_Notes:
-		var evt = note.event
-		var key = "%d:%d" % [evt.track_index, evt.channel]
-		var bucket: NoteDisplayer.TrackNoteBucket
-		if bucket_map.has(key):
-			bucket = bucket_map[key]
-		else:
-			bucket = NoteDisplayer.TrackNoteBucket.new()
-			bucket.track_index = evt.track_index
-			bucket.channel = evt.channel
-			bucket.hue = MidiTrack.colors_set[evt.track_index % MidiTrack.colors_set.size()].h
-			bucket_map[key] = bucket
-			_all_buckets.append(bucket)
-		var info := NoteDisplayer.NoteRenderInfo.new()
-		info.pitch = evt.pitch
-		info.start_tick = int(evt.start_time)
-		info.end_tick = int(evt.start_time) + int(evt.duration)
-		bucket.notes.append(info)
+	# 直接从 worker 预构建的 (track, channel) → notes 分组构建
+	# MidiListItem._parse_thread_func 在解析 MIDI 时顺便构建，preparse_midi_async 命中缓存时已就绪
+	# assign() 把 untyped Array 的 NoteEvent 引用复制到 typed Array[MidiParser.NoteEvent]
+	# NoteEvent 是 RefCounted，只复制引用（8 字节/项），不复制对象本身
+	for key in current_midi_data.runtime_track_channel_notes:
+		var parts = key.split(":")
+		var track_idx = int(parts[0])
+		var channel = int(parts[1])
+		var notes = current_midi_data.runtime_track_channel_notes[key]
 
-	# 每 bucket 内按 start_tick 升序排序，修复 MidiParser 按 note_off 顺序 append 导致的乱序
-	for bucket in _all_buckets:
-		bucket.notes.sort_custom(func(a, b): return a.start_tick < b.start_tick)
+		var bucket = NoteDisplayer.TrackNoteBucket.new()
+		bucket.track_index = track_idx
+		bucket.channel = channel
+		bucket.hue = MidiTrack.colors_set[track_idx % MidiTrack.colors_set.size()].h
+		# assign() 复制元素到 bucket.notes 的内部 buffer（不与源 Dictionary 共享）
+		# 后续对 bucket.notes 的 sort 等修改不会污染 runtime_track_channel_notes
+		# NoteEvent 是 RefCounted，复制的是引用（8 字节/项），不复制对象本身
+		bucket.notes.assign(notes)
+		_all_buckets.append(bucket)
+	# worker 遍历已排序的 parsed_notes，每 bucket 内天然按 start_time 升序，无需再 sort
 
 func _init_track_note_displayer(track_scene: MidiTrack, source_bucket: NoteDisplayer.TrackNoteBucket) -> void:
 	if track_scene.note_display == null:
@@ -827,7 +819,7 @@ func _init_track_note_displayer(track_scene: MidiTrack, source_bucket: NoteDispl
 		return
 
 	# 子 displayer 创建独立 bucket（独立 cursor/is_enabled），共享 notes 数组（RefCounted 引用计数安全）
-	# 避免复制 NoteRenderInfo 列表，节省内存
+	# 避免复制 NoteEvent 列表，节省内存
 	var bucket := NoteDisplayer.TrackNoteBucket.new()
 	bucket.track_index = source_bucket.track_index
 	bucket.channel = source_bucket.channel
@@ -837,7 +829,9 @@ func _init_track_note_displayer(track_scene: MidiTrack, source_bucket: NoteDispl
 	print("[TrackView] Track %d Channel %d: %d notes (time-sorted)" %
 		[bucket.track_index, bucket.channel, bucket.notes.size()])
 	# 初始化该(track, channel)的音符显示器
-	track_scene.note_display.init_displayer_with_buckets(self, [bucket])
+	# max_end_tick 复用主显示器的全局值（子 displayer 的音符是全局子集，使用全局 max_end_tick 安全）
+	var max_end_tick := current_midi_data.max_end_tick if current_midi_data != null else 0.0
+	track_scene.note_display.init_displayer_with_buckets(self, [bucket], max_end_tick)
 
 # 重置音符显示器索引
 func _reset_player() -> void:	
@@ -908,7 +902,7 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 ## 切换时复用解析数据，避免反复重解析。离开 MidiView 或切换 MidiList 项时才彻底清理
 func _cleanup() -> void:
 	clear_items()
-	All_Notes.clear()
+	_all_buckets.clear()
 	_set_note_displayers_process(false)
 
 ## 初始化Latency输入框（从MidiData读取偏移值）

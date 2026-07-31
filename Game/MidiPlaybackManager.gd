@@ -251,12 +251,7 @@ func load_midi(midi_data: MidiData) -> bool:
 		midi_timebase = parse_result.get("timebase", 480)  # 保存timebase
 		track_infos = parse_result["track_infos"]
 
-		# 对notes按start_time排序（确保时间递增）
-		current_notes.sort_custom(func(a, b) -> bool:
-			var a_time = a.event.start_time if a is MidiParser.Note and a.event else 0
-			var b_time = b.event.start_time if b is MidiParser.Note and b.event else 0
-			return a_time < b_time
-		)
+		# MidiParser.load_and_parse_midi 末尾已按 start_time 升序排序，无需重复排序
 
 		current_midi_data.parsed_notes = current_notes
 		current_midi_data.track_count = track_infos.size()
@@ -265,10 +260,17 @@ func load_midi(midi_data: MidiData) -> bool:
 		current_midi_data.bpm_timeline = bpm_timeline.duplicate()
 		current_midi_data.midi_timebase = midi_timebase
 		current_midi_data._runtime_track_infos = track_infos
+		current_midi_data.max_end_tick = float(parse_result.get("max_end_tick", 0))
 		duration_ms = parse_result["duration"]
 
 	# 从 track_infos 中提取乐器信息（用于不维护此信息的后端，如 MeltySynth）
-	_extract_track_channel_instruments(track_infos)
+	# 缓存命中跳过：preparse_midi_async 已在 worker 中构建 cached_track_channel_instruments
+	# 且已清空 track_info.events 释放 SMF 原始事件内存
+	if cached_track_channel_instruments.is_empty():
+		cached_track_channel_instruments = extract_track_channel_instruments(track_infos)
+		GLogger.info("Extracted instruments for %d tracks from MIDI file" % cached_track_channel_instruments.size(), "MidiPlaybackManager")
+	else:
+		GLogger.info("Instrument extraction cache hit, skipping re-extract", "MidiPlaybackManager")
 	
 	# 如果未选择轨道，则默认选择所有轨道
 	if current_midi_data.selected_track_indices.is_empty():
@@ -305,16 +307,16 @@ func load_midi(midi_data: MidiData) -> bool:
 		var recommended := current_midi_data._desc_recommended_tracks
 		var use_recommendation := not recommended.is_empty()
 		for note in current_notes:
-			if note is MidiParser.Note and note.event != null:
+			if note is MidiParser.NoteEvent:
 				var should_enable := true
 				if use_recommendation:
-					should_enable = note.event.track_index in recommended
-				current_midi_data.set_track_channel_enabled(note.event.track_index, note.event.channel, should_enable)
+					should_enable = note.track_index in recommended
+				current_midi_data.set_track_channel_enabled(note.track_index, note.channel, should_enable)
 		# 回退：推荐轨道均不存在于 MIDI 时启用全部，避免无音符可见
 		if use_recommendation and current_midi_data.selected_track_configs.is_empty():
 			for note in current_notes:
-				if note is MidiParser.Note and note.event != null:
-					current_midi_data.set_track_channel_enabled(note.event.track_index, note.event.channel, true)
+				if note is MidiParser.NoteEvent:
+					current_midi_data.set_track_channel_enabled(note.track_index, note.channel, true)
 			GLogger.info("Recommended tracks %s not found in MIDI, fell back to enabling all" % [recommended], "MidiPlaybackManager")
 		elif use_recommendation:
 			GLogger.info("Enabled recommended tracks from description: %s" % [recommended], "MidiPlaybackManager")
@@ -424,11 +426,17 @@ func _save_runtime_config_to_json(midi_data: MidiData) -> void:
 		push_error("[MidiPlaybackManager] Failed to save runtime config to JSON for MIDI %s" % midi_data.id)
 
 ## 在 worker 线程中预解析 MIDI，使后续 load_midi() 命中缓存跳过同步解析
+## 同时在 worker 中完成 extract_track_channel_instruments + runtime_track_channel_notes 分组构建
 ## 主线程在 await 期间可继续渲染转场动画，避免首次进入 TrackView 时的解析卡顿
 ## TrackView._load_midi 在调用 load_midi 之前 await 本方法
 func preparse_midi_async(midi_data: MidiData) -> bool:
 	# 缓存命中检查（与 load_midi 内部条件一致）
+	# MidiListItem._parse_thread_func 已在 worker 线程构建 runtime_track_channel_notes，
+	# 命中缓存时该字段已就绪，TrackView._build_buckets 可直接复用
 	if not midi_data.parsed_notes.is_empty() and not midi_data._runtime_track_infos.is_empty():
+		# 缓存命中时也复用已构建的 cached_track_channel_instruments（避免 load_midi 重新提取）
+		# 但 cached_track_channel_instruments 是 MidiPlaybackManager 单实例字段，切换 MIDI 时会被 clear
+		# 此处不做特殊处理：load_midi 内部会判断 cached_track_channel_instruments 是否为空决定是否调用提取
 		return true  # 已缓存，无需预解析
 
 	var midi_file_path := _locate_midi_file(midi_data)
@@ -439,10 +447,17 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	# 预先写入路径，让 load_midi 内部的缓存检查 (midi_data.midi_file_path == midi_file_path) 命中
 	midi_data.midi_file_path = midi_file_path
 
-	# 在 worker 线程中执行昂贵的 MIDI 解析（纯文件 I/O + 数据结构构建，无引擎 API 调用）
-	var result_wrapper := {"parse": null}
+	# 在 worker 线程中执行昂贵的 MIDI 解析 + 乐器提取 + 按 (track,channel) 分组
+	# 全部为纯文件 I/O + 数据结构构建，无引擎 API 调用
+	var result_wrapper := {"parse": null, "instruments": null, "track_channel_notes": null}
 	var task_id := WorkerThreadPool.add_task(func():
-		result_wrapper["parse"] = MidiParser.load_and_parse_midi(midi_file_path)
+		var parse_result: Dictionary = MidiParser.load_and_parse_midi(midi_file_path)
+		result_wrapper["parse"] = parse_result
+		if parse_result.get("success", false):
+			# 乐器提取（同时清空 track_info.events 释放 SMF 原始事件内存）
+			result_wrapper["instruments"] = extract_track_channel_instruments(parse_result["track_infos"])
+			# 按 (track, channel) 分组（TrackView._build_buckets 直接复用，避免主线程 O(N) 重新遍历）
+			result_wrapper["track_channel_notes"] = MidiParser.build_track_channel_notes(parse_result["notes"])
 	, false, "MIDI Preparse")
 
 	# 主线程轮询任务完成状态，期间继续渲染转场动画（非阻塞）
@@ -466,15 +481,22 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	midi_data.track_count = parse_result["track_infos"].size()
 	midi_data.bpm = parse_result["bpm"]
 	midi_data.duration_ms = parse_result["duration"]
+	midi_data.max_end_tick = float(parse_result.get("max_end_tick", 0))
 
-	# 排序（与 load_midi 内部一致，保证后续行为完全等价）
-	midi_data.parsed_notes.sort_custom(func(a, b) -> bool:
-		var a_time = a.event.start_time if a is MidiParser.Note and a.event else 0
-		var b_time = b.event.start_time if b is MidiParser.Note and b.event else 0
-		return a_time < b_time
-	)
+	# 复用 worker 中已构建的乐器信息字典（避免 load_midi 重新提取，省 ~5-15ms）
+	# 同时清空 track_info.events 的操作已在 worker 中完成
+	cached_track_channel_instruments = result_wrapper["instruments"]
 
-	GLogger.info("MIDI preparse completed (threaded): %d notes, duration=%.0fms" % [midi_data.parsed_notes.size(), midi_data.duration_ms], "MidiPlaybackManager")
+	# 复用 worker 中已构建的 (track,channel) → notes 分组（避免 TrackView._build_buckets 重新遍历）
+	midi_data.runtime_track_channel_notes = result_wrapper["track_channel_notes"]
+
+	# MidiParser.load_and_parse_midi 末尾已按 start_time 升序排序，无需重复排序
+
+	GLogger.info("MIDI preparse completed (threaded): %d notes, duration=%.0fms, %d (track,channel) groups" % [
+		midi_data.parsed_notes.size(),
+		midi_data.duration_ms,
+		midi_data.runtime_track_channel_notes.size()
+	], "MidiPlaybackManager")
 	return true
 
 ## 异步预载人声文件（线程化，避免主线程解码卡顿）
@@ -1171,13 +1193,16 @@ func _apply_mute_state_to_backend(backend: MidiPlaybackInterface) -> void:
 	
 	print("[MidiPlaybackManager] Applied mute state for %d tracks" % cached_track_channel_instruments.size())
 
-## 从 track_infos 中提取 program_change 事件并缓存乐器信息
-func _extract_track_channel_instruments(track_infos: Array) -> void:
-	cached_track_channel_instruments.clear()
-	
+## 从 track_infos 中提取 program_change 事件并返回乐器信息字典
+## 无成员字段写入，可在 worker 线程中调用
+## 返回格式: {track_idx: {channel: {bank, program}}}
+## 注意：非纯函数——会清空入参 track_info.events 释放 SMF 原始事件 chunk 内存（6 万音符 MIDI 约 30 MB）
+static func extract_track_channel_instruments(track_infos: Array) -> Dictionary:
+	var result: Dictionary = {}
+
 	# 用于跟踪每个通道的当前 bank 值
 	var channel_banks: Dictionary = {}  # {track_idx: {channel: bank}}
-	
+
 	# 初始化：Channel 9 默认为鼓组 bank
 	for track_idx in range(track_infos.size()):
 		channel_banks[track_idx] = {}
@@ -1186,29 +1211,29 @@ func _extract_track_channel_instruments(track_infos: Array) -> void:
 				channel_banks[track_idx][ch] = 128  # Drum bank
 			else:
 				channel_banks[track_idx][ch] = 0
-	
+
 	# 遍历每个轨道的事件
 	for track_idx in range(track_infos.size()):
 		var track_info = track_infos[track_idx]
 		if not track_info:
 			continue
-		
-		cached_track_channel_instruments[track_idx] = {}
-		
+
+		result[track_idx] = {}
+
 		# 收集该轨道中出现的所有通道
 		var channels_in_track: Array = []
 		for event_chunk in track_info.events:
 			var channel = event_chunk.channel_number
 			if channel not in channels_in_track:
 				channels_in_track.append(channel)
-			
+
 			var event = event_chunk.event
-			
+
 			# 处理 Bank Select events (Control Change 0 和 32)
 			if event.type == SMF.MIDIEventType.control_change:
 				var cc_num = event.number
 				var cc_val = event.value
-				
+
 				if cc_num == 0:  # Bank Select MSB
 					if channel == 9:
 						channel_banks[track_idx][channel] = 128  # 鼓组始终 bank 128
@@ -1221,34 +1246,34 @@ func _extract_track_channel_instruments(track_infos: Array) -> void:
 					else:
 						var current_bank = channel_banks[track_idx].get(channel, 0)
 						channel_banks[track_idx][channel] = (current_bank & 0x3F80) | (cc_val & 0x7F)
-			
+
 			# 处理 Program Change events
 			elif event.type == SMF.MIDIEventType.program_change:
 				var program = event.number
 				var bank = channel_banks[track_idx].get(channel, 0)
-				
+
 				# 存储该 (track, channel) 的乐器
-				cached_track_channel_instruments[track_idx][channel] = {
+				result[track_idx][channel] = {
 					"bank": bank,
 					"program": program
 				}
-		
+
 		# 对于没有 program_change 的通道，使用默认值
 		for channel in channels_in_track:
-			if not cached_track_channel_instruments[track_idx].has(channel):
+			if not result[track_idx].has(channel):
 				var bank = channel_banks[track_idx].get(channel, 0)
-				cached_track_channel_instruments[track_idx][channel] = {
+				result[track_idx][channel] = {
 					"bank": bank,
 					"program": 0  # 默认 Grand Piano (或 Standard Drum Kit for channel 9)
 				}
-	
-	print("[MidiPlaybackManager] Extracted instruments for %d tracks from MIDI file" % cached_track_channel_instruments.size())
 
 	# 提取完成后清空 TrackInfo.events，释放 SMF 原始事件 chunk 内存（6 万音符 MIDI 约 30 MB）
 	# events 仅用于本函数提取乐器信息，之后无任何消费者；name/note_count 等轻量字段保留
 	for track_info in track_infos:
 		if track_info and track_info.events.size() > 0:
 			track_info.events.clear()
+
+	return result
 
 ## 辅助函数：定位MIDI文件路径
 func _locate_midi_file(midi_data: MidiData) -> String:
@@ -1320,9 +1345,9 @@ func get_track_infos() -> Array:
 ## ========== Note分类接口 ==========
 ## 将解析的note分为两类：自动播放和手动控制
 ## 该方法当前仅为占位，待后续将Touhou Mix原有生成逻辑移植过来
-## @param	all_notes				所有已解析的note列表
+## @param	all_notes				所有已解析的 NoteEvent 列表
 ## @param	manual_track_indices	需要手动控制的轨道索引数组
-## @return 返回 {auto_play_notes: Array[Note], manual_control_notes: Array[Note]}
+## @return 返回 {auto_play_notes: Array[NoteEvent], manual_control_notes: Array[NoteEvent]}
 func classify_notes(all_notes: Array, manual_track_indices: Array[int] = []) -> Dictionary:
 	var result = {
 		"auto_play_notes": [],
@@ -1343,9 +1368,9 @@ func classify_notes(all_notes: Array, manual_track_indices: Array[int] = []) -> 
 	#
 	# 当前暂时实现方案：
 	for note in all_notes:
-		if note is MidiParser.Note:
+		if note is MidiParser.NoteEvent:
 			# 检查note的轨道是否在手动控制列表中
-			if note.event.track_index in manual_tracks_set:
+			if note.track_index in manual_tracks_set:
 				# 手动控制音符：播放器端通过 set_manually_controlled_notes 标记跳过自动播放，
 				# 由游戏逻辑直接调用 trigger_note_on/off，无需额外的 Note 子类
 				result["manual_control_notes"].append(note)
@@ -1353,7 +1378,7 @@ func classify_notes(all_notes: Array, manual_track_indices: Array[int] = []) -> 
 				# 自动播放音符
 				result["auto_play_notes"].append(note)
 		else:
-			# 非Note类型，默认为自动播放
+			# 非NoteEvent类型，默认为自动播放
 			result["auto_play_notes"].append(note)
 	
 	print("[MidiPlaybackManager] Classified notes: %d auto-play, %d manual-control" % 
@@ -1363,7 +1388,7 @@ func classify_notes(all_notes: Array, manual_track_indices: Array[int] = []) -> 
 
 ## 设置MidiPlayer的手动控制note标记
 ## 游戏完成分类后，应调用此方法通知MidiPlayer哪些note需要手动控制
-## @param	manual_control_notes	Note数组（需手动控制的音符）
+## @param	manual_control_notes	NoteEvent数组（需手动控制的音符）
 func set_manual_control_notes(manual_control_notes: Array) -> void:
 	if midi_player == null:
 		push_warning("[MidiPlaybackManager] MidiPlayer not initialized")
@@ -1375,12 +1400,12 @@ func set_manual_control_notes(manual_control_notes: Array) -> void:
 	var manually_controlled: Dictionary = {}
 	
 	for note in manual_control_notes:
-		# 所有 note 均为 MidiParser.Note 类型
-		if note is MidiParser.Note and note.event:
-			var track_index = note.event.track_index
-			var channel = note.event.channel
-			var pitch = note.event.pitch
-			var start_tick = int(round(note.event.start_time))
+		# 所有 note 均为 MidiParser.NoteEvent 类型
+		if note is MidiParser.NoteEvent:
+			var track_index = note.track_index
+			var channel = note.channel
+			var pitch = note.pitch
+			var start_tick = int(round(note.start_time))
 			
 			if not manually_controlled.has(track_index):
 				manually_controlled[track_index] = {}

@@ -97,6 +97,12 @@ var parsed_notes: Array = []
 ## 用于 retry 场景跳过重复的 MIDI 解析
 var _runtime_track_infos: Array = []
 
+## 缓存的 (track, channel) → Array[NoteEvent] 分组（运行时缓存，不持久化）
+## 由 preparse_midi_async worker 一次性构建，TrackView._build_buckets 直接复用
+## 避免主线程 O(N) 遍历 parsed_notes 重新分组，进入 TrackView 时主线程仅做 O(Buckets) 转换
+## 格式：{ "track:channel": Array[MidiParser.NoteEvent], ... }
+var runtime_track_channel_notes: Dictionary = {}
+
 ## MIDI每分钟节拍数（BPM）
 var bpm: float = 120.0
 
@@ -109,6 +115,11 @@ var bpm_timeline: Array = []
 
 ## MIDI 时间基准（ticks per quarter note），解析后缓存
 var midi_timebase: int = 480
+
+## MIDI 最大 end_tick（所有音符结束 tick 的最大值，解析后缓存）
+## 用于 NoteDisplayer ct 异常保护，避免循环播放时 ct 越界导致 active_notes 累积
+## 类型为 float 与 NoteEvent.start_time / NoteState.start_tick 对齐，避免比较时隐式转换
+var max_end_tick: float = 0.0
 
 ## ========== 用户配置字段（运行时可修改，需持久化）==========
 

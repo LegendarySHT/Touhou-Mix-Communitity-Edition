@@ -132,6 +132,7 @@ func change_state(new_state: UIState, stash_state: bool = true) -> void:
 	# 提前加载后续界面
 	match new_state:
 		UIState.MIDI_VIEW:
+			ensure_view_loaded(UIState.TRACK_VIEW)
 			ensure_view_loaded(UIState.PLAY_VIEW)
 			ensure_view_loaded(UIState.SCORE_VIEW)
 

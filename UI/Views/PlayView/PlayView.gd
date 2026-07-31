@@ -714,17 +714,16 @@ func _filter_notes_by_enabled_track_channels(all_notes: Array, midi_data: MidiDa
 	# 筛选音符
 	var pair_stats = {}  # 统计每个(track, channel)对的音符数
 	for note in all_notes:
-		if note is MidiParser.Note and note.event != null:
-			var evt = note.event
-			var track_idx = int(evt.track_index)
-			var channel = int(evt.channel)
+		if note is MidiParser.NoteEvent:
+			var track_idx = int(note.track_index)
+			var channel = int(note.channel)
 			var pair_key = "%d:%d" % [track_idx, channel]
-			
+
 			# 统计
 			if not pair_stats.has(pair_key):
 				pair_stats[pair_key] = 0
 			pair_stats[pair_key] += 1
-			
+
 			# 筛选
 			if midi_data.is_track_channel_selected(track_idx, channel):
 				filtered.append(note)

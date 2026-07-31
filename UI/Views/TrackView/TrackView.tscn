@@ -405,5 +405,3 @@ layout_mode = 2
 theme_override_constants/margin_right = 60
 
 [connection signal="toggled" from="MC/VBox/TotalView/MC/VBoxC/flowArea/noteFlowArea/Button" to="." method="_on_expand_master_area_btn_toggled"]
-[connection signal="pressed" from="MC/VBox/VolumeView/HBoxC/VBoxC2/VocalImportBtn" to="." method="_on_vocal_import_btn_pressed"]
-[connection signal="toggled" from="MC/VBox/VolumeView/HBoxC/VBoxC2/VocalEnableBtn" to="." method="_on_vocal_enable_btn_toggled"]

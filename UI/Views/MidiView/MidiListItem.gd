@@ -240,8 +240,13 @@ func _start_midi_compute() -> void:
 
 
 ## 在后台线程中解析 MIDI 文件（仅读文件，无场景树访问）
+## 同时构建 (track, channel) → notes 分组，供 TrackView._build_buckets 直接复用
+## 复用已启动的 worker 线程，零额外延迟
 func _parse_thread_func(path: String) -> void:
 	var result: Dictionary = MidiParser.load_and_parse_midi(path)
+	# 构建 track_channel_notes 分组（供 TrackView 直接复用，避免主线程 O(N) 重新遍历）
+	if result.get("success", false):
+		result["track_channel_notes"] = MidiParser.build_track_channel_notes(result["notes"])
 	call_deferred("_on_parse_done", result)
 
 
@@ -272,6 +277,8 @@ func _on_parse_done(result: Dictionary) -> void:
 	if midi.bpm_timeline.is_empty():
 		midi.bpm_timeline = result.get("bpm_timeline", [])
 		midi.midi_timebase = result.get("timebase", 480)
+	if midi.max_end_tick <= 0:
+		midi.max_end_tick = float(result.get("max_end_tick", 0))
 	# 同步回填 _runtime_track_infos，使 MidiPlaybackManager.preparse_midi_async 缓存命中
 	# （命中条件：parsed_notes + _runtime_track_infos 同时非空，见 MidiPlaybackManager.gd:431）
 	# 缺失此行会导致进入 TrackView 时 worker 线程重新解析整个 MIDI，造成 ~18MB 临时峰值
@@ -289,6 +296,9 @@ func _on_parse_done(result: Dictionary) -> void:
 							or evt.type == SMF.MIDIEventType.program_change):
 						filtered_events.append(event_chunk)
 				track_info.events = filtered_events
+	# 回填 runtime_track_channel_notes（worker 线程已构建，TrackView._build_buckets 直接复用）
+	if midi.runtime_track_channel_notes.is_empty():
+		midi.runtime_track_channel_notes = result.get("track_channel_notes", {})
 
 	# 构建并缓存 Time / BPM 字段
 	var entry: Dictionary = _info_cache.get(midi.id, {})
@@ -328,8 +338,8 @@ func _fill_time_bpm_cache(midi: MidiData, entry: Dictionary) -> void:
 		# 若所有 BPM 变化均发生在第一个音符开始之前，则游玩区间内 BPM 恒定，不加 "~"
 		var first_note_tick: float = INF
 		for note in midi.parsed_notes:
-			if note is MidiParser.Note and note.event != null:
-				first_note_tick = min(first_note_tick, float(note.event.start_time))
+			if note is MidiParser.NoteEvent:
+				first_note_tick = min(first_note_tick, float(note.start_time))
 
 		# 检查 index 1 起的所有变速点是否都早于第一个音符
 		var all_before_first_note := first_note_tick < INF
@@ -387,12 +397,12 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 	# 按 (track, channel) 筛选音符
 	var filtered: Array = []
 	for note in midi.parsed_notes:
-		if note is MidiParser.Note and note.event != null:
+		if note is MidiParser.NoteEvent:
 			if not configs_initialized:
 				# 未初始化：全部纳入
 				filtered.append(note)
 			else:
-				var key := "%d:%d" % [note.event.track_index, note.event.channel]
+				var key := "%d:%d" % [note.track_index, note.channel]
 				if enabled_pairs.has(key):
 					filtered.append(note)
 

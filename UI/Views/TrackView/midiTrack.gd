@@ -61,10 +61,13 @@ func _ready():
 		return
 
 	# 仅在setup_track未预填充时填充OptionButton
+	# set_block_signals 防止 add_item 期间触发 item_selected 等信号（此时信号已连接）
 	if instruments_option_btn.item_count == 0:
+		instruments_option_btn.set_block_signals(true)
 		instruments_option_btn.clear()
 		for i in instrument_options:
 			instruments_option_btn.add_item(i)
+		instruments_option_btn.set_block_signals(false)
 
 	print("[MidiTrack] Track %d initialized with %d instrument options" % [track_index, instruments_option_btn.item_count])
 
@@ -150,29 +153,34 @@ func setup_track(parent: Node, index: int, track_name: String, instruments: Arra
 	name = track_name
 	
 	# 根据 channel 类型过滤乐器选项
+	# 共享 parent 的乐器列表引用（不 duplicate）：instrument_options 仅读遍历，不会被修改
+	# 避免每轨道复制 ~500 个字符串，30 轨道可省 ~15000 次字符串拷贝
 	if channel == 9:
 		# Channel 9 是鼓轨道，只显示鼓组乐器
 		if "drum_instruments" in parent and not parent.drum_instruments.is_empty():
-			instrument_options = parent.drum_instruments.duplicate()
+			instrument_options = parent.drum_instruments
 			print("[MidiTrack] Track %d Channel %d: 使用鼓组乐器列表 (%d 个)" % [index, channel, instrument_options.size()])
 		else:
-			instrument_options = instruments.duplicate()  # fallback
+			instrument_options = instruments  # fallback
 	else:
 		# 普通 channel，只显示常规乐器
 		if "regular_instruments" in parent and not parent.regular_instruments.is_empty():
-			instrument_options = parent.regular_instruments.duplicate()
+			instrument_options = parent.regular_instruments
 			print("[MidiTrack] Track %d Channel %d: 使用常规乐器列表 (%d 个)" % [index, channel, instrument_options.size()])
 		else:
-			instrument_options = instruments.duplicate()  # fallback
+			instrument_options = instruments  # fallback
 
 
 	# 提前填充OptionButton（使用get_node因@onready在_ready之前未初始化）
+	# set_block_signals 防止 add_item 期间触发任何信号（此时信号虽未连接，保持一致的最佳实践）
 	if is_inside_tree():
 		var btn = get_node_or_null("HBoxC/MC/HBoxC/MC/ControlPanel/GridC/InstrumentBtn") as OptionButton
 		if btn:
+			btn.set_block_signals(true)
 			btn.clear()
 			for option_text in instrument_options:
 				btn.add_item(option_text)
+			btn.set_block_signals(false)
 	_init_fin.emit()
 
 func _on_mute_toggled(is_pressed: bool):
