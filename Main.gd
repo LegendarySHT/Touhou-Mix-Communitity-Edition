@@ -224,19 +224,6 @@ func _initialize_core_systems() -> void:
 
 func _init_ui() -> void:
 	# 6 个视图（MidiView/StoreView/TrackView/SettingView/ScoreView/PlayView）改为懒加载，
-	# 由 UIStateManager.ensure_view_loaded() 在首次 change_state 时实例化
-	# 3 个 Main.tscn 内嵌视图（AlbumView/SongView/SortedMidiView）保持预加载
-	# 注：z_index 处理（STORE_VIEW=10, PLAY_VIEW=21）已迁移到 UIStateManager.ensure_view_loaded()
-
-	# 移动返回按钮到上层
-	var right_bottom = get_node("RB_Btn")
-	move_child(right_bottom ,-1)
-	right_bottom.z_index = 20
-
-	# 设置按钮
-	var left_top = get_node("LT_Btn")
-	move_child(left_top ,-1)
-	left_top.z_index = 20
 
 	# 应用主题（Theme 资源 + 主界面组件；背景不在此刷新，由各视图/refresh_backgrounds 处理）
 	# Main 注册为主题应用者，首次自调 apply_theme，再由 refresh_theme_only 广播给所有已注册视图/组件
@@ -260,9 +247,18 @@ func apply_theme() -> void:
 	if sc_panel:
 		ThemeMGR._modify_panel_color(sc_panel, "primary")
 	# PlayerInfo 面板 — 暗色 (primary_dark)
-	var info_panel := get_node_or_null("PlayerInfo/Info/Panel")
+	var info_panel := get_node_or_null("PlayerInfo/InfoPanel")
 	if info_panel:
 		ThemeMGR._modify_panel_color(info_panel, "primary_dark")
+	# ExpandInfoPanel 按钮
+	var expand_btn := get_node_or_null("PlayerInfo/ExpandInfoPanel") as Button
+	if expand_btn:
+		var pd := ThemeMGR.get_color("primary_dark")
+		for state in ["normal", "pressed", "hover"]:
+			var sb := expand_btn.get_theme_stylebox(state)
+			if sb is StyleBoxFlat:
+				sb.bg_color = pd
+				sb.border_color = pd.lightened(0.3)
 
 ## 连接核心系统信号
 func _connect_signals() -> void:

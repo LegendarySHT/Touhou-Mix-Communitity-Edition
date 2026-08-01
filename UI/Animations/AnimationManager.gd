@@ -469,10 +469,13 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 			animate_offset_to(ani_comp, Vector2(900, 200), 0.55, "PlayerInfoPosition")
 			
 		"Shortcut_Menu":
-			var t = animate_offset_to(ani_comp, Vector2(500*tan15, -500), 0.25, "MenuBarPosition")
-			t.finished.connect(func() -> void:
-				ani_comp.visible = false
-			)
+			if ani_comp.has_method("play_transition_animation"):
+				ani_comp.play_transition_animation(true)
+			else:
+				var t = animate_offset_to(ani_comp, Vector2(500*tan15, -500), 0.25, "MenuBarPosition")
+				t.finished.connect(func() -> void:
+					ani_comp.visible = false
+				)
 		"Store_View":
 			tween = animate_fade_out(ani_comp, 0.35, tween_id)
 		"Track_List":
@@ -594,9 +597,12 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			if chara: animate_offset_back(chara, 0.55, "CharactorPosition")
 		
 		"Shortcut_Menu":
-			ani_comp.visible = true
-			ani_comp.offset_transform_position = Vector2(500*tan15, -500)
-			animate_offset_back(ani_comp, 0.25, "MenuBarPosition")
+			if ani_comp.has_method("play_transition_animation"):
+				tween = ani_comp.play_transition_animation(false)
+			else:
+				ani_comp.visible = true
+				ani_comp.offset_transform_position = Vector2(500*tan15, -500)
+				tween = animate_offset_back(ani_comp, 0.25, "MenuBarPosition")
 		"Store_View":
 			var top_bar = ani_comp.get_node("TopBar")
 			top_bar.offset_transform_position = Vector2(0, -500)

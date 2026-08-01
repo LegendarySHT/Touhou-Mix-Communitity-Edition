@@ -94,24 +94,20 @@ func ensure_view_loaded(state: UIState) -> Node:
 	if parent == null:
 		push_error("Parent not found for view: %s" % state)
 		return null
-	# 特殊 z_index 处理（与原 Main._init_ui 逻辑一致）
-	match state:
-		UIState.STORE_VIEW:
-			instance.z_index = 10
-		UIState.PLAY_VIEW:
-			instance.z_index = 21
 	instance.visible = false
 	parent.add_child(instance)
-	# 恢复原 _init_ui 的 move_child(RB_Btn/LT_Btn, -1) 行为：
-	# 对于 z_index < 20 的 Main 直接子视图（StoreView=10, ScoreView=0），
-	# 需确保 RB_Btn(z_index=20)/LT_Btn(z_index=20) 在场景树末尾，
-	# 否则全屏 ScrollContainer 会拦截按钮的点击输入。
-	# PlayView(z_index=21) 高于按钮，且 PlayView 时按钮不可见，无需移动。
-	if parent == get_node_or_null("/root/Main") and instance.z_index < 20:
-		for btn_path in ["/root/Main/RB_Btn", "/root/Main/LT_Btn"]:
-			var btn := get_node_or_null(btn_path)
-			if btn != null and btn.get_parent() == parent:
-				parent.move_child(btn, -1)
+	# StoreView/ScoreView 为全屏 ScrollContainer，会拦截按钮点击；
+	# 将视图移到对应导航按钮之前，让按钮盖在视图上方（按钮位置不变）
+	# StoreView → 移到 RB_Btn 之前；ScoreView → 移到 LT_Btn 之前
+	match state:
+		UIState.STORE_VIEW:
+			var rb := get_node_or_null("/root/Main/RB_Btn")
+			if rb and rb.get_parent() == parent:
+				parent.move_child(instance, rb.get_index())
+		UIState.SCORE_VIEW:
+			var lt := get_node_or_null("/root/Main/LT_Btn")
+			if lt and lt.get_parent() == parent:
+				parent.move_child(instance, lt.get_index())
 	_loaded_lazy_views[state] = instance
 	# 主题色由视图自身 _ready 注册到 ThemeMGR._theme_appliers 并自调 apply_theme() 完成，
 	# 不再需要在此手动补应用（见 ThemeManager.register_theme_applier）

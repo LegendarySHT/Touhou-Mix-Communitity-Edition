@@ -881,7 +881,6 @@ func _reset_note_for_reuse(note: Node, note_type: FlowNote.NoteType) -> void:
 	note.offset_transform_position = Vector2.ZERO
 	note.visible = true
 	note.modulate = Color.WHITE  # 清除任何颜色/透明残留
-	note.z_index = 0
 	note.scale = Vector2.ONE
 	note.rotation = 0.0
 	

@@ -100,6 +100,7 @@ shadow_color = Color(0, 0, 0, 0.3137255)
 shadow_size = 5
 
 [node name="Store" type="Control" unique_id=1657778665]
+z_index = 10
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

@@ -58,6 +58,9 @@ var _visible: bool = true
 # 文本输入时禁用快捷键，避免字母键触发跳转（由 LeftTopBtn 统一驱动）
 var _saved_shortcut: Shortcut = null
 
+## 按钮点击的覆盖回调：设置后点击按钮优先调用此回调，用于外部接管（如 PlayerInfo 展开时）
+var pressed_override: Callable = Callable()
+
 ## 禁用/恢复自身快捷键（禁用时移除 shortcut，恢复时还原）
 func _set_shortcut_enabled(enabled: bool) -> void:
 	if enabled:
@@ -106,6 +109,9 @@ func switch_display(content_to_show: ShowStat = ShowStat.NONE):
 	_current_stat = content_to_show
 
 func _on_button_pressed() -> void:
+	if pressed_override.is_valid():
+		pressed_override.call()
+		return
 	match _current_stat:
 		ShowStat.BACK_BTN:
 			UiStatMGR.go_back()
