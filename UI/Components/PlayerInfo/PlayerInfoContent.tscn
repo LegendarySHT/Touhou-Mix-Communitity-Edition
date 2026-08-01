@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://ck0ou0rxonnto"]
 
-[ext_resource type="Script" uid="uid://c24k3xb5msmbw" path="res://UI/Components/PlayerInfoContent.gd" id="1_5k12w"]
+[ext_resource type="Script" uid="uid://c24k3xb5msmbw" path="res://UI/Components/PlayerInfo/PlayerInfoContent.gd" id="1_5k12w"]
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_shxvi"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3y6u5"]

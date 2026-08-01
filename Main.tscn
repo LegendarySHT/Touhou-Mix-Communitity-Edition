@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
 [ext_resource type="Texture2D" uid="uid://bf7nd5qojdcla" path="res://Resources/icon/lily-white.png" id="2_3b0ty"]
-[ext_resource type="Script" uid="uid://co2lh8xsnaw8m" path="res://UI/Components/PlayerInfo.gd" id="2_w3rk5"]
+[ext_resource type="Script" uid="uid://co2lh8xsnaw8m" path="res://UI/Components/PlayerInfo/PlayerInfoPanel.gd" id="2_w3rk5"]
 [ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/RightBottomBtn.gd" id="7_sqvbp"]
 [ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView/AlbumView.gd" id="7_w3rk5"]
 [ext_resource type="Script" uid="uid://dpn6fchjbt3b8" path="res://UI/Components/SkewArea.gd" id="8_3b0ty"]
@@ -22,10 +22,10 @@
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
 [ext_resource type="PackedScene" uid="uid://xgcfhg1x2v6p" path="res://UI/Components/ShortCutMenu/favorListItem.tscn" id="20_devvj"]
 [ext_resource type="Texture2D" uid="uid://h6i2ju0tpkvl" path="res://Resources/icon/arrow-right.png" id="21_hhcpw"]
-[ext_resource type="Script" uid="uid://b5d8tybu8al2f" path="res://UI/Components/SkewButton.gd" id="22_5mvff"]
+[ext_resource type="Script" uid="uid://b5d8tybu8al2f" path="res://UI/Components/PlayerInfo/SkewButton.gd" id="22_5mvff"]
 [ext_resource type="Script" uid="uid://dly3k36hy880k" path="res://UI/Components/PopupWindow/PopupWindow.gd" id="23_bg4s2"]
 [ext_resource type="Script" uid="uid://bb04m122u3fvm" path="res://UI/Components/LeftTopBtn.gd" id="23_mxvw5"]
-[ext_resource type="PackedScene" uid="uid://ck0ou0rxonnto" path="res://UI/Components/PlayerInfoContent.tscn" id="23_oye8v"]
+[ext_resource type="PackedScene" uid="uid://ck0ou0rxonnto" path="res://UI/Components/PlayerInfo/PlayerInfoContent.tscn" id="23_oye8v"]
 [ext_resource type="Script" uid="uid://darocq4d7rwmu" path="res://UI/Views/SortedMidiView/SortedMidiView.gd" id="26_5mvff"]
 [ext_resource type="Script" uid="uid://c6mxoockmlm1a" path="res://UI/Components/FocusManager.gd" id="26_xrxkg"]
 [ext_resource type="Texture2D" uid="uid://ddy4iuv0wlfbq" path="res://Resources/Components/PopupWindow.png" id="27_hri7i"]
@@ -985,6 +985,7 @@ script = ExtResource("22_5mvff")
 
 [node name="TabC" parent="PlayerInfo/InfoPanelBtn" unique_id=1269850014 instance=ExtResource("23_oye8v")]
 layout_mode = 1
+current_tab = 0
 
 [node name="RB_Btn" type="Panel" parent="." unique_id=334519352]
 z_index = 23
