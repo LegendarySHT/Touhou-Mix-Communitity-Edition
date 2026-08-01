@@ -199,7 +199,8 @@ public partial class MeltySynthPlayer
 
 				if (_sampleRate != systemSampleRate)
 				{
-					GD.PushWarning($"[MeltySynthPlayer][miniaudio] Sample rate mismatch: requested={_sampleRate}, system={systemSampleRate}");
+					// 用 Print 而非 PushWarning，避免每次启动都误报为异常。
+					GD.Print($"[MeltySynthPlayer][miniaudio] Sample rate: synth={_sampleRate}Hz, system={systemSampleRate}Hz (intentional, SRC will handle)");
 				}
 
 				_decodeFrames = Math.Max(MIN_DECODE_FRAMES, Math.Min(MAX_DECODE_FRAMES, _targetDecodeFrames));

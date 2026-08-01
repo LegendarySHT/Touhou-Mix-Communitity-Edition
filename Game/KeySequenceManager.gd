@@ -215,18 +215,21 @@ func _calculate_position_with_bpm_timeline(tick: float) -> float:
 	if n == 0:
 		return (tick / float(midi_timebase)) * (60000.0 / 120.0)
 
+	var tick_delta: float
+	var ms_per_tick: float
+
 	# 边界快速路径：tick 在第一段之前或最后一段之后
 	var first_entry = _bpm_lookup[0]
 	if tick <= first_entry[0]:
 		# tick 在首个 BPM 段起点之前（含 0）：直接用第一段算
-		var tick_delta = tick - first_entry[0]
-		var ms_per_tick = (60000.0 / first_entry[1]) / float(midi_timebase)
+		tick_delta = tick - first_entry[0]
+		ms_per_tick = (60000.0 / first_entry[1]) / float(midi_timebase)
 		return first_entry[2] + tick_delta * ms_per_tick
 	var last_entry = _bpm_lookup[n - 1]
 	if tick >= last_entry[0]:
 		# tick 在最后一段内（含尾部）
-		var tick_delta = tick - last_entry[0]
-		var ms_per_tick = (60000.0 / last_entry[1]) / float(midi_timebase)
+		tick_delta = tick - last_entry[0]
+		ms_per_tick = (60000.0 / last_entry[1]) / float(midi_timebase)
 		return last_entry[2] + tick_delta * ms_per_tick
 
 	# 二分查找：找最后一个 tick <= target 的段（即 target 所在的 BPM 段）
@@ -240,8 +243,8 @@ func _calculate_position_with_bpm_timeline(tick: float) -> float:
 		else:
 			hi = mid - 1
 	var entry = _bpm_lookup[lo]
-	var tick_delta = tick - entry[0]
-	var ms_per_tick = (60000.0 / entry[1]) / float(midi_timebase)
+	tick_delta = tick - entry[0]
+	ms_per_tick = (60000.0 / entry[1]) / float(midi_timebase)
 	return entry[2] + tick_delta * ms_per_tick
 
 ## 将tick时长转换为毫秒时长（考虑BPM变化）

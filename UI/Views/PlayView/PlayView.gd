@@ -648,7 +648,7 @@ func _start_generate_game_sequences(midi_data: MidiData) -> int:
 
 ## 等待游戏序列生成完成 + 后续处理（分类提交、缓存序列）
 ## 若 task_id == -1 表示未启动生成，直接清空 game_sequences
-func _finish_generate_game_sequences(midi_data: MidiData, task_id: int) -> void:
+func _finish_generate_game_sequences(_midi_data: MidiData, task_id: int) -> void:
 	if task_id == -1:
 		game_sequences.clear()
 		return

@@ -1289,8 +1289,8 @@ func get_soundfonts_index() -> Dictionary:
 	return soundfonts_index
 
 ## 获取指定音源的文件路径
-func get_soundfont_path(name: String) -> String:
-	var entry = soundfonts_index.get(name, {})
+func get_soundfont_path(sf2_name: String) -> String:
+	var entry = soundfonts_index.get(sf2_name, {})
 	return entry.get("path", "") if entry is Dictionary else ""
 
 ## 获取背景图索引

@@ -670,9 +670,9 @@ func _create_audio_group(group_index: int) -> Variant:
 
 func _scan_audio_files() -> Array[Dictionary]:
 	# 优先从 FileSystemManager 索引读取
+	var result: Array[Dictionary] = []
 	var fs_mgr = FileSystemManager.instance
 	if fs_mgr and not fs_mgr.audio_files_index.is_empty():
-		var result: Array[Dictionary] = []
 		for entry in fs_mgr.audio_files_index:
 			result.append({
 				"file_name": entry["file_name"],
@@ -684,7 +684,6 @@ func _scan_audio_files() -> Array[Dictionary]:
 		return result
 
 	# 回退：独立扫描文件系统
-	var result: Array[Dictionary] = []
 	var charts_dir := PathHelper.get_charts_dir()
 	if not DirAccess.dir_exists_absolute(charts_dir):
 		return result
@@ -888,11 +887,11 @@ func _create_sf2_item(index: int) -> Variant:
 
 func _scan_sf2_files() -> Array[Dictionary]:
 	# 优先从 FileSystemManager 索引读取
+	var result: Array[Dictionary] = []
 	var fs_mgr = FileSystemManager.instance
 	if fs_mgr:
 		var sf_index = fs_mgr.get_soundfonts_index()
 		if not sf_index.is_empty():
-			var result: Array[Dictionary] = []
 			for sf_name in sf_index:
 				var entry = sf_index[sf_name]
 				result.append({
@@ -905,8 +904,6 @@ func _scan_sf2_files() -> Array[Dictionary]:
 			return result
 
 	# 回退：独立扫描文件系统
-	var result: Array[Dictionary] = []
-
 	var user_dir := PathHelper.get_soundfont_dir()
 	if DirAccess.dir_exists_absolute(user_dir):
 		var dir := DirAccess.open(user_dir)
@@ -1314,9 +1311,9 @@ func _apply_search_filter() -> void:
 
 	match _current_tab:
 		Tab.AUDIO:
-			_apply_grouped_search(_audio_list, _audio_root_map, _audio_item_map,
+			_apply_grouped_search(_audio_root_map, _audio_item_map,
 				_audio_group_order, _audio_items_in_group, _audio_items,
-				"song_name", "file_name", "个音频文件")
+				"file_name", "个音频文件")
 		Tab.SF2:
 			_apply_flat_search(_sf2_nodes, _sf2_items, "file_name", "个音源")
 		Tab.SKIN:
@@ -1400,9 +1397,9 @@ func _get_album_name(album_id: String) -> String:
 	return album_id
 
 
-func _apply_grouped_search(list: VBoxContainer, root_map: Dictionary, item_map: Dictionary,
+func _apply_grouped_search(root_map: Dictionary, item_map: Dictionary,
 		group_order: Array, items_in_group: Dictionary, data: Array,
-		root_key: String, item_key: String, unit: String) -> void:
+		 item_key: String, unit: String) -> void:
 	var query_lower := _search_query.to_lower()
 	var visible_count := 0
 
@@ -1474,8 +1471,6 @@ func _create_tree_root(left_text: String, right_text: String, group_id: String) 
 	var node := TREE_ROOT_SCENE.instantiate() as HBoxContainer
 	var left_label := node.get_node("LeftLabel/label") as Label
 	var right_label := node.get_node("RightLabel/label") as Label
-	var left_clip := node.get_node("LeftLabel") as Control
-	var right_clip := node.get_node("RightLabel") as Control
 	left_label.text = left_text
 	right_label.text = right_text
 	node.set_meta("group_id", group_id)
@@ -1489,8 +1484,6 @@ func _create_tree_item(left_text: String, right_text: String) -> HBoxContainer:
 	var node := TREE_ITEM_SCENE.instantiate() as HBoxContainer
 	var left_label := node.get_node("LeftLabel/label") as Label
 	var right_label := node.get_node("RightLabel/label") as Label
-	var left_clip := node.get_node("LeftLabel") as Control
-	var right_clip := node.get_node("RightLabel") as Control
 	left_label.text = left_text
 	right_label.text = right_text
 	return node

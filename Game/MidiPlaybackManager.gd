@@ -280,7 +280,7 @@ func load_midi(midi_data: MidiData) -> bool:
 	# 首次进入此 MIDI 的 TrackView 时，一次性完成：
 	# 1) 解析简介（提取音频偏移、推荐轨道）
 	# 2) 应用 vocal_offset_ms
-	# 3) 缓存 _desc_recommended_tracks
+	# 3) 缓存 desc_recommended_tracks
 	# 4) 根据 notes 应用推荐轨道到 selected_track_configs（无推荐则启用全部）
 	# 5) 标记 _track_config_initialized=true
 	# 6) 立即持久化到 JSON，避免下次启动重复解析
@@ -298,13 +298,13 @@ func load_midi(midi_data: MidiData) -> bool:
 			current_midi_data.vocal_offset_ms = desc_parse["audio_offset_ms"]
 
 		# 缓存推荐轨道
-		current_midi_data._desc_recommended_tracks.clear()
+		current_midi_data.desc_recommended_tracks.clear()
 		for t in desc_parse["recommended_tracks"]:
-			current_midi_data._desc_recommended_tracks.append(int(t))
+			current_midi_data.desc_recommended_tracks.append(int(t))
 
 		# 根据 notes 应用推荐轨道
 		current_midi_data.selected_track_configs.clear()
-		var recommended := current_midi_data._desc_recommended_tracks
+		var recommended := current_midi_data.desc_recommended_tracks
 		var use_recommendation := not recommended.is_empty()
 		for note in current_notes:
 			if note is MidiParser.NoteEvent:
@@ -451,13 +451,13 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	# 全部为纯文件 I/O + 数据结构构建，无引擎 API 调用
 	var result_wrapper := {"parse": null, "instruments": null, "track_channel_notes": null}
 	var task_id := WorkerThreadPool.add_task(func():
-		var parse_result: Dictionary = MidiParser.load_and_parse_midi(midi_file_path)
-		result_wrapper["parse"] = parse_result
-		if parse_result.get("success", false):
+		var _parse_result: Dictionary = MidiParser.load_and_parse_midi(midi_file_path)
+		result_wrapper["parse"] = _parse_result
+		if _parse_result.get("success", false):
 			# 乐器提取（同时清空 track_info.events 释放 SMF 原始事件内存）
-			result_wrapper["instruments"] = extract_track_channel_instruments(parse_result["track_infos"])
+			result_wrapper["instruments"] = extract_track_channel_instruments(_parse_result["track_infos"])
 			# 按 (track, channel) 分组（TrackView._build_buckets 直接复用，避免主线程 O(N) 重新遍历）
-			result_wrapper["track_channel_notes"] = MidiParser.build_track_channel_notes(parse_result["notes"])
+			result_wrapper["track_channel_notes"] = MidiParser.build_track_channel_notes(_parse_result["notes"])
 	, false, "MIDI Preparse")
 
 	# 主线程轮询任务完成状态，期间继续渲染转场动画（非阻塞）

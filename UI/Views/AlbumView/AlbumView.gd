@@ -81,7 +81,7 @@ func _load_albums() -> void:
 	await _refresh_display_async()
 
 ## 配置变更时重新排序（deferred，避免阻塞 save 流程）
-func _on_config_changed(key: String, section: String, _value: Variant) -> void:
+func _on_config_changed(_key: String, section: String, _value: Variant) -> void:
 	if section == "Browse":
 		call_deferred("_load_albums")
 

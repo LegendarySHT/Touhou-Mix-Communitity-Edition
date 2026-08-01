@@ -85,7 +85,7 @@ func _get_current_para_sepa_idx():
 	# 当分界线越过视口中线（向上越过进入上半屏）时切换到对应按钮
 	# 即：找到第一个仍在视口下半屏的分界线，它的前一个分组就是当前分组
 	var viewport_mid_y := get_global_rect().get_center().y
-	var group_count := separators.size() / 2
+	var group_count := floori(separators.size() / 2.0)
 	for i in range(group_count):
 		if separators[i * 2].global_position.y > viewport_mid_y:
 			return max(i - 1, 0)

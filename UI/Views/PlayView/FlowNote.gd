@@ -32,10 +32,10 @@ var long_instance_id: int = -1  # 同一长条的唯一 ID（用于 ScoreCalcula
 var long_head_height: float = 0.0
 var long_tail_height: float = 0.0
 var hold_press_x: float = NAN  # 长条按住时记录的触摸 x（手势偏移基准；NAN 表示非触摸来源）
-var _cached_head: Control = null
-var _cached_tail: Control = null
-var _cached_body: Control = null
-var _cached_vbox: Control = null
+var cached_head: Control = null
+var cached_tail: Control = null
+var cached_body: Control = null
+var cached_vbox: Control = null
 
 static var _next_long_id: int = 0
 static func _gen_long_id() -> int:

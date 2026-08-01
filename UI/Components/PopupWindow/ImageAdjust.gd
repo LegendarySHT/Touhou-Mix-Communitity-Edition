@@ -2,7 +2,6 @@ extends HBoxContainer
 
 class_name ImageAdjust
 
-@onready var _image_preview: Panel = $ImagePreview
 @onready var _image_texture_rect: TextureRect = $ImagePreview/TextureRect
 @onready var _img_type_btn: OptionButton = $VBoxC/ImgType
 @onready var _img_name_btn: OptionButton = $VBoxC/OtherOptions/ImgName
@@ -163,7 +162,7 @@ func _update_image_options_visibility() -> void:
 	_cover_blur_edit.visible = show_cover
 
 ## 创建纯色纹理（1x1 白色像素，通过 modulate 着色）
-func _create_solid_texture(color: Color) -> ImageTexture:
+func _create_solid_texture() -> ImageTexture:
 	var image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	image.fill(Color.WHITE)
 	var tex := ImageTexture.create_from_image(image)
@@ -217,7 +216,7 @@ func _update_image_preview() -> void:
 			_image_texture_rect.modulate = Color.WHITE
 		IMG_TYPE_SOLID:
 			var color := _solid_color_btn.color
-			_image_texture_rect.texture = _create_solid_texture(color)
+			_image_texture_rect.texture = _create_solid_texture()
 			_image_texture_rect.modulate = color
 		IMG_TYPE_COVER:
 			# 封面模式预览：随机取一个已渲染的专辑封面 + 模糊 shader

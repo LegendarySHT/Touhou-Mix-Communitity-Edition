@@ -154,7 +154,7 @@ var _track_config_initialized: bool = false
 
 ## 从简介解析出的推荐轨道索引（仅首次加载时填充，运行时缓存，不持久化）
 ## 用于 TrackView 首次初始化时设置默认启用的轨道；为空表示简介无推荐，按原逻辑启用全部
-var _desc_recommended_tracks: Array[int] = []
+var desc_recommended_tracks: Array[int] = []
 
 ## 从JSON数据构造MIDI数据
 func from_json(json_data: Dictionary) -> void:

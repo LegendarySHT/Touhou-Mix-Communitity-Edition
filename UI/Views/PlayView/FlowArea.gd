@@ -3,7 +3,6 @@ extends Panel
 class_name FlowArea
 const NOTE_GLOW_SHADER: Shader = preload("res://UI/Views/PlayView/Shaders/NoteGlow.gdshader")
 const LONG_BODY_REPEAT_SHADER: Shader = preload("res://UI/Views/PlayView/Shaders/LongBodyRepeat.gdshader")
-const FlowNote = preload("res://UI/Views/PlayView/FlowNote.gd")
 
 # 判定线
 @onready var jl: HSeparator = $JudgeLine
@@ -496,17 +495,17 @@ func _apply_long_f_mode() -> void:
 # 设置单个 body 节点的 long-f 贴图模式
 # repeat 模式：附加 LongBodyRepeat shader（水平 UV 0-1 拉伸，垂直 UV 重复）
 # stretch 模式：移除 material，恢复默认 STRETCH_SCALE 行为
-func _apply_long_f_mode_to_body(tr) -> void:
-	if not (tr is TextureRect):
+func _apply_long_f_mode_to_body(_tr) -> void:
+	if not (_tr is TextureRect):
 		return
 	if _long_f_mode == "repeat":
-		var mat = tr.material
+		var mat = _tr.material
 		if mat == null or not (mat is ShaderMaterial) or (mat as ShaderMaterial).shader != LONG_BODY_REPEAT_SHADER:
 			var new_mat := ShaderMaterial.new()
 			new_mat.shader = LONG_BODY_REPEAT_SHADER
-			tr.material = new_mat
+			_tr.material = new_mat
 	else:
-		tr.material = null
+		_tr.material = null
 
 # 清空音符对象池中所有节点（皮肤热切换时调用，使下次 _init_note_pool 用新模板重建）
 func _clear_and_free_note_pools() -> void:
@@ -524,31 +523,31 @@ func _clear_and_free_note_pools() -> void:
 	_note_pool_long.clear()
 
 # 确保节点持有独立的 repeat shader material 副本（避免多 note 共享同一 material）
-func _ensure_independent_repeat_material(tr) -> void:
-	if not (tr is TextureRect):
+func _ensure_independent_repeat_material(_tr) -> void:
+	if not (_tr is TextureRect):
 		return
-	var mat = tr.material
+	var mat = _tr.material
 	if mat is ShaderMaterial and (mat as ShaderMaterial).shader == LONG_BODY_REPEAT_SHADER:
-		tr.material = (mat as ShaderMaterial).duplicate()
+		_tr.material = (mat as ShaderMaterial).duplicate()
 
 # 更新长条 body 的垂直重复次数（每帧调用，因 body 高度动态变化）
 # v_repeat = body 高度 / 贴图原始高度；body 比贴图短时至少重复 1 次（拉伸显示）
 func _update_long_body_v_repeat(note: FlowNote, body_height: float) -> void:
 	if _long_f_mode != "repeat" or body_height <= 0.0:
 		return
-	_set_v_repeat_for(note._cached_body, body_height)
+	_set_v_repeat_for(note.cached_body, body_height)
 	var body_core = note.rect.get_node_or_null("VBoxC/body/core")
 	_set_v_repeat_for(body_core, body_height)
 
-func _set_v_repeat_for(tr, body_height: float) -> void:
-	if not (tr is TextureRect):
+func _set_v_repeat_for(_tr, body_height: float) -> void:
+	if not (_tr is TextureRect):
 		return
-	var mat = tr.material
+	var mat = _tr.material
 	if not (mat is ShaderMaterial):
 		return
 	if (mat as ShaderMaterial).shader != LONG_BODY_REPEAT_SHADER:
 		return
-	var tex = tr.texture
+	var tex = _tr.texture
 	var tex_h = 1.0
 	if tex and tex.get_height() > 0:
 		tex_h = float(tex.get_height())
@@ -599,7 +598,7 @@ var _note_max_size_y: float = 0
 var _note_fall_speed: float = 0
 var _note_fall_distance: float = 0
 
-func _create_note(tp: FlowNote.NoteType, x: float, lane_idx: int = -1) -> Node:
+func _create_note(tp: FlowNote.NoteType, x: float, _lane_idx: int = -1) -> Node:
 	# 改为从池中取而不是 duplicate()
 	var note_rect: Node = _get_note_from_pool(tp)
 	note_rect.visible = true  # 从池中取出后立即可见
@@ -666,14 +665,14 @@ func _spawn_note(note_index: int) -> void:
 		await get_tree().process_frame
 		nt.long_tail_height = nt.rect.get_node("VBoxC/tail").size.y
 		nt.long_head_height = nt.rect.get_node("VBoxC/head").size.y
-		nt._cached_vbox = nt.rect.get_node("VBoxC")
-		nt._cached_head = nt.rect.get_node("VBoxC/head")
-		nt._cached_tail = nt.rect.get_node("VBoxC/tail")
-		nt._cached_body = nt.rect.get_node("VBoxC/body")
+		nt.cached_vbox = nt.rect.get_node("VBoxC")
+		nt.cached_head = nt.rect.get_node("VBoxC/head")
+		nt.cached_tail = nt.rect.get_node("VBoxC/tail")
+		nt.cached_body = nt.rect.get_node("VBoxC/body")
 		# repeat 模式下，确保每个 note 实例的 body material 是独立副本
 		# （否则多根长条共享同一 material，v_repeat 会互相覆盖）
 		if _long_f_mode == "repeat":
-			_ensure_independent_repeat_material(nt._cached_body)
+			_ensure_independent_repeat_material(nt.cached_body)
 			_ensure_independent_repeat_material(nt.rect.get_node_or_null("VBoxC/body/core"))
 		_apply_note_glow(nt.rect, _resolved_colors.get("long", Color.WHITE), FlowNote.NoteType.Long)
 		note_half = nt.long_tail_height / 2.0
@@ -753,8 +752,8 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float) -> void:
 	if not note.rect:
 		return
 
-	var head := note._cached_head as Control
-	var tail := note._cached_tail as Control
+	var head := note.cached_head as Control
+	var tail := note.cached_tail as Control
 
 	if note.long_head_height <= 0.0:
 		note.long_head_height = head.size.y
@@ -821,7 +820,7 @@ func _update_note_visibility(note: FlowNote) -> void:
 	var visual_height := rect_ctrl.size.y
 
 	if note.type == FlowNote.NoteType.Long and rect_ctrl.has_node("VBoxC"):
-		var vbox := note._cached_vbox as Control
+		var vbox := note.cached_vbox as Control
 		if vbox:
 			visual_height = max(visual_height, vbox.size.y)
 
@@ -1594,7 +1593,7 @@ func _process(delta: float) -> void:
 	if auto_mode:
 		for long in active_notes.filter(func(nt):
 			if nt.type == FlowNote.NoteType.Long and not nt.is_held and nt.rect:
-				var head = nt._cached_head
+				var head = nt.cached_head
 				return abs(head.global_position.y + head.size.y/2 - jl.position.y) < 12
 			return false):
 			_auto_click(long)
@@ -1607,7 +1606,7 @@ func _process(delta: float) -> void:
 
 		var long_end_time = note.start_time + max(0.0, note.duration)
 		if _synced_current_time >= long_end_time:
-			var tail = note._cached_tail as Control
+			var tail = note.cached_tail as Control
 			var t_half = tail.size.y * 0.5
 			var preset = spark_presets.get("Perfect", 0)
 			if preset > 0:
