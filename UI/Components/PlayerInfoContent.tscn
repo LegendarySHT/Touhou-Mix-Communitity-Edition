@@ -1,0 +1,485 @@
+[gd_scene format=3 uid="uid://ck0ou0rxonnto"]
+
+[ext_resource type="Script" uid="uid://c24k3xb5msmbw" path="res://UI/Components/PlayerInfoContent.gd" id="1_5k12w"]
+[ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_shxvi"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3y6u5"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hhcpw"]
+draw_center = false
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+expand_margin_left = 6.0
+expand_margin_top = 6.0
+expand_margin_right = 6.0
+expand_margin_bottom = 6.0
+shadow_color = Color(0, 0, 0, 0.24313726)
+shadow_size = 12
+shadow_offset = Vector2(2, 2)
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_shxvi"]
+
+[node name="TabC" type="TabContainer" unique_id=1566850446]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_3y6u5")
+current_tab = 2
+tabs_visible = false
+script = ExtResource("1_5k12w")
+
+[node name="MiniInfo" type="HBoxContainer" parent="." unique_id=380852004]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 20
+metadata/_tab_index = 0
+
+[node name="Tip" type="Control" parent="MiniInfo" unique_id=1547006360]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="MiniInfo/Tip" unique_id=1616197]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 148.0
+offset_bottom = 13.0
+grow_vertical = 0
+rotation = -1.0471976
+offset_transform_enabled = true
+offset_transform_position = Vector2(-25, -45)
+text = "点击此处注册"
+
+[node name="Avatar" type="Panel" parent="MiniInfo" unique_id=2043667768]
+visible = false
+custom_minimum_size = Vector2(150, 150)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hhcpw")
+
+[node name="TextureRect" type="TextureRect" parent="MiniInfo/Avatar" unique_id=90732037]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 8
+mouse_filter = 2
+texture = ExtResource("1_shxvi")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="Data" type="VBoxContainer" parent="MiniInfo" unique_id=994928609]
+visible = false
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+mouse_filter = 2
+alignment = 1
+
+[node name="name" type="Label" parent="MiniInfo/Data" unique_id=1131806176]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Anonymous Player"
+vertical_alignment = 2
+
+[node name="level" type="Label" parent="MiniInfo/Data" unique_id=1056770046]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Lv256"
+vertical_alignment = 2
+
+[node name="pp" type="Label" parent="MiniInfo/Data" unique_id=1385797429]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "114514 pp"
+vertical_alignment = 2
+
+[node name="MC" type="MarginContainer" parent="MiniInfo/Data" unique_id=1463041133]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_top = 10
+
+[node name="ProgressBar" type="ProgressBar" parent="MiniInfo/Data/MC" unique_id=1609053280]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="C" type="Control" parent="." unique_id=430654863]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="Skew" type="Node2D" parent="C" unique_id=809671097]
+skew = 0.2617994
+
+[node name="LogIn" type="VBoxContainer" parent="C/Skew" unique_id=649973919]
+custom_minimum_size = Vector2(618, 630)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 50.0
+offset_right = 668.0
+offset_bottom = 630.0
+theme_override_constants/separation = 15
+alignment = 1
+
+[node name="ModeToggle" type="HBoxContainer" parent="C/Skew/LogIn" unique_id=2071699909]
+layout_mode = 2
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="LoginTab" type="Button" parent="C/Skew/LogIn/ModeToggle" unique_id=2122185296]
+custom_minimum_size = Vector2(160, 80)
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_shxvi")
+text = "登录"
+
+[node name="SignUpTab" type="Button" parent="C/Skew/LogIn/ModeToggle" unique_id=828383406]
+custom_minimum_size = Vector2(160, 80)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_shxvi")
+text = "注册"
+
+[node name="Account" type="Label" parent="C/Skew/LogIn" unique_id=327849834]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "帐号"
+
+[node name="AccountLineEdit" type="LineEdit" parent="C/Skew/LogIn" unique_id=585599888]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+
+[node name="Password" type="Label" parent="C/Skew/LogIn" unique_id=1913502855]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "密码"
+
+[node name="PwdLineEdit" type="LineEdit" parent="C/Skew/LogIn" unique_id=5473043]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+secret = true
+
+[node name="ConfirmPassword" type="Label" parent="C/Skew/LogIn" unique_id=1095402338]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "确认密码"
+
+[node name="ConfirmPwdLineEdit" type="LineEdit" parent="C/Skew/LogIn" unique_id=1586639670]
+visible = false
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+secret = true
+
+[node name="Control" type="Control" parent="C/Skew/LogIn" unique_id=197178585]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="SubmitBtn" type="Button" parent="C/Skew/LogIn" unique_id=2016428562]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "登录"
+
+[node name="ErrorMsg" type="Label" parent="C/Skew/LogIn" unique_id=941536254]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 1
+
+[node name="ProfileView" type="HBoxContainer" parent="." unique_id=1831859024]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 15
+metadata/_tab_index = 2
+
+[node name="Left" type="VBoxContainer" parent="ProfileView" unique_id=519660239]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="ProfileView/Left" unique_id=504012720]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 20
+
+[node name="AvatarBig" type="Panel" parent="ProfileView/Left/Header" unique_id=1572480588]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hhcpw")
+
+[node name="TextureRect" type="TextureRect" parent="ProfileView/Left/Header/AvatarBig" unique_id=1518243604]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("1_shxvi")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="NameLevelVBox" type="VBoxContainer" parent="ProfileView/Left/Header" unique_id=2024943027]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="NameLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox" unique_id=977938233]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Anonymous Player"
+
+[node name="LevelLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox" unique_id=2074223748]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "Level 1"
+
+[node name="PPLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox" unique_id=906206609]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "0 pp"
+
+[node name="RankLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox" unique_id=1059053701]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Unranked"
+
+[node name="ProgressMC" type="MarginContainer" parent="ProfileView/Left" unique_id=98318325]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_top = 5
+
+[node name="LevelProgressBar" type="ProgressBar" parent="ProfileView/Left/ProgressMC" unique_id=1523172660]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="StatsGrid" type="GridContainer" parent="ProfileView/Left" unique_id=915956401]
+layout_mode = 2
+mouse_filter = 2
+columns = 2
+
+[node name="TotalPlaysLabel" type="Label" parent="ProfileView/Left/StatsGrid" unique_id=590004141]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Total Plays: 0"
+
+[node name="AccuracyLabel" type="Label" parent="ProfileView/Left/StatsGrid" unique_id=1025555811]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Accuracy: 0.00%"
+
+[node name="MaxComboLabel" type="Label" parent="ProfileView/Left/StatsGrid" unique_id=807132868]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Max Combo: 0"
+
+[node name="PlayTimeLabel" type="Label" parent="ProfileView/Left/StatsGrid" unique_id=731451521]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Play Time: 0h"
+
+[node name="ExpandBtn" type="Button" parent="ProfileView/Left" unique_id=581980517]
+custom_minimum_size = Vector2(0, 45)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "展开详情"
+
+[node name="DetailSection" type="VBoxContainer" parent="ProfileView/Left" unique_id=1894245263]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="GradeTitle" type="Label" parent="ProfileView/Left/DetailSection" unique_id=1799351056]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "成绩分布"
+
+[node name="GradeHBox" type="HBoxContainer" parent="ProfileView/Left/DetailSection" unique_id=1658315665]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 15
+alignment = 1
+
+[node name="SS" type="Label" parent="ProfileView/Left/DetailSection/GradeHBox" unique_id=242439500]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "SS: 0"
+
+[node name="S" type="Label" parent="ProfileView/Left/DetailSection/GradeHBox" unique_id=86924195]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "S: 0"
+
+[node name="A" type="Label" parent="ProfileView/Left/DetailSection/GradeHBox" unique_id=2116359018]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "A: 0"
+
+[node name="B" type="Label" parent="ProfileView/Left/DetailSection/GradeHBox" unique_id=1303747372]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "B: 0"
+
+[node name="C" type="Label" parent="ProfileView/Left/DetailSection/GradeHBox" unique_id=404815936]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "C: 0"
+
+[node name="D" type="Label" parent="ProfileView/Left/DetailSection/GradeHBox" unique_id=746813513]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "D: 0"
+
+[node name="RecentTitle" type="Label" parent="ProfileView/Left/DetailSection" unique_id=2007378520]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "最近游玩"
+
+[node name="RecentList" type="VBoxContainer" parent="ProfileView/Left/DetailSection" unique_id=859207865]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+
+[node name="Score1" type="HBoxContainer" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1929612305]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 15
+
+[node name="SongName" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score1" unique_id=1054588476]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "—"
+
+[node name="Score" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score1" unique_id=655324940]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "0"
+
+[node name="Grade" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score1" unique_id=1370022912]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "—"
+
+[node name="Score2" type="HBoxContainer" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1829726772]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 15
+
+[node name="SongName" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score2" unique_id=802964627]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "—"
+
+[node name="Score" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score2" unique_id=1709712646]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "0"
+
+[node name="Grade" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score2" unique_id=476367321]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "—"
+
+[node name="Score3" type="HBoxContainer" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1050113779]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 15
+
+[node name="SongName" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score3" unique_id=668620806]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "—"
+
+[node name="Score" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score3" unique_id=1574864820]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "0"
+
+[node name="Grade" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score3" unique_id=340294733]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "—"
+
+[node name="Score4" type="HBoxContainer" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1700501661]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 15
+
+[node name="SongName" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score4" unique_id=604194629]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "—"
+
+[node name="Score" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score4" unique_id=1831483921]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "0"
+
+[node name="Grade" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score4" unique_id=859807868]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "—"
+
+[node name="Score5" type="HBoxContainer" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1600677135]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 15
+
+[node name="SongName" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score5" unique_id=1980759879]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "—"
+
+[node name="Score" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score5" unique_id=936904624]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "0"
+
+[node name="Grade" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score5" unique_id=49873275]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "—"
+
+[node name="Right" type="VBoxContainer" parent="ProfileView" unique_id=2103422124]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[connection signal="pressed" from="C/Skew/LogIn/ModeToggle/LoginTab" to="." method="_on_login_tab_pressed"]
+[connection signal="pressed" from="C/Skew/LogIn/ModeToggle/SignUpTab" to="." method="_on_signup_tab_pressed"]
+[connection signal="pressed" from="C/Skew/LogIn/SubmitBtn" to="." method="_on_submit_btn_pressed"]
+[connection signal="pressed" from="ProfileView/Left/ExpandBtn" to="." method="_on_expand_btn_pressed"]

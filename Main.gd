@@ -246,19 +246,19 @@ func apply_theme() -> void:
 	var sc_panel := get_node_or_null("skew/C/ShortCutMenu/Panel")
 	if sc_panel:
 		ThemeMGR._modify_panel_color(sc_panel, "primary")
-	# PlayerInfo 面板 — 暗色 (primary_dark)
-	var info_panel := get_node_or_null("PlayerInfo/InfoPanel")
-	if info_panel:
-		ThemeMGR._modify_panel_color(info_panel, "primary_dark")
-	# ExpandInfoPanel 按钮
-	var expand_btn := get_node_or_null("PlayerInfo/ExpandInfoPanel") as Button
-	if expand_btn:
+	# PlayerInfo 面板按钮 — 暗色 (primary_dark)
+	var info_btn := get_node_or_null("PlayerInfo/InfoPanelBtn") as Button
+	if info_btn:
 		var pd := ThemeMGR.get_color("primary_dark")
 		for state in ["normal", "pressed", "hover"]:
-			var sb := expand_btn.get_theme_stylebox(state)
+			var sb := info_btn.get_theme_stylebox(state)
 			if sb is StyleBoxFlat:
 				sb.bg_color = pd
 				sb.border_color = pd.lightened(0.3)
+	# LogIn 在 Node2D(Skew) 下，不继承 Main 的 theme，手动复制
+	var login := get_node_or_null("PlayerInfo/InfoPanelBtn/TabC/C/Skew/LogIn") as Control
+	if login:
+		login.theme = self.theme
 
 ## 连接核心系统信号
 func _connect_signals() -> void:
