@@ -205,6 +205,16 @@ func animate_offset_scale(target: Node, to_scale: Vector2, duration: float = DUR
 	tween.tween_property(target, "offset_transform_scale", to_scale, duration)
 	return tween
 
+## 创建 offset_transform_rotation 旋转动画（用于 Control 节点的非破坏性旋转，不影响布局）
+func animate_offset_rotation(target: Node, to_rotation: float, duration: float = DURATION_NORMAL,
+							 tween_id: String = "") -> Tween:
+	var tween = _create_tween(tween_id)
+	tween.set_ease(EASING_STANDARD)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	target.offset_transform_enabled = true
+	tween.tween_property(target, "offset_transform_rotation", to_rotation, duration)
+	return tween
+
 ## 延迟执行回调
 func delay_call(callback: Callable, delay: float, tween_id: String = "") -> Tween:
 	var tween = _create_tween(tween_id)
@@ -383,21 +393,50 @@ func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStat
 			if chara and chara.offset_transform_enabled:
 				chara.offset_transform_position = Vector2.ZERO
 
+	# 收集所有退出动画的有效 tween，等待其中任一完成后再进入新场景
+	var valid_out_tween: Tween = null
 	for key in ui_exist.keys():
 		if ui_exist[key] and (key in ui_part[old_state]) and (key not in ui_part[new_state]):
-			animate_ui_out(key, old_state, new_state)
+			var tween := animate_ui_out(key, old_state, new_state)
 			ui_exist[key] = false
+			if tween and tween.is_valid() and not valid_out_tween:
+				valid_out_tween = tween
+
+	# 等待其中一个有效的 tween 完成，再触发入场动画
+	if valid_out_tween:
+		var captured_version := _current_transition_version
+		valid_out_tween.finished.connect(func() -> void:
+			if UiStatMGR.transition_version != captured_version:
+				return
+			_scene_transition_enter(old_state, new_state)
+		)
+	else:
+		_scene_transition_enter(old_state, new_state)
 
 func _scene_transition_enter(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	if UiStatMGR.transition_version != _current_transition_version:
 		return
-	# 新组件：播放入场动画
+	# 新组件：播放入场动画，收集所有有效 tween
+	var valid_in_tween: Tween
 	for key in ui_exist.keys():
 		if not ui_exist[key] and key in ui_part.get(new_state, []):
-			animate_ui_in(key, old_state)
+			var tween := animate_ui_in(key, old_state)
 			ui_exist[key] = true
+			if tween and tween.is_valid() and not valid_in_tween:
+				valid_in_tween = tween
 
-func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
+	# 等待其中一个有效的 tween 完成，再发射结束信号
+	if valid_in_tween:
+		var captured_version := _current_transition_version
+		valid_in_tween.finished.connect(func() -> void:
+			if UiStatMGR.transition_version != captured_version:
+				return
+			scene_transition_fin.emit()
+		)
+	else:
+		scene_transition_fin.emit()
+
+func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> Tween:
 	print("组件退出动画: %s" % ui_name)
 	var tween_id = "%s_out" % ui_name
 	var tween : Tween
@@ -499,18 +538,10 @@ func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_stat
 				ani_comp.switch_page()
 		"Score_View":
 			ani_comp.animate(false)
-			if new_state!= UIStateManager.UIState.PLAY_VIEW:
-				await get_tree().create_timer(0.7).timeout
-			tween = animate_fade_out(ani_comp, 0.45, tween_id)
+			var ani_time = 0.45 if new_state == UIStateManager.UIState.PLAY_VIEW else 1.2
+			tween = animate_fade_out(ani_comp, ani_time, tween_id)
 
-	# 发射结束信号
-	if tween:
-		var captured_version := _current_transition_version
-		tween.finished.connect(func() -> void:
-			if UiStatMGR.transition_version != captured_version:
-				return
-			_scene_transition_enter(old_state, new_state)
-		)
+	return tween
 
 ## 保存设置配置（在 SettingView 退出时调用）
 func _save_settings_on_exit(setting_view: Control) -> void:
@@ -529,7 +560,7 @@ func _save_settings_on_exit(setting_view: Control) -> void:
 	else:
 		push_warning("[AnimationManager] Failed to save settings")
 
-func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
+func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> Tween:
 	print("组件进入动画: %s" % ui_name)
 	var tween_id = "%s_in" % ui_name
 	var tween : Tween
@@ -631,11 +662,4 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> void:
 			tween.finished.connect(func ():
 				ani_comp.animate())
 
-	# 播放完毕
-	if tween:
-		var captured_version := _current_transition_version
-		tween.finished.connect(func() -> void:
-			if UiStatMGR.transition_version != captured_version:
-				return
-			scene_transition_fin.emit()
-		)
+	return tween

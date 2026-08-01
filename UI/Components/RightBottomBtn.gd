@@ -90,13 +90,13 @@ func switch_display(content_to_show: ShowStat = ShowStat.NONE):
 	# 控制内容显示
 	match content_to_show:
 		ShowStat.BACK_BTN:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, 0), 0.35, "RB_ICON")
+			ani.animate_offset_to(vboxc, Vector2(0, -430))
 			event.keycode = KEY_ESCAPE
 		ShowStat.STORE_BTN:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, 380), 0.35, "RB_ICON")
+			ani.animate_offset_to(vboxc, Vector2(0, 0))
 			event.keycode = KEY_O
 		ShowStat.ARROW_RIGHT:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, -380), 0.35, "RB_ICON")
+			ani.animate_offset_to(vboxc, Vector2(0, -860))
 			event.keycode = KEY_RIGHT
 	
 	# 快捷键：shortcut 被禁用时更新到 _saved_shortcut，恢复后即生效

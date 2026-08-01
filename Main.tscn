@@ -533,6 +533,7 @@ script = ExtResource("8_3b0ty")
 metadata/_edit_lock_ = true
 
 [node name="ShortCutMenu" type="VBoxContainer" parent="skew/C" unique_id=22779074]
+z_index = 1
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 1.0
@@ -901,69 +902,41 @@ ms"
 
 [node name="VBoxC" type="VBoxContainer" parent="LT_Btn" unique_id=757212644]
 layout_mode = 0
-offset_left = 40.0
-offset_top = -390.0
-offset_right = 210.0
-offset_bottom = 660.0
+offset_left = 30.0
+offset_top = -380.0
+offset_right = 200.0
+offset_bottom = 670.0
 grow_horizontal = 2
 grow_vertical = 2
+offset_transform_enabled = true
 mouse_filter = 2
 theme_override_constants/separation = 300
 
-[node name="C3" type="Control" parent="LT_Btn/VBoxC" unique_id=972522485]
-custom_minimum_size = Vector2(150, 150)
+[node name="Retry" type="TextureRect" parent="LT_Btn/VBoxC" unique_id=1400113552]
+custom_minimum_size = Vector2(140, 140)
 layout_mode = 2
-mouse_filter = 2
-
-[node name="Retry" type="TextureRect" parent="LT_Btn/VBoxC/C3" unique_id=1400113552]
-custom_minimum_size = Vector2(140, 150)
-layout_mode = 0
-offset_left = -20.0
-offset_top = 20.0
-offset_right = 120.0
-offset_bottom = 170.0
-rotation = -0.34906584
+offset_transform_enabled = true
+offset_transform_rotation = -0.34906584
 mouse_filter = 2
 texture = ExtResource("18_sqvbp")
 stretch_mode = 5
 
-[node name="C" type="Control" parent="LT_Btn/VBoxC" unique_id=816651028]
-custom_minimum_size = Vector2(150, 150)
+[node name="Setting" type="TextureRect" parent="LT_Btn/VBoxC" unique_id=1593430758]
+custom_minimum_size = Vector2(140, 140)
 layout_mode = 2
-mouse_filter = 2
-metadata/_edit_lock_ = true
-
-[node name="Setting" type="TextureRect" parent="LT_Btn/VBoxC/C" unique_id=1593430758]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_right = -30.0
-grow_horizontal = 2
-grow_vertical = 2
-rotation = -0.34906584
-pivot_offset_ratio = Vector2(0.5, 0.5)
+offset_transform_enabled = true
+offset_transform_rotation = -0.34906584
 mouse_filter = 2
 texture = ExtResource("10_5mvff")
 expand_mode = 1
 stretch_mode = 5
 metadata/_edit_lock_ = true
 
-[node name="C2" type="Control" parent="LT_Btn/VBoxC" unique_id=2038039474]
-custom_minimum_size = Vector2(150, 150)
+[node name="Arrow" type="TextureRect" parent="LT_Btn/VBoxC" unique_id=771736228]
+custom_minimum_size = Vector2(140, 140)
 layout_mode = 2
-mouse_filter = 2
-
-[node name="Arrow" type="TextureRect" parent="LT_Btn/VBoxC/C2" unique_id=771736228]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_right = -30.0
-grow_horizontal = 2
-grow_vertical = 2
-rotation = -0.34906584
-pivot_offset_ratio = Vector2(0.5, 0.5)
+offset_transform_enabled = true
+offset_transform_rotation = -0.34906584
 mouse_filter = 2
 texture = ExtResource("21_hhcpw")
 expand_mode = 1
@@ -1200,7 +1173,6 @@ mouse_filter = 2
 
 [node name="RB_Btn" type="Panel" parent="." unique_id=334519352]
 z_index = 23
-y_sort_enabled = true
 clip_contents = true
 layout_mode = 1
 anchors_preset = 3
@@ -1237,64 +1209,41 @@ icon_alignment = 1
 
 [node name="VBoxC" type="VBoxContainer" parent="RB_Btn" unique_id=571032761]
 layout_mode = 0
-offset_left = -20.0
-offset_top = 380.0
-offset_right = 160.0
-offset_bottom = 1320.0
+offset_left = 15.0
+offset_top = 350.0
+offset_right = 195.0
+offset_bottom = 1390.0
 grow_horizontal = 2
 grow_vertical = 2
+offset_transform_enabled = true
 mouse_filter = 2
-theme_override_constants/separation = 200
+theme_override_constants/separation = 250
 
-[node name="C1" type="Control" parent="RB_Btn/VBoxC" unique_id=499774940]
+[node name="Store" type="TextureRect" parent="RB_Btn/VBoxC" unique_id=449703424]
 custom_minimum_size = Vector2(180, 180)
 layout_mode = 2
-mouse_filter = 2
-
-[node name="Store" type="TextureRect" parent="RB_Btn/VBoxC/C1" unique_id=449703424]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-rotation = -0.5235988
+offset_transform_enabled = true
+offset_transform_rotation = -0.5235988
 mouse_filter = 2
 texture = ExtResource("8_hri7i")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="C2" type="Control" parent="RB_Btn/VBoxC" unique_id=929447139]
+[node name="Back" type="TextureRect" parent="RB_Btn/VBoxC" unique_id=1406446878]
 custom_minimum_size = Vector2(180, 180)
 layout_mode = 2
-mouse_filter = 2
-
-[node name="Back" type="TextureRect" parent="RB_Btn/VBoxC/C2" unique_id=1406446878]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-rotation = -0.5235988
+offset_transform_enabled = true
+offset_transform_rotation = -0.5235988
 mouse_filter = 2
 texture = ExtResource("9_w3rk5")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="C3" type="Control" parent="RB_Btn/VBoxC" unique_id=1205842275]
+[node name="Arrow" type="TextureRect" parent="RB_Btn/VBoxC" unique_id=1638160062]
 custom_minimum_size = Vector2(180, 180)
 layout_mode = 2
-mouse_filter = 2
-
-[node name="Arrow" type="TextureRect" parent="RB_Btn/VBoxC/C3" unique_id=1638160062]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-rotation = -0.5235988
+offset_transform_enabled = true
+offset_transform_rotation = -0.5235988
 mouse_filter = 2
 texture = ExtResource("21_hhcpw")
 expand_mode = 1

@@ -210,6 +210,7 @@ anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 8.0
 grow_horizontal = 2
+mouse_filter = 2
 theme_override_styles/fill = SubResource("StyleBoxEmpty_50kwk")
 value = 40.0
 show_percentage = false
@@ -257,6 +258,7 @@ offset_right = -20.0
 offset_bottom = 160.0
 grow_horizontal = 0
 pivot_offset = Vector2(450, 70)
+mouse_filter = 2
 alignment = 1
 
 [node name="type" type="Label" parent="Layer/Score" unique_id=1052822198]

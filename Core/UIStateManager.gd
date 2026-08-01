@@ -125,12 +125,6 @@ func change_state(new_state: UIState, stash_state: bool = true) -> void:
 	# 确保目标视图已加载（懒加载）
 	if LAZY_VIEW_PATHS.has(new_state):
 		ensure_view_loaded(new_state)
-	# 提前加载后续界面
-	match new_state:
-		UIState.MIDI_VIEW:
-			ensure_view_loaded(UIState.TRACK_VIEW)
-			ensure_view_loaded(UIState.PLAY_VIEW)
-			ensure_view_loaded(UIState.SCORE_VIEW)
 
 	var old_state = current_state
 

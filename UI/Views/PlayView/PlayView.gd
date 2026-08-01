@@ -46,9 +46,6 @@ extends Control
 # 轨道光效及键位显示
 @onready var lane_area: Control = $Lane
 
-# @onready var env: WorldEnvironment = $FlowArea/SVP/WorldEnvironment
-# @onready var current_env: Environment = env.environment
-
 # 背景配置走 ThemeManager（theme.ini [backgrounds] 段），不再从 config.ini 读取
 const BG_BLUR_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundBlur.gdshader"
 const BG_FLASH_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundFlash.gdshader"
@@ -149,8 +146,6 @@ func _ready() -> void:
 	if not EvtBus.config_changed.is_connected(_on_config_changed):
 		EvtBus.config_changed.connect(_on_config_changed)
 	_set_debug_overlay_visible(show_debug_info)
-
-	# env.environment = null
 
 	if ThemeMGR:
 		ThemeMGR.register_theme_applier(self)
@@ -957,8 +952,9 @@ func _on_game_finished() -> void:
 	play_result.late_count = snap["late_count"]
 
 	# 进入结算界面（资源清理已统一由 _on_state_changed 处理）
-	get_node("/root/Main/ScoreView").set_display(play_result)
+	await get_tree().create_timer(1).timeout
 	UiStatMGR.change_state(UIStateManager.UIState.SCORE_VIEW, false)
+	get_node("/root/Main/ScoreView").set_display(play_result)
 
 ## 退出游戏
 func _on_quit_pressed() -> void:

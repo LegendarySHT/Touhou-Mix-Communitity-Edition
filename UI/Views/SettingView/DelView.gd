@@ -1493,8 +1493,13 @@ func _apply_scrolls_to_container(container: VBoxContainer) -> void:
 	if container.get_child_count() == 0:
 		return
 	await get_tree().process_frame
+	# await 期间场景可能被切换并释放 container / children，需重新校验
+	if not is_instance_valid(container):
+		return
 	var processed := 0
 	for child in container.get_children():
+		if not is_instance_valid(child):
+			continue
 		var left_label := child.get_node_or_null("LeftLabel/label") as Label
 		var left_clip := child.get_node_or_null("LeftLabel") as Control
 		if left_label and left_clip:
@@ -1506,6 +1511,8 @@ func _apply_scrolls_to_container(container: VBoxContainer) -> void:
 		processed += 1
 		if processed % 30 == 0:
 			await get_tree().process_frame
+			if not is_instance_valid(container):
+				return
 
 
 func _set_indeterminate(cb: CheckBox, indeterminate: bool) -> void:
