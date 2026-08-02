@@ -239,14 +239,10 @@ func _start_midi_compute() -> void:
 	_compute_thread.start(_parse_thread_func.bind(path))
 
 
-## 在后台线程中解析 MIDI 文件（仅读文件，无场景树访问）
-## 同时构建 (track, channel) → notes 分组，供 TrackView._build_buckets 直接复用
-## 复用已启动的 worker 线程，零额外延迟
+## 在后台线程中解析 MIDI 文件（仅读文件 + C# 解析，无 Godot RefCounted 创建）
+## NoteEvent 重建与 track_channel_notes 分组在主线程 _on_parse_done 完成（避免 worker 创建 66k RefCounted）
 func _parse_thread_func(path: String) -> void:
 	var result: Dictionary = MidiParser.load_and_parse_midi(path)
-	# 构建 track_channel_notes 分组（供 TrackView 直接复用，避免主线程 O(N) 重新遍历）
-	if result.get("success", false):
-		result["track_channel_notes"] = MidiParser.build_track_channel_notes(result["notes"])
 	call_deferred("_on_parse_done", result)
 
 
@@ -266,6 +262,15 @@ func _on_parse_done(result: Dictionary) -> void:
 		_info_cache[midi.id] = {"time_str": "—", "bpm_str": "—", "note_str": "—", "mpp_str": "—"}
 		_apply_display()
 		return
+
+	# 主线程从 SOA 重建 NoteEvent（避免 worker 线程批量创建 66k RefCounted 导致 Android ARM 引用计数损坏）
+	# worker 只返回 SOA 紧凑数组（PackedInt32Array，值类型 marshalling 安全），NoteEvent 重建在此完成
+	if result.get("notes", []).is_empty() and result.has("soa") and not result["soa"].is_empty():
+		result["notes"] = MidiParser.build_notes_from_soa(result["soa"])
+		result.erase("soa")  # 释放 SOA 的 PackedInt32Array 内存
+	# 主线程构建 track_channel_notes（依赖 NoteEvent，必须在 NoteEvent 重建后）
+	if not result.has("track_channel_notes") and not result.get("notes", []).is_empty():
+		result["track_channel_notes"] = MidiParser.build_track_channel_notes(result["notes"])
 
 	# 将解析结果回填到 MidiData（若 MidiPlaybackManager 尚未填入）
 	if midi.duration_ms <= 0:

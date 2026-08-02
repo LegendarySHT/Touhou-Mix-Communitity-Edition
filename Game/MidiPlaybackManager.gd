@@ -245,13 +245,18 @@ func load_midi(midi_data: MidiData) -> bool:
 			push_error("Failed to parse MIDI file: %s" % midi_file_path)
 			return false
 
+		# 主线程从 SOA 重建 NoteEvent（load_and_parse_midi 不再在 worker 创建 RefCounted）
+		if parse_result.get("notes", []).is_empty() and parse_result.has("soa") and not parse_result["soa"].is_empty():
+			parse_result["notes"] = MidiParser.build_notes_from_soa(parse_result["soa"])
+			parse_result.erase("soa")
+
 		# 保存解析结果
 		current_notes = parse_result["notes"]
 		bpm_timeline = parse_result.get("bpm_timeline", [])  # 获取BPM时间线
 		midi_timebase = parse_result.get("timebase", 480)  # 保存timebase
 		track_infos = parse_result["track_infos"]
 
-		# MidiParser.load_and_parse_midi 末尾已按 start_time 升序排序，无需重复排序
+		# build_notes_from_soa 已按 start_time 升序排序，无需重复排序
 
 		current_midi_data.parsed_notes = current_notes
 		current_midi_data.track_count = track_infos.size()
@@ -448,17 +453,15 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	# 预先写入路径，让 load_midi 内部的缓存检查 (midi_data.midi_file_path == midi_file_path) 命中
 	midi_data.midi_file_path = midi_file_path
 
-	# 在 worker 线程中执行昂贵的 MIDI 解析 + 乐器提取 + 按 (track,channel) 分组
-	# 全部为纯文件 I/O + 数据结构构建，无引擎 API 调用
-	var result_wrapper := {"parse": null, "instruments": null, "track_channel_notes": null}
+	# 在 worker 线程中执行 MIDI 解析（C# 纯 .NET + PackedArray marshalling，线程安全）
+	# NoteEvent 重建与 track_channel_notes 分组在主线程完成（避免 worker 创建 66k RefCounted）
+	var result_wrapper := {"parse": null, "instruments": null}
 	var task_id := WorkerThreadPool.add_task(func():
 		var _parse_result: Dictionary = MidiParser.load_and_parse_midi(midi_file_path)
 		result_wrapper["parse"] = _parse_result
 		if _parse_result.get("success", false):
-			# 乐器信息由 C# MidiParserNative 一次性提取，直接复用
+			# 乐器信息由 C# MidiParserNative 一次性提取，直接复用（小 Dictionary，worker 安全）
 			result_wrapper["instruments"] = _parse_result.get("track_instruments", {})
-			# 按 (track, channel) 分组（TrackView._build_buckets 直接复用，避免主线程 O(N) 重新遍历）
-			result_wrapper["track_channel_notes"] = MidiParser.build_track_channel_notes(_parse_result["notes"])
 	, false, "MIDI Preparse")
 
 	# 主线程轮询任务完成状态，期间继续渲染转场动画（非阻塞）
@@ -472,6 +475,14 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	if not parse_result.get("success", false):
 		push_error("[MidiPlaybackManager] Failed to parse MIDI file: %s" % midi_file_path)
 		return false
+
+	# 主线程从 SOA 重建 NoteEvent（避免 worker 线程批量创建 66k RefCounted 导致 Android ARM 引用计数损坏）
+	if parse_result.get("notes", []).is_empty() and parse_result.has("soa") and not parse_result["soa"].is_empty():
+		parse_result["notes"] = MidiParser.build_notes_from_soa(parse_result["soa"])
+		parse_result.erase("soa")  # 释放 SOA 的 PackedInt32Array 内存
+
+	# 主线程构建 track_channel_notes（依赖 NoteEvent，必须在 NoteEvent 重建后）
+	var track_channel_notes := MidiParser.build_track_channel_notes(parse_result["notes"])
 
 	# 写入 midi_data 字段，load_midi 后续会命中缓存跳过同步解析
 	midi_data.parsed_notes = parse_result["notes"]
@@ -489,10 +500,10 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	cached_track_channel_instruments = result_wrapper["instruments"]
 	midi_data.track_channel_instruments = cached_track_channel_instruments.duplicate()
 
-	# 复用 worker 中已构建的 (track,channel) → notes 分组（避免 TrackView._build_buckets 重新遍历）
-	midi_data.runtime_track_channel_notes = result_wrapper["track_channel_notes"]
+	# 主线程构建的 (track,channel) → notes 分组（TrackView._build_buckets 直接复用）
+	midi_data.runtime_track_channel_notes = track_channel_notes
 
-	# MidiParser.load_and_parse_midi 末尾已按 start_time 升序排序，无需重复排序
+	# build_notes_from_soa 已按 start_time 升序排序，无需重复排序
 
 	GLogger.info("MIDI preparse completed (threaded): %d notes, duration=%.0fms, %d (track,channel) groups" % [
 		midi_data.parsed_notes.size(),

@@ -377,9 +377,6 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	var converted_notes = _convert_notes_to_internal_format(game_notes)
 
 	# Step 2: 按时间排序Note（in-place 排序，避免 duplicate 整个数组）
-	# 6 万音符时 duplicate 会产生 ~24MB 临时内存峰值
-	# 注：MidiParser 末尾已对 notes 按 start_time 排序，但筛选后顺序仍保序；
-	# 此处仍执行一次 sort 保证稳定性（_tick_to_ms 是 tick 的单调函数，已排序输入下 sort 是 no-op）
 	converted_notes.sort_custom(func(a, b):
 		if a.start_time_ms == b.start_time_ms:
 			return a.channel < b.channel
@@ -388,7 +385,11 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 
 	# Step 3: 执行批次合并（Step A）
 	var batches := _batch_notes_by_coalesce(converted_notes)
-	GLogger.info("Batch merge: created %d batches from %d notes" % [batches.size(), converted_notes.size()], "KeySequenceManager")
+
+	# Step 3.5: 立即释放 converted_notes（66k TempNote ~10MB）
+	# batches 已持有 TempNote 引用，converted_notes 数组本身不再需要
+	converted_notes.clear()
+	converted_notes = []
 
 	# Step 4: 为每个批次执行去重（Step B）
 	var all_blocks: Array[BlockInfo] = []
@@ -397,9 +398,12 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 		var deduped_blocks = _dedup_batch(batches[batch_idx], bg_notes, batch_idx)
 		all_blocks.append_array(deduped_blocks)
 
-	GLogger.info("Dedup: generated %d blocks, %d background notes" % [all_blocks.size(), bg_notes.size()], "KeySequenceManager")
+	# Step 4.5: 立即释放 batches + _tick_ms_cache（step5/6/7 不再需要）
+	batches.clear()
+	batches = []
+	_tick_ms_cache.clear()
 
-	# Step 5: 虚拟触点匹配和块类型判定（Step C + Step D）
+	# Step 5: 虚拟触点匹配和块类型判定（Step C + Step D)
 	_assign_touches_and_judge_types(all_blocks, bg_notes)
 
 	# Step 6: 连块生成（Step E）
@@ -408,15 +412,20 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	# Step 7: 转换为GameSequence集合
 	_convert_blocks_to_game_sequences(all_blocks)
 
+	# Step 7.5: 释放 all_blocks（GameSequence 已持有 original_notes 引用）
+	# 必须先断开 prev_block 链：_judge_block_type 跨批次累积形成数千节点的 prev_block 链，
+	# clear() 时 BlockInfo 引用计数降为 0 会触发级联析构（A→B→C→...），Android ARM 栈溢出
+	for block in all_blocks:
+		block.prev_block = null
+	all_blocks.clear()
+	all_blocks = []
+
 	# Step 8: 添加背景序列（与Unity一致：输出单一背景序列）
-	# 预计算 start_time_ms 到 PackedFloat32Array，避免排序时反复调用 _get_note_start_time_ms
-	# 同时避免为每个 note 构建 Dictionary 包装（6 万音符时省 ~5-10MB 临时内存）
 	var bg_count := bg_notes.size()
 	var bg_times := PackedFloat32Array()
 	bg_times.resize(bg_count)
 	for i in range(bg_count):
 		bg_times[i] = _get_note_start_time_ms(bg_notes[i])
-	# 按预计算时间排序索引数组，再用排序后的索引重建 bg_notes
 	var bg_indices := range(bg_count)
 	bg_indices.sort_custom(func(a, b):
 		if bg_times[a] == bg_times[b]:
@@ -463,42 +472,63 @@ func _wait_and_cleanup_current_task() -> void:
 	_generate_task_id = -1
 	_generate_task_waited = false
 
-## 启动 generate_keys worker（async，调用方须 await）
-## 若有旧任务在跑，先等它完成再启动新任务
+## 启动 generate_keys（WorkerThreadPool 后台线程执行，保留 async 签名以兼容调用方 await）
+## 线程安全：generate_keys 仅访问 self 字段与 MidiPlaybackManager.instance 静态字段，不访问场景树
+## RefCounted 对象（TempNote/BlockInfo/GameSequence）在 worker 创建/析构安全：
+##   - prev_block 链在 Step 7.5 已断开，避免级联析构栈溢出
+##   - GLogger 已用 call_deferred 保护，无 StringName 引用计数竞态
+## 返回值：task_id（-1 表示未启动，如 game_notes 为空）
 func start_generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> int:
-	# 等待旧任务完成（用 done_flag 轮询 + await 让出主线程，不阻塞动画）
+	# 若有旧 worker 任务在跑，先等它完成（避免并发写入 game_sequences 等共享字段）
 	if _generate_task_id != -1:
 		while not _generate_done_flag.get("done", false):
 			await Engine.get_main_loop().process_frame
 		_wait_and_cleanup_current_task()
-
-	_generate_done_flag = {"done": false}
-	_generate_task_id = WorkerThreadPool.add_task(
-		func():
-			generate_keys(game_notes, midi_id, enabled_pairs)
-			_generate_done_flag["done"] = true,
-		false,
-		"KeySequenceManager.generate_keys"
-	)
+	if game_notes.is_empty():
+		# 空数组时主线程同步清理 game_sequences（与 generate_keys_async 行为一致）
+		generate_keys(game_notes, midi_id, enabled_pairs)
+		return -1
+	# 启动 worker 线程
+	_generate_done_flag.clear()
+	_generate_task_waited = false
+	_generate_task_id = WorkerThreadPool.add_task(func():
+		generate_keys(game_notes, midi_id, enabled_pairs)
+		_generate_done_flag["done"] = true
+	, false, "KSM generate_keys")
 	return _generate_task_id
 
-## 等待 generate_keys worker 完成（每帧让出主线程）
+## 等待 generate_keys 完成（每帧让出主线程，动画继续推进）
 func await_generate_keys(task_id: int) -> void:
-	# task_id == -1 表示未启动任务（如 enabled_notes 为空）
 	if task_id == -1:
 		return
-	# while 同时检查 task_id 是否仍为当前任务：若已被新任务替换，说明旧任务已被
-	# start_generate_keys_async 内部清理，直接返回
-	while task_id == _generate_task_id and not _generate_done_flag.get("done", false):
+	while not _generate_done_flag.get("done", false):
 		await Engine.get_main_loop().process_frame
-	if task_id != _generate_task_id:
-		return
 	_wait_and_cleanup_current_task()
 
-## 异步生成游戏键（start_generate_keys_async + await_generate_keys 的便捷封装）
+## 异步生成游戏键（WorkerThreadPool 后台线程执行，保留 async 签名以兼容调用方 await）
+## 线程安全：同 start_generate_keys_async
+## 代价：66k 音符时 worker 约跑 200-800ms，主线程每帧让出不卡顿（命中缓存时 0ms）
 func generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> bool:
-	var task_id := await start_generate_keys_async(game_notes, midi_id, enabled_pairs)
-	await await_generate_keys(task_id)
+	# 若有旧 worker 任务在跑，先等它完成
+	if _generate_task_id != -1:
+		while not _generate_done_flag.get("done", false):
+			await Engine.get_main_loop().process_frame
+		_wait_and_cleanup_current_task()
+	# 空数组快速路径：主线程直接执行（generate_keys 内部仅 clear）
+	if game_notes.is_empty():
+		generate_keys(game_notes, midi_id, enabled_pairs)
+		return true
+	# 启动 worker 线程
+	_generate_done_flag.clear()
+	_generate_task_waited = false
+	_generate_task_id = WorkerThreadPool.add_task(func():
+		generate_keys(game_notes, midi_id, enabled_pairs)
+		_generate_done_flag["done"] = true
+	, false, "KSM generate_keys")
+	# 等待完成
+	while not _generate_done_flag.get("done", false):
+		await Engine.get_main_loop().process_frame
+	_wait_and_cleanup_current_task()
 	return true
 
 ## 将 NoteEvent 对象转换为内部格式（确保使用毫秒单位）
@@ -746,80 +776,87 @@ func _assign_touches_and_judge_types(blocks: Array[BlockInfo], bg_notes: Array) 
 	# 按批次分组重新执行间距校验，将冲突块移入背景（优先保留高音，与去重逻辑一致）
 	_reconcile_spacing_after_clamp(blocks, bg_notes)
 
-## 虚拟触点匹配 - 递归回溯找成本最小的分配方案（Unity兼容版本）
+## 虚拟触点匹配 - 迭代枚举所有严格递增触点组合，找成本最小的分配方案（Unity兼容版本）
+## 替代原递归回溯 _find_optimal_matching：用字典序组合枚举避免调用栈问题
+## 原递归语义：枚举所有 C(n_touches, n_blocks) 个严格递增触点索引序列，
+## 仅完整分配（所有块都有触点）才计算成本；块数 > 触点数时全 -1
 func _match_blocks_to_touches(blocks_in_group: Array[BlockInfo], touches: Array[VirtualTouch]) -> void:
 	if blocks_in_group.is_empty():
 		return
-	
+
 	# 按X位置排序块（为了后续匹配）
 	var sorted_blocks = blocks_in_group.duplicate()
 	sorted_blocks.sort_custom(func(a, b): return a.x < b.x)
-	
-	# 初始化最优匹配跟踪
+
+	var n_blocks: int = sorted_blocks.size()
+	var n_touches: int = touches.size()
+
+	# 初始化最优匹配跟踪（全 -1 表示未分配）
 	var min_matching_touch_index: Array = []
-	for i in range(sorted_blocks.size()):
-		min_matching_touch_index.append(-1)
-	
-	# 递归回溯：找最小成本分配
-	var min_cost_holder = [INF]  # 使用数组以便在递归中修改
-	_find_optimal_matching(sorted_blocks, touches, 0, 0, [], min_matching_touch_index, min_cost_holder)
-	
+	min_matching_touch_index.resize(n_blocks)
+	for i in range(n_blocks):
+		min_matching_touch_index[i] = -1
+
+	# 块数 > 触点数时无法为所有块分配触点（与原递归行为一致：全 -1）
+	if n_blocks > n_touches:
+		sorted_blocks.sort_custom(func(a, b):
+			return a.start_time_ms < b.start_time_ms
+		)
+		for i in range(n_blocks):
+			sorted_blocks[i].touch_index = -1
+		return
+
+	# 迭代枚举所有 C(n_touches, n_blocks) 个严格递增触点索引组合
+	# 组合以字典序生成：[0,1,...,k-1] → [0,1,...,k-2,k] → ... → [n-k,...,n-1]
+	var k: int = n_blocks
+	var combo: Array = []
+	combo.resize(k)
+	for i in range(k):
+		combo[i] = i
+
+	var min_cost: float = INF
+
+	while true:
+		# 计算当前组合的成本（移动距离 + 速度违规惩罚）
+		var total_cost: float = 0.0
+		for i in range(k):
+			var blk: BlockInfo = sorted_blocks[i]
+			var touch: VirtualTouch = touches[combo[i]]
+			var move_distance = abs(touch.last_press_x - blk.x)
+			total_cost += move_distance
+			# 速度违规惩罚：使匹配优先选择不超速的分配方案
+			if touch.last_press_time_ms >= 0:
+				var time_delta_sec = (blk.start_time_ms - touch.last_press_time_ms) / 1000.0
+				if time_delta_sec > 0:
+					var max_feasible = max_touch_move_velocity * time_delta_sec
+					if move_distance > max_feasible:
+						total_cost += (move_distance - max_feasible) * 10.0
+
+		if total_cost < min_cost:
+			min_cost = total_cost
+			for i in range(k):
+				min_matching_touch_index[i] = combo[i]
+
+		# 生成下一个组合（字典序）
+		var idx: int = k - 1
+		while idx >= 0 and combo[idx] == n_touches - k + idx:
+			idx -= 1
+		if idx < 0:
+			break
+		combo[idx] += 1
+		for j in range(idx + 1, k):
+			combo[j] = combo[j - 1] + 1
+
 	# Unity bug: 匹配结果按start_time顺序应用（而非x顺序）
 	# 这会导致当批次中有2个块且x顺序与start_time顺序不一致时，
 	# touch_index被错误地分配给不同的块
 	sorted_blocks.sort_custom(func(a, b):
 		return a.start_time_ms < b.start_time_ms
 	)
-	
+
 	# 应用最优分配
-	for i in range(sorted_blocks.size()):
-		var block = sorted_blocks[i]
-		var touch_idx = min_matching_touch_index[i]
-		block.touch_index = touch_idx
-
-## 递归回溯：找最优的块→触点分配，最小化移动成本（Unity兼容版本）
-## 关键修复：(1)修正成本函数仅为移动距离，(2)使用递增的touchIndex避免重复分配
-func _find_optimal_matching(
-	blocks: Array[BlockInfo], 
-	touches: Array[VirtualTouch],
-	block_idx: int,
-	last_touch_idx: int,
-	current_assignment: Array,
-	out_min_matching_touch_index: Array,
-	inout_min_cost: Array  # 使用数组以便修改内容
-) -> void:
-	# 基础情况：已分配所有块
-	if block_idx >= blocks.size():
-		# 计算当前分配方案的总成本（移动距离 + 速度违规惩罚）
-		var total_cost = 0.0
-		for i in range(blocks.size()):
-			if current_assignment[i] >= 0:
-				var blk = blocks[i]
-				var touch = touches[current_assignment[i]]
-				var move_distance = abs(touch.last_press_x - blk.x)
-				total_cost += move_distance
-				# 速度违规惩罚：使匹配优先选择不超速的分配方案
-				# 惩罚 = 超出限速的距离 × 惩罚系数，确保超速方案成本远高于可行方案
-				if touch.last_press_time_ms >= 0:
-					var time_delta_sec = (blk.start_time_ms - touch.last_press_time_ms) / 1000.0
-					if time_delta_sec > 0:
-						var max_feasible = max_touch_move_velocity * time_delta_sec
-						if move_distance > max_feasible:
-							total_cost += (move_distance - max_feasible) * 10.0
-
-		# 更新最小成本和对应的分配
-		if total_cost < inout_min_cost[0]:
-			inout_min_cost[0] = total_cost
-			for i in range(blocks.size()):
-				out_min_matching_touch_index[i] = current_assignment[i]
-		return
-	
-	# 与Unity一致：使用递增touch索引，避免同批次重复分配同一触点
-	for touch_idx in range(last_touch_idx, touches.size()):
-		# 尝试分配此块给此触点
-		current_assignment.append(touch_idx)
-		_find_optimal_matching(blocks, touches, block_idx + 1, touch_idx + 1, current_assignment, out_min_matching_touch_index, inout_min_cost)
-		current_assignment.pop_back()
+	for i in range(n_blocks):
+		sorted_blocks[i].touch_index = min_matching_touch_index[i]
 
 ## 检查块是否可以分配给该触点（考虑冷却和移动速度约束）
 func _can_assign_block_to_touch(block: BlockInfo, touch: VirtualTouch) -> bool:
@@ -1068,7 +1105,7 @@ func _finalize_notes_classification() -> void:
 					last_auto_play_notes.append(note)
 	
 	GLogger.info(
-		"Notes classification finalized: %d manual-control, %d auto-play" % 
+		"Notes classification finalized: %d manual-control, %d auto-play" %
 		[last_manual_control_notes.size(), last_auto_play_notes.size()],
 		"KeySequenceManager"
 	)

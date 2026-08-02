@@ -34,17 +34,22 @@ class TrackInfo:
 		name = n if not n.is_empty() else "Track %d" % idx
 
 ## 加载并解析MIDI文件（薄包装：调用 C# MidiParserNative 完成 SMF 解析）
-## 返回: {success: bool, notes: Array[NoteEvent], bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary], max_end_tick: int, track_instruments: Dictionary}
+## 返回: {success: bool, notes: Array, soa: Dictionary, bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary], max_end_tick: int, track_instruments: Dictionary}
 ## 说明:
-##   - notes: NoteEvent 数组，按 start_time 升序排序（C# 侧已排序）
+##   - notes: 空数组（NoteEvent 重建由调用方在主线程通过 build_notes_from_soa 完成）
+##   - soa: 紧凑 SOA 数组 {pitches, velocities, start_ticks, durations, track_indices, channels}（PackedInt32Array）
 ##   - bpm_timeline 格式: [{tick: int, bpm: float, time_ms: float}, ...]
 ##   - max_end_tick: 所有音符 end_tick 的最大值，用于 NoteDisplayer ct 异常保护
 ##   - track_instruments: C# 一次性提取的 (track, channel) → {bank, program} 映射
 ##   - track_infos: TrackInfo 数组（仅 index/name，乐器信息已由 C# 提取到 track_instruments）
+## 线程安全: 本函数可在 worker 线程调用（C# 纯 .NET + PackedArray marshalling 安全）；
+##          NoteEvent 是 RefCounted，在 worker 线程批量创建会触发 StringName 引用计数损坏（Android ARM 弱内存模型），
+##          因此本函数不创建 NoteEvent，由调用方在主线程调用 build_notes_from_soa 重建
 static func load_and_parse_midi(file_path: String) -> Dictionary:
 	var result = {
 		"success": false,
 		"notes": [],
+		"soa": {},
 		"bpm": 120.0,
 		"duration": 0.0,
 		"track_infos": [],
@@ -82,22 +87,9 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 		push_error("C# MidiParserNative failed: %s" % native.get("error_msg", "unknown"))
 		return result
 
-	# 从 SOA 数组重建 NoteEvent 对象（C# 已按 start_tick 升序排序，无需再排序）
-	var pitches: PackedInt32Array = native["pitches"]
-	var velocities: PackedInt32Array = native["velocities"]
-	var start_ticks: PackedInt32Array = native["start_ticks"]
-	var durations: PackedInt32Array = native["durations"]
-	var track_indices: PackedInt32Array = native["track_indices"]
-	var channels: PackedInt32Array = native["channels"]
-	var count := pitches.size()
-	var notes: Array[NoteEvent] = []
-	notes.resize(count)
-	for i in range(count):
-		notes[i] = NoteEvent.new(
-			pitches[i], velocities[i],
-			float(start_ticks[i]), float(durations[i]),
-			track_indices[i], channels[i]
-		)
+	# 保留 SOA 数组（NoteEvent 重建由调用方在主线程完成，避免 worker 线程批量创建 RefCounted）
+	# 详见 build_notes_from_soa
+	var count: int = (native["pitches"] as PackedInt32Array).size()
 
 	# 重建 bpm_timeline 为 Array[Dictionary]（保持下游 entry["tick"]/["bpm"]/["time_ms"] 访问兼容）
 	var tl_ticks: PackedInt32Array = native["bpm_timeline_ticks"]
@@ -119,7 +111,15 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 	for i in range(track_count):
 		track_infos[i] = TrackInfo.new(i)
 
-	result["notes"] = notes
+	result["notes"] = []  # NoteEvent 由调用方在主线程通过 build_notes_from_soa 重建
+	result["soa"] = {
+		"pitches": native["pitches"],
+		"velocities": native["velocities"],
+		"start_ticks": native["start_ticks"],
+		"durations": native["durations"],
+		"track_indices": native["track_indices"],
+		"channels": native["channels"],
+	}
 	result["bpm"] = float(native["bpm"])
 	result["duration"] = float(native["duration_ms"])
 	result["track_infos"] = track_infos
@@ -134,10 +134,32 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 
 	return result
 
+## 从 SOA 数组重建 NoteEvent 对象（必须在主线程调用）
+## SOA 来自 load_and_parse_midi 返回值的 "soa" 字段
+## C# 侧已按 start_tick 升序排序，重建后的 notes 数组即为最终顺序
+## 重建完成后调用方可 erase "soa" 字段以释放 PackedInt32Array 内存
+static func build_notes_from_soa(soa: Dictionary) -> Array[NoteEvent]:
+	var pitches: PackedInt32Array = soa["pitches"]
+	var velocities: PackedInt32Array = soa["velocities"]
+	var start_ticks: PackedInt32Array = soa["start_ticks"]
+	var durations: PackedInt32Array = soa["durations"]
+	var track_indices: PackedInt32Array = soa["track_indices"]
+	var channels: PackedInt32Array = soa["channels"]
+	var count := pitches.size()
+	var notes: Array[NoteEvent] = []
+	notes.resize(count)
+	for i in range(count):
+		notes[i] = NoteEvent.new(
+			pitches[i], velocities[i],
+			float(start_ticks[i]), float(durations[i]),
+			track_indices[i], channels[i]
+		)
+	return notes
+
 ## 按 (track, channel) 分组构建 { "track:channel": Array[NoteEvent] }
-## notes 必须已按 start_time 升序排序（load_and_parse_midi 末尾保证）
+## notes 必须已按 start_time 升序排序（build_notes_from_soa 保证）
 ## 每 bucket 内天然有序，调用方无需再 sort
-## 用于 TrackView._build_buckets 与 preparse_midi_async worker，消除重复循环
+## 用于 TrackView._build_buckets，消除重复循环
 static func build_track_channel_notes(notes: Array) -> Dictionary:
 	var grouping: Dictionary = {}
 	for note in notes:
