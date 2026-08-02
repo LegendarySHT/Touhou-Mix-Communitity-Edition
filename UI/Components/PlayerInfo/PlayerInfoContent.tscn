@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://c24k3xb5msmbw" path="res://UI/Components/PlayerInfo/PlayerInfoContent.gd" id="1_5k12w"]
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_shxvi"]
+[ext_resource type="PackedScene" uid="uid://cpi3iydk3ha4a" path="res://UI/Components/PlayerInfo/RecentPlayListItem.tscn" id="3_nu1yf"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3y6u5"]
 
@@ -25,6 +26,15 @@ shadow_size = 12
 shadow_offset = Vector2(2, 2)
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_shxvi"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3y6u5"]
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+expand_margin_left = 5.0
+expand_margin_bottom = 5.0
 
 [node name="TabC" type="TabContainer" unique_id=1566850446]
 anchors_preset = 15
@@ -220,11 +230,12 @@ metadata/_tab_index = 2
 [node name="Left" type="VBoxContainer" parent="ProfileView" unique_id=519660239]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 15
 
 [node name="Header" type="HBoxContainer" parent="ProfileView/Left" unique_id=504012720]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 20
+theme_override_constants/separation = 30
 
 [node name="AvatarBig" type="Panel" parent="ProfileView/Left/Header" unique_id=1572480588]
 custom_minimum_size = Vector2(200, 200)
@@ -254,24 +265,58 @@ theme_override_constants/separation = 8
 alignment = 1
 
 [node name="NameLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox" unique_id=977938233]
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_font_sizes/font_size = 36
 text = "Anonymous Player"
+vertical_alignment = 1
 
-[node name="LevelLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox" unique_id=2074223748]
+[node name="HBox" type="HBoxContainer" parent="ProfileView/Left/Header/NameLevelVBox" unique_id=1102625609]
 layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="ProfileView/Left/Header/NameLevelVBox/HBox" unique_id=307888191]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+theme_override_constants/separation = 0
+
+[node name="Desc" type="Label" parent="ProfileView/Left/Header/NameLevelVBox/HBox/VBox" unique_id=54913783]
+custom_minimum_size = Vector2(350, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_3y6u5")
+text = "个人简介"
+autowrap_mode = 1
+
+[node name="HBox" type="HBoxContainer" parent="ProfileView/Left/Header/NameLevelVBox/HBox/VBox" unique_id=387149746]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="LevelLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox/HBox/VBox/HBox" unique_id=2074223748]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_3y6u5")
 text = "Level 1"
+horizontal_alignment = 1
 
-[node name="PPLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox" unique_id=906206609]
+[node name="PPLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox/HBox/VBox/HBox" unique_id=906206609]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_3y6u5")
 text = "0 pp"
+horizontal_alignment = 1
 
-[node name="RankLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox" unique_id=1059053701]
+[node name="RankLabel" type="Label" parent="ProfileView/Left/Header/NameLevelVBox/HBox" unique_id=1059053701]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
 text = "Unranked"
+horizontal_alignment = 1
 
 [node name="ProgressMC" type="MarginContainer" parent="ProfileView/Left" unique_id=98318325]
 layout_mode = 2
@@ -279,8 +324,10 @@ mouse_filter = 2
 theme_override_constants/margin_top = 5
 
 [node name="LevelProgressBar" type="ProgressBar" parent="ProfileView/Left/ProgressMC" unique_id=1523172660]
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 mouse_filter = 2
+rounded = true
 
 [node name="StatsGrid" type="GridContainer" parent="ProfileView/Left" unique_id=915956401]
 layout_mode = 2
@@ -289,23 +336,31 @@ columns = 2
 
 [node name="TotalPlaysLabel" type="Label" parent="ProfileView/Left/StatsGrid" unique_id=590004141]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 text = "Total Plays: 0"
+horizontal_alignment = 1
 
 [node name="AccuracyLabel" type="Label" parent="ProfileView/Left/StatsGrid" unique_id=1025555811]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 text = "Accuracy: 0.00%"
+horizontal_alignment = 1
 
 [node name="MaxComboLabel" type="Label" parent="ProfileView/Left/StatsGrid" unique_id=807132868]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 text = "Max Combo: 0"
+horizontal_alignment = 1
 
 [node name="PlayTimeLabel" type="Label" parent="ProfileView/Left/StatsGrid" unique_id=731451521]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 text = "Play Time: 0h"
+horizontal_alignment = 1
 
 [node name="ExpandBtn" type="Button" parent="ProfileView/Left" unique_id=581980517]
 custom_minimum_size = Vector2(0, 45)
@@ -314,7 +369,6 @@ theme_override_font_sizes/font_size = 24
 text = "展开详情"
 
 [node name="DetailSection" type="VBoxContainer" parent="ProfileView/Left" unique_id=1894245263]
-visible = false
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 10
@@ -329,11 +383,6 @@ layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 15
 alignment = 1
-
-[node name="SS" type="Label" parent="ProfileView/Left/DetailSection/GradeHBox" unique_id=242439500]
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "SS: 0"
 
 [node name="S" type="Label" parent="ProfileView/Left/DetailSection/GradeHBox" unique_id=86924195]
 layout_mode = 2
@@ -355,10 +404,10 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "C: 0"
 
-[node name="D" type="Label" parent="ProfileView/Left/DetailSection/GradeHBox" unique_id=746813513]
+[node name="F" type="Label" parent="ProfileView/Left/DetailSection/GradeHBox" unique_id=746813513]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "D: 0"
+text = "F: 0"
 
 [node name="RecentTitle" type="Label" parent="ProfileView/Left/DetailSection" unique_id=2007378520]
 layout_mode = 2
@@ -368,112 +417,37 @@ text = "最近游玩"
 [node name="RecentList" type="VBoxContainer" parent="ProfileView/Left/DetailSection" unique_id=859207865]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 5
+theme_override_constants/separation = 10
 
-[node name="Score1" type="HBoxContainer" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1929612305]
+[node name="Score1" parent="ProfileView/Left/DetailSection/RecentList" unique_id=656380365 instance=ExtResource("3_nu1yf")]
 layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 15
 
-[node name="SongName" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score1" unique_id=1054588476]
+[node name="Score2" parent="ProfileView/Left/DetailSection/RecentList" unique_id=102877614 instance=ExtResource("3_nu1yf")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "—"
 
-[node name="Score" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score1" unique_id=655324940]
+[node name="Score3" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1854091169 instance=ExtResource("3_nu1yf")]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "0"
 
-[node name="Grade" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score1" unique_id=1370022912]
+[node name="Score4" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1796391289 instance=ExtResource("3_nu1yf")]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "—"
 
-[node name="Score2" type="HBoxContainer" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1829726772]
+[node name="Score5" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1728052615 instance=ExtResource("3_nu1yf")]
 layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 15
 
-[node name="SongName" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score2" unique_id=802964627]
+[node name="Score6" parent="ProfileView/Left/DetailSection/RecentList" unique_id=441729001 instance=ExtResource("3_nu1yf")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "—"
 
-[node name="Score" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score2" unique_id=1709712646]
+[node name="Score7" parent="ProfileView/Left/DetailSection/RecentList" unique_id=953169949 instance=ExtResource("3_nu1yf")]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "0"
 
-[node name="Grade" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score2" unique_id=476367321]
+[node name="Score8" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1153222939 instance=ExtResource("3_nu1yf")]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "—"
 
-[node name="Score3" type="HBoxContainer" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1050113779]
+[node name="Score9" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1597974651 instance=ExtResource("3_nu1yf")]
 layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 15
 
-[node name="SongName" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score3" unique_id=668620806]
+[node name="Score10" parent="ProfileView/Left/DetailSection/RecentList" unique_id=331155453 instance=ExtResource("3_nu1yf")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "—"
-
-[node name="Score" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score3" unique_id=1574864820]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "0"
-
-[node name="Grade" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score3" unique_id=340294733]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "—"
-
-[node name="Score4" type="HBoxContainer" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1700501661]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 15
-
-[node name="SongName" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score4" unique_id=604194629]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "—"
-
-[node name="Score" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score4" unique_id=1831483921]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "0"
-
-[node name="Grade" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score4" unique_id=859807868]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "—"
-
-[node name="Score5" type="HBoxContainer" parent="ProfileView/Left/DetailSection/RecentList" unique_id=1600677135]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 15
-
-[node name="SongName" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score5" unique_id=1980759879]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "—"
-
-[node name="Score" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score5" unique_id=936904624]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "0"
-
-[node name="Grade" type="Label" parent="ProfileView/Left/DetailSection/RecentList/Score5" unique_id=49873275]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "—"
 
 [node name="Right" type="VBoxContainer" parent="ProfileView" unique_id=2103422124]
 layout_mode = 2

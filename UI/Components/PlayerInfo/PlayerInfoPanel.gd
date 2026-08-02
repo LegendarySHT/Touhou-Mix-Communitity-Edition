@@ -25,7 +25,8 @@ const TAB_OFFSET_LEFT_FULL := 150.0
 const TAB_OFFSET_TOP_EXPANDED := 50.0
 const TAB_OFFSET_TOP_COLLAPSED := 10.0
 # TabC 右侧预留（给 RB_Btn 等留位置）
-const TAB_RIGHT_RESERVE := 150.0
+const TAB_RIGHT_RESERVE_NORM := 50.0
+const TAB_RIGHT_RESERVE_FULL := 150.0
 
 # ========== 节点 ==========
 @onready var info_panel_btn: SkewButton = $InfoPanelBtn
@@ -148,7 +149,8 @@ func _animate_panel_geometry(s: State, t: Tween) -> void:
 	t.tween_property(info_panel_btn, "skew_x", p.skew, ANIM_DURATION)
 	t.tween_property(info_tab_c, "offset_left", p.margin + p.tab_left_extra, ANIM_DURATION)
 	t.tween_property(info_tab_c, "offset_top", p.tab_top, ANIM_DURATION)
-	t.tween_property(info_tab_c, "offset_right", -p.margin - p.tab_left_extra - TAB_RIGHT_RESERVE, ANIM_DURATION)
+	var right_reserve := TAB_RIGHT_RESERVE_FULL if s == State.FULL_EXPANDED else TAB_RIGHT_RESERVE_NORM
+	t.tween_property(info_tab_c, "offset_right", -p.margin - p.tab_left_extra - right_reserve, ANIM_DURATION)
 
 # ========== Tip ==========
 

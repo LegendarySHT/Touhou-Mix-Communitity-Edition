@@ -45,9 +45,9 @@ var _player_data := {
 @onready var error_msg: Label = $C/Skew/LogIn/ErrorMsg
 # ProfileView（个人信息页面）
 @onready var profile_name: Label = $ProfileView/Left/Header/NameLevelVBox/NameLabel
-@onready var profile_level: Label = $ProfileView/Left/Header/NameLevelVBox/LevelLabel
-@onready var profile_pp: Label = $ProfileView/Left/Header/NameLevelVBox/PPLabel
-@onready var profile_rank: Label = $ProfileView/Left/Header/NameLevelVBox/RankLabel
+@onready var profile_level: Label = $ProfileView/Left/Header/NameLevelVBox/HBox/VBox/HBox/LevelLabel
+@onready var profile_pp: Label = $ProfileView/Left/Header/NameLevelVBox/HBox/VBox/HBox/PPLabel
+@onready var profile_rank: Label = $ProfileView/Left/Header/NameLevelVBox/HBox/RankLabel
 @onready var level_progress: ProgressBar = $ProfileView/Left/ProgressMC/LevelProgressBar
 @onready var total_plays_label: Label = $ProfileView/Left/StatsGrid/TotalPlaysLabel
 @onready var accuracy_label: Label = $ProfileView/Left/StatsGrid/AccuracyLabel
@@ -171,8 +171,8 @@ func _on_expand_btn_pressed() -> void:
 	expand_toggled.emit()
 
 ## 更新玩家数据并刷新显示
-func update_player_data(data: Dictionary) -> void:
-	for key in data:
-		_player_data[key] = data[key]
+func update_player_data(player_data: Dictionary) -> void:
+	for key in player_data:
+		_player_data[key] = player_data[key]
 	populate_profile()
 	populate_mini_info()
