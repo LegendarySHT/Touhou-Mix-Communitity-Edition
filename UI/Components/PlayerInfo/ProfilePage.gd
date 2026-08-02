@@ -12,6 +12,15 @@ extends VBoxContainer
 @onready var best_play_btn: Button = $PC/PageContent/History/PC/TopBar/TopBtns/BestPlay
 @onready var most_play_btn: Button = $PC/PageContent/History/PC/TopBar/TopBtns/MostPlay
 
+# ========== 主题色引用节点（每个共享 StyleBox 取一个代表节点） ==========
+@onready var _info_panel: PanelContainer = $PC/PageContent/Profile/Main/PC/Displayer/Info
+@onready var _header_panel: PanelContainer = $PC/PageContent/Profile/Main/Header
+@onready var _play_panel: PanelContainer = $PC/PageContent/Profile/Data/VBox/Play
+@onready var _rank_total: PanelContainer = $PC/PageContent/Profile/Data/VBox/Desc/Rank/RankTotal
+@onready var _navi_panel: PanelContainer = $Navi
+@onready var _history_pc: PanelContainer = $PC/PageContent/History/PC
+@onready var _edit_confirm_btn: Button = $PC/PageContent/Edit/HBox/ProfileEdit/Nickname/ConfirmBtn
+
 # PageContent tab 索引
 const TAB_PROFILE := 0
 const TAB_HISTORY := 1
@@ -28,10 +37,86 @@ func _ready() -> void:
 	recent_play_btn.pressed.connect(_on_recent_play_pressed)
 	best_play_btn.pressed.connect(_on_best_play_pressed)
 	most_play_btn.pressed.connect(_on_most_play_pressed)
-	# 同步 Navi 初始选中状态（PageContent 默认显示 History）
 	_sync_navi_selection(page_content.current_tab)
-	# 同步 History TopBtns 初始 z_index（RecentPlay 默认 pressed）
 	_sync_topbtn_z_index(recent_play_btn)
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
+
+# ========== 主题色应用 ==========
+
+## 规则：亮蓝 bg → primary_light，暗蓝 bg → primary_dark，中等蓝 bg → primary
+## 暗蓝边框 → primary_dark.darkened()，亮蓝边框 → primary_light
+## 近黑 bg 保持不动，只替换蓝色边框
+func apply_theme() -> void:
+	var pl := ThemeMGR.get_color("primary_light")
+	var p := ThemeMGR.get_color("primary")
+	var pd := ThemeMGR.get_color("primary_dark")
+	var pd_darker := pd.darkened(0.2)
+
+	# Profile 页面面板
+	_set_panel(_info_panel, pl, pd_darker)      # Info: 亮蓝 bg, 暗蓝 border
+	_set_panel(_header_panel, pd, pl)            # Header: 暗蓝 bg, 亮蓝 border
+	_set_panel(_play_panel, pd, pl)              # Play + Desc Label（共享）: 暗蓝 bg, 亮蓝 border
+	_set_panel(_rank_total, pl, pd_darker)       # RankTotal: 亮蓝 bg, 暗蓝 border
+	# Navi 面板
+	_set_panel(_navi_panel, pl, pd_darker)       # Navi: 亮蓝 bg, 暗蓝 border
+	# History 顶部面板（近黑 bg 保持，只改暗蓝边框）
+	_set_panel_border(_history_pc, pd_darker)
+	# Navi 按钮（normal/pressed/hover/focus 共享 StyleBox，改 navi_profile_btn 即同步全部）
+	# pressed 与 InfoPanelBtn 按下态同色（primary_dark），视觉上融入 PlayerInfo 面板背景
+	_set_btn(navi_profile_btn, "normal", pl, pd_darker)
+	_set_btn(navi_profile_btn, "pressed", pd, pd_darker)
+	_set_btn(navi_profile_btn, "hover", p, pd_darker)
+	_set_btn(navi_profile_btn, "focus", p, pd_darker)
+	# History TopBtns（近黑 bg 保持，只改蓝色边框）
+	_set_btn_border(recent_play_btn, "pressed", pl)
+	_set_btn_border(recent_play_btn, "hover", pl)
+	# MostPlay hover 用单独 StyleBox（665dv，近黑 bg），只改边框
+	_set_btn_border(most_play_btn, "hover", pl)
+	# Edit 页面 ConfirmBtn / UploadBtn（共享 StyleBox）
+	_set_btn(_edit_confirm_btn, "normal", pl, pl)
+	_set_btn(_edit_confirm_btn, "pressed", pd, pl)
+	_set_btn(_edit_confirm_btn, "hover", p, pl)
+
+## 设置面板 bg + border
+func _set_panel(node: Control, bg: Color, border: Color) -> void:
+	if not node:
+		return
+	var sb := node.get_theme_stylebox("panel")
+	if sb is StyleBoxFlat:
+		sb.bg_color = bg
+		sb.border_color = border
+
+## 仅设置面板 border（保留原 bg）
+func _set_panel_border(node: Control, border: Color) -> void:
+	if not node:
+		return
+	var sb := node.get_theme_stylebox("panel")
+	if sb is StyleBoxFlat:
+		sb.border_color = border
+
+## 设置按钮某状态的 bg + border
+func _set_btn(btn: Button, state: String, bg: Color, border: Color) -> void:
+	if not btn:
+		return
+	var sb := btn.get_theme_stylebox(state)
+	if sb is StyleBoxFlat:
+		sb.bg_color = bg
+		sb.border_color = border
+
+## 仅设置按钮某状态的 border（保留原 bg 和 border alpha）
+func _set_btn_border(btn: Button, state: String, border: Color) -> void:
+	if not btn:
+		return
+	var sb := btn.get_theme_stylebox(state)
+	if sb is StyleBoxFlat:
+		var a = sb.border_color.a
+		sb.border_color = Color(border.r, border.g, border.b, a)
 
 # ========== Navi → PageContent 切换 ==========
 

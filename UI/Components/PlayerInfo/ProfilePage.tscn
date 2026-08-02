@@ -345,7 +345,10 @@ script = ExtResource("1_ft172")
 metadata/_tab_index = 3
 
 [node name="PC" type="PanelContainer" parent="." unique_id=1258911297]
+custom_minimum_size = Vector2(1620, 0)
+custom_maximum_size = Vector2(1620, 900)
 layout_mode = 2
+size_flags_horizontal = 4
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxEmpty_j02sm")
 
@@ -353,10 +356,11 @@ theme_override_styles/panel = SubResource("StyleBoxEmpty_j02sm")
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxEmpty_3y6u5")
-current_tab = 0
+current_tab = 1
 tabs_visible = false
 
 [node name="Profile" type="HBoxContainer" parent="PC/PageContent" unique_id=572518356]
+visible = false
 layout_mode = 2
 metadata/_tab_index = 0
 
@@ -637,7 +641,6 @@ size_flags_vertical = 3
 layout_mode = 2
 
 [node name="History" type="VBoxContainer" parent="PC/PageContent" unique_id=1290400202]
-visible = false
 layout_mode = 2
 metadata/_tab_index = 1
 
@@ -650,7 +653,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_1pkam")
 layout_mode = 2
 
 [node name="PC" type="PanelContainer" parent="PC/PageContent/History/PC/TopBar" unique_id=1380606977]
-custom_minimum_size = Vector2(900, 0)
+custom_minimum_size = Vector2(770, 0)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_1pkam")
 
@@ -667,7 +670,6 @@ columns = 7
 [node name="Label" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=1815740216]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 theme_override_styles/normal = SubResource("StyleBoxLine_3y6u5")
 text = "Performace"
@@ -786,12 +788,12 @@ mouse_filter = 2
 
 [node name="TopBtns" type="HBoxContainer" parent="PC/PageContent/History/PC/TopBar" unique_id=1865873512]
 layout_mode = 2
-theme_override_constants/separation = 50
+theme_override_constants/separation = 20
 
 [node name="RecentPlay" type="Button" parent="PC/PageContent/History/PC/TopBar/TopBtns" unique_id=1473519099]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 36
 theme_override_styles/normal = SubResource("StyleBoxEmpty_i6pqd")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hs1if")
@@ -803,7 +805,7 @@ text = "最近游玩"
 [node name="BestPlay" type="Button" parent="PC/PageContent/History/PC/TopBar/TopBtns" unique_id=477589048]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 36
 theme_override_styles/normal = SubResource("StyleBoxEmpty_i6pqd")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hs1if")
@@ -814,7 +816,7 @@ text = "最佳记录"
 [node name="MostPlay" type="Button" parent="PC/PageContent/History/PC/TopBar/TopBtns" unique_id=343271832]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 36
 theme_override_styles/normal = SubResource("StyleBoxEmpty_i6pqd")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxFlat_665dv")
