@@ -23,181 +23,114 @@ class NoteEvent:
 		return "NoteEvent(pitch=%d, vel=%d, start=%.0f, dur=%.0f)" % [pitch, velocity, start_time, duration]
 
 ## MIDI轨道信息
-## 说明：原 note_count 字段无外部消费者（TrackView 用的是 UI 文本 note_count_passed），
-## 已移除；events 在 MidiPlaybackManager 提取乐器后会被 clear，释放 SMF 原始事件内存
+## 说明：原 note_count 字段无外部消费者（TrackView 用的是 UI 文本 note_count_passed），已移除
+## 原 events 字段（SMF 原始事件）已随 C# MidiParserNative 接管解析而移除——乐器信息由 C# 一次性提取到 track_instruments
 class TrackInfo:
 	var index: int              # 轨道索引
 	var name: String            # 轨道名称
-	var events: Array           # 包含的所有MIDI事件
 
 	func _init(idx: int, n: String = "") -> void:
 		index = idx
 		name = n if not n.is_empty() else "Track %d" % idx
-		events = []
 
-## 加载并解析MIDI文件
-## 返回: {success: bool, notes: Array[NoteEvent], bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary], max_end_tick: int}
+## 加载并解析MIDI文件（薄包装：调用 C# MidiParserNative 完成 SMF 解析）
+## 返回: {success: bool, notes: Array[NoteEvent], bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary], max_end_tick: int, track_instruments: Dictionary}
 ## 说明:
-##   - notes: NoteEvent 数组，按 start_time 升序排序（所有消费者直接读字段，无需 .event 解包）
+##   - notes: NoteEvent 数组，按 start_time 升序排序（C# 侧已排序）
 ##   - bpm_timeline 格式: [{tick: int, bpm: float, time_ms: float}, ...]
 ##   - max_end_tick: 所有音符 end_tick 的最大值，用于 NoteDisplayer ct 异常保护
+##   - track_instruments: C# 一次性提取的 (track, channel) → {bank, program} 映射
+##   - track_infos: TrackInfo 数组（仅 index/name，乐器信息已由 C# 提取到 track_instruments）
 static func load_and_parse_midi(file_path: String) -> Dictionary:
 	var result = {
 		"success": false,
-		"notes": [],                  # Array[NoteEvent]
+		"notes": [],
 		"bpm": 120.0,
 		"duration": 0.0,
 		"track_infos": [],
 		"timebase": 480,
-		"bpm_timeline": [],  # BPM变化时间线
+		"bpm_timeline": [],
 		"max_end_tick": 0,
+		"track_instruments": {},
 	}
-	
+
 	# 检查文件是否存在
 	if not FileAccess.file_exists(file_path):
-		# 后备：尝试将用户数据目录路径替换为 res://Resources
 		var fallback_path = file_path
 		var files_dir = PathHelper.get_files_dir()
 		if file_path.begins_with(files_dir):
 			fallback_path = file_path.replace(files_dir, "res://Resources/")
-
 		if not FileAccess.file_exists(fallback_path):
 			push_error("MIDI file not found: %s" % file_path)
 			return result
 		else:
 			file_path = fallback_path
-	
-	# 使用SMF解析MIDI文件
-	var smf = SMF.new()
-	var smf_result = smf.read_file(file_path)
-	
-	if smf_result.error != OK or smf_result.data == null:
-		push_error("Failed to parse MIDI file: %s (error: %s)" % [file_path, smf_result.error])
+
+	# 读取文件为 PackedByteArray
+	var fa := FileAccess.open(file_path, FileAccess.READ)
+	if fa == null:
+		push_error("Cannot open MIDI file: %s" % file_path)
 		return result
-	
-	var smf_data: SMF.SMFData = smf_result.data
-	
-	# 设置基本信息
-	result["timebase"] = smf_data.timebase
-	result["bpm"] = 120.0  # 默认BPM，会从MIDI事件中更新
-	
-	# 解析所有轨道
+	var bytes := fa.get_buffer(fa.get_length())
+	fa.close()
+
+	# 调用 C# 原生解析器（纯 .NET，线程安全）
+	var parser := MidiParserNative.new()
+	var native: Dictionary = parser.Parse(bytes)
+
+	if not native.get("success", false):
+		push_error("C# MidiParserNative failed: %s" % native.get("error_msg", "unknown"))
+		return result
+
+	# 从 SOA 数组重建 NoteEvent 对象（C# 已按 start_tick 升序排序，无需再排序）
+	var pitches: PackedInt32Array = native["pitches"]
+	var velocities: PackedInt32Array = native["velocities"]
+	var start_ticks: PackedInt32Array = native["start_ticks"]
+	var durations: PackedInt32Array = native["durations"]
+	var track_indices: PackedInt32Array = native["track_indices"]
+	var channels: PackedInt32Array = native["channels"]
+	var count := pitches.size()
 	var notes: Array[NoteEvent] = []
-	# note_on_map: {channel: {pitch: [{pitch, velocity, start_tick, track_index, channel}, ...]}}
-	# 嵌套字典实现 O(1) 查找，替代旧版字符串 key + begins_with 线性扫描
-	# 原版每个 note_off 都遍历整个 note_on_map.keys() 用 begins_with 匹配，6 万音符约 4.5 亿次字符串比较
-	var note_on_map: Dictionary = {}
+	notes.resize(count)
+	for i in range(count):
+		notes[i] = NoteEvent.new(
+			pitches[i], velocities[i],
+			float(start_ticks[i]), float(durations[i]),
+			track_indices[i], channels[i]
+		)
+
+	# 重建 bpm_timeline 为 Array[Dictionary]（保持下游 entry["tick"]/["bpm"]/["time_ms"] 访问兼容）
+	var tl_ticks: PackedInt32Array = native["bpm_timeline_ticks"]
+	var tl_bpms: PackedFloat32Array = native["bpm_timeline_bpms"]
+	var tl_times_ms: PackedFloat32Array = native["bpm_timeline_times_ms"]
+	var tl_count := tl_ticks.size()
+	var bpm_timeline: Array = []
+	for i in range(tl_count):
+		bpm_timeline.append({
+			"tick": tl_ticks[i],
+			"bpm": float(tl_bpms[i]),
+			"time_ms": float(tl_times_ms[i]),
+		})
+
+	# 重建 track_infos（仅 index/name——乐器信息已由 C# 提取到 track_instruments）
+	var track_count: int = native["track_count"]
 	var track_infos: Array[TrackInfo] = []
-	var max_end_tick: int = 0  # 最大的tick值（而不是时间）
-	var bpm_timeline: Array[Dictionary] = []  # BPM变化时间线 [{tick, bpm, time_ms}, ...]
-	var current_bpm: float = 120.0  # 当前BPM
-	
-	# 首先添加初始BPM
-	bpm_timeline.append({
-		"tick": 0,
-		"bpm": current_bpm,
-		"time_ms": 0.0
-	})
-	
-	for track_idx in range(smf_data.tracks.size()):
-		var track = smf_data.tracks[track_idx]
-		var track_info = TrackInfo.new(track_idx)
-		
-		for event_chunk in track.events:
-			# 保持为 tick 单位，不转换为毫秒
-			var current_tick = event_chunk.time
-			var event = event_chunk.event
-			var channel = event_chunk.channel_number
-			
-			# 记录轨道事件
-			track_info.events.append(event_chunk)
-			
-			# 处理节拍事件（提取BPM）
-			if event.type == SMF.MIDIEventType.system_event:
-				var args = (event as SMF.MIDIEventSystemEvent).args
-				if args.has("type") and args["type"] == SMF.MIDISystemEventType.set_tempo:
-					var micros_per_beat: float = float(args.get("bpm", 0))
-					if micros_per_beat > 0.0:
-						var new_bpm = 60000000.0 / micros_per_beat  # 微秒/beat转BPM
-						result["bpm"] = new_bpm
-						current_bpm = new_bpm
-						
-						# 添加到BPM时间线
-						bpm_timeline.append({
-							"tick": current_tick,
-							"bpm": new_bpm
-						})
-			
-			# 处理音符开始事件
-			elif event.type == SMF.MIDIEventType.note_on:
-				if event.velocity > 0:
-					# 嵌套字典：{channel: {pitch: [note_data, ...]}}
-					# 替代旧版字符串 key + begins_with 线性扫描（O(N²)→O(1)）
-					if not note_on_map.has(channel):
-						note_on_map[channel] = {}
-					var pitch_map: Dictionary = note_on_map[channel]
-					if not pitch_map.has(event.note):
-						pitch_map[event.note] = []
-					pitch_map[event.note].append({
-						"pitch": event.note,
-						"velocity": event.velocity,
-						"start_tick": current_tick,
-						"track_index": track_idx,
-						"channel": channel
-					})
-				else:
-					# velocity 为0的 note_on 等同 note_off
-					_note_off_match(note_on_map, channel, event.note, current_tick, notes)
-				if current_tick > max_end_tick:
-					max_end_tick = current_tick
-
-			# 处理音符结束事件
-			elif event.type == SMF.MIDIEventType.note_off:
-				_note_off_match(note_on_map, channel, event.note, current_tick, notes)
-				# 更新最大tick
-				if current_tick > max_end_tick:
-					max_end_tick = current_tick
-		
-		track_infos.append(track_info)
-	
-	# 处理未匹配的NoteOn（没有对应的NoteOff）
-	# 嵌套字典遍历：{channel: {pitch: [note_data, ...]}}
-	# 未匹配 NoteOn 的回退持续时间为 100 tick（NoteEvent.duration 字段单位为 tick，非毫秒）
-	for channel_key in note_on_map.keys():
-		var pitch_map: Dictionary = note_on_map[channel_key]
-		for pitch_key in pitch_map.keys():
-			var pending_list: Array = pitch_map[pitch_key]
-			for note_data in pending_list:
-				var note_event = NoteEvent.new(
-					note_data["pitch"],
-					note_data["velocity"],
-					note_data["start_tick"],
-					100.0,
-					note_data["track_index"],
-					note_data["channel"]
-				)
-				notes.append(note_event)
-			pending_list.clear()
-		pitch_map.clear()
-
-	# 精确计算BPM时间线中的实际时间
-	_calculate_bpm_timeline_time(bpm_timeline, smf_data.timebase)
-
-	# 使用BPM时间线精确计算总时长
-	var actual_duration: float = _calculate_duration_with_bpm_timeline(max_end_tick, bpm_timeline, smf_data.timebase)
-
-	# 在 MidiParser 末尾统一按 start_time 排序，确保所有调用方拿到的 parsed_notes 都已排序
-	# 这样 KeySequenceManager.generate_keys 的 Step 2 排序可以跳过（parsed_notes 已单调递增）
-	notes.sort_custom(func(a, b) -> bool:
-		return a.start_time < b.start_time
-	)
+	track_infos.resize(track_count)
+	for i in range(track_count):
+		track_infos[i] = TrackInfo.new(i)
 
 	result["notes"] = notes
-	result["duration"] = actual_duration
+	result["bpm"] = float(native["bpm"])
+	result["duration"] = float(native["duration_ms"])
 	result["track_infos"] = track_infos
+	result["timebase"] = int(native["timebase"])
 	result["bpm_timeline"] = bpm_timeline
-	result["max_end_tick"] = max_end_tick
+	result["max_end_tick"] = int(native["max_end_tick"])
+	result["track_instruments"] = native["track_instruments"]
 	result["success"] = true
+
+	var parse_ms: float = float(native.get("parse_time_ms", 0.0))
+	GLogger.info("MIDI parsed (C#): %d notes, %.0fms, parse=%.1fms" % [count, result["duration"], parse_ms], "MidiParser")
 
 	return result
 
@@ -214,37 +147,6 @@ static func build_track_channel_notes(notes: Array) -> Dictionary:
 				grouping[key] = []
 			grouping[key].append(note)
 	return grouping
-
-## note_off 匹配：从嵌套字典 note_on_map 中查找 (channel, pitch) 最早的 NoteOn
-## 计算持续时间并构造 NoteEvent 加入 notes 列表
-## 替代旧版 begins_with 字符串扫描，查找复杂度 O(1)
-static func _note_off_match(
-	note_on_map: Dictionary, channel: int, pitch: int,
-	current_tick: int, notes: Array
-) -> void:
-	if not note_on_map.has(channel):
-		return
-	var pitch_map: Dictionary = note_on_map[channel]
-	if not pitch_map.has(pitch):
-		return
-	var pending_list: Array = pitch_map[pitch]
-	if pending_list.is_empty():
-		pitch_map.erase(pitch)
-		return
-	# FIFO：取最早的 NoteOn（与原 begins_with break 行为一致）
-	var note_data: Dictionary = pending_list.pop_front()
-	var duration = current_tick - note_data["start_tick"]
-	var note_event = NoteEvent.new(
-		note_data["pitch"],
-		note_data["velocity"],
-		note_data["start_tick"],
-		duration,
-		note_data["track_index"],
-		note_data["channel"]
-	)
-	notes.append(note_event)
-	if pending_list.is_empty():
-		pitch_map.erase(pitch)
 
 ## 从已解析的音符列表中提取特定轨道的Note
 static func extract_notes_by_track(all_notes: Array, track_indices: Array[int]) -> Array:
@@ -291,82 +193,6 @@ static func sort_notes_by_time(notes: Array) -> Array:
 		return a.start_time < b.start_time
 	)
 	return sorted_notes
-
-## 精确计算BPM时间线中的实际时间（考虑BPM变化）
-static func _calculate_bpm_timeline_time(bpm_timeline: Array, timebase: int) -> void:
-	if bpm_timeline.is_empty():
-		return
-	
-	var cumulative_time_ms: float = 0.0
-	
-	for i in range(1, bpm_timeline.size()):
-		var prev_entry = bpm_timeline[i - 1]
-		var curr_entry = bpm_timeline[i]
-		
-		var tick_delta = curr_entry["tick"] - prev_entry["tick"]
-		var bpm = prev_entry["bpm"]
-		
-		# 根据BPM计算这段的实际时间
-		# 1 quarter note = 60000 / BPM 毫秒
-		# 1 tick = (60000 / BPM) / timebase 毫秒
-		var ms_per_tick = (60000.0 / bpm) / timebase
-		var segment_time_ms = tick_delta * ms_per_tick
-		
-		cumulative_time_ms += segment_time_ms
-		curr_entry["time_ms"] = cumulative_time_ms
-	
-	# 更新第一个条目的时间
-	if bpm_timeline.size() > 0:
-		bpm_timeline[0]["time_ms"] = 0.0
-
-## 辅助函数：根据BPM时间线计算从0到指定tick的精确时长
-static func _calculate_duration_with_bpm_timeline(max_tick: int, bpm_timeline: Array, timebase: int) -> float:
-	if bpm_timeline.is_empty():
-		# 如果没有BPM时间线，使用默认的120 BPM
-		var ms_per_tick = (60000.0 / 120.0) / timebase
-		return max_tick * ms_per_tick
-	
-	var cumulative_time_ms: float = 0.0
-	
-	# 遍历BPM时间线找到max_tick所在的段
-	for i in range(bpm_timeline.size()):
-		var entry = bpm_timeline[i]
-		var entry_tick = entry["tick"]
-		
-		# 确定下一个BPM变化的tick
-		var next_tempo_tick: float
-		if i + 1 < bpm_timeline.size():
-			next_tempo_tick = bpm_timeline[i + 1]["tick"]
-		else:
-			next_tempo_tick = max_tick + 1000000  # 大数字，表示无限远
-		
-		if max_tick < next_tempo_tick:
-			# max_tick在这个BPM段内
-			var bpm = entry["bpm"]
-			var tick_delta = max_tick - entry_tick
-			var ms_per_tick = (60000.0 / bpm) / timebase
-			var segment_time_ms = tick_delta * ms_per_tick
-			
-			# 加上前面所有BPM段的时间
-			if entry["time_ms"] != null:
-				return entry["time_ms"] + segment_time_ms
-			else:
-				return cumulative_time_ms + segment_time_ms
-		else:
-			# 继续下一个BPM段，累加当前段的时间
-			if i + 1 < bpm_timeline.size():
-				var next_entry = bpm_timeline[i + 1]
-				# next_entry["time_ms"] 已经在 _calculate_bpm_timeline_time 中计算过了
-				cumulative_time_ms = next_entry.get("time_ms", 0.0)
-	
-	# 如果到这里，返回最后计算的累积时间
-	return cumulative_time_ms
-
-## 辅助函数：将MIDI时间转换为毫秒
-static func _convert_time_to_ms(time: int, timebase: int) -> float:
-	# 假设标准节拍=120BPM，则一个quarter note = 500ms
-	# time单位为timebase divisions，所以: ms = time * (500 / timebase)
-	return time * 500.0 / timebase
 
 ## 计算Note的八度和相对音高（用于键盘映射）
 static func get_note_octave_and_relative_pitch(midi_note: int) -> Dictionary:

@@ -1,0 +1,520 @@
+using Godot;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+
+/// <summary>
+/// C# 原生 SMF 解析器 + 业务逻辑（note_on/off 配对 / BPM 时间线 / 排序 / 乐器提取）
+/// 替代 GDScript 的 SMF.addon + MidiParser 业务层
+/// 纯 .NET API（除返回 Godot.Collections.Dictionary 外），可在 Thread.new() / WorkerThreadPool 中安全执行
+/// </summary>
+[GlobalClass]
+public partial class MidiParserNative : RefCounted
+{
+    /// <summary>
+    /// 解析 MIDI 字节流，返回紧凑 SOA 数组 + 标量字段
+    /// </summary>
+    public Godot.Collections.Dictionary Parse(byte[] bytes)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            using var stream = new MemoryStream(bytes);
+            using var reader = new BinaryReader(stream, System.Text.Encoding.ASCII);
+
+            // 1. 读 MThd 头
+            var chunkType = ReadFourCC(reader);
+            if (chunkType != "MThd")
+                return ErrorResult($"Invalid MThd header: '{chunkType}'");
+
+            var headerSize = ReadInt32BigEndian(reader);
+            if (headerSize < 6)
+                return ErrorResult("Invalid MThd size");
+
+            var format = ReadInt16BigEndian(reader);
+            if (format != 0 && format != 1)
+                return ErrorResult($"Unsupported MIDI format: {format}");
+
+            var trackCount = ReadInt16BigEndian(reader);
+            var resolution = ReadInt16BigEndian(reader);
+
+            if (headerSize > 6)
+                reader.BaseStream.Position += headerSize - 6;
+
+            // 2. note_on pending map: {channel: {pitch: Queue<PendingNote>}}
+            // 用 Queue (FIFO) 匹配原 GDScript pop_front 行为
+            var noteOnMap = new Dictionary<int, Dictionary<int, Queue<PendingNote>>>();
+            var notes = new List<NoteData>(65536);
+
+            // BPM 时间线
+            var bpmTicks = new List<int>();
+            var bpmValues = new List<double>();
+            var bpmTimesMs = new List<double>();
+            double currentBpm = 120.0;
+            bpmTicks.Add(0);
+            bpmValues.Add(currentBpm);
+            bpmTimesMs.Add(0.0);
+
+            // 乐器提取
+            var trackChannelBanks = new Dictionary<int, Dictionary<int, int>>();
+            var trackInstruments = new Dictionary<int, Dictionary<int, (int bank, int program)>>();
+            var trackChannelsSeen = new Dictionary<int, HashSet<int>>();
+
+            int maxEndTick = 0;
+
+            // 3. 逐 track 读 MTrk
+            for (int trackIdx = 0; trackIdx < trackCount; trackIdx++)
+            {
+                var banks = new Dictionary<int, int>();
+                for (int ch = 0; ch < 16; ch++)
+                    banks[ch] = (ch == 9) ? 128 : 0;
+                trackChannelBanks[trackIdx] = banks;
+                trackInstruments[trackIdx] = new Dictionary<int, (int, int)>();
+                trackChannelsSeen[trackIdx] = new HashSet<int>();
+
+                var trkChunkType = ReadFourCC(reader);
+                if (trkChunkType != "MTrk")
+                    return ErrorResult($"Invalid MTrk header: '{trkChunkType}' at track {trackIdx}");
+
+                var trackEnd = (long)ReadInt32BigEndian(reader);
+                trackEnd += reader.BaseStream.Position;
+
+                int tick = 0;
+                byte lastStatus = 0;
+
+                while (reader.BaseStream.Position < trackEnd)
+                {
+                    var delta = ReadVariableLength(reader);
+                    tick += delta;
+                    var first = reader.ReadByte();
+
+                    // Running status: MSB=0 表示数据字节，复用上次 status
+                    if ((first & 0x80) == 0)
+                    {
+                        var command = lastStatus & 0xF0;
+                        if (command == 0xC0 || command == 0xD0)
+                        {
+                            ProcessChannelEvent(lastStatus, first, 0, tick, trackIdx,
+                                notes, noteOnMap, ref maxEndTick,
+                                banks, trackInstruments[trackIdx], trackChannelsSeen[trackIdx]);
+                        }
+                        else
+                        {
+                            var data2 = reader.ReadByte();
+                            ProcessChannelEvent(lastStatus, first, data2, tick, trackIdx,
+                                notes, noteOnMap, ref maxEndTick,
+                                banks, trackInstruments[trackIdx], trackChannelsSeen[trackIdx]);
+                        }
+                        continue;
+                    }
+
+                    switch (first)
+                    {
+                        case 0xF0:
+                        case 0xF7:
+                            DiscardData(reader);
+                            break;
+
+                        case 0xFF:
+                            {
+                                var metaType = reader.ReadByte();
+                                if (metaType == 0x2F) // End of Track
+                                {
+                                    reader.ReadByte();
+                                    if (reader.BaseStream.Position < trackEnd)
+                                        reader.BaseStream.Position = trackEnd;
+                                    goto trackDone;
+                                }
+                                else if (metaType == 0x51) // Tempo
+                                {
+                                    var tempoSize = ReadVariableLength(reader);
+                                    if (tempoSize != 3)
+                                    {
+                                        reader.BaseStream.Position += tempoSize;
+                                    }
+                                    else
+                                    {
+                                        var b1 = reader.ReadByte();
+                                        var b2 = reader.ReadByte();
+                                        var b3 = reader.ReadByte();
+                                        var microsPerBeat = (b1 << 16) | (b2 << 8) | b3;
+                                        if (microsPerBeat > 0)
+                                        {
+                                            currentBpm = 60000000.0 / microsPerBeat;
+                                            bpmTicks.Add(tick);
+                                            bpmValues.Add(currentBpm);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    DiscardData(reader);
+                                }
+                                break;
+                            }
+
+                        default:
+                            {
+                                var command = first & 0xF0;
+                                if (command == 0xC0 || command == 0xD0)
+                                {
+                                    var data1 = reader.ReadByte();
+                                    ProcessChannelEvent(first, data1, 0, tick, trackIdx,
+                                        notes, noteOnMap, ref maxEndTick,
+                                        banks, trackInstruments[trackIdx], trackChannelsSeen[trackIdx]);
+                                }
+                                else
+                                {
+                                    var data1 = reader.ReadByte();
+                                    var data2 = reader.ReadByte();
+                                    ProcessChannelEvent(first, data1, data2, tick, trackIdx,
+                                        notes, noteOnMap, ref maxEndTick,
+                                        banks, trackInstruments[trackIdx], trackChannelsSeen[trackIdx]);
+                                }
+                                break;
+                            }
+                    }
+
+                    // system/meta 事件 (0xF0–0xFF) 应重置 running status，
+                    // 避免 data 字节被误当作 channel 事件复用旧 status
+                    if (first < 0xF0)
+                        lastStatus = first;
+                }
+
+                trackDone:;
+            }
+
+            // 4. 未匹配 note_on 兜底（duration = 100 tick）
+            foreach (var channelPair in noteOnMap)
+            {
+                foreach (var pitchPair in channelPair.Value)
+                {
+                    foreach (var pending in pitchPair.Value)
+                    {
+                        notes.Add(new NoteData
+                        {
+                            pitch = pending.pitch,
+                            velocity = pending.velocity,
+                            startTick = pending.startTick,
+                            duration = 100,
+                            trackIndex = pending.trackIndex,
+                            channel = pending.channel
+                        });
+                    }
+                }
+            }
+
+            // 5. 排序（按 startTick 升序，同 tick 时按 track → channel → pitch 保证跨平台稳定）
+            notes.Sort((a, b) =>
+            {
+                var c = a.startTick.CompareTo(b.startTick);
+                if (c != 0) return c;
+                c = a.trackIndex.CompareTo(b.trackIndex);
+                if (c != 0) return c;
+                c = a.channel.CompareTo(b.channel);
+                if (c != 0) return c;
+                return a.pitch.CompareTo(b.pitch);
+            });
+
+            // 6. BPM 时间线 time_ms 计算（累积）
+            for (int i = 1; i < bpmTicks.Count; i++)
+            {
+                var tickDelta = bpmTicks[i] - bpmTicks[i - 1];
+                var bpm = bpmValues[i - 1];
+                var msPerTick = (60000.0 / bpm) / resolution;
+                bpmTimesMs.Add(bpmTimesMs[i - 1] + tickDelta * msPerTick);
+            }
+
+            // 7. duration 计算（从 maxEndTick + bpm_timeline）
+            double durationMs = CalculateDurationMs(maxEndTick, bpmTicks, bpmValues, resolution);
+
+            // 8. 乐器提取：对没有 program_change 的通道补充默认值
+            foreach (var trackPair in trackChannelsSeen)
+            {
+                var trackIdx = trackPair.Key;
+                var instruments = trackInstruments[trackIdx];
+                var banks = trackChannelBanks[trackIdx];
+                foreach (var channel in trackPair.Value)
+                {
+                    if (!instruments.ContainsKey(channel))
+                        instruments[channel] = (banks[channel], 0);
+                }
+            }
+
+            // 9. 打包返回
+            var count = notes.Count;
+            var pitches = new int[count];
+            var velocities = new int[count];
+            var startTicks = new int[count];
+            var durations = new int[count];
+            var trackIndices = new int[count];
+            var channels = new int[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                var n = notes[i];
+                pitches[i] = n.pitch;
+                velocities[i] = n.velocity;
+                startTicks[i] = n.startTick;
+                durations[i] = n.duration;
+                trackIndices[i] = n.trackIndex;
+                channels[i] = n.channel;
+            }
+
+            var tlCount = bpmTicks.Count;
+            var tlTicks = new int[tlCount];
+            var tlBpms = new float[tlCount];
+            var tlTimesMs = new float[tlCount];
+            for (int i = 0; i < tlCount; i++)
+            {
+                tlTicks[i] = bpmTicks[i];
+                tlBpms[i] = (float)bpmValues[i];
+                tlTimesMs[i] = (float)bpmTimesMs[i];
+            }
+
+            var godotInstruments = new Godot.Collections.Dictionary();
+            foreach (var trackPair in trackInstruments)
+            {
+                var trackDict = new Godot.Collections.Dictionary();
+                foreach (var chPair in trackPair.Value)
+                {
+                    trackDict[chPair.Key] = new Godot.Collections.Dictionary
+                    {
+                        { "bank", chPair.Value.bank },
+                        { "program", chPair.Value.program }
+                    };
+                }
+                godotInstruments[trackPair.Key] = trackDict;
+            }
+
+            sw.Stop();
+
+            return new Godot.Collections.Dictionary
+            {
+                { "success", true },
+                { "pitches", pitches },
+                { "velocities", velocities },
+                { "start_ticks", startTicks },
+                { "durations", durations },
+                { "track_indices", trackIndices },
+                { "channels", channels },
+                { "bpm", currentBpm },
+                { "duration_ms", durationMs },
+                { "timebase", resolution },
+                { "bpm_timeline_ticks", tlTicks },
+                { "bpm_timeline_bpms", tlBpms },
+                { "bpm_timeline_times_ms", tlTimesMs },
+                { "max_end_tick", maxEndTick },
+                { "track_count", trackCount },
+                { "track_instruments", godotInstruments },
+                { "parse_time_ms", sw.Elapsed.TotalMilliseconds },
+            };
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return ErrorResult($"Exception during parse: {ex.Message}");
+        }
+    }
+
+    private struct PendingNote
+    {
+        public int pitch;
+        public int velocity;
+        public int startTick;
+        public int trackIndex;
+        public int channel;
+    }
+
+    private struct NoteData
+    {
+        public int pitch;
+        public int velocity;
+        public int startTick;
+        public int duration;
+        public int trackIndex;
+        public int channel;
+    }
+
+    private void ProcessChannelEvent(
+        byte status, int data1, int data2, int tick, int trackIdx,
+        List<NoteData> notes, Dictionary<int, Dictionary<int, Queue<PendingNote>>> noteOnMap,
+        ref int maxEndTick,
+        Dictionary<int, int> banks,
+        Dictionary<int, (int bank, int program)> instruments,
+        HashSet<int> channelsSeen)
+    {
+        var channel = status & 0x0F;
+        var command = status & 0xF0;
+
+        channelsSeen.Add(channel);
+
+        switch (command)
+        {
+            case 0x80: // note_off
+                MatchNoteOff(noteOnMap, channel, data1, tick, notes);
+                if (tick > maxEndTick) maxEndTick = tick;
+                break;
+
+            case 0x90: // note_on
+                if (data2 > 0)
+                {
+                    if (!noteOnMap.ContainsKey(channel))
+                        noteOnMap[channel] = new Dictionary<int, Queue<PendingNote>>();
+                    if (!noteOnMap[channel].ContainsKey(data1))
+                        noteOnMap[channel][data1] = new Queue<PendingNote>();
+                    noteOnMap[channel][data1].Enqueue(new PendingNote
+                    {
+                        pitch = data1,
+                        velocity = data2,
+                        startTick = tick,
+                        trackIndex = trackIdx,
+                        channel = channel
+                    });
+                }
+                else
+                {
+                    MatchNoteOff(noteOnMap, channel, data1, tick, notes);
+                }
+                if (tick > maxEndTick) maxEndTick = tick;
+                break;
+
+            case 0xB0: // control_change
+                if (data1 == 0) // Bank Select MSB
+                {
+                    if (channel == 9)
+                        banks[channel] = 128;
+                    else
+                        banks[channel] = (banks[channel] & 0x7F) | (data2 << 7);
+                }
+                else if (data1 == 32) // Bank Select LSB
+                {
+                    if (channel == 9)
+                        banks[channel] = 128;
+                    else
+                        banks[channel] = (banks[channel] & 0x3F80) | (data2 & 0x7F);
+                }
+                break;
+
+            case 0xC0: // program_change
+                instruments[channel] = (banks[channel], data1);
+                break;
+        }
+    }
+
+    private void MatchNoteOff(
+        Dictionary<int, Dictionary<int, Queue<PendingNote>>> noteOnMap,
+        int channel, int pitch, int tick, List<NoteData> notes)
+    {
+        if (!noteOnMap.ContainsKey(channel)) return;
+        var pitchMap = noteOnMap[channel];
+        if (!pitchMap.ContainsKey(pitch)) return;
+        var queue = pitchMap[pitch];
+        if (queue.Count == 0) return;
+
+        // FIFO: Dequeue 取最早的 NoteOn（与原 GDScript pop_front 行为一致）
+        var pending = queue.Dequeue();
+        var duration = tick - pending.startTick;
+        notes.Add(new NoteData
+        {
+            pitch = pending.pitch,
+            velocity = pending.velocity,
+            startTick = pending.startTick,
+            duration = duration,
+            trackIndex = pending.trackIndex,
+            channel = pending.channel
+        });
+
+        if (queue.Count == 0)
+            pitchMap.Remove(pitch);
+    }
+
+    private double CalculateDurationMs(int maxTick, List<int> bpmTicks, List<double> bpmValues, int resolution)
+    {
+        // bpmTicks 在 Parse 中已初始化为 {0, 120.0}，Count 恒 ≥ 1
+        double cumulativeMs = 0.0;
+
+        for (int i = 0; i < bpmTicks.Count; i++)
+        {
+            var entryTick = bpmTicks[i];
+            double nextTick;
+            if (i + 1 < bpmTicks.Count)
+                nextTick = bpmTicks[i + 1];
+            else
+                nextTick = maxTick + 1000000;
+
+            if (maxTick < nextTick)
+            {
+                // maxTick 在当前 BPM 段内
+                var bpm = bpmValues[i];
+                var tickDelta = maxTick - entryTick;
+                var msPerTick = (60000.0 / bpm) / resolution;
+                return cumulativeMs + tickDelta * msPerTick;
+            }
+            else
+            {
+                // 累加当前完整段的时间
+                if (i + 1 < bpmTicks.Count)
+                {
+                    var tickDelta = bpmTicks[i + 1] - entryTick;
+                    var bpm = bpmValues[i];
+                    var msPerTick = (60000.0 / bpm) / resolution;
+                    cumulativeMs += tickDelta * msPerTick;
+                }
+            }
+        }
+
+        return cumulativeMs;
+    }
+
+    private Godot.Collections.Dictionary ErrorResult(string msg)
+    {
+        // 错误信息通过返回值传递给 GDScript 调用方（push_error 输出），不在 C# 侧调用 GD.Print
+        System.Diagnostics.Debug.WriteLine($"[MidiParserNative] {msg}");
+        return new Godot.Collections.Dictionary
+        {
+            { "success", false },
+            { "error_msg", msg }
+        };
+    }
+
+    // ========== 大端读取辅助 ==========
+
+    private static string ReadFourCC(BinaryReader reader)
+    {
+        var b1 = reader.ReadByte();
+        var b2 = reader.ReadByte();
+        var b3 = reader.ReadByte();
+        var b4 = reader.ReadByte();
+        return new string(new[] { (char)b1, (char)b2, (char)b3, (char)b4 });
+    }
+
+    private static short ReadInt16BigEndian(BinaryReader reader)
+    {
+        return (short)(reader.ReadByte() << 8 | reader.ReadByte());
+    }
+
+    private static int ReadInt32BigEndian(BinaryReader reader)
+    {
+        return reader.ReadByte() << 24 | reader.ReadByte() << 16 | reader.ReadByte() << 8 | reader.ReadByte();
+    }
+
+    private static int ReadVariableLength(BinaryReader reader)
+    {
+        int value = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            var b = reader.ReadByte();
+            value = (value << 7) | (b & 0x7F);
+            if ((b & 0x80) == 0) break;
+        }
+        return value;
+    }
+
+    private static void DiscardData(BinaryReader reader)
+    {
+        var size = ReadVariableLength(reader);
+        reader.BaseStream.Position += size;
+    }
+}

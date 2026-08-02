@@ -121,6 +121,11 @@ var midi_timebase: int = 480
 ## 类型为 float 与 NoteEvent.start_time / NoteState.start_tick 对齐，避免比较时隐式转换
 var max_end_tick: float = 0.0
 
+## MIDI 解析时提取的 (track, channel) → {bank, program} 乐器映射（运行时缓存，不持久化）
+## 由 C# MidiParserNative 一次性提取，替代原 extract_track_channel_instruments 的 GDScript 遍历
+## 缓存命中时 MidiPlaybackManager.load_midi 直接复用此字段，无需重新解析
+var track_channel_instruments: Dictionary = {}
+
 ## ========== 用户配置字段（运行时可修改，需持久化）==========
 
 ## MIDI播放音量（0-100）

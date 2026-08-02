@@ -284,18 +284,9 @@ func _on_parse_done(result: Dictionary) -> void:
 	# 缺失此行会导致进入 TrackView 时 worker 线程重新解析整个 MIDI，造成 ~18MB 临时峰值
 	if midi._runtime_track_infos.is_empty():
 		midi._runtime_track_infos = result.get("track_infos", [])
-		# 过滤 TrackInfo.events：只保留乐器相关事件（control_change / program_change），
-		# 丢弃 note_on/note_off 等音符事件（已存入 parsed_notes，TrackInfo.events 中占比 >90%）
-		# 6 万音符 MIDI 的 events 从 ~30MB 降到 ~1MB，且 _extract_track_channel_instruments 仍可正常工作
-		for track_info in midi._runtime_track_infos:
-			if track_info and track_info.events.size() > 0:
-				var filtered_events: Array = []
-				for event_chunk in track_info.events:
-					var evt = event_chunk.event
-					if evt and (evt.type == SMF.MIDIEventType.control_change
-							or evt.type == SMF.MIDIEventType.program_change):
-						filtered_events.append(event_chunk)
-				track_info.events = filtered_events
+	# 回填 track_channel_instruments（C# MidiParserNative 一次性提取，load_midi 直接复用）
+	if midi.track_channel_instruments.is_empty():
+		midi.track_channel_instruments = result.get("track_instruments", {})
 	# 回填 runtime_track_channel_notes（worker 线程已构建，TrackView._build_buckets 直接复用）
 	if midi.runtime_track_channel_notes.is_empty():
 		midi.runtime_track_channel_notes = result.get("track_channel_notes", {})

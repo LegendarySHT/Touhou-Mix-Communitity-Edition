@@ -261,14 +261,15 @@ func load_midi(midi_data: MidiData) -> bool:
 		current_midi_data.midi_timebase = midi_timebase
 		current_midi_data._runtime_track_infos = track_infos
 		current_midi_data.max_end_tick = float(parse_result.get("max_end_tick", 0))
+		current_midi_data.track_channel_instruments = parse_result.get("track_instruments", {})
 		duration_ms = parse_result["duration"]
 
-	# 从 track_infos 中提取乐器信息（用于不维护此信息的后端，如 MeltySynth）
-	# 缓存命中跳过：preparse_midi_async 已在 worker 中构建 cached_track_channel_instruments
-	# 且已清空 track_info.events 释放 SMF 原始事件内存
+	# 从 C# MidiParserNative 一次性提取的 track_channel_instruments 中复用乐器信息
+	# （C# 解析阶段已完成 control_change/program_change 提取，无需 GDScript 遍历 events）
 	if cached_track_channel_instruments.is_empty():
-		cached_track_channel_instruments = extract_track_channel_instruments(track_infos)
-		GLogger.info("Extracted instruments for %d tracks from MIDI file" % cached_track_channel_instruments.size(), "MidiPlaybackManager")
+		if not current_midi_data.track_channel_instruments.is_empty():
+			cached_track_channel_instruments = current_midi_data.track_channel_instruments.duplicate()
+			GLogger.info("Loaded instruments for %d tracks from C# parse result" % cached_track_channel_instruments.size(), "MidiPlaybackManager")
 	else:
 		GLogger.info("Instrument extraction cache hit, skipping re-extract", "MidiPlaybackManager")
 	
@@ -426,7 +427,7 @@ func _save_runtime_config_to_json(midi_data: MidiData) -> void:
 		push_error("[MidiPlaybackManager] Failed to save runtime config to JSON for MIDI %s" % midi_data.id)
 
 ## 在 worker 线程中预解析 MIDI，使后续 load_midi() 命中缓存跳过同步解析
-## 同时在 worker 中完成 extract_track_channel_instruments + runtime_track_channel_notes 分组构建
+## 同时在 worker 中完成 track_channel_instruments 复用 + runtime_track_channel_notes 分组构建
 ## 主线程在 await 期间可继续渲染转场动画，避免首次进入 TrackView 时的解析卡顿
 ## TrackView._load_midi 在调用 load_midi 之前 await 本方法
 func preparse_midi_async(midi_data: MidiData) -> bool:
@@ -454,8 +455,8 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 		var _parse_result: Dictionary = MidiParser.load_and_parse_midi(midi_file_path)
 		result_wrapper["parse"] = _parse_result
 		if _parse_result.get("success", false):
-			# 乐器提取（同时清空 track_info.events 释放 SMF 原始事件内存）
-			result_wrapper["instruments"] = extract_track_channel_instruments(_parse_result["track_infos"])
+			# 乐器信息由 C# MidiParserNative 一次性提取，直接复用
+			result_wrapper["instruments"] = _parse_result.get("track_instruments", {})
 			# 按 (track, channel) 分组（TrackView._build_buckets 直接复用，避免主线程 O(N) 重新遍历）
 			result_wrapper["track_channel_notes"] = MidiParser.build_track_channel_notes(_parse_result["notes"])
 	, false, "MIDI Preparse")
@@ -484,8 +485,9 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	midi_data.max_end_tick = float(parse_result.get("max_end_tick", 0))
 
 	# 复用 worker 中已构建的乐器信息字典（避免 load_midi 重新提取，省 ~5-15ms）
-	# 同时清空 track_info.events 的操作已在 worker 中完成
+	# C# MidiParserNative 一次性提取，直接复用
 	cached_track_channel_instruments = result_wrapper["instruments"]
+	midi_data.track_channel_instruments = cached_track_channel_instruments.duplicate()
 
 	# 复用 worker 中已构建的 (track,channel) → notes 分组（避免 TrackView._build_buckets 重新遍历）
 	midi_data.runtime_track_channel_notes = result_wrapper["track_channel_notes"]
@@ -1192,88 +1194,6 @@ func _apply_mute_state_to_backend(backend: MidiPlaybackInterface) -> void:
 			backend.set_track_channel_mute(track_idx, channel, muted)
 	
 	print("[MidiPlaybackManager] Applied mute state for %d tracks" % cached_track_channel_instruments.size())
-
-## 从 track_infos 中提取 program_change 事件并返回乐器信息字典
-## 无成员字段写入，可在 worker 线程中调用
-## 返回格式: {track_idx: {channel: {bank, program}}}
-## 注意：非纯函数——会清空入参 track_info.events 释放 SMF 原始事件 chunk 内存（6 万音符 MIDI 约 30 MB）
-static func extract_track_channel_instruments(track_infos: Array) -> Dictionary:
-	var result: Dictionary = {}
-
-	# 用于跟踪每个通道的当前 bank 值
-	var channel_banks: Dictionary = {}  # {track_idx: {channel: bank}}
-
-	# 初始化：Channel 9 默认为鼓组 bank
-	for track_idx in range(track_infos.size()):
-		channel_banks[track_idx] = {}
-		for ch in range(16):
-			if ch == 9:
-				channel_banks[track_idx][ch] = 128  # Drum bank
-			else:
-				channel_banks[track_idx][ch] = 0
-
-	# 遍历每个轨道的事件
-	for track_idx in range(track_infos.size()):
-		var track_info = track_infos[track_idx]
-		if not track_info:
-			continue
-
-		result[track_idx] = {}
-
-		# 收集该轨道中出现的所有通道
-		var channels_in_track: Array = []
-		for event_chunk in track_info.events:
-			var channel = event_chunk.channel_number
-			if channel not in channels_in_track:
-				channels_in_track.append(channel)
-
-			var event = event_chunk.event
-
-			# 处理 Bank Select events (Control Change 0 和 32)
-			if event.type == SMF.MIDIEventType.control_change:
-				var cc_num = event.number
-				var cc_val = event.value
-
-				if cc_num == 0:  # Bank Select MSB
-					if channel == 9:
-						channel_banks[track_idx][channel] = 128  # 鼓组始终 bank 128
-					else:
-						var current_bank = channel_banks[track_idx].get(channel, 0)
-						channel_banks[track_idx][channel] = (current_bank & 0x7F) | (cc_val << 7)
-				elif cc_num == 32:  # Bank Select LSB
-					if channel == 9:
-						channel_banks[track_idx][channel] = 128
-					else:
-						var current_bank = channel_banks[track_idx].get(channel, 0)
-						channel_banks[track_idx][channel] = (current_bank & 0x3F80) | (cc_val & 0x7F)
-
-			# 处理 Program Change events
-			elif event.type == SMF.MIDIEventType.program_change:
-				var program = event.number
-				var bank = channel_banks[track_idx].get(channel, 0)
-
-				# 存储该 (track, channel) 的乐器
-				result[track_idx][channel] = {
-					"bank": bank,
-					"program": program
-				}
-
-		# 对于没有 program_change 的通道，使用默认值
-		for channel in channels_in_track:
-			if not result[track_idx].has(channel):
-				var bank = channel_banks[track_idx].get(channel, 0)
-				result[track_idx][channel] = {
-					"bank": bank,
-					"program": 0  # 默认 Grand Piano (或 Standard Drum Kit for channel 9)
-				}
-
-	# 提取完成后清空 TrackInfo.events，释放 SMF 原始事件 chunk 内存（6 万音符 MIDI 约 30 MB）
-	# events 仅用于本函数提取乐器信息，之后无任何消费者；name/note_count 等轻量字段保留
-	for track_info in track_infos:
-		if track_info and track_info.events.size() > 0:
-			track_info.events.clear()
-
-	return result
 
 ## 辅助函数：定位MIDI文件路径
 func _locate_midi_file(midi_data: MidiData) -> String:
