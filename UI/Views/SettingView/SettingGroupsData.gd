@@ -534,81 +534,13 @@ static func get_setting_groups() -> Array:
 				"unit": "s"
 			},
 			{
-				"id": "note_fall_time",
-				"name_en": "Note Fall Time",
-				"name_zh": "音符下落时间",
-				"description": "设置音符从屏幕顶端生成到落到判定线的时间，决定了音符下落速度的快慢，越小越快",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "1",
-				"unit": "s",
-				"min_value": 0.2,
-				"max_value": 5.0,
-				"step": 0.1
-			},
-			{
-				"id": "note_fall_mode",
-				"name_en": "Note Fall Mode",
-				"name_zh": "音符下落模式",
-				"description": "选择音符的下落速度模式：匀速、加速下落或自定义",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Uniform", "text_zh": "匀速"},
-					{"text_en": "Accelerate", "text_zh": "加速下落"},
-					{"text_en": "Custom", "text_zh": "自定义"}
-				]
-			},
-			{
-				"id": "note_fall_speed_after_judge_multiplier",
-				"name_en": "Note Fall Speed Multiplier After Judge Line",
-				"name_zh": "音符过判定线后的下落速度倍率",
-				"description": "设置音符过判定线后的下落速度相对于判定线前的倍率（1.0表示相同）",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "1.0",
-				"unit": "x",
-				"min_value": 0.1,
-				"max_value": 5.0,
-				"step": 0.1
-			},
-			{
-				"id": "note_fall_easing_before_func",
-				"name_en": "Note Fall Easing (Before Judge) - Function",
-				"name_zh": "音符下落缓动（判定线前）- 函数",
-				"description": "选择音符在判定线前的缓动函数类型",
-				"type": "TYPE_OPTION",
-				"default_value": "LINEAR",
-				"is_custom_easing": true,
-				"easing_type": "func"
-			},
-			{
-				"id": "note_fall_easing_before_phase",
-				"name_en": "Note Fall Easing (Before Judge) - Phase",
-				"name_zh": "音符下落缓动（判定线前）- 相位",
-				"description": "选择音符在判定线前的缓动相位",
-				"type": "TYPE_OPTION",
-				"default_value": "IN",
-				"is_custom_easing": true,
-				"easing_type": "phase"
-			},
-			{
-				"id": "note_fall_easing_after_func",
-				"name_en": "Note Fall Easing (After Judge) - Function",
-				"name_zh": "音符下落缓动（判定线后）- 函数",
-				"description": "选择音符在判定线后的缓动函数类型",
-				"type": "TYPE_OPTION",
-				"default_value": "LINEAR",
-				"is_custom_easing": true,
-				"easing_type": "func"
-			},
-			{
-				"id": "note_fall_easing_after_phase",
-				"name_en": "Note Fall Easing (After Judge) - Phase",
-				"name_zh": "音符下落缓动（判定线后）- 相位",
-				"description": "选择音符在判定线后的缓动相位",
-				"type": "TYPE_OPTION",
-				"default_value": "IN",
-				"is_custom_easing": true,
-				"easing_type": "phase"
+				"id": "note_fall_adjust",
+				"name_en": "Note Fall Adjust",
+				"name_zh": "音符下落设置",
+				"description": "音符下落模式、下落时间、过判定线后速度倍率及缓动函数的设置",
+				"type": "TYPE_BUTTON",
+				"default_value": null,
+				"on_click": "_popup_falling_adjust"
 			}
 		]
 	},

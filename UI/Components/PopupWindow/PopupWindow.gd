@@ -20,6 +20,7 @@ static var instance: PopupWindow
 @onready var _particle_adjust: ParticleAdjust = $TabC/ParticleAdjust
 @onready var _image_adjust: ImageAdjust = $TabC/ImageAdjust
 @onready var _kb_mode_adjust: KBModeAdjust = $TabC/KBModeAdjust
+@onready var _falling_adjust: FallingAdjust = $TabC/FallingAdjust
 
 ## 主题管理器通过此 getter 访问 DelayAdjust 中的 delay_btn（保持外部 API 不变）
 var delay_btn: Button:
@@ -52,6 +53,7 @@ func _ready() -> void:
 		_delay_adjust.stop_calibration()
 		_particle_adjust.stop_preview()
 		_kb_mode_adjust._cancel_recording()
+		_falling_adjust.stop_preview()
 		_window_popup_animate(false)
 	)
 
@@ -197,3 +199,18 @@ func show_kb_mode_adjust(current_keys: String = "", current_display_names: Strin
 	# 兜底取消录入状态（popup_hide 已调用，此处再保险一次）
 	_kb_mode_adjust._cancel_recording()
 	return _kb_mode_adjust.get_result()
+
+# 弹出下落模式设置窗口
+## 关闭时由 FallingAdjust 内部 save_config 即时写入 ConfigManager 并触发 config_changed
+## 返回 Dictionary 字段见 FallingAdjust.get_result（供 SettingList 同步 _pending_config）
+func show_falling_adjust() -> Dictionary:
+	_tab_c.current_tab = 6
+	size = Vector2(1300, 950)
+	_falling_adjust.init_adjust()
+	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
+	await window_close
+	# 兜底停止预览（popup_hide 已调用，此处再保险一次）
+	_falling_adjust.stop_preview()
+	# 关闭时持久化下落参数并触发 FlowArea 热重载
+	_falling_adjust.save_config()
+	return _falling_adjust.get_result()

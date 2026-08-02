@@ -238,9 +238,7 @@ func _on_setting_value_changed(id: String, value: Variant):
 	GLogger.info("Pending config: %s = %s" % [id, str(converted_value)], "SettingList")
 
 	# 即时可见性刷新
-	if id == "note_fall_mode":
-		set_note_fall_mode_and_show_custom_options(int(value))
-	elif id == "show_advanced_settings":
+	if id == "show_advanced_settings":
 		_apply_advanced_visibility()
 
 # 将 UI 控件返回的值转换为配置存储用的值（索引→文件名、类型转换等）
@@ -326,6 +324,22 @@ func _popup_kb_mode_adjust() -> void:
 	_pending_config["keyboard_mode_keys"] = keys_str
 	_pending_config["keyboard_mode_display_names"] = names_str
 	GLogger.info("keyboard_mode_keys updated: %s (pending save)" % keys_str, "SettingList")
+
+# ===== 下落模式设置弹窗入口 =====
+# 弹出下落模式设置窗口，关闭后 FallingAdjust 已通过 set_value_and_notify 即时应用到 FlowArea
+# _pending_config 同步缓存，确保退出 SettingView 时 diff 保存到 settings.ini
+func _popup_falling_adjust() -> void:
+	var result := await PopupWindow.instance.show_falling_adjust()
+	if result.is_empty():
+		return
+	_pending_config["note_fall_mode"] = int(result.get("note_fall_mode", 0))
+	_pending_config["note_fall_time"] = float(result.get("note_fall_time", 1.0))
+	_pending_config["note_fall_speed_after_judge_multiplier"] = float(result.get("note_fall_speed_after_judge_multiplier", 1.0))
+	_pending_config["note_fall_easing_before_func"] = String(result.get("note_fall_easing_before_func", "LINEAR"))
+	_pending_config["note_fall_easing_before_phase"] = String(result.get("note_fall_easing_before_phase", "IN"))
+	_pending_config["note_fall_easing_after_func"] = String(result.get("note_fall_easing_after_func", "LINEAR"))
+	_pending_config["note_fall_easing_after_phase"] = String(result.get("note_fall_easing_after_phase", "IN"))
+	GLogger.info("Falling params updated: mode=%s time=%s (pending save)" % [result.get("note_fall_mode"), result.get("note_fall_time")], "SettingList")
 
 # 弹出延迟校准窗口，校准结果写入 audio_playback_delay（pending 保存）
 # DelayAdjust 内部用 MidiPlaybackManager 实时合成 GM 鼓组节拍音，与 PlayView 演奏模式同音频路径
@@ -630,23 +644,6 @@ func _apply_advanced_visibility() -> void:
 			setting_item.visible = show_advanced
 			if setting_item.value_node:
 				setting_item.value_node.visible = show_advanced
-
-## 设置下落模式和控制自定义缓动选项的可见性
-func set_note_fall_mode_and_show_custom_options(mode: int) -> void:
-	var custom_easing_ids = [
-		"note_fall_easing_before_func",
-		"note_fall_easing_before_phase",
-		"note_fall_easing_after_func",
-		"note_fall_easing_after_phase"
-	]
-
-	for easing_id in custom_easing_ids:
-		if setting_items.has(easing_id):
-			var setting_item = setting_items[easing_id]
-			if setting_item and setting_item.value_node:
-				setting_item.visible = (mode == 2)
-				if setting_item.value_node:
-					setting_item.value_node.visible = (mode == 2)
 
 ## ========== 主题化 ==========
 

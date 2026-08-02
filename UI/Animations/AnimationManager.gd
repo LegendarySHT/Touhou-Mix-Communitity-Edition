@@ -417,7 +417,7 @@ func _scene_transition_enter(old_state: UIStateManager.UIState, new_state: UISta
 	if UiStatMGR.transition_version != _current_transition_version:
 		return
 	# 新组件：播放入场动画，收集所有有效 tween
-	var valid_in_tween: Tween
+	var valid_in_tween: Tween = null
 	for key in ui_exist.keys():
 		if not ui_exist[key] and key in ui_part.get(new_state, []):
 			var tween := animate_ui_in(key, old_state)
@@ -436,7 +436,7 @@ func _scene_transition_enter(old_state: UIStateManager.UIState, new_state: UISta
 	else:
 		scene_transition_fin.emit()
 
-func animate_ui_out(ui_name: String, old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> Tween:
+func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> Tween:
 	print("组件退出动画: %s" % ui_name)
 	var tween_id = "%s_out" % ui_name
 	var tween : Tween

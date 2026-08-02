@@ -12,6 +12,7 @@
 [ext_resource type="Script" uid="uid://birrx3o1ktn31" path="res://UI/Components/PopupWindow/ImageAdjust.gd" id="6_v2710"]
 [ext_resource type="Script" uid="uid://bybph8jhlvdlx" path="res://UI/Components/PopupWindow/KBModeAdjust.gd" id="11_krk8y"]
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="13_ff7qk"]
+[ext_resource type="Script" uid="uid://drs7ctrsh2gjs" path="res://UI/Components/PopupWindow/FallingAdjust.gd" id="13_tewhg"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qxcsx"]
 content_margin_left = 50.0
@@ -163,6 +164,9 @@ corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j02sm"]
+bg_color = Color(1, 1, 1, 0.711)
 
 [node name="TabC" type="TabContainer" unique_id=1542807723]
 anchors_preset = -1
@@ -1066,6 +1070,289 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 
+[node name="FallingAdjust" type="HBoxContainer" parent="." unique_id=1432140694]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 40
+alignment = 1
+script = ExtResource("13_tewhg")
+metadata/_tab_index = 6
+
+[node name="FallingPreview" type="Panel" parent="FallingAdjust" unique_id=2071702706]
+custom_minimum_size = Vector2(150, 700)
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_nhoxv")
+
+[node name="block" parent="FallingAdjust/FallingPreview" unique_id=2005207291 instance=ExtResource("3_6fqj7")]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -50.0
+offset_top = -100.0
+offset_right = 50.0
+offset_bottom = 0.0
+grow_horizontal = 2
+
+[node name="Line" type="PanelContainer" parent="FallingAdjust/FallingPreview" unique_id=974903155]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_top = 150.0
+offset_bottom = 154.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_j02sm")
+
+[node name="VBoxC" type="VBoxContainer" parent="FallingAdjust" unique_id=2044037586]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 30
+
+[node name="Title" type="Label" parent="FallingAdjust/VBoxC" unique_id=804326116]
+custom_minimum_size = Vector2(600, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 1
+theme_override_font_sizes/font_size = 36
+text = "音符下落设置"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OptionButton" type="OptionButton" parent="FallingAdjust/VBoxC" unique_id=1570068199]
+custom_minimum_size = Vector2(600, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 32
+alignment = 1
+selected = 0
+item_count = 3
+popup/item_0/text = "匀速"
+popup/item_0/id = 0
+popup/item_1/text = "加速下落"
+popup/item_1/id = 1
+popup/item_2/text = "自定义"
+popup/item_2/id = 2
+
+[node name="OtherOptions" type="GridContainer" parent="FallingAdjust/VBoxC" unique_id=883072806]
+custom_minimum_size = Vector2(0, 320)
+layout_mode = 2
+columns = 2
+
+[node name="Label8" type="Label" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=1321915252]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "音符下落时间"
+vertical_alignment = 1
+
+[node name="FallDuration" type="HBoxContainer" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=292531122]
+custom_minimum_size = Vector2(200, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="LineEdit" type="LineEdit" parent="FallingAdjust/VBoxC/OtherOptions/FallDuration" unique_id=1646738807]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+text = "1.0"
+placeholder_text = "1.0"
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false
+
+[node name="Label" type="Label" parent="FallingAdjust/VBoxC/OtherOptions/FallDuration" unique_id=806608412]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 32
+text = "s"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label3" type="Label" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=1878452848]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 25
+text = "判定线前"
+vertical_alignment = 2
+
+[node name="Control2" type="Control" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=618282139]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=265093706]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "下落缓动函数"
+vertical_alignment = 1
+
+[node name="FallFunc" type="OptionButton" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=1310596927]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+alignment = 1
+selected = 0
+item_count = 10
+popup/item_0/text = "Linear"
+popup/item_0/id = 0
+popup/item_1/text = "Quad"
+popup/item_1/id = 1
+popup/item_2/text = "Cubic"
+popup/item_2/id = 2
+popup/item_3/text = "Quart"
+popup/item_3/id = 3
+popup/item_4/text = "Quint"
+popup/item_4/id = 4
+popup/item_5/text = "Sine"
+popup/item_5/id = 5
+popup/item_6/text = "Circ"
+popup/item_6/id = 6
+popup/item_7/text = "Elastic"
+popup/item_7/id = 7
+popup/item_8/text = "Back"
+popup/item_8/id = 8
+popup/item_9/text = "Bounce"
+popup/item_9/id = 9
+
+[node name="Label4" type="Label" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=1573033280]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "下落缓动相位"
+vertical_alignment = 1
+
+[node name="FallPhase" type="OptionButton" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=451081868]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+alignment = 1
+selected = 0
+item_count = 3
+popup/item_0/text = "In"
+popup/item_0/id = 0
+popup/item_1/text = "Out"
+popup/item_1/id = 1
+popup/item_2/text = "InOut"
+popup/item_2/id = 2
+
+[node name="Label2" type="Label" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=1882904662]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 25
+text = "判定线后"
+vertical_alignment = 2
+
+[node name="Control" type="Control" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=1132605470]
+layout_mode = 2
+
+[node name="Label7" type="Label" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=2065902868]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "下落速度倍率"
+vertical_alignment = 1
+
+[node name="FallSpeed" type="HBoxContainer" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=1625580659]
+custom_minimum_size = Vector2(200, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="LineEdit" type="LineEdit" parent="FallingAdjust/VBoxC/OtherOptions/FallSpeed" unique_id=1618338060]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+text = "1.0"
+placeholder_text = "1.0"
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false
+
+[node name="Label" type="Label" parent="FallingAdjust/VBoxC/OtherOptions/FallSpeed" unique_id=619749918]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 32
+text = "x"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label5" type="Label" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=136032375]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "下落缓动函数"
+vertical_alignment = 1
+
+[node name="FallFunc2" type="OptionButton" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=1123304524]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+alignment = 1
+selected = 0
+item_count = 10
+popup/item_0/text = "Linear"
+popup/item_0/id = 0
+popup/item_1/text = "Quad"
+popup/item_1/id = 1
+popup/item_2/text = "Cubic"
+popup/item_2/id = 2
+popup/item_3/text = "Quart"
+popup/item_3/id = 3
+popup/item_4/text = "Quint"
+popup/item_4/id = 4
+popup/item_5/text = "Sine"
+popup/item_5/id = 5
+popup/item_6/text = "Circ"
+popup/item_6/id = 6
+popup/item_7/text = "Elastic"
+popup/item_7/id = 7
+popup/item_8/text = "Back"
+popup/item_8/id = 8
+popup/item_9/text = "Bounce"
+popup/item_9/id = 9
+
+[node name="Label6" type="Label" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=388787734]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "下落缓动相位"
+vertical_alignment = 1
+
+[node name="FallPhase2" type="OptionButton" parent="FallingAdjust/VBoxC/OtherOptions" unique_id=1825489973]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+alignment = 1
+selected = 0
+item_count = 3
+popup/item_0/text = "In"
+popup/item_0/id = 0
+popup/item_1/text = "Out"
+popup/item_1/id = 1
+popup/item_2/text = "InOut"
+popup/item_2/id = 2
+
 [connection signal="focus_exited" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_focus_exited"]
 [connection signal="text_changed" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_text_changed"]
 [connection signal="text_submitted" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_text_submitted"]
@@ -1081,3 +1368,10 @@ layout_mode = 2
 [connection signal="pressed" from="KBModeAdjust/KeySequence/VFlowC/AddBtn" to="KBModeAdjust" method="_on_add_btn_pressed"]
 [connection signal="text_changed" from="KBModeAdjust/KeyDisplayName/LineEdit" to="KBModeAdjust" method="_on_display_name_changed"]
 [connection signal="pressed" from="KBModeAdjust/KeyConfig/Button" to="KBModeAdjust" method="_on_key_config_btn_pressed"]
+[connection signal="item_selected" from="FallingAdjust/VBoxC/OptionButton" to="FallingAdjust" method="_on_setting_changed"]
+[connection signal="text_changed" from="FallingAdjust/VBoxC/OtherOptions/FallDuration/LineEdit" to="FallingAdjust" method="_on_setting_changed"]
+[connection signal="item_selected" from="FallingAdjust/VBoxC/OtherOptions/FallFunc" to="FallingAdjust" method="_on_setting_changed"]
+[connection signal="item_selected" from="FallingAdjust/VBoxC/OtherOptions/FallPhase" to="FallingAdjust" method="_on_setting_changed"]
+[connection signal="text_changed" from="FallingAdjust/VBoxC/OtherOptions/FallSpeed/LineEdit" to="FallingAdjust" method="_on_setting_changed"]
+[connection signal="item_selected" from="FallingAdjust/VBoxC/OtherOptions/FallFunc2" to="FallingAdjust" method="_on_setting_changed"]
+[connection signal="item_selected" from="FallingAdjust/VBoxC/OtherOptions/FallPhase2" to="FallingAdjust" method="_on_setting_changed"]
