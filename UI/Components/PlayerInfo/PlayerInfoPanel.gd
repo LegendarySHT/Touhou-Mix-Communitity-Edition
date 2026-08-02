@@ -25,8 +25,7 @@ const TAB_OFFSET_LEFT_FULL := 150.0
 const TAB_OFFSET_TOP_EXPANDED := 50.0
 const TAB_OFFSET_TOP_COLLAPSED := 10.0
 # TabC 右侧预留（给 RB_Btn 等留位置）
-const TAB_RIGHT_RESERVE_NORM := 50.0
-const TAB_RIGHT_RESERVE_FULL := 150.0
+const TAB_RIGHT_RESERVE_NORM := 150.0
 
 # ========== 节点 ==========
 @onready var info_panel_btn: SkewButton = $InfoPanelBtn
@@ -81,7 +80,7 @@ func _animate_to_state(s: State) -> void:
 func _is_expanded(s: State) -> bool:
 	return s == State.EXPANDED or s == State.LOGGED_IN_EXPANDED or s == State.FULL_EXPANDED
 
-## 3-way 内容切换：用 TabContainer.current_tab 切换 MiniInfo / LogIn / ProfileView
+## 3-way 内容切换：用 TabContainer.current_tab 切换 MiniInfo / LogIn / ProfileView / ProfilePage
 func _apply_content_visibility(s: State) -> void:
 	if not _is_expanded(s):
 		# 收起状态：MiniInfo (tab 0)
@@ -91,8 +90,7 @@ func _apply_content_visibility(s: State) -> void:
 		# 登录/注册表单 (tab 1)
 		info_tab_c.current_tab = 1
 	else:
-		# 个人信息页面 (tab 2)，LOGGED_IN_EXPANDED / FULL_EXPANDED
-		info_tab_c.current_tab = 2
+		# LOGGED_IN_EXPANDED → tab 2 概要页；FULL_EXPANDED → tab 3 ProfilePage
 		info_tab_c.apply_profile_visibility(s == State.FULL_EXPANDED)
 
 # ========== 面板几何 ==========
@@ -147,10 +145,10 @@ func _animate_panel_geometry(s: State, t: Tween) -> void:
 	for sb in _btn_styleboxes:
 		t.tween_property(sb, "skew", Vector2(p.skew, 0), ANIM_DURATION)
 	t.tween_property(info_panel_btn, "skew_x", p.skew, ANIM_DURATION)
-	t.tween_property(info_tab_c, "offset_left", p.margin + p.tab_left_extra, ANIM_DURATION)
 	t.tween_property(info_tab_c, "offset_top", p.tab_top, ANIM_DURATION)
-	var right_reserve := TAB_RIGHT_RESERVE_FULL if s == State.FULL_EXPANDED else TAB_RIGHT_RESERVE_NORM
-	t.tween_property(info_tab_c, "offset_right", -p.margin - p.tab_left_extra - right_reserve, ANIM_DURATION)
+	t.tween_property(info_tab_c, "offset_bottom", 0, ANIM_DURATION)
+	t.tween_property(info_tab_c, "offset_left", p.margin + p.tab_left_extra, ANIM_DURATION)
+	t.tween_property(info_tab_c, "offset_right", -p.margin - max(TAB_RIGHT_RESERVE_NORM, p.tab_left_extra), ANIM_DURATION)
 
 # ========== Tip ==========
 

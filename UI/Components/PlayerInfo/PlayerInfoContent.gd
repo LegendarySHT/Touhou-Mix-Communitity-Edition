@@ -1,7 +1,7 @@
 extends TabContainer
 class_name PlayerInfoContent
 
-## PlayerInfo 的内容容器，管理 MiniInfo / LogIn / ProfileView 三个 tab。
+## PlayerInfo 的内容容器，管理 MiniInfo / LogIn / ProfileView / ProfilePage 四个 tab。
 ## 负责表单交互、个人信息填充等页面内逻辑；
 ## 状态切换、面板几何动画由 PlayerInfo.gd 处理。
 
@@ -43,33 +43,21 @@ var _player_data := {
 @onready var confirm_pwd_edit: LineEdit = $C/Skew/LogIn/ConfirmPwdLineEdit
 @onready var submit_btn: Button = $C/Skew/LogIn/SubmitBtn
 @onready var error_msg: Label = $C/Skew/LogIn/ErrorMsg
-# ProfileView（个人信息页面）
-@onready var profile_name: Label = $ProfileView/Left/Header/NameLevelVBox/NameLabel
-@onready var profile_level: Label = $ProfileView/Left/Header/NameLevelVBox/HBox/VBox/HBox/LevelLabel
-@onready var profile_pp: Label = $ProfileView/Left/Header/NameLevelVBox/HBox/VBox/HBox/PPLabel
-@onready var profile_rank: Label = $ProfileView/Left/Header/NameLevelVBox/HBox/RankLabel
-@onready var level_progress: ProgressBar = $ProfileView/Left/ProgressMC/LevelProgressBar
-@onready var total_plays_label: Label = $ProfileView/Left/StatsGrid/TotalPlaysLabel
-@onready var accuracy_label: Label = $ProfileView/Left/StatsGrid/AccuracyLabel
-@onready var max_combo_label: Label = $ProfileView/Left/StatsGrid/MaxComboLabel
-@onready var play_time_label: Label = $ProfileView/Left/StatsGrid/PlayTimeLabel
-@onready var expand_btn: Button = $ProfileView/Left/ExpandBtn
-@onready var detail_section: VBoxContainer = $ProfileView/Left/DetailSection
-@onready var right_section: VBoxContainer = $ProfileView/Right
-@onready var grade_labels: Dictionary = {}
-@onready var recent_rows: Array = []
+# ProfileView（个人信息概要，半展开状态）
+@onready var profile_name: Label = $ProfileView/Header/NameLevelVBox/NameLabel
+@onready var profile_level: Label = $ProfileView/Header/NameLevelVBox/HBox/VBox/HBox/LevelLabel
+@onready var profile_pp: Label = $ProfileView/Header/NameLevelVBox/HBox/VBox/HBox/PPLabel
+@onready var profile_rank: Label = $ProfileView/Header/NameLevelVBox/HBox/RankLabel
+@onready var level_progress: ProgressBar = $ProfileView/ProgressMC/LevelProgressBar
+@onready var total_plays_label: Label = $ProfileView/StatsGrid/TotalPlaysLabel
+@onready var accuracy_label: Label = $ProfileView/StatsGrid/AccuracyLabel
+@onready var max_combo_label: Label = $ProfileView/StatsGrid/MaxComboLabel
+@onready var play_time_label: Label = $ProfileView/StatsGrid/PlayTimeLabel
+@onready var expand_btn: Button = $ProfileView/ExpandBtn
 
 var _login_mode: LoginMode = LoginMode.LOGIN
 
 func _ready() -> void:
-	# 初始化成绩分布 label 引用
-	var grade_box = $ProfileView/Left/DetailSection/GradeHBox
-	for child in grade_box.get_children():
-		grade_labels[child.name] = child
-	# 初始化最近游玩行引用
-	var recent_list = $ProfileView/Left/DetailSection/RecentList
-	for child in recent_list.get_children():
-		recent_rows.append(child)
 	_set_login_mode(LoginMode.LOGIN)
 
 # ========== 内容可见性（供 PlayerInfo 调用） ==========
@@ -80,10 +68,11 @@ func apply_mini_visibility(show_tip: bool) -> void:
 	avatar.visible = not show_tip
 	data.visible = not show_tip
 
-## ProfileView 详情切换：full=true（FULL_EXPANDED）时显示 DetailSection 和 Right
+## ProfileView 详情切换：
+## full=false（LOGGED_IN_EXPANDED）→ tab 2 概要页
+## full=true （FULL_EXPANDED）      → tab 3 ProfilePage 详情页
 func apply_profile_visibility(full: bool) -> void:
-	detail_section.visible = full
-	right_section.visible = full
+	current_tab = 3 if full else 2
 	expand_btn.text = "收起详情" if full else "展开详情"
 
 # ========== 登录/注册表单 ==========
@@ -144,21 +133,6 @@ func populate_profile() -> void:
 	accuracy_label.text = "Accuracy: %.2f%%" % _player_data.accuracy
 	max_combo_label.text = "Max Combo: %d" % _player_data.max_combo
 	play_time_label.text = "Play Time: %dh" % _player_data.play_time_hours
-	# 成绩分布
-	for grade in grade_labels:
-		grade_labels[grade].text = "%s: %d" % [grade, _player_data.grades[grade]]
-	# 最近游玩
-	var scores: Array = _player_data.recent_scores
-	for i in range(recent_rows.size()):
-		var row = recent_rows[i]
-		if i < scores.size():
-			var s: Dictionary = scores[i]
-			row.get_node("SongName").text = s.get("song", "—")
-			row.get_node("Score").text = str(s.get("score", 0))
-			row.get_node("Grade").text = s.get("grade", "—")
-			row.visible = true
-		else:
-			row.visible = false
 
 ## 从 _player_data 填充 MiniInfo/Data 的 label（收起状态显示）
 func populate_mini_info() -> void:
