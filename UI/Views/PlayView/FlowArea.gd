@@ -1014,6 +1014,30 @@ func _init_note_pool() -> void:
 	for note in _note_pool_long:
 		_apply_note_glow(note, _resolved_colors.get("long", Color.WHITE), FlowNote.NoteType.Long)
 
+func expand_note_pool(suggestion: Dictionary) -> void:
+	"""按 generate_keys 的建议值补创建池节点（仅扩容不缩容）"""
+	var block_deficit: int = max(0, int(suggestion.get("block", 0)) - _note_pool_block.size())
+	for _i in block_deficit:
+		var note_node = nt_b.duplicate()
+		note_node.visible = false
+		canvas.add_child(note_node)
+		_note_pool_block.append(note_node)
+		_apply_note_glow(note_node, _resolved_colors.get("short", Color.WHITE), FlowNote.NoteType.Block)
+	var slide_deficit: int = max(0, int(suggestion.get("slide", 0)) - _note_pool_slide.size())
+	for _i in slide_deficit:
+		var note_node = nt_s.duplicate()
+		note_node.visible = false
+		canvas.add_child(note_node)
+		_note_pool_slide.append(note_node)
+		_apply_note_glow(note_node, _resolved_colors.get("instant", Color.WHITE), FlowNote.NoteType.Slide)
+	var long_deficit: int = max(0, int(suggestion.get("long", 0)) - _note_pool_long.size())
+	for _i in long_deficit:
+		var note_node = nt_l.duplicate()
+		note_node.visible = false
+		canvas.add_child(note_node)
+		_note_pool_long.append(note_node)
+		_apply_note_glow(note_node, _resolved_colors.get("long", Color.WHITE), FlowNote.NoteType.Long)
+
 func _get_note_from_pool(tp: FlowNote.NoteType) -> Node:
 	"""从池中获取一个音符节点，如果池空则创建新的"""
 	var pool = _get_pool_by_type(tp)

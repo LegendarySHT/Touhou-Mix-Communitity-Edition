@@ -532,6 +532,11 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 设置进度条最大值
 	progress_bar.max_value = current_midi.duration_ms
 
+	# 按 generate_keys 建议补创建池节点（利用后续 1秒 timer + 淡出窗口消化开销）
+	# 消除密集音符时 _get_note_from_pool 池溢出导致的动态创建卡顿
+	if key_sequence_mgr:
+		flow_area.expand_note_pool(key_sequence_mgr.get_pool_size_suggestion())
+	
 	# 歌曲信息面板已显示足够时间（preparse + generate_keys 期间），现在淡出
 	await get_tree().create_timer(1).timeout
 	await AniMGR.animate_fade_out(center_bg, 1).finished

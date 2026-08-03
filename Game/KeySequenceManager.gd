@@ -135,6 +135,15 @@ var _cached_background_sequences: Array[BackgroundSequence] = []
 var _cached_manual_notes: Array = []
 var _cached_auto_notes: Array = []
 
+## 音符池大小建议（由 generate_keys 顺带计算，供 FlowArea 预创建节点）
+var _pool_size_suggestion: Dictionary = {}  # {"block": int, "slide": int, "long": int}
+var _cached_pool_size_suggestion: Dictionary = {}
+# 池大小建议的启发式参数（非精确值）：
+# after 补偿覆盖命中回收（Bad 判定窗 ±500ms）与漏击后落到屏幕底部的占窗；
+# 低估时池溢出会走 _get_note_from_pool 动态创建回退，非致命
+const _POOL_AFTER_COMPENSATION_MS: float = 500.0
+const _POOL_SAFETY_MARGIN: int = 8
+
 ## 屏幕宽度（用于键位映射）
 var screen_width: float = 1920.0
 
@@ -357,6 +366,7 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 		background_sequences = _cached_background_sequences.duplicate()
 		last_manual_control_notes = _cached_manual_notes.duplicate()
 		last_auto_play_notes = _cached_auto_notes.duplicate()
+		_pool_size_suggestion = _cached_pool_size_suggestion.duplicate()
 		GLogger.debug("generate_keys HIT cache, reuse %d sequences" % game_sequences.size(), "KSM")
 		return true
 	GLogger.debug("generate_keys MISS cache, regenerating...", "KSM")
@@ -376,12 +386,7 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	# Step 1: 转换Note对象为统一格式（确保start_time_ms和duration_ms为毫秒）
 	var converted_notes = _convert_notes_to_internal_format(game_notes)
 
-	# Step 2: 按时间排序Note（in-place 排序，避免 duplicate 整个数组）
-	converted_notes.sort_custom(func(a, b):
-		if a.start_time_ms == b.start_time_ms:
-			return a.channel < b.channel
-		return a.start_time_ms < b.start_time_ms
-	)
+	# Step 2: 音符已有序，跳过排序
 
 	# Step 3: 执行批次合并（Step A）
 	var batches := _batch_notes_by_coalesce(converted_notes)
@@ -415,8 +420,10 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	# Step 7.5: 释放 all_blocks（GameSequence 已持有 original_notes 引用）
 	# 必须先断开 prev_block 链：_judge_block_type 跨批次累积形成数千节点的 prev_block 链，
 	# clear() 时 BlockInfo 引用计数降为 0 会触发级联析构（A→B→C→...），Android ARM 栈溢出
-	for block in all_blocks:
-		block.prev_block = null
+	var block_idx: int = 0
+	while block_idx < all_blocks.size():
+		all_blocks[block_idx].prev_block = null
+		block_idx += 2000
 	all_blocks.clear()
 	all_blocks = []
 
@@ -444,6 +451,9 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	# 在generate_keys完成后立即进行分类统计
 	_finalize_notes_classification()
 
+	# Step 8.5: 计算池大小建议（复用已排序的 game_sequences，扫描线 O(N log N)）
+	_calculate_pool_size_suggestion()
+
 	# 写入缓存（引用共享，不 duplicate）
 	# game_sequences/background_sequences/last_* 在此后不再修改，
 	# 下次 generate_keys 命中缓存时会 duplicate 一份给 game_sequences 使用（见上方 cache hit 分支），
@@ -453,6 +463,7 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	_cached_background_sequences = background_sequences
 	_cached_manual_notes = last_manual_control_notes
 	_cached_auto_notes = last_auto_play_notes
+	_cached_pool_size_suggestion = _pool_size_suggestion
 
 	return true
 
@@ -1116,6 +1127,75 @@ func get_last_notes_classification() -> Dictionary:
 		"manual_control_notes": last_manual_control_notes.duplicate(),
 		"auto_play_notes": last_auto_play_notes.duplicate()
 	}
+
+## 获取池大小建议
+func get_pool_size_suggestion() -> Dictionary:
+	return _pool_size_suggestion
+
+## 计算池大小建议：扫描线求 lead_time 时间窗口内的最大并发数
+## 不依赖 game_sequences 的排序（批内实际按 pitch 降序），starts/ends 各自原生排序，在 worker 线程执行
+## after_time 用固定补偿，不依赖视口（worker 线程无法访问场景树）
+func _calculate_pool_size_suggestion() -> void:
+	_pool_size_suggestion.clear()
+	if game_sequences.is_empty():
+		_pool_size_suggestion = {"block": 0, "slide": 0, "long": 0}
+		return
+
+	var lead_time_ms: float = max(1.0, ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5) * 1000.0)
+	var after_ms: float = _POOL_AFTER_COMPENSATION_MS
+
+	# 按池类型收集窗口起止（starts/ends 由 _scan_max_concurrent 各自原生排序，O(N log N)）
+	var starts_block: PackedFloat32Array = PackedFloat32Array()
+	var ends_block: PackedFloat32Array = PackedFloat32Array()
+	var starts_slide: PackedFloat32Array = PackedFloat32Array()
+	var ends_slide: PackedFloat32Array = PackedFloat32Array()
+	var starts_long: PackedFloat32Array = PackedFloat32Array()
+	var ends_long: PackedFloat32Array = PackedFloat32Array()
+
+	for seq in game_sequences:
+		var alive_start: float = seq.start_time_ms - lead_time_ms
+		var alive_end: float = seq.start_time_ms + after_ms
+		match seq.block_type:
+			BlockType.INSTANT:  # → Slide 池
+				starts_slide.append(alive_start)
+				ends_slide.append(alive_end)
+			BlockType.SHORT:  # → Block 池
+				starts_block.append(alive_start)
+				ends_block.append(alive_end)
+			BlockType.LONG:  # → Long 池
+				alive_end += seq.duration_ms
+				starts_long.append(alive_start)
+				ends_long.append(alive_end)
+
+	_pool_size_suggestion = {
+		"block": _scan_max_concurrent(starts_block, ends_block) + _POOL_SAFETY_MARGIN,
+		"slide": _scan_max_concurrent(starts_slide, ends_slide) + _POOL_SAFETY_MARGIN,
+		"long": _scan_max_concurrent(starts_long, ends_long) + _POOL_SAFETY_MARGIN,
+	}
+	GLogger.debug(
+		"Pool size suggestion: block=%d slide=%d long=%d (lead=%.0fms after=%.0fms)" %
+		[_pool_size_suggestion["block"], _pool_size_suggestion["slide"], _pool_size_suggestion["long"], lead_time_ms, after_ms],
+		"KSM"
+	)
+
+## 扫描线求最大并发：starts/ends 各自原生 sort（C++ 实现，远快于 GDScript sort_custom + 索引数组）
+## 双指针推进：先消费所有 end <= 当前 start 的事件（等价于同时间先 -1 后 +1），避免假峰值
+func _scan_max_concurrent(starts: PackedFloat32Array, ends: PackedFloat32Array) -> int:
+	if starts.is_empty():
+		return 0
+	starts.sort()
+	ends.sort()
+	var cur: int = 0
+	var max_c: int = 0
+	var j: int = 0
+	for i in starts.size():
+		while j < ends.size() and ends[j] <= starts[i]:
+			cur -= 1
+			j += 1
+		cur += 1
+		if cur > max_c:
+			max_c = cur
+	return max_c
 
 ## 清空所有序列（PlayView 退出时调用）
 ## 同步清空 _cached_*，避免单 slot 缓存常驻（约 3-15 MB GameSequence + 引用数组）
