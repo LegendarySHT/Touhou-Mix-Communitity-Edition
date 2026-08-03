@@ -662,9 +662,12 @@ func resume() -> void:
 		if not _vocal_initialized:
 			start_vocal_playback()
 		else:
-			var audio_manager = AudioManager.instance
-			if audio_manager:
-				audio_manager.set_vocal_playing(true)
+			# 只有当 MIDI 已跨越人声起点才恢复人声播放
+			# 预卷期间或 midi_position < vocal_offset_ms 时由 _sync_vocal_with_midi 负责在正确时机恢复
+			if position_ms - vocal_offset_ms >= 0.0:
+				var audio_manager = AudioManager.instance
+				if audio_manager:
+					audio_manager.set_vocal_playing(true)
 
 ## 设置循环播放
 func set_loop(enabled: bool) -> void:
@@ -1493,17 +1496,31 @@ func start_vocal_playback() -> void:
 	print("[MidiPlaybackManager] Successfully loaded vocal file: %s" % vocal_file_path)
 
 	# 播放人声，使用当前的MIDI位置作为起始位置
-	var start_position_ms = position_ms - vocal_offset_ms
-	start_position_ms = max(0.0, start_position_ms)
+	var expected_vocal_position = position_ms - vocal_offset_ms
+	var start_position_ms = max(0.0, expected_vocal_position)
 
 	# 设置人声声音
 	audio_manager.set_vocal_volume_db(linear_to_db(current_midi_data.vocal_volume / 100.0))
+	# 先 play 触发解码器预热（即使马上要暂停），恢复时只需取消 stream_paused，
+	# 避免 seek_vocal 造成的解码卡顿
 	audio_manager.play_vocal(vocal_stream, start_position_ms)
 	_vocal_initialized = true
-	
-	# 如果 MIDI 处于预卷阶段（负位置），暂停人声等待 MIDI 追赶
-	if position_ms < 0.0:
+
+	# 如果 MIDI 还没到人声起点（预卷阶段或 midi_position < vocal_offset_ms），
+	# 立即暂停人声：解码器已就绪但位置不推进，等 _sync_vocal_with_midi 跨越起点时取消暂停
+	if expected_vocal_position < 0.0:
 		audio_manager.set_vocal_playing(false)
+
+## 预启动人声播放（在主线程可阻塞的阶段调用，如 PlayView 歌曲信息面板显示期间）
+## await 人声预加载 worker 完成 → start_vocal_playback（play + 立即暂停）
+## 确保 is_pause=false 时 resume() 不再触发 start_vocal_playback 的同步加载卡顿
+func prepare_vocal_playback() -> void:
+	if current_midi_data == null:
+		return
+	if current_midi_data.vocal_file_path.is_empty() or not current_midi_data.vocal_enabled:
+		return
+	await await_vocal_preload()
+	start_vocal_playback()
 
 ## 停止人声播放
 func stop_vocal_playback() -> void:
@@ -1517,34 +1534,44 @@ func _sync_vocal_with_midi() -> void:
 	var audio_manager = AudioManager.instance
 	if audio_manager == null:
 		return
-	
-	# 如果人声已初始化但在预卷期间被暂停，等 MIDI 到达正位置后恢复
+
+	# 计算人声应该的位置（考虑 vocal_offset_ms）
+	var expected_vocal_position = position_ms - vocal_offset_ms
+
+	# 如果人声已初始化但未播放（预卷期间被暂停，或刚 start_vocal_playback）
 	if _vocal_initialized and not audio_manager.is_vocal_playing():
-		if position_ms >= 0.0:
+		# 只有当 MIDI 已跨越人声起点（vocal_offset_ms）才恢复播放
+		# 预卷期间（position_ms < 0）或 midi_position < vocal_offset_ms 时保持暂停，
+		# 避免人声在 MIDI 还没到对应位置时提前播放导致后续反复 seek
+		if expected_vocal_position >= 0.0:
+			# 仅取消 stream_paused，不 seek：
+			# start_vocal_playback 已从正确位置 play 并暂停，暂停期间位置不推进，
+			# 恢复时人声位置与 expected 对齐，seek 反而会造成解码卡顿
 			audio_manager.set_vocal_playing(true)
-			audio_manager.seek_vocal(0.0)
+			last_sync_check_pos_ms = position_ms
 		return
-	
+
 	if not audio_manager.is_vocal_playing():
+		return
+
+	# 如果 MIDI 退回到人声起点之前（如 seek 操作），暂停人声防止错位播放
+	if expected_vocal_position < 0.0:
+		audio_manager.set_vocal_playing(false)
+		audio_manager.seek_vocal(0.0)
 		return
 
 	# 检查是否需要同步（时间间隔 > 100ms）
 	if abs(position_ms - last_sync_check_pos_ms) < 100.0:
 		return
 
-	# 获取MIDI和人声的当前播放进度
-	var midi_position = position_ms
+	# 获取人声当前播放进度
 	var vocal_position = audio_manager.get_vocal_position()
-
-	# 计算差值：考虑偏移量
-	var expected_vocal_position = midi_position - vocal_offset_ms
 	var diff = abs(vocal_position - expected_vocal_position)
 
 	# 如果差值超过阈值，进行同步调整
 	if diff > sync_threshold_ms:
-		var target_position = max(0.0, expected_vocal_position)
-		audio_manager.seek_vocal(target_position)
-		print("[MidiPlaybackManager] Vocal sync adjusted: diff=%.0f ms, target=%.0f ms" % [diff, target_position])
+		audio_manager.seek_vocal(expected_vocal_position)
+		print("[MidiPlaybackManager] Vocal sync adjusted: diff=%.0f ms, target=%.0f ms" % [diff, expected_vocal_position])
 
 	# 更新上次同步检查的位置
 	last_sync_check_pos_ms = position_ms

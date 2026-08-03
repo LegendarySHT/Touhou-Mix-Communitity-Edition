@@ -535,7 +535,12 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 设置进度条最大值
 	progress_bar.max_value = current_midi.duration_ms
 
-	# 歌曲信息面板已显示足够时间（preparse + generate_keys 期间），现在淡出
+	# 歌曲信息面板显示期间预启动人声：加载 + play + 立即暂停
+	# 此处主线程可阻塞（有歌曲信息面板遮罩），消除 is_pause=false 时
+	# resume() 触发 start_vocal_playback 的同步加载/解码卡顿
+	await playback_mgr.prepare_vocal_playback()
+
+	# 歌曲信息面板已显示足够时间（所有加载时会造成卡顿的部分已处理完毕），现在淡出
 	await get_tree().create_timer(1).timeout
 	await AniMGR.animate_fade_out(center_bg, 1).finished
 

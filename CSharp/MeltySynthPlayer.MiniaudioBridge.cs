@@ -417,40 +417,7 @@ public partial class MeltySynthPlayer
 					}
 					_playing = true;
 
-					// 设备启动后诊断: 查询 state, shareMode, hasDeviceId
-					// 排查独占模式无声音问题 (数据正确但无声音)
-					// ma_device_start 是异步的, 返回后状态可能是 starting.
-					// 延迟 200ms 后再次查询, 确认设备是否进入 started 状态.
-					// 如果停留在 starting 或变成 stopped, 说明设备启动失败.
-					{
-						int state0 = MiniaudioNative.ma_bridge_get_device_state(_bridgeHandle);
-						int shareMode = MiniaudioNative.ma_bridge_get_share_mode(_bridgeHandle);
-						int hasDevId = MiniaudioNative.ma_bridge_has_device_id(_bridgeHandle);
-						string stateStr0 = state0 switch
-						{
-							0 => "uninitialized", 1 => "stopped", 2 => "starting",
-							3 => "started", 4 => "stopping", _ => $"unknown({state0})"
-						};
-						string shareStr = shareMode switch
-						{
-							0 => "shared", 1 => "exclusive", _ => $"unknown({shareMode})"
-						};
-						GD.Print($"[MeltySynthPlayer][miniaudio] Device diagnostic (immediate): state={stateStr0}, " +
-							$"shareMode={shareStr}, hasDeviceId={hasDevId}, " +
-							$"period={_actualPeriod}×{_actualPeriodCount}, sampleRate={_sampleRate}Hz");
-
-						// 延迟 200ms 后再次查询状态
-						Thread.Sleep(200);
-						int state1 = MiniaudioNative.ma_bridge_get_device_state(_bridgeHandle);
-						string stateStr1 = state1 switch
-						{
-							0 => "uninitialized", 1 => "stopped", 2 => "starting",
-							3 => "started", 4 => "stopping", _ => $"unknown({state1})"
-						};
-						GD.Print($"[MeltySynthPlayer][miniaudio] Device diagnostic (after 200ms): state={stateStr1}");
-					}
-
-					GD.Print("[MeltySynthPlayer][miniaudio] Playback started (DIRECT MODE)");
+				GD.Print("[MeltySynthPlayer][miniaudio] Playback started (DIRECT MODE)");
 				}
 			}
 
