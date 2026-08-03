@@ -389,8 +389,9 @@ func _regenerate_random_note_colors() -> void:
 			continue
 		var sec: Dictionary = skin_config[key]
 		if bool(sec.get("enable_color", false)) and bool(sec.get("random_color", false)):
-			# 生成饱和度较高的随机颜色，避免过暗或过灰
-			random_colors[key] = Color.from_hsv(randf(), randf_range(0.6, 1.0), 1.0)
+			# 强制饱和度 1.0：纯色相至少一个通道恒为 0，加色同色叠加不会发白，颜色也不淡
+			# （饱和 <1 的粉彩色三个通道都 >0，同色光效叠加会往白里走）
+			random_colors[key] = Color.from_hsv(randf(), 1.0, 1.0)
 	flow_area._random_colors = random_colors
 	print("[PlayView] Generated random note colors: %s" % str(random_colors.keys()))
 

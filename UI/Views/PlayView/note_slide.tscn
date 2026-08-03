@@ -15,7 +15,6 @@ expand_mode = 4
 stretch_mode = 5
 
 [node name="core" type="TextureRect" parent="." unique_id=460432536]
-self_modulate = Color(2, 2, 2, 1)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

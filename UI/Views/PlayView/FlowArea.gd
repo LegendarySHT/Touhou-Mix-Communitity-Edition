@@ -1033,12 +1033,15 @@ func _remove_note(note: FlowNote) -> void:
 		note.rect = null
 		call_deferred("_delay_free", active_notes, note)
 	else:
-		# Block/Slide: 从 drawer 移除（remove_note 内部会 queue_redraw 立即清除画面）
+		# Block/Slide: 从 drawer 移除（remove_note 内部会 queue_redraw 立即清除画面，仍保持同步）
 		if _note_drawer:
 			_note_drawer.remove_note(note)
-		# 同步从 active_notes 移除，避免 _process 继续遍历已移除的 note
-		# （Block/Slide 是纯数据对象无 Control 节点，无需 call_deferred 延迟释放）
-		active_notes.erase(note)
+		# 从 active_notes 的移除推迟到帧末执行（与 Long 路径一致）：
+		# AUTO 模式下过线判定在 _process 遍历 active_notes 的循环体内触发 _remove_note，
+		# 若此处同步 erase，GDScript 数组迭代器（idx++ 后取 arr.get(idx)）会因元素前移跳过
+		# 下一个音符，使其一帧不更新位置/不判定，在判定线附近停滞一帧。
+		# 延迟删除后遍历期间数组不再变化；drawer 的 _notes 已同步移除，画面不会残留。
+		call_deferred("_delay_free", active_notes, note)
 
 	_remove_note_from_lane_index(note)
 

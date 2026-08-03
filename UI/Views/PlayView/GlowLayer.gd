@@ -36,4 +36,7 @@ func _draw() -> void:
 		var note_height = half_h * 2.0
 		var glow_size = maxf(note_width, note_height) * 2.0
 		var rect = Rect2(note.cached_center_x - glow_size * 0.5, cy - glow_size * 0.5, glow_size, glow_size)
-		draw_texture_rect(glow_tex, rect, false, color * glow_intensity)
+		# 强度只乘 alpha 通道：加色混合按 src.rgb * src.a 计算，若 RGB 和 alpha 都乘强度会被平方
+		# 有效贡献 = color.rgb * glow * intensity（线性），intensity = 1 时与旧行为完全一致
+		var glow_modulate := Color(color.r, color.g, color.b, color.a * glow_intensity)
+		draw_texture_rect(glow_tex, rect, false, glow_modulate)
