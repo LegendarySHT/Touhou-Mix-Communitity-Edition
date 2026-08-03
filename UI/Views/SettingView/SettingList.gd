@@ -449,12 +449,6 @@ func _reload_builtin_resources() -> void:
 	else:
 		push_warning("[SettingList] FileSystemManager not available")
 
-# 弹出在线功能测试窗口（临时验证用，后续替换为正式 LoginView）
-func _popup_online_test() -> void:
-	var view := OnlineTestView.new()
-	add_child(view)
-	view.popup_centered()
-
 ## ========== options_provider 方法（供 SettingListItem 通过 Callable 调用） ==========
 
 # 提供 theme_preset 选项

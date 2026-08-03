@@ -193,9 +193,9 @@ func _do_connect_attempt() -> bool:
 ## 统一设置连接状态并发射信号
 func _set_connect_state(state: ConnectState) -> void:
 	connect_state = state
-	# 兼容旧信号（OnlineTestView 使用）
+	# online_status_changed: 简单在线状态信号
 	EvtBus.online_status_changed.emit(is_online, "")
-	# 新信号（LeftTopBtn 使用）
+	# online_state_changed: 含连接状态枚举和延迟，供 LeftTopBtn 使用
 	EvtBus.online_state_changed.emit(connect_state, _latency_ms)
 
 
@@ -286,7 +286,7 @@ func _method_to_http_client(method: String) -> int:
 		"DELETE": return HTTPClient.METHOD_DELETE
 		_: return HTTPClient.METHOD_GET
 
-## 手动测试连接（供 OnlineTestView 使用）
+## 手动测试连接
 ## 更新 is_online 状态并发射信号
 func test_connection() -> bool:
 	var ok := await _do_connect_attempt()

@@ -6,11 +6,12 @@ class_name PlayerInfoContent
 ## 状态切换、面板几何动画由 PlayerInfo.gd 处理。
 
 signal login_submitted()
+signal logout_submitted()
 signal expand_toggled()
 
 enum LoginMode { LOGIN, REGISTER }
 
-# Mock 玩家数据（后续替换为真实数据源）
+# 玩家数据（登录后从 AuthManager.current_user 填充）
 var _player_data := {
 	"name": "Anonymous Player",
 	"level": 1,
@@ -54,11 +55,36 @@ var _player_data := {
 @onready var max_combo_label: Label = $ProfileView/StatsGrid/MaxComboLabel
 @onready var play_time_label: Label = $ProfileView/StatsGrid/PlayTimeLabel
 @onready var expand_btn: Button = $ProfileView/ExpandBtn
+@onready var logout_btn: Button = $ProfileView/LogoutBtn
 
 var _login_mode: LoginMode = LoginMode.LOGIN
+## 提交进行中（防止重复点击）
+var _submitting: bool = false
 
 func _ready() -> void:
 	_set_login_mode(LoginMode.LOGIN)
+	# 监听认证状态变化，自动同步显示
+	if not EvtBus.auth_changed.is_connected(_on_auth_changed):
+		EvtBus.auth_changed.connect(_on_auth_changed)
+	# 启动时若已登录（从本地恢复会话），立即填充
+	_sync_from_auth()
+
+## 认证状态变化回调
+func _on_auth_changed(user_data: Variant) -> void:
+	_sync_from_auth()
+
+## 从 AuthManager 同步登录态到本地显示
+func _sync_from_auth() -> void:
+	if AuthManager.instance != null and AuthManager.instance.is_logged_in:
+		var username := str(AuthManager.instance.current_user.get("username", ""))
+		if not username.is_empty():
+			_player_data.name = username
+			populate_profile()
+			populate_mini_info()
+	else:
+		_player_data.name = "Anonymous Player"
+		populate_profile()
+		populate_mini_info()
 
 # ========== 内容可见性（供 PlayerInfo 调用） ==========
 
@@ -94,6 +120,14 @@ func _set_login_mode(mode: LoginMode) -> void:
 	error_msg.text = ""
 
 func _on_submit_btn_pressed() -> void:
+	if _submitting:
+		return
+	if AuthManager.instance == null:
+		error_msg.text = "认证服务未就绪"
+		return
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		error_msg.text = "未连接服务器"
+		return
 	var account := account_edit.text.strip_edges()
 	var pwd := pwd_edit.text
 	if account.is_empty() or pwd.is_empty():
@@ -104,12 +138,54 @@ func _on_submit_btn_pressed() -> void:
 		if confirm_pwd != pwd:
 			error_msg.text = "两次密码不一致"
 			return
-	# 模拟登录/注册成功（后续替换为真实网络请求）
-	_player_data.name = account
-	populate_profile()
-	populate_mini_info()
-	_clear_login_form()
-	login_submitted.emit()
+
+	_submitting = true
+	submit_btn.disabled = true
+	error_msg.text = "处理中..."
+
+	var ok := false
+	var err_msg := ""
+	if _login_mode == LoginMode.REGISTER:
+		var result: Dictionary = await AuthManager.instance.register(account, pwd)
+		ok = result.ok
+		err_msg = str(result.get("error", ""))
+		if ok:
+			# 注册成功后自动登录
+			var login_result: Dictionary = await AuthManager.instance.login(account, pwd)
+			ok = login_result.ok
+			err_msg = str(login_result.get("error", ""))
+	else:
+		var result: Dictionary = await AuthManager.instance.login(account, pwd)
+		ok = result.ok
+		err_msg = str(result.get("error", ""))
+
+	_submitting = false
+	submit_btn.disabled = false
+
+	if ok:
+		_clear_login_form()
+		login_submitted.emit()
+	else:
+		error_msg.text = _format_error(err_msg)
+
+## 登出按钮
+func _on_logout_btn_pressed() -> void:
+	if AuthManager.instance == null:
+		return
+	AuthManager.instance.logout()
+	logout_submitted.emit()
+
+## 将服务端错误码转为中文提示
+func _format_error(err: String) -> String:
+	match err:
+		"username_taken":
+			return "用户名已被占用"
+		"invalid_credentials":
+			return "用户名或密码错误"
+		"network_error", "timeout":
+			return "网络错误，请重试"
+		_:
+			return "操作失败: %s" % err if not err.is_empty() else "操作失败"
 
 func _clear_login_form() -> void:
 	account_edit.text = ""

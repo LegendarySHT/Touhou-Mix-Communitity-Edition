@@ -46,10 +46,15 @@ var _login_result: bool = false
 var _saved_rb_stat = -1
 
 func _ready() -> void:
-	# 跨场景信号：内容容器的登录提交 / 详情切换 → 状态机
+	# 跨场景信号：内容容器的登录提交 / 登出 / 详情切换 → 状态机
 	info_tab_c.login_submitted.connect(set_logged_in)
+	info_tab_c.logout_submitted.connect(set_logged_out)
 	info_tab_c.expand_toggled.connect(_on_expand_toggled)
-	_animate_to_state(State.LOGGED_OUT)
+	# 启动时若已登录（从本地会话恢复），直接进入已登录状态
+	if AuthManager.instance != null and AuthManager.instance.is_logged_in:
+		_animate_to_state(State.LOGGED_IN)
+	else:
+		_animate_to_state(State.LOGGED_OUT)
 
 # ========== 状态应用 ==========
 
@@ -261,6 +266,11 @@ func set_logged_in() -> void:
 		_animate_to_state(State.LOGGED_IN_EXPANDED)
 	else:
 		_animate_to_state(State.LOGGED_IN)
+
+## 切到未登录状态（登出时调用）
+func set_logged_out() -> void:
+	_login_result = false
+	_animate_to_state(State.LOGGED_OUT)
 
 ## 切到全屏展开状态
 func expand_full() -> void:

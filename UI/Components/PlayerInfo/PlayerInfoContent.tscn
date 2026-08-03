@@ -364,6 +364,12 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "展开详情"
 
+[node name="LogoutBtn" type="Button" parent="ProfileView" unique_id=581980518]
+custom_minimum_size = Vector2(0, 45)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "退出登录"
+
 [node name="ProfilePage" parent="." unique_id=1874994953 instance=ExtResource("3_nu1yf")]
 visible = false
 layout_mode = 2
@@ -372,3 +378,4 @@ layout_mode = 2
 [connection signal="pressed" from="C/Skew/LogIn/ModeToggle/SignUpTab" to="." method="_on_signup_tab_pressed"]
 [connection signal="pressed" from="C/Skew/LogIn/SubmitBtn" to="." method="_on_submit_btn_pressed"]
 [connection signal="pressed" from="ProfileView/ExpandBtn" to="." method="_on_expand_btn_pressed"]
+[connection signal="pressed" from="ProfileView/LogoutBtn" to="." method="_on_logout_btn_pressed"]
