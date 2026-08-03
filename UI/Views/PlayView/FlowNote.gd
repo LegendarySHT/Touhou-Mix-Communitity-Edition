@@ -16,6 +16,14 @@ var tween: Tween
 var held_by_touch_id: int = -1  # 按住该音符的触摸点ID
 var game_sequence_ref: Object = null  # 新增：指向对应的GameSequence（演奏模式触发使用）
 
+# Node2D 批量绘制缓存字段（Block/Slide 专用，Long 不使用）
+# 由 _spawn_note 一次性设置 x/center_x/half_height，由 _update_block_note_fall 每帧更新 center_y
+var cached_x: float = 0.0           # 音符左边缘 x（绘制用）
+var cached_center_x: float = 0.0    # 音符中心 x（判定查找用）
+var cached_center_y: float = 0.0    # 音符中心 y（每帧更新，绘制 + 判定用）
+var cached_half_height: float = 0.0 # 音符半高（绘制 + after_distance 计算用）
+var is_removed: bool = false        # 已从绘制列表移除标记（防止 _remove_note 后 _process 重复处理）
+
 # 用于滑键
 var can_judge: bool = false
 
