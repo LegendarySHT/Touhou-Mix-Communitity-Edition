@@ -8,14 +8,18 @@ func setup_score(rank, score, scoreRank, accuracy, pp: float, perfect_ctn: int, 
 	get_node("Score").text = str(score)
 	get_node("ScoreRank").text = str(scoreRank)
 
-	get_node("Acc").text = str(accuracy)
-	get_node("PP").text = str(pp)
+	get_node("Acc").text = "%.2f%%" % accuracy
+	get_node("PP").text = "%.2f" % pp
 
 	get_node("Count/perfect").text = str(perfect_ctn)
 	get_node("Count/great").text = str(great_ctn)
 	get_node("Count/good").text = str(good_ctn)
 	get_node("Count/bad").text = str(bad_ctn)
 	get_node("Count/miss").text = str(miss_ctn)
+
+## 设置中途退出（W 评级）状态：整体半透明以区分正常完成记录
+func set_withdraw_state(withdraw: bool) -> void:
+	modulate.a = 0.4 if withdraw else 1.0
 
 func setup_player_info(uid):
 	player_uid = uid

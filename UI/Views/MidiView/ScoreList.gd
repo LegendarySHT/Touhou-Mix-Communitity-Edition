@@ -11,10 +11,14 @@ var _current_midi: MidiData = null
 ## 加载中标记
 var _loading: bool = false
 
+## 提示信息 Label（无数据/加载中/错误时显示在列表中央）
+var _message_label: Label = null
+
 ## 加载排行榜数据
 ## midi: 要查询的 MidiData（使用 file_hash 作为 key）
 func load_scores(midi: MidiData) -> void:
 	_current_midi = midi
+	_hide_message()
 	clear_items()
 
 	# 在线模式关闭或未连接时，不加载
@@ -50,16 +54,18 @@ func load_scores(midi: MidiData) -> void:
 		_show_message("暂无成绩记录")
 		return
 
+	_hide_message()
 	clear_items()
 	for i in range(scores.size()):
 		var s = scores[i]
 		var node = create_and_add_item(str(s.get("id", i)), "score")
 		var rank_pos := i + 1  # 排名从 1 开始
 		var accuracy_pct := float(s.get("accuracy", 0.0)) * 100.0
+		var rank_str := str(s.get("rank", "F"))
 		node.setup_score(
 			rank_pos,
 			int(s.get("totalScore", 0)),
-			str(s.get("rank", "F")),
+			rank_str,
 			accuracy_pct,
 			float(s.get("pp", 0.0)),
 			int(s.get("perfectCount", 0)),
@@ -68,18 +74,29 @@ func load_scores(midi: MidiData) -> void:
 			int(s.get("badCount", 0)),
 			int(s.get("missCount", 0))
 		)
+		# W 评级（中途退出）：整体半透明
+		node.set_withdraw_state(rank_str == "W")
 		# 填充玩家名
 		var username = s.get("username")
 		var name_label = node.get_node_or_null("Name")
 		if name_label:
 			name_label.text = username if username != null and not str(username).is_empty() else "Anonymous"
 
-## 显示提示信息（无数据/加载中/错误时）
+## 在列表区域中央显示提示文字
 func _show_message(msg: String) -> void:
 	clear_items()
-	# 复用 scoreNode 结构，setup_score 传 0 值，把 Name 设为提示文本
-	var node = create_and_add_item("msg", "score")
-	node.setup_score(0, 0, "-", 0.0, 0.0, 0, 0, 0, 0, 0)
-	var name_label = node.get_node_or_null("Name")
-	if name_label:
-		name_label.text = msg
+	if _message_label == null:
+		_message_label = Label.new()
+		_message_label.name = "MessageLabel"
+		_message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_message_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_message_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		container.add_child(_message_label)
+	_message_label.text = msg
+	_message_label.visible = true
+
+## 隐藏并移除提示 Label
+func _hide_message() -> void:
+	if _message_label != null:
+		_message_label.queue_free()
+		_message_label = null

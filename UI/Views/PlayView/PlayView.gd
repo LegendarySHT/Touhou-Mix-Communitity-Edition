@@ -961,21 +961,43 @@ func _on_game_finished() -> void:
 ## 异步上传成绩（fire-and-forget，失败仅记日志）
 func _upload_score_async(midi: MidiData, snapshot: Dictionary) -> void:
 	if midi == null or midi.file_hash.is_empty():
+		GLogger.warning("Score upload skipped: midi is null or file_hash empty (midi=%s hash=%s)" % [str(midi), str(midi.file_hash) if midi else "null"], "PlayView")
+		return
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		GLogger.warning("Score upload skipped: offline (NetManager=%s is_online=%s)" % [str(NetManager.instance), str(NetManager.instance.is_online) if NetManager.instance else "null"], "PlayView")
+		return
+	if ScoreManager.instance == null:
+		GLogger.warning("Score upload skipped: ScoreManager not ready", "PlayView")
+		return
+	GLogger.info("Score upload starting: midi=%s pp=%s" % [midi.file_hash, str(snapshot.get("pp", 0))], "PlayView")
+	var result = await ScoreManager.instance.upload_score(midi, snapshot)
+	if result.get("ok", false):
+		GLogger.info("Score uploaded: midi=%s pp=%s" % [midi.file_hash, str(snapshot.get("pp", 0))], "PlayView")
+	else:
+		GLogger.warning("Score upload failed: %s (status=%s)" % [result.get("error", "unknown"), str(result.get("status", 0))], "PlayView")
+
+## 退出游戏（中途退出）
+func _on_quit_pressed() -> void:
+	# 中途退出：上传成绩（评级强制为 W），等待上传完成后再返回，确保排行榜刷新时数据已写入
+	await _upload_score_on_quit()
+	# 返回上级界面（_on_state_changed 统一处理 MIDI 停止、音符回收、背景清理等）
+	UiStatMGR.go_back()
+
+## 中途退出时上传成绩：评级强制 W，cleared=false
+## await 此方法可等待上传完成
+func _upload_score_on_quit() -> void:
+	if current_midi == null or current_midi.file_hash.is_empty():
 		return
 	if NetManager.instance == null or not NetManager.instance.is_online:
 		return
 	if ScoreManager.instance == null:
 		return
-	var result = await ScoreManager.instance.upload_score(midi, snapshot)
-	if result.get("ok", false):
-		GLogger.info("Score uploaded: midi=%s pp=%s" % [midi.file_hash, str(snapshot.get("pp", 0))], "PlayView")
-	else:
-		GLogger.warning("Score upload failed: %s" % result.get("error", "unknown"), "PlayView")
-
-## 退出游戏
-func _on_quit_pressed() -> void:
-	# 返回上级界面（_on_state_changed 统一处理 MIDI 停止、音符回收、背景清理等）
-	UiStatMGR.go_back()
+	if score_calc == null:
+		return
+	var snap = score_calc.get_snapshot()
+	# 强制评级为 W（中途退出），服务端据此排序到最后并允许完成记录覆盖
+	snap["rank"] = "W"
+	await _upload_score_async(current_midi, snap)
 
 # 初始化分数等内容的显示
 func _init_display():

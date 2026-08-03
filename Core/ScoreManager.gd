@@ -60,26 +60,28 @@ func _generate_uuid_v4() -> String:
 
 
 ## 从 ScoreCalculator.get_snapshot() 和 MidiData 提取上传载荷
+## 注意：键名使用 camelCase，与服务端 ASP.NET Core DTO 反序列化默认格式匹配
 func _extract_payload(midi: MidiData, snapshot: Dictionary) -> Dictionary:
 	var counts: Dictionary = snapshot.get("judge_counts", {})
 	var rank := str(snapshot.get("rank", "F"))
 	return {
-		"midi_hash": midi.file_hash,
-		"device_id": _device_id,
-		"total_score": int(snapshot.get("total_score", 0)),
-		"max_combo": int(snapshot.get("max_combo", 0)),
+		"midiHash": midi.file_hash,
+		"deviceId": _device_id,
+		"totalScore": int(snapshot.get("total_score", 0)),
+		"maxCombo": int(snapshot.get("max_combo", 0)),
 		"accuracy": float(snapshot.get("accuracy", 0.0)),
 		"pp": float(snapshot.get("pp", 0.0)),
 		"rank": rank,
-		"perfect_count": int(counts.get(ScoreCalculator.Judgment.PERFECT, 0)),
-		"great_count": int(counts.get(ScoreCalculator.Judgment.GREAT, 0)),
-		"good_count": int(counts.get(ScoreCalculator.Judgment.GOOD, 0)),
-		"bad_count": int(counts.get(ScoreCalculator.Judgment.BAD, 0)),
-		"miss_count": int(counts.get(ScoreCalculator.Judgment.MISS, 0)),
-		"early_count": int(snapshot.get("early_count", 0)),
-		"late_count": int(snapshot.get("late_count", 0)),
-		"total_notes": int(snapshot.get("total_notes", 0)),
-		"cleared": rank != "F",
+		"perfectCount": int(counts.get(ScoreCalculator.Judgment.PERFECT, 0)),
+		"greatCount": int(counts.get(ScoreCalculator.Judgment.GREAT, 0)),
+		"goodCount": int(counts.get(ScoreCalculator.Judgment.GOOD, 0)),
+		"badCount": int(counts.get(ScoreCalculator.Judgment.BAD, 0)),
+		"missCount": int(counts.get(ScoreCalculator.Judgment.MISS, 0)),
+		"earlyCount": int(snapshot.get("early_count", 0)),
+		"lateCount": int(snapshot.get("late_count", 0)),
+		"totalNotes": int(snapshot.get("total_notes", 0)),
+		# cleared: 完成（非 F 且非 W）。W = 中途退出，不算完成
+		"cleared": rank != "F" and rank != "W",
 	}
 
 
