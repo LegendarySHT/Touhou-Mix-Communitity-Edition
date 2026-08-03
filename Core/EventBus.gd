@@ -49,6 +49,19 @@ signal favorite_list_renamed(favorite_id: String, new_name: String)
 signal favorite_midi_changed(favorite_id: String, midi_id: String, added: bool)
 ## 请求浏览收藏夹内容（AlbumView 点击列表项时发出）
 signal favorite_selected_for_browse(favorite_id: String)
+
+## ========== 在线功能事件 ==========
+## 登录状态变化：user_data 为 null 表示登出
+signal auth_changed(user_data: Variant)
+## 网络连接状态变化：online=true 表示服务端可达
+signal online_status_changed(online: bool, message: String)
+## 请求开始/结束（用于 UI 显示 loading）
+signal online_request_started(endpoint: String)
+signal online_request_finished(endpoint: String, success: bool)
+## 连接状态变化（携带延迟数值）：state 对应 NetManager.ConnectState 枚举值，latency_ms=-1 表示未知
+signal online_state_changed(state: int, latency_ms: int)
+## 成绩上传成功（携带 midi_hash），用于触发个人信息统计刷新
+signal score_uploaded(midi_hash: String)
 @warning_ignore_restore("unused_signal")
 
 func _ready() -> void:

@@ -74,6 +74,9 @@ func _ready() -> void:
 	UiStatMGR.state_changed.connect(_on_state_changed)
 	animate(false)
 
+	# 监听 PlayerInfoContent 统计刷新信号，成绩上传后自动同步玩家信息
+	_connect_stats_refreshed()
+
 	if ThemeMGR:
 		ThemeMGR.register_theme_applier(self)
 		apply_theme()
@@ -98,6 +101,31 @@ func apply_theme() -> void:
 func _exit_tree() -> void:
 	if ThemeMGR:
 		ThemeMGR.unregister_theme_applier(self)
+	_disconnect_stats_refreshed()
+
+## 连接 PlayerInfoContent 的 stats_refreshed 信号
+func _connect_stats_refreshed() -> void:
+	var pic := _get_player_info_content()
+	if pic and not pic.stats_refreshed.is_connected(_on_stats_refreshed):
+		pic.stats_refreshed.connect(_on_stats_refreshed)
+
+## 断开 PlayerInfoContent 的 stats_refreshed 信号
+func _disconnect_stats_refreshed() -> void:
+	var pic := _get_player_info_content()
+	if pic and pic.stats_refreshed.is_connected(_on_stats_refreshed):
+		pic.stats_refreshed.disconnect(_on_stats_refreshed)
+
+## 获取 PlayerInfoContent 节点（可能在不同路径下）
+func _get_player_info_content() -> PlayerInfoContent:
+	for path in ["/root/Main/TopLayer/PlayerInfo/InfoPanelBtn/TabC", "/root/Main/PlayerInfo/InfoPanelBtn/TabC"]:
+		var node = get_node_or_null(path)
+		if node and node is PlayerInfoContent:
+			return node as PlayerInfoContent
+	return null
+
+## 统计刷新回调：重新同步玩家信息（头像、名称、等级、进度条）
+func _on_stats_refreshed() -> void:
+	_update_player_info()
 
 func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	# 退出 SCORE_VIEW 时停止循环动画，节省 CPU
@@ -123,6 +151,29 @@ func set_display(result: ScoreData):
 	accuracy.text = result.get_accuracy()
 	score.text = result.get_formated_score()
 	pp.text = result.get_pp()
+
+	# 确保统计刷新信号已连接（_ready 时可能 PlayerInfoContent 尚未就绪）
+	_connect_stats_refreshed()
+	# 同步玩家信息（头像、名称、等级、进度条）
+	_update_player_info()
+
+## 从 PlayerInfoContent 同步玩家信息（头像、名称、等级、进度条）
+## 在 set_display 后调用，确保结算界面显示最新玩家状态
+## 也在 stats_refreshed 信号回调中调用，成绩上传后自动刷新
+func _update_player_info() -> void:
+	var pic := _get_player_info_content()
+	if pic == null:
+		return
+	# 头像
+	avator.texture = pic.mini_avatar_rect.texture
+	# 名称
+	name_label.text = pic._player_data.display_name if not pic._player_data.display_name.is_empty() else pic._player_data.name
+	# 等级 = floor(sqrt(pp))
+	var pp_val = pic._player_data.pp
+	var lvl = pic._calc_level(pp_val)
+	lvl_label.text = "Lv%d" % lvl
+	# 升级进度 = (pp - level²) / ((level+1)² - level²)
+	lvl_exp_progress.value = pic._calc_level_progress(pp_val, lvl) * 100.0
 
 func _on_like_btn_pressed():
 	pass

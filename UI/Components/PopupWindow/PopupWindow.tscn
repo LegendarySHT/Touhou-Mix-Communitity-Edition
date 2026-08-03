@@ -179,10 +179,11 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 0
+current_tab = 6
 tabs_visible = false
 
 [node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
@@ -1071,7 +1072,6 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 
 [node name="FallingAdjust" type="HBoxContainer" parent="." unique_id=1432140694]
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1

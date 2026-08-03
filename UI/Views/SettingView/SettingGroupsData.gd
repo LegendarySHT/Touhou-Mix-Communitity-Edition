@@ -66,18 +66,17 @@ static func get_setting_groups() -> Array:
 				]
 			},
 			{
-				"id": "online_mode",
-				"name_en": "Online Mode",
-				"name_zh": "线上模式",
-				"description": "选择no后，需要网络的功能不会运作",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"not_implemented": true,
-				"options": [
-					{"text_en": "Off", "text_zh": "关闭"},
-					{"text_en": "On", "text_zh": "开启"}
-				]
-			},
+			"id": "online_mode",
+			"name_en": "Online Mode",
+			"name_zh": "线上模式",
+			"description": "开启后启用所有网络功能（自动连接服务器、登录、上传成绩等）；关闭后所有网络功能停止",
+			"type": "TYPE_OPTION",
+			"default_value": "0",
+			"options": [
+				{"text_en": "Off", "text_zh": "关闭"},
+				{"text_en": "On", "text_zh": "开启"}
+			]
+		},
 			{
 				"id": "language",
 				"name_en": "Language",
@@ -98,7 +97,6 @@ static func get_setting_groups() -> Array:
 				"description": "输入服务器的地址",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "thmix.org",
-				"not_implemented": true,
 			},
 			{
 			"id": "reload_builtin_resources",

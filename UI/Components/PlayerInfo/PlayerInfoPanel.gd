@@ -46,10 +46,29 @@ var _login_result: bool = false
 var _saved_rb_stat = -1
 
 func _ready() -> void:
-	# 跨场景信号：内容容器的登录提交 / 详情切换 → 状态机
+	# 跨场景信号：内容容器的登录提交 / 登出 / 详情切换 → 状态机
 	info_tab_c.login_submitted.connect(set_logged_in)
+	info_tab_c.logout_submitted.connect(set_logged_out)
 	info_tab_c.expand_toggled.connect(_on_expand_toggled)
-	_animate_to_state(State.LOGGED_OUT)
+	# 监听认证状态变化（AuthManager 在 Main._ready 中才创建，
+	# 其 _ready 恢复会话后 emit auth_changed，此处需要响应）
+	if not EvtBus.auth_changed.is_connected(_on_auth_changed):
+		EvtBus.auth_changed.connect(_on_auth_changed)
+	# 启动时若已登录（AuthManager 可能已恢复会话），直接进入已登录状态
+	if AuthManager.instance != null and AuthManager.instance.is_logged_in:
+		_animate_to_state(State.LOGGED_IN)
+	else:
+		_animate_to_state(State.LOGGED_OUT)
+
+## 认证状态变化回调：根据登录态切换 UI 状态
+func _on_auth_changed(user_data: Variant) -> void:
+	if user_data != null and user_data is Dictionary:
+		# 已登录
+		if _state == State.LOGGED_OUT or _state == State.EXPANDED:
+			set_logged_in()
+	else:
+		# 未登录
+		set_logged_out()
 
 # ========== 状态应用 ==========
 
@@ -261,6 +280,11 @@ func set_logged_in() -> void:
 		_animate_to_state(State.LOGGED_IN_EXPANDED)
 	else:
 		_animate_to_state(State.LOGGED_IN)
+
+## 切到未登录状态（登出时调用）
+func set_logged_out() -> void:
+	_login_result = false
+	_animate_to_state(State.LOGGED_OUT)
 
 ## 切到全屏展开状态
 func expand_full() -> void:

@@ -65,6 +65,9 @@ var play_result: ScoreView.ScoreData = null
 
 var midi_start_time: float = 0.0
 
+## 本次游玩开始时间（毫秒，墙钟），用于计算游玩时长统计
+var _play_start_time: int = 0
+
 ## 演奏模式标志：true = 演奏模式（响应键盘触发音符），false = 听奏模式（MIDI只在背景播放）
 var play_mode: bool = true
 
@@ -536,6 +539,8 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	await get_tree().create_timer(1).timeout
 	await AniMGR.animate_fade_out(center_bg, 1).finished
 
+	# 记录游玩开始时间（用于统计游玩时长）
+	_play_start_time = Time.get_ticks_msec()
 	# 开始播放MIDI
 	is_pause = false
 
@@ -939,6 +944,8 @@ func _on_game_finished() -> void:
 
 	# 音符全部消除后，从 ScoreCalculator 拿最终快照（包含自然Miss）
 	var snap = score_calc.get_snapshot()
+	# 记录本次游玩实际耗时（毫秒），用于服务端统计
+	snap["play_duration_ms"] = Time.get_ticks_msec() - _play_start_time
 	play_result.score = snap["total_score"]
 	play_result.max_combo = snap["max_combo"]
 	play_result.accuracy = snap["accuracy"]
@@ -955,11 +962,53 @@ func _on_game_finished() -> void:
 	await get_tree().create_timer(1).timeout
 	UiStatMGR.change_state(UIStateManager.UIState.SCORE_VIEW, false)
 	get_node("/root/Main/ScoreView").set_display(play_result)
+	# 异步上传成绩（不阻塞结算界面）
+	_upload_score_async(current_midi, snap)
 
-## 退出游戏
+## 异步上传成绩（fire-and-forget，失败仅记日志）
+func _upload_score_async(midi: MidiData, snapshot: Dictionary) -> void:
+	if midi == null or midi.file_hash.is_empty():
+		GLogger.warning("Score upload skipped: midi is null or file_hash empty (midi=%s hash=%s)" % [str(midi), str(midi.file_hash) if midi else "null"], "PlayView")
+		return
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		GLogger.warning("Score upload skipped: offline (NetManager=%s is_online=%s)" % [str(NetManager.instance), str(NetManager.instance.is_online) if NetManager.instance else "null"], "PlayView")
+		return
+	if ScoreManager.instance == null:
+		GLogger.warning("Score upload skipped: ScoreManager not ready", "PlayView")
+		return
+	GLogger.info("Score upload starting: midi=%s pp=%s" % [midi.file_hash, str(snapshot.get("pp", 0))], "PlayView")
+	var result = await ScoreManager.instance.upload_score(midi, snapshot)
+	if result.get("ok", false):
+		GLogger.info("Score uploaded: midi=%s pp=%s" % [midi.file_hash, str(snapshot.get("pp", 0))], "PlayView")
+		# 通知个人信息页刷新统计
+		EvtBus.score_uploaded.emit(midi.file_hash)
+	else:
+		GLogger.warning("Score upload failed: %s (status=%s)" % [result.get("error", "unknown"), str(result.get("status", 0))], "PlayView")
+
+## 退出游戏（中途退出）
 func _on_quit_pressed() -> void:
+	# 中途退出：上传成绩（评级强制为 W），等待上传完成后再返回，确保排行榜刷新时数据已写入
+	await _upload_score_on_quit()
 	# 返回上级界面（_on_state_changed 统一处理 MIDI 停止、音符回收、背景清理等）
 	UiStatMGR.go_back()
+
+## 中途退出时上传成绩：评级强制 W，cleared=false
+## await 此方法可等待上传完成
+func _upload_score_on_quit() -> void:
+	if current_midi == null or current_midi.file_hash.is_empty():
+		return
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		return
+	if ScoreManager.instance == null:
+		return
+	if score_calc == null:
+		return
+	var snap = score_calc.get_snapshot()
+	# 强制评级为 W（中途退出），服务端据此排序到最后并允许完成记录覆盖
+	snap["rank"] = "W"
+	# 记录本次游玩实际耗时（毫秒），W 评级时长仍计入统计
+	snap["play_duration_ms"] = Time.get_ticks_msec() - _play_start_time
+	await _upload_score_async(current_midi, snap)
 
 # 初始化分数等内容的显示
 func _init_display():

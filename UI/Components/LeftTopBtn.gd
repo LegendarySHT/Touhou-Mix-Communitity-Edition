@@ -19,6 +19,7 @@ enum ShowStat {
 @onready var vboxc: VBoxContainer = $VBoxC
 @onready var arrow: TextureRect = $VBoxC/Arrow
 @onready var btn: Button = $Button
+@onready var lag_label: Label = $Lag
 
 func _ready() -> void:
 	instance = self
@@ -26,6 +27,39 @@ func _ready() -> void:
 
 	# 右下角按钮点击事件
 	eb.page_right.connect(switch_display.bind(ShowStat.ARROW_LEFT))
+
+	# 在线状态显示
+	eb.online_state_changed.connect(_on_online_state_changed)
+	_update_lag_display()
+
+
+## 在线状态变化回调：更新 Lag 标签显示
+func _on_online_state_changed(state: int, latency_ms: int) -> void:
+	_update_lag_display(state, latency_ms)
+
+
+## 根据 NetManager 连接状态更新 Lag 显示
+## state == -1 时从 NetManager 读取当前状态（初始化时使用）
+func _update_lag_display(state: int = -1, latency_ms: int = -1) -> void:
+	if state == -1:
+		# 初始化时从 NetManager 读取当前状态
+		if NetManager.instance != null:
+			state = NetManager.instance.connect_state
+			latency_ms = NetManager.instance._latency_ms
+		else:
+			state = NetManager.ConnectState.OFFLINE_MODE
+	match state:
+		NetManager.ConnectState.OFFLINE_MODE:
+			lag_label.visible = false
+		NetManager.ConnectState.CONNECTING:
+			lag_label.visible = true
+			lag_label.text = "正在\n连接"
+		NetManager.ConnectState.ONLINE:
+			lag_label.visible = true
+			lag_label.text = "%d\nms" % latency_ms
+		NetManager.ConnectState.FAILED:
+			lag_label.visible = true
+			lag_label.text = "连接\n失败"
 
 func _on_state_change(_old_state, new_state: UIStateManager.UIState):
 	if new_state in [ui.UIState.SETTINGS_VIEW]:

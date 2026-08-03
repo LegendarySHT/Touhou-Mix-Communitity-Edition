@@ -14,6 +14,7 @@ extends HBoxContainer
 # RightArea 滑动面板
 @onready var option_panel: PanelContainer = $OptionPanel
 @onready var favor_panel: PanelContainer = $OptionPanel/VBoxC/TabView/FavorPanel
+@onready var score_list: ScoreList = $OptionPanel/VBoxC/TabView/Rank/ScoreList
 @onready var tab_container: TabContainer = $OptionPanel/VBoxC/TabView
 @onready var tab_btn: HBoxContainer = $OptionPanel/VBoxC/TabBtn
 
@@ -97,6 +98,9 @@ func _on_midi_selected(_midi_id: String, midi: MidiData) -> void:
 	midi_list.load_midi([midi])
 	if _favor_panel_visible and favor_panel:
 		favor_panel.show_with_midi(midi)
+	# 加载排行榜
+	if score_list:
+		score_list.load_scores(midi)
 
 
 # 歌曲选择：加载该歌曲的 midi 列表，加载完成后若 FavorPanel 可见则刷新
@@ -106,6 +110,11 @@ func _on_song_selected(song_id: String) -> void:
 		var midi: MidiData = midi_list.get_selection()
 		if midi:
 			favor_panel.show_with_midi(midi)
+	# 加载排行榜
+	if score_list:
+		var midi: MidiData = midi_list.get_selection()
+		if midi:
+			score_list.load_scores(midi)
 
 
 # UI 状态变化：进入 MIDI_VIEW 时若 FavorPanel 可见，用当前选中 midi 刷新
@@ -124,9 +133,13 @@ func _on_state_changed(old_state: int, new_state: int) -> void:
 		UIStateManager.UIState.SORTED_VIEW,
 	]:
 		_pending_cleanup = true
-	# 重新进入 MidiView 时清除残留的 pending 标志（防止上次退出动画被中断导致残留）
+	# 重新进入 MidiView 时：清除残留 pending 标志 + 刷新排行榜（打歌结束后数据可能已更新）
 	elif new_state == UIStateManager.UIState.MIDI_VIEW:
 		_pending_cleanup = false
+		if score_list:
+			var midi: MidiData = midi_list.get_selection()
+			if midi:
+				score_list.load_scores(midi)
 
 ## 释放视图内部资源（midi 列表项 + 当前 MIDI 运行时缓存），保留节点壳和信号连接
 ## 重新进入时由 song_selected 信号重新加载
@@ -147,13 +160,18 @@ func _cleanup() -> void:
 # FavorPanel 可见时，若选中项变化则同步刷新操作对象
 func _process(_delta: float) -> void:
 	if not _favor_panel_visible or not favor_panel:
-		return
+		# favor_panel 不可见时仍需检测 midi_list 切换以刷新排行榜
+		pass
 	var cur_sel: int = midi_list.selected_item
 	if cur_sel != _last_midi_selection and cur_sel != -1:
 		_last_midi_selection = cur_sel
 		var midi: MidiData = midi_list.get_selection()
 		if midi:
-			favor_panel.show_with_midi(midi)
+			if _favor_panel_visible and favor_panel:
+				favor_panel.show_with_midi(midi)
+			# 同步刷新排行榜
+			if score_list:
+				score_list.load_scores(midi)
 
 # 点击开始游戏的事件
 func _on_click_start_btn() -> void:

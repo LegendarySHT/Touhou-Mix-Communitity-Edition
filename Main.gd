@@ -16,6 +16,9 @@ var key_sequence_manager: KeySequenceManager
 var config_loader: ConfigManager
 var logger: GameLogger
 var filesystem_manager: FileSystemManager
+var net_manager: NetManager
+var auth_manager: AuthManager
+var score_manager: ScoreManager
 var _is_reloading_settings: bool = false
 
 # UI组件路径
@@ -199,6 +202,29 @@ func _initialize_core_systems() -> void:
 	add_child(key_sequence_manager)
 	if logger:
 		logger.info("KeySequenceManager initialized", "Main")
+
+	# 12.5. 初始化网络与认证管理器（必须在 ConfigManager 之后，UI 之前）
+	net_manager = NetManager.new()
+	net_manager.name = "NetManager"
+	add_child(net_manager)
+	# 读取 online_mode 配置并启动连接
+	var online_mode := ConfigManager.instance.get_int("General", "online_mode", 0)
+	net_manager.set_online_mode(online_mode == 1)
+	if logger:
+		logger.info("NetManager initialized (online_mode=%d)" % online_mode, "Main")
+
+	auth_manager = AuthManager.new()
+	auth_manager.name = "AuthManager"
+	add_child(auth_manager)
+	if logger:
+		logger.info("AuthManager initialized", "Main")
+
+	# 12.6. 初始化成绩管理器（必须在 NetManager 和 AuthManager 之后）
+	score_manager = ScoreManager.new()
+	score_manager.name = "ScoreManager"
+	add_child(score_manager)
+	if logger:
+		logger.info("ScoreManager initialized", "Main")
 
 	# 13. 初始化并加载UI（确保各管理器已就绪）
 	_init_ui()
@@ -428,6 +454,10 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 
 	# 根据 section 和 key 应用相应的配置
 	match section:
+		"General":
+			if key == "online_mode" and net_manager:
+				net_manager.set_online_mode(int(value) == 1)
+
 		"Gameplay":
 			# MIDI播放管理器监听这些配置
 			if key == "soundfont_file" and midi_playback_manager:
