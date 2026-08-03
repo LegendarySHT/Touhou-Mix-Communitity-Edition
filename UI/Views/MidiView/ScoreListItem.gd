@@ -17,6 +17,46 @@ func setup_score(rank, score, scoreRank, accuracy, pp: float, perfect_ctn: int, 
 	get_node("Count/bad").text = str(bad_ctn)
 	get_node("Count/miss").text = str(miss_ctn)
 
+## 加载玩家头像：avatar_url 为相对路径（如 /avatars/xxx.jpg），空则保持默认
+func setup_avatar(avatar_url: String) -> void:
+	if avatar_url.is_empty():
+		return
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		return
+	var img_node = get_node_or_null("Avator/img")
+	if img_node == null:
+		return
+	var full_url := "%s%s" % [NetManager.instance.server_url, avatar_url]
+	var http := HTTPRequest.new()
+	add_child(http)
+	var err := http.request(full_url, PackedStringArray(), HTTPClient.METHOD_GET, "")
+	if err != OK:
+		http.queue_free()
+		return
+	var resp = await http.request_completed
+	http.queue_free()
+	var result_code = resp[0]
+	var response_code = resp[1]
+	var response_body = resp[3]
+	if result_code != HTTPRequest.RESULT_SUCCESS or response_code != 200:
+		return
+	if not response_body is PackedByteArray or response_body.size() == 0:
+		return
+	var image := Image.new()
+	var load_err := OK
+	var ext := full_url.get_extension().to_lower()
+	if ext == "jpg" or ext == "jpeg":
+		load_err = image.load_jpg_from_buffer(response_body)
+	elif ext == "png":
+		load_err = image.load_png_from_buffer(response_body)
+	else:
+		load_err = image.load_png_from_buffer(response_body)
+		if load_err != OK:
+			load_err = image.load_jpg_from_buffer(response_body)
+	if load_err != OK:
+		return
+	img_node.texture = ImageTexture.create_from_image(image)
+
 ## 设置中途退出（W 评级）状态：整体半透明以区分正常完成记录
 func set_withdraw_state(withdraw: bool) -> void:
 	modulate.a = 0.4 if withdraw else 1.0

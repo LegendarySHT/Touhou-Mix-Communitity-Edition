@@ -65,6 +65,9 @@ var play_result: ScoreView.ScoreData = null
 
 var midi_start_time: float = 0.0
 
+## 本次游玩开始时间（毫秒，墙钟），用于计算游玩时长统计
+var _play_start_time: int = 0
+
 ## 演奏模式标志：true = 演奏模式（响应键盘触发音符），false = 听奏模式（MIDI只在背景播放）
 var play_mode: bool = true
 
@@ -536,6 +539,8 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	await get_tree().create_timer(1).timeout
 	await AniMGR.animate_fade_out(center_bg, 1).finished
 
+	# 记录游玩开始时间（用于统计游玩时长）
+	_play_start_time = Time.get_ticks_msec()
 	# 开始播放MIDI
 	is_pause = false
 
@@ -939,6 +944,8 @@ func _on_game_finished() -> void:
 
 	# 音符全部消除后，从 ScoreCalculator 拿最终快照（包含自然Miss）
 	var snap = score_calc.get_snapshot()
+	# 记录本次游玩实际耗时（毫秒），用于服务端统计
+	snap["play_duration_ms"] = Time.get_ticks_msec() - _play_start_time
 	play_result.score = snap["total_score"]
 	play_result.max_combo = snap["max_combo"]
 	play_result.accuracy = snap["accuracy"]
@@ -973,6 +980,8 @@ func _upload_score_async(midi: MidiData, snapshot: Dictionary) -> void:
 	var result = await ScoreManager.instance.upload_score(midi, snapshot)
 	if result.get("ok", false):
 		GLogger.info("Score uploaded: midi=%s pp=%s" % [midi.file_hash, str(snapshot.get("pp", 0))], "PlayView")
+		# 通知个人信息页刷新统计
+		EvtBus.score_uploaded.emit(midi.file_hash)
 	else:
 		GLogger.warning("Score upload failed: %s (status=%s)" % [result.get("error", "unknown"), str(result.get("status", 0))], "PlayView")
 
@@ -997,6 +1006,8 @@ func _upload_score_on_quit() -> void:
 	var snap = score_calc.get_snapshot()
 	# 强制评级为 W（中途退出），服务端据此排序到最后并允许完成记录覆盖
 	snap["rank"] = "W"
+	# 记录本次游玩实际耗时（毫秒），W 评级时长仍计入统计
+	snap["play_duration_ms"] = Time.get_ticks_msec() - _play_start_time
 	await _upload_score_async(current_midi, snap)
 
 # 初始化分数等内容的显示

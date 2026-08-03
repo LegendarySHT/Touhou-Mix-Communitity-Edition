@@ -251,18 +251,6 @@ theme_override_styles/pressed = SubResource("StyleBoxTexture_vi5kq")
 theme_override_styles/hover = SubResource("StyleBoxTexture_3ccbu")
 text = "确定"
 
-[node name="LineEdit" type="LineEdit" parent="Default" unique_id=161880194]
-clip_contents = true
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 1
-theme_override_font_sizes/font_size = 32
-text = "0"
-placeholder_text = "0"
-alignment = 1
-max_length = 64
-emoji_menu_enabled = false
-
 [node name="DelayAdjust" type="VBoxContainer" parent="." unique_id=887538536]
 visible = false
 layout_mode = 2
@@ -834,6 +822,18 @@ text = "起始 X"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="LineEdit" type="LineEdit" parent="ImageAdjust/VBoxC/OtherOptions/FromX" unique_id=161880194]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+text = "0"
+placeholder_text = "0"
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false
+
 [node name="FromY" type="HBoxContainer" parent="ImageAdjust/VBoxC/OtherOptions" unique_id=2036956595]
 visible = false
 custom_minimum_size = Vector2(200, 60)
@@ -1353,7 +1353,6 @@ popup/item_1/id = 1
 popup/item_2/text = "InOut"
 popup/item_2/id = 2
 
-[connection signal="text_changed" from="Default/LineEdit" to="ImageAdjust" method="_on_gradient_coords_changed"]
 [connection signal="focus_exited" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_focus_exited"]
 [connection signal="text_changed" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_text_changed"]
 [connection signal="text_submitted" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_text_submitted"]
@@ -1361,6 +1360,7 @@ popup/item_2/id = 2
 [connection signal="item_selected" from="ImageAdjust/VBoxC/ImgType" to="ImageAdjust" method="_on_img_type_selected"]
 [connection signal="item_selected" from="ImageAdjust/VBoxC/OtherOptions/ImgName" to="ImageAdjust" method="_on_img_name_selected"]
 [connection signal="item_selected" from="ImageAdjust/VBoxC/OtherOptions/ImgFillMode" to="ImageAdjust" method="_on_img_fill_mode_selected"]
+[connection signal="text_changed" from="ImageAdjust/VBoxC/OtherOptions/FromX/LineEdit" to="ImageAdjust" method="_on_gradient_coords_changed"]
 [connection signal="text_changed" from="ImageAdjust/VBoxC/OtherOptions/FromY/LineEdit" to="ImageAdjust" method="_on_gradient_coords_changed"]
 [connection signal="text_changed" from="ImageAdjust/VBoxC/OtherOptions/ToX/LineEdit" to="ImageAdjust" method="_on_gradient_coords_changed"]
 [connection signal="text_changed" from="ImageAdjust/VBoxC/OtherOptions/ToY/LineEdit" to="ImageAdjust" method="_on_gradient_coords_changed"]

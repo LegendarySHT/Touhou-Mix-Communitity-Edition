@@ -81,6 +81,10 @@ func load_scores(midi: MidiData) -> void:
 		var name_label = node.get_node_or_null("Name")
 		if name_label:
 			name_label.text = username if username != null and not str(username).is_empty() else "Anonymous"
+		# 加载玩家头像（服务端返回 avatarUrl，可能为 null）
+		var avatar_url = s.get("avatarUrl")
+		var avatar_url_str := str(avatar_url) if avatar_url != null else ""
+		node.setup_avatar(avatar_url_str)
 
 ## 在列表区域中央显示提示文字
 func _show_message(msg: String) -> void:
