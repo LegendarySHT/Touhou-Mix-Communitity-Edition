@@ -42,6 +42,11 @@ var scroll_control_state: ScrollControlState:
 var list_items: Array[ListItemBase] = []
 var selected_item: int = -1 # 选中的项，或者snap的目标项
 
+## 本列表"工作状态"对应的"直接相邻状态"集合
+## 切到不在此集合的状态时，释放所有列表项封面
+## 由子类在 _ready 中通过 set_adjacent_states 设置
+var _adjacent_states: Array[UIStateManager.UIState] = []
+
 ## snap相关
 var need_snap: bool = false # 吸附请求标志
 var snap_offset_y: float = 500 # 吸附偏移量
@@ -80,6 +85,10 @@ func _ready() -> void:
 
 func _on_scroll_stable():
 	_scroll_stable = true
+	# 滚动稳定后，若视区内仍有未加载封面的项，重新触发加载
+	# 覆盖"用户快速滚到远处，初次触发未覆盖"的场景
+	if _items_process_enabled:
+		trigger_cover_chain()
 
 ## 外部查询：当前是否正在滚动（用于封面视差等效果）
 func is_scrolling() -> bool:
@@ -90,12 +99,26 @@ func _on_v_scrollbar_changed(_value: float):
 	if work_state in [UIStateManager.UIState.ALBUM_VIEW] and _is_dragging_bar:
 		call_deferred("reset_selection")
 
+## 设置直接相邻状态（用于判定状态切换时是否释放封面）
+## 子类在 _ready 中调用，传入与本视图直接相邻的所有 UIState
+func set_adjacent_states(states: Array[UIStateManager.UIState]) -> void:
+	_adjacent_states = states
+
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == work_state
 
 	# TRACK_VIEW 和 SETTINGS_VIEW 不需要 BaseScrollList 的触摸/滚动逻辑
 	if work_state in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
 		enable = false
+
+	# 状态切换封面释放/重载逻辑（仅对设置了邻接状态的列表生效）
+	if work_state != UIStateManager.UIState.NONE and not _adjacent_states.is_empty():
+		if state == work_state:
+			# 回到本视图：触发未加载项的封面加载
+			_schedule_cover_reload()
+		elif not (state in _adjacent_states):
+			# 切到不直接相邻的状态：立即释放所有封面
+			_release_all_covers()
 
 	# 状态未变化时提前返回，避免重复遍历 list_items 和无谓的 set_process 调用
 	if enable == _items_process_enabled:
@@ -114,6 +137,64 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	# 聚焦列表项
 	if enable:
 		print("Node: %s , ProcessMode: %s" % [self.name, enable])
+
+## 释放所有列表项封面（切到不直接相邻状态时调用）
+## FileSystemManager 用 WeakRef 缓存 Texture：列表项 texture=null 后引用计数归零，
+## Texture 自动 GC，无需手动 clear_cover_cache
+func _release_all_covers() -> void:
+	for item in list_items:
+		if is_instance_valid(item) and item is CoverListItemBase:
+			(item as CoverListItemBase).release_cover()
+
+## 回到本视图时，延迟一帧触发未加载项的封面加载
+## 延迟确保布局已稳定（global_position 有效，_resolve_cover_path 依赖的数据就绪）
+func _schedule_cover_reload() -> void:
+	call_deferred("trigger_cover_chain")
+
+## 封面分帧入队的批次大小（每批入队后让一帧，避免瞬间锁竞争）
+const COVER_BATCH_SIZE := 10
+
+## trigger_cover_chain 的 generation 守卫
+## 每次新调用递增，使旧的 in-flight async 循环自然退出
+var _cover_chain_generation: int = 0
+
+## 触发所有未加载封面的列表项调 start_cover_load
+## 按列表顺序入队 CoverLoader，后台线程 FIFO 消费；start_cover_load 内部去重，重复调用安全
+## 分帧入队：每 COVER_BATCH_SIZE 项让一帧，避免 100+ 项瞬间入队造成的 Mutex 锁竞争
+## 被选中项优先同步加载：命中 WeakRef 缓存立即应用，user:// 立即入队 CoverLoader 排在分帧任务之前
+## 同步入口 + 内部 async 实现，调用方无需 await；generation 守卫防止快速连调时多协程并发
+func trigger_cover_chain() -> void:
+	if not _items_process_enabled:
+		return
+	if list_items.is_empty():
+		return
+	_cover_chain_generation += 1
+	# 被选中项优先同步加载（命中缓存立即应用，user:// 立即入队 CoverLoader FIFO）
+	# 在分帧循环之前调用，保证被选中项的入队顺序早于其他项，后台线程先消费
+	if selected_item >= 0 and selected_item < list_items.size():
+		var sel := list_items[selected_item]
+		if is_instance_valid(sel) and sel is CoverListItemBase:
+			var sel_cb := sel as CoverListItemBase
+			if not sel_cb._cover_loaded:
+				sel_cb.start_cover_load()
+	_trigger_cover_chain_async(_cover_chain_generation)
+
+## async 实现：遍历列表项分帧入队
+## my_gen 不匹配时静默退出（被新调用取代）
+func _trigger_cover_chain_async(my_gen: int) -> void:
+	var batch := 0
+	for item in list_items:
+		if my_gen != _cover_chain_generation:
+			return  # 被新调用取代，静默退出
+		if not is_instance_valid(item):
+			continue
+		if item is CoverListItemBase:
+			var cb := item as CoverListItemBase
+			if not cb._cover_loaded:
+				cb.start_cover_load()
+				batch += 1
+				if batch % COVER_BATCH_SIZE == 0:
+					await get_tree().process_frame
 
 func _process(delta: float) -> void:
 	if container == null:
@@ -280,6 +361,12 @@ func create_and_add_item(item_id: String, item_type: String = "") -> ListItemBas
 func clear_items() -> void:
 	if container == null:
 		return
+
+	# 先释放所有封面：立即清空 _loading_path，使在途回调自然失效
+	# queue_free 是延迟的，若不主动 release_cover，帧末 free 之前回调可能仍到达并设置 texture
+	for item in list_items:
+		if item and is_instance_valid(item) and item is CoverListItemBase:
+			(item as CoverListItemBase).release_cover()
 
 	for item in list_items:
 		if item:

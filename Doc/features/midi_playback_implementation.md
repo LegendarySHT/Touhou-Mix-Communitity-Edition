@@ -9,7 +9,7 @@
 - `Game/MidiPlaybackManager.gd`：播放入口、SoundFont 扫描/切换
 - `Game/MidiPlaybackInterfaces.gd`：播放后端接口层
 - `CSharp/MeltySynthPlayer.cs` + `CSharp/MeltySynthPlayerWrapper.gd`：MeltySynth 后端（唯一后端）
-- `addons/midi/SMF.gd`：SMF 解析库，供 `Utilities/MidiParser.gd` 解析 MIDI 文件使用（不再作为播放后端）
+- `CSharp/MidiParserNative.cs`：C# 原生 SMF 解析器（替代原 `addons/midi/SMF.gd`），供 `Utilities/MidiParser.gd` 解析 MIDI 文件使用，同时一次性提取 (track, channel) → {bank, program} 乐器映射
 
 ## 后端机制
 

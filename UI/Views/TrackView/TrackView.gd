@@ -12,9 +12,6 @@ class_name TrackView
 # 切换人声启用状态按钮
 @onready var vocal_enable_btn: Button = $MC/VBox/VolumeView/HBoxC/VBoxC2/VocalEnableBtn
 
-# FileDialog 用于导入人声文件（动态创建）
-var file_dialog: FileDialog = null
-
 @onready var latency_edit: LineEdit = $MC/VBox/VolumeView/HBoxC/VBoxC2/HBoxC/Latency
 @onready var midi_vol_btn: TextureButton = $MC/VBox/VolumeView/HBoxC/GridC/midiVolIcon
 @onready var midi_vol_slider: HSlider = $MC/VBox/VolumeView/HBoxC/GridC/midiVolSlider
@@ -47,8 +44,9 @@ var _vocal_controller: VocalTrackController = null
 var _config_persistence: MidiConfigPersistence = null
 
 
-# 用于存储所有音符的列表
-var All_Notes: Array[NoteDisplayer.NoteEvent] = []
+# 按 (track, channel) 分组的音轨容器（由 _build_buckets 一次性构建）
+# master_note_displayer 直接引用；子 displayer 在 _init_track_note_displayer 中独立构建
+var _all_buckets: Array[NoteDisplayer.TrackNoteBucket] = []
 
 # Additive Solo 状态
 var solo_pairs: Dictionary = {}  # {"track:channel": true}
@@ -62,35 +60,14 @@ func _ready() -> void:
 		push_error("MidiPlaybackManager not initialized in Main! MIDI features will not work.")
 		return
 
-	# 初始化UI
-	# 确保音量滑块的范围正确（0-100）
-	# 动态创建FileDialog
-	if file_dialog == null:
-		file_dialog = FileDialog.new()
-		file_dialog.name = "VocalFileDialog"
-		add_child(file_dialog)
-		file_dialog.filters = PackedStringArray(["Audio Files (*.mp3,*.wav,*.ogg,*.flac) ; *.mp3,*.wav,*.ogg,*.flac", "All Files ; *"])
-		file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-		file_dialog.access = FileDialog.ACCESS_FILESYSTEM
-		file_dialog.use_native_dialog = true
-	
-	if midi_vol_slider:
-		midi_vol_slider.min_value = 0
-		midi_vol_slider.max_value = 100  # UI范围0-100%, 实际效果为2倍(新50%=旧100%, 新100%=旧200%/+6dB)
-		midi_vol_slider.step = 1
-	if vocal_vol_slider:
-		vocal_vol_slider.min_value = 0
-		vocal_vol_slider.max_value = 100  # UI范围0-100%, 1:1映射到实际音量
-		vocal_vol_slider.step = 1
-
 	# 反推MIDI音量slider值: 新UI值 = linear * 50 (因为实际效果是UI值的2倍)
 	midi_vol_slider.value = db_to_linear(midi_playback_manager.midi_player_config["volume_db"]) * 50
 	_set_display_midi_volume(midi_vol_slider.value)
-	
+
 	# 连接信号（检查防止重复连接）
 	if not EvtBus.is_connected("enter_track_view_with", Callable(self, "_load_midi")):
 		EvtBus.enter_track_view_with.connect(_load_midi)
-	
+
 	if not ui_stat_mgr.is_connected("state_changed", Callable(self, "_on_ui_state_changed")):
 		ui_stat_mgr.state_changed.connect(_on_ui_state_changed)
 
@@ -98,35 +75,22 @@ func _ready() -> void:
 	if midi_playback_manager.midi_player and not midi_playback_manager.midi_player.is_connected("soundfont_changed", Callable(self, "_on_soundfont_changed")):
 		midi_playback_manager.midi_player.soundfont_changed.connect(_on_soundfont_changed)
 
-	# 音量（检查防止重复连接）
 	if not midi_vol_btn.is_connected("toggled", Callable(self, "_on_volume_btn_toggled")):
 		midi_vol_btn.toggled.connect(_on_volume_btn_toggled.bind(midi_vol_btn))
-	
+
 	if not vocal_vol_btn.is_connected("toggled", Callable(self, "_on_volume_btn_toggled")):
 		vocal_vol_btn.toggled.connect(_on_volume_btn_toggled.bind(vocal_vol_btn))
-	
-	if not midi_vol_slider.is_connected("value_changed", Callable(self, "_on_midi_volume_changed")):
-		midi_vol_slider.value_changed.connect(_on_midi_volume_changed)
-	
-	if not vocal_vol_slider.is_connected("value_changed", Callable(self, "_on_vocal_volume_changed")):
-		vocal_vol_slider.value_changed.connect(_on_vocal_volume_changed)
 
-	# Progress bar（检查防止重复连接）
-	if not progress_bar.is_connected("drag_started", Callable(self, "_on_progress_bar_drag_started")):
-		progress_bar.drag_started.connect(_on_progress_bar_drag_started)
-	
-	if not progress_bar.is_connected("drag_ended", Callable(self, "_on_progress_bar_drag_ended")):
-		progress_bar.drag_ended.connect(_on_progress_bar_drag_ended)
-	
-	if not progress_bar.is_connected("value_changed", Callable(self, "_on_progress_bar_value_changed")):
-		progress_bar.value_changed.connect(_on_progress_bar_value_changed)
+	# midi_vol_slider/vocal_vol_slider.value_changed、progress_bar 三个信号、
+	# vocal_import_btn.pressed、vocal_enable_btn.toggled、latency_edit.text_changed
+	# 已在 TrackView.tscn 中连接
 
-	# 初始化子系统控制器
+	# 初始化子系统控制器（file_dialog 由 controller 惰性创建，不再传入）
 	if _vocal_controller == null:
 		_vocal_controller = VocalTrackController.new()
 		_vocal_controller.name = "VocalTrackController"
 		add_child(_vocal_controller)
-		_vocal_controller.setup(self, file_dialog, vocal_import_btn, vocal_enable_btn,
+		_vocal_controller.setup(self, null, vocal_import_btn, vocal_enable_btn,
 			vocal_vol_btn, vocal_vol_slider, vocal_vol_label)
 
 	if _config_persistence == null:
@@ -135,24 +99,46 @@ func _ready() -> void:
 		add_child(_config_persistence)
 		_config_persistence.setup(self)
 
-	# 连接人声导入和启用信号（检查防止重复连接）
-	if not vocal_import_btn.is_connected("pressed", Callable(_vocal_controller, "on_vocal_import_btn_pressed")):
-		vocal_import_btn.pressed.connect(_vocal_controller.on_vocal_import_btn_pressed)
-
-	if not vocal_enable_btn.is_connected("toggled", Callable(_vocal_controller, "on_vocal_enable_btn_toggled")):
-		vocal_enable_btn.toggled.connect(_vocal_controller.on_vocal_enable_btn_toggled)
-
-	# 连接FileDialog信号（使用file_selected而不是files_selected，因为是单文件模式）
-	if file_dialog:
-		if not file_dialog.is_connected("file_selected", Callable(_vocal_controller, "on_vocal_file_selected")):
-			file_dialog.file_selected.connect(_vocal_controller.on_vocal_file_selected)
-
-	# 连接Latency输入框信号（检查防止重复连接）
-	if latency_edit:
-		if not latency_edit.is_connected("text_changed", Callable(self, "_on_latency_changed")):
-			latency_edit.text_changed.connect(_on_latency_changed)
-
 	super._ready()
+
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	var p := ThemeMGR.get_color("primary")
+	var pl := ThemeMGR.get_color("primary_light")
+	# TotalView panel -> primary
+	var total_view := get_node_or_null("MC/VBox/TotalView") as Panel
+	if total_view:
+		var sb := total_view.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.bg_color = p
+	# noteTotal panel -> primary_light
+	var note_total := get_node_or_null("MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal") as Panel
+	if note_total:
+		var sb := note_total.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.bg_color = pl
+	# VocalEnableBtn button states
+	if vocal_enable_btn:
+		var sb_n := vocal_enable_btn.get_theme_stylebox("normal")
+		if sb_n is StyleBoxFlat:
+			sb_n.bg_color = p
+		var sb_h := vocal_enable_btn.get_theme_stylebox("hover")
+		if sb_h is StyleBoxFlat:
+			sb_h.bg_color = p.lightened(0.15)
+		var sb_p := vocal_enable_btn.get_theme_stylebox("pressed")
+		if sb_p is StyleBoxFlat:
+			sb_p.bg_color = ThemeMGR.DANGER_COLOR
+		var sb_hp := vocal_enable_btn.get_theme_stylebox("hover_pressed")
+		if sb_hp is StyleBoxFlat:
+			sb_hp.bg_color = ThemeMGR.DANGER_COLOR.lightened(0.2)
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
 
 # 加载并播放midi
 func _load_midi(midi: MidiData) -> void:
@@ -174,7 +160,12 @@ func _load_midi(midi: MidiData) -> void:
 	# 在执行同步耗时的 load_midi 之前先让 UI 渲染一帧
 	# （此时转场动画刚启动，避免被 MIDI 解析/JSON 写入阻塞导致首帧卡顿）
 	await get_tree().process_frame
-	# 加载MIDI到播放管理器
+	# 线程化预解析 MIDI：将昂贵的文件 I/O + 数据结构构建移到 worker 线程
+	# 主线程在 await 期间继续渲染转场动画，避免复杂 MIDI 导致的首帧卡顿
+	# load_midi 后续会命中缓存跳过同步解析
+	if not await midi_playback_manager.preparse_midi_async(midi):
+		push_error("Failed to preparse MIDI: " + midi.name)
+	# 加载MIDI到播放管理器（此时已命中解析缓存，仅做配置应用 + 后端加载）
 	if not midi_playback_manager.load_midi(midi):
 		push_error("Failed to load MIDI: " + midi.name)
 	await get_tree().process_frame
@@ -194,31 +185,20 @@ func _load_midi(midi: MidiData) -> void:
 	_config_persistence.restore_midi_data_config()
 
 	# 加载音符
-	var all_notes = midi_playback_manager.current_notes
-	if all_notes.is_empty():
-		push_warning("No notes found in MIDI")
+	# runtime_track_channel_notes 由 MidiListItem worker 线程预构建（或 preparse_midi_async 构建）
+	# _build_buckets 直接复用，无需主线程遍历 current_notes
+	if current_midi_data.runtime_track_channel_notes.is_empty():
+		push_warning("No track_channel_notes available (preparse may have failed)")
 		return
-
-	# 在一次遍历中过滤并转换为显示格式（notes已按时间顺序）
-	All_Notes.clear()
-	for note in all_notes:
-		if note is MidiParser.Note and note.event != null:
-			var evt = note.event
-			var display_note = NoteDisplayer.NoteEvent.new(
-				evt.pitch,
-				evt.velocity,
-				int(evt.start_time),
-				int(evt.duration),
-				evt.track_index,
-				evt.channel
-			)
-			All_Notes.append(display_note)
-	# 构建 All_Notes 后让出一帧，避免 _init_master_note_displayer 紧接其后再阻塞
+	# 按 (track, channel) 分组构建 TrackNoteBucket（主线程仅 O(Buckets)）
+	_build_buckets()
+	# 构建 buckets 后让出一帧，避免 _init_master_note_displayer 紧接其后再阻塞
 	await get_tree().process_frame
 
+	# 先设置 is_master 标志，确保 init_displayer_with_buckets 内的 is_master 分支正确执行
+	master_note_displayer.is_master = true
 	# 初始化总览的音符显示器
 	_init_master_note_displayer()
-	master_note_displayer.is_master = true
 	await get_tree().process_frame
 
 	# 创建轨道UI
@@ -236,6 +216,10 @@ func _load_midi(midi: MidiData) -> void:
 	# 初始化Latency输入框
 	_init_latency_edit()
 
+	# 等待人声预加载完成：确保 play() 时人声 stream 已就绪
+	# 若不等待，start_vocal_playback 会回退到同步加载（在 backend.play 之后），
+	# 导致 MIDI 已开始播放但人声仍在解码，造成 MIDI/人声不同步
+	await midi_playback_manager.await_vocal_preload()
 	# 启动播放（UI 已完全加载，避免 _prepare_to_play 阻塞 UI 渲染）
 	midi_playback_manager.play()
 
@@ -254,71 +238,45 @@ func _create_track_views() -> void:
 
 	# 获取轨道信息
 	var track_infos = midi_playback_manager.get_track_infos()
-	
+
 	if track_infos.is_empty():
 		push_warning("No track info available")
 		return
-	
-	# 第1步：一次遍历 All_Notes，按 (track_index, channel) 分组收集 notes
-	# 旧实现用 N 次 All_Notes.filter()，复杂度 O(N × T × C)；这里降为 O(N)
-	# 由于 All_Notes 已按时间排序，每组 notes 自然保持时间顺序
-	var track_channel_notes: Dictionary = {}  # {track_idx: {channel: Array}}
-	for note in All_Notes:
-		if not track_channel_notes.has(note.track_index):
-			track_channel_notes[note.track_index] = {}
-		var by_track: Dictionary = track_channel_notes[note.track_index]
-		if not by_track.has(note.channel):
-			by_track[note.channel] = []
-		(by_track[note.channel] as Array).append(note)
 
-	# 第2步：构建(track, channel)列表，按 channel 升序、track 升序
-	var track_channel_pairs: Array = []  # [{track: int, channel: int, notes: Array}, ...]
+	if _all_buckets.is_empty():
+		push_warning("No buckets available")
+		return
 
-	for track_idx in track_channel_notes.keys():
-		var channels = track_channel_notes[track_idx].keys()
-		channels.sort()  # channel 升序
-		for ch in channels:
-			track_channel_pairs.append({
-				"track": track_idx,
-				"channel": ch,
-				"notes": track_channel_notes[track_idx][ch]
-			})
-
-	# 按(channel asc, track asc)排序
-	track_channel_pairs.sort_custom(func(a, b):
-		if a["channel"] != b["channel"]:
-			return a["channel"] < b["channel"]
-		return a["track"] < b["track"]
-	)
-	
-	# 第3步：为每个(track, channel)对创建MidiTrack UI项
-	var track_name_map = {}  # 缓存track名称
+	# 缓存 track 名称
+	var track_name_map = {}
 	for track_info in track_infos:
 		track_name_map[track_info.index] = track_info.name
-	
-	for pair in track_channel_pairs:
-		var track_idx = pair["track"]
-		var channel = pair["channel"]
-		var pair_notes_raw: Array = pair["notes"]
 
-		if pair_notes_raw.is_empty():
+	# 按 (channel asc, track asc) 排序 buckets，与原逻辑一致
+	_all_buckets.sort_custom(func(a, b):
+		if a.channel != b.channel:
+			return a.channel < b.channel
+		return a.track_index < b.track_index
+	)
+
+	# 为每个 bucket 创建 MidiTrack UI 项
+	for bucket in _all_buckets:
+		if bucket.notes.is_empty():
 			continue
 
-		# 获取track名称
+		var track_idx = bucket.track_index
+		var channel = bucket.channel
 		var track_name = track_name_map.get(track_idx, "Track %d" % track_idx)
 
 		# 创建MidiTrack UI项
 		var track_scene = create_and_add_item(track_name, "MidiTrack") as MidiTrack
 		track_scene.setup_track(self, track_idx, track_name, instrument_options, channel, current_midi_data)
 
-		# 新增：设置该 (track, channel) 的正确乐器
+		# 设置该 (track, channel) 的正确乐器
 		_set_track_instrument_from_midi_data(track_scene, track_idx, channel)
 
-		# 初始化该(track, channel)对的音符显示
-		# Dictionary 中存的是普通 Array，需转换为 typed array 以匹配 _init_track_note_displayer 签名
-		var pair_notes: Array[NoteDisplayer.NoteEvent] = []
-		pair_notes.assign(pair_notes_raw)
-		_init_track_note_displayer(track_scene, track_idx, channel, pair_notes)
+		# 初始化该(track, channel)对的音符显示（子 displayer 共享 bucket.notes 但独立 cursor）
+		_init_track_note_displayer(track_scene, bucket)
 		await get_tree().process_frame
 
 	
@@ -357,16 +315,6 @@ func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
 	# Then reset master displayer
 	if master_note_displayer:
 		master_note_displayer.reset_playhead_position(target_ms)
-
-	# Sum passed count from enabled tracks
-	if master_note_displayer and current_midi_data:
-		var total_passed = 0
-		for track in list_items:
-			if track is MidiTrack:
-				var en = current_midi_data.is_track_channel_selected(track.track_index, track.track_channel)
-				if en and track.note_display:
-					total_passed += int(track.note_display.note_count_passed.text)
-		master_note_displayer.note_count_passed.text = str(total_passed)
 
 # 进度条值改变 - 预览时间
 func _on_progress_bar_value_changed(value: float) -> void:
@@ -413,6 +361,14 @@ func _on_vocal_volume_changed(value: float) -> void:
 	# 更新标签
 	_vocal_controller.set_display_vocal_volume(value)
 
+## VocalImportBtn.pressed 代理（信号已在 tscn 中连接到 self）
+func _on_vocal_import_btn_pressed() -> void:
+	_vocal_controller.on_vocal_import_btn_pressed()
+
+## VocalEnableBtn.toggled 代理（信号已在 tscn 中连接到 self）
+func _on_vocal_enable_btn_toggled(toggle_on: bool) -> void:
+	_vocal_controller.on_vocal_enable_btn_toggled(toggle_on)
+
 func _on_expand_master_area_btn_toggled(is_expanded: bool) -> void:
 	var node: Panel = $MC/VBox/TotalView
 	var expd_y:int = int(get_viewport().get_visible_rect().size.y) - 50
@@ -444,17 +400,9 @@ func _on_track_enable_toggled(is_checked: bool, track_index: int, channel: int) 
 	# 更新指定(track, channel)启用状态
 	current_midi_data.set_track_channel_enabled(track_index, channel, is_checked)
 
-	# 仅更新已有音符的可见性，不重建（性能优化）
-	master_note_displayer.sync_from_midi_data(current_midi_data)
-
-	# Recalculate passed count from enabled tracks
-	var total_passed = 0
-	for track in list_items:
-		if track is MidiTrack:
-			var en = current_midi_data.is_track_channel_selected(track.track_index, track.track_channel)
-			if en and track.note_display:
-				total_passed += int(track.note_display.note_count_passed.text)
-	master_note_displayer.note_count_passed.text = str(total_passed)
+	# 同步主音符显示器（按 selected_track_configs 过滤音符可见性）
+	if master_note_displayer:
+		master_note_displayer.sync_from_midi_data(current_midi_data)
 
 # 轨道静音切换
 func _on_track_mute_toggled(is_muted: bool, track_index: int, channel: int) -> void:
@@ -628,17 +576,18 @@ func _update_preview() -> void:
 	midi_playback_manager.seek(current_pos)
 	midi_playback_manager.play()
 
-## 更新主音符显示器（从MidiData同步启用的(track, channel)列表）
+## 更新主音符显示器（显示所有音符，不按轨道启用状态过滤）
 func _update_master_note_displayer() -> void:
 	if master_note_displayer == null or current_midi_data == null:
 		return
 
-	if All_Notes.is_empty():
-		push_warning("No notes found in MIDI")
+	if _all_buckets.is_empty():
+		push_warning("No buckets available")
 		return
 
-	# 传入全部音符（未过滤），由 sync_from_midi_data 控制可见性
-	master_note_displayer.init_displayer(self, All_Notes)
+	# 传入全部 buckets（未过滤），由 sync_from_midi_data 控制 bucket.is_enabled
+	# max_end_tick 直接读 MidiData（preparse 已缓存），避免遍历所有音符
+	master_note_displayer.init_displayer_with_buckets(self, _all_buckets, current_midi_data.max_end_tick)
 	if not current_midi_data.selected_track_configs.is_empty():
 		master_note_displayer.sync_from_midi_data(current_midi_data)
 
@@ -751,7 +700,7 @@ func _process(delta: float) -> void:
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)
 
-# 初始化主音符显示器（显示已开启音轨中的所有音符）
+# 初始化主音符显示器（显示所有音符，不按轨道启用状态过滤）
 func _init_master_note_displayer() -> void:
 	if master_note_displayer == null:
 		return
@@ -762,8 +711,9 @@ func _init_master_note_displayer() -> void:
 	
 	_reset_player()
 
-	# 获取所有音符	
-	if All_Notes.is_empty():
+	# 获取所有音符
+	# All_Notes 已删除，改用 _all_buckets 判断（runtime_track_channel_notes 为空时 _build_buckets 已 return）
+	if _all_buckets.is_empty():
 		push_warning("No notes found in selected tracks")
 		return
 	
@@ -777,24 +727,65 @@ func _init_master_note_displayer() -> void:
 		# 理论上不应走到这里（load_midi 已设置 _track_config_initialized=true），防御性日志
 		push_warning("[TrackView] Unexpected: _track_config_initialized is false, selected_track_configs may be incomplete")
 	
-	print("[TrackView] Master note displayer: %d total notes (time-sorted)" % All_Notes.size())
-	# 初始化主音符显示器（notes已按时间顺序排列）
-	master_note_displayer.init_displayer(self, All_Notes)
+	# 统计音符总数（从 buckets 汇总）
+	var total_notes = 0
+	for bucket in _all_buckets:
+		total_notes += bucket.notes.size()
+	print("[TrackView] Master note displayer: %d total notes across %d buckets" % [total_notes, _all_buckets.size()])
+	# 初始化主音符显示器（传入所有 buckets + max_end_tick 从 MidiData 直接读取），随后按 selected_track_configs 过滤可见性
+	master_note_displayer.init_displayer_with_buckets(self, _all_buckets, current_midi_data.max_end_tick)
 	if not current_midi_data.selected_track_configs.is_empty():
 		master_note_displayer.sync_from_midi_data(current_midi_data)
 
-func _init_track_note_displayer(track_scene: MidiTrack, track_index: int, channel: int, track_notes: Array[NoteDisplayer.NoteEvent]) -> void:
+## 按 (track, channel) 分组构建 TrackNoteBucket
+## 直接复用 MidiListItem worker 线程预构建的 runtime_track_channel_notes（主线程仅 O(Buckets)）
+## worker 遍历已排序的 parsed_notes 构建 grouping，每 bucket 内天然按 start_time 升序
+## 数据来源保证：MidiListItem._parse_thread_func 构建 → preparse_midi_async 缓存命中时已存在
+func _build_buckets() -> void:
+	_all_buckets.clear()
+	# 直接从 worker 预构建的 (track, channel) → notes 分组构建
+	# MidiListItem._parse_thread_func 在解析 MIDI 时顺便构建，preparse_midi_async 命中缓存时已就绪
+	# assign() 把 untyped Array 的 NoteEvent 引用复制到 typed Array[MidiParser.NoteEvent]
+	# NoteEvent 是 RefCounted，只复制引用（8 字节/项），不复制对象本身
+	for key in current_midi_data.runtime_track_channel_notes:
+		var parts = key.split(":")
+		var track_idx = int(parts[0])
+		var channel = int(parts[1])
+		var notes = current_midi_data.runtime_track_channel_notes[key]
+
+		var bucket = NoteDisplayer.TrackNoteBucket.new()
+		bucket.track_index = track_idx
+		bucket.channel = channel
+		bucket.hue = MidiTrack.colors_set[track_idx % MidiTrack.colors_set.size()].h
+		# assign() 复制元素到 bucket.notes 的内部 buffer（不与源 Dictionary 共享）
+		# 后续对 bucket.notes 的 sort 等修改不会污染 runtime_track_channel_notes
+		# NoteEvent 是 RefCounted，复制的是引用（8 字节/项），不复制对象本身
+		bucket.notes.assign(notes)
+		_all_buckets.append(bucket)
+	# worker 遍历已排序的 parsed_notes，每 bucket 内天然按 start_time 升序，无需再 sort
+
+func _init_track_note_displayer(track_scene: MidiTrack, source_bucket: NoteDisplayer.TrackNoteBucket) -> void:
 	if track_scene.note_display == null:
 		return
-	
-	# track_notes 已经由 _create_track_views() 过滤好了，直接使用
-	if track_notes.is_empty():
-		push_warning("No notes found for track %d channel %d" % [track_index, channel])
+
+	if source_bucket.notes.is_empty():
+		push_warning("No notes found for track %d channel %d" % [source_bucket.track_index, source_bucket.channel])
 		return
-	
-	print("[TrackView] Track %d Channel %d: %d notes (time-sorted)" % [track_index, channel, track_notes.size()])
-	# 初始化该(track, channel)的音符显示器（notes已按时间顺序排列）
-	track_scene.note_display.init_displayer(self, track_notes)
+
+	# 子 displayer 创建独立 bucket（独立 cursor/is_enabled），共享 notes 数组（RefCounted 引用计数安全）
+	# 避免复制 NoteEvent 列表，节省内存
+	var bucket := NoteDisplayer.TrackNoteBucket.new()
+	bucket.track_index = source_bucket.track_index
+	bucket.channel = source_bucket.channel
+	bucket.hue = source_bucket.hue
+	bucket.notes = source_bucket.notes  # 共享数组引用
+
+	print("[TrackView] Track %d Channel %d: %d notes (time-sorted)" %
+		[bucket.track_index, bucket.channel, bucket.notes.size()])
+	# 初始化该(track, channel)的音符显示器
+	# max_end_tick 复用主显示器的全局值（子 displayer 的音符是全局子集，使用全局 max_end_tick 安全）
+	var max_end_tick := current_midi_data.max_end_tick if current_midi_data != null else 0.0
+	track_scene.note_display.init_displayer_with_buckets(self, [bucket], max_end_tick)
 
 # 重置音符显示器索引
 func _reset_player() -> void:	
@@ -861,10 +852,11 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 			print("[TrackView] Reloaded MIDI after returning from settings")
 
 ## 释放视图内部资源（列表项、音符数据），保留节点壳和信号连接
-## 重新进入时由 _load_midi 重新加载数据
+## 不 unload_midi / 不 clear_parsed_notes：同一 MIDI 在 MidiView/TrackView/PlayView 间
+## 切换时复用解析数据，避免反复重解析。离开 MidiView 或切换 MidiList 项时才彻底清理
 func _cleanup() -> void:
 	clear_items()
-	All_Notes.clear()
+	_all_buckets.clear()
 	_set_note_displayers_process(false)
 
 ## 初始化Latency输入框（从MidiData读取偏移值）

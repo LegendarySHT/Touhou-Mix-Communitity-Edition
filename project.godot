@@ -26,6 +26,7 @@ AniMGR="*res://UI/Animations/AnimationManager.gd"
 GLogger="*res://Utilities/Logger.gd"
 ThemeMGR="*res://UI/ThemeManager.gd"
 SkinMGR="*res://Core/SkinManager.gd"
+CoverLoader="*res://UI/Components/CoverLoader.gd"
 
 [display]
 
@@ -40,7 +41,7 @@ project/assembly_name="Touhou Mix Comunitity Edition"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/midi/plugin.cfg", "res://addons/miniaudio/plugin.cfg")
+enabled=PackedStringArray("res://addons/miniaudio/plugin.cfg")
 
 [gui]
 

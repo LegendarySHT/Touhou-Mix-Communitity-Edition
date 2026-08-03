@@ -21,6 +21,15 @@ var _prev_scroll: int = 0  # 上帧滚动位置，变化说明有人在动列表
 func _ready() -> void:
 	work_state = UIStateManager.UIState.MIDI_VIEW
 	snap_offset_y = 0
+	# 设置直接相邻状态：切到不在此集合的状态时释放所有列表项封面
+	# MIDI_VIEW 相邻：SONG_VIEW（返回歌曲列表）、TRACK_VIEW/PLAY_VIEW/SCORE_VIEW（演奏流程）
+	# 切到 ALBUM_VIEW（级联删除跳转）/ SORTED_VIEW / STORE_VIEW / SETTINGS_VIEW 时释放封面
+	set_adjacent_states([
+		UIStateManager.UIState.SONG_VIEW,
+		UIStateManager.UIState.TRACK_VIEW,
+		UIStateManager.UIState.PLAY_VIEW,
+		UIStateManager.UIState.SCORE_VIEW,
+	])
 
 	super._ready()
 
@@ -61,8 +70,22 @@ func get_selection() -> MidiData:
 	if selected_item == -1:
 		print("未选择Midi")
 		return null
-	
+
 	return current_midis[selected_item]
+
+## 清理指定 MIDI 的运行时缓存（parsed_notes + GameSequence + 播放管理器）
+## 用于切换 MidiList 项或离开 MidiView 时释放内存，避免浏览多个大 MIDI 后累积
+## 注意：仅当 pm.current_midi_data == midi 时才 unload，避免误清其他 MIDI 的播放状态
+func cleanup_midi_cache(midi: MidiData) -> void:
+	if midi == null:
+		return
+	var ksm := KeySequenceManager.instance
+	if ksm != null:
+		ksm.clear_sequences()
+	var pm := MidiPlaybackManager.instance
+	if pm != null and pm.current_midi_data == midi and pm.has_method("unload_midi"):
+		pm.unload_midi()
+	midi.clear_parsed_notes()
 
 func get_focus_node_path() -> NodePath:
 	var node = get_selected_node()
@@ -115,7 +138,7 @@ func _show_midi_list(_index: int = -1) -> void:
 		need_snap = true
 		# 指示器移到选中项
 		if indicator and selected_item != -1:
-			create_tween().tween_property(indicator, "position", Vector2(30, 100 - selected_item * 24), 0.35)
+			create_tween().tween_property(indicator, "offset_transform_position:y", 100 - selected_item * 24, 0.35)
 
 func _previous() -> void:
 	if current_midis.size() != 1:
@@ -169,5 +192,5 @@ func remove_selected_midi():
 	for item in list_items:
 		item.set_expanded(true)
 	if indicator:
-		indicator.position = Vector2(30, 100 - selected_item * 24)
+		indicator.offset_transform_position.y = 100 - selected_item * 24
 	need_snap = true

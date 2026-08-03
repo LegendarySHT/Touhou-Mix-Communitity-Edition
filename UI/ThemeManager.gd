@@ -288,9 +288,10 @@ func _modify_button_colors(btn: Button, pri_light: Color, fancy_focus: bool) -> 
 				sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.4)
 
 ## 修改 albumNode 的 item_instance 上的共享 StyleBoxFlat
+## AlbumButton 本身即根节点 Button（原 Panel + 子 Button 已合并）
 func _style_album_instance(item: Control, pri_light: Color) -> void:
 	# AlbumButton — pressed/hover/focus 的颜色
-	var btn := item.get_node_or_null("AlbumButton") as Button
+	var btn := item as Button
 	if btn:
 		_modify_button_colors(btn, pri_light, true)
 
@@ -302,6 +303,7 @@ func _style_album_instance(item: Control, pri_light: Color) -> void:
 			sb.bg_color = pri_light
 
 ## 修改 songNode 的 item_instance
+## SongButton 本身即根节点 Button（原 Panel + 子 Button 已合并）
 func _style_song_instance(item: Control, pri_light: Color) -> void:
 	# HBoxC/SongCount — normal StyleBoxFlat.bg_color（共享引用，duplicate 子项自动同步）
 	var song_count := item.get_node_or_null("HBoxC/SongCount") as Label
@@ -311,23 +313,23 @@ func _style_song_instance(item: Control, pri_light: Color) -> void:
 			sb.bg_color = pri_light
 
 	# SongButton
-	var btn := item.get_node_or_null("SongButton") as Button
+	var btn := item as Button
 	if btn:
 		_modify_button_colors(btn, pri_light, true)
 
 ## 修改 sortedMidiNode 的 item_instance
+## MidiNode 本身即 Button（原 Panel + 子 Button 已合并），直接对 item 应用样式
 func _style_sorted_midi_instance(item: Control, pri_light: Color) -> void:
-	# Panel/Border
-	var border := item.get_node_or_null("Panel/Border") as PanelContainer
-	if border:
-		var sb := border.get_theme_stylebox("panel")
+	var btn := item as Button
+	if not btn:
+		return
+	# 简洁焦点，不修改 shadow
+	_modify_button_colors(btn, pri_light, false)
+	# 边框颜色应用到 normal/pressed/hover（原 Border 节点的职责）
+	for state in ["normal", "hover", "pressed"]:
+		var sb := btn.get_theme_stylebox(state)
 		if sb is StyleBoxFlat:
 			sb.border_color = pri_light
-
-	# Panel/Button（简洁焦点，不修改 shadow）
-	var btn := item.get_node_or_null("Panel/Button") as Button
-	if btn:
-		_modify_button_colors(btn, pri_light, false)
 
 
 ## 统一设置按钮三种状态的 bg_color（通过 Theme 的 StyleBoxFlat 引用）
@@ -354,49 +356,6 @@ func _style_button_set_bg_color(btn: Button, color: Color) -> void:
 	btn.get_theme_stylebox("normal").bg_color = color
 	btn.get_theme_stylebox("pressed").bg_color = color.darkened(0.25)
 	btn.get_theme_stylebox("hover").bg_color = color.lightened(0.15)
-
-# ============ 商店视图主题 ============
-
-## 对 MidiStore.tscn 的静态组件应用主题色
-func _apply_store_theme(main: Node) -> void:
-	var store := main.get_node_or_null("Store")
-	if not store:
-		return
-
-	# TopBar — 垂直渐变 primary → primary_dark
-	var topbar := store.get_node_or_null("TopBar") as Panel
-	if topbar:
-		var sb := topbar.get_theme_stylebox("panel")
-		if sb is StyleBoxTexture:
-			var tex := sb.texture as GradientTexture2D
-			if tex and tex.gradient:
-				var g := tex.gradient
-				g.set_color(0, get_color("primary"))
-				g.set_color(1, get_color("primary_dark"))
-
-	# TopBar/C/Search/Base — 四点 vertex_colors，基于 primary 做细微调整
-	var search_base := store.get_node_or_null("TopBar/C/Search/Base") as Polygon2D
-	if search_base:
-		var p := get_color("primary")
-		var pd := get_color("primary_dark")
-		search_base.vertex_colors = PackedColorArray([
-			p.lightened(0.1),   # 左上 — 稍亮
-			p,                   # 左下 — 基准 primary
-			pd,                  # 右下 — primary_dark
-			p.lightened(0.2),   # 右上 — 左侧偏亮，产生水平过渡
-		])
-
-	# Bottom/Previ + Next — primary_dark 基调
-	for btn_name in ["Previ", "Next"]:
-		var btn := store.get_node_or_null("Bottom/" + btn_name) as Button
-		_style_button_set_bg_color(btn, get_color("primary_dark"))
-
-	# Bottom/Indicate — 页码标签背景 primary_light
-	var indicate := store.get_node_or_null("Bottom/Indicate") as Label
-	if indicate:
-		var sb := indicate.get_theme_stylebox("normal")
-		if sb is StyleBoxFlat:
-			sb.bg_color = get_color("primary_light")
 
 # ============ MidiView 主题 ============
 
@@ -441,217 +400,23 @@ func _style_midi_individual_nodes(info_ui: Node) -> void:
 	var option_panel := info_ui.get_node_or_null("OptionPanel") as PanelContainer
 	_style_panel_set_bg_color(option_panel, p.darkened(0.25))
 
-## 对 MidiView 的独立节点应用主题色
-func _apply_midi_theme(main: Node) -> void:
-	var info_ui := main.get_node_or_null("skew/C/MidiView")
-	if not info_ui:
-		return
-	_style_midi_individual_nodes(info_ui)
-
-
-# ============ 结算界面主题 ============
-
-func _apply_score_theme(main: Node) -> void:
-	var score := main.get_node_or_null("ScoreView")
-	if not score:
-		return
-
-	# LevelingProgress — 透明 primary_dark
-	var leveling := score.get_node_or_null("LevelingProgress") as Panel
-	if leveling:
-		var sb := leveling.get_theme_stylebox("panel")
-		if sb is StyleBoxFlat:
-			var a = sb.bg_color.a
-			var pd := get_color("primary_dark")
-			sb.bg_color = Color(pd.r, pd.g, pd.b, a)
-
-	# Btns — 透明 primary_light
-	var btns := score.get_node_or_null("Btns") as Panel
-	if btns:
-		var sb := btns.get_theme_stylebox("panel")
-		if sb is StyleBoxFlat:
-			var a = sb.bg_color.a
-			var pl := get_color("primary_light")
-			sb.bg_color = Color(pl.r, pl.g, pl.b, a)
-
-
-func _apply_track_theme(main: Node) -> void:
-	var track_view := main.get_node_or_null("skew/C/TrackView") as Control
-	if not track_view:
-		return
-
-	var p := get_color("primary")
-	var pl := get_color("primary_light")
-
-	# TotalView / VolumeView panel -> primary (shares StyleBoxFlat_31lmn)
-	var total_view := track_view.get_node_or_null("MC/VBox/TotalView") as Panel
-	if total_view:
-		var sb := total_view.get_theme_stylebox("panel")
-		if sb is StyleBoxFlat:
-			sb.bg_color = p
-
-	# noteTotal panel -> primary_light
-	var note_total := track_view.get_node_or_null("MC/VBox/TotalView/MC/VBoxC/flowArea/noteTotal") as Panel
-	if note_total:
-		var sb := note_total.get_theme_stylebox("panel")
-		if sb is StyleBoxFlat:
-			sb.bg_color = pl
-
-	# VocalEnableBtn button states
-	var vocal_btn := track_view.get_node_or_null("MC/VBox/VolumeView/HBoxC/VBoxC2/VocalEnableBtn") as Button
-	if vocal_btn:
-		var sb_n := vocal_btn.get_theme_stylebox("normal")
-		if sb_n is StyleBoxFlat:
-			sb_n.bg_color = p
-		var sb_h := vocal_btn.get_theme_stylebox("hover")
-		if sb_h is StyleBoxFlat:
-			sb_h.bg_color = p.lightened(0.15)
-		var sb_p := vocal_btn.get_theme_stylebox("pressed")
-		if sb_p is StyleBoxFlat:
-			sb_p.bg_color = DANGER_COLOR
-		var sb_hp := vocal_btn.get_theme_stylebox("hover_pressed")
-		if sb_hp is StyleBoxFlat:
-			sb_hp.bg_color = DANGER_COLOR.lightened(0.2)
-
-	GLogger.debug("TrackView theme applied", "ThemeManager")
-
-
-func _apply_play_theme(main: Node) -> void:
-	var play_view := main.get_node_or_null("PlayView") as Control
-	if not play_view:
-		return
-
-	var menu := play_view.get_node_or_null("Layer/CenterBackGround/Menu") as HBoxContainer
-	if not menu or not menu.theme:
-		return
-
-	var theme := menu.theme
-	var p := get_color("primary")
-
-	_theme_button_set_color(theme, p)
-
-	# Add shadow effects to the base button styles
-	var normal := theme.get_stylebox("normal", "Button")
-	if normal is StyleBoxFlat:
-		normal.shadow_color = Color(p.r, p.g, p.b, 0.3)
-		normal.shadow_size = 8
-
-	var hover := theme.get_stylebox("hover", "Button")
-	if hover is StyleBoxFlat:
-		var hc := p.lightened(0.15)
-		hover.shadow_color = Color(hc.r, hc.g, hc.b, 0.35)
-		hover.shadow_size = 12
-
-	# Continue button: brighter than the others
-	var continue_btn := menu.get_node_or_null("continue") as Button
-	if continue_btn:
-		var sb_n := continue_btn.get_theme_stylebox("normal")
-		if sb_n is StyleBoxFlat:
-			sb_n.bg_color = p.lightened(0.15)
-		var sb_h := continue_btn.get_theme_stylebox("hover")
-		if sb_h is StyleBoxFlat:
-			sb_h.bg_color = p.lightened(0.30)
-
-	# Quit button: danger color on pressed
-	var quit_btn := menu.get_node_or_null("quit") as Button
-	if quit_btn:
-		var sb_p := quit_btn.get_theme_stylebox("pressed")
-		if sb_p is StyleBoxFlat:
-			sb_p.bg_color = DANGER_COLOR
-
-	GLogger.debug("PlayView theme applied", "ThemeManager")
-
-
-## 对 DelView 的静态部分应用主题色（侧边栏、内容面板、按钮颜色）
-## 由 DelView._ready() 和 theme_changed 信号触发
-func _apply_delview_theme(main: Node) -> void:
-	var delview := main.get_node_or_null("skew/C/SettingView/DelView")
-	if not delview:
-		return
-	var sidebar: VBoxContainer = delview.get_node_or_null("SideBar")
-	if sidebar:
-		_theme_button_set_color(sidebar.theme, get_color("primary"))
-		var pressed := sidebar.theme.get_stylebox("pressed", "Button")
-		if pressed:
-			pressed.bg_color = get_color("primary_dark").darkened(0.5)
-
-	var top_panel: PanelContainer = delview.get_node_or_null("Content/PC")
-	if top_panel:
-		var sb := top_panel.get_theme_stylebox("panel")
-		if sb is StyleBoxFlat:
-			sb.bg_color = get_color("primary_dark")
-
-	GLogger.debug("DelView theme applied", "ThemeManager")
-
-# ============ 弹出窗口主题 ============
-
-## 对 PopupWindow 的静态部分应用主题色
-## 由 refresh_theme_only() 触发
-func _apply_popup_window_theme(main: Node) -> void:
-	var popup := main.get_node_or_null("PopupWindow")
-	if not popup:
-		return
-
-	# DelayAdjust/Button — primary 色调
-	var delay_btn := popup.delay_btn as Button
-	_style_button_set_bg_color(delay_btn, get_color("primary"))
-
-	# KBModeAdjust/AddBtn — primary 色调（静态按钮）
-	var kb_add_btn := popup.get_node_or_null("TabC/KBModeAdjust/KeySequence/VFlowC/AddBtn") as Button
-	if kb_add_btn:
-		_style_button_set_bg_color(kb_add_btn, get_color("primary"))
-
-	# KBModeAdjust 中动态创建的 KeySequenceItem — 委托给 KBModeAdjust.apply_button_theme
-	# （_rebuild_items 重建时也会调用此方法，确保新 item 即时应用主题色）
-	var kb_mode_adjust := popup.get_node_or_null("TabC/KBModeAdjust") as KBModeAdjust
-	if kb_mode_adjust:
-		kb_mode_adjust.apply_button_theme(get_color("primary"))
-
-	GLogger.debug("PopupWindow theme applied", "ThemeManager")
-
-# ============ 设置视图主题 ============
-
-## 对 SettingView 中所有 TYPE_BUTTON 设置项应用主题色
-## 由 refresh_theme_only() 触发
-func _apply_setting_view_theme(main: Node) -> void:
-	var setting_view := main.get_node_or_null("skew/C/SettingView")
-	if not setting_view:
-		return
-	var setting_list := setting_view.get_node_or_null("HBoxC/SettingList") as SettingList
-	if not setting_list:
-		return
-	setting_list.apply_button_theme(get_color("primary"))
-
-	# ShortCut 导航按钮（Btn1-6）：focus 样式 = pressed + 白边
-	# 这些按钮没有 theme_override_styles，使用全局 Theme 的 Button 样式（focus 默认是 lightened(0.1)，与 pressed 差异大）
-	# 直接修改全局 Theme 的 focus StyleBox 会污染所有按钮，因此给每个按钮单独加 theme_override_styles
-	var shortcut_btn := setting_view.get_node_or_null("HBoxC/ShortCut")
-	if shortcut_btn:
-		var pressed_color := get_color("primary").darkened(0.25)
-		for b in shortcut_btn.get_children():
-			if b is Button:
-				_apply_shortcut_focus_style(b, pressed_color)
-	GLogger.debug("SettingView theme applied", "ThemeManager")
-
-## 给 ShortCut 按钮设置 focus 样式：复制 pressed 样式 + 白色边框
-## 通过 theme_override_styles/focus 独立覆盖，不影响其他按钮和共享 Theme 资源
-func _apply_shortcut_focus_style(btn: Button, pressed_color: Color) -> void:
-	# 取当前 pressed 样式做副本（可能是全局 Theme 的引用，必须 duplicate 才能独立修改）
-	var sb := btn.get_theme_stylebox("pressed")
-	if sb is StyleBoxFlat:
-		var dup := (sb as StyleBoxFlat).duplicate() as StyleBoxFlat
-		dup.bg_color = pressed_color
-		dup.border_color = Color.WHITE
-		dup.border_width_left = 4
-		dup.border_width_right = 4
-		dup.border_width_top = 4
-		dup.border_width_bottom = 4
-		btn.add_theme_stylebox_override("focus", dup)
-
 # ============ 全局刷新 ============
 
+## 主题应用者注册表：视图/组件在 _ready 时注册，refresh_theme_only 遍历调用其 apply_theme()
+## 懒加载视图实例化后自动注册，不再依赖 ThemeManager 主动按路径查找节点，从根本上解决懒加载时序问题
+var _theme_appliers: Array[Node] = []
+
+## 注册主题应用者（视图/组件 _ready 时调用，并自调一次 apply_theme() 完成首次着色）
+func register_theme_applier(node: Node) -> void:
+	if node and not _theme_appliers.has(node):
+		_theme_appliers.append(node)
+
+## 注销主题应用者（视图/组件 _exit_tree 时调用，防止 refresh 时访问已释放节点）
+func unregister_theme_applier(node: Node) -> void:
+	_theme_appliers.erase(node)
+
 ## 刷新主题色（不刷新背景）
-## 仅应用调色板、Theme 资源、各视图/弹窗的 StyleBox 与 self_modulate；
+## 仅刷新调色板、Theme 资源，并广播通知所有已注册应用者各自更新内部样式；
 ## 不调用 _apply_all_backgrounds，因为背景与主题色独立，切换主题不应触发背景重新加载（避免 Image.load_from_file 同步阻塞）。
 ## 若需要刷新背景，调用 refresh_backgrounds()。
 ##
@@ -664,31 +429,25 @@ func refresh_theme_only() -> void:
 	if not main:
 		return
 
-	# 第一阶段：全局 Theme 资源 + 主框架主题（最可能触发大面积重绘，单独一帧）
+	# 第一阶段：全局 Theme 资源（触发大面积重绘，单独一帧）
 	# 注意：切换主题色不再清空背景缓存，背景与主题色独立（避免 Image.load_from_file 同步阻塞）
 	_refresh_theme_colors(main.theme)
 	var skew_part: Control = main.get_node_or_null("skew/C")
-	if skew_part.theme != main.theme:
+	if skew_part and skew_part.theme != main.theme:
 		skew_part.theme = main.theme  # 让子节点继承更新后的 Theme （因为skew会导致子节点不继承theme）
-	_apply_main_theme(main)
-	_apply_delview_theme(main)
 	await get_tree().process_frame
 
-	# 第二阶段：列表主题（含 item_instance 的 StyleBoxFlat 修改，子项自动同步）
-	_apply_list_theme(main)
-	_apply_store_theme(main)
-	await get_tree().process_frame
-
-	# 第三阶段：各视图主题
-	_apply_midi_theme(main)
-	_apply_score_theme(main)
-	_apply_track_theme(main)
-	_apply_play_theme(main)
-	await get_tree().process_frame
-
-	# 第四阶段：弹窗与设置页主题
-	_apply_popup_window_theme(main)
-	_apply_setting_view_theme(main)
+	# 第二阶段：广播通知所有已注册应用者各自更新内部样式
+	# 视图/组件在 _ready 时 register_theme_applier(self) 并自调 apply_theme() 完成首次着色；
+	# 懒加载视图实例化后自动注册，不再有"启动阶段查找节点落空"的问题。
+	var i := _theme_appliers.size() - 1
+	while i >= 0:
+		var applier = _theme_appliers[i]
+		if is_instance_valid(applier) and applier.has_method("apply_theme"):
+			applier.apply_theme()
+		else:
+			_theme_appliers.remove_at(i)
+		i -= 1
 	GLogger.info("主题刷新完成: %s" % _theme_name, "ThemeManager")
 
 func _on_theme_changed(preset_name: String) -> void:
@@ -717,49 +476,6 @@ func refresh_backgrounds() -> void:
 		return
 	_apply_all_backgrounds(main)
 	GLogger.info("背景刷新完成", "ThemeManager")
-
-# ============ 内部：主界面组件主题 ============
-
-func _apply_main_theme(main: Node) -> void:
-	# LT_Btn — 蓝 (primary)
-	var lt := main.get_node_or_null("LT_Btn")
-	if lt:
-		_modify_panel_color(lt, "primary")
-
-	# RB_Btn — 淡蓝 (primary_light)
-	var rb := main.get_node_or_null("RB_Btn")
-	if rb:
-		_modify_panel_color(rb, "primary_light")
-
-	# ShortCutMenu 面板 — 蓝 (primary)
-	var sc_panel := main.get_node_or_null("skew/C/ShortCutMenu/Panel")
-	if sc_panel:
-		_modify_panel_color(sc_panel, "primary")
-
-	# PlayerInfo 面板 — 暗色 (primary_dark.darkened)
-	var info_panel := main.get_node_or_null("PlayerInfo/Info/Panel")
-	if info_panel:
-		_modify_panel_color(info_panel, "primary_dark")
-
-## 修改三个列表容器的 item_instance 共享 StyleBoxFlat（duplicate 子项自动同步，无需逐项刷新）
-func _apply_list_theme(main: Node) -> void:
-	var pri_light := get_color("primary_light")
-
-	# AlbumList
-	var album_view := main.get_node_or_null("skew/C/AlbumList") as BaseScrollList
-	if album_view and album_view.item_instance:
-		_style_album_instance(album_view.item_instance, pri_light)
-
-	# SongList
-	var song_view := main.get_node_or_null("skew/C/SongList") as BaseScrollList
-	if song_view and song_view.item_instance:
-		_style_song_instance(song_view.item_instance, pri_light)
-
-	# SortedMidisList
-	var sorted_view := main.get_node_or_null("skew/C/SortedMidisList") as BaseScrollList
-	if sorted_view and sorted_view.item_instance:
-		_style_sorted_midi_instance(sorted_view.item_instance, pri_light)
-
 
 # ============ 内部：背景批量应用 ============
 

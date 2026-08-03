@@ -3,9 +3,6 @@ extends ListItemBase
 # 使用玩家uid查找玩家信息？
 var player_uid
 
-func _ready() -> void:
-	get_node("Button").pressed.connect(_on_btn_pressed)
-
 func setup_score(rank, score, scoreRank, accuracy, pp: float, perfect_ctn: int, great_ctn: int, good_ctn: int, bad_ctn: int, miss_ctn: int):
 	get_node("Rank").text = str(rank)
 	get_node("Score").text = str(score)

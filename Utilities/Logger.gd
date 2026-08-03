@@ -98,16 +98,26 @@ func _log(level: LogLevel, message: String, context: String = "") -> void:
 	# 检查日志级别
 	if level < current_level:
 		return
-	
+
+	# worker 线程保护：print() 和 FileAccess 在 worker 线程调用会导致 StringName 引用计数损坏
+	# （Android ARM 弱内存模型下表现为 BUG: Unreferenced static string，累积后稳定崩溃）
+	# 检测非主线程时转交主线程执行
+	if Thread.is_main_thread():
+		_emit_log(level, message, context)
+	else:
+		call_deferred("_emit_log", level, message, context)
+
+## 实际输出日志（仅主线程调用）
+func _emit_log(level: LogLevel, message: String, context: String) -> void:
 	# 构建日志消息
 	var timestamp = Time.get_datetime_string_from_system()
 	var level_prefix = level_names[level]
 	var full_message = "%s %s [%s] %s" % [timestamp, level_prefix, context, message]
-	
+
 	# 控制台输出
 	if log_to_console:
 		print(full_message)
-	
+
 	# 文件输出
 	if log_to_file:
 		_write_to_file(full_message)

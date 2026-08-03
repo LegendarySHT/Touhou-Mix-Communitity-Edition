@@ -21,12 +21,36 @@ var json_cache: Dictionary = {}
 
 ## 数据加载状态 (初始为True防止还没启动就被读取)
 var is_loading: bool = true
+## 待重载标志：charts 缓存校验发现变化但当前正在加载，标记待重载
+## 当前加载完成后检查此标志，若为 true 则重新加载
+var _pending_reload: bool = false
 
 ## 加载完成信号
 signal data_loaded
 
 func _ready() -> void:
 	add_to_group("singleton")
+	# 监听 charts 缓存后台校验完成信号
+	# 启动时 FileSystemManager 先从缓存恢复 charts_index 让用户立即操作
+	# 后台校验若发现变化（新增/删除/修改文件夹），重新构建数据树并 emit data_loaded
+	# 这样 UI 通过已监听的 data_loaded 信号自动刷新，无需额外耦合
+	if EvtBus:
+		EvtBus.charts_cache_validated.connect(_on_charts_cache_validated)
+
+## charts 缓存校验完成回调
+## changed=true 表示发现了新增/删除/修改的文件夹，需重建数据树
+## changed=false 表示缓存完全有效，无需重建
+func _on_charts_cache_validated(changed: bool) -> void:
+	if not changed:
+		return
+	# 如果当前正在加载（基于缓存数据的第一次加载），标记待重载
+	# 当前加载完成后会检查此标志并重新加载
+	if is_loading:
+		GLogger.info("Charts cache validated with changes, but data is loading, pending reload", "DataMGR")
+		_pending_reload = true
+		return
+	GLogger.info("Charts cache validated with changes, rebuilding data tree...", "DataMGR")
+	_rebuild_data_tree()
 
 ## 从midis_info目录异步加载所有MIDI数据
 func load_all_midis_async() -> void:
@@ -48,10 +72,10 @@ func load_all_midis_async() -> void:
 func _load_midis() -> void:
 	GLogger.info("Thread started, loading MIDI data...", "DataMGR")
 	
-	# 获取谱面索引
-	var charts = FileSystemManager.instance.get_charts_index()
+	# 获取谱面索引（浅拷贝：防止后台缓存校验协程并发 clear charts_index 导致迭代中途取到 null）
+	var charts = FileSystemManager.instance.get_charts_index().duplicate()
 	GLogger.info("Got charts index: %d charts" % charts.size(), "DataMGR")
-	
+
 	if charts.is_empty():
 		GLogger.warning("No charts found in FileSystemManager index", "DataMGR")
 		return
@@ -80,11 +104,27 @@ func _load_midis() -> void:
 func _emit_data_loaded():
 	GLogger.info("_emit_data_loaded() called", "DataMGR")
 	is_loading = false
+	# 检查是否在校验期间发现了缓存变化，需要重新加载
+	if _pending_reload:
+		_pending_reload = false
+		GLogger.info("Pending reload triggered by cache validation, rebuilding...", "DataMGR")
+		_rebuild_data_tree()
+		return
 	var stats = get_statistics()
 	GLogger.info("Stats - Albums: %d, Songs: %d, MIDIs: %d" % [stats.total_albums, stats.total_songs, stats.total_midis], "DataMGR")
 	GLogger.info("Emitting data_loaded signal...", "DataMGR")
 	data_loaded.emit()
 	GLogger.info("data_loaded signal emitted!", "DataMGR")
+
+## 清空旧数据树，重新从 charts_index 构建
+func _rebuild_data_tree() -> void:
+	albums.clear()
+	songs.clear()
+	midis.clear()
+	midi_tree.clear()
+	json_cache.clear()
+	is_loading = true
+	load_all_midis_async()
 
 ## 处理新格式的谱面数据（文件夹结构）
 func _process_new_format_chart(metadata: ChartMetadata) -> void:

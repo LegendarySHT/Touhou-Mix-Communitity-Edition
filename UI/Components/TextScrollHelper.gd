@@ -43,10 +43,19 @@ static func setup(label: Label, clip_container: Control, full_text: String,
 	# 重置 Label 位置
 	label.offset_transform_position.x = 0.0
 
-	# 获取容器宽度（未布局时回退到 custom_minimum_size 或经验值）
-	var box_width := clip_container.size.x
+	# 可见区域宽度 = 从 Label 左边到容器右边
+	# Label clip_text=false 时文本可溢出 Label 自身边界、被父容器裁剪，
+	# 故可见区域左边 = label.position.x（含 offset_left 留白），右边 = 容器右边
+	# 减去 label.position.x 排除左侧留白，避免"看着溢出却不滚动"的判定偏差
+	var label_left := label.position.x
+	var box_width := clip_container.size.x - label_left
 	if box_width <= 10.0:
-		box_width = max(clip_container.custom_minimum_size.x, 200.0)
+		# 容器未布局完成时回退到 custom_minimum_size
+		var clip_min := clip_container.custom_minimum_size.x
+		if clip_min > 10.0:
+			box_width = max(clip_min - label_left, 200.0)
+		else:
+			box_width = 200.0
 
 	# 文字高度：用字体实际行高，避免垂直裁剪
 	var font := label.get_theme_font("font")

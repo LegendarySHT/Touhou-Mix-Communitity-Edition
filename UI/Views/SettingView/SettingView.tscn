@@ -4,7 +4,6 @@
 [ext_resource type="Script" uid="uid://cgxt234w25s7r" path="res://UI/Views/SettingView/SettingList.gd" id="2_3x48f"]
 [ext_resource type="Script" uid="uid://dt5lx4f8bkgl0" path="res://UI/Views/SettingView/DelView.gd" id="3_delview"]
 [ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="5_s2knr"]
-[ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="6_ascent"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_tf36t"]
 
@@ -253,13 +252,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 vertical_alignment = 2
-
-[node name="OrderBtn" type="Button" parent="DelView/Content/PC/TopBar" unique_id=82019563]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-icon = ExtResource("6_ascent")
-icon_alignment = 1
-expand_icon = true
 
 [node name="SearchBox" type="LineEdit" parent="DelView/Content/PC/TopBar" unique_id=454943439]
 custom_minimum_size = Vector2(400, 0)

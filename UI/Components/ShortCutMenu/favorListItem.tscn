@@ -135,3 +135,9 @@ mouse_filter = 1
 texture_normal = ExtResource("3_delete")
 ignore_texture_size = true
 stretch_mode = 5
+
+[connection signal="pressed" from="ManageBtns/DeleteBtn" to="." method="_on_delete_pressed"]
+[connection signal="gui_input" from="Detail/NameBox/name" to="." method="_on_name_label_gui_input"]
+[connection signal="gui_input" from="ManageBtns/DeleteBtn" to="." method="_on_delete_btn_gui_input"]
+[connection signal="text_submitted" from="Detail/nameEdit" to="." method="_on_rename_submitted"]
+[connection signal="focus_exited" from="Detail/nameEdit" to="." method="_on_rename_focus_exited"]

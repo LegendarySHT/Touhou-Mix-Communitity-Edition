@@ -16,18 +16,26 @@ var scale_factor: float = 0.5
 # 每个车道的高度
 var lane_height: float = 0
 
-# 存储所有生成的音符，用于管理和清理
-var active_notes: Array[ColorRect] = []
-var current_notes: Array[NoteEvent] = []
-var current_idx: int = 0
+# 活动音符状态列表（替代 N 个 ColorRect 节点，由 _draw_node 批量绘制）
+var active_notes: Array[NoteState] = []
+
+# 按 (track, channel) 分组的音轨容器（替代扁平 current_notes）
+# 每 bucket 自带 cursor，懒生成时按 bucket 独立推进
+var buckets: Array[TrackNoteBucket] = []
+
+# MIDI 最大 end_tick（所有 bucket 中最后一个音符的结束 tick）
+# 用于检测 ct 异常：循环播放时 Sequencer.Position 可能继续增长而不跳回 0，
+# 导致 ct 超过所有音符的 end_tick，active_notes 被清空。此时跳过移除操作等待循环恢复
+# 类型为 float 与 NoteState.start_tick/end_tick 对齐
+var _max_end_tick: float = 0.0
+# 上一帧的 ct，用于检测 ct 回退（循环跳回 0）时重置 cursor
+var _last_ct: float = -1.0
 
 # track view节点
 var master_node: Node = null
 
 # 是否是主显示器
 var is_master: bool = false
-var enable_tracks: Array[int] = []
-var _midi_data_for_filter: Object = null  # 用于 channel 级别过滤
 
 var note_color: Color
 
@@ -37,25 +45,59 @@ var note_color: Color
 ## 来源：ConfigManager [Gameplay] audio_playback_delay，由 DelayAdjust 校准得出
 var _audio_playback_delay_ms: float = 0.0
 
-# 诊断计数（用于周期性输出日志）
-#var _diagnostic_frame_count: int = 0
-#var _last_logged_tick: float = 0.0
+# 批量绘制节点（单 Node2D 替代 N 个 ColorRect，参考 LaneEffect.BeamNode 设计）
+var _draw_node: NoteDrawNode = null
 
-class NoteEvent:
-	var pitch: int			  # MIDI音符号 (0-127)
-	var velocity: int		   # 速度/力度 (1-127)
-	var start_tick: int			# 开始时间 (tick)
-	var duration: int	  		# 持续时间 (tick)
-	var track_index: int		# 所在轨道索引
-	var channel: int			# MIDI通道号 (0-15)
+# 单个音符的最小渲染信息已移除：直接复用 MidiParser.NoteEvent，避免冗余副本
+# NoteEvent 字段：pitch / start_time (tick, float) / duration (tick, float) / track_index / channel / velocity
+# 渲染时按需读取，不额外包装 NoteRenderInfo
 
-	func _init(p: int, v: int, start: int, dur: int, track: int, ch: int) -> void:
-		pitch = p
-		velocity = v
-		start_tick = start
-		duration = dur
-		track_index = track
-		channel = ch
+# 音轨级容器（持有该 (track, channel) 的元数据 + 音符列表）
+# 过滤粒度从「每音符」提升到「每音轨」：master 模式下整 bucket 启用/禁用
+class TrackNoteBucket:
+	extends RefCounted
+	var track_index: int = 0
+	var channel: int = 0
+	var hue: float = 0.0              # 颜色色相（由 track_index 查 colors_set 一次）
+	var notes: Array[MidiParser.NoteEvent] = []  # 按 start_time 升序（_build_buckets 中排序）
+	var cursor: int = 0               # 懒生成游标（指向下一个待生成的音符）
+	var is_enabled: bool = true       # master 用：该音轨是否启用
+
+# 音符运行时状态（替代 ColorRect + meta Dictionary）
+# 使用 RefCounted 自动管理生命周期，无需 queue_free
+# start_tick / end_tick 为 tick 单位（float，与 NoteEvent.start_time 一致）
+class NoteState:
+	extends RefCounted
+	var pitch: int = 0
+	var start_tick: float = 0.0
+	var end_tick: float = 0.0
+	var bucket: TrackNoteBucket = null  # 反向引用所在 bucket（_draw 查 hue）
+	var is_passed: bool = false
+	# 位置和尺寸字段（_process 写入，_draw 读取，同线程无竞争）
+	var x: float = 0.0
+	var y: float = 0.0
+	var w: float = 0.0
+	var h: float = 0.0
+
+# 单 Node2D 批量绘制所有音符，消除 N 个 ColorRect 的节点/布局/transform 开销
+# clip_children（CanvasItem 属性）对 Node2D 子节点同样生效，裁剪逻辑不变
+class NoteDrawNode:
+	extends Node2D
+	# 与 NoteDisplayer.active_notes 共享同一数组引用（只做原地修改，不重新赋值）
+	var notes: Array = []
+	# 单色模式：子 displayer 的 note_color 已设置，所有音符同色，_draw 直接读 single_color
+	var single_color: Color = Color.WHITE
+	var use_single_color: bool = false
+
+	func _draw() -> void:
+		if use_single_color:
+			# 子 displayer 单色模式：active_notes 里的音符全是已启用 bucket 的，无需再判 is_enabled
+			for n in notes:
+				draw_rect(Rect2(n.x, n.y, n.w, n.h), single_color)
+		else:
+			# master 多色模式：颜色由 bucket.hue 实时读
+			for n in notes:
+				draw_rect(Rect2(n.x, n.y, n.w, n.h), Color.from_hsv(n.bucket.hue, 1, 0.9, 0.8))
 
 func _ready():
 
@@ -64,6 +106,12 @@ func _ready():
 	_on_flow_area_resized()
 
 	flow_area.resized.connect(_on_flow_area_resized)
+
+	# 创建批量绘制节点（替代 N 个 ColorRect 子节点）
+	_draw_node = NoteDrawNode.new()
+	_draw_node.name = "NoteDrawNode"
+	_draw_node.notes = active_notes  # 共享数组引用，原地修改对 _draw 可见
+	flow_area.add_child(_draw_node)
 
 	# 初始化音频延迟补偿，并监听配置变更
 	# 与 PlayView.FlowArea 保持一致，使 TrackView 的视觉音符与音频时序对齐
@@ -76,6 +124,8 @@ func _exit_tree() -> void:
 	# NoteDisplayer 实例随 MidiTrack 销毁时断开信号，避免引用悬空
 	if EvtBus and EvtBus.config_changed.is_connected(_on_config_changed):
 		EvtBus.config_changed.disconnect(_on_config_changed)
+	# 清空音符状态引用（_draw_node 随父节点 queue_free 自动释放）
+	active_notes.clear()
 
 
 ## 配置变更回调：仅关注 audio_playback_delay，实时更新延迟补偿值
@@ -91,284 +141,277 @@ func _on_flow_area_resized():
 
 	if is_master:
 		refresh_notes_lane(int(lane_count))
-	
+
 func update_color():
-	for i in active_notes:
-		i.color = note_color
+	if _draw_node == null:
+		return
+	# note_color 已设置（子 displayer）→ 单色模式；未设置（master）→ 多色模式（颜色由 bucket.hue 实时读）
+	if note_color != Color(0, 0, 0, 0):
+		_draw_node.use_single_color = true
+		_draw_node.single_color = note_color
+	else:
+		_draw_node.use_single_color = false
+	_draw_node.queue_redraw()
 
 func _process(_delta):
-	if master_node == null or current_notes.is_empty():
-		return
-	
-	var midi_mgr = MidiPlaybackManager.instance
-	if midi_mgr == null or not midi_mgr.is_playing:
-		set_process(false)
+	if master_node == null or buckets.is_empty():
 		return
 
-	# 【修复】直接从MidiPlaybackManager获取tick，确保与实际播放位置同步
-	var midi_mgr_ref = midi_mgr
-	var ct: float = 0.0
+	# flow_area 不在屏幕内时跳过整个 _process（音符位置计算 + queue_redraw）
+	# ScrollContainer 滚动使子节点滑出视口时，get_global_rect() 与视口无交集
+	var viewport_rect = get_viewport_rect()
+	var flow_rect = flow_area.get_global_rect()
+	if not flow_rect.intersects(viewport_rect):
+		return
+
+	var midi_mgr = MidiPlaybackManager.instance
+	if midi_mgr == null or not midi_mgr.is_playing:
+		# 不主动 set_process(false)：由 TrackView._set_note_displayers_process 统一管理启停
+		# 否则 MIDI 循环播放时 is_playing 短暂变化会导致 _process 永久停止，画面冻结
+		return
 
 	# 应用音频延迟补偿：将播放位置减去延迟后转换为 tick
 	# 与 PlayView.FlowArea.set_current_time 逻辑一致（time_ms - _audio_playback_delay_ms）
 	# 使视觉音符的通过时刻与音频到达耳朵的时刻对齐
-	var delayed_ms: float = midi_mgr_ref.get_position_ms() - _audio_playback_delay_ms
-	ct = midi_mgr_ref._calculate_tick_from_position_with_bpm_timeline(delayed_ms, midi_mgr_ref.midi_timebase)
-	
-	# 【诊断日志】每60帧输出一次tick対比信息
-	#_diagnostic_frame_count += 1
-	#if _diagnostic_frame_count % 60 == 0:
-	#	if midi_mgr != null:
-	#		var master_tick = float(master_node.current_tick) if master_node else 0.0
-	#		print("[NoteDisplayer] Sync check - MidiPlaybackManager.position: %.1f | master_node.current_tick: %.1f | delta: %.1f" % 
-	#			[ct, master_tick, (ct - master_tick)])
-	#	_last_logged_tick = ct
-	
+	# ct 与音符的 start_tick/end_tick 在同一 tick 参考系，保证视觉与音频同步
+	var delayed_ms: float = midi_mgr.get_position_ms() - _audio_playback_delay_ms
+	var ct: float = midi_mgr._calculate_tick_from_position_with_bpm_timeline(delayed_ms, midi_mgr.midi_timebase)
+
+	# ct 异常保护：循环播放时 Sequencer.Position 可能继续增长而不跳回 0，
+	# 导致 ct 超过所有音符的 end_tick。此时不做移除操作，等待 TrackView 循环检测恢复
+	# 同时清空 active_notes，防止旧音符残留累积拖慢渲染
+	if _max_end_tick > 0 and ct > _max_end_tick + area_width / scale_factor:
+		if not active_notes.is_empty():
+			active_notes.clear()
+		_last_ct = ct
+		return
+
+	# 检测 ct 回退（循环跳回 0 或 seek 回退）：重置所有 bucket cursor 和 active_notes
+	# 防止 cursor 在末尾时 ct 回退到开头，懒生成无法推进
+	# 同时清空 active_notes，避免上一轮的旧音符（end_tick 很大）残留累积拖慢渲染
+	if _last_ct >= 0 and ct < _last_ct - area_width / scale_factor:
+		for b in buckets:
+			b.cursor = 0
+		active_notes.clear()
+	_last_ct = ct
+
 	# 提前计算视野边界
 	var view_right_bound = ct + area_width / scale_factor
 
-	# 生成音符
-	while current_idx < current_notes.size() and current_notes[current_idx].start_tick < view_right_bound:
-		_create_note(current_notes[current_idx])
-		current_idx += 1
-
-	# 移动和更新音符
-	var to_remove: Array[ColorRect] = []
-	
-	for i in active_notes:
-		var start_tick = i.get_meta("start_tick")
-		var duration = i.get_meta("duration")
-		var end_tick = start_tick + duration
-		
-		# 计算位置
-		var x = area_width - (end_tick - ct) * scale_factor
-		
-		# 判断是否完全离开视野
-		if end_tick < ct:  # 音符已经完全播放完毕
-			to_remove.append(i)
+	# 按 bucket 懒生成：每 bucket 独立游标，信任 bucket 内顺序
+	# master 模式下整个 disabled bucket 跳过，不再 per-note 判定
+	for b in buckets:
+		if is_master and not b.is_enabled:
 			continue
-			
-		# 更新位置
-		i.position = Vector2(x, i.position.y)
-		
+		while b.cursor < b.notes.size() and b.notes[b.cursor].start_time < view_right_bound:
+			_create_note(b.notes[b.cursor], b)
+			b.cursor += 1
+
+	# 移动和更新音符（原地修改 NoteState 字段，不触发布局）
+	var to_remove: Array[NoteState] = []
+
+	for n in active_notes:
+		# 计算位置
+		var x = area_width - (n.end_tick - ct) * scale_factor
+
+		# 判断是否完全离开视野
+		if n.end_tick < ct:  # 音符已经完全播放完毕
+			to_remove.append(n)
+			continue
+
+		# 更新位置（仅写字段，_draw 读取时绘制）
+		n.x = x
+
 		# 标记已通过的音符
 		# 使用 ct > start_tick 而不是 ct >= start_tick
 		# 这样能避免 start_tick=0 的音符在播放开始时被错误计入
-		if not i.get_meta("is_passed") and ct > start_tick:
-			i.set_meta("is_passed", true)
-			if i.self_modulate.a > 0 or not is_master:
-				note_count_passed.text = str(int(note_count_passed.text) + 1)
+		# active_notes 里的音符已全部是 enabled bucket 的（master 模式下），无需再判 is_enabled
+		if not n.is_passed and ct > n.start_tick:
+			n.is_passed = true
+			note_count_passed.text = str(int(note_count_passed.text) + 1)
 
-	# 移除音符
-	for i in to_remove:
-		i.queue_free()
-	active_notes =  active_notes.filter(func(element): return not (element in to_remove))
+	# 移除已完成音符（原地删除，保持 _draw_node.notes 引用有效）
+	if not to_remove.is_empty():
+		for n in to_remove:
+			active_notes.erase(n)
 
-func _create_note(note: NoteEvent):
-	var note_rect: ColorRect = ColorRect.new()
+	# 单帧一次重绘，批量提交所有音符的 draw_rect
+	if _draw_node:
+		_draw_node.queue_redraw()
+
+func _create_note(note_evt: MidiParser.NoteEvent, bucket: TrackNoteBucket):
+	var state := NoteState.new()
 	# 反转lane_index，使高音在上（Y值小），低音在下（Y值大）
-	var lane_index: int = lane_count - 1 - ((note.pitch - 21) % lane_count)
-	var note_width = note.duration * scale_factor
-	var note_height = lane_height * 0.8
-	var start_y = (lane_height * lane_index) + (lane_height - note_height) / 2.0
+	var lane_index: int = lane_count - 1 - ((note_evt.pitch - 21) % lane_count)
+	var start_tick := float(note_evt.start_time)
+	var end_tick := start_tick + float(note_evt.duration)
+	state.pitch = note_evt.pitch
+	state.start_tick = start_tick
+	state.end_tick = end_tick
+	state.bucket = bucket
+	state.is_passed = false
+	state.w = (end_tick - start_tick) * scale_factor
+	state.h = lane_height * 0.8
+	state.y = (lane_height * lane_index) + (lane_height - state.h) / 2.0
+	state.x = -state.w  # 初始在视野左侧外
+	active_notes.append(state)
+	# _draw_node.notes 与 active_notes 共享引用，append 后立即可见
 
-	# 设置基本属性
-	note_rect.size = Vector2(note_width, note_height)
-	note_rect.position = Vector2(-note_width, start_y)
-	note_rect.color = _get_color_by_track_idx(note.track_index)
-	if is_master:
-		var note_enabled = true
-		if _midi_data_for_filter:
-			note_enabled = _midi_data_for_filter.is_track_channel_selected(note.track_index, note.channel)
-		elif note.track_index not in enable_tracks:
-			note_enabled = false
-		if not note_enabled:
-			note_rect.self_modulate.a = 0
-
-	# 设置自定义属性
-	note_rect.set_meta("pitch", note.pitch)
-	note_rect.set_meta("track_index", note.track_index)
-	note_rect.set_meta("channel", note.channel)
-	note_rect.set_meta("start_tick", note.start_tick)
-	note_rect.set_meta("duration", note.duration)
-	note_rect.set_meta("is_passed", false)
-
-	# 添加到场景和活动列表
-	flow_area.add_child(note_rect)
-	active_notes.append(note_rect)
-
-func init_displayer(mn: Node, notes: Array[NoteEvent]):
-
-	# debug
-	print("音符可视化初始化，音符总数：%d" % notes.size())
-
-	for note in active_notes:
-		note.queue_free()
-
-	master_node = mn
-
+## 初始化 displayer
+## master: 传入所有 buckets，由 sync_from_midi_data 控制 bucket.is_enabled
+## 子 displayer: 传入单个 bucket 的数组，bucket.is_enabled 恒 true
+## max_end_tick: 由调用方从 MidiData 直接传入（preparse 已缓存），避免遍历所有音符
+func init_displayer_with_buckets(mn: Node, track_buckets: Array[TrackNoteBucket], max_end_tick: float = 0.0) -> void:
+	# 清空活动音符状态（RefCounted 自动释放，无需 queue_free）
 	active_notes.clear()
-	current_notes = notes
-	current_idx = 0
-	
-	# 计算当前已播放的音符数（如果master_node存在）
-	var passed_count = 0
+	master_node = mn
+	buckets = track_buckets
+
+	# 直接复用调用方传入的 max_end_tick（来自 MidiData.max_end_tick，preparse 已缓存）
+	# 替代旧版遍历所有音符取 max end_tick 的 O(N) 扫描
+	_max_end_tick = max_end_tick
+
+	# 重置每个 bucket 的游标；子 displayer 永远启用
+	for b in buckets:
+		b.cursor = 0
+		if not is_master:
+			b.is_enabled = true
+
+	# 计算初始 passed/total（master 模式下只统计 enabled bucket）
+	var passed_count := 0
+	var total_count := 0
+	var ct := 0.0
 	if master_node != null:
-		var ct = master_node.current_tick
-		# 计算所有已播放的音符（start_tick < ct的音符）
-		for note in notes:
-			if note.start_tick < ct:
+		ct = float(master_node.current_tick)
+	for b in buckets:
+		if is_master and not b.is_enabled:
+			continue
+		total_count += b.notes.size()
+		for n in b.notes:
+			if n.start_time < ct:
 				passed_count += 1
 			else:
-				# 由于notes已排序，可以提前break
-				break
-	
-	note_count_passed.text = str(passed_count)
-	note_count_total.text = str(notes.size())
+				break  # bucket 内已排序，提前退出
 
-	# 如果是主显示器，初始化所有轨道通道的启用状态
-	if is_master:
-		# Clear stale filter to prevent cross-MIDI contamination
-		_midi_data_for_filter = null
-		enable_tracks.clear()
-		for i in notes:
-			if i.track_index not in enable_tracks:
-				enable_tracks.append(i.track_index)
+	note_count_passed.text = str(passed_count)
+	note_count_total.text = str(total_count)
+
+	# 初始化后重绘一次
+	if _draw_node:
+		_draw_node.queue_redraw()
 
 # 重置播放头位置 - 用于进度条跳转
 func reset_playhead_position(target_ms: float) -> void:
-	if current_notes.is_empty() or master_node == null:
+	if buckets.is_empty() or master_node == null:
 		return
-	
+
+	# 确保 _process 处于启用状态：防止之前因 is_playing 短暂 false 导致 _process 停止后
+	# 拖动进度条时音符不更新（虽然 _process 已不再主动 set_process(false)，但防御性启用）
+	set_process(true)
+
 	# 获取MidiPlaybackManager以计算tick
 	var midi_playback_mgr = MidiPlaybackManager.instance
 	if midi_playback_mgr == null:
 		return
-	
-	# 计算目标tick（根据BPM时间线或默认120 BPM）
-	# 后端统一为 MeltySynth，直接使用其维护的 midi_timebase
-	var timebase = midi_playback_mgr.midi_timebase
 
+	# 计算目标tick（根据BPM时间线）
+	# 后端统一为 MeltySynth，直接使用其维护的 midi_timebase
 	var target_tick = midi_playback_mgr._calculate_tick_from_position_with_bpm_timeline(
-		target_ms,
-		timebase
-	)
-	
-	print("[NoteDisplayer] Reset to position: %.1f ms (tick: %.0f)" % [target_ms, target_tick])
-	
-	# 清空所有活动的note
-	for note_rect in active_notes:
-		note_rect.queue_free()
+		target_ms, midi_playback_mgr.midi_timebase)
+
+	# 清空所有活动的音符状态（原地清空，_draw_node.notes 引用保持有效）
 	active_notes.clear()
-	
+
 	# 计算视野右边界对应的tick
 	var view_right_bound = target_tick + area_width / scale_factor
-	
-	# 找到第一个 end_tick >= target_tick 的音符（即尚未完全飞出左边界的音符）
-	# 这些音符可能正在播放中，仍然部分或全部可见
-	var first_visible_idx = current_notes.size()
-	for i in range(current_notes.size()):
-		var end_tick = current_notes[i].start_tick + current_notes[i].duration
-		if end_tick >= target_tick:
-			first_visible_idx = i
-			break
-	
-	# 从 first_visible_idx 开始，立即生成所有在视野范围内的音符
-	var new_idx = first_visible_idx
-	for i in range(first_visible_idx, current_notes.size()):
-		if current_notes[i].start_tick >= view_right_bound:
-			new_idx = i
-			break
-		# 该音符在视野内，立即生成
-		_create_note(current_notes[i])
-		new_idx = i + 1
-	
-	# 设置 current_idx 为下一个待生成的音符索引
-	current_idx = new_idx
-	
-	# 重新计算已通过的音符数（start_tick < target_tick 且不在当前活动列表中的）
+
+	# 每 bucket 独立查找首个 end_tick >= target_tick 的音符，再生成视野内音符
+	# NoteEvent 无 end_tick 字段，按 start_time + duration 计算
+	for b in buckets:
+		if is_master and not b.is_enabled:
+			b.cursor = b.notes.size()  # 跳过整个 bucket
+			continue
+		var i = 0
+		while i < b.notes.size() and (b.notes[i].start_time + b.notes[i].duration) < target_tick:
+			i += 1
+		# 从 i 开始生成视野内音符
+		while i < b.notes.size() and b.notes[i].start_time < view_right_bound:
+			_create_note(b.notes[i], b)
+			i += 1
+		b.cursor = i
+
+	# 重新计算已通过的音符数（master 仅统计 enabled bucket）
 	var passed_count = 0
-	for note in current_notes:
-		if note.start_tick < target_tick:
-			passed_count += 1
-		else:
-			break  # notes 已按时间排序，可以提前退出
-	# 减去那些 start_tick < target_tick 但仍在活动列表中显示的音符
-	for note_rect in active_notes:
-		var st = note_rect.get_meta("start_tick")
-		if st < target_tick:
-			# 这个音符虽然 start_tick 已过，但 end_tick 还在视野内，不算passed
-			# 标记为已通过（与_process中的逻辑一致）
-			if not note_rect.get_meta("is_passed"):
-				note_rect.set_meta("is_passed", true)
+	for b in buckets:
+		if is_master and not b.is_enabled:
+			continue
+		for n in b.notes:
+			if n.start_time < target_tick:
+				passed_count += 1
+			else:
+				break  # bucket 内已排序，可以提前退出
+	# 标记活动列表中 start_tick < target_tick 的音符为已通过（与 _process 逻辑一致）
+	for n in active_notes:
+		if n.start_tick < target_tick:
+			n.is_passed = true
 	note_count_passed.text = str(passed_count)
-	
-	print("[NoteDisplayer] Reset complete: current_idx=%d, visible=%d, passed=%d" % 
-		[current_idx, active_notes.size(), passed_count])
 
-# 根据音高获取颜色
-func _get_color_by_track_idx(track_idx: int) -> Color:
-	if note_color:
-		return note_color
-
-	var hue = MidiTrack.colors_set[track_idx % MidiTrack.colors_set.size()].h
-	return Color.from_hsv(hue, 1, 0.9, 0.8)
-
-# 批量生成示例音符（测试用）
-func _generate_test_notes():
-	var notes: Array[NoteEvent] = []
-	for i in range(40):
-		notes.append(NoteEvent.new(5, 60, i * 200, 50, i, 0))
-
-	init_displayer(self, notes)
+	# 重置后重绘
+	if _draw_node:
+		_draw_node.queue_redraw()
 
 # 刷新音符位置
 func refresh_notes_lane(lane_ctn: int):
 	lane_count = lane_ctn
 
-	for i in active_notes:
+	for n in active_notes:
 		# 反转lane_index，使高音在上（Y值小），低音在下（Y值大）
-		var lane_index = lane_count - 1 - ((i.get_meta("pitch") - 21) % lane_count)
-		var start_y = (lane_height * lane_index) + (lane_height - i.size.y) / 2.0
-		i.size.y = lane_height * 0.8
-		i.position = Vector2(i.position.x, start_y)
+		var lane_index = lane_count - 1 - ((n.pitch - 21) % lane_count)
+		n.h = lane_height * 0.8
+		n.y = (lane_height * lane_index) + (lane_height - n.h) / 2.0
+
+	if _draw_node:
+		_draw_node.queue_redraw()
 
 func toggle_track(toggled_on: bool, track_index: int):
-	if toggled_on:
-		enable_tracks.append(track_index)
-	else:
-		enable_tracks.erase(track_index)
+	# bucket 级过滤：找到对应 track_index 的 bucket，切换其 is_enabled
+	# 已生成的 active_notes 中的音符保留（不清空），避免 seek 回去时重新生成
+	# 禁用 bucket 的新音符不会再被 _process 懒生成
+	for b in buckets:
+		if b.track_index == track_index:
+			b.is_enabled = toggled_on
 
-	for i in active_notes:
-		if i.get_meta("track_index") == track_index:
-			i.self_modulate.a = 1 if toggled_on else 0
+	if _draw_node:
+		_draw_node.queue_redraw()
 
 ## 从MidiData同步启用的(track, channel)配置
+## bucket 级一次性过滤：替代旧的每音符 is_track_channel_selected 查询
 func sync_from_midi_data(midi_data: MidiData) -> void:
 	if midi_data == null:
 		return
-	
-	# 保存引用，供 _create_note 使用 channel 级别过滤
-	_midi_data_for_filter = midi_data
-	
-	# 重建enable_tracks列表（保留向后兼容的track级别过滤）
-	enable_tracks.clear()
-	for track_idx in midi_data.selected_track_configs.keys():
-		enable_tracks.append(track_idx)
-	
-	# 更新所有活动的音符的显示状态
-	for note_rect in active_notes:
-		var track_idx = note_rect.get_meta("track_index")
-		var channel = note_rect.get_meta("channel")
-		
-		# 检查该(track, channel)是否启用
-		var is_enabled = midi_data.is_track_channel_selected(track_idx, channel)
-		note_rect.self_modulate.a = 1.0 if is_enabled else 0.0
 
-	# Recalculate enabled note total for master displayer
+	# bucket 级一次性过滤
+	for b in buckets:
+		b.is_enabled = midi_data.is_track_channel_selected(b.track_index, b.channel)
+
+	# 重算 total/passed（master 才需要，子 displayer 永远全启用）
 	if is_master:
-		var enabled_total = 0
-		for note in current_notes:
-			if midi_data.is_track_channel_selected(note.track_index, note.channel):
-				enabled_total += 1
-		note_count_total.text = str(enabled_total)
+		var total := 0
+		var passed := 0
+		var ct := 0.0
+		if master_node != null:
+			ct = float(master_node.current_tick)
+		for b in buckets:
+			if not b.is_enabled:
+				continue
+			total += b.notes.size()
+			for n in b.notes:
+				if n.start_time < ct:
+					passed += 1
+				else:
+					break
+		note_count_total.text = str(total)
+		note_count_passed.text = str(passed)
+
+	if _draw_node:
+		_draw_node.queue_redraw()

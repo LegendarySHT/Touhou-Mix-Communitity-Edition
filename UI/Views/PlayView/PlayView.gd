@@ -46,9 +46,6 @@ extends Control
 # 轨道光效及键位显示
 @onready var lane_area: Control = $Lane
 
-# @onready var env: WorldEnvironment = $FlowArea/SVP/WorldEnvironment
-# @onready var current_env: Environment = env.environment
-
 # 背景配置走 ThemeManager（theme.ini [backgrounds] 段），不再从 config.ini 读取
 const BG_BLUR_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundBlur.gdshader"
 const BG_FLASH_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundFlash.gdshader"
@@ -127,18 +124,13 @@ func _ready() -> void:
 	UiStatMGR.state_changed.connect(_on_state_changed)
 	_on_state_changed(UiStatMGR.UIState.NONE, UiStatMGR.current_state)
 
-	progress_bar.value_changed.connect(_on_top_progress_bar_value_changed)
-
 	flow_area.note_judged.connect(_on_note_judged)
 	flow_area.long_holding.connect(_on_long_holding)
 	flow_area.parent_node = self
 
-	menu_btn.pressed.connect(show_or_hide_menu)
-	continue_btn.pressed.connect(show_or_hide_menu)
 	retry_btn.pressed.connect(func ():
 		_prepare_game()
 	)
-	quit_btn.pressed.connect(_on_quit_pressed)
 	
 	# 初始化MIDI播放管理器
 	if playback_mgr == null:
@@ -155,7 +147,44 @@ func _ready() -> void:
 		EvtBus.config_changed.connect(_on_config_changed)
 	_set_debug_overlay_visible(show_debug_info)
 
-	# env.environment = null
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	if not menu or not menu.theme:
+		return
+	var btn_theme := menu.theme
+	var p := ThemeMGR.get_color("primary")
+	ThemeMGR._theme_button_set_color(btn_theme, p)
+	# 基础按钮阴影
+	var normal := btn_theme.get_stylebox("normal", "Button")
+	if normal is StyleBoxFlat:
+		normal.shadow_color = Color(p.r, p.g, p.b, 0.3)
+		normal.shadow_size = 8
+	var hover := btn_theme.get_stylebox("hover", "Button")
+	if hover is StyleBoxFlat:
+		var hc := p.lightened(0.15)
+		hover.shadow_color = Color(hc.r, hc.g, hc.b, 0.35)
+		hover.shadow_size = 12
+	# Continue 按钮：比其他按钮更亮
+	if continue_btn:
+		var sb_n := continue_btn.get_theme_stylebox("normal")
+		if sb_n is StyleBoxFlat:
+			sb_n.bg_color = p.lightened(0.15)
+		var sb_h := continue_btn.get_theme_stylebox("hover")
+		if sb_h is StyleBoxFlat:
+			sb_h.bg_color = p.lightened(0.30)
+	# Quit 按钮：pressed 状态用 danger 色
+	if quit_btn:
+		var sb_p := quit_btn.get_theme_stylebox("pressed")
+		if sb_p is StyleBoxFlat:
+			sb_p.bg_color = ThemeMGR.DANGER_COLOR
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
@@ -223,9 +252,10 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 			playback_mgr.clear_manual_control_notes()
 		flow_area.clear_flow_area()
 		game_sequences.clear()
-		if key_sequence_mgr:
-			key_sequence_mgr.clear_sequences()
 		_teardown_blur_bake_viewport()
+		# 不 unload_midi / 不 clear_sequences / 不 clear_parsed_notes：
+		# 同一 MIDI 在 MidiView/TrackView/PlayView 间切换时复用解析数据与 GameSequence 缓存，
+		# 避免反复重解析/重生成。离开 MidiView 或切换 MidiList 项时才彻底清理
 		# 重置状态，供下次 _prepare_game 使用
 		_is_finishing_game = false
 		is_pause = true
@@ -435,12 +465,22 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	_last_playback_position = -1.0
 	_position_stall_frames = 0
 
+	# 先初始化显示并显示歌曲信息面板
+	_init_display()
+
 	# 重置 ScoreCalculator
 	if score_calc:
 		score_calc.reset()
+	# 生成随机颜色（若皮肤配置启用）— 必须在 init_flow_area 前完成，使对象池节点用新颜色重建
+	_regenerate_random_note_colors()
+	flow_area.init_flow_area()
+	auto_label.visible = flow_area.auto_mode
 
-	# 【优化】先启动 MIDI 加载（含人声预加载），与显示初始化并行执行
-	# 原代码中 await 0.8s 在 MIDI 加载之前，这段 0.8s 是纯空闲等待
+	# 线程化预解析 MIDI：将昂贵的文件 I/O + 数据结构构建移到 worker 线程
+	# 主线程在 await 期间继续渲染歌曲信息面板 + 转场动画
+	if not await playback_mgr.preparse_midi_async(midi):
+		push_error("Failed to preparse MIDI: " + midi.name)
+	# 加载 MIDI（此时已命中解析缓存，仅做配置应用 + 后端加载）
 	_load_and_convert_midi_notes(midi)
 
 	# 确保游戏模式下不循环播放
@@ -469,19 +509,16 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 			playback_mgr.set_sync_threshold(float(sync_threshold))
 			print("[PlayView] Audio sync threshold set to %.0f ms" % float(sync_threshold))
 
-	# 生成随机颜色（若皮肤配置启用）— 必须在 init_flow_area 前完成，使对象池节点用新颜色重建
-	_regenerate_random_note_colors()
+	# 提前启动 generate_keys 的 worker 线程（主线程筛选音符 + 后台线程跑 generate_keys）
+	# 通常 MidiView 已触发过 generate_keys，此处命中缓存直接返回（0ms）
+	# 若未命中（如跳过 MidiView 直接进 PlayView），worker 线程跑，主线程不阻塞
+	# 若 MidiView 的 worker 还在跑，await 会让出主线程，转场动画继续播放
+	var gen_task_id := await _start_generate_game_sequences(midi)
 
-	_init_display()
-	flow_area.init_flow_area()
-	auto_label.visible = flow_area.auto_mode
-
-	# 此 0.8s await 期间 MIDI 已加载完毕、人声预载已由 call_deferred 启动
-	await get_tree().create_timer(0.8).timeout
-
-	# 生成游戏键序列（若缓存命中，此处很快）
-	_generate_game_sequences(midi)
-	print("[PlayView] After _generate_game_sequences, game_sequences.size() = %d" % game_sequences.size())
+	# 等待 generate_keys worker 完成（每帧让出主线程，动画继续推进）
+	# 完成后做后续处理（分类提交、缓存序列）
+	await _finish_generate_game_sequences(midi, gen_task_id)
+	print("[PlayView] After _finish_generate_game_sequences, game_sequences.size() = %d" % game_sequences.size())
 
 	# 将生成的游戏序列转换为FlowArea所需的音符格式
 	var flow_notes = _convert_game_sequences_to_flow_notes(game_sequences)
@@ -495,7 +532,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 设置进度条最大值
 	progress_bar.max_value = current_midi.duration_ms
 
-	# 等待显示准备界面
+	# 歌曲信息面板已显示足够时间（preparse + generate_keys 期间），现在淡出
 	await get_tree().create_timer(1).timeout
 	await AniMGR.animate_fade_out(center_bg, 1).finished
 
@@ -569,40 +606,57 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowNote]:
 	
 	return flow_notes
 
-## 生成游戏序列
-func _generate_game_sequences(midi_data: MidiData) -> void:
+## 启动游戏序列生成（主线程筛选音符 + 启动 worker 线程跑 generate_keys）
+## 返回 worker task_id（-1 表示未启动，如缺 key_sequence_mgr 或无启用音符）
+## 调用方后续通过 await _finish_generate_game_sequences(midi, task_id) 等待完成并做后续处理
+## 注意：本函数是 async（start_generate_keys_async 内部等待旧任务时需让出主线程）
+func _start_generate_game_sequences(midi_data: MidiData) -> int:
 	if key_sequence_mgr == null:
 		GLogger.warning("KeySequenceManager not available", "PlayView")
-		return
-	
+		return -1
+
 	if midi_data.parsed_notes.is_empty():
 		GLogger.warning("No parsed notes available for key generation", "PlayView")
-		return
-	
-	# 设置MIDI时间参数
-	if playback_mgr != null:
-		key_sequence_mgr.set_midi_time_parameters(playback_mgr.midi_timebase, playback_mgr.bpm_timeline)
-		key_sequence_mgr.set_screen_size(lane_area.size.x)
-	
-	# 按启用的(track, channel)筛选音符
+		return -1
+
+	# screen_width 已不进 cache_key，且 lane_area.size.x 永远是 40（Lane 节点 anchors_preset=0 不拉伸）
+	# 不再调用 set_screen_size：读 lane_area.size.x 没意义，KSM 内部用默认 1920 即可
+	# （仅影响 _judge_block_type 速度限制的边缘场景，FlowArea 显示位置由 viewport 宽度算）
+
+	# 按启用的(track, channel)筛选音符（主线程，30-100ms）
 	var enabled_notes = _filter_notes_by_enabled_track_channels(midi_data.parsed_notes, midi_data)
-	
+
 	if enabled_notes.is_empty():
 		GLogger.warning("No notes in enabled (track, channel) pairs", "PlayView")
+		return -1
+
+	# 启动 worker 线程跑 generate_keys
+	# 传入 midi_id 和 enabled_pairs 以启用缓存命中
+	# enabled_pairs 必须是扁平的 {"track:channel": true} 格式（MidiData.get_enabled_pairs_flat）
+	# 与 MidiListItem 一致，否则 cache_key 中的 pairs_hash 不同会导致缓存 miss
+	# await start_generate_keys_async：若 MidiView 的 worker 还在跑，这里会让出主线程等待
+	# 旧实现不 await 会导致 OS.delay_msec 同步 sleep 卡死转场动画
+	var task_id := await key_sequence_mgr.start_generate_keys_async(
+		enabled_notes, current_midi.id, midi_data.get_enabled_pairs_flat()
+	)
+	return task_id
+
+## 等待游戏序列生成完成 + 后续处理（分类提交、缓存序列）
+## 若 task_id == -1 表示未启动生成，直接清空 game_sequences
+func _finish_generate_game_sequences(_midi_data: MidiData, task_id: int) -> void:
+	if task_id == -1:
+		game_sequences.clear()
 		return
-	
-	# 调用键序列管理器生成游戏键（传入 midi_id 和 enabled_pairs 以启用缓存命中）
-	var success = key_sequence_mgr.generate_keys(enabled_notes, current_midi.id, current_midi.selected_track_configs)
-	if not success:
-		GLogger.warning("Failed to generate game keys", "PlayView")
-		return
-	
-	# 新增：获取KeySequenceManager统计的真实分类结果
+
+	# 等待 worker 完成（每帧让出，通常 800ms await 后已完成）
+	await key_sequence_mgr.await_generate_keys(task_id)
+
+	# 获取KeySequenceManager统计的真实分类结果
 	var classification = key_sequence_mgr.get_last_notes_classification()
 	var manual_control_notes = classification["manual_control_notes"]
 	var auto_play_notes = classification["auto_play_notes"]
-	
-	# 新增：将真实分类提交给MidiPlaybackManager
+
+	# 将真实分类提交给MidiPlaybackManager
 	# 仅在演奏模式开启时下发手动控制；关闭时必须清空以恢复自动播放
 	if playback_mgr:
 		if play_mode:
@@ -619,13 +673,13 @@ func _generate_game_sequences(midi_data: MidiData) -> void:
 				[manual_control_notes.size(), auto_play_notes.size()],
 				"PlayView"
 			)
-	
+
 	# 缓存生成的游戏序列
 	var raw_sequences = key_sequence_mgr.get_game_sequences()
 	print("[PlayView] get_game_sequences returned %d items" % raw_sequences.size())
 	game_sequences = raw_sequences
 	print("[PlayView] game_sequences assigned, size = %d" % game_sequences.size())
-	
+
 	GLogger.info("Generated %d game sequences for play mode" % game_sequences.size(), "PlayView")
 
 ## 按启用的(track, channel)筛选音符
@@ -650,17 +704,16 @@ func _filter_notes_by_enabled_track_channels(all_notes: Array, midi_data: MidiDa
 	# 筛选音符
 	var pair_stats = {}  # 统计每个(track, channel)对的音符数
 	for note in all_notes:
-		if note is MidiParser.Note and note.event != null:
-			var evt = note.event
-			var track_idx = int(evt.track_index)
-			var channel = int(evt.channel)
+		if note is MidiParser.NoteEvent:
+			var track_idx = int(note.track_index)
+			var channel = int(note.channel)
 			var pair_key = "%d:%d" % [track_idx, channel]
-			
+
 			# 统计
 			if not pair_stats.has(pair_key):
 				pair_stats[pair_key] = 0
 			pair_stats[pair_key] += 1
-			
+
 			# 筛选
 			if midi_data.is_track_channel_selected(track_idx, channel):
 				filtered.append(note)
@@ -899,8 +952,9 @@ func _on_game_finished() -> void:
 	play_result.late_count = snap["late_count"]
 
 	# 进入结算界面（资源清理已统一由 _on_state_changed 处理）
-	get_node("/root/Main/ScoreView").set_display(play_result)
+	await get_tree().create_timer(1).timeout
 	UiStatMGR.change_state(UIStateManager.UIState.SCORE_VIEW, false)
+	get_node("/root/Main/ScoreView").set_display(play_result)
 	# 异步上传成绩（不阻塞结算界面）
 	_upload_score_async(current_midi, snap)
 

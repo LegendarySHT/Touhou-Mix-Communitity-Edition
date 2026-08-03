@@ -4,74 +4,109 @@
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_aaj07"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_ex0j5"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sx7kd"]
-draw_center = false
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_width_bottom = 5
-border_color = Color(0.41568628, 0.59607846, 1, 1)
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_aaj07"]
 draw_center = false
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_color = Color(0.41568628, 0.59607846, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ex0j5"]
 bg_color = Color(0.18098986, 0.36878055, 0.8004749, 0.24705882)
 draw_center = false
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_color = Color(0.41568628, 0.59607846, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_www55"]
 bg_color = Color(0.28210002, 0.4809351, 0.91, 0.14509805)
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_color = Color(0.41568628, 0.59607846, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7gp3l"]
 draw_center = false
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_width_bottom = 5
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
 border_color = Color(0.97, 0.97, 0.97, 0.6392157)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 5
 
-[node name="MidiNode" type="MarginContainer" unique_id=1152888699]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o5pup"]
+content_margin_left = 20.0
+draw_center = false
+border_width_bottom = 8
+border_color = Color(1, 1, 1, 1)
+
+[node name="MidiNode" type="Button" unique_id=1823057639]
+custom_minimum_size = Vector2(900, 180)
 clip_contents = true
-custom_minimum_size = Vector2(900, 150)
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_right = -1020.0
-offset_bottom = -890.0
-grow_horizontal = 2
-grow_vertical = 2
+offset_right = 10.0
+offset_bottom = 10.0
 size_flags_horizontal = 0
 size_flags_vertical = 0
-script = ExtResource("1_sx7kd")
-metadata/index = 0
-metadata/_edit_use_anchors_ = true
-
-[node name="Panel" type="Panel" parent="." unique_id=1010215680]
-clip_contents = true
-custom_minimum_size = Vector2(900, 150)
-layout_mode = 2
+offset_transform_enabled = true
+focus_next = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
 mouse_filter = 1
+theme_override_styles/normal = SubResource("StyleBoxFlat_aaj07")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ex0j5")
+theme_override_styles/hover = SubResource("StyleBoxFlat_www55")
+theme_override_styles/focus = SubResource("StyleBoxFlat_7gp3l")
+toggle_mode = true
+script = ExtResource("1_sx7kd")
+metadata/_edit_use_anchors_ = true
+metadata/index = 0
 
-[node name="cover" type="TextureRect" parent="Panel" unique_id=547752909]
+[node name="cover" type="TextureRect" parent="." unique_id=547752909]
+show_behind_parent = true
 layout_mode = 1
-anchors_preset = 10
+anchors_preset = -1
 anchor_right = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
 offset_bottom = 900.0
 grow_horizontal = 2
 pivot_offset = Vector2(0, 350)
 size_flags_vertical = 0
+offset_transform_enabled = true
 mouse_filter = 2
 texture = ExtResource("2_aaj07")
 expand_mode = 5
 stretch_mode = 6
-metadata/_edit_use_anchors_ = true
 
-[node name="Data" type="Label" parent="Panel" unique_id=2008931109]
+[node name="Data" type="Label" parent="." unique_id=2008931109]
+show_behind_parent = true
 layout_mode = 0
 offset_left = 50.0
-offset_top = 5.0
+offset_top = 15.0
 offset_right = 369.0
-offset_bottom = 39.0
+offset_bottom = 49.0
 size_flags_horizontal = 0
 size_flags_vertical = 0
 theme_override_colors/font_outline_color = Color(0.49803922, 0, 0.91764706, 1)
@@ -79,17 +114,18 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 30
 text = "Download Trail Up Love"
 
-[node name="MidiName" type="Label" parent="Panel" unique_id=516188229]
+[node name="MidiName" type="Label" parent="." unique_id=516188229]
+show_behind_parent = true
 custom_minimum_size = Vector2(840, 0)
 layout_mode = 1
-anchors_preset = 14
+anchors_preset = -1
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = 50.0
-offset_top = -25.0
-offset_right = -10.0
-offset_bottom = 9.0
+offset_left = 30.0
+offset_top = -10.0
+offset_right = -30.0
+offset_bottom = 32.0
 grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 0
@@ -98,27 +134,20 @@ theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
 theme_override_fonts/font = ExtResource("3_ex0j5")
 theme_override_font_sizes/font_size = 30
+theme_override_styles/normal = SubResource("StyleBoxFlat_o5pup")
 text = "Midi Name"
-clip_text = true
+text_overrun_behavior = 1
 
-[node name="HBoxC" type="HBoxContainer" parent="Panel" unique_id=1823914334]
+[node name="Author" type="Label" parent="MidiName" unique_id=1687568358]
 layout_mode = 1
-anchors_preset = 12
+anchors_preset = 2
 anchor_top = 1.0
-anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 50.0
-offset_top = -75.0
-offset_right = -50.0
-offset_bottom = -7.0
-grow_horizontal = 2
+offset_left = 20.0
+offset_top = 8.0
+offset_right = 700.0
+offset_bottom = 42.0
 grow_vertical = 0
-size_flags_horizontal = 0
-size_flags_vertical = 8
-theme_override_constants/separation = 10
-
-[node name="Author" type="Label" parent="Panel/HBoxC" unique_id=1687568358]
-layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 8
 theme_override_colors/font_color = Color(1, 1, 1, 1)
@@ -129,49 +158,22 @@ theme_override_font_sizes/font_size = 30
 text = "Midi Author"
 vertical_alignment = 2
 
-[node name="Line2D" type="Line2D" parent="Panel/HBoxC" unique_id=2145281276]
-position = Vector2(-135, -15)
-points = PackedVector2Array(120, 45, 945, 45)
-width = 8.0
-
-[node name="status" type="Label" parent="Panel/HBoxC" unique_id=1694469925]
-layout_mode = 2
+[node name="status" type="Label" parent="MidiName" unique_id=1694469925]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -130.0
+offset_top = 8.0
+offset_right = -20.0
+offset_bottom = 42.00004
+grow_horizontal = 0
+grow_vertical = 0
 size_flags_horizontal = 8
 size_flags_vertical = 8
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 5
 theme_override_font_sizes/font_size = 30
 text = "Pending"
-
-[node name="Border" type="PanelContainer" parent="Panel" unique_id=1384303241]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_sx7kd")
-
-[node name="Button" type="Button" parent="Panel" unique_id=1823057639]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-size_flags_horizontal = 0
-size_flags_vertical = 0
-focus_next = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
-mouse_filter = 1
-theme_override_styles/normal = SubResource("StyleBoxFlat_aaj07")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_ex0j5")
-theme_override_styles/hover = SubResource("StyleBoxFlat_www55")
-theme_override_styles/focus = SubResource("StyleBoxFlat_7gp3l")
-toggle_mode = true
-metadata/_edit_use_anchors_ = true
-metadata/index = 0
-
-[node name="VE" type="VisibleOnScreenEnabler2D" parent="." unique_id=1743677447]
-position = Vector2(-5, -410.5)
-rect = Rect2(0, 186, 905, 602)

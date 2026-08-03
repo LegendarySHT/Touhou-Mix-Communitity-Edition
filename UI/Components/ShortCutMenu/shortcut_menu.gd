@@ -96,6 +96,27 @@ func _is_all_off() -> bool:
 		return false
 	return true
 
+# ========== 转场动画 ==========
+
+## 15° 倾斜对应的水平偏移量（与 AnimationManager.tan15 保持一致）
+const _TAN15 := tan(deg_to_rad(15))
+
+## 播放进/出场转场动画（供 AnimationManager 与 PlayerInfo 等外部调用）
+## exit=true: 退场（移出 + 隐藏）；exit=false: 入场（显示 + 移回）
+## 注意：仅做位移与显隐，不重置内部按钮状态（与原 AnimationManager 行为一致）
+func play_transition_animation(exit: bool) -> Tween:
+	var target_offset := Vector2(500 * _TAN15, -500)
+	if exit:
+		var t := ani.animate_offset_to(self, target_offset, 0.25, "MenuBarPosition")
+		t.finished.connect(func() -> void:
+			visible = false
+		)
+		return t
+	# 入场：从偏移位置移回原位
+	visible = true
+	offset_transform_position = target_offset
+	return ani.animate_offset_back(self, 0.25, "MenuBarPosition")
+
 # 筛选按钮部分
 var sortByStatus: SortEngine.SortStatField = 0 as SortEngine.SortStatField
 var sortByData: SortEngine.SortDataField = 0 as SortEngine.SortDataField

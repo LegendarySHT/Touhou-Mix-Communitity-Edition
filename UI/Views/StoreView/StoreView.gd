@@ -14,6 +14,11 @@ var _last_scroll_vertical := 0
 
 func _ready() -> void:
 	work_state = UIStateManager.UIState.STORE_VIEW
+	# 设置直接相邻状态：切到不在此集合的状态时释放所有列表项封面
+	# STORE_VIEW 相邻：ALBUM_VIEW（侧栏返回）
+	set_adjacent_states([
+		UIStateManager.UIState.ALBUM_VIEW,
+	])
 	super._ready()
 
 	# TopBar/Bottom 的进入动画由 AnimationManager.animate_ui_in("Store_View") 负责，
@@ -24,6 +29,47 @@ func _ready() -> void:
 	_load_demo_data()
 
 	UiStatMGR.state_changed.connect(_on_state)
+
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	var store := get_parent()
+	if not store:
+		return
+	# TopBar — 垂直渐变 primary → primary_dark
+	var topbar := store.get_node_or_null("TopBar") as Panel
+	if topbar:
+		var sb := topbar.get_theme_stylebox("panel")
+		if sb is StyleBoxTexture:
+			var tex := sb.texture as GradientTexture2D
+			if tex and tex.gradient:
+				tex.gradient.set_color(0, ThemeMGR.get_color("primary"))
+				tex.gradient.set_color(1, ThemeMGR.get_color("primary_dark"))
+	# TopBar/C/Search/Base — 四点 vertex_colors
+	var search_base := store.get_node_or_null("TopBar/C/Search/Base") as Polygon2D
+	if search_base:
+		var p := ThemeMGR.get_color("primary")
+		var pd := ThemeMGR.get_color("primary_dark")
+		search_base.vertex_colors = PackedColorArray([
+			p.lightened(0.1), p, pd, p.lightened(0.2),
+		])
+	# Bottom/Previ + Next — primary_dark 基调
+	for btn_name in ["Previ", "Next"]:
+		var btn := store.get_node_or_null("Bottom/" + btn_name) as Button
+		ThemeMGR._style_button_set_bg_color(btn, ThemeMGR.get_color("primary_dark"))
+	# Bottom/Indicate — 页码标签背景 primary_light
+	var indicate := store.get_node_or_null("Bottom/Indicate") as Label
+	if indicate:
+		var sb := indicate.get_theme_stylebox("normal")
+		if sb is StyleBoxFlat:
+			sb.bg_color = ThemeMGR.get_color("primary_light")
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
 
 ## 加载演示数据（创建列表项 + 填充前 5 个 midi）
 ## 首次 _ready 和重新进入 STORE_VIEW（列表为空时）调用

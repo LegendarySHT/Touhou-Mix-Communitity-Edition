@@ -17,7 +17,7 @@ enum ShowStat {
 @onready var eb: EventBus = EvtBus
 
 @onready var vboxc: VBoxContainer = $VBoxC
-@onready var arrow: TextureRect = $VBoxC/C2/Arrow
+@onready var arrow: TextureRect = $VBoxC/Arrow
 @onready var btn: Button = $Button
 @onready var lag_label: Label = $Lag
 
@@ -120,24 +120,24 @@ func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 		await _rot_tween.finished
 
 	var event = InputEventKey.new()
-	# 控制内容显示
+	# 控制内容显示（用 offset_transform 位移，相对布局位置的偏移）
 	match content_to_show:
 		ShowStat.RETRY_BTN:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, 55), 0.35, "LT_ICON")
+			ani.animate_offset_to(vboxc, Vector2(0, 445), 0.35, "LT_ICON")
 			event.keycode = KEY_R
 		ShowStat.SETTING_BTN:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, -390), 0.35, "LT_ICON")
+			ani.animate_offset_back(vboxc, 0.35, "LT_ICON")
 			event.keycode = KEY_U
 		ShowStat.ARROW_RIGHT:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, -835), 0.35, "LT_ICON")
+			ani.animate_offset_to(vboxc, Vector2(0, -445), 0.35, "LT_ICON")
 			if _arrow_left:
-				_rot_tween = ani.animate_rotation(arrow, arrow.rotation + PI, 0.2, "LT_ARROW_ROT")
+				_rot_tween = ani.animate_offset_rotation(arrow, deg_to_rad(-20), 0.2, "LT_ARROW_ROT")
 				_arrow_left = false
 			event.keycode = KEY_E
 		ShowStat.ARROW_LEFT:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, -835), 0.35, "LT_ICON")
+			ani.animate_offset_to(vboxc, Vector2(0, -445), 0.35, "LT_ICON")
 			if not _arrow_left:
-				_rot_tween = ani.animate_rotation(arrow, arrow.rotation + PI, 0.2, "LT_ARROW_ROT")
+				_rot_tween = ani.animate_offset_rotation(arrow, PI + deg_to_rad(-20), 0.2, "LT_ARROW_ROT")
 				_arrow_left = true
 			event.keycode = KEY_Q
 	

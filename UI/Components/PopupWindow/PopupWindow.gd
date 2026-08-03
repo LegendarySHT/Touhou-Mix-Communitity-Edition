@@ -20,6 +20,7 @@ static var instance: PopupWindow
 @onready var _particle_adjust: ParticleAdjust = $TabC/ParticleAdjust
 @onready var _image_adjust: ImageAdjust = $TabC/ImageAdjust
 @onready var _kb_mode_adjust: KBModeAdjust = $TabC/KBModeAdjust
+@onready var _falling_adjust: FallingAdjust = $TabC/FallingAdjust
 
 ## 主题管理器通过此 getter 访问 DelayAdjust 中的 delay_btn（保持外部 API 不变）
 var delay_btn: Button:
@@ -52,8 +53,31 @@ func _ready() -> void:
 		_delay_adjust.stop_calibration()
 		_particle_adjust.stop_preview()
 		_kb_mode_adjust._cancel_recording()
+		_falling_adjust.stop_preview()
 		_window_popup_animate(false)
 	)
+
+	# 注册主题应用者并首次着色
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	# DelayAdjust/Button — primary 色调
+	var delay_btn_node := delay_btn as Button
+	ThemeMGR._style_button_set_bg_color(delay_btn_node, ThemeMGR.get_color("primary"))
+	# KBModeAdjust/AddBtn — primary 色调（静态按钮）
+	var kb_add_btn := get_node_or_null("TabC/KBModeAdjust/KeySequence/VFlowC/AddBtn") as Button
+	if kb_add_btn:
+		ThemeMGR._style_button_set_bg_color(kb_add_btn, ThemeMGR.get_color("primary"))
+	# KBModeAdjust 中动态创建的 KeySequenceItem — 委托给 KBModeAdjust.apply_button_theme
+	if _kb_mode_adjust:
+		_kb_mode_adjust.apply_button_theme(ThemeMGR.get_color("primary"))
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
 
 func _on_cancel_pressed() -> void:
 	_confirm = false
@@ -97,8 +121,8 @@ func get_selected() -> String:
 
 # 用默认窗口显示消息，要获取确认状态需await
 func show_message(message: String, cancel_visible: bool = false, options: Array = []) -> bool:
-	size = Vector2(850, 600)
 	_tab_c.current_tab = 0
+	size = Vector2(850, 600)
 	_message.text = message
 	_cancel_btn.modulate.a = 0 if not cancel_visible else 1
 	_set_option(options)
@@ -109,8 +133,8 @@ func show_message(message: String, cancel_visible: bool = false, options: Array 
 
 # 弹出延迟校准窗口
 func show_delay_adjust(current_delay: int = 0) -> int:
-	size = Vector2(850, 600)
 	_tab_c.current_tab = 1
+	size = Vector2(850, 600)
 	_delay_adjust.start_calibration(current_delay)
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 
@@ -121,8 +145,8 @@ func show_delay_adjust(current_delay: int = 0) -> int:
 
 # 弹出皮肤修改窗口
 func show_note_skin_adjust() -> String:
-	size = Vector2(1500, 700)
 	_tab_c.current_tab = 2
+	size = Vector2(1500, 700)
 	_note_skin_adjust.init_adjust()
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 	await window_close
@@ -134,8 +158,8 @@ func show_note_skin_adjust() -> String:
 # judge_type: Perfect / Great / Good / Bad，决定编辑哪个判定类型的特效
 # 返回 Dictionary 字段见 ParticleAdjust.get_result
 func show_particle_adjust(judge_type: String = "Perfect") -> Dictionary:
-	size = Vector2(1500, 700)
 	_tab_c.current_tab = 3
+	size = Vector2(1500, 700)
 	_particle_adjust.init_adjust(judge_type)
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 	# 等待窗口进入动画完成，避免 ParticlePreview 在 scale 0→1 过程中粒子位置错位
@@ -150,8 +174,8 @@ func show_particle_adjust(judge_type: String = "Perfect") -> Dictionary:
 ## allow_cover: 是否允许选择"封面"类型（仅 play 视图为 true）
 ## 返回 Dictionary 字段见 ImageAdjust.get_result
 func show_image_adjust(view_name: String = "", allow_cover: bool = false) -> Dictionary:
-	size = Vector2(1500, 700)
 	_tab_c.current_tab = 4
+	size = Vector2(1500, 700)
 	_image_adjust.init_adjust(view_name, allow_cover)
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 	await window_close
@@ -162,8 +186,8 @@ func show_image_adjust(view_name: String = "", allow_cover: bool = false) -> Dic
 ## 返回 Dictionary: {"keys": "A,S,D,F,...", "display_names": "P1,,,..."}
 ## 关闭即返回当前编辑状态（无取消路径，调用方不应依赖空返回值判断取消）
 func show_kb_mode_adjust(current_keys: String = "", current_display_names: String = "") -> Dictionary:
-	size = Vector2(1500, 700)
 	_tab_c.current_tab = 5
+	size = Vector2(1500, 700)
 	# 优先使用传入的 pending 值；为空时回退到配置文件（兼容直接调用）
 	var keys_str := current_keys if not current_keys.is_empty() else \
 		ConfigManager.instance.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")
@@ -175,3 +199,18 @@ func show_kb_mode_adjust(current_keys: String = "", current_display_names: Strin
 	# 兜底取消录入状态（popup_hide 已调用，此处再保险一次）
 	_kb_mode_adjust._cancel_recording()
 	return _kb_mode_adjust.get_result()
+
+# 弹出下落模式设置窗口
+## 关闭时由 FallingAdjust 内部 save_config 即时写入 ConfigManager 并触发 config_changed
+## 返回 Dictionary 字段见 FallingAdjust.get_result（供 SettingList 同步 _pending_config）
+func show_falling_adjust() -> Dictionary:
+	_tab_c.current_tab = 6
+	size = Vector2(1300, 950)
+	_falling_adjust.init_adjust()
+	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
+	await window_close
+	# 兜底停止预览（popup_hide 已调用，此处再保险一次）
+	_falling_adjust.stop_preview()
+	# 关闭时持久化下落参数并触发 FlowArea 热重载
+	_falling_adjust.save_config()
+	return _falling_adjust.get_result()

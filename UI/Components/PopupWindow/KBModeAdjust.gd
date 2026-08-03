@@ -23,7 +23,6 @@ const KEY_ITEM_SCENE := preload("res://UI/Components/PopupWindow/KeySequenceItem
 
 # 节点引用
 @onready var _hbox: HFlowContainer = $KeySequence/VFlowC
-@onready var _add_btn: Button = $KeySequence/VFlowC/AddBtn
 @onready var _insert_place: Panel = $KeySequence/VFlowC/InsertPlace
 @onready var _key_name_label: Label = $KeyName
 @onready var _display_name_edit: LineEdit = $KeyDisplayName/LineEdit
@@ -49,9 +48,6 @@ var _suppress_display_name_signal: bool = false
 
 
 func _ready() -> void:
-	_add_btn.pressed.connect(_on_add_btn_pressed)
-	_key_config_btn.pressed.connect(_on_key_config_btn_pressed)
-	_display_name_edit.text_changed.connect(_on_display_name_changed)
 	_item_instance = KEY_ITEM_SCENE.instantiate()
 	apply_button_theme(ThemeMGR.get_color("primary"))
 

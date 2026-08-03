@@ -58,6 +58,9 @@ var _visible: bool = true
 # 文本输入时禁用快捷键，避免字母键触发跳转（由 LeftTopBtn 统一驱动）
 var _saved_shortcut: Shortcut = null
 
+## 按钮点击的覆盖回调：设置后点击按钮优先调用此回调，用于外部接管（如 PlayerInfo 展开时）
+var pressed_override: Callable = Callable()
+
 ## 禁用/恢复自身快捷键（禁用时移除 shortcut，恢复时还原）
 func _set_shortcut_enabled(enabled: bool) -> void:
 	if enabled:
@@ -87,13 +90,13 @@ func switch_display(content_to_show: ShowStat = ShowStat.NONE):
 	# 控制内容显示
 	match content_to_show:
 		ShowStat.BACK_BTN:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, 0), 0.35, "RB_ICON")
+			ani.animate_offset_to(vboxc, Vector2(0, -430))
 			event.keycode = KEY_ESCAPE
 		ShowStat.STORE_BTN:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, 380), 0.35, "RB_ICON")
+			ani.animate_offset_to(vboxc, Vector2(0, 0))
 			event.keycode = KEY_O
 		ShowStat.ARROW_RIGHT:
-			ani.animate_position(vboxc, Vector2(vboxc.position.x, -380), 0.35, "RB_ICON")
+			ani.animate_offset_to(vboxc, Vector2(0, -860))
 			event.keycode = KEY_RIGHT
 	
 	# 快捷键：shortcut 被禁用时更新到 _saved_shortcut，恢复后即生效
@@ -106,6 +109,9 @@ func switch_display(content_to_show: ShowStat = ShowStat.NONE):
 	_current_stat = content_to_show
 
 func _on_button_pressed() -> void:
+	if pressed_override.is_valid():
+		pressed_override.call()
+		return
 	match _current_stat:
 		ShowStat.BACK_BTN:
 			UiStatMGR.go_back()

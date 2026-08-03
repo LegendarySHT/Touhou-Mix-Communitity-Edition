@@ -1,0 +1,1042 @@
+[gd_scene format=3 uid="uid://bt37v73uu1f0n"]
+
+[ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_ag846"]
+[ext_resource type="Texture2D" uid="uid://4nsc0p2ia3q" path="res://Resources/icon/ProfilePage/Profile.png" id="1_b1c4s"]
+[ext_resource type="Script" uid="uid://c5j3sx2nby3nl" path="res://UI/Components/PlayerInfo/ProfilePage.gd" id="1_ft172"]
+[ext_resource type="Texture2D" uid="uid://bwjbi8wqeiifi" path="res://Resources/icon/ProfilePage/History.png" id="2_ag846"]
+[ext_resource type="Texture2D" uid="uid://dhekqkeoopvvf" path="res://Resources/icon/ProfilePage/Edit.png" id="4_j7lut"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_j02sm"]
+content_margin_left = 50.0
+content_margin_top = 40.0
+content_margin_right = 50.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3y6u5"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_2xvos"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_i6pqd"]
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ft172"]
+content_margin_left = 20.0
+content_margin_top = 20.0
+content_margin_right = 20.0
+content_margin_bottom = 30.0
+bg_color = Color(0.16919157, 0.56946355, 0.9999998, 1)
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0, 0.34274265, 0.6441993, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_iygje"]
+content_margin_left = 40.0
+content_margin_top = 30.0
+content_margin_right = 40.0
+content_margin_bottom = 30.0
+bg_color = Color(0, 0.3017038, 0.5170863, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.16862746, 0.5686275, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hhcpw"]
+draw_center = false
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+expand_margin_left = 6.0
+expand_margin_top = 6.0
+expand_margin_right = 6.0
+expand_margin_bottom = 6.0
+shadow_color = Color(0, 0, 0, 0.24313726)
+shadow_size = 12
+shadow_offset = Vector2(2, 2)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_moh5i"]
+content_margin_left = 20.0
+content_margin_top = 15.0
+content_margin_right = 20.0
+content_margin_bottom = 40.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2xvos"]
+content_margin_left = 25.0
+content_margin_top = 20.0
+content_margin_right = 25.0
+content_margin_bottom = 20.0
+bg_color = Color(0, 0.3019608, 0.5176471, 1)
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_color = Color(0.16862746, 0.5686275, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_moh5i"]
+content_margin_left = 20.0
+content_margin_top = 20.0
+content_margin_right = 50.0
+content_margin_bottom = 20.0
+bg_color = Color(0.16862746, 0.5686275, 1, 1)
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_color = Color(0, 0.3019608, 0.5176471, 1)
+corner_radius_top_left = 75
+corner_radius_top_right = 75
+corner_radius_bottom_right = 75
+corner_radius_bottom_left = 75
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ag846"]
+content_margin_left = 20.0
+content_margin_top = 20.0
+content_margin_right = 50.0
+content_margin_bottom = 20.0
+bg_color = Color(0.6257103, 0.43240646, 0.9897513, 1)
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_color = Color(0, 0.3019608, 0.5176471, 1)
+corner_radius_top_left = 75
+corner_radius_top_right = 75
+corner_radius_bottom_right = 75
+corner_radius_bottom_left = 75
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j7lut"]
+content_margin_left = 20.0
+content_margin_top = 20.0
+content_margin_right = 50.0
+content_margin_bottom = 20.0
+bg_color = Color(0.7891194, 0.4806652, 0.30015868, 1)
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_color = Color(0, 0.3019608, 0.5176471, 1)
+corner_radius_top_left = 75
+corner_radius_top_right = 75
+corner_radius_bottom_right = 75
+corner_radius_bottom_left = 75
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1pkam"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.12941177, 0.14509805, 0.16078432, 1)
+border_width_left = 10
+border_width_top = 10
+border_width_right = 10
+border_width_bottom = 10
+border_color = Color(0, 0.34117648, 0.6431373, 1)
+corner_radius_top_left = 63
+corner_radius_top_right = 63
+corner_radius_bottom_right = 63
+corner_radius_bottom_left = 63
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_1pkam"]
+content_margin_left = 60.0
+content_margin_right = 60.0
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_3y6u5"]
+color = Color(1, 1, 1, 1)
+thickness = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7fsko"]
+bg_color = Color(0.43529412, 0.25882354, 0.75686276, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dtpph"]
+bg_color = Color(1, 0.75686276, 0.02745098, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3syy"]
+bg_color = Color(0.972549, 0.9764706, 0.98039216, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6jr7o"]
+bg_color = Color(0.09019608, 0.63529414, 0.72156864, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1myf0"]
+bg_color = Color(0.8627451, 0.20392157, 0.27058825, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2oogn"]
+bg_color = Color(0.19215687, 0.22745098, 0.2509804, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_i6pqd"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j02sm"]
+bg_color = Color(0.11372549, 0.12156863, 0.12941177, 1)
+border_width_left = 12
+border_width_top = 12
+border_width_right = 12
+border_width_bottom = 12
+border_color = Color(3.7445723e-05, 0.46399152, 0.85955125, 1)
+corner_radius_top_left = 81
+corner_radius_top_right = 81
+corner_radius_bottom_right = 81
+corner_radius_bottom_left = 81
+expand_margin_left = 40.0
+expand_margin_top = 6.0
+expand_margin_right = 40.0
+expand_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hs1if"]
+bg_color = Color(0.1677157, 0.17797163, 0.18822837, 1)
+border_width_left = 12
+border_width_top = 12
+border_width_right = 12
+border_width_bottom = 12
+border_color = Color(0, 0.463739, 0.859696, 0.75900006)
+corner_radius_top_left = 81
+corner_radius_top_right = 81
+corner_radius_bottom_right = 81
+corner_radius_bottom_left = 81
+expand_margin_left = 40.0
+expand_margin_top = 6.0
+expand_margin_right = 40.0
+expand_margin_bottom = 6.0
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_3y6u5"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_665dv"]
+bg_color = Color(0.1677157, 0.17797163, 0.18822837, 1)
+border_width_left = 12
+border_width_top = 12
+border_width_right = 12
+border_width_bottom = 12
+border_color = Color(0, 0.463739, 0.859696, 0.75900006)
+corner_radius_top_left = 81
+corner_radius_top_right = 81
+corner_radius_bottom_right = 81
+corner_radius_bottom_left = 81
+expand_margin_left = 40.0
+expand_margin_top = 6.0
+expand_margin_right = 40.0
+expand_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_7fsko"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ng81m"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b1c4s"]
+bg_color = Color(0.16862746, 0.5686275, 1, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.77718174, 0.8881831, 0.9999996, 1)
+border_blend = true
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6cgaj"]
+bg_color = Color(0, 0.3658296, 0.70003456, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.77718174, 0.8881831, 0.9999996, 1)
+border_blend = true
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0xjso"]
+bg_color = Color(0, 0.50717473, 0.95363015, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.77718174, 0.8881831, 0.9999996, 1)
+border_blend = true
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3xm0o"]
+bg_color = Color(0.29219002, 0.29219005, 0.29218993, 1)
+border_width_left = 10
+border_width_top = 10
+border_width_right = 10
+border_width_bottom = 10
+border_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3y6u5"]
+bg_color = Color(0.16919157, 0.56946355, 0.9999998, 1)
+border_width_top = 6
+border_color = Color(0, 0.34274265, 0.6441993, 1)
+expand_margin_left = 500.0
+expand_margin_right = 500.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gvb4a"]
+bg_color = Color(0.16862746, 0.5686275, 1, 1)
+border_width_left = 6
+border_width_right = 6
+border_color = Color(0, 0.34274265, 0.6441993, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_evr7o"]
+bg_color = Color(0, 0.4185475, 0.794619, 1)
+border_width_left = 6
+border_width_right = 6
+border_color = Color(0, 0.34274265, 0.6441993, 1)
+expand_margin_top = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_js0an"]
+bg_color = Color(1.8097162e-05, 0.45687217, 0.8628973, 1)
+border_width_left = 6
+border_width_right = 6
+border_color = Color(0, 0.34274265, 0.6441993, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_aeku2"]
+bg_color = Color(0, 0.4185475, 0.794619, 1)
+border_width_left = 6
+border_width_right = 6
+border_color = Color(0, 0.34274265, 0.6441993, 1)
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_ag846"]
+
+[node name="ProfilePage" type="VBoxContainer" unique_id=1127151803]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+script = ExtResource("1_ft172")
+metadata/_tab_index = 3
+
+[node name="PC" type="PanelContainer" parent="." unique_id=1258911297]
+custom_minimum_size = Vector2(1620, 0)
+custom_maximum_size = Vector2(1620, 900)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxEmpty_j02sm")
+
+[node name="PageContent" type="TabContainer" parent="PC" unique_id=1730970720]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxEmpty_3y6u5")
+current_tab = 1
+tabs_visible = false
+
+[node name="Profile" type="HBoxContainer" parent="PC/PageContent" unique_id=572518356]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="Main" type="VBoxContainer" parent="PC/PageContent/Profile" unique_id=1495707607]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="PC" type="PanelContainer" parent="PC/PageContent/Profile/Main" unique_id=68459101]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 3.0
+theme_override_styles/panel = SubResource("StyleBoxEmpty_2xvos")
+
+[node name="Displayer" type="HBoxContainer" parent="PC/PageContent/Profile/Main/PC" unique_id=156661520]
+layout_mode = 2
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="Border" type="PanelContainer" parent="PC/PageContent/Profile/Main/PC/Displayer" unique_id=1414132698]
+custom_maximum_size = Vector2(425, 550)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_i6pqd")
+
+[node name="CardImg" type="TextureRect" parent="PC/PageContent/Profile/Main/PC/Displayer/Border" unique_id=1545527890]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Info" type="PanelContainer" parent="PC/PageContent/Profile/Main/PC/Displayer" unique_id=1109395736]
+custom_maximum_size = Vector2(225, 450)
+layout_mode = 2
+offset_transform_enabled = true
+offset_transform_position_ratio = Vector2(0, 0.1)
+theme_override_styles/panel = SubResource("StyleBoxFlat_ft172")
+
+[node name="VBox" type="VBoxContainer" parent="PC/PageContent/Profile/Main/PC/Displayer/Info" unique_id=1012077563]
+layout_mode = 2
+alignment = 1
+
+[node name="Label" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=2072238485]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Chara Name"
+
+[node name="Label2" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=1693289358]
+layout_mode = 2
+size_flags_vertical = 2
+theme_override_font_sizes/font_size = 24
+text = "by [author]"
+
+[node name="Label3" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=1646996614]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "已收集角色"
+horizontal_alignment = 1
+
+[node name="Label4" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=1116389370]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "1/100"
+horizontal_alignment = 1
+
+[node name="Header" type="PanelContainer" parent="PC/PageContent/Profile/Main" unique_id=1401765387]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_iygje")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PC/PageContent/Profile/Main/Header" unique_id=454739147]
+layout_mode = 2
+theme_override_constants/separation = 30
+
+[node name="AvatarBig" type="Panel" parent="PC/PageContent/Profile/Main/Header/HBoxContainer" unique_id=21134669]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hhcpw")
+
+[node name="TextureRect" type="TextureRect" parent="PC/PageContent/Profile/Main/Header/HBoxContainer/AvatarBig" unique_id=1821331387]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("1_ag846")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="NameLevelVBox" type="VBoxContainer" parent="PC/PageContent/Profile/Main/Header/HBoxContainer" unique_id=932786588]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="NameLabel" type="Label" parent="PC/PageContent/Profile/Main/Header/HBoxContainer/NameLevelVBox" unique_id=468589443]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_vertical = 6
+theme_override_font_sizes/font_size = 36
+text = "Anonymous Player"
+
+[node name="Level" type="HBoxContainer" parent="PC/PageContent/Profile/Main/Header/HBoxContainer/NameLevelVBox" unique_id=759808391]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="LevelLabel" type="Label" parent="PC/PageContent/Profile/Main/Header/HBoxContainer/NameLevelVBox/Level" unique_id=520233425]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+theme_override_font_sizes/font_size = 28
+text = "Level 1"
+vertical_alignment = 2
+
+[node name="PPLabel" type="Label" parent="PC/PageContent/Profile/Main/Header/HBoxContainer/NameLevelVBox/Level" unique_id=351044655]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 42
+text = "0 pp"
+horizontal_alignment = 2
+vertical_alignment = 2
+
+[node name="LevelProgressBar" type="ProgressBar" parent="PC/PageContent/Profile/Main/Header/HBoxContainer/NameLevelVBox" unique_id=990396837]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+mouse_filter = 2
+rounded = true
+
+[node name="MarginBottom" type="Control" parent="PC/PageContent/Profile/Main" unique_id=306449287]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="Data" type="PanelContainer" parent="PC/PageContent/Profile" unique_id=2116557187]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+theme_override_styles/panel = SubResource("StyleBoxEmpty_moh5i")
+
+[node name="VBox" type="VBoxContainer" parent="PC/PageContent/Profile/Data" unique_id=825565539]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+theme_override_constants/separation = 40
+alignment = 1
+
+[node name="Desc" type="HBoxContainer" parent="PC/PageContent/Profile/Data/VBox" unique_id=1273076522]
+custom_maximum_size = Vector2(-1, 380)
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 4.0
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Label" type="Label" parent="PC/PageContent/Profile/Data/VBox/Desc" unique_id=124274308]
+custom_maximum_size = Vector2(650, -1)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_2xvos")
+text = "个人简介"
+autowrap_mode = 2
+
+[node name="Rank" type="VBoxContainer" parent="PC/PageContent/Profile/Data/VBox/Desc" unique_id=707784553]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RankTotal" type="PanelContainer" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank" unique_id=569037342]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_moh5i")
+
+[node name="HBox" type="HBoxContainer" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankTotal" unique_id=1342222410]
+layout_mode = 2
+alignment = 1
+
+[node name="VBox" type="VBoxContainer" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankTotal/HBox" unique_id=360381656]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+alignment = 1
+
+[node name="Title" type="Label" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankTotal/HBox/VBox" unique_id=5253447]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Ranking"
+horizontal_alignment = 1
+
+[node name="Rank" type="Label" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankTotal/HBox/VBox" unique_id=995132753]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "#0"
+horizontal_alignment = 1
+
+[node name="Title" type="Label" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankTotal/HBox" unique_id=396939373]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+theme_override_font_sizes/font_size = 48
+text = "Total"
+horizontal_alignment = 2
+
+[node name="RankPast" type="PanelContainer" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank" unique_id=634216873]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ag846")
+
+[node name="HBox" type="HBoxContainer" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankPast" unique_id=996046299]
+layout_mode = 2
+alignment = 1
+
+[node name="Rank" type="Label" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankPast/HBox" unique_id=1103544077]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+theme_override_font_sizes/font_size = 48
+text = "#1"
+horizontal_alignment = 1
+
+[node name="Year" type="Label" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankPast/HBox" unique_id=76458199]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+theme_override_font_sizes/font_size = 48
+text = "2025"
+horizontal_alignment = 2
+
+[node name="RankPast2" type="PanelContainer" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank" unique_id=1465903314]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_j7lut")
+
+[node name="HBox" type="HBoxContainer" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankPast2" unique_id=842234976]
+layout_mode = 2
+alignment = 1
+
+[node name="Rank" type="Label" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankPast2/HBox" unique_id=1428837707]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+theme_override_font_sizes/font_size = 48
+text = "#1"
+horizontal_alignment = 1
+
+[node name="Year" type="Label" parent="PC/PageContent/Profile/Data/VBox/Desc/Rank/RankPast2/HBox" unique_id=2051562825]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+theme_override_font_sizes/font_size = 48
+text = "2024"
+horizontal_alignment = 2
+
+[node name="Play" type="PanelContainer" parent="PC/PageContent/Profile/Data/VBox" unique_id=311090071]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 5.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_2xvos")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PC/PageContent/Profile/Data/VBox/Play" unique_id=1264760350]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PC/PageContent/Profile/Data/VBox/Play/VBoxContainer" unique_id=644578656]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "最近游玩"
+
+[node name="List" type="ScrollContainer" parent="PC/PageContent/Profile/Data/VBox/Play/VBoxContainer" unique_id=1097666326]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="PC/PageContent/Profile/Data/VBox/Play/VBoxContainer/List" unique_id=615279763]
+layout_mode = 2
+
+[node name="History" type="VBoxContainer" parent="PC/PageContent" unique_id=1290400202]
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="PC" type="PanelContainer" parent="PC/PageContent/History" unique_id=415150945]
+custom_minimum_size = Vector2(0, 125)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_1pkam")
+
+[node name="TopBar" type="HBoxContainer" parent="PC/PageContent/History/PC" unique_id=2039044189]
+layout_mode = 2
+
+[node name="PC" type="PanelContainer" parent="PC/PageContent/History/PC/TopBar" unique_id=1380606977]
+custom_minimum_size = Vector2(770, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_1pkam")
+
+[node name="InnerMargin" type="PanelContainer" parent="PC/PageContent/History/PC/TopBar/PC" unique_id=1670580834]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_1pkam")
+
+[node name="Grid" type="GridContainer" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin" unique_id=2129108957]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/h_separation = 20
+columns = 7
+
+[node name="Label" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=1815740216]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxLine_3y6u5")
+text = "Performace"
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="Rank1" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=2014034047]
+custom_minimum_size = Vector2(60, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_7fsko")
+text = "S"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Rank2" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=1782805660]
+custom_minimum_size = Vector2(60, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_dtpph")
+text = "A"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Rank3" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=1825935104]
+custom_minimum_size = Vector2(60, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_c3syy")
+text = "B"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Rank4" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=1616333252]
+custom_minimum_size = Vector2(60, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_6jr7o")
+text = "C"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Rank5" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=1618589507]
+custom_minimum_size = Vector2(60, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_1myf0")
+text = "D"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Rank6" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=1552353533]
+custom_minimum_size = Vector2(60, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_2oogn")
+text = "F"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="pp" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=1041702721]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "999999.99 pp"
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="SCount" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=391717684]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "9999"
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="ACount" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=1189915291]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "9999"
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="BCount" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=39213604]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "9999"
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="CCount" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=935287760]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "9999"
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="DCount" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=1927077247]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "9999"
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="FCount" type="Label" parent="PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid" unique_id=788456564]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "9999"
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="Spacer" type="Control" parent="PC/PageContent/History/PC/TopBar" unique_id=1811999771]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="TopBtns" type="HBoxContainer" parent="PC/PageContent/History/PC/TopBar" unique_id=1865873512]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="RecentPlay" type="Button" parent="PC/PageContent/History/PC/TopBar/TopBtns" unique_id=1473519099]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxEmpty_i6pqd")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_j02sm")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hs1if")
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_3y6u5")
+text = "最近游玩"
+
+[node name="BestPlay" type="Button" parent="PC/PageContent/History/PC/TopBar/TopBtns" unique_id=477589048]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxEmpty_i6pqd")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_j02sm")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hs1if")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_3y6u5")
+text = "最佳记录"
+
+[node name="MostPlay" type="Button" parent="PC/PageContent/History/PC/TopBar/TopBtns" unique_id=343271832]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxEmpty_i6pqd")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_j02sm")
+theme_override_styles/hover = SubResource("StyleBoxFlat_665dv")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_3y6u5")
+text = "最多游玩"
+
+[node name="MarginRight" type="Control" parent="PC/PageContent/History/PC/TopBar" unique_id=288929981]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="List" type="TabContainer" parent="PC/PageContent/History" unique_id=697349407]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxEmpty_7fsko")
+current_tab = 0
+tabs_visible = false
+
+[node name="ScrollC" type="ScrollContainer" parent="PC/PageContent/History/List" unique_id=81773539]
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_tab_index = 0
+
+[node name="VBox" type="VBoxContainer" parent="PC/PageContent/History/List/ScrollC" unique_id=1646692693]
+layout_mode = 2
+
+[node name="Edit" type="PanelContainer" parent="PC/PageContent" unique_id=638331925]
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_ng81m")
+metadata/_tab_index = 2
+
+[node name="HBox" type="HBoxContainer" parent="PC/PageContent/Edit" unique_id=828755108]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 50
+
+[node name="ProfileEdit" type="VBoxContainer" parent="PC/PageContent/Edit/HBox" unique_id=1597922371]
+custom_minimum_size = Vector2(0, 720)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+size_flags_stretch_ratio = 5.0
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="NicknameTitle" type="Label" parent="PC/PageContent/Edit/HBox/ProfileEdit" unique_id=1934781578]
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+text = "昵称"
+
+[node name="Nickname" type="HBoxContainer" parent="PC/PageContent/Edit/HBox/ProfileEdit" unique_id=523899921]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_constants/separation = 50
+
+[node name="LineEdit" type="LineEdit" parent="PC/PageContent/Edit/HBox/ProfileEdit/Nickname" unique_id=752248277]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ConfirmBtn" type="Button" parent="PC/PageContent/Edit/HBox/ProfileEdit/Nickname" unique_id=190632065]
+custom_minimum_size = Vector2(150, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_6cgaj")
+theme_override_styles/hover = SubResource("StyleBoxFlat_0xjso")
+text = "保存"
+
+[node name="Control" type="Control" parent="PC/PageContent/Edit/HBox/ProfileEdit" unique_id=1002154331]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+
+[node name="DescTitle" type="Label" parent="PC/PageContent/Edit/HBox/ProfileEdit" unique_id=1497959047]
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+text = "简介"
+
+[node name="Desc" type="HBoxContainer" parent="PC/PageContent/Edit/HBox/ProfileEdit" unique_id=1845282896]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_constants/separation = 50
+
+[node name="LineEdit" type="LineEdit" parent="PC/PageContent/Edit/HBox/ProfileEdit/Desc" unique_id=1121001614]
+custom_minimum_size = Vector2(0, 400)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ConfirmBtn" type="Button" parent="PC/PageContent/Edit/HBox/ProfileEdit/Desc" unique_id=2128739761]
+custom_minimum_size = Vector2(150, 80)
+layout_mode = 2
+size_flags_vertical = 8
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_6cgaj")
+theme_override_styles/hover = SubResource("StyleBoxFlat_0xjso")
+text = "保存"
+
+[node name="OtherEdit" type="VBoxContainer" parent="PC/PageContent/Edit/HBox" unique_id=1977959493]
+custom_maximum_size = Vector2(-1, 720)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 4.0
+alignment = 1
+
+[node name="AvatorEdit" type="HBoxContainer" parent="PC/PageContent/Edit/HBox/OtherEdit" unique_id=1186454364]
+layout_mode = 2
+size_flags_vertical = 6
+
+[node name="Border" type="PanelContainer" parent="PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit" unique_id=1644323787]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_3xm0o")
+
+[node name="Avatar" type="TextureRect" parent="PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit/Border" unique_id=1465653754]
+custom_minimum_size = Vector2(350, 350)
+layout_mode = 2
+size_flags_horizontal = 0
+expand_mode = 3
+stretch_mode = 5
+
+[node name="UploadBtn" type="Button" parent="PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit" unique_id=907560232]
+custom_minimum_size = Vector2(250, 80)
+layout_mode = 2
+size_flags_horizontal = 10
+size_flags_vertical = 8
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_6cgaj")
+theme_override_styles/hover = SubResource("StyleBoxFlat_0xjso")
+text = "上传新头像"
+
+[node name="PasswordTitle" type="Label" parent="PC/PageContent/Edit/HBox/OtherEdit" unique_id=704805091]
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+text = "原密码"
+
+[node name="Password" type="HBoxContainer" parent="PC/PageContent/Edit/HBox/OtherEdit" unique_id=263827390]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_constants/separation = 50
+
+[node name="LineEdit" type="LineEdit" parent="PC/PageContent/Edit/HBox/OtherEdit/Password" unique_id=195476193]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Space" type="Control" parent="PC/PageContent/Edit/HBox/OtherEdit/Password" unique_id=302538164]
+custom_minimum_size = Vector2(150, 80)
+layout_mode = 2
+
+[node name="NewPasswordTitle" type="Label" parent="PC/PageContent/Edit/HBox/OtherEdit" unique_id=1215803896]
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+text = "新密码"
+
+[node name="NewPassword" type="HBoxContainer" parent="PC/PageContent/Edit/HBox/OtherEdit" unique_id=875889579]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_constants/separation = 50
+
+[node name="LineEdit" type="LineEdit" parent="PC/PageContent/Edit/HBox/OtherEdit/NewPassword" unique_id=120020574]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ConfirmBtn" type="Button" parent="PC/PageContent/Edit/HBox/OtherEdit/NewPassword" unique_id=1395434135]
+custom_minimum_size = Vector2(150, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_6cgaj")
+theme_override_styles/hover = SubResource("StyleBoxFlat_0xjso")
+text = "保存"
+
+[node name="Navi" type="PanelContainer" parent="." unique_id=2000610427]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_3y6u5")
+
+[node name="Btns" type="HBoxContainer" parent="Navi" unique_id=1048938432]
+layout_mode = 2
+theme_override_constants/separation = -4
+alignment = 1
+
+[node name="Profile" type="Button" parent="Navi/Btns" unique_id=1802481391]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_gvb4a")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_evr7o")
+theme_override_styles/hover = SubResource("StyleBoxFlat_js0an")
+theme_override_styles/focus = SubResource("StyleBoxFlat_aeku2")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_ag846")
+icon = ExtResource("1_b1c4s")
+icon_alignment = 1
+
+[node name="History" type="Button" parent="Navi/Btns" unique_id=413016997]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_gvb4a")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_evr7o")
+theme_override_styles/hover = SubResource("StyleBoxFlat_js0an")
+theme_override_styles/focus = SubResource("StyleBoxFlat_aeku2")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_ag846")
+icon = ExtResource("2_ag846")
+icon_alignment = 1
+
+[node name="Edit" type="Button" parent="Navi/Btns" unique_id=328915796]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_gvb4a")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_evr7o")
+theme_override_styles/hover = SubResource("StyleBoxFlat_js0an")
+theme_override_styles/focus = SubResource("StyleBoxFlat_aeku2")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_ag846")
+icon = ExtResource("4_j7lut")
+icon_alignment = 1
+
+[connection signal="pressed" from="PC/PageContent/Edit/HBox/ProfileEdit/Nickname/ConfirmBtn" to="." method="_on_save_nickname_btn_pressed"]
+[connection signal="pressed" from="PC/PageContent/Edit/HBox/ProfileEdit/Desc/ConfirmBtn" to="." method="_on_save_desc_btn_pressed"]
+[connection signal="pressed" from="PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit/UploadBtn" to="." method="_on_upload_avatar_btn_pressed"]
+[connection signal="pressed" from="PC/PageContent/Edit/HBox/OtherEdit/NewPassword/ConfirmBtn" to="." method="_on_save_pwd_btn_pressed"]

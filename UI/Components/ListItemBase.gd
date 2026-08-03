@@ -17,7 +17,7 @@ var item_type: String = ""
 var is_selected: bool = false
 
 ## 列表项的按钮
-var button: Button
+var button
 
 ## 选中动画相关
 var _enable_ani: bool = false

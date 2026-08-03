@@ -73,6 +73,10 @@ func _process(_delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		_handle_back_request()
+	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
+		# 应用退出时关闭 CoverLoader 线程池，确保所有后台线程 wait_to_finish
+		if CoverLoader:
+			CoverLoader.shutdown()
 
 ## 桌面端 Esc 键（仅在无其他控件消费事件时触发）
 func _unhandled_input(event: InputEvent) -> void:
@@ -246,23 +250,41 @@ func _initialize_core_systems() -> void:
 
 func _init_ui() -> void:
 	# 6 个视图（MidiView/StoreView/TrackView/SettingView/ScoreView/PlayView）改为懒加载，
-	# 由 UIStateManager.ensure_view_loaded() 在首次 change_state 时实例化
-	# 3 个 Main.tscn 内嵌视图（AlbumView/SongView/SortedMidiView）保持预加载
-	# 注：z_index 处理（STORE_VIEW=10, PLAY_VIEW=21）已迁移到 UIStateManager.ensure_view_loaded()
-
-	# 移动返回按钮到上层
-	var right_bottom = get_node("RB_Btn")
-	move_child(right_bottom ,-1)
-	right_bottom.z_index = 20
-
-	# 设置按钮
-	var left_top = get_node("LT_Btn")
-	move_child(left_top ,-1)
-	left_top.z_index = 20
 
 	# 应用主题（Theme 资源 + 主界面组件；背景不在此刷新，由各视图/refresh_backgrounds 处理）
+	# Main 注册为主题应用者，首次自调 apply_theme，再由 refresh_theme_only 广播给所有已注册视图/组件
 	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
 		ThemeMGR.refresh_theme_only()
+
+## 应用主题色到主框架组件（由 ThemeManager 广播调用 + _init_ui 首次自调）
+func apply_theme() -> void:
+	# LT_Btn — 蓝 (primary)
+	var lt := get_node_or_null("LT_Btn")
+	if lt:
+		ThemeMGR._modify_panel_color(lt, "primary")
+	# RB_Btn — 淡蓝 (primary_light)
+	var rb := get_node_or_null("RB_Btn")
+	if rb:
+		ThemeMGR._modify_panel_color(rb, "primary_light")
+	# ShortCutMenu 面板 — 蓝 (primary)
+	var sc_panel := get_node_or_null("skew/C/ShortCutMenu/Panel")
+	if sc_panel:
+		ThemeMGR._modify_panel_color(sc_panel, "primary")
+	# PlayerInfo 面板按钮 — 暗色 (primary_dark)
+	var info_btn := get_node_or_null("PlayerInfo/InfoPanelBtn") as Button
+	if info_btn:
+		var pd := ThemeMGR.get_color("primary_dark")
+		for state in ["normal", "pressed", "hover"]:
+			var sb := info_btn.get_theme_stylebox(state)
+			if sb is StyleBoxFlat:
+				sb.bg_color = pd
+				sb.border_color = pd.lightened(0.3)
+	# LogIn 在 Node2D(Skew) 下，不继承 Main 的 theme，手动复制
+	var login := get_node_or_null("PlayerInfo/InfoPanelBtn/TabC/C/Skew/LogIn") as Control
+	if login:
+		login.theme = self.theme
 
 ## 连接核心系统信号
 func _connect_signals() -> void:

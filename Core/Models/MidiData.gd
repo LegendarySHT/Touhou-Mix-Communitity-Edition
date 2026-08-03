@@ -97,6 +97,12 @@ var parsed_notes: Array = []
 ## 用于 retry 场景跳过重复的 MIDI 解析
 var _runtime_track_infos: Array = []
 
+## 缓存的 (track, channel) → Array[NoteEvent] 分组（运行时缓存，不持久化）
+## 由 preparse_midi_async worker 一次性构建，TrackView._build_buckets 直接复用
+## 避免主线程 O(N) 遍历 parsed_notes 重新分组，进入 TrackView 时主线程仅做 O(Buckets) 转换
+## 格式：{ "track:channel": Array[MidiParser.NoteEvent], ... }
+var runtime_track_channel_notes: Dictionary = {}
+
 ## MIDI每分钟节拍数（BPM）
 var bpm: float = 120.0
 
@@ -109,6 +115,16 @@ var bpm_timeline: Array = []
 
 ## MIDI 时间基准（ticks per quarter note），解析后缓存
 var midi_timebase: int = 480
+
+## MIDI 最大 end_tick（所有音符结束 tick 的最大值，解析后缓存）
+## 用于 NoteDisplayer ct 异常保护，避免循环播放时 ct 越界导致 active_notes 累积
+## 类型为 float 与 NoteEvent.start_time / NoteState.start_tick 对齐，避免比较时隐式转换
+var max_end_tick: float = 0.0
+
+## MIDI 解析时提取的 (track, channel) → {bank, program} 乐器映射（运行时缓存，不持久化）
+## 由 C# MidiParserNative 一次性提取，替代原 extract_track_channel_instruments 的 GDScript 遍历
+## 缓存命中时 MidiPlaybackManager.load_midi 直接复用此字段，无需重新解析
+var track_channel_instruments: Dictionary = {}
 
 ## ========== 用户配置字段（运行时可修改，需持久化）==========
 
@@ -133,11 +149,8 @@ var track_channel_volume_config: Dictionary = {}
 ## 独奏状态 (track:channel -> true)
 var solo_pairs: Dictionary = {}
 
-## 轨道-通道的乐器映射 {track_idx: {channel: {bank: int, program: int}}}
-## 在 MIDI 解析时填充，用于在 UI 中显示正确的乐器
-var track_channel_instruments: Dictionary = {}
 ## 用户自定义的轨道-通道音色覆盖 {track_idx: {channel: {bank: int, program: int, name: String}}}
-## 区别于 track_channel_instruments（MIDI解析的原始值），此字段专门存储用户覆盖配置
+## 专门存储用户覆盖配置（持久化到 JSON）；MIDI 解析的原始乐器值由 MidiPlaybackManager.cached_track_channel_instruments 持有
 var track_channel_instrument_overrides: Dictionary = {}
 
 ## 标记：音轨配置是否曾被初始化过（用于区分"新MIDI"和"所有音轨禁用"两种情况）
@@ -146,7 +159,7 @@ var _track_config_initialized: bool = false
 
 ## 从简介解析出的推荐轨道索引（仅首次加载时填充，运行时缓存，不持久化）
 ## 用于 TrackView 首次初始化时设置默认启用的轨道；为空表示简介无推荐，按原逻辑启用全部
-var _desc_recommended_tracks: Array[int] = []
+var desc_recommended_tracks: Array[int] = []
 
 ## 从JSON数据构造MIDI数据
 func from_json(json_data: Dictionary) -> void:
@@ -310,6 +323,20 @@ func is_track_channel_selected(track_idx: int, channel: int) -> bool:
 		return false
 	return channel in selected_track_configs[track_idx]
 
+## 获取扁平化的 (track, channel) 启用对，键格式为 "track:channel"，值固定为 true
+## 用于 KeySequenceManager.generate_keys 的 cache_key 一致性（MidiListItem 与 PlayView 必须用同一格式）
+## 注意：返回空字典时，调用方需结合 _track_config_initialized 判断语义：
+##   - _track_config_initialized == true → 用户主动禁用了所有轨道（显示 0 / 报错）
+##   - _track_config_initialized == false → 从未进过 TrackView，应视为"全部启用"
+func get_enabled_pairs_flat() -> Dictionary:
+	var pairs: Dictionary = {}
+	for track_index in selected_track_configs.keys():
+		var channels = selected_track_configs[track_index]
+		if channels is Array:
+			for ch in channels:
+				pairs["%d:%d" % [int(track_index), int(ch)]] = true
+	return pairs
+
 ## 设置指定(track, channel)的启用状态
 func set_track_channel_enabled(track_idx: int, channel: int, enabled: bool) -> void:
 	if enabled:
@@ -328,9 +355,13 @@ func set_track_channel_enabled(track_idx: int, channel: int, enabled: bool) -> v
 func set_soundfont(soundfont_name: String) -> void:
 	use_soundfont = soundfont_name
 
-## 清空已解析的音符列表
+## 清空已解析的音符列表与轨道信息（释放内存）
+## 保留 bpm/bpm_timeline/duration_ms/midi_timebase 等轻量字段，下次 load_midi 时
+## 仅需重新解析 MIDI 文件填充 parsed_notes + _runtime_track_infos（已通过 preparse_midi_async 线程化）
+## 调用时机：TrackView/PlayView 退出后，且无人需要原始 Note 数据时
 func clear_parsed_notes() -> void:
 	parsed_notes.clear()
+	_runtime_track_infos.clear()
 
 ## ========== (Track, Channel) 静音接口 ==========
 
@@ -382,19 +413,6 @@ func export_runtime_config() -> Dictionary:
 		"_track_config_initialized": _track_config_initialized,
 		"saved_at": Time.get_ticks_msec()
 	}
-
-## 获取轨道-通道的乐器 (bank, program)
-func get_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
-	if track_channel_instruments.has(track_index):
-		if track_channel_instruments[track_index].has(channel):
-			return track_channel_instruments[track_index][channel]
-	return {"bank": 0, "program": 0}
-
-## 设置轨道-通道的乐器
-func set_track_channel_instrument(track_index: int, channel: int, bank: int, program: int) -> void:
-	if not track_channel_instruments.has(track_index):
-		track_channel_instruments[track_index] = {}
-	track_channel_instruments[track_index][channel] = {"bank": bank, "program": program}
 
 ## ========== 用户乐器覆盖接口 ==========
 

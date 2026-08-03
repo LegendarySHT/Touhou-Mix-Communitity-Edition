@@ -27,7 +27,6 @@ const LONG_F_MODE_STRETCH = "stretch"
 ## ========== 资源索引 ==========
 ## 皮肤索引 {skin_name: SkinMetadata}
 var skins_index: Dictionary = {}
-var _scan_requested: bool = false
 ## 皮肤贴图缓存 {skin_name: Dictionary{texture_key: Texture2D}}
 var _skin_textures_cache: Dictionary = {}
 
@@ -37,60 +36,92 @@ func _ready() -> void:
 	# 在目录结构初始化完成后统一触发，确保默认皮肤已复制到位。
 	GLogger.info("SkinManager initialized (deferred scan)", "SkinMGR")
 
-## 扫描皮肤目录 - 同时扫描内置和用户皮肤
-func scan_skins() -> void:
-	# await get_tree().process_frame
-	_scan_requested = true
+## 清空皮肤索引（由 FileSystemManager._scan_all_resources 在统一扫描前调用）
+## 避免外部直接写 skins_index.clear()
+func clear_index() -> void:
 	skins_index.clear()
 
-	# 先扫描内置皮肤
-	var builtin_skins_dir = DEFAULT_SKINS_SRC
-	_scan_skins_from_dir(builtin_skins_dir, true)
+## 扫描皮肤目录（公共 API，worker 线程扫描）
+## 同时扫描内置皮肤（res://）和用户皮肤（user://）
+## 在 worker 中扫描两个目录，主线程合并到 skins_index 并构建 SkinMetadata 对象
+func scan_skins() -> void:
+	skins_index.clear()
+	var t_start := Time.get_ticks_usec()
+	var rw: Dictionary = {}
+	var task_id := WorkerThreadPool.add_task(
+		func(): _build_skins_index_worker(rw),
+		false, "ScanSkins"
+	)
+	while not WorkerThreadPool.is_task_completed(task_id):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(task_id)
 
-	# 再扫描用户皮肤
-	_scan_skins_from_dir(SKINS_DIR, false)
+	# 合并结果到 skins_index（主线程构建 SkinMetadata 对象）
+	var skins_data: Dictionary = rw.get("skins", {})
+	for skin_key in skins_data:
+		skins_index[skin_key] = SkinMetadata.from_dict(skins_data[skin_key])
 
-	GLogger.info("Scanned %d skins" % skins_index.size(), "SkinMGR")
+	# 打印收集的 logs（主线程安全调用 GLogger）
+	for log_entry in rw.get("logs", []):
+		if log_entry.get("is_warning", true):
+			GLogger.warning(log_entry.msg, "SkinMGR")
+		else:
+			GLogger.info(log_entry.msg, "SkinMGR")
 
-## 从指定目录扫描皮肤
-func _scan_skins_from_dir(dir_path: String, is_builtin: bool) -> void:
+	var t_end := Time.get_ticks_usec()
+	GLogger.info("Scanned %d skins in %.0fms" % [
+		skins_index.size(), (t_end - t_start) / 1000.0
+	], "SkinMGR")
+
+## 在 worker 线程中扫描皮肤目录（内置 + 用户）
+## 纯文件 I/O + Dictionary 操作，结果通过 result_wrapper 回传
+## 不创建 SkinMetadata（主线程合并时构建），不调用 GLogger（logs 收集到数组）
+## _load_skin_metadata 内部调用 _load_or_generate_skin_config 可能写文件（用户皮肤生成 skin.ini），并发写不同文件安全
+func _build_skins_index_worker(result_wrapper: Dictionary) -> void:
+	var local_skins: Dictionary = {}
+	var local_logs: Array = []
+
+	# 先扫描内置皮肤，再扫描用户皮肤
+	_scan_skins_from_dir_worker(DEFAULT_SKINS_SRC, true, local_skins, local_logs)
+	_scan_skins_from_dir_worker(SKINS_DIR, false, local_skins, local_logs)
+
+	result_wrapper["skins"] = local_skins
+	result_wrapper["logs"] = local_logs
+
+## worker 内部使用的目录扫描辅助函数
+## 写入 local_skins 字典（skin_key → metadata Dictionary），不创建 SkinMetadata，不让步
+func _scan_skins_from_dir_worker(dir_path: String, is_builtin: bool, local_skins: Dictionary, local_logs: Array) -> void:
 	var dir = DirAccess.open(dir_path)
 	if dir == null:
 		if is_builtin:
-			GLogger.warning("Failed to open built-in skins directory: %s" % dir_path, "SkinMGR")
+			local_logs.append({"msg": "Failed to open built-in skins directory: %s" % dir_path, "is_warning": true})
 		return
 
 	dir.list_dir_begin()
 	var folder_name = dir.get_next()
-	var _count = 0
-
 	while folder_name != "":
 		if not dir.current_is_dir() or folder_name.begins_with("."):
 			folder_name = dir.get_next()
 			continue
 
-		if dir.current_is_dir():
-			var skin_path = dir_path.path_join(folder_name)
-			var skin_key = folder_name
+		var skin_path = dir_path.path_join(folder_name)
+		var skin_key = folder_name
 
-			# 如果是内置皮肤，添加 [内置] 标记
-			if is_builtin:
-				skin_key = "%s [内置]" % folder_name
+		# 如果是内置皮肤，添加 [内置] 标记
+		if is_builtin:
+			skin_key = "%s [内置]" % folder_name
 
-			var metadata = _load_skin_metadata(skin_path, skin_key, is_builtin)
+		var metadata = _load_skin_metadata(skin_path, skin_key, is_builtin, local_logs)
 
-			if metadata != null and not metadata.is_empty():
-				skins_index[skin_key] = SkinMetadata.from_dict(metadata)
+		if metadata != null and not metadata.is_empty():
+			local_skins[skin_key] = metadata  # 保留 Dictionary 形式，主线程合并时构建 SkinMetadata
 
-		_count += 1
 		folder_name = dir.get_next()
-		if _count % 10 == 0:
-			await get_tree().process_frame
-
 	dir.list_dir_end()
 
 ## 加载皮肤元数据
-func _load_skin_metadata(skin_path: String, skin_name: String, is_builtin: bool = false) -> Dictionary:
+## logs 参数：传入 Array 则收集日志（worker 模式，避免在 worker 线程调用 GLogger）；传 null 则直接调用 GLogger（主线程模式）
+func _load_skin_metadata(skin_path: String, skin_name: String, is_builtin: bool = false, logs: Variant = null) -> Dictionary:
 	# 不再检查必需文件，允许部分贴图缺失
 	var metadata = {
 		"name": skin_name,
@@ -99,7 +130,7 @@ func _load_skin_metadata(skin_path: String, skin_name: String, is_builtin: bool 
 		"is_complete": true,
 		"missing_files": [],
 		# 皮肤级配置（光晕颜色/大小、long-f 贴图应用方式等）
-		"config": _load_or_generate_skin_config(skin_path, is_builtin)
+		"config": _load_or_generate_skin_config(skin_path, is_builtin, logs)
 	}
 
 	return metadata
@@ -108,8 +139,19 @@ func _load_skin_metadata(skin_path: String, skin_name: String, is_builtin: bool 
 ## - 用户皮肤（user://）：加载 skin.ini，缺失则生成并写入磁盘
 ## - 内置皮肤（res://）：加载 res:// 中的 skin.ini（缺失则生成默认值，不写盘），
 ##   然后检查内置皮肤覆盖目录中的 {name}.ini 是否存在，存在则用其覆盖
-func _load_or_generate_skin_config(skin_path: String, is_builtin: bool) -> Dictionary:
+## logs 参数：传入 Array 则收集日志到数组（worker 模式）；传 null 则直接调用 GLogger（主线程模式）
+func _load_or_generate_skin_config(skin_path: String, is_builtin: bool, logs: Variant = null) -> Dictionary:
 	var config_path = skin_path.path_join(SKIN_CONFIG_FILE)
+
+	# 内部辅助：日志输出，根据 logs 是否为 Array 决定走收集还是直接调用 GLogger
+	var _log = func(msg: String, is_warning: bool = true):
+		if logs is Array:
+			(logs as Array).append({"msg": msg, "is_warning": is_warning})
+		else:
+			if is_warning:
+				GLogger.warning(msg, "SkinMGR")
+			else:
+				GLogger.info(msg, "SkinMGR")
 
 	# 1. 尝试加载已存在的 skin.ini
 	var config: Dictionary = {}
@@ -117,15 +159,15 @@ func _load_or_generate_skin_config(skin_path: String, is_builtin: bool) -> Dicti
 		config = _load_skin_config_from_file(config_path)
 		if config.is_empty():
 			# 加载失败（文件损坏等）：回退到自动生成，并打印警告
-			GLogger.warning("Skin config corrupted, regenerating: %s" % config_path, "SkinMGR")
+			_log.call("Skin config corrupted, regenerating: %s" % config_path, true)
 			config = _generate_default_skin_config(skin_path)
 	else:
 		# 2. 自动生成默认配置
 		config = _generate_default_skin_config(skin_path)
 		# 用户皮肤写入磁盘；内置皮肤跳过（res:// 在导出后为只读）
 		if not is_builtin:
-			_save_skin_config_to_file(config_path, config)
-			GLogger.info("Generated skin config: %s" % config_path, "SkinMGR")
+			_save_skin_config_to_file(config_path, config, logs)
+			_log.call("Generated skin config: %s" % config_path, false)
 
 	# 3. 内置皮肤：检查覆盖配置，存在则用其替代
 	if is_builtin:
@@ -134,9 +176,9 @@ func _load_or_generate_skin_config(skin_path: String, is_builtin: bool) -> Dicti
 		if PathHelper.file_exists(override_path):
 			var override = _load_skin_config_from_file(override_path)
 			if not override.is_empty():
-				GLogger.info("Loaded builtin skin override config: %s" % override_path, "SkinMGR")
+				_log.call("Loaded builtin skin override config: %s" % override_path, false)
 				return override
-			GLogger.warning("Builtin skin override config corrupted, using default: %s" % override_path, "SkinMGR")
+			_log.call("Builtin skin override config corrupted, using default: %s" % override_path, true)
 
 	return config
 
@@ -236,11 +278,16 @@ func _parse_color(value) -> Color:
 	return col
 
 ## 将结构化配置 Dictionary 写入 skin.ini 文件
-func _save_skin_config_to_file(config_path: String, config: Dictionary) -> void:
+## logs 参数：传入 Array 则收集日志到数组（worker 模式，避免在 worker 线程调用 GLogger）；传 null 则直接调用 GLogger（主线程模式）
+func _save_skin_config_to_file(config_path: String, config: Dictionary, logs: Variant = null) -> void:
 	var content = _serialize_skin_config(config)
 	var file = FileAccess.open(config_path, FileAccess.WRITE)
 	if file == null:
-		GLogger.warning("Failed to write skin config: %s" % config_path, "SkinMGR")
+		var msg = "Failed to write skin config: %s" % config_path
+		if logs is Array:
+			(logs as Array).append({"msg": msg, "is_warning": true})
+		else:
+			GLogger.warning(msg, "SkinMGR")
 		return
 	file.store_string(content)
 	file.close()

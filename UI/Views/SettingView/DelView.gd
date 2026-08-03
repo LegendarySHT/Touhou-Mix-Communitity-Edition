@@ -46,14 +46,11 @@ var _item_sum_scroll_state: TextScrollHelper.State = null
 
 # ── TopBar 控件 ──
 @onready var _search_box := $Content/PC/TopBar/SearchBox as LineEdit
-@onready var _order_btn := $Content/PC/TopBar/OrderBtn as Button
 
 var _current_tab: Tab = Tab.MIDI
-var _tab_sort_ascending: Array[bool] = [true, true, true, true, true]
 var _search_query: String = ""
 
 # MIDI 数据
-var _midi_path_map: Dictionary = {}             # chart_id → folder_path
 var _midi_selected: Dictionary = {}              # midi_id → bool
 var _midi_root_map: Dictionary = {}              # album_id → TreeRoot node
 var _midi_item_map: Dictionary = {}              # midi_id → TreeItem node
@@ -75,13 +72,36 @@ var _skin_nodes: Dictionary = {}                 # index → TreeRoot node
 var _bg_items: Array[Dictionary] = []
 var _bg_nodes: Dictionary = {}                   # index → TreeRoot node
 
-# 缓存标记 & 构建锁
+# 缓存标记（构建锁由 LazyListLoader 内部管理）
 var _tab_data_built: Array[bool] = [false, false, false, false, false]
-var _build_loading: bool = false
+
+# 懒加载器（每标签页一个）
+var _midi_loader: LazyListLoader
+var _audio_loader: LazyListLoader
+var _sf2_loader: LazyListLoader
+var _skin_loader: LazyListLoader
+var _bg_loader: LazyListLoader
+
+# DelView 是否已展示过（懒加载守卫：未进入前不构建）
+var _delview_entered: bool = false
+
+# 构建上下文（工厂函数使用，避免 Callable.bind 分配）
+var _midi_build_albums: Array = []
+var _midi_build_total: int = 0
+
+# MIDI 扁平搜索模式（搜索词非空时切换为单层 TreeItem 列表，沿用 SortEngine.search_midis）
+var _midi_search_flat: bool = false
+var _midi_build_flat_items: Array[MidiData] = []
 
 
 func _ready() -> void:
-	print("[DelView] _ready start")
+	# 创建 5 个懒加载器（MIDI/Audio 每组让一帧，SF2/Skin/BG 每 5 项让一帧）
+	_midi_loader = LazyListLoader.new(1)
+	_audio_loader = LazyListLoader.new(1)
+	_sf2_loader = LazyListLoader.new(5)
+	_skin_loader = LazyListLoader.new(5)
+	_bg_loader = LazyListLoader.new(5)
+
 	for i in _tab_buttons.size():
 		_tab_buttons[i].pressed.connect(_on_tab_button_pressed.bind(i))
 
@@ -92,41 +112,105 @@ func _ready() -> void:
 	DataMGR.data_loaded.connect(_on_data_loaded)
 
 	_search_box.text_changed.connect(_on_search_text_changed)
-	_order_btn.pressed.connect(_on_order_btn_pressed)
 
-	print("[DelView] _ready calling _switch_tab(MIDI)")
-	_switch_tab(Tab.MIDI)
-	print("[DelView] _ready done")
+	# 监听状态变化：离开 SETTINGS_VIEW 时释放全部节点
+	UiStatMGR.state_changed.connect(_on_ui_state_changed)
+
+	# 仅设置初始 tab 视觉状态，不触发构建（懒加载：进入 DelView 时才构建）
+	_current_tab = Tab.MIDI
+	_tab_buttons[Tab.MIDI].set_pressed_no_signal(true)
+	_page_container.current_tab = Tab.MIDI
+	_tab_title.text = "MIDI 谱面管理"
+	_update_item_sum("未加载")
+	_collapse_toggle.visible = true
+	_select_toggle.disabled = true
+	_delete_btn.disabled = true
+
+	# 注册主题应用者并首次着色
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+func apply_theme() -> void:
+	var sidebar := get_node_or_null("SideBar") as VBoxContainer
+	if sidebar:
+		ThemeMGR._theme_button_set_color(sidebar.theme, ThemeMGR.get_color("primary"))
+		var pressed := sidebar.theme.get_stylebox("pressed", "Button")
+		if pressed:
+			pressed.bg_color = ThemeMGR.get_color("primary_dark").darkened(0.5)
+	var top_panel := get_node_or_null("Content/PC") as PanelContainer
+	if top_panel:
+		var sb := top_panel.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			sb.bg_color = ThemeMGR.get_color("primary_dark")
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
 
 
 # ============================================================
-# Tab 切换
+# 生命周期（由 SettingView 调用）
 # ============================================================
 
-func _on_tab_button_pressed(idx: int) -> void:
-	if idx == _current_tab:
-		return
-	_switch_tab(idx as Tab)
+## 进入 DelView（SettingView.switch_page(-1) 调用）：触发当前 tab 构建
+func on_entered() -> void:
+	_delview_entered = true
+	_ensure_tab_built(_current_tab)
 
 
-func _switch_tab(tab: Tab) -> void:
-	print("[DelView] _switch_tab: %d, cached=%s" % [tab, _tab_data_built[tab]])
-	_current_tab = tab
-	_tab_buttons[tab].set_pressed_no_signal(true)
-	_page_container.current_tab = tab
+## 返回设置主页（SettingView.switch_page(1) 调用）：保留节点，再进入立即可见
+func on_exited_to_setting_list() -> void:
+	pass
 
-	_order_btn.icon = load("res://Resources/icon/Sort/Ordering/Ascent.png" if _tab_sort_ascending[tab] else "res://Resources/icon/Sort/Ordering/Descent.png")
-	_search_box.text = ""
+
+## 离开 SETTINGS_VIEW 时释放全部节点
+func _on_ui_state_changed(_old: int, new: int) -> void:
+	if new != UIStateManager.UIState.SETTINGS_VIEW:
+		_release_all_loaders()
+
+
+## 释放所有 loader 的节点 + 重置状态
+func _release_all_loaders() -> void:
+	for loader in [_midi_loader, _audio_loader, _sf2_loader, _skin_loader, _bg_loader]:
+		if loader:
+			loader.cancel()
+	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_selected, _midi_album_order, _midi_album_midi_map])
+	_clear_page(_audio_list, [_audio_root_map, _audio_item_map, _audio_group_order, _audio_items_in_group, _audio_items])
+	_clear_page(_sf2_list, [_sf2_nodes, _sf2_items])
+	_clear_page(_skin_list, [_skin_nodes, _skin_items])
+	_clear_page(_bg_list, [_bg_nodes, _bg_items])
+	_tab_data_built = [false, false, false, false, false]
+	_delview_entered = false
+	_midi_search_flat = false
+	if _search_box:
+		_search_box.text = ""
 	_search_query = ""
+	_update_item_sum("未加载")
+	_select_toggle.set_pressed_no_signal(false)
+	_select_toggle.disabled = true
+	_delete_btn.disabled = true
 
-	_collapse_toggle.visible = (tab == Tab.MIDI or tab == Tab.AUDIO)
 
+## 获取指定 tab 的 loader
+func _get_loader(tab: Tab) -> LazyListLoader:
+	match tab:
+		Tab.MIDI: return _midi_loader
+		Tab.AUDIO: return _audio_loader
+		Tab.SF2: return _sf2_loader
+		Tab.SKIN: return _skin_loader
+		Tab.BG: return _bg_loader
+	return null
+
+
+## 确保指定 tab 已构建（懒加载守卫；fire-and-forget 异步构建）
+func _ensure_tab_built(tab: Tab) -> void:
 	if _tab_data_built[tab]:
-		print("[DelView] Tab %d cached, updating header only" % tab)
-		_update_tab_header(tab)
-		_apply_search_filter()
 		return
-
+	var loader := _get_loader(tab)
+	if loader and loader.is_building():
+		return
 	match tab:
 		Tab.MIDI:
 			_tab_title.text = "MIDI 谱面管理"
@@ -143,6 +227,56 @@ func _switch_tab(tab: Tab) -> void:
 		Tab.BG:
 			_tab_title.text = "背景管理"
 			_build_bg_page()
+
+
+# ============================================================
+# Tab 切换
+# ============================================================
+
+func _on_tab_button_pressed(idx: int) -> void:
+	if idx == _current_tab:
+		return
+	_switch_tab(idx as Tab)
+
+
+func _switch_tab(tab: Tab) -> void:
+	if tab == _current_tab:
+		return
+	# 取消旧 tab 的 in-flight build
+	var old_loader := _get_loader(_current_tab)
+	if old_loader:
+		old_loader.cancel()
+	_current_tab = tab
+	_tab_buttons[tab].set_pressed_no_signal(true)
+	_page_container.current_tab = tab
+
+	_search_box.text = ""
+	_search_query = ""
+	# 切走 MIDI tab 时重置扁平搜索模式（再切回时按两层构建）
+	if tab != Tab.MIDI:
+		_midi_search_flat = false
+
+	_collapse_toggle.visible = (tab == Tab.MIDI or tab == Tab.AUDIO)
+
+	match tab:
+		Tab.MIDI: _tab_title.text = "MIDI 谱面管理"
+		Tab.AUDIO: _tab_title.text = "人声音频管理"
+		Tab.SF2: _tab_title.text = "SF2 音源管理"
+		Tab.SKIN: _tab_title.text = "皮肤管理"
+		Tab.BG: _tab_title.text = "背景管理"
+
+	if _tab_data_built[tab]:
+		# 已缓存：仅更新 header + 搜索
+		_update_tab_header(tab)
+		_apply_search_filter()
+		return
+
+	# 未构建：显示"加载中"，若已进入 DelView 则触发构建
+	_update_item_sum("加载中...")
+	_select_toggle.disabled = true
+	_delete_btn.disabled = true
+	if _delview_entered:
+		_ensure_tab_built(tab)
 
 
 func _on_select_toggled(toggled: bool) -> void:
@@ -203,182 +337,112 @@ func _update_tab_header(tab: Tab) -> void:
 # ============================================================
 
 func _build_midi_page() -> void:
-	print("[DelView] _build_midi_page called, loading=%s" % _build_loading)
-	if _build_loading:
-		return
-	_build_loading = true
 	_tab_data_built[Tab.MIDI] = false
-
-	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_path_map, _midi_selected])
-	_midi_album_order.clear()
-	_midi_album_midi_map.clear()
-
-	# 显示加载中并让 UI 先响应一帧（避免进入动画被同步构建阻塞）
+	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_selected, _midi_album_order, _midi_album_midi_map])
 	_update_item_sum("加载中...")
 	_update_midi_toggle_state()
-	await get_tree().process_frame
 
-	# 构建 chart_id → path 映射
-	var charts_index := FileSystemManager.instance.get_charts_index()
-	for folder_name in charts_index:
-		var meta: ChartMetadata = charts_index[folder_name]
-		_midi_path_map[meta.id] = meta.path
+	# 等待 FileSystemManager 扫描 + 后台缓存校验全部完成
+	# 防止用户在 charts_index 重建期间删除条目，导致 rescan 与校验协程并发 clobber
+	if FileSystemManager.instance.is_busy():
+		_update_item_sum("资源扫描中...")
+		await FileSystemManager.instance.await_busy_done()
+		# 等待期间若 tab 切走 / 退出 DelView，放弃构建
+		if _current_tab != Tab.MIDI or not _delview_entered:
+			return
 
 	var dm := DataMGR
-	print("[DelView] DataMGR midis: %d, midi_tree albums: %d" % [dm.midis.size(), dm.midi_tree.size()])
-
 	if dm.midi_tree.is_empty() and dm.midis.is_empty():
 		if dm.is_loading:
-			print("[DelView] DataMGR still loading, waiting for signal")
 			_update_item_sum("数据加载中...")
-			_update_midi_toggle_state()
-			_build_loading = false
-			return
 		else:
-			print("[DelView] No MIDI data, showing empty state")
 			_update_item_sum("无谱面数据")
-			_update_midi_toggle_state()
 			_tab_data_built[Tab.MIDI] = true
-			_build_loading = false
-			return
-
-	# 按 album 分组
-	var album_midi_map: Dictionary = {}
-	var accounted_midis: Array[String] = []
-
-	for album_id in dm.midi_tree:
-		var song_dict: Dictionary = dm.midi_tree[album_id]
-		if not album_midi_map.has(album_id):
-			album_midi_map[album_id] = []
-		for song_id in song_dict:
-			var midi_ids: Array = song_dict[song_id]
-			for midi_id in midi_ids:
-				album_midi_map[album_id].append(midi_id)
-				accounted_midis.append(midi_id)
-
-	for midi_id in dm.midis:
-		if midi_id not in accounted_midis:
-			if not album_midi_map.has("__unknown__"):
-				album_midi_map["__unknown__"] = []
-			album_midi_map["__unknown__"].append(midi_id)
-
-	print("[DelView] Albums to display: %d" % album_midi_map.size())
-
-	# 预建 midi_id → name 缓存，加速排序与过滤时的名称查找（避免每次都查 dm.midis）
-	var midi_name_cache: Dictionary = {}
-	for midi_id in accounted_midis:
-		var md: MidiData = dm.midis.get(midi_id)
-		if md:
-			midi_name_cache[midi_id] = md.name
-
-	# 排序专辑
-	var album_ids := album_midi_map.keys()
-	album_ids.sort_custom(func(a, b):
-		if a == "__unknown__":
-			return false
-		if b == "__unknown__":
-			return true
-		var na = dm.albums[a].name if dm.albums.has(a) else a
-		var nb = dm.albums[b].name if dm.albums.has(b) else b
-		return na < nb if _tab_sort_ascending[_current_tab] else na > nb
-	)
-	_midi_album_order = album_ids
-
-	var total_count := 0
-	var items_since_yield := 0
-	const YIELD_INTERVAL := 20  # 每 20 个节点 yield 一次，保证 UI 不卡且能看到渐进加载
-
-	for idx in album_ids.size():
-		var album_id: String = album_ids[idx]
-		var album_name: String
-		if album_id == "__unknown__":
-			album_name = "Unknown"
-		elif dm.albums.has(album_id):
-			album_name = dm.albums[album_id].name
-		else:
-			album_name = album_id
-
-		var midi_ids: Array = album_midi_map[album_id]
-		# 排序专辑内的 MIDI（用预建缓存，避免每次比较都查 dm.midis + as 转换）
-		midi_ids.sort_custom(func(a, b):
-			var na: String = midi_name_cache.get(a, "")
-			var nb: String = midi_name_cache.get(b, "")
-			return na < nb if _tab_sort_ascending[_current_tab] else na > nb
-		)
-		_midi_album_midi_map[album_id] = midi_ids
-
-		# 用搜索词过滤后计数（专辑名匹配时其下所有谱面都显示）
-		var album_match := _search_query.is_empty() or _search_query.to_lower() in album_name.to_lower()
-		var filtered_count := 0
-		for midi_id in midi_ids:
-			var midi_name: String = midi_name_cache.get(midi_id, "")
-			if not _search_query.is_empty() and not album_match and not _search_query.to_lower() in midi_name.to_lower():
-				continue
-			filtered_count += 1
-
-		if filtered_count == 0:
-			continue  # 无匹配子项，跳过整个专辑
-
-		# 创建 TreeRoot（专辑）
-		var root_node := _create_tree_root(album_name, "%d 首" % filtered_count, album_id)
-		_midi_list.add_child(root_node)
-		_midi_root_map[album_id] = root_node
-		# 连接勾选信号
-		var root_cb := root_node.get_node("CheckBox") as CheckBox
-		root_cb.toggled.connect(_on_midi_root_checkbox_toggled.bind(album_id))
-		items_since_yield += 1
-
-		for midi_id in midi_ids:
-			var midi_data: MidiData = dm.midis.get(midi_id)
-			if not midi_data:
-				continue
-
-			var midi_name: String = midi_name_cache.get(midi_id, "")
-			if not _search_query.is_empty() and not album_match and not _search_query.to_lower() in midi_name.to_lower():
-				continue
-
-			var author := midi_data.artist_name if not midi_data.artist_name.is_empty() else "-"
-			var name_text := "    %s" % midi_data.name
-
-			var item_node := _create_tree_item(name_text, author)
-			_midi_list.add_child(item_node)
-			_midi_item_map[midi_id] = item_node
-			_midi_selected[midi_id] = false
-
-			# 连接勾选信号
-			var item_cb := item_node.get_node("CheckBox") as CheckBox
-			item_cb.toggled.connect(_on_midi_item_checkbox_toggled.bind(midi_id, album_id))
-
-			total_count += 1
-			items_since_yield += 1
-			if items_since_yield >= YIELD_INTERVAL:
-				items_since_yield = 0
-				await get_tree().process_frame
-				# 构建期间切了 Tab，中止
-				if _current_tab != Tab.MIDI:
-					_build_loading = false
-					return
-
-	# 构建期间切了 Tab，不覆写当前页面的 header
-	if _current_tab != Tab.MIDI:
-		_build_loading = false
 		return
 
-	print("[DelView] Total MIDI items created: %d" % total_count)
-	_update_item_sum("共 %d 首谱面" % total_count)
+	# 数据源：按专辑名升序排序，Unknown 始终排最后
+	_midi_build_albums = _sort_albums_for_delview(dm.albums.values())
+	if _midi_build_albums.is_empty():
+		_update_item_sum("无谱面数据")
+		_tab_data_built[Tab.MIDI] = true
+		return
+
+	_midi_build_total = 0
+	var completed: bool = await _midi_loader.build(_midi_build_albums.size(), _create_midi_album_group)
+	if not completed:
+		return  # 被取消（切 tab / 退出 DelView / 删除流程）
+	if _current_tab != Tab.MIDI:
+		return  # 构建期间切走，不覆写当前页 header
+	_update_item_sum("共 %d 首谱面" % _midi_build_total)
 	_update_midi_toggle_state()
 	await _apply_scrolls_to_container(_midi_list)
 	_tab_data_built[Tab.MIDI] = true
-	_build_loading = false
-
-	# 确保 header 显示与实际内容一致
 	_update_tab_header(Tab.MIDI)
+	# 构建期间用户输入了搜索词，build 完成后补一次过滤
+	if not _search_query.is_empty():
+		_apply_search_filter()
+
+
+## MIDI 工厂：创建一个专辑分组（TreeRoot + 其下所有 TreeItem）
+## 返回 Array[Node]（已 add_child）；返回 null 请求中止构建
+func _create_midi_album_group(album_index: int) -> Variant:
+	if _current_tab != Tab.MIDI:
+		return null  # 请求中止
+	var album: AlbumData = _midi_build_albums[album_index]
+	var created: Array = []
+	var album_midis: Array[String] = []
+
+	# 创建 TreeRoot（专辑）
+	var root_node := _create_tree_root(album.name, "%d 首" % album.total_midi_count, album.id)
+	_midi_list.add_child(root_node)
+	_midi_root_map[album.id] = root_node
+	_midi_album_order.append(album.id)
+	created.append(root_node)
+
+	var root_cb := root_node.get_node("CheckBox") as CheckBox
+	root_cb.toggled.connect(_on_midi_root_checkbox_toggled.bind(album.id))
+
+	# 遍历歌曲 → 谱面，创建 TreeItem
+	for song in DataMGR.get_songs_by_album(album.id):
+		for midi in DataMGR.get_midis_by_song(song.id):
+			var author := midi.artist_name if not midi.artist_name.is_empty() else "-"
+			var item_node := _create_tree_item("    %s" % midi.name, author)
+			_midi_list.add_child(item_node)
+			_midi_item_map[midi.id] = item_node
+			_midi_selected[midi.id] = false
+			album_midis.append(midi.id)
+			created.append(item_node)
+
+			var item_cb := item_node.get_node("CheckBox") as CheckBox
+			item_cb.toggled.connect(_on_midi_item_checkbox_toggled.bind(midi.id, album.id))
+			_midi_build_total += 1
+
+	_midi_album_midi_map[album.id] = album_midis
+	return created
+
+
+## 按专辑名升序排序（Unknown 始终排最后）
+func _sort_albums_for_delview(albums: Array) -> Array[AlbumData]:
+	var unknown: Array[AlbumData] = []
+	var normal: Array[AlbumData] = []
+	for a in albums:
+		if a is AlbumData:
+			if a.id.begins_with("__unknown"):
+				unknown.append(a)
+			else:
+				normal.append(a)
+	normal.sort_custom(func(a: AlbumData, b: AlbumData) -> bool:
+		return a.name < b.name
+	)
+	normal.append_array(unknown)
+	return normal
 
 
 func _on_data_loaded() -> void:
-	print("[DelView] data_loaded signal received")
-	if Tab.MIDI == _current_tab:
-		_tab_data_built[Tab.MIDI] = false
+	# 数据加载完成：标记 MIDI 页需重建；若 DelView 已进入且当前在 MIDI 页则立即重建
+	_tab_data_built[Tab.MIDI] = false
+	if _delview_entered and _current_tab == Tab.MIDI:
+		_midi_loader.cancel()
 		_build_midi_page()
 
 # ── MIDI 勾选逻辑 ──
@@ -439,6 +503,17 @@ func _update_root_check_state(album_id: String) -> void:
 
 func _on_midi_select_toggled(toggled: bool) -> void:
 	_select_toggle.text = "取消全选" if toggled else "全选"
+	if _midi_search_flat:
+		# 扁平模式：直接遍历 _midi_item_map（无 root 节点）
+		for midi_id in _midi_selected:
+			_midi_selected[midi_id] = toggled
+			if _midi_item_map.has(midi_id):
+				var item_node: HBoxContainer = _midi_item_map[midi_id]
+				var cb := item_node.get_node("CheckBox") as CheckBox
+				cb.set_pressed_no_signal(toggled)
+		_update_midi_toggle_state()
+		return
+	# 两层模式：按专辑分组更新（含 root checkbox）
 	for album_id in _midi_root_map:
 		var midi_ids: Array = _midi_album_midi_map.get(album_id, [])
 		for midi_id in midi_ids:
@@ -487,15 +562,13 @@ func _on_midi_delete_selected() -> void:
 	if to_delete.is_empty():
 		return
 
-	# 先收集路径信息，然后立即清空页面（视觉即时反馈）
-	var path_map: Dictionary = {}
-	for midi_id in to_delete:
-		path_map[midi_id] = _midi_path_map.get(midi_id, "")
+	# 取消进行中的 build，避免删除过程中工厂继续往已清空的容器写入
+	_midi_loader.cancel()
 
+	# 先清空页面（视觉即时反馈）
 	_clear_page(_midi_list, [_midi_root_map, _midi_item_map])
 	_midi_album_order.clear()
 	_midi_album_midi_map.clear()
-	_midi_path_map.clear()
 	_midi_selected.clear()
 	_update_midi_toggle_state()
 	await get_tree().process_frame
@@ -503,19 +576,15 @@ func _on_midi_delete_selected() -> void:
 	# 清除搜索状态，确保重建后显示全部内容
 	_search_box.text = ""
 	_search_query = ""
+	_midi_search_flat = false
 
 	for midi_id in to_delete:
-		var path: String = path_map.get(midi_id, "")
-		if path.is_empty():
-			push_error("[DelView] 找不到谱面路径: %s" % midi_id)
-			continue
 		if FileSystemManager.instance.delete_chart(midi_id):
-			print("[DelView] 已删除谱面: %s" % path)
 			DataMGR.remove_midi(midi_id)
 			# 通知其他视图刷新
 			EvtBus.midi_deleted.emit(midi_id)
 		else:
-			push_error("[DelView] 删除失败: %s" % path)
+			push_error("[DelView] 删除失败: %s" % midi_id)
 
 	await get_tree().process_frame
 	_build_midi_page()
@@ -526,26 +595,18 @@ func _on_midi_delete_selected() -> void:
 # ============================================================
 
 func _build_audio_page() -> void:
-	print("[DelView] _build_audio_page called, loading=%s" % _build_loading)
-	if _build_loading:
-		return
-	_build_loading = true
 	_tab_data_built[Tab.AUDIO] = false
-
 	_clear_page(_audio_list, [_audio_root_map, _audio_item_map])
 	_audio_group_order.clear()
 	_audio_items_in_group.clear()
 
 	_update_item_sum("扫描中...")
-	await get_tree().process_frame
-
 	_audio_items = await _scan_audio_files()
 
 	if _audio_items.is_empty():
 		_update_item_sum("无音频文件")
 		_update_flat_toggle_state(_audio_items)
 		_tab_data_built[Tab.AUDIO] = true
-		_build_loading = false
 		return
 
 	# 按 song_name 分组
@@ -558,56 +619,60 @@ func _build_audio_page() -> void:
 
 	# 排序分组
 	var group_names := groups.keys()
-	group_names.sort_custom(func(a, b): return a < b if _tab_sort_ascending[_current_tab] else a > b)
+	group_names.sort_custom(func(a, b): return a < b)
 	_audio_group_order = group_names
 	_audio_items_in_group = groups
 
-	for gi in group_names.size():
-		var song_name: String = group_names[gi]
-		var indices: Array = groups[song_name]
-		var file_count := indices.size()
-
-		# 创建 TreeRoot
-		var root_node := _create_tree_root(song_name, "%d 个" % file_count, song_name)
-		_audio_list.add_child(root_node)
-		_audio_root_map[song_name] = root_node
-
-		var root_cb := root_node.get_node("CheckBox") as CheckBox
-		root_cb.toggled.connect(_on_audio_root_checkbox_toggled.bind(song_name))
-
-		for idx in indices:
-			var item: Dictionary = _audio_items[idx]
-			var fmt: String = item.get("format", "")
-			var item_node := _create_tree_item(item["file_name"], fmt)
-			_audio_list.add_child(item_node)
-			_audio_item_map[idx] = item_node
-
-			var item_cb := item_node.get_node("CheckBox") as CheckBox
-			item_cb.toggled.connect(_on_audio_item_checkbox_toggled.bind(idx, song_name))
-
-		if gi % 5 == 4:
-			await get_tree().process_frame
-
-	# 构建期间切了 Tab，不覆写当前页面的 header
-	if _current_tab != Tab.AUDIO:
-		_build_loading = false
+	var completed: bool = await _audio_loader.build(group_names.size(), _create_audio_group)
+	if not completed:
 		return
-
+	if _current_tab != Tab.AUDIO:
+		return
 	_update_item_sum("共 %d 个音频文件" % _audio_items.size())
 	_update_flat_toggle_state(_audio_items)
 	await _apply_scrolls_to_container(_audio_list)
 	_tab_data_built[Tab.AUDIO] = true
-	_build_loading = false
-
-	# 确保 header 显示与实际内容一致
 	_update_tab_header(Tab.AUDIO)
+	if not _search_query.is_empty():
+		_apply_search_filter()
+
+
+## Audio 工厂：创建一个 song_name 分组（TreeRoot + 该组所有音频 TreeItem）
+func _create_audio_group(group_index: int) -> Variant:
+	if _current_tab != Tab.AUDIO:
+		return null
+	var song_name: String = _audio_group_order[group_index]
+	var indices: Array = _audio_items_in_group[song_name]
+	var created: Array = []
+
+	# 创建 TreeRoot
+	var root_node := _create_tree_root(song_name, "%d 个" % indices.size(), song_name)
+	_audio_list.add_child(root_node)
+	_audio_root_map[song_name] = root_node
+	created.append(root_node)
+
+	var root_cb := root_node.get_node("CheckBox") as CheckBox
+	root_cb.toggled.connect(_on_audio_root_checkbox_toggled.bind(song_name))
+
+	for idx in indices:
+		var item: Dictionary = _audio_items[idx]
+		var fmt: String = item.get("format", "")
+		var item_node := _create_tree_item(item["file_name"], fmt)
+		_audio_list.add_child(item_node)
+		_audio_item_map[idx] = item_node
+		created.append(item_node)
+
+		var item_cb := item_node.get_node("CheckBox") as CheckBox
+		item_cb.toggled.connect(_on_audio_item_checkbox_toggled.bind(idx, song_name))
+
+	return created
 
 
 func _scan_audio_files() -> Array[Dictionary]:
 	# 优先从 FileSystemManager 索引读取
+	var result: Array[Dictionary] = []
 	var fs_mgr = FileSystemManager.instance
 	if fs_mgr and not fs_mgr.audio_files_index.is_empty():
-		var result: Array[Dictionary] = []
 		for entry in fs_mgr.audio_files_index:
 			result.append({
 				"file_name": entry["file_name"],
@@ -617,9 +682,8 @@ func _scan_audio_files() -> Array[Dictionary]:
 				"selected": false,
 			})
 		return result
-	
+
 	# 回退：独立扫描文件系统
-	var result: Array[Dictionary] = []
 	var charts_dir := PathHelper.get_charts_dir()
 	if not DirAccess.dir_exists_absolute(charts_dir):
 		return result
@@ -656,10 +720,10 @@ func _scan_audio_files() -> Array[Dictionary]:
 	dir.list_dir_end()
 
 	result.sort_custom(func(a, b):
-		var cmp_song = a["song_name"] < b["song_name"] if _tab_sort_ascending[_current_tab] else a["song_name"] > b["song_name"]
+		var cmp_song = a["song_name"] < b["song_name"]
 		if cmp_song: return true
-		if a["song_name"] > b["song_name"] if _tab_sort_ascending[_current_tab] else a["song_name"] < b["song_name"]: return false
-		return a["format"] < b["format"] if _tab_sort_ascending[_current_tab] else a["format"] > b["format"]
+		if a["song_name"] > b["song_name"]: return false
+		return a["format"] < b["format"]
 	)
 	return result
 
@@ -738,6 +802,9 @@ func _on_audio_delete_selected() -> void:
 	if to_delete.is_empty():
 		return
 
+	# 取消进行中的 build
+	_audio_loader.cancel()
+
 	# 先清空页面（视觉即时反馈）
 	_clear_page(_audio_list, [_audio_root_map, _audio_item_map])
 	_audio_group_order.clear()
@@ -752,7 +819,7 @@ func _on_audio_delete_selected() -> void:
 
 	for item in to_delete:
 		if FileSystemManager.instance.delete_audio(item["path"]):
-			print("[DelView] 已删除音频: %s" % item["file_name"])
+			pass
 		else:
 			push_error("[DelView] 删除失败: %s" % item["path"])
 
@@ -765,11 +832,7 @@ func _on_audio_delete_selected() -> void:
 # ============================================================
 
 func _build_sf2_page() -> void:
-	if _build_loading:
-		return
-	_build_loading = true
 	_tab_data_built[Tab.SF2] = false
-
 	_clear_page(_sf2_list, [_sf2_nodes])
 	_sf2_items = _scan_sf2_files()
 
@@ -777,47 +840,58 @@ func _build_sf2_page() -> void:
 		_update_item_sum("无 SF2 音源")
 		_update_flat_toggle_state(_sf2_items)
 		_tab_data_built[Tab.SF2] = true
-		_build_loading = false
 		return
 
-	for i in _sf2_items.size():
-		var item: Dictionary = _sf2_items[i]
-		var display_name: String = item["file_name"]
-		if item["is_builtin"]:
-			display_name += " [内置]"
-		var size_text := "%.1f MB" % item["size_mb"]
-
-		var root_node := _create_tree_root(display_name, size_text, "")
-		root_node.set_meta("flat_index", i)
-		_sf2_list.add_child(root_node)
-		_sf2_nodes[i] = root_node
-
-		var cb := root_node.get_node("CheckBox") as CheckBox
-		cb.button_pressed = item["selected"]
-		if item["is_builtin"]:
-			cb.disabled = true
-		cb.toggled.connect(func(on: bool):
-			_sf2_items[i]["selected"] = on
-			_update_flat_toggle_state(_sf2_items)
-		)
-
-		# 扁平项不折叠，隐藏点击展开事件
-		root_node.get_node("RightLabel").visible = true
-
+	var completed: bool = await _sf2_loader.build(_sf2_items.size(), _create_sf2_item)
+	if not completed:
+		return
+	if _current_tab != Tab.SF2:
+		return
 	_update_item_sum("共 %d 个音源" % _sf2_items.size())
 	_update_flat_toggle_state(_sf2_items)
 	await _apply_scrolls_to_container(_sf2_list)
 	_tab_data_built[Tab.SF2] = true
-	_build_loading = false
+	_update_tab_header(Tab.SF2)
+	if not _search_query.is_empty():
+		_apply_search_filter()
+
+
+## SF2 工厂：创建一个扁平 TreeRoot
+func _create_sf2_item(index: int) -> Variant:
+	if _current_tab != Tab.SF2:
+		return null
+	var item: Dictionary = _sf2_items[index]
+	var display_name: String = item["file_name"]
+	if item["is_builtin"]:
+		display_name += " [内置]"
+	var size_text := "%.1f MB" % item["size_mb"]
+
+	var root_node := _create_tree_root(display_name, size_text, "")
+	root_node.set_meta("flat_index", index)
+	_sf2_list.add_child(root_node)
+	_sf2_nodes[index] = root_node
+
+	var cb := root_node.get_node("CheckBox") as CheckBox
+	cb.button_pressed = item["selected"]
+	if item["is_builtin"]:
+		cb.disabled = true
+	cb.toggled.connect(func(on: bool):
+		_sf2_items[index]["selected"] = on
+		_update_flat_toggle_state(_sf2_items)
+	)
+
+	# 扁平项不折叠，隐藏点击展开事件
+	root_node.get_node("RightLabel").visible = true
+	return [root_node]
 
 
 func _scan_sf2_files() -> Array[Dictionary]:
 	# 优先从 FileSystemManager 索引读取
+	var result: Array[Dictionary] = []
 	var fs_mgr = FileSystemManager.instance
 	if fs_mgr:
 		var sf_index = fs_mgr.get_soundfonts_index()
 		if not sf_index.is_empty():
-			var result: Array[Dictionary] = []
 			for sf_name in sf_index:
 				var entry = sf_index[sf_name]
 				result.append({
@@ -828,10 +902,8 @@ func _scan_sf2_files() -> Array[Dictionary]:
 					"selected": false,
 				})
 			return result
-	
-	# 回退：独立扫描文件系统
-	var result: Array[Dictionary] = []
 
+	# 回退：独立扫描文件系统
 	var user_dir := PathHelper.get_soundfont_dir()
 	if DirAccess.dir_exists_absolute(user_dir):
 		var dir := DirAccess.open(user_dir)
@@ -887,7 +959,7 @@ func _scan_sf2_files() -> Array[Dictionary]:
 	result.sort_custom(func(a, b):
 		if a["is_builtin"] != b["is_builtin"]:
 			return not a["is_builtin"]
-		return a["file_name"] < b["file_name"] if _tab_sort_ascending[_current_tab] else a["file_name"] > b["file_name"]
+		return a["file_name"] < b["file_name"]
 	)
 	return result
 
@@ -913,9 +985,11 @@ func _on_sf2_delete_selected() -> void:
 	if to_delete.is_empty():
 		return
 
+	_sf2_loader.cancel()
+
 	for item in to_delete:
 		if FileSystemManager.instance.delete_soundfont(item["path"]):
-			print("[DelView] 已删除音源: %s" % item["file_name"])
+			pass
 		else:
 			push_error("[DelView] 删除失败: %s" % item["path"])
 
@@ -928,11 +1002,7 @@ func _on_sf2_delete_selected() -> void:
 # ============================================================
 
 func _build_skin_page() -> void:
-	if _build_loading:
-		return
-	_build_loading = true
 	_tab_data_built[Tab.SKIN] = false
-
 	_clear_page(_skin_list, [_skin_nodes])
 
 	var skins_index := SkinMGR.get_skins_index()
@@ -950,42 +1020,53 @@ func _build_skin_page() -> void:
 	_skin_items.sort_custom(func(a, b):
 		if a["is_builtin"] != b["is_builtin"]:
 			return not a["is_builtin"]
-		return a["name"] < b["name"] if _tab_sort_ascending[_current_tab] else a["name"] > b["name"]
+		return a["name"] < b["name"]
 	)
 
 	if _skin_items.is_empty():
 		_update_item_sum("无皮肤")
 		_update_flat_toggle_state(_skin_items)
 		_tab_data_built[Tab.SKIN] = true
-		_build_loading = false
 		return
 
-	for i in _skin_items.size():
-		var item: Dictionary = _skin_items[i]
-		var display_name: String = item["name"]
-		if item["is_builtin"]:
-			display_name += " [内置]"
-
-		var root_node := _create_tree_root(display_name, "", "")
-		root_node.get_node("RightLabel").visible = false  # 皮肤无格式信息
-		root_node.set_meta("flat_index", i)
-		_skin_list.add_child(root_node)
-		_skin_nodes[i] = root_node
-
-		var cb := root_node.get_node("CheckBox") as CheckBox
-		cb.button_pressed = item["selected"]
-		if item["is_builtin"]:
-			cb.disabled = true
-		cb.toggled.connect(func(on: bool):
-			_skin_items[i]["selected"] = on
-			_update_flat_toggle_state(_skin_items)
-		)
-
+	var completed: bool = await _skin_loader.build(_skin_items.size(), _create_skin_item)
+	if not completed:
+		return
+	if _current_tab != Tab.SKIN:
+		return
 	_update_item_sum("共 %d 个皮肤" % _skin_items.size())
 	_update_flat_toggle_state(_skin_items)
 	await _apply_scrolls_to_container(_skin_list)
 	_tab_data_built[Tab.SKIN] = true
-	_build_loading = false
+	_update_tab_header(Tab.SKIN)
+	if not _search_query.is_empty():
+		_apply_search_filter()
+
+
+## 皮肤工厂：创建一个扁平 TreeRoot
+func _create_skin_item(index: int) -> Variant:
+	if _current_tab != Tab.SKIN:
+		return null
+	var item: Dictionary = _skin_items[index]
+	var display_name: String = item["name"]
+	if item["is_builtin"]:
+		display_name += " [内置]"
+
+	var root_node := _create_tree_root(display_name, "", "")
+	root_node.get_node("RightLabel").visible = false  # 皮肤无格式信息
+	root_node.set_meta("flat_index", index)
+	_skin_list.add_child(root_node)
+	_skin_nodes[index] = root_node
+
+	var cb := root_node.get_node("CheckBox") as CheckBox
+	cb.button_pressed = item["selected"]
+	if item["is_builtin"]:
+		cb.disabled = true
+	cb.toggled.connect(func(on: bool):
+		_skin_items[index]["selected"] = on
+		_update_flat_toggle_state(_skin_items)
+	)
+	return [root_node]
 
 
 func _on_skin_select_toggled(toggled: bool) -> void:
@@ -1009,9 +1090,11 @@ func _on_skin_delete_selected() -> void:
 	if to_delete.is_empty():
 		return
 
+	_skin_loader.cancel()
+
 	for item in to_delete:
 		if SkinMGR.remove_skin(item["name"]):
-			print("[DelView] 已删除皮肤: %s" % item["name"])
+			pass
 		else:
 			push_error("[DelView] 皮肤已从列表移除，但文件夹删除失败，请手动清理: %s" % item["path"])
 
@@ -1024,11 +1107,7 @@ func _on_skin_delete_selected() -> void:
 # ============================================================
 
 func _build_bg_page() -> void:
-	if _build_loading:
-		return
-	_build_loading = true
 	_tab_data_built[Tab.BG] = false
-
 	_clear_page(_bg_list, [_bg_nodes])
 
 	var bg_index := FileSystemManager.instance.get_backgrounds_index()
@@ -1044,35 +1123,46 @@ func _build_bg_page() -> void:
 			"selected": false,
 		})
 
-	_bg_items.sort_custom(func(a, b): return a["name"] < b["name"] if _tab_sort_ascending[_current_tab] else a["name"] > b["name"])
+	_bg_items.sort_custom(func(a, b): return a["name"] < b["name"])
 
 	if _bg_items.is_empty():
 		_update_item_sum("无背景图片")
 		_update_flat_toggle_state(_bg_items)
 		_tab_data_built[Tab.BG] = true
-		_build_loading = false
 		return
 
-	for i in _bg_items.size():
-		var item: Dictionary = _bg_items[i]
-		var ext: String = item.get("ext", "")
-		var root_node := _create_tree_root(item["name"], ext, "")
-		root_node.set_meta("flat_index", i)
-		_bg_list.add_child(root_node)
-		_bg_nodes[i] = root_node
-
-		var cb := root_node.get_node("CheckBox") as CheckBox
-		cb.button_pressed = item["selected"]
-		cb.toggled.connect(func(on: bool):
-			_bg_items[i]["selected"] = on
-			_update_flat_toggle_state(_bg_items)
-		)
-
+	var completed: bool = await _bg_loader.build(_bg_items.size(), _create_bg_item)
+	if not completed:
+		return
+	if _current_tab != Tab.BG:
+		return
 	_update_item_sum("共 %d 张背景" % _bg_items.size())
 	_update_flat_toggle_state(_bg_items)
 	await _apply_scrolls_to_container(_bg_list)
 	_tab_data_built[Tab.BG] = true
-	_build_loading = false
+	_update_tab_header(Tab.BG)
+	if not _search_query.is_empty():
+		_apply_search_filter()
+
+
+## 背景工厂：创建一个扁平 TreeRoot
+func _create_bg_item(index: int) -> Variant:
+	if _current_tab != Tab.BG:
+		return null
+	var item: Dictionary = _bg_items[index]
+	var ext: String = item.get("ext", "")
+	var root_node := _create_tree_root(item["name"], ext, "")
+	root_node.set_meta("flat_index", index)
+	_bg_list.add_child(root_node)
+	_bg_nodes[index] = root_node
+
+	var cb := root_node.get_node("CheckBox") as CheckBox
+	cb.button_pressed = item["selected"]
+	cb.toggled.connect(func(on: bool):
+		_bg_items[index]["selected"] = on
+		_update_flat_toggle_state(_bg_items)
+	)
+	return [root_node]
 
 
 func _on_bg_select_toggled(toggled: bool) -> void:
@@ -1094,11 +1184,12 @@ func _on_bg_delete_selected() -> void:
 	if to_delete.is_empty():
 		return
 
+	_bg_loader.cancel()
+
 	for item in to_delete:
 		if FileSystemManager.instance.delete_background(item["path"]):
 			# 同步清除 ThemeManager 的背景图片缓存，避免缓存指向已删除文件
 			ThemeMGR.invalidate_background_cache(item["name"])
-			print("[DelView] 已删除背景: %s" % item["name"])
 		else:
 			push_error("[DelView] 删除失败: %s" % item["path"])
 
@@ -1192,12 +1283,18 @@ func _on_search_text_changed(new_text: String) -> void:
 
 
 func _apply_search_filter() -> void:
+	# MIDI 页走独立的扁平搜索逻辑（沿用 SortEngine.search_midis）
+	# _search_midi_flat / _build_midi_page 内部会主动 cancel 当前 build 并重建
+	if _current_tab == Tab.MIDI:
+		_apply_midi_search_filter()
+		return
+	# 其他 tab：构建进行中时忽略（这些 tab 的搜索只切换可见性，build 完成后会补一次）
+	var cur_loader := _get_loader(_current_tab)
+	if cur_loader and cur_loader.is_building():
+		return
 	# 空搜索：恢复全部可见
 	if _search_query.is_empty():
 		match _current_tab:
-			Tab.MIDI:
-				_reset_midi_visibility()
-				_update_item_sum("共 %d 首谱面" % _midi_selected.size())
 			Tab.AUDIO:
 				_reset_grouped_visibility(_audio_list, _audio_root_map, _audio_item_map)
 				_update_item_sum("共 %d 个音频文件" % _audio_items.size())
@@ -1213,12 +1310,10 @@ func _apply_search_filter() -> void:
 		return
 
 	match _current_tab:
-		Tab.MIDI:
-			_apply_midi_search()
 		Tab.AUDIO:
-			_apply_grouped_search(_audio_list, _audio_root_map, _audio_item_map,
+			_apply_grouped_search(_audio_root_map, _audio_item_map,
 				_audio_group_order, _audio_items_in_group, _audio_items,
-				"song_name", "file_name", "个音频文件")
+				"file_name", "个音频文件")
 		Tab.SF2:
 			_apply_flat_search(_sf2_nodes, _sf2_items, "file_name", "个音源")
 		Tab.SKIN:
@@ -1227,53 +1322,84 @@ func _apply_search_filter() -> void:
 			_apply_flat_search(_bg_nodes, _bg_items, "name", "张背景")
 
 
-func _apply_midi_search() -> void:
-	var query_lower := _search_query.to_lower()
-	var dm := DataMGR
-	var visible_count := 0
+## MIDI 搜索专属逻辑：
+## - 非空 query → 切换到扁平模式，用 SortEngine.search_midis 搜索后构建单层 TreeItem 列表
+## - 空 query + 原本是扁平 → 切回两层布局（重建）
+## - 空 query + 原本是两层 → 仅恢复可见性（不重建）
+func _apply_midi_search_filter() -> void:
+	if not _search_query.is_empty():
+		_midi_search_flat = true
+		_search_midi_flat()
+		return
+	# query 空
+	if _midi_search_flat:
+		# 从扁平切回两层
+		_midi_search_flat = false
+		_build_midi_page()
+	else:
+		# 已是两层，仅恢复可见性
+		_reset_midi_visibility()
+		_update_item_sum("共 %d 首谱面" % _midi_selected.size())
 
-	for album_id in _midi_album_order:
-		var album_name := _get_album_name(album_id)
-		var album_match := query_lower in album_name.to_lower()
-		var has_visible_child := false
-		var root_node: HBoxContainer = _midi_root_map.get(album_id)
 
-		var midi_ids: Array = _midi_album_midi_map.get(album_id, [])
-		for midi_id in midi_ids:
-			if not _midi_item_map.has(midi_id):
-				continue
-			var midi_data: MidiData = dm.midis.get(midi_id)
-			if not midi_data:
-				continue
-			var midi_match := query_lower in midi_data.name.to_lower()
-			var item_node: HBoxContainer = _midi_item_map[midi_id]
+## 扁平搜索模式：清空两层布局，用 SortEngine.search_midis 搜索后构建单层 TreeItem 列表
+## 沿用 SortedMidiView 的搜索引擎（按 name/artist/uploader/description 多关键字匹配）
+func _search_midi_flat() -> void:
+	_tab_data_built[Tab.MIDI] = false
+	_midi_loader.cancel()
+	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_album_order, _midi_album_midi_map, _midi_selected])
+	_update_item_sum("搜索中...")
+	_update_midi_toggle_state()
 
-			if album_match or midi_match:
-				var collapsed: bool = root_node.get_meta("collapsed", false) if root_node else false
-				item_node.visible = not collapsed
-				has_visible_child = true
-				visible_count += 1
-			else:
-				item_node.visible = false
+	var all_midis: Array[MidiData] = DataMGR.midis.values()
+	var matched: Array[MidiData] = SortEngine.search_midis(all_midis, _search_query)
+	# 扁平模式下按 midi.name 升序
+	matched.sort_custom(func(a: MidiData, b: MidiData) -> bool:
+		return a.name < b.name
+	)
 
-		if root_node:
-			root_node.visible = has_visible_child
+	_midi_build_flat_items = matched
+	_midi_build_total = 0
+	var completed: bool = await _midi_loader.build(matched.size(), _create_midi_flat_item)
+	if not completed:
+		return
+	if _current_tab != Tab.MIDI:
+		return
+	_update_item_sum("匹配 %d 首谱面" % _midi_build_total)
+	_update_midi_toggle_state()
+	await _apply_scrolls_to_container(_midi_list)
+	_tab_data_built[Tab.MIDI] = true
+	_update_tab_header(Tab.MIDI)
 
-	_update_item_sum("共 %d 首谱面 (匹配 %d 首)" % [_midi_selected.size(), visible_count])
+
+## MIDI 扁平工厂：创建一个 TreeItem（单层布局，无 TreeRoot）
+## 返回 Array[Node]（已 add_child）；返回 null 请求中止构建
+func _create_midi_flat_item(index: int) -> Variant:
+	if _current_tab != Tab.MIDI:
+		return null
+	var midi: MidiData = _midi_build_flat_items[index]
+	var author := midi.artist_name if not midi.artist_name.is_empty() else "-"
+	var item_node := _create_tree_item("    %s" % midi.name, author)
+	_midi_list.add_child(item_node)
+	_midi_item_map[midi.id] = item_node
+	_midi_selected[midi.id] = false
+	var item_cb := item_node.get_node("CheckBox") as CheckBox
+	# album_id 传空字符串：_update_root_check_state 在扁平模式下会直接 return
+	item_cb.toggled.connect(_on_midi_item_checkbox_toggled.bind(midi.id, ""))
+	_midi_build_total += 1
+	return [item_node]
 
 
 func _get_album_name(album_id: String) -> String:
-	if album_id == "__unknown__":
-		return "Unknown"
 	var dm := DataMGR
 	if dm.albums.has(album_id):
 		return dm.albums[album_id].name
 	return album_id
 
 
-func _apply_grouped_search(list: VBoxContainer, root_map: Dictionary, item_map: Dictionary,
+func _apply_grouped_search(root_map: Dictionary, item_map: Dictionary,
 		group_order: Array, items_in_group: Dictionary, data: Array,
-		root_key: String, item_key: String, unit: String) -> void:
+		 item_key: String, unit: String) -> void:
 	var query_lower := _search_query.to_lower()
 	var visible_count := 0
 
@@ -1332,111 +1458,6 @@ func _reset_flat_visibility(nodes: Dictionary) -> void:
 		nodes[idx].visible = true
 
 
-# ── 排序 ──
-
-func _on_order_btn_pressed() -> void:
-	_tab_sort_ascending[_current_tab] = not _tab_sort_ascending[_current_tab]
-	_order_btn.icon = load("res://Resources/icon/Sort/Ordering/Ascent.png" if _tab_sort_ascending[_current_tab] else "res://Resources/icon/Sort/Ordering/Descent.png")
-	match _current_tab:
-		Tab.MIDI:
-			_resort_midi_instant()
-		Tab.AUDIO:
-			_resort_audio_instant()
-		Tab.SF2:
-			_resort_flat_instant(_sf2_items, _sf2_nodes, _sf2_list, "_compare_sf2")
-		Tab.SKIN:
-			_resort_flat_instant(_skin_items, _skin_nodes, _skin_list, "_compare_skin")
-		Tab.BG:
-			_resort_flat_instant(_bg_items, _bg_nodes, _bg_list, "_compare_bg")
-
-
-func _resort_midi_instant() -> void:
-	var dm := DataMGR
-	# 1. 排序专辑顺序
-	_midi_album_order.sort_custom(func(a, b):
-		if a == "__unknown__":
-			return false
-		if b == "__unknown__":
-			return true
-		var na = dm.albums[a].name if dm.albums.has(a) else a
-		var nb = dm.albums[b].name if dm.albums.has(b) else b
-		return na < nb if _tab_sort_ascending[_current_tab] else na > nb
-	)
-
-	# 2. 排序每个专辑内的 MIDI
-	for album_id in _midi_album_midi_map:
-		var arr: Array = _midi_album_midi_map[album_id]
-		arr.sort_custom(func(a: String, b: String):
-			if not dm.midis.has(a) or not dm.midis.has(b):
-				return false
-			var ma := (dm.midis[a] as MidiData).name
-			var mb := (dm.midis[b] as MidiData).name
-			return ma < mb if _tab_sort_ascending[_current_tab] else ma > mb
-		)
-
-	# 3. 原地重新排序 VBoxContainer 子节点
-	for album_id in _midi_album_order:
-		if not _midi_root_map.has(album_id):
-			continue
-		var root_node: HBoxContainer = _midi_root_map[album_id]
-		_midi_list.move_child(root_node, -1)
-		for midi_id in _midi_album_midi_map.get(album_id, []):
-			if _midi_item_map.has(midi_id):
-				_midi_list.move_child(_midi_item_map[midi_id], -1)
-
-
-func _resort_audio_instant() -> void:
-	# 1. 排序分组
-	_audio_group_order.sort_custom(func(a, b): return a < b if _tab_sort_ascending[_current_tab] else a > b)
-
-	# 2. 排序每组内的项
-	for song_name in _audio_items_in_group:
-		var indices: Array = _audio_items_in_group[song_name]
-		indices.sort_custom(func(ai: int, bi: int):
-			var fa = _audio_items[ai]["format"]
-			var fb = _audio_items[bi]["format"]
-			return fa < fb if _tab_sort_ascending[_current_tab] else fa > fb
-		)
-
-	# 3. 原地重新排序
-	for song_name in _audio_group_order:
-		if not _audio_root_map.has(song_name):
-			continue
-		var root_node: HBoxContainer = _audio_root_map[song_name]
-		_audio_list.move_child(root_node, -1)
-		for idx in _audio_items_in_group.get(song_name, []):
-			if _audio_item_map.has(idx):
-				_audio_list.move_child(_audio_item_map[idx], -1)
-
-
-func _resort_flat_instant(items: Array, nodes: Dictionary, list: VBoxContainer, compare_func: String) -> void:
-	# 1. 排序索引
-	var indices: Array = range(items.size())
-	indices.sort_custom(func(a: int, b: int): return call(compare_func, items[a], items[b]))
-
-	# 2. 原地重新排序
-	for i in indices:
-		if nodes.has(i):
-			list.move_child(nodes[i], -1)
-
-
-# 比较函数（用于 _resort_flat_instant）
-func _compare_sf2(a: Dictionary, b: Dictionary) -> bool:
-	if a["is_builtin"] != b["is_builtin"]:
-		return not a["is_builtin"]
-	return a["file_name"] < b["file_name"] if _tab_sort_ascending[_current_tab] else a["file_name"] > b["file_name"]
-
-
-func _compare_skin(a: Dictionary, b: Dictionary) -> bool:
-	if a["is_builtin"] != b["is_builtin"]:
-		return not a["is_builtin"]
-	return a["name"] < b["name"] if _tab_sort_ascending[_current_tab] else a["name"] > b["name"]
-
-
-func _compare_bg(a: Dictionary, b: Dictionary) -> bool:
-	return a["name"] < b["name"] if _tab_sort_ascending[_current_tab] else a["name"] > b["name"]
-
-
 # ============================================================
 # 通用工具
 # ============================================================
@@ -1450,8 +1471,6 @@ func _create_tree_root(left_text: String, right_text: String, group_id: String) 
 	var node := TREE_ROOT_SCENE.instantiate() as HBoxContainer
 	var left_label := node.get_node("LeftLabel/label") as Label
 	var right_label := node.get_node("RightLabel/label") as Label
-	var left_clip := node.get_node("LeftLabel") as Control
-	var right_clip := node.get_node("RightLabel") as Control
 	left_label.text = left_text
 	right_label.text = right_text
 	node.set_meta("group_id", group_id)
@@ -1465,8 +1484,6 @@ func _create_tree_item(left_text: String, right_text: String) -> HBoxContainer:
 	var node := TREE_ITEM_SCENE.instantiate() as HBoxContainer
 	var left_label := node.get_node("LeftLabel/label") as Label
 	var right_label := node.get_node("RightLabel/label") as Label
-	var left_clip := node.get_node("LeftLabel") as Control
-	var right_clip := node.get_node("RightLabel") as Control
 	left_label.text = left_text
 	right_label.text = right_text
 	return node
@@ -1476,8 +1493,13 @@ func _apply_scrolls_to_container(container: VBoxContainer) -> void:
 	if container.get_child_count() == 0:
 		return
 	await get_tree().process_frame
+	# await 期间场景可能被切换并释放 container / children，需重新校验
+	if not is_instance_valid(container):
+		return
 	var processed := 0
 	for child in container.get_children():
+		if not is_instance_valid(child):
+			continue
 		var left_label := child.get_node_or_null("LeftLabel/label") as Label
 		var left_clip := child.get_node_or_null("LeftLabel") as Control
 		if left_label and left_clip:
@@ -1489,6 +1511,8 @@ func _apply_scrolls_to_container(container: VBoxContainer) -> void:
 		processed += 1
 		if processed % 30 == 0:
 			await get_tree().process_frame
+			if not is_instance_valid(container):
+				return
 
 
 func _set_indeterminate(cb: CheckBox, indeterminate: bool) -> void:

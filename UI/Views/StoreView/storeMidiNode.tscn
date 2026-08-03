@@ -10,37 +10,6 @@ corner_radius_top_right = 20
 corner_radius_bottom_right = 20
 corner_radius_bottom_left = 20
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mnugo"]
-bg_color = Color(0.21, 0.21, 0.21, 0.77254903)
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_blend = true
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
-
-[sub_resource type="Gradient" id="Gradient_3v0pb"]
-interpolation_mode = 2
-offsets = PackedFloat32Array(0.70382166, 0.8566879, 1)
-colors = PackedColorArray(0, 0, 0, 0.9098039, 0, 0, 0, 0.7294118, 0, 0, 0, 0)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_p8evh"]
-gradient = SubResource("Gradient_3v0pb")
-fill_from = Vector2(0, 1)
-fill_to = Vector2(0, 0)
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_218v4"]
-texture = SubResource("GradientTexture2D_p8evh")
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_csklb"]
-bg_color = Color(1, 1, 1, 0.95686275)
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_p8evh"]
 bg_color = Color(0, 0, 0, 0.57254905)
 corner_radius_top_left = 20
@@ -74,41 +43,76 @@ expand_margin_bottom = 5.0
 shadow_color = Color(1, 1, 1, 0.42352942)
 shadow_size = 8
 
-[node name="StoreMidiNode" type="PanelContainer" unique_id=1748810804]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mnugo"]
+bg_color = Color(0.21, 0.21, 0.21, 0.77254903)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_blend = true
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[sub_resource type="Gradient" id="Gradient_3v0pb"]
+interpolation_mode = 2
+offsets = PackedFloat32Array(0.70382166, 0.8566879, 1)
+colors = PackedColorArray(0, 0, 0, 0.9098039, 0, 0, 0, 0.7294118, 0, 0, 0, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_p8evh"]
+gradient = SubResource("Gradient_3v0pb")
+fill_from = Vector2(0, 1)
+fill_to = Vector2(0, 0)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_218v4"]
+texture = SubResource("GradientTexture2D_p8evh")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_csklb"]
+bg_color = Color(1, 1, 1, 0.95686275)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[node name="StoreMidiNode" type="Button" unique_id=433669333]
 custom_minimum_size = Vector2(550, 550)
-anchors_preset = -1
-anchor_left = 0.143
-anchor_top = 0.30100003
-anchor_right = 0.143
-anchor_bottom = 0.30100003
-offset_left = -274.56
-offset_top = -325.08002
-offset_right = 275.44
-offset_bottom = 224.91998
-pivot_offset_ratio = Vector2(0.5, 0.5)
+propagate_maximum_size = true
+offset_right = 550.0
+offset_bottom = 550.0
 mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_jmah3")
+theme_override_styles/normal = SubResource("StyleBoxFlat_jmah3")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_p8evh")
+theme_override_styles/hover = SubResource("StyleBoxFlat_218v4")
+theme_override_styles/focus = SubResource("StyleBoxFlat_3v0pb")
 script = ExtResource("1_j6ifx")
 
 [node name="CoverPanel" type="Panel" parent="." unique_id=1981014830]
-visible = false
 clip_children = 2
-clip_contents = true
 custom_minimum_size = Vector2(0, 550)
-layout_mode = 2
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 size_flags_vertical = 0
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_mnugo")
 
 [node name="cover" type="TextureRect" parent="CoverPanel" unique_id=773402008]
+visible = false
 layout_mode = 0
 offset_right = 550.0
 offset_bottom = 550.0
+mouse_filter = 2
 texture = ExtResource("2_jmah3")
 expand_mode = 3
 stretch_mode = 4
 
 [node name="Panel" type="Panel" parent="CoverPanel" unique_id=748452753]
 custom_minimum_size = Vector2(0, 250)
+clip_contents = true
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -118,36 +122,43 @@ offset_top = -270.0
 offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 0
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxTexture_218v4")
 
-[node name="InfoPanel" type="Panel" parent="." unique_id=424683617]
-visible = false
-custom_minimum_size = Vector2(0, 150)
-layout_mode = 2
-size_flags_vertical = 8
-theme_override_styles/panel = SubResource("StyleBoxFlat_csklb")
-
-[node name="MidiName" type="Label" parent="InfoPanel" unique_id=1988130737]
+[node name="MidiName" type="Label" parent="CoverPanel/Panel" unique_id=1988130737]
 layout_mode = 1
 anchors_preset = -1
 anchor_right = 1.0
 offset_left = 20.0
-offset_top = -75.0
-offset_bottom = -56.0
+offset_top = 45.0
+offset_bottom = 78.0
 theme_override_font_sizes/font_size = 28
 text = "Midi Name"
-clip_text = true
 
-[node name="Author" type="Label" parent="InfoPanel" unique_id=1170704587]
+[node name="Author" type="Label" parent="CoverPanel/Panel" unique_id=1170704587]
 layout_mode = 1
 anchors_preset = -1
 anchor_right = 1.0
 offset_left = 20.0
-offset_top = -35.0
-offset_bottom = -7.0
+offset_top = 85.0
+offset_bottom = 113.0
 theme_override_font_sizes/font_size = 18
 text = "author"
-clip_text = true
+
+[node name="InfoPanel" type="Panel" parent="." unique_id=424683617]
+custom_minimum_size = Vector2(0, 150)
+clip_contents = true
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -150.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_vertical = 8
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_csklb")
 
 [node name="Uploader" type="Label" parent="InfoPanel" unique_id=460957131]
 layout_mode = 1
@@ -159,7 +170,6 @@ offset_bottom = 40.0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_font_sizes/font_size = 24
 text = "Upload by xxxx"
-clip_text = true
 
 [node name="AlbumName" type="Label" parent="InfoPanel" unique_id=346070917]
 layout_mode = 1
@@ -171,7 +181,6 @@ offset_bottom = 85.0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_font_sizes/font_size = 28
 text = "Album Name"
-clip_text = true
 
 [node name="SongName" type="Label" parent="InfoPanel" unique_id=1023909378]
 layout_mode = 1
@@ -183,12 +192,3 @@ offset_bottom = 130.0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_font_sizes/font_size = 24
 text = "Album Name"
-clip_text = true
-
-[node name="Button" type="Button" parent="." unique_id=433669333]
-layout_mode = 2
-mouse_filter = 1
-theme_override_styles/normal = SubResource("StyleBoxFlat_jmah3")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_p8evh")
-theme_override_styles/hover = SubResource("StyleBoxFlat_218v4")
-theme_override_styles/focus = SubResource("StyleBoxFlat_3v0pb")

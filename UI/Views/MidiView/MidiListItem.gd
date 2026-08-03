@@ -1,6 +1,6 @@
 ## MIDI列表项组件
-## 继承自 ListItemBase，显示MIDI谱面信息
-extends ListItemBase
+## 继承自 CoverListItemBase，显示MIDI谱面信息（封面走 CoverLoader 异步加载）
+extends CoverListItemBase
 
 const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 
@@ -9,8 +9,6 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 @onready var midi_name_label: Label = $VBoxC/NameBox/MidiName
 @onready var name_box: Control = $VBoxC/NameBox
 @onready var author_label: Label = $VBoxC/HBoxC/Author
-@onready var line: Line2D = $VBoxC/Line2D
-@onready var cover: TextureRect = $cover
 
 ## MIDI数据
 var midi_data: MidiData
@@ -35,12 +33,17 @@ var _compute_thread: Thread = null
 var _thread_target_midi: MidiData = null
 
 func _ready() -> void:
+	# MidiListItem 不使用封面视差滚动（封面静态显示，与 SongListItem 一致）
+	_parallax_enabled = false
+	# 给基类 cover_texture 赋值，启用 CoverLoader 异步加载/释放机制
+	cover_texture = $cover
 	if EvtBus:
 		EvtBus.config_changed.connect(_on_config_changed)
 	if UiStatMGR:
 		UiStatMGR.state_changed.connect(_on_ui_state_changed)
 
 func _notification(what: int) -> void:
+	super._notification(what)
 	if what == NOTIFICATION_EXIT_TREE:
 		if EvtBus and EvtBus.config_changed.is_connected(_on_config_changed):
 			EvtBus.config_changed.disconnect(_on_config_changed)
@@ -86,34 +89,30 @@ func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg: ButtonGro
 	item_type = "midi"
 	item_index = index
 
-	button = get_node("Button")
+	button = self
 	button.button_group = bg
 
 	init_btn(button, parent)
 
 	_update_display()
-	_load_cover_image()
-	
+	# 启动封面异步加载（命中 WeakRef 缓存时同步应用零开销；未命中入 CoverLoader 队列）
+	# 替代旧版同步 Image.load_from_file：6 万音符 MIDI 视图滚动时主线程不再读盘阻塞
+	start_cover_load()
+
 	btn_confirmed.connect(parent._show_midi_list)
 
 	# if index == 0:
 	# 	button.button_pressed = true
 
-## 加载封面图片
-func _load_cover_image() -> void:
-	if not cover:
-		cover = get_node_or_null("cover")
-	
-	if not cover:
-		print("[MidiListItem] Cover node not found!")
-		return
-	
-	# 从 FileSystemManager 获取封面路径
-	var fs_manager = FileSystemManager.instance
-	if not fs_manager:
-		print("[MidiListItem] FileSystemManager not found, using default cover")
-		return
-	cover.texture = fs_manager.get_cover_by_midiData(midi_data)
+## 重写基类虚函数：返回封面文件路径（主线程调用，供异步加载器使用）
+## 路径查询在主线程完成，后台线程只负责读盘
+func _resolve_cover_path() -> String:
+	if not midi_data:
+		return ""
+	var fs_mgr := FileSystemManager.instance
+	if not fs_mgr:
+		return ""
+	return fs_mgr.get_cover_path_by_midiData(midi_data)
 
 ## 按钮切换回调
 func on_item_button_toggled(toggled_on: bool):
@@ -130,6 +129,12 @@ func on_item_button_toggled(toggled_on: bool):
 		primary_dark = ThemeMGR.get_color("primary_dark")
 	create_tween().tween_property(indicator_node.get_child(item_index), "color", primary_dark if toggled_on else Color(1, 1, 1), 0.15)
 	if toggled_on:
+		# 切换到新 MIDI 项时，清理上一个 MIDI 的运行时缓存（parsed_notes + GameSequence + 播放管理器）
+		# 避免浏览多个大 MIDI 后 parsed_notes 累积导致内存增长
+		if parent_node.selected_item != -1 and parent_node.selected_item != item_index:
+			var prev_midi = parent_node.get_selection()
+			if prev_midi != null:
+				parent_node.cleanup_midi_cache(prev_midi)
 		parent_node.selected_item = item_index
 		# 收起状态点击 → 自动展开全部；展开状态 → 直接吸附
 		if parent_node._collapsed:
@@ -137,7 +142,7 @@ func on_item_button_toggled(toggled_on: bool):
 		else:
 			parent_node.need_snap = true
 			# 指示器移到新选中项
-			create_tween().tween_property(indicator_node, "position", Vector2(30, 100 - item_index * 24), 0.35)
+			create_tween().tween_property(indicator_node, "offset_transform_position:y", 100 - item_index * 24, 0.35)
 		_update_data_display()
 
 ## 设置展开/收起（由 MidiList._show_midi_list 批量调用）
@@ -150,9 +155,7 @@ func set_expanded(expanded: bool) -> void:
 	expand_tween.set_trans(Tween.TRANS_QUINT)
 	expand_tween.set_parallel(true)
 	expand_tween.tween_property(self, "custom_minimum_size", Vector2(750, 150 + 240 * expa), 0.35)
-	expand_tween.tween_property(get_node("VBoxC/MC"), "theme_override_constants/margin_bottom", 20 * expa, 0.15)
 	expand_tween.tween_property(midi_name_label, "theme_override_font_sizes/font_size", 30 + 10 * expa, 0.25)
-	expand_tween.tween_property(line, "position", Vector2(-50, 12 - 5 * expa), 0.15)
 	# 指示器颜色
 	var indicator_node := get_node(INDICATOR)
 	var primary_dark := Color(0.129, 0.412, 0.702)
@@ -236,7 +239,8 @@ func _start_midi_compute() -> void:
 	_compute_thread.start(_parse_thread_func.bind(path))
 
 
-## 在后台线程中解析 MIDI 文件（仅读文件，无场景树访问）
+## 在后台线程中解析 MIDI 文件（仅读文件 + C# 解析，无 Godot RefCounted 创建）
+## NoteEvent 重建与 track_channel_notes 分组在主线程 _on_parse_done 完成（避免 worker 创建 66k RefCounted）
 func _parse_thread_func(path: String) -> void:
 	var result: Dictionary = MidiParser.load_and_parse_midi(path)
 	call_deferred("_on_parse_done", result)
@@ -259,6 +263,15 @@ func _on_parse_done(result: Dictionary) -> void:
 		_apply_display()
 		return
 
+	# 主线程从 SOA 重建 NoteEvent（避免 worker 线程批量创建 66k RefCounted 导致 Android ARM 引用计数损坏）
+	# worker 只返回 SOA 紧凑数组（PackedInt32Array，值类型 marshalling 安全），NoteEvent 重建在此完成
+	if result.get("notes", []).is_empty() and result.has("soa") and not result["soa"].is_empty():
+		result["notes"] = MidiParser.build_notes_from_soa(result["soa"])
+		result.erase("soa")  # 释放 SOA 的 PackedInt32Array 内存
+	# 主线程构建 track_channel_notes（依赖 NoteEvent，必须在 NoteEvent 重建后）
+	if not result.has("track_channel_notes") and not result.get("notes", []).is_empty():
+		result["track_channel_notes"] = MidiParser.build_track_channel_notes(result["notes"])
+
 	# 将解析结果回填到 MidiData（若 MidiPlaybackManager 尚未填入）
 	if midi.duration_ms <= 0:
 		midi.duration_ms = result.get("duration", 0.0)
@@ -269,6 +282,19 @@ func _on_parse_done(result: Dictionary) -> void:
 	if midi.bpm_timeline.is_empty():
 		midi.bpm_timeline = result.get("bpm_timeline", [])
 		midi.midi_timebase = result.get("timebase", 480)
+	if midi.max_end_tick <= 0:
+		midi.max_end_tick = float(result.get("max_end_tick", 0))
+	# 同步回填 _runtime_track_infos，使 MidiPlaybackManager.preparse_midi_async 缓存命中
+	# （命中条件：parsed_notes + _runtime_track_infos 同时非空，见 MidiPlaybackManager.gd:431）
+	# 缺失此行会导致进入 TrackView 时 worker 线程重新解析整个 MIDI，造成 ~18MB 临时峰值
+	if midi._runtime_track_infos.is_empty():
+		midi._runtime_track_infos = result.get("track_infos", [])
+	# 回填 track_channel_instruments（C# MidiParserNative 一次性提取，load_midi 直接复用）
+	if midi.track_channel_instruments.is_empty():
+		midi.track_channel_instruments = result.get("track_instruments", {})
+	# 回填 runtime_track_channel_notes（worker 线程已构建，TrackView._build_buckets 直接复用）
+	if midi.runtime_track_channel_notes.is_empty():
+		midi.runtime_track_channel_notes = result.get("track_channel_notes", {})
 
 	# 构建并缓存 Time / BPM 字段
 	var entry: Dictionary = _info_cache.get(midi.id, {})
@@ -308,8 +334,8 @@ func _fill_time_bpm_cache(midi: MidiData, entry: Dictionary) -> void:
 		# 若所有 BPM 变化均发生在第一个音符开始之前，则游玩区间内 BPM 恒定，不加 "~"
 		var first_note_tick: float = INF
 		for note in midi.parsed_notes:
-			if note is MidiParser.Note and note.event != null:
-				first_note_tick = min(first_note_tick, float(note.event.start_time))
+			if note is MidiParser.NoteEvent:
+				first_note_tick = min(first_note_tick, float(note.start_time))
 
 		# 检查 index 1 起的所有变速点是否都早于第一个音符
 		var all_before_first_note := first_note_tick < INF
@@ -351,13 +377,7 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 	#   2. 用户在 TrackView 逐一禁用了所有轨道（_track_config_initialized == true）→ 显示 0
 	var configs_initialized: bool = midi._track_config_initialized \
 			or not midi.selected_track_configs.is_empty()
-	var enabled_pairs: Dictionary = {}
-	if configs_initialized:
-		for track_index in midi.selected_track_configs.keys():
-			var channels = midi.selected_track_configs[track_index]
-			if channels is Array:
-				for ch in channels:
-					enabled_pairs["%d:%d" % [int(track_index), int(ch)]] = true
+	var enabled_pairs: Dictionary = midi.get_enabled_pairs_flat() if configs_initialized else {}
 
 	# 声明 entry 变量，传递缓存数据
 	var entry: Dictionary = _info_cache.get(midi.id, {})
@@ -373,12 +393,12 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 	# 按 (track, channel) 筛选音符
 	var filtered: Array = []
 	for note in midi.parsed_notes:
-		if note is MidiParser.Note and note.event != null:
+		if note is MidiParser.NoteEvent:
 			if not configs_initialized:
 				# 未初始化：全部纳入
 				filtered.append(note)
 			else:
-				var key := "%d:%d" % [note.event.track_index, note.event.channel]
+				var key := "%d:%d" % [note.track_index, note.channel]
 				if enabled_pairs.has(key):
 					filtered.append(note)
 
@@ -401,12 +421,16 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 		pm.midi_timebase = entry.get("timebase", midi.midi_timebase)
 		need_restore = true
 
-	ksm.generate_keys(filtered, midi.id, enabled_pairs)
+	# 异步生成（WorkerThreadPool 后台线程），避免 6 万音符时主线程阻塞 200-800ms
+	# worker 期间主线程 await 让出，pm.bpm_timeline 不会被其他地方修改（本函数是 MidiView 选中项触发的）
+	await ksm.generate_keys_async(filtered, midi.id, enabled_pairs)
 
 	if need_restore:
 		pm.bpm_timeline = saved_timeline
 		pm.midi_timebase = saved_timebase
 
+	# 切换项守卫：await 期间用户可能已切到其他 MIDI 项，本 item 不再是选中项
+	# 仍写入 _info_cache（缓存供下次使用），但 _apply_display 会自行判断是否刷新共享面板
 	var count: int = ksm.game_sequences.size()
 	if count > 0 and midi.duration_ms > 0:
 		entry["note_str"] = "%d" % count

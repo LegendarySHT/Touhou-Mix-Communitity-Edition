@@ -34,8 +34,8 @@ func _ready() -> void:
 	else:
 		GLogger.warning("TSOB scroll NOT found", "TSOB")
 
-func _on_toggled(pressed: bool) -> void:
-	if pressed:
+func _on_toggled(_pressed: bool) -> void:
+	if _pressed:
 		_drag_detected = false
 		_pre_popup_selected = selected
 

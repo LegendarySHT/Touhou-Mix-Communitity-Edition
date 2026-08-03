@@ -28,7 +28,7 @@ class GameSequence:
 	var block_type: int = BlockType.INSTANT  # 块类型（INSTANT/SHORT/LONG）
 	var pitch_list: Array[int] = []  # 同lane合并的所有pitch列表（便于同时发出多个音）
 	var connected_prev: bool = false  # 是否与前一块连接
-	var original_notes: Array[MidiParser.Note] = []  # 保留该块包含的原始Note列表
+	var original_notes: Array[MidiParser.NoteEvent] = []  # 保留该块包含的原始 NoteEvent 列表
 	var flow_note_ref: Object = null  # 新增：指向对应的FlowArea.Note（演奏模式使用）
 	var lane: int = -1  # 视觉轨道索引（可能因 max_touch_move_velocity 限制而偏离 pitch % lane_count）
 	
@@ -47,15 +47,15 @@ class GameSequence:
 ## 背景序列（背景伴奏）
 class BackgroundSequence:
 	var track_index: int        # 所在轨道
-	var notes: Array            # 包含的所有Note（MidiParser.NoteEvent）
-	
+	var notes: Array            # 包含的所有 NoteEvent
+
 	func _init(track: int) -> void:
 		track_index = track
 		notes = []
 
 ## 块信息（生成后的块对象）
 class BlockInfo:
-	var notes: Array[MidiParser.Note] = []  # 合并后该块包含的所有原始Note对象
+	var notes: Array[MidiParser.NoteEvent] = []  # 合并后该块包含的所有原始 NoteEvent 对象
 	var batch: int = -1          # 批次编号（用于与Unity一致的连块语义）
 	var lane: int = 0           # 轨道编号（由pitch计算）
 	var x: float = 0.0          # 屏幕X位置
@@ -81,7 +81,7 @@ class VirtualTouch:
 	var last_press_time_ms: float = -INF  # 最后按下的时间
 	var holding_block: BlockInfo = null  # 正在按住的LONG块
 	var last_press_block: BlockInfo = null  # 最后按下的块对象
-	
+
 	func _init(idx: int) -> void:
 		index = idx
 		is_free = true
@@ -89,6 +89,18 @@ class VirtualTouch:
 		last_press_time_ms = -INF
 		holding_block = null
 		last_press_block = null
+
+## 临时音符对象（generate_keys 流水线中间格式）
+## 替代旧版 Dictionary（每音符 7 个 StringName key + Variant 装箱，6 万音符约 16.8MB 临时内存）
+## typed class 字段直接访问，比 Dictionary.get 哈希查找快 5-10 倍；单实例约 160 字节 vs Dict ~280 字节
+class TempNote:
+	var pitch: int = 0
+	var velocity: int = 0
+	var track_index: int = 0
+	var channel: int = 0
+	var start_time_ms: float = 0.0
+	var duration_ms: float = 0.0
+	var original_note: MidiParser.NoteEvent = null  # 直接引用 NoteEvent
 
 ## 当前MIDI数据
 var current_midi_data: MidiData
@@ -193,19 +205,47 @@ func _tick_to_ms(tick: float) -> float:
 	return result
 
 ## 使用BPM时间线计算位置
+## 二分查找定位 tick 所在的 BPM 段：O(log N) 替代旧版线性扫描 O(N)
+## 6 万音符 + 多段 BPM 时间线下从 ~N×S 次比较降至 N×log(S)
+## 注意：_bpm_lookup 按 tick 升序构建（set_midi_time_parameters 中按 bpm_timeline 顺序追加）
 func _calculate_position_with_bpm_timeline(tick: float) -> float:
 	# Uses pre-built _bpm_lookup array of [tick, bpm, cumulative_ms]
 	# Array indexing is much faster than dict.get() in the hot loop
-	if _bpm_lookup.is_empty():
+	var n: int = _bpm_lookup.size()
+	if n == 0:
 		return (tick / float(midi_timebase)) * (60000.0 / 120.0)
-	for _i in range(_bpm_lookup.size()):
-		var _e = _bpm_lookup[_i]
-		var _next_tick: float = _bpm_lookup[_i + 1][0] if _i + 1 < _bpm_lookup.size() else INF
-		if tick < _next_tick:
-			var tick_delta = tick - _e[0]
-			var ms_per_tick = (60000.0 / _e[1]) / float(midi_timebase)
-			return _e[2] + tick_delta * ms_per_tick
-	return _bpm_lookup[-1][2]
+
+	var tick_delta: float
+	var ms_per_tick: float
+
+	# 边界快速路径：tick 在第一段之前或最后一段之后
+	var first_entry = _bpm_lookup[0]
+	if tick <= first_entry[0]:
+		# tick 在首个 BPM 段起点之前（含 0）：直接用第一段算
+		tick_delta = tick - first_entry[0]
+		ms_per_tick = (60000.0 / first_entry[1]) / float(midi_timebase)
+		return first_entry[2] + tick_delta * ms_per_tick
+	var last_entry = _bpm_lookup[n - 1]
+	if tick >= last_entry[0]:
+		# tick 在最后一段内（含尾部）
+		tick_delta = tick - last_entry[0]
+		ms_per_tick = (60000.0 / last_entry[1]) / float(midi_timebase)
+		return last_entry[2] + tick_delta * ms_per_tick
+
+	# 二分查找：找最后一个 tick <= target 的段（即 target 所在的 BPM 段）
+	# _bpm_lookup 已按 tick 升序排列
+	var lo: int = 0
+	var hi: int = n - 1
+	while lo < hi:
+		var mid: int = (lo + hi + 1) >> 1  # 上取整避免死循环
+		if _bpm_lookup[mid][0] <= tick:
+			lo = mid
+		else:
+			hi = mid - 1
+	var entry = _bpm_lookup[lo]
+	tick_delta = tick - entry[0]
+	ms_per_tick = (60000.0 / entry[1]) / float(midi_timebase)
+	return entry[2] + tick_delta * ms_per_tick
 
 ## 将tick时长转换为毫秒时长（考虑BPM变化）
 func _tick_duration_to_ms(start_tick: float, duration_tick: float) -> float:
@@ -299,21 +339,27 @@ func classify_sequences(midi_data: MidiData, all_midi_notes: Array) -> bool:
 ## 实现完整的批次合并、去重、虚拟触点匹配、块类型判定、连块生成算法
 ## 注意：传入的game_notes应该已经被筛选为只包含启用的音轨的音符
 ## PlayView会根据TrackView中的selected_track_configs筛选出启用的音轨，然后传入这里
+## 线程安全：本方法可在 WorkerThreadPool 后台线程执行（仅访问 self 字段与 MidiPlaybackManager.instance 静态字段，
+## 不访问场景树）。调用期间主线程不得读写 KeySequenceManager 的任何字段。
 func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> bool:
-	# 构造缓存键（midi_id + 启用轨道对哈希 + 屏幕宽度）
+	# 构造缓存键（midi_id + 启用轨道对哈希）
+	# 注意：screen_width 不进 cache_key。它只影响 _judge_block_type 速度限制里极少数音符的
+	# lane 钳制，且防窗口变化的设计实际没生效（PlayView 的 size_changed 不重算 generate_keys）。
+	# FlowArea 显示位置由 viewport 宽度算，与 KSM 的 screen_width 无关。
+	# 加入 cache_key 会导致 MidiView(默认1920) 与 PlayView(lane_area.size.x) 调用永远 miss。
 	var pairs_hash := ""
 	for k in enabled_pairs.keys():
 		pairs_hash += str(k) + ","
-	var cache_key := "%s|%s|%d" % [midi_id, pairs_hash.hash(), int(screen_width)]
+	var cache_key := "%s|%s" % [midi_id, pairs_hash.hash()]
 	if cache_key == _cache_key and not _cached_sequences.is_empty():
 		# 命中缓存，直接复用（选歌预览与 PlayView 重复生成时命中）
 		game_sequences = _cached_sequences.duplicate()
 		background_sequences = _cached_background_sequences.duplicate()
 		last_manual_control_notes = _cached_manual_notes.duplicate()
 		last_auto_play_notes = _cached_auto_notes.duplicate()
-		print("Generating keys from %d game notes... (cached)" % game_notes.size())
+		GLogger.debug("generate_keys HIT cache, reuse %d sequences" % game_sequences.size(), "KSM")
 		return true
-	print("Generating keys from %d game notes..." % game_notes.size())
+	GLogger.debug("generate_keys MISS cache, regenerating...", "KSM")
 	if game_notes.is_empty():
 		game_sequences.clear()
 		return true
@@ -330,17 +376,20 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	# Step 1: 转换Note对象为统一格式（确保start_time_ms和duration_ms为毫秒）
 	var converted_notes = _convert_notes_to_internal_format(game_notes)
 
-	# Step 2: 按时间排序Note
-	var sorted_notes = converted_notes.duplicate()
-	sorted_notes.sort_custom(func(a, b):
-		if a["start_time_ms"] == b["start_time_ms"]:
-			return a.get("channel", 0) < b.get("channel", 0)
-		return a["start_time_ms"] < b["start_time_ms"]
+	# Step 2: 按时间排序Note（in-place 排序，避免 duplicate 整个数组）
+	converted_notes.sort_custom(func(a, b):
+		if a.start_time_ms == b.start_time_ms:
+			return a.channel < b.channel
+		return a.start_time_ms < b.start_time_ms
 	)
 
 	# Step 3: 执行批次合并（Step A）
-	var batches := _batch_notes_by_coalesce(sorted_notes)
-	GLogger.info("Batch merge: created %d batches from %d notes" % [batches.size(), sorted_notes.size()], "KeySequenceManager")
+	var batches := _batch_notes_by_coalesce(converted_notes)
+
+	# Step 3.5: 立即释放 converted_notes（66k TempNote ~10MB）
+	# batches 已持有 TempNote 引用，converted_notes 数组本身不再需要
+	converted_notes.clear()
+	converted_notes = []
 
 	# Step 4: 为每个批次执行去重（Step B）
 	var all_blocks: Array[BlockInfo] = []
@@ -349,9 +398,12 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 		var deduped_blocks = _dedup_batch(batches[batch_idx], bg_notes, batch_idx)
 		all_blocks.append_array(deduped_blocks)
 
-	GLogger.info("Dedup: generated %d blocks, %d background notes" % [all_blocks.size(), bg_notes.size()], "KeySequenceManager")
+	# Step 4.5: 立即释放 batches + _tick_ms_cache（step5/6/7 不再需要）
+	batches.clear()
+	batches = []
+	_tick_ms_cache.clear()
 
-	# Step 5: 虚拟触点匹配和块类型判定（Step C + Step D）
+	# Step 5: 虚拟触点匹配和块类型判定（Step C + Step D)
 	_assign_touches_and_judge_types(all_blocks, bg_notes)
 
 	# Step 6: 连块生成（Step E）
@@ -360,19 +412,31 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	# Step 7: 转换为GameSequence集合
 	_convert_blocks_to_game_sequences(all_blocks)
 
+	# Step 7.5: 释放 all_blocks（GameSequence 已持有 original_notes 引用）
+	# 必须先断开 prev_block 链：_judge_block_type 跨批次累积形成数千节点的 prev_block 链，
+	# clear() 时 BlockInfo 引用计数降为 0 会触发级联析构（A→B→C→...），Android ARM 栈溢出
+	for block in all_blocks:
+		block.prev_block = null
+	all_blocks.clear()
+	all_blocks = []
+
 	# Step 8: 添加背景序列（与Unity一致：输出单一背景序列）
-	# Pre-compute start times: avoids O(N log N) _tick_to_ms calls during sort
-	var _bg_sorted: Array = []
-	for _bn in bg_notes:
-		_bg_sorted.append({"note": _bn, "time": _get_note_start_time_ms(_bn)})
-	_bg_sorted.sort_custom(func(a, b):
-		if a.time == b.time:
-			return _get_note_pitch(a.note) < _get_note_pitch(b.note)
-		return a.time < b.time
+	var bg_count := bg_notes.size()
+	var bg_times := PackedFloat32Array()
+	bg_times.resize(bg_count)
+	for i in range(bg_count):
+		bg_times[i] = _get_note_start_time_ms(bg_notes[i])
+	var bg_indices := range(bg_count)
+	bg_indices.sort_custom(func(a, b):
+		if bg_times[a] == bg_times[b]:
+			return _get_note_pitch(bg_notes[a]) < _get_note_pitch(bg_notes[b])
+		return bg_times[a] < bg_times[b]
 	)
-	bg_notes.clear()
-	for _item in _bg_sorted:
-		bg_notes.append(_item.note)
+	var sorted_bg_notes: Array = []
+	sorted_bg_notes.resize(bg_count)
+	for i in range(bg_count):
+		sorted_bg_notes[i] = bg_notes[bg_indices[i]]
+	bg_notes = sorted_bg_notes
 	var bg_seq = BackgroundSequence.new(0)
 	bg_seq.notes = bg_notes
 	background_sequences.append(bg_seq)
@@ -380,39 +444,112 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	# 在generate_keys完成后立即进行分类统计
 	_finalize_notes_classification()
 
-	# 写入缓存
+	# 写入缓存（引用共享，不 duplicate）
+	# game_sequences/background_sequences/last_* 在此后不再修改，
+	# 下次 generate_keys 命中缓存时会 duplicate 一份给 game_sequences 使用（见上方 cache hit 分支），
+	# 因此 _cached_* 引用的内容不会被外部修改
 	_cache_key = cache_key
-	_cached_sequences = game_sequences.duplicate()
-	_cached_background_sequences = background_sequences.duplicate()
-	_cached_manual_notes = last_manual_control_notes.duplicate()
-	_cached_auto_notes = last_auto_play_notes.duplicate()
+	_cached_sequences = game_sequences
+	_cached_background_sequences = background_sequences
+	_cached_manual_notes = last_manual_control_notes
+	_cached_auto_notes = last_auto_play_notes
 
 	return true
 
-## 将Note对象转换为内部格式（确保使用毫秒单位）
+## 单任务模式：同一时间只允许一个 generate_keys worker 运行
+## 新任务启动前必须等待旧任务完成（防止并发写入 game_sequences 等共享字段）
+var _generate_task_id: int = -1
+var _generate_done_flag: Dictionary = {}  # worker 写 "done":true，主线程读
+var _generate_task_waited: bool = false   # wait_for_task_completion 是否已调（幂等保护）
+
+## 清理当前 task（幂等：多处调用安全，wait_for_task_completion 只调一次）
+func _wait_and_cleanup_current_task() -> void:
+	if _generate_task_id == -1:
+		return
+	if not _generate_task_waited:
+		WorkerThreadPool.wait_for_task_completion(_generate_task_id)
+		_generate_task_waited = true
+	_generate_task_id = -1
+	_generate_task_waited = false
+
+## 启动 generate_keys（WorkerThreadPool 后台线程执行，保留 async 签名以兼容调用方 await）
+## 线程安全：generate_keys 仅访问 self 字段与 MidiPlaybackManager.instance 静态字段，不访问场景树
+## RefCounted 对象（TempNote/BlockInfo/GameSequence）在 worker 创建/析构安全：
+##   - prev_block 链在 Step 7.5 已断开，避免级联析构栈溢出
+##   - GLogger 已用 call_deferred 保护，无 StringName 引用计数竞态
+## 返回值：task_id（-1 表示未启动，如 game_notes 为空）
+func start_generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> int:
+	# 若有旧 worker 任务在跑，先等它完成（避免并发写入 game_sequences 等共享字段）
+	if _generate_task_id != -1:
+		while not _generate_done_flag.get("done", false):
+			await Engine.get_main_loop().process_frame
+		_wait_and_cleanup_current_task()
+	if game_notes.is_empty():
+		# 空数组时主线程同步清理 game_sequences（与 generate_keys_async 行为一致）
+		generate_keys(game_notes, midi_id, enabled_pairs)
+		return -1
+	# 启动 worker 线程
+	_generate_done_flag.clear()
+	_generate_task_waited = false
+	_generate_task_id = WorkerThreadPool.add_task(func():
+		generate_keys(game_notes, midi_id, enabled_pairs)
+		_generate_done_flag["done"] = true
+	, false, "KSM generate_keys")
+	return _generate_task_id
+
+## 等待 generate_keys 完成（每帧让出主线程，动画继续推进）
+func await_generate_keys(task_id: int) -> void:
+	if task_id == -1:
+		return
+	while not _generate_done_flag.get("done", false):
+		await Engine.get_main_loop().process_frame
+	_wait_and_cleanup_current_task()
+
+## 异步生成游戏键（WorkerThreadPool 后台线程执行，保留 async 签名以兼容调用方 await）
+## 线程安全：同 start_generate_keys_async
+## 代价：66k 音符时 worker 约跑 200-800ms，主线程每帧让出不卡顿（命中缓存时 0ms）
+func generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> bool:
+	# 若有旧 worker 任务在跑，先等它完成
+	if _generate_task_id != -1:
+		while not _generate_done_flag.get("done", false):
+			await Engine.get_main_loop().process_frame
+		_wait_and_cleanup_current_task()
+	# 空数组快速路径：主线程直接执行（generate_keys 内部仅 clear）
+	if game_notes.is_empty():
+		generate_keys(game_notes, midi_id, enabled_pairs)
+		return true
+	# 启动 worker 线程
+	_generate_done_flag.clear()
+	_generate_task_waited = false
+	_generate_task_id = WorkerThreadPool.add_task(func():
+		generate_keys(game_notes, midi_id, enabled_pairs)
+		_generate_done_flag["done"] = true
+	, false, "KSM generate_keys")
+	# 等待完成
+	while not _generate_done_flag.get("done", false):
+		await Engine.get_main_loop().process_frame
+	_wait_and_cleanup_current_task()
+	return true
+
+## 将 NoteEvent 对象转换为内部格式（确保使用毫秒单位）
+## 返回 Array[TempNote]，替代旧版 Array[Dictionary]
+## TempNote 字段直接访问比 Dictionary.get 哈希查找快 5-10 倍，内存占用降 ~40%
 func _convert_notes_to_internal_format(game_notes: Array) -> Array:
 	var converted: Array = []
-	
+
 	for note in game_notes:
-		var note_dict: Dictionary = {}
-		
-		# 处理Note对象（包含event: NoteEvent）
-		if note is MidiParser.Note:
-			var evt = note.event
-			note_dict["pitch"] = evt.pitch
-			note_dict["velocity"] = evt.velocity
-			note_dict["track_index"] = evt.track_index
-			note_dict["channel"] = evt.channel
-			note_dict["start_time_ms"] = _tick_to_ms(evt.start_time)
-			note_dict["duration_ms"] = _tick_duration_to_ms(evt.start_time, evt.duration)
-			note_dict["original_note"] = note
-		else:
-			# 如果已经是字典或其他格式，尝试直接使用
-			note_dict = note if note is Dictionary else {}
-		
-		if not note_dict.is_empty():
-			converted.append(note_dict)
-	
+		if note is MidiParser.NoteEvent:
+			var tn := TempNote.new()
+			tn.pitch = note.pitch
+			tn.velocity = note.velocity
+			tn.track_index = note.track_index
+			tn.channel = note.channel
+			tn.start_time_ms = _tick_to_ms(note.start_time)
+			tn.duration_ms = _tick_duration_to_ms(note.start_time, note.duration)
+			tn.original_note = note
+			converted.append(tn)
+		# 其他格式跳过（不应出现）
+
 	return converted
 
 ## Step A: 批次合并 - 按blockCoalesceSeconds分组
@@ -420,13 +557,14 @@ func _batch_notes_by_coalesce(sorted_notes: Array) -> Array:
 	var batches: Array = []
 	if sorted_notes.is_empty():
 		return batches
-	
+
 	var current_batch: Array = []
 	var current_batch_start_time: float = -1.0
-	
+
 	for note in sorted_notes:
-		var note_time = note.start_time_ms
-		
+		# TempNote 字段直接访问
+		var note_time: float = note.start_time_ms
+
 		if current_batch_start_time < 0:
 			current_batch_start_time = note_time
 			current_batch.append(note)
@@ -437,54 +575,53 @@ func _batch_notes_by_coalesce(sorted_notes: Array) -> Array:
 				batches.append(current_batch)
 			current_batch = [note]
 			current_batch_start_time = note_time
-	
+
 	# 添加最后一个批次
 	if not current_batch.is_empty():
 		batches.append(current_batch)
-	
+
 	return batches
 
 ## Step B: 去重与冲突消除 - 同lane保留高音符，低音移入背景（Unity兼容版本）
 func _dedup_batch(batch: Array, bg_notes: Array, batch_idx: int) -> Array[BlockInfo]:
 	var blocks: Array[BlockInfo] = []
-	var lane_to_note: Dictionary = {}  # lane -> note_dict
-	
+	var lane_to_note: Dictionary = {}  # lane -> TempNote
+
 	# 第1步：按lane去重（同lane保留最高音符）
 	for note in batch:
-		var pitch = note.get("pitch", 0)
-		var lane = pitch % lane_count
-		
+		var pitch: int = note.pitch
+		var lane: int = pitch % lane_count
+
 		if lane_to_note.has(lane):
 			var existing_note = lane_to_note[lane]
-			var existing_pitch = existing_note.get("pitch", 0)
+			var existing_pitch: int = existing_note.pitch
 			# 比较音高，保留更高的
 			if pitch > existing_pitch:
 				# 将旧的加入背景
-				_append_note_to_background(existing_note, bg_notes)
+				_append_note_to_background(existing_note.original_note, bg_notes)
 				lane_to_note[lane] = note
 			else:
 				# 将当前的加入背景
-				_append_note_to_background(note, bg_notes)
+				_append_note_to_background(note.original_note, bg_notes)
 		else:
 			lane_to_note[lane] = note
-	
+
 	# 第2步：为保留下来的Note创建BlockInfo
 	for lane in lane_to_note.keys():
-		var note = lane_to_note[lane]
+		var note: TempNote = lane_to_note[lane]
 		var block = BlockInfo.new()
 		block.batch = batch_idx
 		# 添加原始Note对象（BlockInfo._init()已初始化notes为[]）
-		if note.has("original_note"):
-			block.notes.append(note["original_note"])
+		block.notes.append(note.original_note)
 		block.lane = lane
-		block.start_time_ms = note.get("start_time_ms", 0.0)
-		block.end_time_ms = block.start_time_ms + note.get("duration_ms", 0.0)
-		block.duration_ms = note.get("duration_ms", 0.0)
-		# 将pitch添加到pitch_list（使用append而不是直接赋值）
-		block.pitch_list.append(note.get("pitch", 0))
+		block.start_time_ms = note.start_time_ms
+		block.end_time_ms = block.start_time_ms + note.duration_ms
+		block.duration_ms = note.duration_ms
+		# 将pitch添加到pitch_list
+		block.pitch_list.append(note.pitch)
 		block.x = _calculate_lane_position(lane)
 		blocks.append(block)
-	
+
 	# 第3步：执行最小横向间距约束（并排音符轨道间距）
 	blocks = _enforce_min_lane_spacing(blocks, bg_notes)
 
@@ -537,6 +674,8 @@ func _enforce_min_lane_spacing(blocks: Array[BlockInfo], bg_notes: Array) -> Arr
 ## _judge_block_type 的速度限制会将 block.lane 钳制到触点附近，可能使其与同批次
 ## 其他块的 lane 过近，破坏 _enforce_min_lane_spacing 在去重阶段已保证的间距。
 ## 此函数按批次分组，对已钳制的 lane 重新执行间距校验，将冲突块移入背景。
+## 性能：用 Dictionary set 做 O(1) 查找 + 一次原地过滤，避免旧版 blocks.erase 的 O(K×N)
+## 以及 kept.has() 的 O(N) 线性扫描（6 万音符时 K×N 可达上亿次比较）
 func _reconcile_spacing_after_clamp(blocks: Array[BlockInfo], bg_notes: Array) -> void:
 	if blocks.size() <= 1 or min_block_spacing <= 0:
 		return
@@ -548,8 +687,10 @@ func _reconcile_spacing_after_clamp(blocks: Array[BlockInfo], bg_notes: Array) -
 			by_batch[block.batch] = []
 		by_batch[block.batch].append(block)
 
-	# 逐批次重新校验，收集需移除的块
-	var to_remove: Array[BlockInfo] = []
+	# 用 Dictionary set 收集需移除的块（key=block 对象引用，value 占位 true）
+	# 替代旧版 Array[BlockInfo] + blocks.erase：erase 每次 O(N)，K 次共 O(K×N)
+	# Dictionary.has 是 O(1)，后续过滤单次 O(N) 完成
+	var to_remove_set: Dictionary = {}
 	for batch_id in by_batch.keys():
 		var batch_blocks: Array = by_batch[batch_id]
 		if batch_blocks.size() <= 1:
@@ -559,106 +700,43 @@ func _reconcile_spacing_after_clamp(blocks: Array[BlockInfo], bg_notes: Array) -
 		for b in batch_blocks:
 			typed_blocks.append(b as BlockInfo)
 		var kept = _enforce_min_lane_spacing(typed_blocks, bg_notes)
+		# 用 Dictionary set 做 kept 查找（O(1)），替代旧版 kept.has() 的 O(N) 线性扫描
+		var kept_set: Dictionary = {}
+		for k in kept:
+			kept_set[k] = true
 		# 收集被移入背景的块（不在 kept 列表中的）
 		for block in typed_blocks:
-			if not kept.has(block):
-				to_remove.append(block)
+			if not kept_set.has(block):
+				to_remove_set[block] = true
 
-	# 从主列表中移除冲突块
-	for block in to_remove:
-		blocks.erase(block)
+	# 单次原地过滤：用 writeidx 覆盖写入，最后 resize 截断
+	# 替代旧版 for block in to_remove: blocks.erase(block) 的 O(K×N) 重复扫描
+	if to_remove_set.is_empty():
+		return
+	var write_idx: int = 0
+	for block in blocks:
+		if not to_remove_set.has(block):
+			blocks[write_idx] = block
+			write_idx += 1
+	blocks.resize(write_idx)
 
-## 将各种中间格式的note统一追加到背景列表
-## 优先保留 MidiParser.Note（便于后续精确分类）；其次使用 NoteEvent；最后兜底字典
-func _append_note_to_background(note_data: Variant, bg_notes: Array) -> void:
+## 将 NoteEvent 追加到背景列表
+func _append_note_to_background(note_data: MidiParser.NoteEvent, bg_notes: Array) -> void:
 	if note_data == null:
 		return
-
-	if note_data is MidiParser.Note:
-		bg_notes.append(note_data)
-		return
-
-	if note_data is MidiParser.NoteEvent:
-		bg_notes.append(note_data)
-		return
-
-	if note_data is Dictionary:
-		if note_data.has("original_note"):
-			var original_note = note_data["original_note"]
-			if original_note is MidiParser.Note or original_note is MidiParser.NoteEvent:
-				bg_notes.append(original_note)
-				return
-		bg_notes.append(note_data)
-		return
-
 	bg_notes.append(note_data)
 
-## 提取note所属轨道索引（兼容 Note / NoteEvent / Dictionary）
-func _get_note_track_index(note_data: Variant) -> int:
-	if note_data == null:
-		return 0
+## 提取 NoteEvent 所属轨道索引
+func _get_note_track_index(note_data: MidiParser.NoteEvent) -> int:
+	return note_data.track_index
 
-	if note_data is MidiParser.Note:
-		if note_data.event:
-			return note_data.event.track_index
-		return 0
+## 提取 NoteEvent 起始时间（毫秒）
+func _get_note_start_time_ms(note_data: MidiParser.NoteEvent) -> float:
+	return _tick_to_ms(note_data.start_time)
 
-	if note_data is MidiParser.NoteEvent:
-		return note_data.track_index
-
-	if note_data is Dictionary:
-		if note_data.has("track_index"):
-			return int(note_data.get("track_index", 0))
-		if note_data.has("original_note") and note_data["original_note"] is MidiParser.Note:
-			var original_note = note_data["original_note"]
-			if original_note.event:
-				return original_note.event.track_index
-
-	return 0
-
-## 提取note起始时间（毫秒，兼容 Note / NoteEvent / Dictionary）
-func _get_note_start_time_ms(note_data: Variant) -> float:
-	if note_data == null:
-		return 0.0
-
-	if note_data is MidiParser.Note:
-		if note_data.event:
-			return _tick_to_ms(note_data.event.start_time)
-		return 0.0
-
-	if note_data is MidiParser.NoteEvent:
-		return _tick_to_ms(note_data.start_time)
-
-	if note_data is Dictionary:
-		if note_data.has("start_time_ms"):
-			return float(note_data.get("start_time_ms", 0.0))
-		if note_data.has("start_time"):
-			return _tick_to_ms(float(note_data.get("start_time", 0.0)))
-
-	return 0.0
-
-## 提取note音高（兼容 Note / NoteEvent / Dictionary）
-func _get_note_pitch(note_data: Variant) -> int:
-	if note_data == null:
-		return 0
-
-	if note_data is MidiParser.Note:
-		if note_data.event:
-			return int(note_data.event.pitch)
-		return 0
-
-	if note_data is MidiParser.NoteEvent:
-		return int(note_data.pitch)
-
-	if note_data is Dictionary:
-		if note_data.has("pitch"):
-			return int(note_data.get("pitch", 0))
-		if note_data.has("original_note") and note_data["original_note"] is MidiParser.Note:
-			var original_note = note_data["original_note"]
-			if original_note.event:
-				return int(original_note.event.pitch)
-
-	return 0
+## 提取 NoteEvent 音高
+func _get_note_pitch(note_data: MidiParser.NoteEvent) -> int:
+	return int(note_data.pitch)
 
 ## Step C/D: 虚拟触点匹配和块类型判定
 func _assign_touches_and_judge_types(blocks: Array[BlockInfo], bg_notes: Array) -> void:
@@ -698,80 +776,87 @@ func _assign_touches_and_judge_types(blocks: Array[BlockInfo], bg_notes: Array) 
 	# 按批次分组重新执行间距校验，将冲突块移入背景（优先保留高音，与去重逻辑一致）
 	_reconcile_spacing_after_clamp(blocks, bg_notes)
 
-## 虚拟触点匹配 - 递归回溯找成本最小的分配方案（Unity兼容版本）
+## 虚拟触点匹配 - 迭代枚举所有严格递增触点组合，找成本最小的分配方案（Unity兼容版本）
+## 替代原递归回溯 _find_optimal_matching：用字典序组合枚举避免调用栈问题
+## 原递归语义：枚举所有 C(n_touches, n_blocks) 个严格递增触点索引序列，
+## 仅完整分配（所有块都有触点）才计算成本；块数 > 触点数时全 -1
 func _match_blocks_to_touches(blocks_in_group: Array[BlockInfo], touches: Array[VirtualTouch]) -> void:
 	if blocks_in_group.is_empty():
 		return
-	
+
 	# 按X位置排序块（为了后续匹配）
 	var sorted_blocks = blocks_in_group.duplicate()
 	sorted_blocks.sort_custom(func(a, b): return a.x < b.x)
-	
-	# 初始化最优匹配跟踪
+
+	var n_blocks: int = sorted_blocks.size()
+	var n_touches: int = touches.size()
+
+	# 初始化最优匹配跟踪（全 -1 表示未分配）
 	var min_matching_touch_index: Array = []
-	for i in range(sorted_blocks.size()):
-		min_matching_touch_index.append(-1)
-	
-	# 递归回溯：找最小成本分配
-	var min_cost_holder = [INF]  # 使用数组以便在递归中修改
-	_find_optimal_matching(sorted_blocks, touches, 0, 0, [], min_matching_touch_index, min_cost_holder)
-	
+	min_matching_touch_index.resize(n_blocks)
+	for i in range(n_blocks):
+		min_matching_touch_index[i] = -1
+
+	# 块数 > 触点数时无法为所有块分配触点（与原递归行为一致：全 -1）
+	if n_blocks > n_touches:
+		sorted_blocks.sort_custom(func(a, b):
+			return a.start_time_ms < b.start_time_ms
+		)
+		for i in range(n_blocks):
+			sorted_blocks[i].touch_index = -1
+		return
+
+	# 迭代枚举所有 C(n_touches, n_blocks) 个严格递增触点索引组合
+	# 组合以字典序生成：[0,1,...,k-1] → [0,1,...,k-2,k] → ... → [n-k,...,n-1]
+	var k: int = n_blocks
+	var combo: Array = []
+	combo.resize(k)
+	for i in range(k):
+		combo[i] = i
+
+	var min_cost: float = INF
+
+	while true:
+		# 计算当前组合的成本（移动距离 + 速度违规惩罚）
+		var total_cost: float = 0.0
+		for i in range(k):
+			var blk: BlockInfo = sorted_blocks[i]
+			var touch: VirtualTouch = touches[combo[i]]
+			var move_distance = abs(touch.last_press_x - blk.x)
+			total_cost += move_distance
+			# 速度违规惩罚：使匹配优先选择不超速的分配方案
+			if touch.last_press_time_ms >= 0:
+				var time_delta_sec = (blk.start_time_ms - touch.last_press_time_ms) / 1000.0
+				if time_delta_sec > 0:
+					var max_feasible = max_touch_move_velocity * time_delta_sec
+					if move_distance > max_feasible:
+						total_cost += (move_distance - max_feasible) * 10.0
+
+		if total_cost < min_cost:
+			min_cost = total_cost
+			for i in range(k):
+				min_matching_touch_index[i] = combo[i]
+
+		# 生成下一个组合（字典序）
+		var idx: int = k - 1
+		while idx >= 0 and combo[idx] == n_touches - k + idx:
+			idx -= 1
+		if idx < 0:
+			break
+		combo[idx] += 1
+		for j in range(idx + 1, k):
+			combo[j] = combo[j - 1] + 1
+
 	# Unity bug: 匹配结果按start_time顺序应用（而非x顺序）
 	# 这会导致当批次中有2个块且x顺序与start_time顺序不一致时，
 	# touch_index被错误地分配给不同的块
 	sorted_blocks.sort_custom(func(a, b):
 		return a.start_time_ms < b.start_time_ms
 	)
-	
+
 	# 应用最优分配
-	for i in range(sorted_blocks.size()):
-		var block = sorted_blocks[i]
-		var touch_idx = min_matching_touch_index[i]
-		block.touch_index = touch_idx
-
-## 递归回溯：找最优的块→触点分配，最小化移动成本（Unity兼容版本）
-## 关键修复：(1)修正成本函数仅为移动距离，(2)使用递增的touchIndex避免重复分配
-func _find_optimal_matching(
-	blocks: Array[BlockInfo], 
-	touches: Array[VirtualTouch],
-	block_idx: int,
-	last_touch_idx: int,
-	current_assignment: Array,
-	out_min_matching_touch_index: Array,
-	inout_min_cost: Array  # 使用数组以便修改内容
-) -> void:
-	# 基础情况：已分配所有块
-	if block_idx >= blocks.size():
-		# 计算当前分配方案的总成本（移动距离 + 速度违规惩罚）
-		var total_cost = 0.0
-		for i in range(blocks.size()):
-			if current_assignment[i] >= 0:
-				var blk = blocks[i]
-				var touch = touches[current_assignment[i]]
-				var move_distance = abs(touch.last_press_x - blk.x)
-				total_cost += move_distance
-				# 速度违规惩罚：使匹配优先选择不超速的分配方案
-				# 惩罚 = 超出限速的距离 × 惩罚系数，确保超速方案成本远高于可行方案
-				if touch.last_press_time_ms >= 0:
-					var time_delta_sec = (blk.start_time_ms - touch.last_press_time_ms) / 1000.0
-					if time_delta_sec > 0:
-						var max_feasible = max_touch_move_velocity * time_delta_sec
-						if move_distance > max_feasible:
-							total_cost += (move_distance - max_feasible) * 10.0
-
-		# 更新最小成本和对应的分配
-		if total_cost < inout_min_cost[0]:
-			inout_min_cost[0] = total_cost
-			for i in range(blocks.size()):
-				out_min_matching_touch_index[i] = current_assignment[i]
-		return
-	
-	# 与Unity一致：使用递增touch索引，避免同批次重复分配同一触点
-	for touch_idx in range(last_touch_idx, touches.size()):
-		# 尝试分配此块给此触点
-		current_assignment.append(touch_idx)
-		_find_optimal_matching(blocks, touches, block_idx + 1, touch_idx + 1, current_assignment, out_min_matching_touch_index, inout_min_cost)
-		current_assignment.pop_back()
+	for i in range(n_blocks):
+		sorted_blocks[i].touch_index = min_matching_touch_index[i]
 
 ## 检查块是否可以分配给该触点（考虑冷却和移动速度约束）
 func _can_assign_block_to_touch(block: BlockInfo, touch: VirtualTouch) -> bool:
@@ -916,32 +1001,31 @@ func _convert_blocks_to_game_sequences(blocks: Array[BlockInfo]) -> void:
 	for block in blocks:
 		if block.notes.is_empty():
 			continue
-		
-		# 使用第一个note作为主note
-		var main_note = block.notes[0]
-		if main_note == null or main_note.event == null:
+
+		# 使用第一个 NoteEvent 作为主 note（block.notes 现为 Array[NoteEvent]）
+		var main_note: MidiParser.NoteEvent = block.notes[0]
+		if main_note == null:
 			continue
-		
-		var evt = main_note.event
-		var octave_info = MidiParser.get_note_octave_and_relative_pitch(evt.pitch)
-		
+
+		var octave_info = MidiParser.get_note_octave_and_relative_pitch(main_note.pitch)
+
 		var game_seq = GameSequence.new(
 			0,  # note_index
 			next_key_id,
-			evt.pitch,
+			main_note.pitch,
 			block.start_time_ms,
 			block.duration_ms,
 			block.x,
 			octave_info["octave"],
-			evt.velocity
+			main_note.velocity
 		)
-		
+
 		game_seq.block_type = block.type
 		game_seq.pitch_list = block.pitch_list.duplicate()
 		game_seq.connected_prev = block.connected_prev
 		game_seq.original_notes = block.notes.duplicate()
 		game_seq.lane = block.lane
-		
+
 		game_sequences.append(game_seq)
 		next_key_id += 1
 
@@ -996,27 +1080,32 @@ func get_visible_keys(start_time_ms: float, end_time_ms: float) -> Array[GameSeq
 
 ## 生成后的有效Notes分类（在generate_keys()后调用）
 ## 在generate_keys()的最后调用此方法，统计真实分类
+## 性能：使用 Dictionary 作为 seen-set 实现 O(1) 去重查找，避免 `not in Array` 的 O(N) 线性扫描
+## 6 万音符场景下从 O(N²)≈15 亿次比较降至 O(N)≈6 万次哈希查找
 func _finalize_notes_classification() -> void:
 	last_manual_control_notes.clear()
 	last_auto_play_notes.clear()
-	
-	# 从game_sequences中收集所有manual_control_notes
+
+	# 用 Dictionary 作为 seen-set：key=note 对象引用，value 占位 true
+	# Array.in 是 O(N) 线性扫描；Dictionary.has 是 O(1) 哈希查找
+	var manual_set: Dictionary = {}
 	for game_seq in game_sequences:
 		if game_seq and not game_seq.original_notes.is_empty():
 			for note in game_seq.original_notes:
-				if note not in last_manual_control_notes:
+				if not manual_set.has(note):
+					manual_set[note] = true
 					last_manual_control_notes.append(note)
-	
-	# 从background_sequences中收集所有auto_play_notes
+
+	var auto_set: Dictionary = {}
 	for bg_seq in background_sequences:
 		if bg_seq and not bg_seq.notes.is_empty():
 			for note in bg_seq.notes:
-				# 处理可能的Note对象或NoteEvent对象
-				if note not in last_auto_play_notes:
+				if not auto_set.has(note):
+					auto_set[note] = true
 					last_auto_play_notes.append(note)
 	
 	GLogger.info(
-		"Notes classification finalized: %d manual-control, %d auto-play" % 
+		"Notes classification finalized: %d manual-control, %d auto-play" %
 		[last_manual_control_notes.size(), last_auto_play_notes.size()],
 		"KeySequenceManager"
 	)
@@ -1028,13 +1117,26 @@ func get_last_notes_classification() -> Dictionary:
 		"auto_play_notes": last_auto_play_notes.duplicate()
 	}
 
-## 清空所有序列
+## 清空所有序列（PlayView 退出时调用）
+## 同步清空 _cached_*，避免单 slot 缓存常驻（约 3-15 MB GameSequence + 引用数组）
+## 下次进入 PlayView 时 generate_keys 会重新生成并填充缓存
 func clear_sequences() -> void:
 	game_sequences.clear()
 	background_sequences.clear()
 	all_notes.clear()
 	next_key_id = 0
 	current_midi_data = null
+	# 同步清空单 slot 缓存，避免 PlayView 退出后僵尸内存驻留
+	_cache_key = ""
+	_cached_sequences.clear()
+	_cached_background_sequences.clear()
+	_cached_manual_notes.clear()
+	_cached_auto_notes.clear()
+	# 同步清空 BPM 时间线相关的查找缓存（6 万音符 MIDI 的 _tick_ms_cache 可达 5-12 MB）
+	# set_midi_time_parameters 下次调用时会重建 _bpm_lookup 与 _tick_ms_cache
+	_tick_ms_cache.clear()
+	_bpm_lookup.clear()
+	bpm_timeline.clear()
 
 ## 统计信息
 func get_statistics() -> Dictionary:
@@ -1055,7 +1157,12 @@ func _count_background_notes() -> int:
 ## 配置变更回调（新增）
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	# 任何影响音符生成的配置变更都应清除缓存，避免返回旧结果
+	# 同步清空 _cached_* 释放内存，否则旧 GameSequence 会常驻（_cache_key="" 但数组仍持有引用）
 	_cache_key = ""
+	_cached_sequences.clear()
+	_cached_background_sequences.clear()
+	_cached_manual_notes.clear()
+	_cached_auto_notes.clear()
 
 	# 处理 Lane 相关配置变更
 	if section == "Lane":
