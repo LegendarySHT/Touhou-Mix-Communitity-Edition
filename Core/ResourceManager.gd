@@ -161,31 +161,31 @@ func _download_file(url: String, save_path: String) -> Dictionary:
 	return {"ok": true}
 
 ## 清理文件夹名中的非法字符
-func _sanitize_folder_name(name: String) -> String:
+func _sanitize_folder_name(str: String) -> String:
 	var illegal := ["\\", "/", ":", "*", "?", "\"", "<", ">", "|"]
-	var result := name
+	var result := str
 	for c in illegal:
 		result = result.replace(c, "_")
 	return result
 
 ## 检查 MIDI 是否已下载
-func is_chart_downloaded(hash: String) -> bool:
-	return get_download_state(hash) == DownloadState.DOWNLOADED
+func is_chart_downloaded(chart_hash: String) -> bool:
+	return get_download_state(chart_hash) == DownloadState.DOWNLOADED
 
 ## 获取下载状态
-func get_download_state(hash: String) -> DownloadState:
-	if _download_states.has(hash):
-		return _download_states[hash]
+func get_download_state(chart_hash: String) -> DownloadState:
+	if _download_states.has(chart_hash):
+		return _download_states[chart_hash]
 	# 检查 FileSystemManager 是否有该 hash
-	if FileSystemManager.instance and FileSystemManager.instance._hash_to_folder.has(hash):
-		_download_states[hash] = DownloadState.DOWNLOADED
+	if FileSystemManager.instance and FileSystemManager.instance._hash_to_folder.has(chart_hash):
+		_download_states[chart_hash] = DownloadState.DOWNLOADED
 		return DownloadState.DOWNLOADED
 	return DownloadState.NOT_DOWNLOADED
 
 # ========== 预留接口（未来实现） ==========
 
 ## 下载人声音频（预留接口）
-func download_vocal(hash: String) -> Dictionary:
+func download_vocal(target_hash: String) -> Dictionary:
 	return {"ok": false, "error": "not_implemented"}
 
 ## 下载 SF2 音源（预留接口）

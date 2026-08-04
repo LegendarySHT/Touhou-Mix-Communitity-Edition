@@ -5,7 +5,7 @@ extends BaseScrollList
 class_name AlbumView
 
 ## 当前显示的专辑列表
-var current_albums: Array[AlbumData] = []
+var current_albums: Array = []
 
 ## 排序引擎引用
 @onready var data_manager: DataManager = DataMGR
@@ -117,10 +117,10 @@ func _refresh_display_async() -> void:
 
 ## AlbumView 工厂：创建一个专辑列表项
 func _create_album_item(index: int) -> Variant:
-	var album: AlbumData = current_albums[index]
-	var item = create_and_add_item(album.id, "album")
+	var album: Dictionary = current_albums[index]
+	var item = create_and_add_item(String(album.get("id", "")), "album")
 	if item:
-		item.setup_with_album(self, album, _album_build_counter, _album_build_bg)
+		item.setup_with_dict(self, album, _album_build_counter, _album_build_bg)
 		_album_build_counter += 1
 		return [item]
 	return []
@@ -161,7 +161,7 @@ func reset_selection():
 	selected_item= -1
 
 func on_item_button_confirmed(index: int):
-	var album_id = current_albums[index].id
+	var album_id: String = String(current_albums[index].get("id", ""))
 	if container.get_child(index).expand_tween:
 		await container.get_child(index).expand_tween.finished
 	event_bus.album_selected.emit(album_id)

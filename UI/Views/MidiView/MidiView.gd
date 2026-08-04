@@ -349,8 +349,8 @@ func _on_del_btn_pressed():
 				window.show_message("删除曲包文件夹失败")
 				return
 			# 删除前先记录 song_id 和 album_id，用于判断是否被级联删除
-			var song_id_before: String = midi_to_del.song_data.id if midi_to_del.song_data else ""
-			var album_id_before: String = midi_to_del.album_data.id if midi_to_del.album_data else ""
+			var song_id_before: String = midi_to_del.song_id
+			var album_id_before: String = midi_to_del.album_id
 			var deleted_id: String = midi_to_del.id
 			DataMGR.remove_midi(chart_id)
 			# 判断 Song 和 Album 是否被级联删除（DB 聚合权威，不依赖内存水合缓存）

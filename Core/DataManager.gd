@@ -1,15 +1,9 @@
 ## 数据管理器
 ## 负责歌曲数据的惰性水合缓存与查询（数据唯一源 = ChartDb LiteDB）
-## 启动不再构造全部 MidiData；视图需要时经 _ensureMidi/_ensureSong/_ensureAlbum 按需水合
+## 启动不再构造全部 MidiData；视图需要时经 _ensureMidi 按需水合
 extends Node
 
 class_name DataManager
-
-## 所有专辑数据 (ID -> AlbumData) —— 惰性水合缓存
-var albums: Dictionary[String, AlbumData] = {}
-
-## 所有歌曲数据 (ID -> SongData) —— 惰性水合缓存
-var songs: Dictionary[String, SongData] = {}
 
 ## 所有MIDI谱面数据 (folder_name -> MidiData) —— 惰性水合缓存
 ## 规范键 = ChartDb 的主键（folder_name），经 LookupChartKey 统一解析别名
@@ -79,8 +73,6 @@ func _emit_data_loaded():
 
 ## 清空旧水合缓存，重新进入轻量加载
 func _rebuild_data_tree() -> void:
-	albums.clear()
-	songs.clear()
 	midis.clear()
 	is_loading = true
 	load_all_midis_async()
@@ -105,12 +97,6 @@ func _ensureMidi(chart_key: String) -> MidiData:
 	if midi.id.is_empty():
 		return null
 
-	# 关联 song/album（DB 聚合；孤儿 → __unknown，由 RebuildAlbumsSongs 归组）
-	var song_id: String = json_data.get("song_id", "")
-	var album_id: String = json_data.get("album_id", "")
-	midi.song_data = _ensureSong(song_id) if not song_id.is_empty() else null
-	midi.album_data = _ensureAlbum(album_id) if not album_id.is_empty() else null
-
 	# 初始化人声配置：仅对未保存过 vocal_enabled 配置的新 MIDI 生效，已保存的配置尊重用户选择
 	var runtime_config: Variant = json_data.get("_runtime", {})
 	var has_saved_vocal_enabled = runtime_config is Dictionary and runtime_config.has("vocal_enabled")
@@ -125,92 +111,28 @@ func _ensureMidi(chart_key: String) -> MidiData:
 	midis[chart_key] = midi
 	return midi
 
-## 按 song_id 水合 SongData（DB songs 集合为聚合，含 midi_ids）
-func _ensureSong(song_id: String) -> SongData:
-	if song_id.is_empty():
-		return null
-	if songs.has(song_id):
-		return songs[song_id]
+## ========== 专辑 / 歌曲轻量查询（DB 投影，无 AlbumData/SongData 对象） ==========
+
+## 获取排序后的专辑轻量投影（按 ConfigManager [Browse] 设置排序，C# 内完成）
+func get_sorted_albums() -> Array:
 	if ChartDB == null or not ChartDB.IsOpen():
-		return null
-
-	var d: Dictionary = ChartDB.GetSong(song_id)
-	if d.is_empty():
-		return null
-
-	var s := SongData.new()
-	s.from_json(d)
-	s.midi_ids.assign(d.get("midi_ids", []))
-	songs[song_id] = s
-	return s
-
-## 按 album_id 水合 AlbumData（DB albums 集合为聚合，含 song_ids/total_midi_count/earliest_uploaded_date）
-func _ensureAlbum(album_id: String) -> AlbumData:
-	if album_id.is_empty():
-		return null
-	if albums.has(album_id):
-		return albums[album_id]
-	if ChartDB == null or not ChartDB.IsOpen():
-		return null
-
-	var d: Dictionary = ChartDB.GetAlbum(album_id)
-	if d.is_empty():
-		return null
-	return _hydrateAlbum(album_id, d)
-
-## 从 DB album dict 构造 AlbumData 并入缓存（get_sorted_albums 复用已拉取的 dict，避免二次读库）
-func _hydrateAlbum(album_id: String, d: Dictionary) -> AlbumData:
-	var a := AlbumData.new()
-	a.from_json(d)
-	a.song_ids.assign(d.get("song_ids", []))
-	a.total_midi_count = d.get("total_midi_count", 0)
-	a.earliest_uploaded_date = d.get("earliest_uploaded_date", "")
-	albums[album_id] = a
-	return a
-
-## ========== 专辑排序查询 ==========
-
-## 获取排序后的专辑列表（按 ConfigManager [Browse] 设置排序）
-func get_sorted_albums() -> Array[AlbumData]:
-	var album_array: Array[AlbumData] = []
-	if ChartDB == null or not ChartDB.IsOpen():
-		return album_array
-	for d: Variant in ChartDB.GetAlbums():
-		if d is Dictionary and not (d as Dictionary).is_empty():
-			var album_dict: Dictionary = d as Dictionary
-			var album_id: String = String(album_dict.get("_id", ""))
-			var album: AlbumData = null
-			if albums.has(album_id):
-				album = albums[album_id]
-			else:
-				album = _hydrateAlbum(album_id, album_dict)
-			if album:
-				album_array.append(album)
-
-	# 读取排序配置
+		return []
 	var method_str := ConfigManager.instance.get_string("Browse", "album_sort_method", "creation_time")
 	var dir_str := ConfigManager.instance.get_string("Browse", "album_sort_direction", "asc")
-
-	var method := SortingEngine.parse_album_sort_method(method_str)
-	var direction := SortingEngine.SortDirection.ASCENDING if dir_str == "asc" else SortingEngine.SortDirection.DESCENDING
-
-	return SortEngine.sort_albums(album_array, method, direction)
+	var direction := 0 if dir_str == "asc" else 1
+	var albums: Array = ChartDB.GetSortedAlbumItems(method_str, direction)
+	GLogger.info("专辑投影返回 %d 个（C# 排序 %s %s）" % [albums.size(), method_str, dir_str], "DataMGR")
+	return albums
 
 ## 获取所有专辑列表（委托到 get_sorted_albums）
-func get_all_albums() -> Array[AlbumData]:
+func get_all_albums() -> Array:
 	return get_sorted_albums()
 
-## 获取专辑下的所有歌曲
-func get_songs_by_album(album_id: String) -> Array[SongData]:
-	var result: Array[SongData] = []
-	var album = _ensureAlbum(album_id)
-	if album == null:
-		return result
-	for song_id in album.song_ids:
-		var song = _ensureSong(song_id)
-		if song:
-			result.append(song)
-	return result
+## 获取专辑下的所有歌曲（轻量投影字典 {id, name, midi_count}）
+func get_songs_by_album(album_id: String) -> Array:
+	if ChartDB == null or not ChartDB.IsOpen():
+		return []
+	return ChartDB.GetSongItemsByAlbum(album_id)
 
 ## 获取歌曲下的所有MIDI谱面
 func get_midis_by_song(song_id: String) -> Array[MidiData]:
@@ -234,31 +156,12 @@ func get_midi_by_id(midi_id: String) -> MidiData:
 		return null
 	return _ensureMidi(chart_key)
 
-## 按专辑ID获取专辑
-func get_album_by_id(album_id: String) -> AlbumData:
-	return _ensureAlbum(album_id)
-
-## 按歌曲ID获取歌曲
-func get_song_by_id(song_id: String) -> SongData:
-	return _ensureSong(song_id)
-
 ## 按状态过滤MIDI谱面
 func get_midis_by_status(status: String) -> Array[MidiData]:
 	var result: Array[MidiData] = []
 	if ChartDB == null or not ChartDB.IsOpen():
 		return result
 	for chart_key: String in ChartDB.GetChartsByStatus(status):
-		var midi: MidiData = _ensureMidi(chart_key)
-		if midi:
-			result.append(midi)
-	return result
-
-## 获取所有MIDI谱面列表（全量水合，仅全量视图需要）
-func get_all_midis() -> Array[MidiData]:
-	var result: Array[MidiData] = []
-	if ChartDB == null or not ChartDB.IsOpen():
-		return result
-	for chart_key: String in ChartDB.GetAllChartKeys():
 		var midi: MidiData = _ensureMidi(chart_key)
 		if midi:
 			result.append(midi)
@@ -313,8 +216,6 @@ func get_statistics() -> Dictionary:
 
 ## 清空所有数据缓存
 func clear_data() -> void:
-	albums.clear()
-	songs.clear()
 	midis.clear()
 
 ## 从内存水合缓存中移除指定 MIDI（DB 删除由 FileSystemManager.delete_chart → ChartDB.RemoveChart 完成）

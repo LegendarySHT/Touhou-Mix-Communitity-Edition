@@ -300,10 +300,10 @@ func _get_preview_cover_texture() -> Texture2D:
 	var albums := data_mgr.get_all_albums()
 	if albums.is_empty():
 		return null
-	var songs := data_mgr.get_songs_by_album(albums[0].id)
+	var songs := data_mgr.get_songs_by_album(String(albums[0].get("id", "")))
 	if songs.is_empty():
 		return null
-	var midis := data_mgr.get_midis_by_song(songs[0].id)
+	var midis := data_mgr.get_midis_by_song(String(songs[0].get("id", "")))
 	if midis.is_empty():
 		return null
 	return fs_mgr.get_cover_by_midiData(midis[0])

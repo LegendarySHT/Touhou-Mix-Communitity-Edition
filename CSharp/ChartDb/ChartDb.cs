@@ -458,6 +458,160 @@ public partial class ChartDb : Node
         }
     }
 
+    // ========== 专辑 / 歌曲轻量投影（AlbumView/SongView/DelView 直接消费，替代 AlbumData/SongData 水合） ==========
+
+    /// <summary>
+    /// 返回排序专辑投影（Array[Dictionary]）：{id, name, song_count, total_midi_count, date, earliest_uploaded_date}。
+    /// method 三态：creation_time（date 主、earliest_uploaded_date 兜底、空值排最下）、
+    /// download_time（earliest_uploaded_date、空值排最上）、name（专辑名升序，DelView 用）。
+    /// Unknown 专辑（_id 前缀 __unknown）永远最后。direction: 0=ASC 1=DESC。
+    /// 排序语义与旧 SortEngine.sort_albums / DelView._sort_albums_for_delview 一致。
+    /// </summary>
+    public Godot.Collections.Array GetSortedAlbumItems(string method, int direction)
+    {
+        var arr = new Godot.Collections.Array();
+        if (!IsOpen()) return arr;
+        lock (_lock)
+        {
+            var unknown = new List<BsonDocument>();
+            var normal = new List<BsonDocument>();
+            foreach (var d in _albums.FindAll().ToList())
+            {
+                if (d.TryGetValue("_id", out var idV) && idV.IsString && idV.AsString.StartsWith("__unknown"))
+                    unknown.Add(d);
+                else
+                    normal.Add(d);
+            }
+            bool asc = direction == 0;
+            if (method == "name")
+            {
+                normal.Sort((a, b) => asc
+                    ? string.CompareOrdinal(BsonConvert.GetStr(a, "name"), BsonConvert.GetStr(b, "name"))
+                    : string.CompareOrdinal(BsonConvert.GetStr(b, "name"), BsonConvert.GetStr(a, "name")));
+            }
+            else
+            {
+                normal.Sort((a, b) => CompareAlbumDates(a, b, method, asc));
+            }
+            foreach (var d in normal) arr.Add(AlbumItemDict(d));
+            foreach (var d in unknown) arr.Add(AlbumItemDict(d));
+            return arr;
+        }
+    }
+
+    /// <summary>
+    /// 返回专辑下所有歌曲的轻量投影（Array[Dictionary]）：{id, name, midi_count}。
+    /// 替代 DataMGR.get_songs_by_album 的 SongData 水合，SongView/DelView 直接消费。
+    /// </summary>
+    public Godot.Collections.Array GetSongItemsByAlbum(string albumId)
+    {
+        var arr = new Godot.Collections.Array();
+        if (!IsOpen() || string.IsNullOrEmpty(albumId)) return arr;
+        lock (_lock)
+        {
+            foreach (var d in _songs.Find(Query.EQ("album_id", albumId)).ToList())
+                arr.Add(SongItemDict(d));
+            return arr;
+        }
+    }
+
+    /// <summary>
+    /// 专辑封面路径（DB 内直查，替代 AlbumListItem 的 水合全部分曲+首曲MidiData 链）：
+    /// 专辑 → 首曲 → 首谱面 → chart.cover_path。与原 get_cover_path_by_midiData 语义一致：
+    /// 只取首个，为空返回 ""（调用方用 default_cover_if_missing 兜底）。
+    /// </summary>
+    public string GetAlbumCoverPath(string albumId)
+    {
+        if (!IsOpen() || string.IsNullOrEmpty(albumId)) return "";
+        lock (_lock)
+        {
+            var album = _albums.FindById(albumId);
+            if (album == null || !album.TryGetValue("song_ids", out var sv) || !sv.IsArray || sv.AsArray.Count == 0)
+                return "";
+            var firstSongId = sv.AsArray[0].AsString;
+            var song = _songs.FindById(firstSongId);
+            if (song == null || !song.TryGetValue("midi_ids", out var mv) || !mv.IsArray || mv.AsArray.Count == 0)
+                return "";
+            var firstMidiId = mv.AsArray[0].AsString;
+            var chart = _charts.FindById(firstMidiId);
+            return chart == null ? "" : BsonConvert.GetStr(chart, "cover_path");
+        }
+    }
+
+    /// <summary>
+    /// 歌曲封面路径（DB 内直查）：歌曲 → 首谱面 → chart.cover_path。为空返回 ""。
+    /// </summary>
+    public string GetSongCoverPath(string songId)
+    {
+        if (!IsOpen() || string.IsNullOrEmpty(songId)) return "";
+        lock (_lock)
+        {
+            var song = _songs.FindById(songId);
+            if (song == null || !song.TryGetValue("midi_ids", out var mv) || !mv.IsArray || mv.AsArray.Count == 0)
+                return "";
+            var firstMidiId = mv.AsArray[0].AsString;
+            var chart = _charts.FindById(firstMidiId);
+            return chart == null ? "" : BsonConvert.GetStr(chart, "cover_path");
+        }
+    }
+
+    /// <summary>专辑日期比较：语义移植自 SortEngine._compare_dates + _compare_albums（倒序 = 结果取反）。</summary>
+    private static int CompareAlbumDates(BsonDocument a, BsonDocument b, string method, bool asc)
+    {
+        int cmp;
+        if (method == "download_time")
+        {
+            cmp = CompareDates(
+                BsonConvert.GetStr(a, "earliest_uploaded_date"),
+                BsonConvert.GetStr(b, "earliest_uploaded_date"),
+                "", "", true);
+        }
+        else
+        {
+            cmp = CompareDates(
+                BsonConvert.GetStr(a, "date"),
+                BsonConvert.GetStr(b, "date"),
+                BsonConvert.GetStr(a, "earliest_uploaded_date"),
+                BsonConvert.GetStr(b, "earliest_uploaded_date"),
+                false);
+        }
+        return asc ? cmp : -cmp;
+    }
+
+    /// <summary>日期比较：primary 优先，primary 为空用 fallback；empty_to_top 控制空值排最上/最下。</summary>
+    private static int CompareDates(string aPrimary, string bPrimary, string aFallback, string bFallback, bool emptyToTop)
+    {
+        var aDate = string.IsNullOrEmpty(aPrimary) ? aFallback : aPrimary;
+        var bDate = string.IsNullOrEmpty(bPrimary) ? bFallback : bPrimary;
+        if (string.IsNullOrEmpty(aDate) && string.IsNullOrEmpty(bDate)) return 0;
+        if (string.IsNullOrEmpty(aDate)) return emptyToTop ? -1 : 1;
+        if (string.IsNullOrEmpty(bDate)) return emptyToTop ? 1 : -1;
+        return string.CompareOrdinal(aDate, bDate);
+    }
+
+    /// <summary>album 文档 → 列表项轻量投影字典（AlbumView/DelView 直接消费）。</summary>
+    private static Godot.Collections.Dictionary AlbumItemDict(BsonDocument d)
+    {
+        var item = new Godot.Collections.Dictionary();
+        item["id"] = d.TryGetValue("_id", out var idV) && idV.IsString ? idV.AsString : "";
+        item["name"] = BsonConvert.GetStr(d, "name");
+        item["song_count"] = d.TryGetValue("song_ids", out var sv) && sv.IsArray ? sv.AsArray.Count : 0;
+        item["total_midi_count"] = BsonConvert.GetLong(d, "total_midi_count");
+        item["date"] = BsonConvert.GetStr(d, "date");
+        item["earliest_uploaded_date"] = BsonConvert.GetStr(d, "earliest_uploaded_date");
+        return item;
+    }
+
+    /// <summary>song 文档 → 歌曲列表项轻量投影字典。</summary>
+    private static Godot.Collections.Dictionary SongItemDict(BsonDocument d)
+    {
+        var item = new Godot.Collections.Dictionary();
+        item["id"] = d.TryGetValue("_id", out var idV) && idV.IsString ? idV.AsString : "";
+        item["name"] = BsonConvert.GetStr(d, "name");
+        item["midi_count"] = d.TryGetValue("midi_ids", out var mv) && mv.IsArray ? mv.AsArray.Count : 0;
+        return item;
+    }
+
     // ========== 排序 / 搜索 ==========
 
     /// <summary>
@@ -470,38 +624,114 @@ public partial class ChartDb : Node
         if (!IsOpen()) return new Godot.Collections.Array<string>();
         lock (_lock)
         {
-            var docs = string.IsNullOrEmpty(status) || status == "ALL"
-                ? _charts.FindAll().ToList()
-                : _charts.Find(Query.EQ("status", status)).ToList();
+            return new Godot.Collections.Array<string>(SortedDocs(status, sortField, direction, searchQuery)
+                .Select(d => d["_id"].AsString).ToArray());
+        }
+    }
 
+    /// <summary>
+    /// 按状态过滤 + 字段排序 +（可选）关键词搜索，返回有序轻量列表投影（Array[Dictionary]）。
+    /// 列表视图（SortedMidiView）直接消费，替代全量水合 MidiData ——
+    /// 每项仅含列表显示 + 封面查询所需的字段，见 ListItemDict。
+    /// </summary>
+    public Godot.Collections.Array GetSortedMidiListItems(string status, int sortField, int direction, string searchQuery)
+    {
+        var arr = new Godot.Collections.Array();
+        if (!IsOpen()) return arr;
+        lock (_lock)
+        {
+            foreach (var d in SortedDocs(status, sortField, direction, searchQuery))
+                arr.Add(ListItemDict(d));
+            return arr;
+        }
+    }
+
+    /// <summary>
+    /// 按任意别名键（folder_name / folder_hash / midi_id / file_hash / hash）批量取轻量列表投影。
+    /// 收藏夹浏览用：保持传入顺序，跳过失效引用；searchQuery 非空时在收集集内过滤（含简繁日规范化）。
+    /// </summary>
+    public Godot.Collections.Array GetMidiListItemsByKeys(Godot.Collections.Array keys, string searchQuery = "")
+    {
+        var arr = new Godot.Collections.Array();
+        if (!IsOpen()) return arr;
+        lock (_lock)
+        {
+            var docs = new List<BsonDocument>();
+            foreach (var kv in keys)
+            {
+                var key = kv.AsString();
+                if (string.IsNullOrEmpty(key)) continue;
+                var folderName = LookupChartKey(key);
+                if (string.IsNullOrEmpty(folderName)) continue;
+                var d = _charts.FindById(folderName);
+                if (d != null) docs.Add(d);
+            }
             if (!string.IsNullOrEmpty(searchQuery))
                 docs = FilterSearch(docs, searchQuery);
-
-            bool asc = direction == 0;
-            IEnumerable<BsonDocument> sorted;
-            switch (sortField)
-            {
-                case 1:
-                    sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "download_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "download_count"));
-                    break;
-                case 2:
-                    sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "love_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "love_count"));
-                    break;
-                case 3:
-                    sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "up_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "up_count"));
-                    break;
-                case 4:
-                    sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "trial_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "trial_count"));
-                    break;
-                case 5:
-                    sorted = asc ? docs.OrderBy(d => BsonConvert.GetStr(d, "uploaded_date"), StringComparer.Ordinal) : docs.OrderByDescending(d => BsonConvert.GetStr(d, "uploaded_date"), StringComparer.Ordinal);
-                    break;
-                default:
-                    sorted = asc ? docs.OrderBy(d => BsonConvert.GetStr(d, "sort_name"), StringComparer.Ordinal) : docs.OrderByDescending(d => BsonConvert.GetStr(d, "sort_name"), StringComparer.Ordinal);
-                    break;
-            }
-            return new Godot.Collections.Array<string>(sorted.Select(d => d["_id"].AsString).ToArray());
+            foreach (var d in docs)
+                arr.Add(ListItemDict(d));
+            return arr;
         }
+    }
+
+    /// <summary>
+    /// chart 文档 → 列表项轻量投影字典（SortedMidiView 直接消费）。
+    /// id = midi_id（点击水合用，可经 LookupChartKey 解析回 folder_name）。
+    /// </summary>
+    private static Godot.Collections.Dictionary ListItemDict(BsonDocument d)
+    {
+        var item = new Godot.Collections.Dictionary();
+        item["id"] = BsonConvert.GetStr(d, "midi_id");
+        item["key"] = d["_id"].AsString;
+        item["name"] = BsonConvert.GetStr(d, "name");
+        item["artist_name"] = BsonConvert.GetStr(d, "artist_name");
+        item["status"] = BsonConvert.GetStr(d, "status", "PENDING");
+        item["download_count"] = BsonConvert.GetLong(d, "download_count");
+        item["trial_count"] = BsonConvert.GetLong(d, "trial_count");
+        item["up_count"] = BsonConvert.GetLong(d, "up_count");
+        item["love_count"] = BsonConvert.GetLong(d, "love_count");
+        item["file_hash"] = BsonConvert.GetStr(d, "file_hash");
+        return item;
+    }
+
+    /// <summary>
+    /// 状态过滤 + 字段排序 +（可选）关键词搜索，返回有序 BsonDocument 列表。
+    /// 与 GetSortedMidiKeys 语义完全一致（FindAll/Find + FilterSearch + LINQ OrderBy，
+    /// 字符串 StringComparer.Ordinal），供键数组与轻量投影两种出口复用。
+    /// </summary>
+    private List<BsonDocument> SortedDocs(string status, int sortField, int direction, string searchQuery)
+    {
+        var docs = string.IsNullOrEmpty(status) || status == "ALL"
+            ? _charts.FindAll().ToList()
+            : _charts.Find(Query.EQ("status", status)).ToList();
+
+        if (!string.IsNullOrEmpty(searchQuery))
+            docs = FilterSearch(docs, searchQuery);
+
+        bool asc = direction == 0;
+        IEnumerable<BsonDocument> sorted;
+        switch (sortField)
+        {
+            case 1:
+                sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "download_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "download_count"));
+                break;
+            case 2:
+                sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "love_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "love_count"));
+                break;
+            case 3:
+                sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "up_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "up_count"));
+                break;
+            case 4:
+                sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "trial_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "trial_count"));
+                break;
+            case 5:
+                sorted = asc ? docs.OrderBy(d => BsonConvert.GetStr(d, "uploaded_date"), StringComparer.Ordinal) : docs.OrderByDescending(d => BsonConvert.GetStr(d, "uploaded_date"), StringComparer.Ordinal);
+                break;
+            default:
+                sorted = asc ? docs.OrderBy(d => BsonConvert.GetStr(d, "sort_name"), StringComparer.Ordinal) : docs.OrderByDescending(d => BsonConvert.GetStr(d, "sort_name"), StringComparer.Ordinal);
+                break;
+        }
+        return sorted.ToList();
     }
 
     /// <summary>
@@ -633,9 +863,11 @@ public partial class ChartDb : Node
                 gd["_runtime"] = rtDict;
             }
 
-            // 派生关联键（供 _ensureMidi 查 song/album；from_json 忽略未知键）
+            // 派生关联键（供 MidiData 直接持有扁平 song/album 字段，不再水合 SongData/AlbumData）
             gd["song_id"] = BsonConvert.GetStr(doc, "song_id");
             gd["album_id"] = BsonConvert.GetStr(doc, "album_id");
+            gd["song_name"] = BsonConvert.GetStr(doc, "song_name");
+            gd["album_name"] = BsonConvert.GetStr(doc, "album_name");
             return gd;
         }
     }

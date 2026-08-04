@@ -5,7 +5,7 @@ extends BaseScrollList
 class_name SongView
 
 ## 当前显示的歌曲列表
-var current_songs: Array[SongData] = []
+var current_songs: Array = []
 ## 当前已选中的专辑 ID
 var current_album_id: String = ""
 
@@ -80,8 +80,7 @@ func _load_songs(album_id: String) -> void:
 	# 安全网：若歌曲列表为空且 Album 也被删除（级联），延迟退回 AlbumView
 	# 若 Song 被删除但 Album 仍存在，则显示该 Album 的空列表（不退回）
 	if current_songs.is_empty() and state_manager.current_state == UIStateManager.UIState.SONG_VIEW:
-		var album_data = data_manager.get_album_by_id(current_album_id)
-		if album_data == null:
+		if ChartDB.GetAlbum(current_album_id).is_empty():
 			# Album 也被删除，安全退回
 			call_deferred("_deferred_go_back")
 
@@ -106,9 +105,9 @@ func _refresh_display() -> void:
 	var bg = ButtonGroup.new()
 	# 添加新项
 	for song in current_songs:
-		var item = create_and_add_item(song.id, "song")
+		var item = create_and_add_item(String(song.get("id", "")), "song")
 		if item:
-			item.setup_with_song(self, song, counter, bg)
+			item.setup_with_dict(self, song, counter, bg)
 			counter += 1
 	# 列表构建完成，触发未加载项的封面加载
 	trigger_cover_chain()
@@ -130,26 +129,27 @@ func _refresh_from_data() -> void:
 	_update_ss_count()
 	container.custom_minimum_size.y = (140 + 29) * (current_songs.size() + 1)
 	if current_songs.is_empty():
-		var album_data = data_manager.get_album_by_id(current_album_id)
-		if album_data == null:
+		if ChartDB.GetAlbum(current_album_id).is_empty():
 			_deferred_go_back()
 
 ## 同步更新 SS 节点（AnimationManager 在 SongView 过渡时从专辑列表复制的快照）的歌曲计数
 func _update_ss_count() -> void:
-	var album_data = data_manager.get_album_by_id(current_album_id)
-	if not album_data:
+	var album: Dictionary = ChartDB.GetAlbum(current_album_id)
+	if album.is_empty():
 		return
 	var ss_node = get_node_or_null("/root/Main/skew/SS")
 	if not is_instance_valid(ss_node):
 		return
 	var count_label = ss_node.get_node_or_null("SongCount")
 	if is_instance_valid(count_label):
-		count_label.text = "%d" % album_data.song_ids.size()
+		count_label.text = "%d" % album.get("song_ids", []).size()
 
 
 func on_item_button_confirmed(index: int):
-	var song_data:SongData = current_songs[index]
-	print("Select Song:", song_data.name)
+	if index < 0 or index >= current_songs.size():
+		return
+	var song: Dictionary = current_songs[index]
+	print("Select Song:", song.get("name", ""))
 	# 切换到MIDI视图
 	state_manager.change_state(state_manager.UIState.MIDI_VIEW)
-	event_bus.emit_song_selected(song_data.id)
+	event_bus.emit_song_selected(String(song.get("id", "")))

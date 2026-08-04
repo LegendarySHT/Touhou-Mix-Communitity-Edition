@@ -29,28 +29,6 @@ enum SortStatField {
 	DEAD
 }
 
-## 专辑排序方式枚举
-enum AlbumSortMethod {
-	BY_CREATION_TIME,  # 按创建时间（album.date / release_date，空的 fallback 到下载时间）
-	BY_DOWNLOAD_TIME   # 按下载时间（= uploadedDate，空日期排最上）
-}
-
-## 从字符串解析专辑排序方式（用于 ConfigManager 读回）
-static func parse_album_sort_method(method_str: String) -> AlbumSortMethod:
-	match method_str:
-		"download_time":
-			return AlbumSortMethod.BY_DOWNLOAD_TIME
-		_:
-			return AlbumSortMethod.BY_CREATION_TIME
-
-## 将专辑排序方式转为字符串（用于 ConfigManager 写入）
-static func album_sort_method_to_str(method: AlbumSortMethod) -> String:
-	match method:
-		AlbumSortMethod.BY_DOWNLOAD_TIME:
-			return "download_time"
-		_:
-			return "creation_time"
-
 ## 初始化函数
 func _ready() -> void:
 	add_to_group("singleton")
@@ -72,6 +50,10 @@ var is_sorting_active: bool = false
 
 ## 当前的midi列表
 var current_midis: Array[MidiData] = []
+
+## 当前排序结果的轻量投影（DB 路径，列表项直接消费；字段见 ChartDB.ListItemDict）
+## 与 current_midis 并存：DB 路径填 items，显式传入 midis 的内存路径填 current_midis
+var current_items: Array = []
 
 ## 停止排序任务
 func stop_sorting() -> void:
@@ -138,12 +120,10 @@ func _compare_midis(
 			result = _compare_string(midi_a.uploaded_date, midi_b.uploaded_date)
 		
 		SortDataField.DEFAULT:
-			# 默认排序：按专辑名->歌曲名->谱面名
-			result = _compare_string(midi_a.album_data.name if midi_a.album_data else "", 
-									  midi_b.album_data.name if midi_b.album_data else "")
+			# 默认排序：按专辑名->歌曲名->谱面名（扁平字段，MidiData 直接持有）
+			result = _compare_string(midi_a.album_name, midi_b.album_name)
 			if result == 0:
-				result = _compare_string(midi_a.song_data.name if midi_a.song_data else "",
-										 midi_b.song_data.name if midi_b.song_data else "")
+				result = _compare_string(midi_a.song_name, midi_b.song_name)
 			if result == 0:
 				result = _compare_string(midi_a.name, midi_b.name)
 	
@@ -182,6 +162,16 @@ func _get_status_name(status: SortStatField) -> String:
 		_:
 			return ""
 
+## 可读化排序配置（调试用）：状态/字段/方向全打印，便于确认筛选面板切换时的完整生效状态
+func _describe_sort(status: SortStatField, field: SortDataField, direction: SortDirection) -> String:
+	var field_names := ["默认(专辑名)", "下载数", "收藏数", "好评数", "试玩数", "上传时间"]
+	var stat_name := _get_status_name(status)
+	if stat_name.is_empty():
+		stat_name = "ALL"
+	var field_name: String = field_names[int(field)] if int(field) < field_names.size() else str(int(field))
+	var dir_name := "升序" if direction == SortDirection.ASCENDING else "降序"
+	return "状态=%s 字段=%s 方向=%s" % [stat_name, field_name, dir_name]
+
 ## 按状态过滤MIDI列表（协程批量处理版本）
 func _filter_midis_by_status(
 	midis: Array[MidiData],
@@ -215,6 +205,10 @@ func get_midis() -> Array[MidiData]:
 	GLogger.info("当前midi数量: %d" % current_midis.size(), "SortEngine")
 	return current_midis
 
+## 获取当前排序结果的轻量投影（DB 路径，SortedMidiView 直接消费）
+func get_items() -> Array:
+	return current_items
+
 ## 设置排序模式
 func set_sort_mode(status: SortStatField = SortStatField.ALL,
 					sort_field: SortDataField = SortDataField.DEFAULT,
@@ -224,6 +218,13 @@ func set_sort_mode(status: SortStatField = SortStatField.ALL,
 	var request_id := _sort_request_id
 	is_sorting_active = true
 	_sort_mode_task(request_id, status, sort_field, sort_direction, midis)
+
+## 用搜索词重新跑当前排序（DB 路径：状态过滤 + 字段排序 + 搜索全在 C# FilterSearch 完成）
+func set_sort_mode_with_query(query: String) -> void:
+	_sort_request_id += 1
+	var request_id := _sort_request_id
+	is_sorting_active = true
+	_sort_mode_task(request_id, current_sort_stat_field, current_sort_field, current_sort_direction, null, query)
 
 ## 排序任务收尾
 func _finish_sort_task(request_id: int, should_emit_signal: bool) -> void:
@@ -235,14 +236,16 @@ func _finish_sort_task(request_id: int, should_emit_signal: bool) -> void:
 		_emit_sort_finished()
 
 ## 按状态和排序过滤MIDI列表（协程任务）
-## 数据源：ChartDb（状态过滤 + 字段排序在 C# 完成，返回有序规范键，再分批惰性水合）
+## 数据源：ChartDb（状态过滤 + 字段排序 + 可选搜索词在 C# 一次完成，返回有序轻量投影）
+## 列表项直接消费投影，不再全量水合 MidiData（点击时才水合单条）
 ## 仅当调用方显式传入 midis（自定义列表）时退回内存排序路径保持兼容
 func _sort_mode_task(
 	request_id: int,
 	status: SortStatField = SortStatField.ALL,
 	sort_field: SortDataField = SortDataField.DEFAULT,
 	sort_direction: SortDirection = SortDirection.DESCENDING,
-	midis = null
+	midis = null,
+	query: String = ""
 ) -> void:
 	current_sort_field = sort_field
 	current_sort_direction = sort_direction
@@ -250,7 +253,7 @@ func _sort_mode_task(
 
 	# 兼容路径：显式传入的 midis 列表走原内存排序
 	if midis != null:
-		GLogger.info("开始排序任务(内存): 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction], "SortEngine")
+		GLogger.info("开始排序任务(内存): %s" % _describe_sort(status, sort_field, sort_direction), "SortEngine")
 		var source_midis: Array = midis
 		if await _yield_for_sort_step(request_id):
 			return
@@ -264,28 +267,16 @@ func _sort_mode_task(
 		_finish_sort_task(request_id, true)
 		return
 
-	GLogger.info("开始排序任务(DB): 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction], "SortEngine")
+	GLogger.info("开始排序任务(DB): %s 搜索=[%s]" % [_describe_sort(status, sort_field, sort_direction), query], "SortEngine")
 
-	# DB 全量排序：状态过滤 + 字段排序在 C# 一次完成，只返回键，主线程分批水合
+	# DB 全量排序：状态过滤 + 字段排序 +（可选）搜索词在 C# 一次完成，返回有序轻量投影
+	# 列表项直接消费（不再全量水合 MidiData，点击时才水合单条）
 	var status_str := _get_status_name(status)
-	var keys: Array = ChartDB.GetSortedMidiKeys(status_str, int(sort_field), int(sort_direction), "")
-	GLogger.info("DB 排序返回 %d 个键" % keys.size(), "SortEngine")
-
-	var temp_list: Array[MidiData] = []
-	for i in range(0, keys.size(), FILTER_BATCH_SIZE):
-		if _is_sort_cancelled(request_id):
-			return
-		var end_index = min(i + FILTER_BATCH_SIZE, keys.size())
-		for j in range(i, end_index):
-			var midi = DataMGR._ensureMidi(String(keys[j]))
-			if midi:
-				temp_list.append(midi)
-		if end_index < keys.size() and await _yield_for_sort_step(request_id):
-			return
+	current_items = ChartDB.GetSortedMidiListItems(status_str, int(sort_field), int(sort_direction), query)
+	GLogger.info("DB 排序返回 %d 个项" % current_items.size(), "SortEngine")
 
 	if _is_sort_cancelled(request_id):
 		return
-	current_midis = temp_list
 	_finish_sort_task(request_id, true)
 
 ## 发射排序完成信号
@@ -316,8 +307,8 @@ func search_midis(midis: Array[MidiData], query: String) -> Array[MidiData]:
 
 	for midi in midis:
 		var midi_name = midi.name.to_lower()
-		var song_name = (midi.song_data.name if midi.song_data else "").to_lower()
-		var album_name = (midi.album_data.name if midi.album_data else "").to_lower()
+		var song_name = midi.song_name.to_lower()
+		var album_name = midi.album_name.to_lower()
 		var artist_name = midi.artist_name.to_lower()
 		var author_name = midi.author_name.to_lower()
 		var uploader_name = midi.uploader_name.to_lower()
@@ -348,63 +339,6 @@ func search_midis(midis: Array[MidiData], query: String) -> Array[MidiData]:
 			result.append(midi)
 
 	return result
-
-## ========== 专辑级排序 ==========
-
-## 对专辑列表排序（专辑级，与 MIDI 排序独立）
-## Unknown 专辑（id 含 "__unknown"）始终排在最后
-func sort_albums(albums: Array[AlbumData], method: AlbumSortMethod, direction: SortDirection) -> Array[AlbumData]:
-	if albums.is_empty():
-		return albums
-	
-	var sorted := albums.duplicate()
-	var ascending := direction == SortDirection.ASCENDING
-	
-	# 分离 Unknown 专辑
-	var unknown_albums: Array[AlbumData] = []
-	var normal_albums: Array[AlbumData] = []
-	for a in sorted:
-		if a is AlbumData and a.id.begins_with("__unknown"):
-			unknown_albums.append(a)
-		else:
-			normal_albums.append(a)
-	
-	# 对普通专辑排序
-	normal_albums.sort_custom(func(a: AlbumData, b: AlbumData) -> bool:
-		return _compare_albums(a, b, method, ascending)
-	)
-	
-	# Unknown 拼接到最后
-	normal_albums.append_array(unknown_albums)
-	return normal_albums
-
-## 专辑比较函数（预计算字段已在数据加载时准备好）
-## 倒序通过交换 a/b 实现，避免空字符串时 not(a<b) 违反严格弱序
-func _compare_albums(a: AlbumData, b: AlbumData, method: AlbumSortMethod, ascending: bool) -> bool:
-	if not ascending:
-		var tmp := a
-		a = b
-		b = tmp
-	
-	match method:
-		AlbumSortMethod.BY_CREATION_TIME:
-			return _compare_dates(a.release_date, b.release_date, a.earliest_uploaded_date, b.earliest_uploaded_date, false)
-		AlbumSortMethod.BY_DOWNLOAD_TIME:
-			return _compare_dates(a.earliest_uploaded_date, b.earliest_uploaded_date, "", "", true)
-	return false
-
-## 日期比较：primary 优先，primary 为空时用 fallback；empty_to_top 控制空值排最上还是最下
-func _compare_dates(a_primary: String, b_primary: String, a_fallback: String, b_fallback: String, empty_to_top: bool) -> bool:
-	var a_date := a_primary if not a_primary.is_empty() else a_fallback
-	var b_date := b_primary if not b_primary.is_empty() else b_fallback
-	
-	if a_date.is_empty() and b_date.is_empty():
-		return false
-	if a_date.is_empty():
-		return empty_to_top   # 下载时间：空→最上；创建时间：空→最下
-	if b_date.is_empty():
-		return not empty_to_top
-	return a_date < b_date
 
 ## 场景退出时的清理
 func _exit_tree() -> void:

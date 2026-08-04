@@ -138,8 +138,9 @@ func _load_local_fallback() -> void:
 		create_and_add_item("%d" % i, "StoreMidiItem")
 	if DataMGR.is_loading:
 		await EvtBus.data_loaded_complete
-	var local_midis: Array[MidiData] = DataMGR.get_all_midis()
-	for i in range(min(5, local_midis.size())):
+	# 只水合前 5 张（离线回退仅显示前几个），避免全量水合卡顿
+	var local_midis: Array[MidiData] = DataMGR.get_midis_preview(5)
+	for i in range(local_midis.size()):
 		container.get_child(i).set_display(local_midis[i])
 	_last_scroll_vertical = scroll_vertical
 
@@ -261,13 +262,12 @@ func _update_item_download_state(hash: String, state: int) -> void:
 
 ## 从本地查找已下载的 MidiData 并跳转 MidiView
 func _jump_to_midi_view(hash: String) -> void:
-	# 从 DataMGR 查找该 hash 对应的 MidiData
-	var all_midis = DataMGR.get_all_midis()
-	for midi in all_midis:
-		if midi.file_hash == hash:
-			UiStatMGR.change_state(UIStateManager.UIState.MIDI_VIEW)
-			EvtBus.midi_selected.emit.call_deferred(midi.id, midi)
-			return
+	# 直接用 hash 经 LookupChartKey 解析并水合单条，避免全量水合卡顿
+	var midi: MidiData = DataMGR.get_midi_by_id(hash)
+	if midi:
+		UiStatMGR.change_state(UIStateManager.UIState.MIDI_VIEW)
+		EvtBus.midi_selected.emit.call_deferred(midi.id, midi)
+		return
 	# 如果 DataMGR 中没有（可能索引未刷新），尝试直接构建
 	GLogger.warning("MidiData not found for hash %s, may need rescan" % hash, "StoreView")
 

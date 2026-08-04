@@ -136,7 +136,8 @@ func _on_status_pressed() -> void:
 	sortByStatus=(sortByStatus+1)%5 as SortEngine.SortStatField
 
 	sort_btns.get_node("Status").texture_normal=load(_sort_stat_icon_map[sortByStatus])
-	se.set_sort_mode(sortByStatus)
+	# 切换状态时保留当前字段/方向选择（否则 set_sort_mode 默认参数会把排序字段重置回默认）
+	se.set_sort_mode(sortByStatus, sortByData, sortDirection)
 
 	if ui.current_state!=ui.UIState.SORTED_VIEW:
 		ui.change_state(ui.UIState.SORTED_VIEW)
@@ -155,14 +156,14 @@ func _on_data_toggled(toggled_on: bool) -> void:
 		sortByData = (sortByData + 1) % 6 as SortEngine.SortDataField
 
 		sort_btns.get_node("Data").texture_normal=load(_sort_data_icon_map[sortByData])
-		se.set_sort_mode(se.current_sort_stat_field, sortByData)
+		se.set_sort_mode(sortByStatus, sortByData, sortDirection)
 		if ui.current_state!=ui.UIState.SORTED_VIEW:
 			ui.change_state(ui.UIState.SORTED_VIEW)
 
 func _on_ordering_pressed() -> void:
 	sortDirection = (sortDirection + 1) % 2 as SortEngine.SortDirection
 	sort_btns.get_node("Ordering").texture_normal=load("res://Resources/icon/Sort/Ordering/Ascent.png" if sortDirection == SortEngine.SortDirection.ASCENDING else "res://Resources/icon/Sort/Ordering/Descent.png")
-	se.set_sort_mode(se.current_sort_stat_field, se.current_sort_field, sortDirection)
+	se.set_sort_mode(sortByStatus, sortByData, sortDirection)
 
 	if ui.current_state!=ui.UIState.SORTED_VIEW:
 		ui.change_state(ui.UIState.SORTED_VIEW)

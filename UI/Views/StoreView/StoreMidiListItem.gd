@@ -66,8 +66,8 @@ func set_display(midi: MidiData = null) -> void:
 		title_text.text = midi.name
 		author_text.text = midi.artist_name
 		uploader.text = midi.uploader_name
-		album_name.text = "null" if not midi.album_data else midi.album_data.name
-		song_name.text = "null" if not midi.song_data else midi.song_data.name
+		album_name.text = midi.album_name if not midi.album_name.is_empty() else "null"
+		song_name.text = midi.song_name if not midi.song_name.is_empty() else "null"
 	# midi 变化（含从 null 切到非 null）时刷新封面
 	if midi_changed:
 		if enable:
@@ -176,12 +176,12 @@ func _stop_pulse_animation() -> void:
 	song_name.modulate.a = 1.0
 
 ## 从服务端加载远程封面
-func _load_remote_cover(hash: String) -> void:
+func _load_remote_cover(target_hash: String) -> void:
 	if NetManager.instance == null or not NetManager.instance.is_online:
 		return
 	if cover_texture:
 		cover_texture.visible = false
-	var cover_url := "%s/api/charts/%s/cover" % [NetManager.instance.server_url, hash]
+	var cover_url := "%s/api/charts/%s/cover" % [NetManager.instance.server_url, target_hash]
 	var http := HTTPRequest.new()
 	add_child(http)
 	var err := http.request(cover_url)

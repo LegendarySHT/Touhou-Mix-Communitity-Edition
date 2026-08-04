@@ -99,7 +99,7 @@ func _on_avatar_loaded(tex: Texture2D) -> void:
 		profile_avatar_rect.texture = tex
 
 ## 认证状态变化回调
-func _on_auth_changed(user_data: Variant) -> void:
+func _on_auth_changed(_user_data: Variant) -> void:
 	_sync_from_auth()
 
 ## 网络状态变化回调：连接成功后若已登录，自动拉取资料/统计
@@ -377,10 +377,10 @@ func _calc_level_progress(pp: float, level: int) -> float:
 
 ## 格式化游玩时长：不足 1 小时显示分钟，超过显示小时
 func _format_play_time(ms: int) -> String:
-	var total_minutes := ms / 60000
+	var total_minutes := int(ms / 60000.0)
 	if total_minutes < 60:
 		return "%dm" % total_minutes
-	var hours := total_minutes / 60
+	var hours := int(total_minutes / 60.0)
 	return "%dh" % hours
 
 func _on_expand_btn_pressed() -> void:

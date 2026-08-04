@@ -12,8 +12,8 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 
 @onready var animation_manager: AnimationManager = AniMGR
 
-## 歌曲数据
-var song_data: SongData
+## 歌曲轻量投影数据（ChartDB.GetSongItemsByAlbum 返回的字典）
+var item_dict: Dictionary = {}
 
 ## 文字滚动状态
 var _name_scroll_state: TextScrollHelper.State = null
@@ -27,8 +27,8 @@ func _ready() -> void:
 	cover_texture = $HBoxC/PN/cover
 	await _init_fin
 
-	song_name_label.text = " %s" % song_data.name if song_data.name else "Unknown"
-	midi_count_label.text = "%d" % song_data.midi_ids.size()
+	song_name_label.text = " %s" % String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown"
+	midi_count_label.text = "%d" % item_dict.get("midi_count", 0)
 
 	# 直接开始加载封面（不等列表构建完毕）
 	# 命中 WeakRef 缓存时零开销同步应用；未命中则入 CoverLoader 异步队列，不阻塞主线程
@@ -51,10 +51,10 @@ func _setup_name_scroll() -> void:
 		song_name_label, name_box, song_name_label.text, _name_scroll_state
 	)
 
-## 从SongData初始化显示
-func setup_with_song(parent: SongView, song: SongData, index: int, bg: ButtonGroup) -> void:
-	song_data = song
-	item_id = song.id
+## 从歌曲轻量投影字典初始化显示（DB 返回，无完整 SongData）
+func setup_with_dict(parent: SongView, d: Dictionary, index: int, bg: ButtonGroup) -> void:
+	item_dict = d
+	item_id = String(d.get("id", ""))
 	item_type = "song"
 	item_index = index
 
@@ -86,27 +86,19 @@ func _apply_static_cover_offset(retry: int = 0) -> void:
 ## 重写基类虚函数：返回歌曲封面 Texture2D
 ## 选择该歌曲下首个 MIDI 的封面，找不到由 FileSystemManager 返回默认封面
 func _get_cover_texture() -> Texture2D:
-	if not song_data:
+	if item_dict.is_empty():
 		return null
 	var fs_mgr := FileSystemManager.instance
-	var data_mgr := DataMGR
-	if not fs_mgr or not data_mgr:
+	if not fs_mgr:
 		return null
-	var midis := data_mgr.get_midis_by_song(song_data.id)
-	if midis.is_empty():
-		return null
-	return fs_mgr.get_cover_by_midiData(midis[0])
+	return fs_mgr._load_cover_with_cache(fs_mgr.default_cover_if_missing(ChartDB.GetSongCoverPath(String(item_dict.get("id", "")))))
 
 ## 重写基类虚函数：返回封面文件路径（主线程调用，供异步加载器使用）
 ## 路径查询在主线程完成，后台线程只负责读盘
 func _resolve_cover_path() -> String:
-	if not song_data:
+	if item_dict.is_empty():
 		return ""
 	var fs_mgr := FileSystemManager.instance
-	var data_mgr := DataMGR
-	if not fs_mgr or not data_mgr:
+	if not fs_mgr:
 		return ""
-	var midis := data_mgr.get_midis_by_song(song_data.id)
-	if midis.is_empty():
-		return ""
-	return fs_mgr.get_cover_path_by_midiData(midis[0])
+	return fs_mgr.default_cover_if_missing(ChartDB.GetSongCoverPath(String(item_dict.get("id", ""))))

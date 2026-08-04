@@ -37,11 +37,13 @@ var search_uploader_name: String = ""
 ## 上传日期
 var uploaded_date: String
 
-## 所属歌曲信息
-var song_data: SongData
+## 所属歌曲 id / 名称（DB chart 文档扁平字段，替代原 SongData 对象水合）
+var song_id: String = ""
+var song_name: String = ""
 
-## 所属专辑信息
-var album_data: AlbumData
+## 所属专辑 id / 名称（DB chart 文档扁平字段，替代原 AlbumData 对象水合）
+var album_id: String = ""
+var album_name: String = ""
 
 ## 统计数据 - 试玩数
 var trial_count: int = 0
@@ -187,6 +189,12 @@ func from_json(json_data: Dictionary) -> void:
 		author_name = author_val.get("name", "")
 
 	uploaded_date = json_data.get("uploadedDate", "")
+
+	# 所属歌曲/专辑（扁平字段，来自 GetChartJson 的 song_id/song_name/album_id/album_name，不再水合 SongData/AlbumData）
+	song_id = json_data.get("song_id", "")
+	song_name = json_data.get("song_name", "")
+	album_id = json_data.get("album_id", "")
+	album_name = json_data.get("album_name", "")
 
 	# 规范化搜索副本（C# ChartDB 在 GetChartJson 注入，简繁日互搜用）
 	search_song_name = json_data.get("_search_song_name", "")

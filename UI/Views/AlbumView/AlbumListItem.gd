@@ -10,8 +10,8 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 @onready var song_count_label: Label = $SongCount
 # cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
 
-## 专辑数据
-var album_data: AlbumData
+## 专辑轻量投影数据（ChartDB.GetSortedAlbumItems 返回的字典）
+var item_dict: Dictionary = {}
 
 ## 文字滚动状态
 var _name_scroll_state: TextScrollHelper.State = null
@@ -28,11 +28,11 @@ func _ready() -> void:
 	cover_texture = $cover
 	await _init_fin
 
-	if not album_data:
+	if item_dict.is_empty():
 		push_error("AlbumListItem: Missing album data")
 		return
-	album_name_label.text = " %s" % album_data.name if album_data.name else "Unknown"
-	song_count_label.text = "%d" % album_data.song_ids.size()
+	album_name_label.text = " %s" % String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown"
+	song_count_label.text = "%d" % item_dict.get("song_count", 0)
 
 	# 直接开始加载封面（不等列表构建完毕）
 	# 命中 WeakRef 缓存时零开销同步应用；未命中则入 CoverLoader 异步队列，不阻塞主线程
@@ -41,10 +41,10 @@ func _ready() -> void:
 	# 启动文字滚动动画（如名称过长）
 	call_deferred("setup_name_scroll")
 
-## 从AlbumData初始化显示
-func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: ButtonGroup) -> void:
-	album_data = album
-	item_id = album.id
+## 从专辑轻量投影字典初始化显示（DB 返回，无完整 AlbumData）
+func setup_with_dict(parent: AlbumView, d: Dictionary, index:int, bg: ButtonGroup) -> void:
+	item_dict = d
+	item_id = String(d.get("id", ""))
 	item_type = "album"
 	item_index = index
 
@@ -58,36 +58,22 @@ func setup_with_album(parent: AlbumView, album: AlbumData, index:int, bg: Button
 ## 重写基类虚函数：返回专辑封面 Texture2D
 ## 选择专辑下首个歌曲的首个 MIDI 的封面，否则由 FileSystemManager 返回默认封面
 func _get_cover_texture() -> Texture2D:
-	if not album_data:
+	if item_dict.is_empty():
 		return null
 	var fs_mgr := FileSystemManager.instance
-	var data_mgr := DataMGR
-	if not fs_mgr or not data_mgr:
+	if not fs_mgr:
 		return null
-	var songs := data_mgr.get_songs_by_album(album_data.id)
-	if songs.is_empty():
-		return null
-	var midis := data_mgr.get_midis_by_song(songs[0].id)
-	if midis.is_empty():
-		return null
-	return fs_mgr.get_cover_by_midiData(midis[0])
+	return fs_mgr._load_cover_with_cache(fs_mgr.default_cover_if_missing(ChartDB.GetAlbumCoverPath(String(item_dict.get("id", "")))))
 
 ## 重写基类虚函数：返回封面文件路径（主线程调用，供异步加载器使用）
 ## 路径查询在主线程完成，后台线程只负责读盘
 func _resolve_cover_path() -> String:
-	if not album_data:
+	if item_dict.is_empty():
 		return ""
 	var fs_mgr := FileSystemManager.instance
-	var data_mgr := DataMGR
-	if not fs_mgr or not data_mgr:
+	if not fs_mgr:
 		return ""
-	var songs := data_mgr.get_songs_by_album(album_data.id)
-	if songs.is_empty():
-		return ""
-	var midis := data_mgr.get_midis_by_song(songs[0].id)
-	if midis.is_empty():
-		return ""
-	return fs_mgr.get_cover_path_by_midiData(midis[0])
+	return fs_mgr.default_cover_if_missing(ChartDB.GetAlbumCoverPath(String(item_dict.get("id", ""))))
 
 ## 专辑按钮切换回调
 func on_item_button_toggled(toggled_on: bool) -> void:

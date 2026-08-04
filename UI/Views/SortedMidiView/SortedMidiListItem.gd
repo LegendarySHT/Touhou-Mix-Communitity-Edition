@@ -12,8 +12,9 @@ class_name SortedMidiListItem
 
 @onready var state_manager:UIStateManager = UiStatMGR
 
-## MIDI数据
-var midi_data: MidiData
+## 轻量投影数据（ChartDB.GetSortedMidiListItems / GetMidiListItemsByKeys 返回的字典）
+## 替代完整 MidiData，避免列表全量水合；点击时由 SortedMidiView 惰性水合完整对象
+var item_dict: Dictionary = {}
 
 ## 选择动画补间
 var select_tween: Tween
@@ -37,10 +38,15 @@ func _ready() -> void:
 ## 注:新建项若 path 暂不可用,start_cover_load 直接 return,由列表 trigger_cover_chain 统一重试
 func _refresh_display() -> void:
 	# 显示MIDI信息
-	get_node("Data").text = "%d %d %d %d" % [midi_data.download_count, midi_data.trial_count, midi_data.up_count, midi_data.love_count]
-	status_label.text = midi_data.status
-	midi_name_label.text = midi_data.name.strip_edges()
-	author_label.text = midi_data.artist_name if not midi_data.artist_name.is_empty() else "Unknown"
+	get_node("Data").text = "%d %d %d %d" % [
+		item_dict.get("download_count", 0),
+		item_dict.get("trial_count", 0),
+		item_dict.get("up_count", 0),
+		item_dict.get("love_count", 0)]
+	status_label.text = String(item_dict.get("status", ""))
+	midi_name_label.text = String(item_dict.get("name", "")).strip_edges()
+	var artist := String(item_dict.get("artist_name", ""))
+	author_label.text = artist if not artist.is_empty() else "Unknown"
 
 	# 仅复用项（_has_ready=true）需要重置加载状态；新建项 _cover_loaded=false 直接加载
 	if _has_ready:
@@ -91,25 +97,28 @@ func _is_in_viewport() -> bool:
 
 ## 重写基类虚函数：返回 MIDI 封面 Texture2D
 func _get_cover_texture() -> Texture2D:
-	if not midi_data:
+	if item_dict.is_empty():
 		return null
-	return FileSystemManager.instance.get_cover_by_midiData(midi_data)
+	var fs_mgr := FileSystemManager.instance
+	if not fs_mgr:
+		return null
+	return fs_mgr.get_cover_by_ids(String(item_dict.get("file_hash", "")), String(item_dict.get("id", "")))
 
 ## 重写基类虚函数：返回封面文件路径（主线程调用，供异步加载器使用）
 func _resolve_cover_path() -> String:
-	if not midi_data:
+	if item_dict.is_empty():
 		return ""
 	var fs_mgr := FileSystemManager.instance
 	if not fs_mgr:
 		return ""
-	return fs_mgr.get_cover_path_by_midiData(midi_data)
+	return fs_mgr.get_cover_path_by_ids(String(item_dict.get("file_hash", "")), String(item_dict.get("id", "")))
 
-## 从MidiData初始化显示
+## 从轻量投影字典初始化显示（DB 返回，无完整 MidiData）
 ## 新建节点（_has_ready=false）：emit _init_fin 触发 _ready 中的 await 继续
 ## 复用节点（_has_ready=true）：直接调 _refresh_display 刷新数据
-func setup_with_midi(midi: MidiData, index: int, bg:ButtonGroup) -> void:
-	midi_data = midi
-	item_id = midi.id
+func setup_with_dict(d: Dictionary, index: int, bg:ButtonGroup) -> void:
+	item_dict = d
+	item_id = String(d.get("id", ""))
 	item_type = "sorted_midi"
 	item_index = index
 

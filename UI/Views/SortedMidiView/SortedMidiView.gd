@@ -4,8 +4,13 @@ extends BaseScrollList
 
 class_name SortedMidiView
 
-## 当前显示的MIDI列表
-var current_midis: Array[MidiData] = []
+## 当前显示的MIDI轻量投影（DB 返回 / 收藏夹转换），列表项直接消费，不水合完整 MidiData
+var current_items: Array = []
+
+## 收藏夹浏览模式标志：true 时 current_items 来自收藏夹，搜索/清空走收藏夹逻辑
+var _favorites_mode: bool = false
+## 当前收藏夹的谱面 id 列表（缓存，用于搜索时按 keys 过滤）
+var _favorite_ids: Array = []
 
 ## 管理器引用
 @onready var sm: UIStateManager = UiStatMGR
@@ -27,8 +32,6 @@ var item_bg: ButtonGroup = null
 ## 新机制:每次调用获得唯一 generation,循环中校验 generation 一致性,
 ##   旧循环自然退出,无信号 await,无并发
 var _load_generation: int = 0
-
-var _ignore_sort_finished_signal: bool = false
 
 func _ready() -> void:
 	if not dm or not eb or not se:
@@ -72,7 +75,8 @@ func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateMana
 		# 退回专辑/歌曲视图：递增 generation 使在途加载失效,清空列表,释放节点
 		_load_generation += 1
 		clear_items()
-		current_midis.clear()
+		current_items.clear()
+		_favorites_mode = false
 
 func _process(delta):
 	super._process(delta)
@@ -81,18 +85,19 @@ func _gui_input(event):
 	super._gui_input(event)
 
 func on_item_button_confirmed(index: int) -> void:
-	var midi:MidiData = current_midis[index]
-	print("选中：%s / %s" % [midi.song_data.name, midi.name])
-	if eb and midi:
+	if index < 0 or index >= current_items.size():
+		return
+	var item: Dictionary = current_items[index]
+	var midi_id: String = String(item.get("id", ""))
+	# 点击时才惰性水合完整 MidiData（仅 1 个），列表本身只持有轻量投影
+	var midi: MidiData = DataMGR.get_midi_by_id(midi_id)
+	if midi and eb:
 		sm.change_state(UIStateManager.UIState.MIDI_VIEW)
 		eb.emit_midi_selected(midi.id, midi)
 
 ## 加载排序的MIDI列表（启动新的加载任务）
 ## 复用机制：切换内容时不全量清空，先尝试替换现有项的数据，多余项从尾部清理，不足项新建
 func _load_sorted_midis(refectch: bool = true) -> void:
-	if _ignore_sort_finished_signal:
-		return
-
 	if not dm or not se:
 		print("Missing manager instances")
 		return
@@ -105,12 +110,14 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 		item_bg = ButtonGroup.new()
 
 	if refectch:
-		current_midis = se.get_midis()
+		# DB 排序路径：取排序引擎的轻量投影；同时退出收藏夹模式
+		current_items = se.get_items()
+		_favorites_mode = false
 
-	no_items_node.visible = current_midis.size() == 0
+	no_items_node.visible = current_items.size() == 0
 
 	# 同步项数：复用现有项，多余的从尾部清理，不足的新建
-	var target_count: int = current_midis.size()
+	var target_count: int = current_items.size()
 	var existing_count: int = list_items.size()
 	if existing_count > target_count:
 		for i in range(existing_count - 1, target_count - 1, -1):
@@ -133,19 +140,19 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 	_snap_active = false
 
 	var counter = 0
-	for midi in current_midis:
+	for item in current_items:
 		# generation 校验:若期间被新调用取代,静默退出(新调用会自行构建列表)
 		if my_generation != _load_generation:
 			return
 
 		var node: SortedMidiListItem
 		if counter < existing_count:
-			# 复用现有项：setup_with_midi 内部会调 _refresh_display 刷新数据
+			# 复用现有项：setup_with_dict 内部会调 _refresh_display 刷新数据
 			node = list_items[counter] as SortedMidiListItem
 		else:
 			# 新建项
-			node = create_and_add_item(midi.id, "midi") as SortedMidiListItem
-		node.setup_with_midi(midi, counter, item_bg)
+			node = create_and_add_item(String(item.get("id", "")), "midi") as SortedMidiListItem
+		node.setup_with_dict(item, counter, item_bg)
 		counter += 1
 
 		await get_tree().process_frame
@@ -155,32 +162,42 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 		trigger_cover_chain()
 
 ## 搜索查询改变
+## DB 模式：搜索词并入 C# FilterSearch（状态过滤+字段排序+搜索一次完成，含简繁日规范化），
+## 完成经 sort_finished → _load_sorted_midis(true) 自动重载；收藏夹模式：按收藏 keys 过滤。
 func _on_search_query_changed(query: String) -> void:
-	if not se or not dm:
+	if not se:
 		return
-	
+
 	if query.is_empty():
-		# 如果搜索为空，恢复正常排序视图
-		current_midis = se.get_midis()
+		if _favorites_mode:
+			# 收藏夹模式：清空搜索词恢复全部收藏
+			current_items = ChartDB.GetMidiListItemsByKeys(_favorite_ids, "")
+			_load_sorted_midis(false)
+		else:
+			# DB 模式：恢复当前排序集合（sort_finished → _load_sorted_midis(true)）
+			se.set_sort_mode(se.current_sort_stat_field, se.current_sort_field, se.current_sort_direction)
+		return
+
+	if _favorites_mode:
+		# 收藏夹内搜索（保持顺序，经 C# FilterSearch 含简繁日规范化）
+		current_items = ChartDB.GetMidiListItemsByKeys(_favorite_ids, query)
+		_load_sorted_midis(false)
 	else:
-		# 执行搜索
-		if not se.current_midis:
-			se.set_sort_mode()
-			_ignore_sort_finished_signal = true
-			await EvtBus.sort_finished
-			_ignore_sort_finished_signal = false
-		current_midis = se.search_midis(se.get_midis(), query)
-		print("过滤后midi数量：%d" % current_midis.size())
-	
-	_load_sorted_midis(false)
+		# DB 全库搜索（sort_finished → _load_sorted_midis(true)）
+		se.set_sort_mode_with_query(query)
 
 func _hide_label(_old,_new):
 	if no_items_node.visible:
 		no_items_node.visible = false
 
-## 收藏夹被选中浏览：加载该收藏夹的所有 midi
+## 收藏夹被选中浏览：加载该收藏夹的所有 midi（轻量投影，不水合完整 MidiData）
 func _on_favorite_selected_for_browse(fav_id: String) -> void:
 	if not FavoriteManager.instance:
 		return
-	current_midis = FavoriteManager.instance.get_midis_of_favorite(fav_id)
+	var fav = FavoriteManager.instance.get_favorite(fav_id)
+	if not fav:
+		return
+	_favorites_mode = true
+	_favorite_ids = fav.midi_ids.duplicate()
+	current_items = ChartDB.GetMidiListItemsByKeys(_favorite_ids, "")
 	_load_sorted_midis(false)

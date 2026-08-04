@@ -27,9 +27,9 @@ func _ready() -> void:
 ## 首次启动生成 UUIDv4，存入 user://files/device_id.txt
 func _load_or_create_device_id() -> void:
 	if FileAccess.file_exists(DEVICE_ID_FILE):
-		var f := FileAccess.open(DEVICE_ID_FILE, FileAccess.READ)
-		if f:
-			_device_id = f.get_as_text().strip_edges()
+		var file := FileAccess.open(DEVICE_ID_FILE, FileAccess.READ)
+		if file:
+			_device_id = file.get_as_text().strip_edges()
 			if not _device_id.is_empty():
 				return
 	# 生成新设备标识

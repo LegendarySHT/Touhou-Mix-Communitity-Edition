@@ -362,7 +362,8 @@ func _build_midi_page() -> void:
 		return
 
 	# 数据源：按专辑名升序排序，Unknown 始终排最后（惰性水合，DB 聚合）
-	_midi_build_albums = _sort_albums_for_delview(DataMGR.get_all_albums())
+	# DelView 按专辑名升序（与 AlbumView 的日期排序不同）；Unknown 由 C# 排最后
+	_midi_build_albums = ChartDB.GetSortedAlbumItems("name", 0)
 	if _midi_build_albums.is_empty():
 		_update_item_sum("无谱面数据")
 		_tab_data_built[Tab.MIDI] = true
@@ -389,23 +390,23 @@ func _build_midi_page() -> void:
 func _create_midi_album_group(album_index: int) -> Variant:
 	if _current_tab != Tab.MIDI:
 		return null  # 请求中止
-	var album: AlbumData = _midi_build_albums[album_index]
+	var album: Dictionary = _midi_build_albums[album_index]
 	var created: Array = []
 	var album_midis: Array[String] = []
 
 	# 创建 TreeRoot（专辑）
-	var root_node := _create_tree_root(album.name, "%d 首" % album.total_midi_count, album.id)
+	var root_node := _create_tree_root(String(album.get("name", "")), "%d 首" % album.get("total_midi_count", 0), String(album.get("id", "")))
 	_midi_list.add_child(root_node)
-	_midi_root_map[album.id] = root_node
-	_midi_album_order.append(album.id)
+	_midi_root_map[album.get("id", "")] = root_node
+	_midi_album_order.append(album.get("id", ""))
 	created.append(root_node)
 
 	var root_cb := root_node.get_node("CheckBox") as CheckBox
-	root_cb.toggled.connect(_on_midi_root_checkbox_toggled.bind(album.id))
+	root_cb.toggled.connect(_on_midi_root_checkbox_toggled.bind(album.get("id", "")))
 
 	# 遍历歌曲 → 谱面，创建 TreeItem
-	for song in DataMGR.get_songs_by_album(album.id):
-		for midi in DataMGR.get_midis_by_song(song.id):
+	for song in DataMGR.get_songs_by_album(String(album.get("id", ""))):
+		for midi in DataMGR.get_midis_by_song(String(song.get("id", ""))):
 			var author := midi.artist_name if not midi.artist_name.is_empty() else "-"
 			var item_node := _create_tree_item("    %s" % midi.name, author)
 			_midi_list.add_child(item_node)
@@ -415,28 +416,11 @@ func _create_midi_album_group(album_index: int) -> Variant:
 			created.append(item_node)
 
 			var item_cb := item_node.get_node("CheckBox") as CheckBox
-			item_cb.toggled.connect(_on_midi_item_checkbox_toggled.bind(midi.id, album.id))
+			item_cb.toggled.connect(_on_midi_item_checkbox_toggled.bind(midi.id, album.get("id", "")))
 			_midi_build_total += 1
 
-	_midi_album_midi_map[album.id] = album_midis
+	_midi_album_midi_map[album.get("id", "")] = album_midis
 	return created
-
-
-## 按专辑名升序排序（Unknown 始终排最后）
-func _sort_albums_for_delview(albums: Array) -> Array[AlbumData]:
-	var unknown: Array[AlbumData] = []
-	var normal: Array[AlbumData] = []
-	for a in albums:
-		if a is AlbumData:
-			if a.id.begins_with("__unknown"):
-				unknown.append(a)
-			else:
-				normal.append(a)
-	normal.sort_custom(func(a: AlbumData, b: AlbumData) -> bool:
-		return a.name < b.name
-	)
-	normal.append_array(unknown)
-	return normal
 
 
 func _on_data_loaded() -> void:

@@ -138,6 +138,8 @@ func _apply_cover_texture(tex: Texture2D) -> void:
 	if tex == null or cover_texture == null:
 		return
 	cover_texture.texture = tex
+	# 封面节点可能默认隐藏（如 StoreView 的 cover visible=false），应用纹理时显式显示
+	cover_texture.visible = true
 	_cover_loaded = true
 	# 子类钩子:封面 texture 设置完成后做额外处理(如静态偏移)
 	_on_cover_texture_set()

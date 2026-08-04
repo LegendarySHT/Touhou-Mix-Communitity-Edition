@@ -1421,21 +1421,41 @@ func get_chart_path(chart_id: String) -> String:
 	var metadata: ChartMetadata = charts_index[chart_id]
 	return metadata.path
 
+## 封面路径兜底：为空或 user:// 文件不存在 → 返回默认封面路径（与 _load_cover_with_cache 回退一致）
+## Album/Song 列表项（DB 直查 cover_path）与 _cover_path_from_chart 共用
+func default_cover_if_missing(path: String) -> String:
+	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
+	if path.is_empty():
+		return DEFAULT_COVER_PATH
+	if not path.begins_with("res://") and not FileAccess.file_exists(path):
+		return DEFAULT_COVER_PATH
+	return path
+
+## 封面查询公共实现：按 file_hash / midi_id 反查 charts_index，返回封面路径
+## 未命中或为空返回默认封面路径；user:// 路径校验文件存在性
+func _cover_path_from_chart(file_hash: String, midi_id: String) -> String:
+	# 优先用 file_hash 反向索引查找
+	var result = _lookup_chart(file_hash)
+	if result.is_empty():
+		result = _lookup_chart(midi_id)
+	if not result.is_empty():
+		return default_cover_if_missing(result["metadata"].cover_path)
+	return default_cover_if_missing("")
+
+## 按 file_hash / midi_id 查询封面文件路径（不读盘，主线程调用，供异步加载器使用）
+## 与 get_cover_path_by_midiData 行为一致，供轻量投影列表项（无 MidiData 对象）使用
+func get_cover_path_by_ids(file_hash: String, midi_id: String) -> String:
+	return _cover_path_from_chart(file_hash, midi_id)
+
+## 按 file_hash / midi_id 加载封面 Texture2D（同步，走 _load_cover_with_cache）
+func get_cover_by_ids(file_hash: String, midi_id: String) -> Texture2D:
+	return _load_cover_with_cache(_cover_path_from_chart(file_hash, midi_id))
+
 func get_cover_by_midiData(midi: MidiData) -> Texture2D:
 	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	if not midi:
 		return _load_cover_with_cache(DEFAULT_COVER_PATH)
-	
-	# 优先用 file_hash 反向索引查找
-	var result = _lookup_chart(midi.file_hash)
-	if result.is_empty():
-		result = _lookup_chart(midi.id)
-	if not result.is_empty():
-		var path: String = result["metadata"].cover_path
-		if path.is_empty():
-			return _load_cover_with_cache(DEFAULT_COVER_PATH)
-		return _load_cover_with_cache(path)
-	return _load_cover_with_cache(DEFAULT_COVER_PATH)
+	return get_cover_by_ids(midi.file_hash, midi.id)
 
 ## 查询封面文件路径（不读盘，主线程调用，供异步加载器使用）
 ## 返回 path 字符串：命中返回 metadata.cover_path，未命中或为空返回默认封面路径
@@ -1445,18 +1465,7 @@ func get_cover_path_by_midiData(midi: MidiData) -> String:
 	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	if not midi:
 		return DEFAULT_COVER_PATH
-	var result = _lookup_chart(midi.file_hash)
-	if result.is_empty():
-		result = _lookup_chart(midi.id)
-	if not result.is_empty():
-		var path: String = result["metadata"].cover_path
-		if path.is_empty():
-			return DEFAULT_COVER_PATH
-		# user:// 路径校验文件存在性：不存在则回退到默认封面（与旧 _load_cover_with_cache 一致）
-		if not path.begins_with("res://") and not FileAccess.file_exists(path):
-			return DEFAULT_COVER_PATH
-		return path
-	return DEFAULT_COVER_PATH
+	return get_cover_path_by_ids(midi.file_hash, midi.id)
 
 ## 主线程查 WeakRef 缓存，命中返回 Texture，未命中返回 null
 ## 供 CoverListItemBase 在入队异步加载前先查缓存
