@@ -254,6 +254,15 @@ static func get_setting_groups() -> Array:
 				"unit": "lanes"
 			},
 			{
+				"id": "canvas_horizontal_padding",
+				"name_en": "Canvas Horizontal Padding",
+				"name_zh": "轨道两侧安全区域宽度",
+				"description": "控制屏幕最左/最右两端的留白宽度，值越大轨道整体越向屏幕中间收拢",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "100",
+				"unit": "px"
+			},
+			{
 				"id": "keyboard_mode_keys",
 				"name_en": "Keyboard Mode Settings",
 				"name_zh": "键盘模式设置",
@@ -402,15 +411,6 @@ static func get_setting_groups() -> Array:
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "1",
 				"unit": "轨道"
-			},
-			{
-				"id": "canvas_horizontal_padding",
-				"name_en": "Canvas Horizontal Padding",
-				"name_zh": "安全区域宽度设定",
-				"description": "控制生成的音符与屏幕左右其中一边的最小距离，会影响音符生成位置",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "100",
-				"unit": "px"
 			},
 			{
 				"id": "perfect_time",
