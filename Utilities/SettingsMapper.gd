@@ -40,6 +40,7 @@ static var mappings: Dictionary = {
 	"keyboard_alt_color_count": {"section": "Lane", "key": "keyboard_alt_color_count", "value_type": "int"},
 	"keyboard_alt_colors": {"section": "Lane", "key": "keyboard_alt_colors", "value_type": "string"},
 	"keyboard_mode_gap": {"section": "Lane", "key": "keyboard_mode_gap", "value_type": "int"},
+	"keyboard_lane_separator": {"section": "Lane", "key": "keyboard_lane_separator", "value_type": "int"},
 	"flash_alpha": {"section": "Lane", "key": "flash_alpha", "value_type": "float"},
 	"perfect_spark_preset": {"section": "Lane", "key": "perfect_spark_preset", "value_type": "int"},
 	"perfect_spark_scaling": {"section": "Lane", "key": "perfect_spark_scaling", "value_type": "int"},

@@ -27,9 +27,10 @@ const KEY_ITEM_SCENE := preload("res://UI/Components/PopupWindow/KeySequenceItem
 @onready var _key_name_label: Label = $HBox/Center/KeyName
 @onready var _display_name_edit: LineEdit = $HBox/Center/KeyDisplayName/LineEdit
 @onready var _key_config_btn: Button = $HBox/Center/KeyConfig/Button
-# 键盘模式开关 + 左右间距（HBox 左列）
-@onready var _kb_mode_cb: CheckBox = $HBox/Left/CheckBox
+# 键盘模式开关 + 左右间距 + 轨道分隔线（HBox 左列）
+@onready var _kb_mode_cb: CheckBox = $HBox/Left/EnableMode
 @onready var _gap_edit: LineEdit = $HBox/Left/EnableKBMode/LineEdit
+@onready var _lane_sep_cb: CheckBox = $HBox/Left/SeperateLine
 # 交替轨道颜色（HBox 右列）
 @onready var _alt_color_cb: CheckBox = $HBox/Right/CheckBox
 @onready var _alt_count_edit: LineEdit = $HBox/Right/ColorCount/LineEdit
@@ -65,9 +66,10 @@ func _ready() -> void:
 ## 由 PopupWindow.show_kb_mode_adjust 调用：解析配置字符串并重建 UI
 ## kb_mode：键盘模式开关（0/1）；gap：左右间距（偶数键位时中间额外间距，最低 0）
 ## alt_color / alt_count / alt_colors：交替轨道颜色配置（键盘模式覆盖音符颜色）
+## lane_sep：轨道分隔线开关（0/1，仅键盘模式生效）
 func init_adjust(current_keys: String, current_display_names: String,
 		kb_mode: Variant = 1, alt_color: Variant = 1, alt_count: Variant = 2,
-		alt_colors: String = "#ff0000,#0000ff", gap: Variant = 0) -> void:
+		alt_colors: String = "#ff0000,#0000ff", gap: Variant = 0, lane_sep: Variant = 0) -> void:
 	_cancel_recording()
 	# 显式重置按钮文本（_cancel_recording 在 _recording_key=false 时不设置文本）
 	_key_config_btn.text = "输入按键"
@@ -92,6 +94,8 @@ func init_adjust(current_keys: String, current_display_names: String,
 	# 左右间距（最低 0）
 	var safe_gap: int = max(0, int(gap))
 	_gap_edit.text = str(safe_gap)
+	# 轨道分隔线（仅键盘模式生效）
+	_lane_sep_cb.button_pressed = bool(lane_sep)
 
 	# 交替轨道颜色：数量最低 1，颜色序列按数量补齐
 	_alt_color_cb.button_pressed = bool(alt_color)
@@ -135,6 +139,7 @@ func get_result() -> Dictionary:
 		"alt_color": 1 if _alt_color_cb.button_pressed else 0,
 		"alt_count": alt_count,
 		"alt_colors": ",".join(colors),
+		"lane_separator": 1 if _lane_sep_cb.button_pressed else 0,
 	}
 
 
@@ -156,7 +161,6 @@ func _rebuild_color_buttons(count: int, colors: Array = []) -> void:
 	for i in count:
 		var btn := ColorPickerButton.new()
 		btn.custom_minimum_size = Vector2(60, 60)
-		btn.size_flags_horizontal = 10  # EXPAND | SHRINK_END（与 tscn 静态按钮一致）
 		btn.size_flags_vertical = 4     # SHRINK_CENTER
 		btn.edit_alpha = false
 		btn.color = existing[i] if i < existing.size() else Color.WHITE

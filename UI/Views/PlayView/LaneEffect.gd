@@ -4,6 +4,13 @@ extends Control
 
 const BEAM_SHADER: Shader = preload("res://UI/Views/PlayView/LaneEffectBeam.gdshader")
 
+# 轨道分隔线宽度（像素）
+const SEPARATOR_WIDTH := 5.0
+
+# 分隔线颜色：轨道之间白色，最左/最右边缘线黄色（突出轨道区域边界）
+const SEPARATOR_COLOR := Color(1.0, 1.0, 1.0, 0.6)
+const EDGE_SEPARATOR_COLOR := Color(1.0, 0.85, 0.0, 0.9)
+
 enum BeamQuality {
 	LEGACY = 0,
 	SHADER = 1,
@@ -24,6 +31,9 @@ var _beam_discard_threshold: float = 0.02
 var _lane_count: int = 0
 
 var _beam_nodes: Array[BeamNode] = []
+
+# 分隔线渐变纹理缓存（同色共用一张，避免每条线各建纹理）
+var _sep_tex_cache: Dictionary = {}
 
 # 共享渐变纹理：所有光柱复用相同纹理 RID，无重复 GPU 上传
 var _outer_tex: GradientTexture2D
@@ -202,6 +212,84 @@ func init_beam(lane_count: int, parent_node) -> void:
 		_beam_nodes.append(b)
 
 	set_beam_alpha(_beam_alpha_scale)
+
+	# 轨道分隔线（仅键盘模式 + 选项开启时生成；init_beam 开头已 free 全部旧子节点 = 自动清理）
+	if play_view != null and play_view.get_lane_separator_enabled():
+		_create_separator_lines()
+
+
+## 分隔线布局：
+## - 相邻轨道之间：中心距 ≤ 2×标准间距 → 单线（两轨正中，正常画法）；
+##   中心距 > 2×标准间距 → 双线（左轨右缘线 + 右轨左缘线，各距轨道中心 lane_step/2）
+## - 中间间距（mid_gap）让中间两轨中心距变成 lane_step+mid_gap，因此：
+##   mid_gap ≤ lane_step → 单线；mid_gap > lane_step → 双线
+## - 最左/最右外框线距轨道中心 lane_step/2（夹取到屏幕内，防止小轨道数越界）
+func _create_separator_lines() -> void:
+	if _beam_nodes.is_empty():
+		return
+	# 单轨道：直接框住光束左右缘（两条都是边缘线 → 黄色）
+	if _lane_count <= 1:
+		_create_separator_line(_beam_nodes[0].position.x, EDGE_SEPARATOR_COLOR)
+		_create_separator_line(_beam_nodes[0].position.x + _beam_nodes[0].beam_size.x, EDGE_SEPARATOR_COLOR)
+		return
+
+	var sep_half: float = _beam_lane_width * 0.5
+	var viewport_x: float = get_viewport().get_visible_rect().size.x
+	var right_limit: float = maxf(SEPARATOR_WIDTH * 0.5, viewport_x - SEPARATOR_WIDTH * 0.5)
+
+	# 最左外框：最左轨道左缘（距轨道中心 sep_half，边缘线 → 黄色）
+	_create_separator_line(clampf(_center_x_of(_beam_nodes[0]) - sep_half, SEPARATOR_WIDTH * 0.5, right_limit), EDGE_SEPARATOR_COLOR)
+
+	# 相邻轨道之间
+	for i in range(_lane_count - 1):
+		var a := _beam_nodes[i]
+		var b := _beam_nodes[i + 1]
+		var ca := _center_x_of(a)
+		var cb := _center_x_of(b)
+		var spacing := cb - ca
+		if spacing <= sep_half * 2.0:
+			# 单线：两轨道正中（正常画法，间距未拉开时避免双线贴脸）
+			_create_separator_line(ca + spacing * 0.5)
+		else:
+			# 双线：左轨右缘线 + 右轨左缘线（间距拉开后各归各的）
+			_create_separator_line(ca + sep_half, EDGE_SEPARATOR_COLOR)
+			_create_separator_line(cb - sep_half, EDGE_SEPARATOR_COLOR)
+
+	# 最右外框：最右轨道右缘（距轨道中心 sep_half，边缘线 → 黄色）
+	_create_separator_line(clampf(_center_x_of(_beam_nodes[_lane_count - 1]) + sep_half, SEPARATOR_WIDTH * 0.5, right_limit), EDGE_SEPARATOR_COLOR)
+
+
+## 轨道光束中心 x（左缘 + 半宽）
+func _center_x_of(b: BeamNode) -> float:
+	return b.position.x + b.beam_size.x * 0.5
+
+
+func _create_separator_line(x: float, color: Color = SEPARATOR_COLOR) -> void:
+	var line := TextureRect.new()
+	line.position = Vector2(x - SEPARATOR_WIDTH * 0.5, 0.0)
+	line.size = Vector2(SEPARATOR_WIDTH, _beam_height)
+	line.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	line.stretch_mode = TextureRect.STRETCH_SCALE
+	line.texture = _get_separator_tex(color)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(line)
+
+
+## 分隔线垂直渐变纹理：底部不透明 → 顶部透明（向上逐渐淡出；同色缓存复用）
+func _get_separator_tex(color: Color) -> GradientTexture2D:
+	if _sep_tex_cache.has(color):
+		return _sep_tex_cache[color]
+	var grad := Gradient.new()
+	grad.colors = PackedColorArray([
+		Color(color.r, color.g, color.b, color.a),  # 底部：不透明
+		Color(color.r, color.g, color.b, 0.0),      # 顶部：透明
+	])
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill_from = Vector2(0.0, 1.0)  # 底部
+	tex.fill_to   = Vector2(0.0, 0.0)  # 顶部
+	_sep_tex_cache[color] = tex
+	return tex
 
 
 func init_key_display(key_map: Array[Key], display_names: Array[String] = []) -> void:

@@ -107,6 +107,8 @@ var keyboard_alt_color_count: int = 2
 var keyboard_alt_colors: Array[Color] = [Color.RED, Color.BLUE] # 交替颜色序列，颜色数量可大于轨道数一半（多余的不会被用到）
 # 左右间距（像素；键盘模式且键位数为偶数时在中间额外加此间距，分隔左右手）
 var keyboard_mode_gap: int = 0
+# 轨道分隔线（仅键盘模式生效，相邻轨道之间与两端生成竖线）
+var keyboard_lane_separator: bool = false
 
 var show_debug_info: bool = false
 var debug_info_refresh_interval: float = 0.5
@@ -270,6 +272,10 @@ func get_mid_lane_gap() -> int:
 	if get_lane_count() % 2 != 0:
 		return 0
 	return keyboard_mode_gap
+
+## 轨道分隔线是否显示（键盘模式开启且选项开启；LaneEffect.init_beam 据此生成竖线）
+func get_lane_separator_enabled() -> bool:
+	return keyboard_mode and keyboard_lane_separator
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
@@ -794,6 +800,8 @@ func _load_lane_parameters() -> void:
 
 	# 左右间距（偶数键位时中间额外间距）
 	keyboard_mode_gap = max(0, config_mgr.get_int("Lane", "keyboard_mode_gap", 0))
+	# 轨道分隔线（仅键盘模式生效）
+	keyboard_lane_separator = config_mgr.get_bool("Lane", "keyboard_lane_separator", false)
 
 	GLogger.info(
 		"PlayView lane parameters loaded: lane_count=%d, lane_padding=%d, keyboard_mode=%s, key_map_size=%d" % 
@@ -891,6 +899,15 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 					keyboard_mode_gap = new_gap
 					should_reinit = true
 					GLogger.info("PlayView keyboard_mode_gap updated: %d" % keyboard_mode_gap, "PlayView")
+
+		"keyboard_lane_separator":
+			if section == "Lane":
+				var new_sep := int(value) == 1
+				if new_sep != keyboard_lane_separator:
+					keyboard_lane_separator = new_sep
+					if keyboard_mode:
+						should_reinit = true
+					GLogger.info("PlayView keyboard_lane_separator updated: %s" % str(keyboard_lane_separator), "PlayView")
 
 		"flash_alpha":
 			if section == "Lane":

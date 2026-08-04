@@ -324,8 +324,9 @@ func _popup_kb_mode_adjust() -> void:
 	var pending_alt_color := int(_pending_config.get("keyboard_alt_color", 1))
 	var pending_alt_count := int(_pending_config.get("keyboard_alt_color_count", 2))
 	var pending_alt_colors := String(_pending_config.get("keyboard_alt_colors", "#ff0000,#0000ff"))
+	var pending_separator := int(_pending_config.get("keyboard_lane_separator", 0))
 	var result := await PopupWindow.instance.show_kb_mode_adjust(
-		pending_keys, pending_names, pending_kb_mode, pending_alt_color, pending_alt_count, pending_alt_colors, pending_gap)
+		pending_keys, pending_names, pending_kb_mode, pending_alt_color, pending_alt_count, pending_alt_colors, pending_gap, pending_separator)
 	var keys_str := String(result.get("keys", ""))
 	var names_str := String(result.get("display_names", ""))
 	_pending_config["keyboard_mode_keys"] = keys_str
@@ -335,6 +336,7 @@ func _popup_kb_mode_adjust() -> void:
 	_pending_config["keyboard_alt_color"] = int(result.get("alt_color", 1))
 	_pending_config["keyboard_alt_color_count"] = int(result.get("alt_count", 2))
 	_pending_config["keyboard_alt_colors"] = String(result.get("alt_colors", "#ff0000,#0000ff"))
+	_pending_config["keyboard_lane_separator"] = int(result.get("lane_separator", 0))
 	# 即时应用到运行时（关闭弹窗即提交，无取消路径）
 	_apply_kb_mode_result_to_runtime(result)
 	GLogger.info("keyboard_mode_keys updated: %s, kb_mode=%s" % [keys_str, str(result.get("keyboard_mode", 0))], "SettingList")
@@ -349,6 +351,7 @@ func _apply_kb_mode_result_to_runtime(result: Dictionary) -> void:
 	cm.set_value_and_notify("Lane", "keyboard_alt_color", int(result.get("alt_color", 1)))
 	cm.set_value_and_notify("Lane", "keyboard_alt_color_count", max(1, int(result.get("alt_count", 2))))
 	cm.set_value_and_notify("Lane", "keyboard_alt_colors", String(result.get("alt_colors", "#ff0000,#0000ff")))
+	cm.set_value_and_notify("Lane", "keyboard_lane_separator", int(result.get("lane_separator", 0)))
 
 # ===== 下落模式设置弹窗入口 =====
 # 弹出下落模式设置窗口，关闭后 FallingAdjust 已通过 set_value_and_notify 即时应用到 FlowArea
