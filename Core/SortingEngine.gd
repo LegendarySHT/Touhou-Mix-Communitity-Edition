@@ -299,6 +299,9 @@ func clear_cache() -> void:
 	cache_key = ""
 
 ## 搜索MIDI（按原名/专辑名/谱面名/歌手/原曲作者/上传者/描述，多关键字 AND 匹配）
+## 6 个字段（谱面名/原曲名/专辑名/歌手/原曲作者/上传者，简介除外）走简繁日规范化匹配：
+## query 经 ChartDB.NormalizeForSearch 归一，命中水合时预计算的 search_* 副本 ——
+## 简/繁/日 三种写法互搜，另保原文匹配兜底；简介保持原文匹配。
 ## 在传入的（已筛选+已排序）列表内过滤并保持原序 —— 兼容 SortedMidiView 等当前集搜索
 ## 全库搜索请用 DataMGR.search_all_midis（DB 驱动，DelView 扁平搜索用）
 func search_midis(midis: Array[MidiData], query: String) -> Array[MidiData]:
@@ -306,6 +309,9 @@ func search_midis(midis: Array[MidiData], query: String) -> Array[MidiData]:
 		return midis
 
 	var keywords = query.to_lower().split(" ", false)
+	# 规范化查询（词典未就绪时返回原文，退化为普通匹配）
+	var norm_query = ChartDB.NormalizeForSearch(query).to_lower()
+	var norm_keywords = norm_query.split(" ", false)
 	var result: Array[MidiData] = []
 
 	for midi in midis:
@@ -316,16 +322,25 @@ func search_midis(midis: Array[MidiData], query: String) -> Array[MidiData]:
 		var author_name = midi.author_name.to_lower()
 		var uploader_name = midi.uploader_name.to_lower()
 		var description = midi.description.to_lower()
+		# 规范化副本（水合时由 C# 预计算；缺省回退原字段）
+		var norm_song = midi.search_song_name.to_lower() if not midi.search_song_name.is_empty() else song_name
+		var norm_author = midi.search_author_name.to_lower() if not midi.search_author_name.is_empty() else author_name
+		var norm_album = midi.search_album_name.to_lower() if not midi.search_album_name.is_empty() else album_name
+		var norm_artist = midi.search_artist_name.to_lower() if not midi.search_artist_name.is_empty() else artist_name
+		var norm_name = midi.search_name.to_lower() if not midi.search_name.is_empty() else midi_name
+		var norm_uploader = midi.search_uploader_name.to_lower() if not midi.search_uploader_name.is_empty() else uploader_name
 
 		var all_keywords_match = true
-		for keyword in keywords:
-			if not (midi_name.contains(keyword) or
-				song_name.contains(keyword) or
-				album_name.contains(keyword) or
-				artist_name.contains(keyword) or
-				author_name.contains(keyword) or
-				uploader_name.contains(keyword) or
-				description.contains(keyword)):
+		for i in range(keywords.size()):
+			var kw = keywords[i]
+			var nkw = norm_keywords[i] if i < norm_keywords.size() else kw
+			if not (midi_name.contains(kw) or norm_name.contains(nkw) or
+				song_name.contains(kw) or norm_song.contains(nkw) or
+				album_name.contains(kw) or norm_album.contains(nkw) or
+				artist_name.contains(kw) or norm_artist.contains(nkw) or
+				author_name.contains(kw) or norm_author.contains(nkw) or
+				uploader_name.contains(kw) or norm_uploader.contains(nkw) or
+				description.contains(kw)):
 				all_keywords_match = false
 				break
 

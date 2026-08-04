@@ -1,6 +1,7 @@
 using Godot;
 using LiteDB;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Nodes;
@@ -36,6 +37,53 @@ public partial class ChartDb : Node
     private readonly object _lock = new();
     private bool _isOpen;
     private string _oldCachePath = "";
+
+    // ========== 简繁日搜索规范化（OpenccNetLib） ==========
+    // 链式 jp2t→t2s：日文新字体 → 传统 → 简体，让 简/繁/日 三种写法互搜。
+    // 全部 7 个可搜索字段（谱面名/原曲名/专辑名/歌手/原曲作者/上传者/简介）都可能含日文。
+    //
+    // 关键约束：Opencc 静态构造函数强制从 {AppContext.BaseDirectory}/dicts/dictionary_maxlength.zstd
+    // 加载默认词典（DictionaryLib.DefaultLib → FromZstd）。该文件缺失时类型初始化抛异常，
+    // 且 .NET 类型初始化失败后永久不可用。因此必须先让 zstd 就位到 BaseDirectory/dicts/ 再触碰 Opencc 类型。
+    // 桌面：NuGet contentFiles 已拷贝到 .NET 输出目录；安卓：需从 res:// 抽取（须主线程 FileAccess）。
+
+    private static readonly object _normLock = new();
+    private static OpenccNetLib.Opencc _normT2S;
+    private static OpenccNetLib.Opencc _normJp2T;
+    private static bool _normPrimaryTried;   // 规范化器初始化已尝试（幂等）
+    private static string _resZstdPath = ""; // 主线程 OpenDb 解析的 res:// 编译词典绝对路径（诊断用）
+    private static int _mainThreadId;        // 主线程 ManagedThreadId（安卓 FileAccess 抽取须主线程）
+
+    /// <summary>OpenccNetLib jp2t→t2s 链漏掉的常用字修正（郷 误转 鄕 而非 乡）。</summary>
+    private static readonly Dictionary<char, char> _normFix = new Dictionary<char, char>
+    {
+        ['郷'] = '乡',
+        ['鄕'] = '乡',
+        ['兎'] = '兔',
+    };
+
+    /// <summary>规范化搜索副本缓存（folder_name → [song, author]）。
+    /// 启动时后台线程预热全量填充 + 首次使用时惰性补缺。</summary>
+    private static readonly ConcurrentDictionary<string, string[]> _normCache = new ConcurrentDictionary<string, string[]>();
+
+    /// <summary>规范化缓存世代号：RebuildAlbumsSongs 清缓存时递增，后台预热据此自取消。</summary>
+    private static int _normCacheGen;
+
+    /// <summary>搜索诊断日志只打一次（真机排查）。</summary>
+    private static bool _searchDiagLogged;
+
+    /// <summary>规范化器诊断累积（GD.Print 不进安卓 logcat，经 GDScript 通道输出）。</summary>
+    private static string _normDiag = "";
+
+    /// <summary>诊断累积 + 控制台打印（供 GetNormalizerDiag 输出到 logcat）。</summary>
+    private static void NormLog(string s)
+    {
+        _normDiag += s + "\n";
+        GD.Print("[ChartDb][Norm] " + s);
+    }
+
+    /// <summary>返回规范化器诊断文本（暴露给 GDScript，真机排查用）。</summary>
+    public string GetNormalizerDiag() => _normDiag;
 
     /// <summary>
     /// 打开数据库并执行 schema 迁移（一次）。
@@ -73,6 +121,12 @@ public partial class ChartDb : Node
                 MigrateRuntimeKeys();
                 _isOpen = true;
                 GD.Print($"[ChartDb] Opened, charts={CountCharts()} albums={CountAlbums()} songs={CountSongs()}");
+                // 主线程解析 res:// zstd 路径；Opencc 静态构造强制从 BaseDirectory/dicts/ 加载默认词典，
+                // 因此必须在主线程先把 zstd 就位（安卓从 res:// 抽取）再触碰 Opencc 类型。
+                // 用 CallDeferred 延迟到下一帧初始化，避开启动主路径卡顿（~0.5s 一次）。
+                _mainThreadId = System.Environment.CurrentManagedThreadId;
+                try { _resZstdPath = ProjectSettings.GlobalizePath("res://CSharp/ChartDb/dicts/dictionary_maxlength.zstd"); } catch { }
+                CallDeferred(nameof(_DeferredInitNormalizer));
                 return true;
             }
             catch (Exception e)
@@ -530,6 +584,15 @@ public partial class ChartDb : Node
             if (doc.TryGetValue("album", out var av) && av.IsDocument)
                 gd["album"] = BsonConvert.BsonToVariant(av);
 
+            // 规范化搜索副本（全部可搜索字段简繁日互搜用）；MidiData.from_json 读取
+            // 走 GetNormField 读 _normCache（启动后台预热 + 惰性补缺），主线程水合不再逐张转换
+            gd["_search_song_name"] = GetNormField(doc, 0);
+            gd["_search_author_name"] = GetNormField(doc, 1);
+            gd["_search_album_name"] = GetNormField(doc, 2);
+            gd["_search_artist_name"] = GetNormField(doc, 3);
+            gd["_search_name"] = GetNormField(doc, 4);
+            gd["_search_uploader_name"] = GetNormField(doc, 5);
+
             // 注入 chart_runtime（权威，主键 folder_name），覆盖磁盘 JSON 里的旧 _runtime
             var rt = _runtime.FindById(doc["_id"].AsString);
             if (rt != null)
@@ -855,7 +918,11 @@ public partial class ChartDb : Node
     {
         var kws = query.ToLowerInvariant().Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
         if (kws.Length == 0) return docs;
-        return docs.Where(d =>
+        // 规范化查询词（全部字段简繁日互搜用）
+        var normQuery = NormalizeCore(query);
+        var normKws = normQuery.ToLowerInvariant()
+            .Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+        var result = docs.Where(d =>
         {
             var name = BsonConvert.GetStr(d, "name").ToLowerInvariant();
             var song = BsonConvert.GetStr(d, "song_name").ToLowerInvariant();
@@ -864,14 +931,271 @@ public partial class ChartDb : Node
             var author = BsonConvert.GetStr(d, "author_name").ToLowerInvariant();
             var uploader = BsonConvert.GetStr(d, "uploader_name").ToLowerInvariant();
             var desc = BsonConvert.GetStr(d, "description").ToLowerInvariant();
-            foreach (var kw in kws)
+            // 6 个字段走规范化副本（简繁日互搜）+ 原文匹配兜底；简介保持原文匹配
+            var normSong = GetNormField(d, 0);
+            var normAuthor = GetNormField(d, 1);
+            var normAlbum = GetNormField(d, 2);
+            var normArtist = GetNormField(d, 3);
+            var normName = GetNormField(d, 4);
+            var normUploader = GetNormField(d, 5);
+            for (int i = 0; i < kws.Length; i++)
             {
-                if (!(name.Contains(kw) || song.Contains(kw) || album.Contains(kw) ||
-                      artist.Contains(kw) || author.Contains(kw) || uploader.Contains(kw) || desc.Contains(kw)))
+                var kw = kws[i];
+                var nkw = i < normKws.Length ? normKws[i] : kw;
+                if (!(name.Contains(kw) || normName.Contains(nkw) ||
+                      song.Contains(kw) || normSong.Contains(nkw) ||
+                      album.Contains(kw) || normAlbum.Contains(nkw) ||
+                      artist.Contains(kw) || normArtist.Contains(nkw) ||
+                      author.Contains(kw) || normAuthor.Contains(nkw) ||
+                      uploader.Contains(kw) || normUploader.Contains(nkw) ||
+                      desc.Contains(kw)))
                     return false;
             }
             return true;
         }).ToList();
+        if (!_searchDiagLogged)
+        {
+            _searchDiagLogged = true;
+            GD.Print($"[ChartDb][Norm] FilterSearch: query='{query}' normQuery='{normQuery}' 命中 {result.Count}/{docs.Count}");
+        }
+        return result;
+    }
+
+    // ========== 简繁日规范化实现 ==========
+
+    /// <summary>
+    /// 搜索文本规范化（暴露给 GDScript）：把 简/繁/日 写法归一到简体。
+    /// 链式 jp2t→t2s + 常用缺口字修正。词典加载失败时退化原文（搜索=普通匹配，不崩溃）。
+    /// </summary>
+    public string NormalizeForSearch(string text) => NormalizeCore(text);
+
+    private static string NormalizeCore(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        EnsureNormalizer();
+        if (_normT2S == null || _normJp2T == null) return text;
+        var s = _normT2S.Convert(_normJp2T.Convert(text));
+        if (_normFix.Count > 0)
+        {
+            var sb = new System.Text.StringBuilder(s.Length);
+            foreach (var ch in s)
+                sb.Append(_normFix.TryGetValue(ch, out var r) ? r : ch);
+            s = sb.ToString();
+        }
+        return s;
+    }
+
+    /// <summary>
+    /// 懒加载规范化器（须主线程：安卓需 FileAccess 抽取 zstd 到 BaseDirectory/dicts/）。
+    /// 触碰 Opencc 类型前必须先确保默认词典就位（见 EnsureDefaultDictInPlace），
+    /// 否则其静态构造函数抛异常后类型永久不可用。
+    /// </summary>
+    private static void EnsureNormalizer()
+    {
+        if (_normT2S != null) return;
+        lock (_normLock)
+        {
+            if (_normT2S != null) return;
+            if (!_normPrimaryTried)
+            {
+                _normPrimaryTried = true;
+                NormLog($"BaseDir={AppContext.BaseDirectory}");
+                NormLog($"BaseDir/dicts zstd 已存在={System.IO.File.Exists(System.IO.Path.Combine(AppContext.BaseDirectory, "dicts", "dictionary_maxlength.zstd"))}");
+                NormLog($"res:// zstd File.Exists={_resZstdPath.Length > 0 && System.IO.File.Exists(_resZstdPath)}");
+                EnsureDefaultDictInPlace();
+                if (TryCreateNormalizer()) { LogNormalizerReady("默认词典"); return; }
+                NormLog("所有加载路径失败，搜索退化为普通匹配");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 确保 OpenccNetLib 能加载默认词典 zstd。
+    /// 桌面：NuGet contentFiles 已把 zstd 拷到 BaseDirectory/dicts/，直接可用。
+    /// 安卓：AppContext.BaseDirectory 为空（程序集从 APK 内存加载），OpenccNetLib 用相对路径
+    /// "dicts/..." 解析到进程 CWD（安卓根目录只读）。因此把 zstd 写到可写的 user://files/dicts/，
+    /// 并 Directory.SetCurrentDirectory 指到 user://files/，使相对路径命中。
+    /// 核心约束：Opencc 静态构造强制加载默认词典，缺失则类型初始化抛异常且永久不可用。
+    /// </summary>
+    private static void EnsureDefaultDictInPlace()
+    {
+        var baseTarget = System.IO.Path.Combine(AppContext.BaseDirectory, "dicts", "dictionary_maxlength.zstd");
+        if (System.IO.File.Exists(baseTarget)) return;
+        if (System.Environment.CurrentManagedThreadId != _mainThreadId)
+        {
+            NormLog("默认 zstd 缺失且不在主线程，跳过抽取");
+            return;
+        }
+        try
+        {
+            var resExists = Godot.FileAccess.FileExists("res://CSharp/ChartDb/dicts/dictionary_maxlength.zstd");
+            NormLog($"res:// FileExists={resExists}");
+            if (!resExists)
+            {
+                NormLog("res:// zstd 不存在（未导出？Android 导出过滤需含 *.zstd）");
+                return;
+            }
+            using var src = Godot.FileAccess.Open("res://CSharp/ChartDb/dicts/dictionary_maxlength.zstd", Godot.FileAccess.ModeFlags.Read);
+            if (src == null) { NormLog("打开 res:// zstd 失败"); return; }
+            var buf = src.GetBuffer((long)src.GetLength());
+            NormLog($"读入 {buf.Length} 字节");
+
+            // 安卓：BaseDirectory 为空 → 目标目录用可写的 user://，并把 CWD 指过去
+            string targetDir;
+            if (string.IsNullOrEmpty(AppContext.BaseDirectory))
+            {
+                var userBase = ProjectSettings.GlobalizePath("user://files/");
+                System.IO.Directory.CreateDirectory(userBase);
+                targetDir = System.IO.Path.Combine(userBase, "dicts");
+                System.IO.Directory.CreateDirectory(targetDir);
+                try
+                {
+                    System.IO.Directory.SetCurrentDirectory(userBase);
+                    NormLog($"已设置 CWD={userBase}");
+                }
+                catch (Exception e) { NormLog($"设置 CWD 失败: {e.Message}"); }
+            }
+            else
+            {
+                targetDir = System.IO.Path.Combine(AppContext.BaseDirectory, "dicts");
+                System.IO.Directory.CreateDirectory(targetDir);
+            }
+            var target = System.IO.Path.Combine(targetDir, "dictionary_maxlength.zstd");
+            System.IO.File.WriteAllBytes(target, buf);
+            NormLog($"已就位 zstd 到 {target} ({buf.Length} 字节)");
+        }
+        catch (Exception e)
+        {
+            NormLog($"就位 zstd 失败: {e.Message}");
+        }
+    }
+
+    /// <summary>主线程延迟帧初始化规范化器（OpenDb 后一帧执行，避开启动主路径卡顿）。</summary>
+    private void _DeferredInitNormalizer()
+    {
+        try { EnsureNormalizer(); }
+        catch (Exception e) { GD.Print($"[ChartDb][Norm] 延迟初始化异常: {e.Message}"); }
+        // 词典就绪 → 后台预热全库规范化缓存（缓存被 RebuildAlbumsSongs 清空时按世代号自取消）
+        if (_normT2S == null) return;
+        try
+        {
+            lock (_lock)
+            {
+                if (_charts != null)
+                    PrewarmNormCache(_charts.FindAll().ToList());
+            }
+        }
+        catch (Exception e) { GD.Print($"[ChartDb][Norm] 预热启动失败: {e.Message}"); }
+    }
+
+    /// <summary>词典就绪后打印诊断 + 样本转换结果（真机排查：验证转换是否正常）。</summary>
+    private static void LogNormalizerReady(string via)
+    {
+        GD.Print($"[ChartDb][Norm] 词典加载成功 via {via}");
+        GD.Print($"[ChartDb][Norm] 早見沙織 -> {NormalizeCore("早見沙織")}");
+        GD.Print($"[ChartDb][Norm] 東方紅魔郷 -> {NormalizeCore("東方紅魔郷")}");
+        GD.Print($"[ChartDb][Norm] 音楽 -> {NormalizeCore("音楽")}");
+        GD.Print($"[ChartDb][Norm] 純白色的蕾絲 -> {NormalizeCore("純白色的蕾絲")}");
+    }
+
+    private static bool TryCreateNormalizer()
+    {
+        try
+        {
+            _normT2S = new OpenccNetLib.Opencc("t2s");
+            _normJp2T = new OpenccNetLib.Opencc("jp2t");
+            return true;
+        }
+        catch (Exception e)
+        {
+            NormLog($"new Opencc 失败: {e.Message}");
+            _normT2S = null;
+            _normJp2T = null;
+            return false;
+        }
+    }
+
+    /// <summary>取某 chart 文档的规范化搜索副本（缓存命中优先，惰性转换）。
+    /// 6 个字段转换（简介除外）：谱面名/原曲名/专辑名/歌手/原曲作者/上传者
+    /// 都可能含日文（忠于原始的标题、声优名、幻乐团等），统一归一消除「简体搜不到繁体」。
+    /// 简介文本太长且无规范化必要，保持原文匹配。</summary>
+    private static string GetNormField(BsonDocument doc, int idx)
+    {
+        var key = doc["_id"].AsString;
+        if (_normCache.TryGetValue(key, out var arr)) return arr[idx];
+        var fresh = new[]
+        {
+            NormalizeCore(BsonConvert.GetStr(doc, "song_name")),
+            NormalizeCore(BsonConvert.GetStr(doc, "author_name")),
+            NormalizeCore(BsonConvert.GetStr(doc, "album_name")),
+            NormalizeCore(BsonConvert.GetStr(doc, "artist_name")),
+            NormalizeCore(BsonConvert.GetStr(doc, "name")),
+            NormalizeCore(BsonConvert.GetStr(doc, "uploader_name")),
+        };
+        _normCache.TryAdd(key, fresh);
+        return fresh[idx];
+    }
+
+    /// <summary>后台线程填充全库规范化搜索副本缓存（纯字符串转换：无锁、无场景树/DB 访问）。
+    /// 词典须已就绪（_normT2S != null）。世代号变化（RebuildAlbumsSongs 清缓存）时自取消，
+    /// 避免旧快照覆盖重建后的新值；转换失败/被打断的缺口由 GetNormField 惰性补上。</summary>
+    private static void PrewarmNormCache(List<BsonDocument> docs)
+    {
+        if (_normT2S == null) return;
+        var gen = System.Threading.Volatile.Read(ref _normCacheGen);
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            try
+            {
+                foreach (var doc in docs)
+                {
+                    if (System.Threading.Volatile.Read(ref _normCacheGen) != gen) return;
+                    var key = doc.TryGetValue("_id", out var idV) ? idV.AsString : "";
+                    if (string.IsNullOrEmpty(key) || _normCache.ContainsKey(key)) continue;
+                    var fresh = new[]
+                    {
+                        NormalizeCore(BsonConvert.GetStr(doc, "song_name")),
+                        NormalizeCore(BsonConvert.GetStr(doc, "author_name")),
+                        NormalizeCore(BsonConvert.GetStr(doc, "album_name")),
+                        NormalizeCore(BsonConvert.GetStr(doc, "artist_name")),
+                        NormalizeCore(BsonConvert.GetStr(doc, "name")),
+                        NormalizeCore(BsonConvert.GetStr(doc, "uploader_name")),
+                    };
+                    _normCache.TryAdd(key, fresh);
+                }
+            }
+            catch { /* 后台预热失败不致命，缺口由惰性补上 */ }
+        });
+    }
+
+    /// <summary>安卓 APK 内 res:// 词典无法被 .NET File.IO 直读，用 Godot FileAccess 抽取到 user://files/dicts/。</summary>
+    private static void TryExtractDictsToUser()
+    {
+        try
+        {
+            const string resDir = "res://CSharp/ChartDb/dicts/";
+            const string userDir = "user://files/dicts/";
+            var userReal = ProjectSettings.GlobalizePath(userDir);
+            Godot.DirAccess.MakeDirRecursiveAbsolute(userReal);
+            using var da = Godot.DirAccess.Open(resDir);
+            if (da == null) return;
+            foreach (var f in da.GetFiles())
+            {
+                if (f.EndsWith(".import")) continue;
+                using var src = Godot.FileAccess.Open(resDir + f, Godot.FileAccess.ModeFlags.Read);
+                if (src == null) continue;
+                var buf = src.GetBuffer((long)src.GetLength());
+                using var dst = Godot.FileAccess.Open(userDir + f, Godot.FileAccess.ModeFlags.Write);
+                if (dst == null) continue;
+                dst.StoreBuffer(buf);
+            }
+            if (System.IO.Directory.Exists(userReal))
+            {
+                OpenccNetLib.Opencc.UseDictionaryFromPath(userReal);
+                TryCreateNormalizer();
+            }
+        }
+        catch { }
     }
 
     /// <summary>
@@ -894,6 +1218,9 @@ public partial class ChartDb : Node
     /// </summary>
     private void RebuildAlbumsSongs()
     {
+        // 图表变更 → 规范化搜索副本缓存失效（song_name/author_name 可能被孤儿归组改写）
+        _normCache.Clear();
+        System.Threading.Interlocked.Increment(ref _normCacheGen); // 后台预热自取消世代号
         var albums = new Dictionary<string, BsonDocument>();
         var songs = new Dictionary<string, BsonDocument>();
 
@@ -1004,5 +1331,9 @@ public partial class ChartDb : Node
             _albums.Upsert(kv.Value);
         foreach (var kv in songs)
             _songs.Upsert(kv.Value);
+
+        // 规范化缓存已清空 → 后台线程重填（词典就绪时；纯转换，不占主线程）
+        if (_normT2S != null)
+            PrewarmNormCache(_charts.FindAll().ToList());
     }
 }

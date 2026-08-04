@@ -24,6 +24,16 @@ var uploader_name: String
 ## 原曲作者
 var author_name: String
 
+## 规范化搜索副本（简繁日互搜用；水合时由 C# ChartDB 预计算，不持久化）
+## 谱面名/原曲名/专辑名/歌手/原曲作者/上传者 6 字段（简介除外）都可能含日文
+## （忠于原始的标题、声优名、幻乐团等），统一归一后 简/繁/日 三种写法互搜，避免「简体搜不到繁体」。
+var search_song_name: String = ""
+var search_author_name: String = ""
+var search_album_name: String = ""
+var search_artist_name: String = ""
+var search_name: String = ""
+var search_uploader_name: String = ""
+
 ## 上传日期
 var uploaded_date: String
 
@@ -177,6 +187,14 @@ func from_json(json_data: Dictionary) -> void:
 		author_name = author_val.get("name", "")
 
 	uploaded_date = json_data.get("uploadedDate", "")
+
+	# 规范化搜索副本（C# ChartDB 在 GetChartJson 注入，简繁日互搜用）
+	search_song_name = json_data.get("_search_song_name", "")
+	search_author_name = json_data.get("_search_author_name", "")
+	search_album_name = json_data.get("_search_album_name", "")
+	search_artist_name = json_data.get("_search_artist_name", "")
+	search_name = json_data.get("_search_name", "")
+	search_uploader_name = json_data.get("_search_uploader_name", "")
 	
 	# 处理两种格式的字段名
 	trial_count = json_data.get("trialCount", 0)
