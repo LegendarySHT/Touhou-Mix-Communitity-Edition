@@ -158,11 +158,13 @@ func init_beam(lane_count: int, parent_node) -> void:
 	var beam_width_mode = ConfigManager.instance.get_int("Appearance", "beam_width_mode", 0)
 	var beam_w: float     = note_width + 20.0
 	var safe_width: float = max(1.0, window.x - 2.0 * float(padding))
+	# 中间间距（键盘模式 + 偶数键位）：从可用宽度中扣除，再在中间插入，保证总宽不超屏幕
+	var mid_gap: int = play_view.get_mid_lane_gap()
 	var lane_step: float = 0.0
 	var lane_start_center_x: float = float(padding) + safe_width * 0.5
 	if lane_count > 1:
 		lane_start_center_x = float(padding) + beam_w * 0.5
-		lane_step = max(0.0, (safe_width - beam_w) / float(lane_count - 1))
+		lane_step = max(0.0, (safe_width - float(mid_gap) - beam_w) / float(lane_count - 1))
 
 	# 当光效宽度模式为跟随轨道间距时，使用轨道间距作为光效宽度
 	if beam_width_mode == 1 and lane_step > 0:
@@ -193,6 +195,9 @@ func init_beam(lane_count: int, parent_node) -> void:
 			b.set_shader_profile(_beam_fade_duration_sec, discard_threshold)
 			b.visible = false
 		var center_x: float = lane_start_center_x + lane_step * i
+		# 中间间距：右半侧整体右移（间距已在 lane_step 中扣除，总宽不变，不超出屏幕）
+		if mid_gap > 0 and i >= int(lane_count / 2):
+			center_x += mid_gap
 		b.position = Vector2(center_x - beam_w * 0.5, 0.0)
 		_beam_nodes.append(b)
 

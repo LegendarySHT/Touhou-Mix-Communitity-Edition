@@ -24,13 +24,16 @@ const KEY_ITEM_SCENE := preload("res://UI/Components/PopupWindow/KeySequenceItem
 # 节点引用
 @onready var _hbox: HFlowContainer = $KeySequence/VFlowC
 @onready var _insert_place: Panel = $KeySequence/VFlowC/InsertPlace
-@onready var _key_name_label: Label = $KeyName
-@onready var _display_name_edit: LineEdit = $KeyDisplayName/LineEdit
-@onready var _key_config_btn: Button = $KeyConfig/Button
-# 交替轨道颜色（键盘模式）
-@onready var _alt_color_cb: CheckBox = $KeyColor/CheckBox
-@onready var _alt_count_edit: LineEdit = $KeyColor/LineEdit
-@onready var _color_seq: HBoxContainer = $ColorSeq
+@onready var _key_name_label: Label = $HBox/Center/KeyName
+@onready var _display_name_edit: LineEdit = $HBox/Center/KeyDisplayName/LineEdit
+@onready var _key_config_btn: Button = $HBox/Center/KeyConfig/Button
+# 键盘模式开关 + 左右间距（HBox 左列）
+@onready var _kb_mode_cb: CheckBox = $HBox/Left/CheckBox
+@onready var _gap_edit: LineEdit = $HBox/Left/EnableKBMode/LineEdit
+# 交替轨道颜色（HBox 右列）
+@onready var _alt_color_cb: CheckBox = $HBox/Right/CheckBox
+@onready var _alt_count_edit: LineEdit = $HBox/Right/ColorCount/LineEdit
+@onready var _color_seq: HBoxContainer = $HBox/Center/ColorSeq
 
 # 交替颜色序列按钮颜色（按索引保存，重建时保留）
 var _alt_colors_state: Array[Color] = []
@@ -57,14 +60,14 @@ var _suppress_display_name_signal: bool = false
 func _ready() -> void:
 	_item_instance = KEY_ITEM_SCENE.instantiate()
 	apply_button_theme(ThemeMGR.get_color("primary"))
-	# 数量变化时动态重建颜色序列按钮
-	_alt_count_edit.text_changed.connect(_on_alt_count_changed)
 
 
 ## 由 PopupWindow.show_kb_mode_adjust 调用：解析配置字符串并重建 UI
+## kb_mode：键盘模式开关（0/1）；gap：左右间距（偶数键位时中间额外间距，最低 0）
 ## alt_color / alt_count / alt_colors：交替轨道颜色配置（键盘模式覆盖音符颜色）
 func init_adjust(current_keys: String, current_display_names: String,
-		alt_color: Variant = true, alt_count: Variant = 2, alt_colors: String = "") -> void:
+		kb_mode: Variant = 1, alt_color: Variant = 1, alt_count: Variant = 2,
+		alt_colors: String = "#ff0000,#0000ff", gap: Variant = 0) -> void:
 	_cancel_recording()
 	# 显式重置按钮文本（_cancel_recording 在 _recording_key=false 时不设置文本）
 	_key_config_btn.text = "输入按键"
@@ -83,6 +86,12 @@ func init_adjust(current_keys: String, current_display_names: String,
 	_rebuild_items()
 	_refresh_detail_panel()
 	_key_name_label.text = "当前按键： -"
+
+	# 键盘模式开关
+	_kb_mode_cb.button_pressed = bool(kb_mode)
+	# 左右间距（最低 0）
+	var safe_gap: int = max(0, int(gap))
+	_gap_edit.text = str(safe_gap)
 
 	# 交替轨道颜色：数量最低 1，颜色序列按数量补齐
 	_alt_color_cb.button_pressed = bool(alt_color)
@@ -121,6 +130,8 @@ func get_result() -> Dictionary:
 	return {
 		"keys": ",".join(valid_keys),
 		"display_names": ",".join(valid_names),
+		"keyboard_mode": 1 if _kb_mode_cb.button_pressed else 0,
+		"keyboard_mode_gap": max(0, _gap_edit.text.to_int()),
 		"alt_color": 1 if _alt_color_cb.button_pressed else 0,
 		"alt_count": alt_count,
 		"alt_colors": ",".join(colors),

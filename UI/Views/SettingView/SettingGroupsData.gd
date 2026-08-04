@@ -254,22 +254,10 @@ static func get_setting_groups() -> Array:
 				"unit": "lanes"
 			},
 			{
-				"id": "keyboard_mode",
-				"name_en": "Keyboard Mode",
-				"name_zh": "鍵盤模式",
-				"description": "用键盘来玩THMIX，打开后判定线上会显示所设置的键位名称",
-				"type": "TYPE_OPTION",
-				"default_value": "0",
-				"options": [
-					{"text_en": "Off", "text_zh": "关闭"},
-					{"text_en": "On", "text_zh": "开启"}
-				]
-			},
-			{
 				"id": "keyboard_mode_keys",
-				"name_en": "Keyboard Mode Keys",
-				"name_zh": "键盘键位设置",
-				"description": "点击按钮打开窗口，设置键盘按键顺序、显示名称和按键绑定",
+				"name_en": "Keyboard Mode Settings",
+				"name_zh": "键盘模式设置",
+				"description": "点击按钮打开窗口，设置键盘模式开关、按键顺序、显示名称、左右间距与交替轨道颜色",
 				"type": "TYPE_BUTTON",
 				"default_value": null,
 				"on_click": "_popup_kb_mode_adjust"

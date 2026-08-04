@@ -171,11 +171,12 @@ func init_flow_area():
 	note_visual_width = max(10.0, safe_width / block_size_ratio)
 	note_judge_width = max(10.0, note_visual_width * block_judge_ratio)
 	
-	# 计算轨道间距
+	# 计算轨道间距（中间间距从可用宽度扣除，与 LaneEffect 布局一致，触摸估算不溢出）
+	var mid_gap: float = float(parent_node.get_mid_lane_gap())
 	if lc <= 1:
 		lane_width = safe_width
 	else:
-		lane_width = (safe_width - float(note_visual_width)) / float(lc - 1)
+		lane_width = max(1.0, (safe_width - mid_gap - float(note_visual_width)) / float(lc - 1))
 	
 	# 设置判定线位置
 	jl.position.y = get_viewport().get_visible_rect().size.y - parent_node.judge_line_offset_y
@@ -1095,6 +1096,11 @@ func _estimate_lane_from_x(x: float) -> int:
 		return 0
 	var safe_start = float(parent_node.lane_padding)
 	var relative_x = x - safe_start
+	# 中间间距：偶数键位时右半侧整体右移，估算前先减去间距对齐
+	var mid_gap: int = parent_node.get_mid_lane_gap()
+	var half := int(lc / 2)
+	if mid_gap > 0 and relative_x >= float(half) * lane_width:
+		relative_x -= mid_gap
 	var lane = int(relative_x / lane_width)
 	return clampi(lane, 0, lc - 1)
 

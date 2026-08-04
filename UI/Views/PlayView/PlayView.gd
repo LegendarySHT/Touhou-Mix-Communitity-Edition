@@ -105,6 +105,8 @@ var _flash_tween: Tween = null
 var keyboard_alt_color: bool = true
 var keyboard_alt_color_count: int = 2
 var keyboard_alt_colors: Array[Color] = [Color.RED, Color.BLUE] # 交替颜色序列，颜色数量可大于轨道数一半（多余的不会被用到）
+# 左右间距（像素；键盘模式且键位数为偶数时在中间额外加此间距，分隔左右手）
+var keyboard_mode_gap: int = 0
 
 var show_debug_info: bool = false
 var debug_info_refresh_interval: float = 0.5
@@ -259,6 +261,15 @@ func _parse_alt_colors(colors_str: String) -> Array[Color]:
 			continue
 		result.append(Color.from_string(p, Color.WHITE))
 	return result
+
+## 中间间距：键盘模式且键位数为偶数时返回设置的间距，否则 0
+## 用于把左右手轨道分隔更远（LaneEffect 布局与触摸轨道估算共用）
+func get_mid_lane_gap() -> int:
+	if not keyboard_mode:
+		return 0
+	if get_lane_count() % 2 != 0:
+		return 0
+	return keyboard_mode_gap
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
@@ -781,6 +792,9 @@ func _load_lane_parameters() -> void:
 		keyboard_alt_colors.append(Color.WHITE)
 	keyboard_alt_colors.resize(keyboard_alt_color_count)
 
+	# 左右间距（偶数键位时中间额外间距）
+	keyboard_mode_gap = max(0, config_mgr.get_int("Lane", "keyboard_mode_gap", 0))
+
 	GLogger.info(
 		"PlayView lane parameters loaded: lane_count=%d, lane_padding=%d, keyboard_mode=%s, key_map_size=%d" % 
 		[lane_count, lane_padding, str(keyboard_mode), key_map.size()],
@@ -869,6 +883,14 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 					should_reinit = true
 				GLogger.info("PlayView keyboard_alt_color updated: enabled=%s count=%d colors=%s" %
 					[str(keyboard_alt_color), keyboard_alt_color_count, str(keyboard_alt_colors)], "PlayView")
+
+		"keyboard_mode_gap":
+			if section == "Lane":
+				var new_gap: int = max(0, int(value))
+				if new_gap != keyboard_mode_gap:
+					keyboard_mode_gap = new_gap
+					should_reinit = true
+					GLogger.info("PlayView keyboard_mode_gap updated: %d" % keyboard_mode_gap, "PlayView")
 
 		"flash_alpha":
 			if section == "Lane":

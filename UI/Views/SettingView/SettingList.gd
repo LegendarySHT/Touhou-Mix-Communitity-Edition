@@ -311,26 +311,44 @@ func _popup_note_skin_adjust() -> void:
 	GLogger.info("block_skin_preset selected: '%s' (pending save)" % skin_name, "SettingList")
 
 # ===== 键位设置弹窗入口 =====
-# 弹出键位设置窗口，关闭后将 keys/display_names 缓存到 _pending_config
-# 实际应用延迟到退出 SettingView 时由 apply_pending_config_updates 统一 emit config_changed
-# （与其他 TYPE_BUTTON 设置一致，避免在 SettingView 中频繁触发 PlayView 重建轨道）
+# 弹出键位设置窗口，关闭后即时应用（set_value_and_notify）+ 缓存 _pending_config
 # 打开弹窗时从 _pending_config 读取当前值传入，确保未保存的修改能接着改
+# 即时应用与皮肤/下落弹窗一致；若只靠退出时 diff（str(old)==str(new) 比较），
+# 同会话内键盘模式先关再开、最终值绕回初始值时会被判为"无变化"而跳过 emit，
+# 导致 PlayView 的 keyboard_mode 字段停留在中间状态不生效
 func _popup_kb_mode_adjust() -> void:
 	var pending_keys := String(_pending_config.get("keyboard_mode_keys", ""))
 	var pending_names := String(_pending_config.get("keyboard_mode_display_names", ""))
+	var pending_kb_mode := int(_pending_config.get("keyboard_mode", 0))
+	var pending_gap := int(_pending_config.get("keyboard_mode_gap", 0))
 	var pending_alt_color := int(_pending_config.get("keyboard_alt_color", 1))
 	var pending_alt_count := int(_pending_config.get("keyboard_alt_color_count", 2))
 	var pending_alt_colors := String(_pending_config.get("keyboard_alt_colors", "#ff0000,#0000ff"))
 	var result := await PopupWindow.instance.show_kb_mode_adjust(
-		pending_keys, pending_names, pending_alt_color, pending_alt_count, pending_alt_colors)
+		pending_keys, pending_names, pending_kb_mode, pending_alt_color, pending_alt_count, pending_alt_colors, pending_gap)
 	var keys_str := String(result.get("keys", ""))
 	var names_str := String(result.get("display_names", ""))
 	_pending_config["keyboard_mode_keys"] = keys_str
 	_pending_config["keyboard_mode_display_names"] = names_str
+	_pending_config["keyboard_mode"] = int(result.get("keyboard_mode", 0))
+	_pending_config["keyboard_mode_gap"] = int(result.get("keyboard_mode_gap", 0))
 	_pending_config["keyboard_alt_color"] = int(result.get("alt_color", 1))
 	_pending_config["keyboard_alt_color_count"] = int(result.get("alt_count", 2))
 	_pending_config["keyboard_alt_colors"] = String(result.get("alt_colors", "#ff0000,#0000ff"))
-	GLogger.info("keyboard_mode_keys updated: %s (pending save)" % keys_str, "SettingList")
+	# 即时应用到运行时（关闭弹窗即提交，无取消路径）
+	_apply_kb_mode_result_to_runtime(result)
+	GLogger.info("keyboard_mode_keys updated: %s, kb_mode=%s" % [keys_str, str(result.get("keyboard_mode", 0))], "SettingList")
+
+## 弹窗结果即时写回 ConfigManager 并 emit config_changed（PlayView/KeySequenceManager 热更新）
+func _apply_kb_mode_result_to_runtime(result: Dictionary) -> void:
+	var cm := ConfigManager.instance
+	cm.set_value_and_notify("Lane", "keyboard_mode", int(result.get("keyboard_mode", 0)))
+	cm.set_value_and_notify("Lane", "keyboard_mode_keys", String(result.get("keys", "")))
+	cm.set_value_and_notify("Lane", "keyboard_mode_display_names", String(result.get("display_names", "")))
+	cm.set_value_and_notify("Lane", "keyboard_mode_gap", max(0, int(result.get("keyboard_mode_gap", 0))))
+	cm.set_value_and_notify("Lane", "keyboard_alt_color", int(result.get("alt_color", 1)))
+	cm.set_value_and_notify("Lane", "keyboard_alt_color_count", max(1, int(result.get("alt_count", 2))))
+	cm.set_value_and_notify("Lane", "keyboard_alt_colors", String(result.get("alt_colors", "#ff0000,#0000ff")))
 
 # ===== 下落模式设置弹窗入口 =====
 # 弹出下落模式设置窗口，关闭后 FallingAdjust 已通过 set_value_and_notify 即时应用到 FlowArea
