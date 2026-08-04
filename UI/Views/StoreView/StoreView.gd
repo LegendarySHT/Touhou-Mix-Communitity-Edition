@@ -80,7 +80,7 @@ func _load_demo_data() -> void:
 	# 懒加载兼容：若数据已加载完成（启动后首次进入 StoreView），不再 await 一次性信号
 	if DataMGR.is_loading:
 		await EvtBus.data_loaded_complete
-	var test_midis:Array[MidiData] = DataMGR.get_all_midis()
+	var test_midis:Array[MidiData] = DataMGR.get_midis_preview(5)
 
 	#演示代码
 	for i in range(5):

@@ -331,7 +331,7 @@ func load_midi(midi_data: MidiData) -> bool:
 
 		current_midi_data._track_config_initialized = true
 		# 立即持久化到 JSON，避免下次启动重复解析简介
-		_save_runtime_config_to_json(current_midi_data)
+		_save_runtime_config(current_midi_data)
 	
 	# 加载到活跃后端
 	var backend = _get_active_backend()
@@ -416,20 +416,16 @@ func unload_midi() -> void:
 	position = 0.0
 	position_ms = 0.0
 
-## 将 MIDI 运行时配置保存到 JSON 文件（合并模式）
+## 将 MIDI 运行时配置保存到 chart_runtime（权威 DB，替代 JSON 写回）
 ## 用于首次初始化后立即持久化，避免每次启动重复解析简介
-func _save_runtime_config_to_json(midi_data: MidiData) -> void:
+func _save_runtime_config(midi_data: MidiData) -> void:
 	var chart_id = midi_data.file_hash if not midi_data.file_hash.is_empty() else midi_data.id
-	var json_path = FileSystemManager.instance.get_chart_json_path(chart_id)
-	if json_path.is_empty():
-		GLogger.warning("Cannot save runtime config: JSON path not found for MIDI %s" % midi_data.id, "MidiPlaybackManager")
-		return
-	var runtime_config = midi_data.export_runtime_config()
-	var data_to_save = {"_runtime": runtime_config}
-	if ConfigManager.instance.save_json_file(json_path, data_to_save, true):
-		GLogger.info("Runtime config persisted to JSON for MIDI %s (initialized=true, tracks=%d)" % [midi_data.id, midi_data.selected_track_configs.size()], "MidiPlaybackManager")
+	if ChartDB and ChartDB.IsOpen():
+		var runtime_config = midi_data.export_runtime_config()
+		ChartDB.SaveRuntime(chart_id, runtime_config)
+		GLogger.info("Runtime config persisted to DB for MIDI %s (initialized=true, tracks=%d)" % [midi_data.id, midi_data.selected_track_configs.size()], "MidiPlaybackManager")
 	else:
-		push_error("[MidiPlaybackManager] Failed to save runtime config to JSON for MIDI %s" % midi_data.id)
+		push_error("[MidiPlaybackManager] ChartDB not open, cannot save runtime config for MIDI %s" % midi_data.id)
 
 ## 在 worker 线程中预解析 MIDI，使后续 load_midi() 命中缓存跳过同步解析
 ## 同时在 worker 中完成 track_channel_instruments 复用 + runtime_track_channel_notes 分组构建
@@ -1211,45 +1207,47 @@ func _apply_mute_state_to_backend(backend: MidiPlaybackInterface) -> void:
 
 ## 辅助函数：定位MIDI文件路径
 func _locate_midi_file(midi_data: MidiData) -> String:
-	# 使用FileSystemManager的文件索引来定位MIDI文件
+	# 使用FileSystemManager的反向索引来定位MIDI文件（O(1)，统一匹配 id / file_hash / hash）
 	var filesystem_manager = FileSystemManager.instance
 	if filesystem_manager == null:
 		push_error("FileSystemManager not initialized")
 		return ""
 
-	# 从charts索引中查找（优先使用已缓存的路径）
-	var charts_index = filesystem_manager.get_charts_index()
-	for folder_name in charts_index.keys():
-		var metadata: ChartMetadata = charts_index[folder_name]
-		var chart_id: String = metadata.id
-		if chart_id == midi_data.id or chart_id == midi_data.file_hash:
-			# 首选使用索引中缓存的路径
-			var chart_path: String = metadata.path
-			if chart_path.is_empty():
-				chart_path = FileSystemManager.CHARTS_DIR.path_join(folder_name)
-			# 1) 按 chart_id 命名的mid
-			var midi_file_path: String = chart_path.path_join(chart_id + ".mid")
-			if FileAccess.file_exists(midi_file_path):
-				return midi_file_path
-			# 2) 按 midi_data.id 命名的mid（旧格式）
-			var alt_id_path: String = chart_path.path_join(midi_data.id + ".mid")
-			if FileAccess.file_exists(alt_id_path):
-				return alt_id_path
-			# 3) 按 midi_data.file_hash 命名的mid（若提供）
-			if not midi_data.file_hash.is_empty():
-				var hash_path: String = chart_path.path_join(midi_data.file_hash + ".mid")
-				if FileAccess.file_exists(hash_path):
-					return hash_path
-			# 4) 作为后备，尝试 res:// 目录同名路径
-			var res_chart_path: String = FileSystemManager.DEFAULT_CHARTS_SRC.path_join(folder_name)
-			var res_candidates = [
-				res_chart_path.path_join(chart_id + ".mid"),
-				res_chart_path.path_join(midi_data.id + ".mid"),
-				res_chart_path.path_join(midi_data.file_hash + ".mid") if not midi_data.file_hash.is_empty() else ""
-			]
-			for candidate in res_candidates:
-				if candidate != "" and FileAccess.file_exists(candidate):
-					return candidate
+	var lookup = filesystem_manager._lookup_chart(midi_data.id)
+	if lookup.is_empty() and not midi_data.file_hash.is_empty():
+		lookup = filesystem_manager._lookup_chart(midi_data.file_hash)
+	if lookup.is_empty():
+		return ""
+	var metadata: ChartMetadata = lookup["metadata"]
+	var folder_name: String = lookup["folder_name"]
+	var chart_id: String = metadata.id
+	# 首选使用索引中缓存的路径
+	var chart_path: String = metadata.path
+	if chart_path.is_empty():
+		chart_path = FileSystemManager.CHARTS_DIR.path_join(folder_name)
+	# 1) 按 chart_id 命名的mid
+	var midi_file_path: String = chart_path.path_join(chart_id + ".mid")
+	if FileAccess.file_exists(midi_file_path):
+		return midi_file_path
+	# 2) 按 midi_data.id 命名的mid（旧格式）
+	var alt_id_path: String = chart_path.path_join(midi_data.id + ".mid")
+	if FileAccess.file_exists(alt_id_path):
+		return alt_id_path
+	# 3) 按 midi_data.file_hash 命名的mid（若提供）
+	if not midi_data.file_hash.is_empty():
+		var hash_path: String = chart_path.path_join(midi_data.file_hash + ".mid")
+		if FileAccess.file_exists(hash_path):
+			return hash_path
+	# 4) 作为后备，尝试 res:// 目录同名路径
+	var res_chart_path: String = FileSystemManager.DEFAULT_CHARTS_SRC.path_join(folder_name)
+	var res_candidates = [
+		res_chart_path.path_join(chart_id + ".mid"),
+		res_chart_path.path_join(midi_data.id + ".mid"),
+		res_chart_path.path_join(midi_data.file_hash + ".mid") if not midi_data.file_hash.is_empty() else ""
+	]
+	for candidate in res_candidates:
+		if candidate != "" and FileAccess.file_exists(candidate):
+			return candidate
 
 	return ""
 

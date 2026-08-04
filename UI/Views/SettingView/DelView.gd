@@ -352,7 +352,8 @@ func _build_midi_page() -> void:
 			return
 
 	var dm := DataMGR
-	if dm.midi_tree.is_empty() and dm.midis.is_empty():
+	# 数据是否存在以 DB 为准（惰性水合下内存缓存可能为空）
+	if ChartDB == null or not ChartDB.IsOpen() or ChartDB.CountCharts() == 0:
 		if dm.is_loading:
 			_update_item_sum("数据加载中...")
 		else:
@@ -360,8 +361,8 @@ func _build_midi_page() -> void:
 			_tab_data_built[Tab.MIDI] = true
 		return
 
-	# 数据源：按专辑名升序排序，Unknown 始终排最后
-	_midi_build_albums = _sort_albums_for_delview(dm.albums.values())
+	# 数据源：按专辑名升序排序，Unknown 始终排最后（惰性水合，DB 聚合）
+	_midi_build_albums = _sort_albums_for_delview(DataMGR.get_all_albums())
 	if _midi_build_albums.is_empty():
 		_update_item_sum("无谱面数据")
 		_tab_data_built[Tab.MIDI] = true
@@ -1351,8 +1352,8 @@ func _search_midi_flat() -> void:
 	_update_item_sum("搜索中...")
 	_update_midi_toggle_state()
 
-	var all_midis: Array[MidiData] = DataMGR.midis.values()
-	var matched: Array[MidiData] = SortEngine.search_midis(all_midis, _search_query)
+	# 全库搜索（DB 驱动，name/artist/uploader/desc 多关键字 AND 匹配），只水合命中
+	var matched: Array[MidiData] = DataMGR.search_all_midis(_search_query)
 	# 扁平模式下按 midi.name 升序
 	matched.sort_custom(func(a: MidiData, b: MidiData) -> bool:
 		return a.name < b.name

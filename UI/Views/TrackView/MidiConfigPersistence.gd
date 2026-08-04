@@ -10,7 +10,7 @@ func setup(track_view: TrackView) -> void:
 	_track_view = track_view
 
 
-## 保存当前MIDI配置到JSON文件
+## 保存当前MIDI配置到 chart_runtime（权威 DB，替代 JSON 写回）
 func save_midi_config() -> void:
 	var current_midi_data = _track_view.current_midi_data
 	if current_midi_data == null:
@@ -33,26 +33,14 @@ func save_midi_config() -> void:
 	# 导出运行时配置
 	var runtime_config = current_midi_data.export_runtime_config()
 
-	# 获取JSON文件路径（优先使用file_hash，如果为空则使用id）
+	# 保存到 chart_runtime（优先使用file_hash，如果为空则使用id）
 	var chart_id = current_midi_data.file_hash if not current_midi_data.file_hash.is_empty() else current_midi_data.id
-	var json_path = FileSystemManager.instance.get_chart_json_path(chart_id)
-	if json_path.is_empty():
-		push_warning("[TrackView] Failed to get JSON path for MIDI: %s (id=%s, file_hash=%s)" %
-			[chart_id, current_midi_data.id, current_midi_data.file_hash])
-		return
-
-	# 准备要保存的数据（只包含_runtime字段，通过合并保留其他字段）
-	var data_to_save = {
-		"_runtime": runtime_config
-	}
-
-	# 使用ConfigManager保存JSON（启用合并模式，保留原有字段）
-	var config_manager = ConfigManager.instance
-	if config_manager.save_json_file(json_path, data_to_save, true):
-		print("[TrackView] Successfully saved MIDI config to: %s (volume: %d/%d, solo: %d, track_enabled: %s, vocal: %s)" %
-			[json_path, current_midi_data.midi_volume, current_midi_data.vocal_volume, _track_view.solo_pairs.size(), current_midi_data.selected_track_configs, _track_view._vocal_controller.vocal_file_path])
+	if ChartDB and ChartDB.IsOpen():
+		ChartDB.SaveRuntime(chart_id, runtime_config)
+		print("[TrackView] Successfully saved MIDI config to DB (volume: %d/%d, solo: %d, track_enabled: %s, vocal: %s)" %
+			[current_midi_data.midi_volume, current_midi_data.vocal_volume, _track_view.solo_pairs.size(), current_midi_data.selected_track_configs, _track_view._vocal_controller.vocal_file_path])
 	else:
-		push_error("[TrackView] Failed to save MIDI config to: %s" % json_path)
+		push_error("[TrackView] ChartDB not open, cannot save MIDI config for: %s" % current_midi_data.id)
 
 
 ## 恢复MIDI配置的数据部分（音量、进度条、独奏状态）

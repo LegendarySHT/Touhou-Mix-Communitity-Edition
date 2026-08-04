@@ -709,8 +709,11 @@ func _await_cache_validation(task_id: int, rw: Dictionary, cached_charts: Dictio
 	audio_files_index.clear()
 	_build_charts_index_from_data(cached_charts, chart_tasks)
 
-	# 保存更新后的缓存
+	# 保存更新后的缓存（SaveChartsCache 只写带 data 的新增/变化条目，轻量投影条目自动跳过不覆盖）
 	_save_charts_cache(cached_charts)
+	# 已删除文件夹同步移除 DB 中的 chart（含 chart_runtime + 聚合重算）
+	if ChartDB and ChartDB.IsOpen() and not removed_folders.is_empty():
+		ChartDB.RemoveCharts(removed_folders)
 
 	_is_validating = false
 	# emit 信号通知 UI 刷新
@@ -776,6 +779,20 @@ func _scan_charts_full_sync() -> float:
 	# 保存缓存（DelView 重扫后也更新缓存，保持一致）
 	_save_charts_cache(all_charts_data)
 
+	# 清理 DB 中已不在磁盘上的谱面（全量重扫不跑缓存校验，需手动 diff，防止删除残留）
+	if ChartDB and ChartDB.IsOpen():
+		var db_keys: Array = ChartDB.GetAllChartKeys()
+		var folder_set: Dictionary = {}
+		for fn in all_chart_folders:
+			folder_set[fn] = true
+		var removed_from_db: Array = []
+		for k: String in db_keys:
+			if not folder_set.has(k):
+				removed_from_db.append(k)
+		if not removed_from_db.is_empty():
+			ChartDB.RemoveCharts(removed_from_db)
+			GLogger.info("Rescan: pruned %d stale charts from DB" % removed_from_db.size(), "FileSystemMGR")
+
 	var elapsed_ms := (Time.get_ticks_usec() - t_start) / 1000.0
 	GLogger.info("Scanned %d charts in %.0fms" % [
 		charts_index.size(), elapsed_ms
@@ -799,45 +816,21 @@ func _list_chart_folder_names() -> Array:
 	return folder_names
 
 ## ========== charts 扫描缓存 ==========
-## 缓存扫描结果到 user://files/.charts_scan_cache.json
-## 避免每次启动都对 2000+ 谱面文件夹做完整 I/O 扫描
-## 缓存策略：对比当前文件夹列表，只扫描新增文件夹，未变的从缓存恢复
-
-## charts 扫描缓存文件路径
-func _get_charts_cache_path() -> String:
-	return BASE_DIR.path_join(".charts_scan_cache.json")
-
-## charts 缓存版本号
-## bump 触发条件：metadata dict 字段结构变化（如新增/删除 _json_mtime / audio_entries 等）
-## 版本不匹配时缓存被丢弃，走全量扫描路径
-const CHARTS_CACHE_VERSION := 2
+## 缓存存于 LiteDB（ChartDb），替代原 .charts_scan_cache.json
+## 缓存策略：对比当前文件夹列表，只扫描新增/变化文件夹，未变的从 DB 恢复（轻量投影，不物化 JSON）
 
 ## 加载 charts 扫描缓存
 ## 返回 {folder_name: metadata_dict}，加载失败返回空 Dictionary
-## metadata_dict 是 _load_chart_metadata 返回的完整字典（包含 data/cover_path/audio_entries 等）
+## metadata_dict 是 ChartDb 轻量投影（含路径/mtime/扁平化 id 字段，不含 data 大块）
 func _load_charts_cache() -> Dictionary:
-	var cache_path := _get_charts_cache_path()
-	if not FileAccess.file_exists(cache_path):
+	# 从 LiteDB 读取缓存（替代原 .charts_scan_cache.json 文本解析）
+	# schema 版本校验已在 ChartDB.OpenDb 中处理（版本不符 → 重建导入）
+	if ChartDB == null or not ChartDB.IsOpen():
 		return {}
 	var t_start := Time.get_ticks_usec()
-	var file = FileAccess.open(cache_path, FileAccess.READ)
-	if file == null:
-		return {}
-	var content = file.get_as_text()
-	file.close()
-	var cache = JSON.parse_string(content)
-	if cache == null or not (cache is Dictionary):
-		GLogger.warning("Charts cache corrupted, ignoring", "FileSystemMGR")
-		return {}
-	var cached_version := int(cache.get("version", 0))
-	if cached_version != CHARTS_CACHE_VERSION:
-		GLogger.info("Charts cache version %d != %d, ignoring (full scan)" % [
-			cached_version, CHARTS_CACHE_VERSION
-		], "FileSystemMGR")
-		return {}
-	var charts: Dictionary = cache.get("charts", {})
+	var charts: Dictionary = ChartDB.LoadChartsCache()
 	var t_end := Time.get_ticks_usec()
-	GLogger.info("Loaded charts cache: %d entries in %.0fms" % [
+	GLogger.info("Loaded charts cache from DB: %d entries in %.0fms" % [
 		charts.size(), (t_end - t_start) / 1000.0
 	], "FileSystemMGR")
 	return charts
@@ -845,19 +838,11 @@ func _load_charts_cache() -> Dictionary:
 ## 保存 charts 扫描缓存
 ## charts_data: {folder_name: metadata_dict}
 func _save_charts_cache(charts_data: Dictionary) -> void:
-	var cache_path := _get_charts_cache_path()
-	var cache = {
-		"version": CHARTS_CACHE_VERSION,
-		"charts": charts_data
-	}
-	var file = FileAccess.open(cache_path, FileAccess.WRITE)
-	if file == null:
-		GLogger.warning("Failed to write charts cache: %s" % cache_path, "FileSystemMGR")
+	# 写入 LiteDB（替代原 .charts_scan_cache.json 文本序列化）
+	if ChartDB == null or not ChartDB.IsOpen():
 		return
-	# 紧凑格式减小文件大小（2294 条约 1-3MB）
-	file.store_string(JSON.stringify(cache))
-	file.close()
-	GLogger.info("Saved charts cache: %d entries" % charts_data.size(), "FileSystemMGR")
+	ChartDB.SaveChartsCache(charts_data)
+	GLogger.info("Saved charts cache to DB: %d entries" % charts_data.size(), "FileSystemMGR")
 
 ## 后台校验缓存 worker：检查每个缓存条目的文件夹是否仍然存在 + json/mid mTime 是否变化
 ## 纯文件 I/O，不调 GLogger / 不写全局字段，结果通过 result_wrapper 回传
@@ -998,21 +983,27 @@ func _build_charts_index_from_data(all_charts_data: Dictionary, chart_tasks: Arr
 		# 跳过无效 metadata（_load_chart_metadata 出错时返回 {"_warnings": [...]}）
 		if not meta_dict.has("id"):
 			continue
+
+		# v3：统一补全扁平化字段（缓存恢复投影已带；扫描结果需从 data 提取一次，避免物化整块 JSON）
+		if not meta_dict.has("midi_id") and meta_dict.has("data"):
+			var jd: Variant = meta_dict.get("data", {})
+			if jd is Dictionary:
+				meta_dict["midi_id"] = jd.get("_id", "")
+				meta_dict["file_hash"] = jd.get("file_hash", "")
+				meta_dict["hash"] = jd.get("hash", "")
 		charts_index[folder_name] = ChartMetadata.from_dict(meta_dict)
 
-		# 构建反向索引
+		# 构建反向索引（扁平化字段，不再读 data 大块）
 		var chart_meta: ChartMetadata = charts_index[folder_name]
 		var meta_id: String = chart_meta.id
 		if not meta_id.is_empty():
 			_chart_id_to_folder[meta_id] = folder_name
-		var json_data = chart_meta.data
-		if json_data is Dictionary:
-			var fh: String = json_data.get("file_hash", "")
-			if not fh.is_empty():
-				_hash_to_folder[fh] = folder_name
-			var ah: String = json_data.get("hash", "")
-			if not ah.is_empty() and ah != fh:
-				_hash_to_folder[ah] = folder_name
+		var fh: String = chart_meta.file_hash
+		if not fh.is_empty():
+			_hash_to_folder[fh] = folder_name
+		var ah: String = chart_meta.hash
+		if not ah.is_empty() and ah != fh:
+			_hash_to_folder[ah] = folder_name
 
 		# 收集 audio 条目（统一从 metadata dict 提取，不再依赖 worker 的单独 audio 数组）
 		var entries = meta_dict.get("audio_entries", [])
@@ -1325,15 +1316,13 @@ func _lookup_chart(chart_id: String) -> Dictionary:
 			var fn: String = _hash_to_folder[chart_id]
 			if charts_index.has(fn):
 				return {"folder_name": fn, "metadata": charts_index[fn]}
-	# 回退到线性扫描
+	# 回退到线性扫描（扁平化字段，不读 data 大块）
 	for folder_name in charts_index.keys():
 		var meta: ChartMetadata = charts_index[folder_name]
 		if meta.id == chart_id:
 			return {"folder_name": folder_name, "metadata": meta}
-		var jd = meta.data
-		if jd is Dictionary:
-			if jd.get("hash", "") == chart_id or jd.get("file_hash", "") == chart_id:
-				return {"folder_name": folder_name, "metadata": meta}
+		if meta.midi_id == chart_id or meta.file_hash == chart_id or meta.hash == chart_id:
+			return {"folder_name": folder_name, "metadata": meta}
 	return {}
 
 ## 从 chart_id 反向查询对应的曲包文件夹路径
@@ -1616,10 +1605,8 @@ func remove_from_charts_index(chart_id: String) -> void:
 		var meta: ChartMetadata = result["metadata"]
 		# 同步清理反向索引
 		_chart_id_to_folder.erase(meta.id)
-		var jd = meta.data
-		if jd is Dictionary:
-			_hash_to_folder.erase(jd.get("hash", ""))
-			_hash_to_folder.erase(jd.get("file_hash", ""))
+		_hash_to_folder.erase(meta.hash)
+		_hash_to_folder.erase(meta.file_hash)
 		charts_index.erase(folder_name)
 		GLogger.info("Removed chart from index: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
 		return
@@ -1671,11 +1658,12 @@ func delete_chart(chart_id: String) -> bool:
 
 	# 从 charts_index 移除
 	_chart_id_to_folder.erase(meta.id)
-	var jd = meta.data
-	if jd is Dictionary:
-		_hash_to_folder.erase(jd.get("hash", ""))
-		_hash_to_folder.erase(jd.get("file_hash", ""))
+	_hash_to_folder.erase(meta.hash)
+	_hash_to_folder.erase(meta.file_hash)
 	charts_index.erase(folder_name)
+	# 同步移除 DB 中的 chart（含 chart_runtime + 聚合重算），修复原删除残留缓存的洞
+	if ChartDB and ChartDB.IsOpen():
+		ChartDB.RemoveChart(meta.id)
 	clear_cover_cache()
 	GLogger.info("Deleted chart: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
 	return true

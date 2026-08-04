@@ -1255,13 +1255,13 @@ func _has_cover_for_current_midi() -> bool:
 	if current_midi == null or FileSystemManager.instance == null:
 		return false
 
-	var charts = FileSystemManager.instance.get_charts_index()
-	for folder_name in charts.keys():
-		var metadata: ChartMetadata = charts[folder_name]
-		if metadata.id == current_midi.file_hash or metadata.data.get("_id", "") == current_midi.id:
-			return not metadata.cover_path.is_empty() and FileAccess.file_exists(metadata.cover_path)
-
-	return false
+	var result = FileSystemManager.instance._lookup_chart(current_midi.file_hash)
+	if result.is_empty():
+		result = FileSystemManager.instance._lookup_chart(current_midi.id)
+	if result.is_empty():
+		return false
+	var metadata: ChartMetadata = result["metadata"]
+	return not metadata.cover_path.is_empty() and FileAccess.file_exists(metadata.cover_path)
 
 func _init_lane_display():
 	# 窗口大小变化时重新计算音符尺寸

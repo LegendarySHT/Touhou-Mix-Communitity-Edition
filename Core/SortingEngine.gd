@@ -235,6 +235,8 @@ func _finish_sort_task(request_id: int, should_emit_signal: bool) -> void:
 		_emit_sort_finished()
 
 ## 按状态和排序过滤MIDI列表（协程任务）
+## 数据源：ChartDb（状态过滤 + 字段排序在 C# 完成，返回有序规范键，再分批惰性水合）
+## 仅当调用方显式传入 midis（自定义列表）时退回内存排序路径保持兼容
 func _sort_mode_task(
 	request_id: int,
 	status: SortStatField = SortStatField.ALL,
@@ -242,27 +244,47 @@ func _sort_mode_task(
 	sort_direction: SortDirection = SortDirection.DESCENDING,
 	midis = null
 ) -> void:
-	GLogger.info("开始排序任务: 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction], "SortEngine")
-
-	# 若未传入 midis，则从 DataMGR 读取（保持向后兼容）
-	var source_midis = midis if midis != null else DataMGR.midis.values().duplicate()
 	current_sort_field = sort_field
 	current_sort_direction = sort_direction
 	current_sort_stat_field = status
-	GLogger.info("排序前midi数量: %d" % source_midis.size(), "SortEngine")
 
-	if await _yield_for_sort_step(request_id):
+	# 兼容路径：显式传入的 midis 列表走原内存排序
+	if midis != null:
+		GLogger.info("开始排序任务(内存): 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction], "SortEngine")
+		var source_midis: Array = midis
+		if await _yield_for_sort_step(request_id):
+			return
+		var temp_list = await _filter_midis_by_status(source_midis, status, request_id)
+		if _is_sort_cancelled(request_id):
+			return
+		temp_list = _sort_midis(temp_list, sort_field, sort_direction)
+		if _is_sort_cancelled(request_id):
+			return
+		current_midis = temp_list
+		_finish_sort_task(request_id, true)
 		return
 
-	var temp_list = await _filter_midis_by_status(source_midis, status, request_id)
+	GLogger.info("开始排序任务(DB): 状态=%s, 字段=%s, 方向=%s" % [status, sort_field, sort_direction], "SortEngine")
+
+	# DB 全量排序：状态过滤 + 字段排序在 C# 一次完成，只返回键，主线程分批水合
+	var status_str := _get_status_name(status)
+	var keys: Array = ChartDB.GetSortedMidiKeys(status_str, int(sort_field), int(sort_direction), "")
+	GLogger.info("DB 排序返回 %d 个键" % keys.size(), "SortEngine")
+
+	var temp_list: Array[MidiData] = []
+	for i in range(0, keys.size(), FILTER_BATCH_SIZE):
+		if _is_sort_cancelled(request_id):
+			return
+		var end_index = min(i + FILTER_BATCH_SIZE, keys.size())
+		for j in range(i, end_index):
+			var midi = DataMGR._ensureMidi(String(keys[j]))
+			if midi:
+				temp_list.append(midi)
+		if end_index < keys.size() and await _yield_for_sort_step(request_id):
+			return
+
 	if _is_sort_cancelled(request_id):
 		return
-
-	GLogger.info("过滤后midi数量: %d" % temp_list.size(), "SortEngine")
-	temp_list = _sort_midis(temp_list, sort_field, sort_direction)
-	if _is_sort_cancelled(request_id):
-		return
-
 	current_midis = temp_list
 	_finish_sort_task(request_id, true)
 
@@ -276,32 +298,40 @@ func clear_cache() -> void:
 	sort_cache.clear()
 	cache_key = ""
 
-## 搜索MIDI（按名称或作者）
+## 搜索MIDI（按原名/专辑名/谱面名/歌手/原曲作者/上传者/描述，多关键字 AND 匹配）
+## 在传入的（已筛选+已排序）列表内过滤并保持原序 —— 兼容 SortedMidiView 等当前集搜索
+## 全库搜索请用 DataMGR.search_all_midis（DB 驱动，DelView 扁平搜索用）
 func search_midis(midis: Array[MidiData], query: String) -> Array[MidiData]:
 	if query.is_empty():
 		return midis
-	
+
 	var keywords = query.to_lower().split(" ", false)
 	var result: Array[MidiData] = []
-	
+
 	for midi in midis:
 		var midi_name = midi.name.to_lower()
+		var song_name = (midi.song_data.name if midi.song_data else "").to_lower()
+		var album_name = (midi.album_data.name if midi.album_data else "").to_lower()
 		var artist_name = midi.artist_name.to_lower()
+		var author_name = midi.author_name.to_lower()
 		var uploader_name = midi.uploader_name.to_lower()
 		var description = midi.description.to_lower()
-		
+
 		var all_keywords_match = true
 		for keyword in keywords:
 			if not (midi_name.contains(keyword) or
+				song_name.contains(keyword) or
+				album_name.contains(keyword) or
 				artist_name.contains(keyword) or
+				author_name.contains(keyword) or
 				uploader_name.contains(keyword) or
 				description.contains(keyword)):
 				all_keywords_match = false
 				break
-		
+
 		if all_keywords_match:
 			result.append(midi)
-	
+
 	return result
 
 ## ========== 专辑级排序 ==========

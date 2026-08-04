@@ -313,10 +313,9 @@ func _on_del_btn_pressed():
 		return
 
 	var chart_id: String = midi_to_del.file_hash if not midi_to_del.file_hash.is_empty() else midi_to_del.id
-	var json_path: String = FileSystemManager.instance.get_chart_json_path(chart_id)
 
 	match window.get_selected():
-		"删除人声音频": # 删除人声音频文件，并清除 JSON 内人声相关设置
+		"删除人声音频": # 删除人声音频文件，并清除人声相关设置
 			var vocal_path: String = midi_to_del.vocal_file_path
 			if vocal_path.is_empty():
 				window.show_message("该谱面没有设置人声音频")
@@ -328,14 +327,8 @@ func _on_del_btn_pressed():
 			midi_to_del.vocal_file_path = ""
 			midi_to_del.vocal_offset_ms = 0
 			midi_to_del.vocal_volume = 50
-			# 写回 JSON（merge 模式，仅覆盖人声相关字段）
-			if not json_path.is_empty():
-				var runtime_patch := {
-					"vocal_file_path": "",
-					"vocal_offset_ms": 0,
-					"vocal_volume": 50
-				}
-				ConfigManager.instance.save_json_file(json_path, {"_runtime": runtime_patch}, true)
+			# 写回 chart_runtime（权威 DB）
+			ChartDB.SaveRuntime(chart_id, midi_to_del.export_runtime_config())
 			GLogger.info("已删除人声音频: %s" % vocal_path, "MidiView")
 
 		"删除设定": # 重置设定：清除音轨/音量/静音/独奏配置，保留人声路径
@@ -347,11 +340,8 @@ func _on_del_btn_pressed():
 			midi_to_del.track_channel_instrument_overrides.clear()
 			midi_to_del.solo_pairs.clear()
 			midi_to_del.midi_volume = 50
-			# 从 JSON 中整体移除 _runtime 块
-			if not json_path.is_empty():
-				var json_dict: Dictionary = ConfigManager.instance.load_json_file(json_path)
-				json_dict.erase("_runtime")
-				ConfigManager.instance.save_json_file(json_path, json_dict, false)
+			# 清空 chart_runtime（文档存在=已配置，删除=从未配置；与旧 JSON 整块移除 _runtime 语义一致）
+			ChartDB.ClearRuntime(chart_id)
 			GLogger.info("已重置谱面设定: %s" % midi_to_del.name, "MidiView")
 
 		"删除曲包": # 删除曲包：删除整个文件夹，并从内存中移除
@@ -363,9 +353,9 @@ func _on_del_btn_pressed():
 			var album_id_before: String = midi_to_del.album_data.id if midi_to_del.album_data else ""
 			var deleted_id: String = midi_to_del.id
 			DataMGR.remove_midi(chart_id)
-			# 判断 Song 和 Album 是否被级联删除
-			var song_still_exists: bool = not song_id_before.is_empty() and DataMGR.songs.has(song_id_before)
-			var album_still_exists: bool = not album_id_before.is_empty() and DataMGR.albums.has(album_id_before)
+			# 判断 Song 和 Album 是否被级联删除（DB 聚合权威，不依赖内存水合缓存）
+			var song_still_exists: bool = not song_id_before.is_empty() and ChartDB and ChartDB.IsOpen() and ChartDB.SongExists(song_id_before)
+			var album_still_exists: bool = not album_id_before.is_empty() and ChartDB and ChartDB.IsOpen() and ChartDB.AlbumExists(album_id_before)
 			
 			if song_still_exists:
 				# Song 仍存在，正常返回 SongView

@@ -77,6 +77,9 @@ func _notification(what: int) -> void:
 		# 应用退出时关闭 CoverLoader 线程池，确保所有后台线程 wait_to_finish
 		if CoverLoader:
 			CoverLoader.shutdown()
+		# 关闭 LiteDB（Dispose 刷写 journal）
+		if ChartDB:
+			ChartDB.CloseDb()
 
 ## 桌面端 Esc 键（仅在无其他控件消费事件时触发）
 func _unhandled_input(event: InputEvent) -> void:
@@ -138,6 +141,15 @@ func _initialize_core_systems() -> void:
 	
 	# 初始化目录结构
 	filesystem_manager.initialize_directory_structure()
+
+	# 3.25. 打开 ChartDB（LiteDB 数据层），必须在 FileSystemManager 扫描前就绪
+	# 路径经 globalize_path 转为真实 OS 路径供 C# System.IO 使用
+	if ChartDB:
+		var db_path := ProjectSettings.globalize_path(PathHelper.get_files_dir()).path_join("charts.ldb")
+		var old_cache_path := ProjectSettings.globalize_path(PathHelper.get_base_dir()).path_join(".charts_scan_cache.json")
+		ChartDB.OpenDb(db_path, old_cache_path)
+		if logger:
+			logger.info("ChartDB opened (db: %s)" % db_path, "Main")
 	
 	# 4. 初始化事件总线（单例，已自动管理）
 	event_bus = EvtBus

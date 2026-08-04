@@ -9,8 +9,13 @@ var path: String = ""              ## 谱面文件夹路径
 var json_path: String = ""         ## chart.json 路径
 var audio_path: String = ""        ## 音频文件路径
 var cover_path: String = ""        ## 封面图路径
-var data: Dictionary = {}          ## 原始 JSON 数据
+var data: Dictionary = {}          ## 原始 JSON 数据（缓存恢复投影下为空；仅扫描路径填充）
 var is_complete: bool = false      ## 是否完整（含音频文件）
+
+## v3 扁平化字段（从 data 提取，缓存恢复投影直接提供，避免物化整块 JSON）
+var midi_id: String = ""           ## 谱面 JSON 的 _id
+var file_hash: String = ""         ## 谱面 JSON 的 file_hash（favorites/别名查找用）
+var hash: String = ""              ## 谱面 JSON 的 hash（别名查找用）
 
 ## 从 Dictionary 构造（兼容旧格式）
 static func from_dict(d: Dictionary) -> ChartMetadata:
@@ -23,6 +28,9 @@ static func from_dict(d: Dictionary) -> ChartMetadata:
 	m.cover_path = d.get("cover_path", "")
 	m.data = d.get("data", {})
 	m.is_complete = d.get("is_complete", false)
+	m.midi_id = d.get("midi_id", "")
+	m.file_hash = d.get("file_hash", "")
+	m.hash = d.get("hash", "")
 	return m
 
 ## 转为 Dictionary（仅用于序列化/兼容）

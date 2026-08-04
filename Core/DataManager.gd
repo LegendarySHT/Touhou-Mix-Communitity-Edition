@@ -1,23 +1,19 @@
 ## 数据管理器
-## 负责歌曲数据的加载、缓存和查询
+## 负责歌曲数据的惰性水合缓存与查询（数据唯一源 = ChartDb LiteDB）
+## 启动不再构造全部 MidiData；视图需要时经 _ensureMidi/_ensureSong/_ensureAlbum 按需水合
 extends Node
 
 class_name DataManager
 
-## 所有专辑数据 (ID -> AlbumData)
+## 所有专辑数据 (ID -> AlbumData) —— 惰性水合缓存
 var albums: Dictionary[String, AlbumData] = {}
 
-## 所有歌曲数据 (ID -> SongData)
+## 所有歌曲数据 (ID -> SongData) —— 惰性水合缓存
 var songs: Dictionary[String, SongData] = {}
 
-## 所有MIDI谱面数据 (ID -> MidiData)
+## 所有MIDI谱面数据 (folder_name -> MidiData) —— 惰性水合缓存
+## 规范键 = ChartDb 的主键（folder_name），经 LookupChartKey 统一解析别名
 var midis: Dictionary[String, MidiData] = {}
-
-## MIDI数据按专辑分组 (AlbumID -> SongID -> [MidiID])
-var midi_tree: Dictionary = {}
-
-## 原始JSON数据缓存（可选，用于调试和重新加载）
-var json_cache: Dictionary = {}
 
 ## 数据加载状态 (初始为True防止还没启动就被读取)
 var is_loading: bool = true
@@ -32,13 +28,13 @@ func _ready() -> void:
 	add_to_group("singleton")
 	# 监听 charts 缓存后台校验完成信号
 	# 启动时 FileSystemManager 先从缓存恢复 charts_index 让用户立即操作
-	# 后台校验若发现变化（新增/删除/修改文件夹），重新构建数据树并 emit data_loaded
+	# 后台校验若发现变化（新增/删除/修改文件夹），清空水合缓存重新加载并 emit data_loaded
 	# 这样 UI 通过已监听的 data_loaded 信号自动刷新，无需额外耦合
 	if EvtBus:
 		EvtBus.charts_cache_validated.connect(_on_charts_cache_validated)
 
 ## charts 缓存校验完成回调
-## changed=true 表示发现了新增/删除/修改的文件夹，需重建数据树
+## changed=true 表示发现了新增/删除/修改的文件夹，需清空水合缓存并重新加载
 ## changed=false 表示缓存完全有效，无需重建
 func _on_charts_cache_validated(changed: bool) -> void:
 	if not changed:
@@ -49,56 +45,21 @@ func _on_charts_cache_validated(changed: bool) -> void:
 		GLogger.info("Charts cache validated with changes, but data is loading, pending reload", "DataMGR")
 		_pending_reload = true
 		return
-	GLogger.info("Charts cache validated with changes, rebuilding data tree...", "DataMGR")
+	GLogger.info("Charts cache validated with changes, rebuilding data caches...", "DataMGR")
 	_rebuild_data_tree()
 
-## 从midis_info目录异步加载所有MIDI数据
+## 从 DB 轻量加载门：不再构造全部 MidiData（性能主菜）
+## 数据全部在 ChartDb，视图需要时惰性水合；这里只做就绪门 + emit data_loaded
 func load_all_midis_async() -> void:
 	if not is_loading:
 		return
-	
-	# var thread = Thread.new()
-	# var result = thread.start(_load_midis)
+
 	if FileSystemManager.instance == null:
 		push_error("FileSystemManager not initialized")
 		return
-	
+
 	while not FileSystemManager.instance.is_initialized:
 		await get_tree().process_frame
-	_load_midis()
-
-## 线程函数：加载MIDI数据
-## 使用新的谱面格式（从 FileSystemManager 获取谱面索引）
-func _load_midis() -> void:
-	GLogger.info("Thread started, loading MIDI data...", "DataMGR")
-	
-	# 获取谱面索引（浅拷贝：防止后台缓存校验协程并发 clear charts_index 导致迭代中途取到 null）
-	var charts = FileSystemManager.instance.get_charts_index().duplicate()
-	GLogger.info("Got charts index: %d charts" % charts.size(), "DataMGR")
-
-	if charts.is_empty():
-		GLogger.warning("No charts found in FileSystemManager index", "DataMGR")
-		return
-	
-	# 处理每个谱面
-	var processed_count = 0
-	GLogger.info("Starting to process %d charts..." % charts.size(), "DataMGR")
-	
-	for folder_name in charts.keys():
-		var metadata = charts[folder_name]
-		_process_new_format_chart(metadata)
-		processed_count += 1
-		
-		# 每处理 10 个谱面释放一帧，保持 Loading 动画流畅
-		if processed_count % 10 == 0:
-			await get_tree().process_frame
-	
-	GLogger.info("Finished processing %d charts, now emitting signal..." % processed_count, "DataMGR")
-	GLogger.info("Midis in dictionary: %d" % midis.size(), "DataMGR")
-
-	# 为无专辑/歌曲的 MIDI 合成 Unknown 分组
-	await _ensure_unknown_grouping()
-
 	_emit_data_loaded()
 
 func _emit_data_loaded():
@@ -116,231 +77,123 @@ func _emit_data_loaded():
 	data_loaded.emit()
 	GLogger.info("data_loaded signal emitted!", "DataMGR")
 
-## 清空旧数据树，重新从 charts_index 构建
+## 清空旧水合缓存，重新进入轻量加载
 func _rebuild_data_tree() -> void:
 	albums.clear()
 	songs.clear()
 	midis.clear()
-	midi_tree.clear()
-	json_cache.clear()
 	is_loading = true
 	load_all_midis_async()
 
-## 处理新格式的谱面数据（文件夹结构）
-func _process_new_format_chart(metadata: ChartMetadata) -> void:
-	var chart_id = metadata.id
-	var json_data = metadata.data
-	var folder_name = metadata.folder_name
+## ========== 惰性水合 ==========
 
-	# 调试日志
-	if chart_id.is_empty():
-		GLogger.warning("Chart metadata missing id field. Folder: %s" % folder_name, "DataMGR")
-		return
+## 按规范键（folder_name）水合 MidiData，缓存命中返回同一实例（对象身份稳定）
+func _ensureMidi(chart_key: String) -> MidiData:
+	if chart_key.is_empty():
+		return null
+	if midis.has(chart_key):
+		return midis[chart_key]
+	if ChartDB == null or not ChartDB.IsOpen():
+		return null
 
+	var json_data: Dictionary = ChartDB.GetChartJson(chart_key)
 	if json_data.is_empty():
-		GLogger.warning("Chart %s has empty JSON data. Folder: %s" % [chart_id, folder_name], "DataMGR")
-		return
+		return null
 
-	# 创建MIDI数据对象
-	var midi = MidiData.new()
+	var midi := MidiData.new()
 	midi.from_json(json_data)
-
-	# 验证是否成功设置了 id
 	if midi.id.is_empty():
-		GLogger.warning("Failed to set MIDI id for chart %s" % chart_id, "DataMGR")
-		return
+		return null
 
-	# 初始化人声配置：若曲包存在人声音频文件则默认启用，否则禁用
-	# 仅对未保存过 vocal_enabled 配置的新 MIDI 生效，已保存的配置尊重用户选择
-	var runtime_config = json_data.get("_runtime", {})
+	# 关联 song/album（DB 聚合；孤儿 → __unknown，由 RebuildAlbumsSongs 归组）
+	var song_id: String = json_data.get("song_id", "")
+	var album_id: String = json_data.get("album_id", "")
+	midi.song_data = _ensureSong(song_id) if not song_id.is_empty() else null
+	midi.album_data = _ensureAlbum(album_id) if not album_id.is_empty() else null
+
+	# 初始化人声配置：仅对未保存过 vocal_enabled 配置的新 MIDI 生效，已保存的配置尊重用户选择
+	var runtime_config: Variant = json_data.get("_runtime", {})
 	var has_saved_vocal_enabled = runtime_config is Dictionary and runtime_config.has("vocal_enabled")
 	if not has_saved_vocal_enabled:
-		var audio_path = metadata.audio_path
+		var audio_path: String = ChartDB.GetAudioPath(chart_key)
 		if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
 			midi.vocal_enabled = true
 			midi.vocal_file_path = audio_path
 		else:
 			midi.vocal_enabled = false
 
-	# print("[DataMGR] DEBUG: Adding MIDI %s (from folder %s) to dictionary" % [chart_id, folder_name])
-	midis[chart_id] = midi
-	# print("[DataMGR] DEBUG: MIDI added. Current midis count: %d" % midis.size())
-	
-	# 缓存原始JSON
-	json_cache[chart_id] = json_data
-	
-	# 处理歌曲和专辑信息
-	_process_song_and_album_info(json_data, midi, chart_id)
+	midis[chart_key] = midi
+	return midi
 
-## 加载单个MIDI文件
-func _load_midi_file(file_path: String) -> void:
-	var file = FileAccess.open(file_path, FileAccess.READ)
-	if file == null:
-		push_warning("Failed to open file: %s" % file_path)
-		return
-	
-	var content = file.get_as_text()
-	var json = JSON.parse_string(content)
-	
-	if json == null:
-		push_warning("Failed to parse JSON: %s" % file_path)
-		return
-	
-	_process_midi_json(json as Dictionary)
+## 按 song_id 水合 SongData（DB songs 集合为聚合，含 midi_ids）
+func _ensureSong(song_id: String) -> SongData:
+	if song_id.is_empty():
+		return null
+	if songs.has(song_id):
+		return songs[song_id]
+	if ChartDB == null or not ChartDB.IsOpen():
+		return null
 
-## 处理MIDI JSON数据
-func _process_midi_json(json_data: Dictionary) -> void:
-	# 提取基本信息
-	var midi_id = json_data.get("_id", "")
-	if midi_id.is_empty():
-		return
-	
-	# 创建MIDI数据对象
-	var midi = MidiData.new()
-	midi.from_json(json_data)
-	midis[midi_id] = midi
-	
-	# 缓存原始JSON
-	json_cache[midi_id] = json_data
-	
-	# 处理歌曲和专辑信息
-	_process_song_and_album_info(json_data, midi, midi_id)
+	var d: Dictionary = ChartDB.GetSong(song_id)
+	if d.is_empty():
+		return null
 
-## 处理歌曲和专辑信息
-func _process_song_and_album_info(json_data: Dictionary, midi: MidiData, midi_id: String) -> void:
-	if json_data.has("song") and json_data.has("album"):
-		_process_nested_format(json_data, midi, midi_id)
-	else:
-		GLogger.warning("Chart missing song/album: %s" % midi_id, "DataMGR")
-func _process_nested_format(json_data: Dictionary, midi: MidiData, midi_id: String) -> void:
-	# 处理歌曲信息
-	var song_json = JsonHelper.get_value(json_data, "song", {}) as Dictionary
-	var song_id = song_json.get("_id", "")
-	
-	if song_id and not song_id.is_empty():
-		if not songs.has(song_id):
-			var currentSong = SongData.new()
-			currentSong.from_json(song_json)
-			songs[song_id] = currentSong
-		
-		var song = songs[song_id]
-		song.add_midi_id(midi_id)
-		midi.song_data = song
-		midi.author_name = json_data.get("author", "")
-	
-	# 处理专辑信息
-	var album_json = JsonHelper.get_value(json_data, "album", {}) as Dictionary
-	var album_id = album_json.get("_id", "")
-	
-	if album_id and not album_id.is_empty():
-		if not albums.has(album_id):
-			var album = AlbumData.new()
-			album.from_json(album_json)
-			albums[album_id] = album
-		
-		var currentAlbum = albums[album_id]
-		if not song_id.is_empty():
-			currentAlbum.add_song_id(song_id)
-		currentAlbum.total_midi_count += 1
-		midi.album_data = currentAlbum
-		
-		# 更新专辑的最早上传日期
-		if not midi.uploaded_date.is_empty():
-			if currentAlbum.earliest_uploaded_date.is_empty() or midi.uploaded_date < currentAlbum.earliest_uploaded_date:
-				currentAlbum.earliest_uploaded_date = midi.uploaded_date
-		
-		# 构建树结构
-		_add_to_midi_tree(album_id, song_id, midi_id)
+	var s := SongData.new()
+	s.from_json(d)
+	s.midi_ids.assign(d.get("midi_ids", []))
+	songs[song_id] = s
+	return s
 
-func _add_to_midi_tree(album_id: String, song_id: String, midi_id: String) -> void:
-	if not midi_tree.has(album_id):
-		midi_tree[album_id] = {}
-	if not midi_tree[album_id].has(song_id):
-		midi_tree[album_id][song_id] = []
-	
-	# 确保数组存在后添加
-	if not midi_tree[album_id][song_id] is Array:
-		midi_tree[album_id][song_id] = []
-	
-	(midi_tree[album_id][song_id] as Array).append(midi_id)
+## 按 album_id 水合 AlbumData（DB albums 集合为聚合，含 song_ids/total_midi_count/earliest_uploaded_date）
+func _ensureAlbum(album_id: String) -> AlbumData:
+	if album_id.is_empty():
+		return null
+	if albums.has(album_id):
+		return albums[album_id]
+	if ChartDB == null or not ChartDB.IsOpen():
+		return null
 
-## ========== Unknown 分组合成 ==========
+	var d: Dictionary = ChartDB.GetAlbum(album_id)
+	if d.is_empty():
+		return null
+	return _hydrateAlbum(album_id, d)
 
-const UNKNOWN_ALBUM_ID := "__unknown_album__"
-const UNKNOWN_SONG_ID  := "__unknown_song__"
-
-## 为没有专辑/歌曲的 MIDI 合成 Unknown 分组（在 _load_midis 末尾调用）
-func _ensure_unknown_grouping() -> void:
-	# 先清理上一次可能残留的 Unknown 条目
-	_cleanup_unknown_grouping()
-	
-	var orphan_midis: Array[MidiData] = []
-	var scan_count := 0
-	for midi in midis.values():
-		if midi.album_data == null or midi.song_data == null:
-			orphan_midis.append(midi)
-		scan_count += 1
-		if scan_count % 500 == 0:
-			await get_tree().process_frame
-	
-	if orphan_midis.is_empty():
-		return
-	
-	# 创建 Unknown 专辑
-	var unknown_album := AlbumData.new()
-	unknown_album.id = UNKNOWN_ALBUM_ID
-	unknown_album.name = "Unknown"
-	albums[UNKNOWN_ALBUM_ID] = unknown_album
-	
-	# 创建 Unknown 歌曲
-	var unknown_song := SongData.new()
-	unknown_song.id = UNKNOWN_SONG_ID
-	unknown_song.name = "Unknown"
-	songs[UNKNOWN_SONG_ID] = unknown_song
-	
-	unknown_album.add_song_id(UNKNOWN_SONG_ID)
-	
-	# 初始化 midi_tree 条目
-	if not midi_tree.has(UNKNOWN_ALBUM_ID):
-		midi_tree[UNKNOWN_ALBUM_ID] = {}
-	midi_tree[UNKNOWN_ALBUM_ID][UNKNOWN_SONG_ID] = []
-	
-	for midi in orphan_midis:
-		midi.album_data = unknown_album
-		midi.song_data = unknown_song
-		unknown_album.total_midi_count += 1
-		(midi_tree[UNKNOWN_ALBUM_ID][UNKNOWN_SONG_ID] as Array).append(midi.id)
-		
-		# 更新 Unknown 专辑的最早上传日期
-		if not midi.uploaded_date.is_empty():
-			if unknown_album.earliest_uploaded_date.is_empty() or midi.uploaded_date < unknown_album.earliest_uploaded_date:
-				unknown_album.earliest_uploaded_date = midi.uploaded_date
-	
-	GLogger.info("Created Unknown album with %d orphan MIDIs" % orphan_midis.size(), "DataMGR")
-
-## 清理之前合成的 Unknown 条目（避免重复）
-func _cleanup_unknown_grouping() -> void:
-	# 从 midi_tree 移除 Unknown 条目
-	if midi_tree.has(UNKNOWN_ALBUM_ID):
-		midi_tree.erase(UNKNOWN_ALBUM_ID)
-	albums.erase(UNKNOWN_ALBUM_ID)
-	songs.erase(UNKNOWN_SONG_ID)
+## 从 DB album dict 构造 AlbumData 并入缓存（get_sorted_albums 复用已拉取的 dict，避免二次读库）
+func _hydrateAlbum(album_id: String, d: Dictionary) -> AlbumData:
+	var a := AlbumData.new()
+	a.from_json(d)
+	a.song_ids.assign(d.get("song_ids", []))
+	a.total_midi_count = d.get("total_midi_count", 0)
+	a.earliest_uploaded_date = d.get("earliest_uploaded_date", "")
+	albums[album_id] = a
+	return a
 
 ## ========== 专辑排序查询 ==========
 
 ## 获取排序后的专辑列表（按 ConfigManager [Browse] 设置排序）
 func get_sorted_albums() -> Array[AlbumData]:
 	var album_array: Array[AlbumData] = []
-	for album in albums.values():
-		album_array.append(album)
-	
+	if ChartDB == null or not ChartDB.IsOpen():
+		return album_array
+	for d: Variant in ChartDB.GetAlbums():
+		if d is Dictionary and not (d as Dictionary).is_empty():
+			var album_dict: Dictionary = d as Dictionary
+			var album_id: String = String(album_dict.get("_id", ""))
+			var album: AlbumData = null
+			if albums.has(album_id):
+				album = albums[album_id]
+			else:
+				album = _hydrateAlbum(album_id, album_dict)
+			if album:
+				album_array.append(album)
+
 	# 读取排序配置
 	var method_str := ConfigManager.instance.get_string("Browse", "album_sort_method", "creation_time")
 	var dir_str := ConfigManager.instance.get_string("Browse", "album_sort_direction", "asc")
-	
+
 	var method := SortingEngine.parse_album_sort_method(method_str)
 	var direction := SortingEngine.SortDirection.ASCENDING if dir_str == "asc" else SortingEngine.SortDirection.DESCENDING
-	
+
 	return SortEngine.sort_albums(album_array, method, direction)
 
 ## 获取所有专辑列表（委托到 get_sorted_albums）
@@ -350,113 +203,128 @@ func get_all_albums() -> Array[AlbumData]:
 ## 获取专辑下的所有歌曲
 func get_songs_by_album(album_id: String) -> Array[SongData]:
 	var result: Array[SongData] = []
-	
-	if not midi_tree.has(album_id):
+	var album = _ensureAlbum(album_id)
+	if album == null:
 		return result
-	
-	var song_ids = midi_tree[album_id].keys()
-	for song_id in song_ids:
-		if songs.has(song_id):
-			result.append(songs[song_id])
-	
+	for song_id in album.song_ids:
+		var song = _ensureSong(song_id)
+		if song:
+			result.append(song)
 	return result
 
 ## 获取歌曲下的所有MIDI谱面
 func get_midis_by_song(song_id: String) -> Array[MidiData]:
 	var result: Array[MidiData] = []
-	
-	for album_id in midi_tree.keys():
-		if midi_tree[album_id].has(song_id):
-			var midi_ids = midi_tree[album_id][song_id] as Array
-			for midi_id in midi_ids:
-				if midis.has(midi_id):
-					result.append(midis[midi_id])
-	
+	if ChartDB == null or not ChartDB.IsOpen():
+		return result
+	for chart_key: String in ChartDB.GetMidiKeysBySong(song_id):
+		var midi: MidiData = _ensureMidi(chart_key)
+		if midi:
+			result.append(midi)
 	return result
 
-## 按MIDI ID获取单个MIDI谱面
+## 按MIDI ID/别名获取单个MIDI谱面（统一经 LookupChartKey 解析到规范键，返回同一实例）
 func get_midi_by_id(midi_id: String) -> MidiData:
-	return midis.get(midi_id)
+	if midi_id.is_empty():
+		return null
+	if ChartDB == null or not ChartDB.IsOpen():
+		return midis.get(midi_id)
+	var chart_key: String = ChartDB.LookupChartKey(midi_id)
+	if chart_key.is_empty():
+		return null
+	return _ensureMidi(chart_key)
 
 ## 按专辑ID获取专辑
 func get_album_by_id(album_id: String) -> AlbumData:
-	return albums.get(album_id)
+	return _ensureAlbum(album_id)
 
 ## 按歌曲ID获取歌曲
 func get_song_by_id(song_id: String) -> SongData:
-	return songs.get(song_id)
+	return _ensureSong(song_id)
 
 ## 按状态过滤MIDI谱面
 func get_midis_by_status(status: String) -> Array[MidiData]:
 	var result: Array[MidiData] = []
-	
-	for midi in midis.values():
-		if midi.status == status:
+	if ChartDB == null or not ChartDB.IsOpen():
+		return result
+	for chart_key: String in ChartDB.GetChartsByStatus(status):
+		var midi: MidiData = _ensureMidi(chart_key)
+		if midi:
 			result.append(midi)
-	
 	return result
 
-## 获取所有MIDI谱面列表
+## 获取所有MIDI谱面列表（全量水合，仅全量视图需要）
 func get_all_midis() -> Array[MidiData]:
 	var result: Array[MidiData] = []
-	for midi in midis.values():
-		result.append(midi)
+	if ChartDB == null or not ChartDB.IsOpen():
+		return result
+	for chart_key: String in ChartDB.GetAllChartKeys():
+		var midi: MidiData = _ensureMidi(chart_key)
+		if midi:
+			result.append(midi)
 	return result
 
-## 获取数据统计信息
+## 全库搜索（DB 驱动，只水合命中项；DelView 扁平搜索等"整个库"场景用）
+## 与 SortEngine.search_midis（当前集内过滤，保持顺序）互补
+func search_all_midis(query: String) -> Array[MidiData]:
+	var result: Array[MidiData] = []
+	if ChartDB == null or not ChartDB.IsOpen() or query.is_empty():
+		return result
+	for chart_key: String in ChartDB.SearchMidiKeys(query):
+		var midi: MidiData = _ensureMidi(chart_key)
+		if midi:
+			result.append(midi)
+	return result
+
+## 预览用：只水合前 N 张谱面（避免全量水合）
+func get_midis_preview(count: int) -> Array[MidiData]:
+	var result: Array[MidiData] = []
+	if ChartDB == null or not ChartDB.IsOpen() or count <= 0:
+		return result
+	var keys: Array = ChartDB.GetAllChartKeys()
+	var limit: int = min(count, keys.size())
+	for i in range(limit):
+		var midi: MidiData = _ensureMidi(String(keys[i]))
+		if midi:
+			result.append(midi)
+	return result
+
+## 获取数据统计信息（DB 聚合，零水合）
 func get_statistics() -> Dictionary:
+	if ChartDB == null or not ChartDB.IsOpen():
+		return {
+			"total_albums": 0,
+			"total_songs": 0,
+			"total_midis": 0,
+			"pending_count": 0,
+			"approved_count": 0,
+			"included_count": 0,
+			"dead_count": 0
+		}
 	return {
-		"total_albums": albums.size(),
-		"total_songs": songs.size(),
-		"total_midis": midis.size(),
-		"pending_count": get_midis_by_status("PENDING").size(),
-		"approved_count": get_midis_by_status("APPROVED").size(),
-		"included_count": get_midis_by_status("INCLUDED").size(),
-		"dead_count": get_midis_by_status("DEAD").size()
+		"total_albums": ChartDB.CountAlbums(),
+		"total_songs": ChartDB.CountSongs(),
+		"total_midis": ChartDB.CountCharts(),
+		"pending_count": ChartDB.CountByStatus("PENDING"),
+		"approved_count": ChartDB.CountByStatus("APPROVED"),
+		"included_count": ChartDB.CountByStatus("INCLUDED"),
+		"dead_count": ChartDB.CountByStatus("DEAD")
 	}
 
-## 清空所有数据
+## 清空所有数据缓存
 func clear_data() -> void:
 	albums.clear()
 	songs.clear()
 	midis.clear()
-	midi_tree.clear()
-	json_cache.clear()
 
-## 从内存中移除指定 MIDI 及其关联的空 Song / Album
-## 参数: midi_id - MidiData 的 id 字段
+## 从内存水合缓存中移除指定 MIDI（DB 删除由 FileSystemManager.delete_chart → ChartDB.RemoveChart 完成）
+## 参数: midi_id - MidiData 的 id 字段或 file_hash
 func remove_midi(midi_id: String) -> void:
-	if not midis.has(midi_id):
-		GLogger.warning("remove_midi: midi_id not found: %s" % midi_id, "DataMGR")
-		return
-
-	var midi: MidiData = midis[midi_id]
-	var song_id: String = midi.song_data.id if midi.song_data else ""
-	var album_id: String = midi.album_data.id if midi.album_data else ""
-
-	# 从 midis 与缓存移除
+	if ChartDB != null and ChartDB.IsOpen():
+		var chart_key: String = ChartDB.LookupChartKey(midi_id)
+		if not chart_key.is_empty():
+			midis.erase(chart_key)
+			GLogger.info("Removed midi from memory: %s (key: %s)" % [midi_id, chart_key], "DataMGR")
+			return
 	midis.erase(midi_id)
-	json_cache.erase(midi_id)
-
-	# 更新专辑的 MIDI 计数
-	if not album_id.is_empty() and albums.has(album_id):
-		albums[album_id].total_midi_count = max(0, albums[album_id].total_midi_count - 1)
-
-	# 从 midi_tree 移除，并级联清理空的 Song / Album
-	if not album_id.is_empty() and not song_id.is_empty() and midi_tree.has(album_id):
-		var album_tree: Dictionary = midi_tree[album_id]
-		if album_tree.has(song_id):
-			var midi_ids: Array = album_tree[song_id]
-			midi_ids.erase(midi_id)
-			if midi_ids.is_empty():
-				# Song 下已无 midi，移除 Song 并更新 Album 的 song_ids
-				album_tree.erase(song_id)
-				songs.erase(song_id)
-				if albums.has(album_id):
-					albums[album_id].remove_song_id(song_id)
-				# Album 下已无 song，移除 Album
-				if album_tree.is_empty():
-					midi_tree.erase(album_id)
-					albums.erase(album_id)
-
 	GLogger.info("Removed midi from memory: %s" % midi_id, "DataMGR")

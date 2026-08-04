@@ -221,39 +221,20 @@ func detect_vocal_file(midi_data: MidiData) -> void:
 		GLogger.warning("Saved vocal file no longer exists: %s" % midi_data.vocal_file_path, "TrackView")
 		midi_data.vocal_file_path = ""
 
-	# 从 FileSystemManager 的 charts_index 中查找音频文件
+	# 从 FileSystemManager 的反向索引查找对应谱面（O(1)，统一匹配 id / file_hash / hash）
 	var filesystem_mgr = FileSystemManager.instance
 	var chart_id = midi_data.file_hash if not midi_data.file_hash.is_empty() else midi_data.id
-	var charts_index = filesystem_mgr.get_charts_index()
-
-	# 遍历 charts_index 查找对应的 metadata
-	for folder_name in charts_index.keys():
-		var metadata: ChartMetadata = charts_index[folder_name]
-		var metadata_id = metadata.id
-
-		# 匹配方式1：metadata 的 id
-		if metadata_id == chart_id:
-			var audio_path = metadata.audio_path
-			if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
-				vocal_file_path = audio_path
-				midi_data.vocal_file_path = audio_path
-				GLogger.info("Vocal file detected from chart metadata: %s" % audio_path, "TrackView")
-				return
-			elif not audio_path.is_empty():
-				GLogger.warning("Vocal file in chart metadata no longer exists: %s" % audio_path, "TrackView")
-
-		# 匹配方式2：JSON 数据中的 hash 字段
-		var json_data = metadata.data
-		if json_data is Dictionary and json_data.has("hash"):
-			if json_data.get("hash", "") == chart_id:
-				var audio_path = metadata.audio_path
-				if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
-					vocal_file_path = audio_path
-					midi_data.vocal_file_path = audio_path
-					GLogger.info("Vocal file detected from JSON hash match: %s" % audio_path, "TrackView")
-					return
-				elif not audio_path.is_empty():
-					GLogger.warning("Vocal file in JSON hash metadata no longer exists: %s" % audio_path, "TrackView")
+	var lookup = filesystem_mgr._lookup_chart(chart_id)
+	if not lookup.is_empty():
+		var metadata: ChartMetadata = lookup["metadata"]
+		var audio_path = metadata.audio_path
+		if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
+			vocal_file_path = audio_path
+			midi_data.vocal_file_path = audio_path
+			GLogger.info("Vocal file detected from chart metadata: %s" % audio_path, "TrackView")
+			return
+		elif not audio_path.is_empty():
+			GLogger.warning("Vocal file in chart metadata no longer exists: %s" % audio_path, "TrackView")
 
 	# 未找到人声文件
 	GLogger.info("No vocal file found for MIDI: %s" % chart_id, "TrackView")
