@@ -27,7 +27,7 @@ var _player_data := {
 	"max_combo": 0,
 	"play_duration_ms": 0,
 	"level_progress": 0.0,
-	"grades": {"SS": 0, "S": 0, "A": 0, "B": 0, "C": 0, "D": 0},
+	"grades": {"S": 0, "A": 0, "B": 0, "C": 0, "D": 0, "F": 0},
 	"recent_scores": [],
 }
 
@@ -135,6 +135,7 @@ func _sync_from_auth() -> void:
 		_player_data.total_plays = 0
 		_player_data.max_combo = 0
 		_player_data.play_duration_ms = 0
+		_player_data.grades = {"S": 0, "A": 0, "B": 0, "C": 0, "D": 0, "F": 0}
 		# 重置头像为默认
 		var default_tex := load("res://Resources/icon/avator.jpg")
 		if mini_avatar_rect:
@@ -186,11 +187,38 @@ func _fetch_stats_async() -> void:
 	_player_data.total_plays = int(s.get("totalPlays", 0))
 	_player_data.max_combo = int(s.get("maxCombo", 0))
 	_player_data.play_duration_ms = int(s.get("playDurationMs", 0))
+	# 解析评级分布并按 UI 分类分组（S/A/B/C/D/F）
+	_player_data.grades = _group_grades(s.get("gradeDistribution", {}))
 	populate_profile()
 	populate_mini_info()
 	profile_page.update_display(_player_data)
 	# 通知外部视图（如 ScoreView）统计已刷新，可同步更新显示
 	stats_refreshed.emit()
+
+## 将服务端返回的原始评级分布按字母前缀分组为 UI 用的 6 类（S/A/B/C/D/F）
+## Ω/SSS/SS/S → S，A+/A/A- → A，以此类推；F 单独归 F
+func _group_grades(raw_dist: Variant) -> Dictionary:
+	var grouped := {"S": 0, "A": 0, "B": 0, "C": 0, "D": 0, "F": 0}
+	if not raw_dist is Dictionary:
+		return grouped
+	var dist := raw_dist as Dictionary
+	for rank_key in dist:
+		var count := int(dist[rank_key])
+		var rank_str := str(rank_key).to_upper()
+		# Ω 及所有 S 开头的评级归入 S
+		if rank_str == "Ω" or rank_str.begins_with("S"):
+			grouped["S"] += count
+		elif rank_str.begins_with("A"):
+			grouped["A"] += count
+		elif rank_str.begins_with("B"):
+			grouped["B"] += count
+		elif rank_str.begins_with("C"):
+			grouped["C"] += count
+		elif rank_str.begins_with("D"):
+			grouped["D"] += count
+		elif rank_str.begins_with("F"):
+			grouped["F"] += count
+	return grouped
 
 # ========== 内容可见性（供 PlayerInfo 调用） ==========
 

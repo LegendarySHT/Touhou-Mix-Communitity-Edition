@@ -28,6 +28,15 @@ signal avatar_loaded(texture: Texture2D)
 @onready var profile_bio_label: Label = $PC/PageContent/Profile/Data/VBox/Desc/Label
 @onready var profile_avatar_rect: TextureRect = $PC/PageContent/Profile/Main/Header/HBoxContainer/AvatarBig/TextureRect
 
+# ========== History 页统计显示节点（TopBar/Grid） ==========
+@onready var history_pp_label: Label = $PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid/pp
+@onready var history_s_count: Label = $PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid/SCount
+@onready var history_a_count: Label = $PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid/ACount
+@onready var history_b_count: Label = $PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid/BCount
+@onready var history_c_count: Label = $PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid/CCount
+@onready var history_d_count: Label = $PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid/DCount
+@onready var history_f_count: Label = $PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid/FCount
+
 # ========== Edit 页输入节点 ==========
 @onready var nickname_edit: LineEdit = $PC/PageContent/Edit/HBox/ProfileEdit/Nickname/LineEdit
 @onready var desc_edit: LineEdit = $PC/PageContent/Edit/HBox/ProfileEdit/Desc/LineEdit
@@ -208,6 +217,17 @@ func update_display(data: Dictionary) -> void:
 	var bio_raw = data.get("bio", "")
 	var bio := str(bio_raw) if bio_raw != null else ""
 	profile_bio_label.text = bio if not bio.is_empty() and bio != "<null>" else "还没有填写简介..."
+	# 同步 History 页统计：总 pp + 各评级数量
+	history_pp_label.text = "%.2f pp" % float(data.get("pp", 0.0))
+	var grades = data.get("grades", {})
+	if grades == null:
+		grades = {}
+	history_s_count.text = str(int(grades.get("S", 0)))
+	history_a_count.text = str(int(grades.get("A", 0)))
+	history_b_count.text = str(int(grades.get("B", 0)))
+	history_c_count.text = str(int(grades.get("C", 0)))
+	history_d_count.text = str(int(grades.get("D", 0)))
+	history_f_count.text = str(int(grades.get("F", 0)))
 	# 同步 Edit 页输入框为当前值
 	nickname_edit.text = display_name
 	desc_edit.text = bio
