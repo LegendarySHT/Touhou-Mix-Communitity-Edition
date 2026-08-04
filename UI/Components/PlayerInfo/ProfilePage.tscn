@@ -836,13 +836,34 @@ theme_override_styles/panel = SubResource("StyleBoxEmpty_7fsko")
 current_tab = 0
 tabs_visible = false
 
-[node name="ScrollC" type="ScrollContainer" parent="PC/PageContent/History/List" unique_id=81773539]
+[node name="RecentPlay" type="ScrollContainer" parent="PC/PageContent/History/List" unique_id=81773539]
 layout_mode = 2
 size_flags_vertical = 3
 metadata/_tab_index = 0
 
-[node name="VBox" type="VBoxContainer" parent="PC/PageContent/History/List/ScrollC" unique_id=1646692693]
+[node name="VBox" type="VBoxContainer" parent="PC/PageContent/History/List/RecentPlay" unique_id=1646692693]
 layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BestPlay" type="ScrollContainer" parent="PC/PageContent/History/List" unique_id=1054082970]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_tab_index = 1
+
+[node name="VBox" type="VBoxContainer" parent="PC/PageContent/History/List/BestPlay" unique_id=888654210]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MostPlay" type="ScrollContainer" parent="PC/PageContent/History/List" unique_id=1909620862]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_tab_index = 2
+
+[node name="VBox" type="VBoxContainer" parent="PC/PageContent/History/List/MostPlay" unique_id=2052768632]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="Edit" type="PanelContainer" parent="PC/PageContent" unique_id=638331925]
 visible = false

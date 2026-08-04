@@ -1,0 +1,176 @@
+[gd_scene format=3 uid="uid://cjgolmmrnft4n"]
+
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="1_8a5ju"]
+[ext_resource type="Script" uid="uid://bnunrurnc8gvb" path="res://UI/Components/PlayerInfo/recordListItem.gd" id="1_v8uxu"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ng81m"]
+bg_color = Color(0.12941177, 0.14509805, 0.16078432, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="RecordListItem" type="PanelContainer" unique_id=1058775657]
+custom_minimum_size = Vector2(0, 150)
+clip_contents = true
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ng81m")
+script = ExtResource("1_v8uxu")
+
+[node name="HBox" type="HBoxContainer" parent="." unique_id=1448104784]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Cover" type="TextureRect" parent="HBox" unique_id=1349898086]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("1_8a5ju")
+expand_mode = 3
+stretch_mode = 6
+
+[node name="Info" type="VBoxContainer" parent="HBox" unique_id=727404601]
+custom_maximum_size = Vector2(450, -1)
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(15, 0)
+mouse_filter = 2
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="MidiName" type="Label" parent="HBox/Info" unique_id=747897909]
+layout_mode = 2
+offset_transform_enabled = true
+theme_override_font_sizes/font_size = 36
+text = "Midi Name"
+vertical_alignment = 1
+
+[node name="MidiAuthor" type="Label" parent="HBox/Info" unique_id=165219667]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+offset_transform_enabled = true
+theme_override_font_sizes/font_size = 24
+text = "Midi Author"
+vertical_alignment = 1
+
+[node name="Date" type="Label" parent="HBox/Info" unique_id=924962951]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "2026-01-01 19:00:00"
+vertical_alignment = 1
+
+[node name="VBox" type="VBoxContainer" parent="HBox" unique_id=1312746905]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Score" type="HBoxContainer" parent="HBox/VBox" unique_id=552133520]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 20
+
+[node name="Score" type="Label" parent="HBox/VBox/Score" unique_id=744592564]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 5
+size_flags_stretch_ratio = 3.0
+theme_override_font_sizes/font_size = 42
+text = "999,999,999,999"
+horizontal_alignment = 2
+vertical_alignment = 2
+
+[node name="PP" type="Label" parent="HBox/VBox/Score" unique_id=704681004]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+size_flags_vertical = 5
+theme_override_font_sizes/font_size = 36
+text = "00.00 pp"
+horizontal_alignment = 2
+vertical_alignment = 2
+
+[node name="Count" type="HBoxContainer" parent="HBox/VBox" unique_id=1428972032]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="MaxCombo" type="Label" parent="HBox/VBox/Count" unique_id=1548668064]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "9999999"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="UpperTitle" type="Label" parent="HBox/VBox/Count/MaxCombo" unique_id=632379466]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -20)
+theme_override_font_sizes/font_size = 16
+text = "Max Combo"
+horizontal_alignment = 1
+
+[node name="Perfect" type="Label" parent="HBox/VBox/Count" unique_id=1721687760]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9999998, 0.31206748, 0.9932019, 1)
+theme_override_font_sizes/font_size = 24
+text = "99999"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Great" type="Label" parent="HBox/VBox/Count" unique_id=2015801480]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.4627451, 0, 1)
+theme_override_font_sizes/font_size = 24
+text = "99999"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Bad" type="Label" parent="HBox/VBox/Count" unique_id=881208724]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.10980392, 0.6901961, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "99999"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Good" type="Label" parent="HBox/VBox/Count" unique_id=1931795913]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.03793709, 0.87704253, 0, 1)
+theme_override_font_sizes/font_size = 24
+text = "99999"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Miss" type="Label" parent="HBox/VBox/Count" unique_id=1845181464]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8627451, 0.20392157, 0.27058825, 1)
+theme_override_font_sizes/font_size = 24
+text = "99999"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="MainInfo" type="Label" parent="HBox" unique_id=1529464611]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+text = "111"
+horizontal_alignment = 1
+vertical_alignment = 1
