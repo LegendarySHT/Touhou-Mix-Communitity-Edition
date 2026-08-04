@@ -1325,6 +1325,14 @@ func _lookup_chart(chart_id: String) -> Dictionary:
 			return {"folder_name": folder_name, "metadata": meta}
 	return {}
 
+## 判断谱面是否存在于磁盘扫描结果中（按 id/file_hash/midi_id/hash 任一别名）
+## 供收藏夹校验等不依赖 DB 的存在性判断使用：DB 不可用时（如 charts.ldb 被占用），
+## 磁盘扫描的 charts_index 是唯一可靠的数据源，避免误删收藏引用
+func chart_exists_on_disk(chart_id: String) -> bool:
+	if chart_id.is_empty():
+		return false
+	return not _lookup_chart(chart_id).is_empty()
+
 ## 从 chart_id 反向查询对应的曲包文件夹路径
 ## 参数: chart_id - MidiData 中的 id 字段或 file_hash 字段
 ## 返回: user://files/Charts/[folder_name]/ 或空字符串（未找到）

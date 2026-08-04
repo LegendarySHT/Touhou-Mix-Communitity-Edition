@@ -76,10 +76,20 @@ func _on_data_loaded_complete() -> void:
 
 
 func _validate_favorites() -> void:
+	# 数据源不可用（DB 未打开，如 charts.ldb 被占用导致初始化失败）时跳过清理：
+	# 收藏是用户数据，唯一副本在 favorites.json，绝不能因数据层临时不可用而误删并覆盖写回
+	if ChartDB == null or not ChartDB.IsOpen():
+		GLogger.warning("Favorites validation skipped (ChartDB not open)", "FavoriteMGR")
+		EvtBus.favorites_updated.emit()
+		return
+
+	var fsm := FileSystemManager.instance
 	var changed := false
 	for fav in favorites:
 		var original_size := fav.midi_ids.size()
-		fav.midi_ids = fav.midi_ids.filter(func(id): return DataMGR.get_midi_by_id(id) != null)
+		# 以磁盘扫描结果为准校验存在性（charts_index 来自磁盘目录扫描），而非 DB 水合：
+		# DB 与磁盘不一致时（启动失败重建中 / 缓存过期）以磁盘为准，避免误删
+		fav.midi_ids = fav.midi_ids.filter(func(id): return fsm != null and fsm.chart_exists_on_disk(id))
 		if fav.midi_ids.size() != original_size:
 			changed = true
 	if changed:

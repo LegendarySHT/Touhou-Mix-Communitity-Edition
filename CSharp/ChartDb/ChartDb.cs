@@ -132,14 +132,44 @@ public partial class ChartDb : Node
             catch (Exception e)
             {
                 GD.PrintErr($"[ChartDb] Open failed: {e.Message}");
-                // 损坏 → 删库重开为空（对齐现状 "cache corrupted" 行为）
                 try { _db?.Dispose(); } catch { }
-                try { if (System.IO.File.Exists(dbPath)) System.IO.File.Delete(dbPath); } catch { }
+                // 区分「占用」与「损坏」，避免误删用户数据（chart_runtime/收藏）：
+                // - 文件被占用（另一实例/杀软，Win32 ERROR_SHARING_VIOLATION = 32）→ 保留文件，
+                //   删除也大概率失败；占用是暂时的，下次启动重试即可。
+                // - 确认为损坏 → 先备份为 charts.ldb.corrupt.bak 再移除，给用户手动恢复留余地。
+                if (!IsSharingViolation(e) && System.IO.File.Exists(dbPath))
+                {
+                    try
+                    {
+                        var bakPath = dbPath + ".corrupt.bak";
+                        if (!System.IO.File.Exists(bakPath))
+                            System.IO.File.Move(dbPath, bakPath);
+                        else
+                            System.IO.File.Delete(dbPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        GD.PrintErr($"[ChartDb] Failed to back up corrupt db: {ex.Message}");
+                    }
+                }
                 _db = null;
                 _isOpen = false;
                 return false;
             }
         }
+    }
+
+    /// <summary>判断异常是否为「文件被占用」（Win32 ERROR_SHARING_VIOLATION = 32）。
+    /// 用 HResult 0x80070020 判断，与系统语言无关（中文 Windows 上异常消息是本地化的）。
+    /// LiteDB 可能抛自己的异常，故遍历 InnerException 链。</summary>
+    private static bool IsSharingViolation(Exception e)
+    {
+        for (Exception cur = e; cur != null; cur = cur.InnerException)
+        {
+            if (cur.HResult == unchecked((int)0x80070020))
+                return true;
+        }
+        return false;
     }
 
     public void CloseDb()
