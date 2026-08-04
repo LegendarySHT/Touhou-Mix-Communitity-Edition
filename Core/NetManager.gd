@@ -265,17 +265,22 @@ func _request(method: String, url: String, body: Variant, headers: PackedStringA
 	http.queue_free()
 
 	var data: Variant = null
+	var json_parse_failed := false
+	var raw_text := ""
 	if response_body is PackedByteArray and response_body.size() > 0:
-		var text = response_body.get_string_from_utf8()
-		data = JSON.parse_string(text)
+		raw_text = response_body.get_string_from_utf8()
+		data = JSON.parse_string(raw_text)
+		if data == null:
+			json_parse_failed = true
+			GLogger.warning("Response is not valid JSON (status=%d, first 200 chars): %s" % [response_code, raw_text.substr(0, 200)], "NetMGR")
 
-	var ok = result_code == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300
+	var ok = result_code == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300 and not json_parse_failed
 	EvtBus.online_request_finished.emit(url, ok)
 	return {
 		"ok": ok,
 		"status": response_code,
 		"data": data,
-		"error": "" if ok else "HTTP %d (result=%d)" % [response_code, result_code]
+		"error": "" if ok else ("invalid_json_response" if json_parse_failed else "HTTP %d (result=%d)" % [response_code, result_code])
 	}
 
 func _method_to_http_client(method: String) -> int:

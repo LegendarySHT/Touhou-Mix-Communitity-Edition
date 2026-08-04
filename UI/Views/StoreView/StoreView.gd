@@ -12,6 +12,12 @@ var _top_visible := false
 var _bottom_visible := false
 var _last_scroll_vertical := 0
 
+# 分页与远程加载状态
+var _current_page: int = 1
+var _total_charts: int = 0
+var _page_limit: int = 20
+var _is_loading: bool = false
+
 func _ready() -> void:
 	work_state = UIStateManager.UIState.STORE_VIEW
 	# 设置直接相邻状态：切到不在此集合的状态时释放所有列表项封面
@@ -26,7 +32,15 @@ func _ready() -> void:
 	# 避免与 AnimationManager 的 offset_transform_position 动画冲突（懒加载时序下两者同时执行会导致 UI 异常）
 	# _toggle_top/_toggle_bottom 仅在 _process 滚动检测时使用
 
-	_load_demo_data()
+	# 连接分页按钮
+	var previ_btn := _bottom_bar.get_node_or_null("Previ") as Button
+	var next_btn := _bottom_bar.get_node_or_null("Next") as Button
+	if previ_btn and not previ_btn.pressed.is_connected(_on_previ_pressed):
+		previ_btn.pressed.connect(_on_previ_pressed)
+	if next_btn and not next_btn.pressed.is_connected(_on_next_pressed):
+		next_btn.pressed.connect(_on_next_pressed)
+
+	_load_remote_charts()
 
 	UiStatMGR.state_changed.connect(_on_state)
 
@@ -71,36 +85,83 @@ func _exit_tree() -> void:
 	if ThemeMGR:
 		ThemeMGR.unregister_theme_applier(self)
 
-## 加载演示数据（创建列表项 + 填充前 5 个 midi）
+## 从服务端加载 MIDI 列表
 ## 首次 _ready 和重新进入 STORE_VIEW（列表为空时）调用
-func _load_demo_data() -> void:
+func _load_remote_charts() -> void:
+	if _is_loading:
+		return
+	_is_loading = true
+
+	# 显示加载中状态
+	var indicate_loading := _bottom_bar.get_node_or_null("Indicate") as Label
+	if indicate_loading:
+		indicate_loading.text = "加载中..."
+
+	if ResMGR == null or NetManager.instance == null or not NetManager.instance.is_online:
+		# 离线回退到本地数据
+		_load_local_fallback()
+		_update_page_indicator()
+		_is_loading = false
+		return
+
+	var result: Dictionary = await ResMGR.get_chart_list(_current_page, _page_limit, "")
+
+	if not result.get("ok", false):
+		# 加载失败回退到本地
+		GLogger.warning("Failed to load remote charts: %s" % str(result.get("error", "")), "StoreView")
+		_load_local_fallback()
+		_update_page_indicator()
+		_is_loading = false
+		return
+
+	var data: Dictionary = result.data
+	_total_charts = int(data.get("total", 0))
+	var charts: Array = data.get("charts", [])
+
+	# 清空旧列表项
+	clear_items()
+
+	# 为每个 chart 创建列表项
+	for chart in charts:
+		var store_item := create_and_add_item(str(chart.get("id", "")), "StoreMidiItem") as StoreMidiListItem
+		if store_item:
+			store_item.set_remote_display(chart)
+
+	_update_page_indicator()
+	_is_loading = false
+	_last_scroll_vertical = scroll_vertical
+
+## 离线回退：加载本地 MIDI 数据
+func _load_local_fallback() -> void:
+	clear_items()
 	for i in range(36):
 		create_and_add_item("%d" % i, "StoreMidiItem")
-
-	# 懒加载兼容：若数据已加载完成（启动后首次进入 StoreView），不再 await 一次性信号
 	if DataMGR.is_loading:
 		await EvtBus.data_loaded_complete
-	var test_midis:Array[MidiData] = DataMGR.get_midis_preview(5)
-
-	#演示代码
-	for i in range(5):
-		if i < test_midis.size():
-			container.get_child(i).set_display(test_midis[i])
-
+	var local_midis: Array[MidiData] = DataMGR.get_all_midis()
+	for i in range(min(5, local_midis.size())):
+		container.get_child(i).set_display(local_midis[i])
 	_last_scroll_vertical = scroll_vertical
+
+## 更新分页指示器
+func _update_page_indicator() -> void:
+	var total_pages = max(1, ceili(float(_total_charts) / float(_page_limit)))
+	var indicate = get_parent().get_node_or_null("Bottom/Indicate")
+	if indicate:
+		indicate.text = "%d/%d" % [_current_page, total_pages]
 
 func _on_state(old: UIStateManager.UIState, new: UIStateManager.UIState) -> void:
 	if new == UIStateManager.UIState.STORE_VIEW:
-		# 重新进入时若列表项已被 _cleanup 清空，重新加载演示数据
+		# 重新进入时若列表项已被 _cleanup 清空，重新加载远程列表
 		if list_items.is_empty():
-			_load_demo_data()
+			_load_remote_charts()
 		return_to_top()
 	# 退出 STORE_VIEW 时释放列表项
 	if old == UIStateManager.UIState.STORE_VIEW and new != UIStateManager.UIState.STORE_VIEW:
 		_cleanup()
 
 ## 释放视图内部资源（列表项），保留节点壳和信号连接
-## 重新进入时由 _on_state 检测列表为空并调用 _load_demo_data 重新加载
+## 重新进入时由 _on_state 检测列表为空并调用 _load_remote_charts 重新加载
 func _cleanup() -> void:
 	clear_items()
 
@@ -155,5 +216,74 @@ func _slide(bar: Control, off_top: float, off_bottom: float) -> Tween:
 func _input(event: InputEvent) -> void:
 	super._gui_input(event)
 
+## 本地 MIDI 点击：跳转 MidiView
 func on_midi_select(midi: MidiData):
-	print("select %s" % midi.name)
+	UiStatMGR.change_state(UIStateManager.UIState.MIDI_VIEW)
+	EvtBus.midi_selected.emit.call_deferred(midi.id, midi)
+
+## 远程 chart 点击：根据下载状态执行不同行为
+func on_remote_chart_select(hash: String) -> void:
+	if ResMGR == null:
+		return
+	var state = ResMGR.get_download_state(hash)
+	match state:
+		ResourceManager.DownloadState.DOWNLOADED:
+			# 已下载：从本地查找 MidiData 并跳转
+			_jump_to_midi_view(hash)
+		ResourceManager.DownloadState.NOT_DOWNLOADED, ResourceManager.DownloadState.FAILED:
+			# 未下载或失败：触发下载
+			_download_chart(hash)
+		ResourceManager.DownloadState.DOWNLOADING:
+			pass  # 下载中，忽略
+
+## 下载 chart 并更新 UI
+func _download_chart(hash: String) -> void:
+	# 更新列表项状态为下载中
+	_update_item_download_state(hash, ResourceManager.DownloadState.DOWNLOADING)
+
+	var result: Dictionary = await ResMGR.download_chart(hash)
+
+	if result.get("ok", false):
+		_update_item_download_state(hash, ResourceManager.DownloadState.DOWNLOADED)
+		GLogger.info("Chart downloaded successfully: %s" % hash, "StoreView")
+	else:
+		_update_item_download_state(hash, ResourceManager.DownloadState.FAILED)
+		GLogger.warning("Chart download failed: %s" % str(result.get("error", "")), "StoreView")
+
+## 更新指定 hash 的列表项下载状态
+func _update_item_download_state(hash: String, state: int) -> void:
+	for item in list_items:
+		if item and is_instance_valid(item) and item is StoreMidiListItem:
+			var store_item = item as StoreMidiListItem
+			if store_item.chart_hash == hash:
+				store_item.download_state = state
+				store_item._update_download_state_ui()
+
+## 从本地查找已下载的 MidiData 并跳转 MidiView
+func _jump_to_midi_view(hash: String) -> void:
+	# 从 DataMGR 查找该 hash 对应的 MidiData
+	var all_midis = DataMGR.get_all_midis()
+	for midi in all_midis:
+		if midi.file_hash == hash:
+			UiStatMGR.change_state(UIStateManager.UIState.MIDI_VIEW)
+			EvtBus.midi_selected.emit.call_deferred(midi.id, midi)
+			return
+	# 如果 DataMGR 中没有（可能索引未刷新），尝试直接构建
+	GLogger.warning("MidiData not found for hash %s, may need rescan" % hash, "StoreView")
+
+## 上一页按钮回调
+func _on_previ_pressed() -> void:
+	if _is_loading:
+		return
+	if _current_page > 1:
+		_current_page -= 1
+		_load_remote_charts()
+
+## 下一页按钮回调
+func _on_next_pressed() -> void:
+	if _is_loading:
+		return
+	var total_pages: int = max(1, ceili(float(_total_charts) / float(_page_limit)))
+	if _current_page < total_pages:
+		_current_page += 1
+		_load_remote_charts()

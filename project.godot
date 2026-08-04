@@ -28,6 +28,7 @@ ThemeMGR="*res://UI/ThemeManager.gd"
 SkinMGR="*res://Core/SkinManager.gd"
 ChartDB="*res://CSharp/ChartDb/ChartDb.cs"
 CoverLoader="*res://UI/Components/CoverLoader.gd"
+ResMGR="*res://Core/ResourceManager.gd"
 
 [display]
 
