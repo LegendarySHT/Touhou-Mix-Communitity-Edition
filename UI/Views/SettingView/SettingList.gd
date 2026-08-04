@@ -318,11 +318,18 @@ func _popup_note_skin_adjust() -> void:
 func _popup_kb_mode_adjust() -> void:
 	var pending_keys := String(_pending_config.get("keyboard_mode_keys", ""))
 	var pending_names := String(_pending_config.get("keyboard_mode_display_names", ""))
-	var result := await PopupWindow.instance.show_kb_mode_adjust(pending_keys, pending_names)
+	var pending_alt_color := int(_pending_config.get("keyboard_alt_color", 1))
+	var pending_alt_count := int(_pending_config.get("keyboard_alt_color_count", 2))
+	var pending_alt_colors := String(_pending_config.get("keyboard_alt_colors", "#ff0000,#0000ff"))
+	var result := await PopupWindow.instance.show_kb_mode_adjust(
+		pending_keys, pending_names, pending_alt_color, pending_alt_count, pending_alt_colors)
 	var keys_str := String(result.get("keys", ""))
 	var names_str := String(result.get("display_names", ""))
 	_pending_config["keyboard_mode_keys"] = keys_str
 	_pending_config["keyboard_mode_display_names"] = names_str
+	_pending_config["keyboard_alt_color"] = int(result.get("alt_color", 1))
+	_pending_config["keyboard_alt_color_count"] = int(result.get("alt_count", 2))
+	_pending_config["keyboard_alt_colors"] = String(result.get("alt_colors", "#ff0000,#0000ff"))
 	GLogger.info("keyboard_mode_keys updated: %s (pending save)" % keys_str, "SettingList")
 
 # ===== 下落模式设置弹窗入口 =====

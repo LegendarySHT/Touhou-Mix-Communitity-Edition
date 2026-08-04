@@ -493,6 +493,12 @@ func refresh_note_colors() -> void:
 			for i in note.get_node("VBoxC").get_children():
 				i.get_node("core").modulate = _resolved_colors.get("long", Color.WHITE)
 			_apply_note_glow(note, _resolved_colors.get("long", Color.WHITE), FlowNote.NoteType.Long)
+	# 同步已生成但仍在绘制的 Block/Slide 音符（皮肤/交替状态变化时刷新每音符颜色）
+	if _note_drawer:
+		for note in _note_drawer._notes:
+			if is_instance_valid(note):
+				note.cached_color = _get_note_color(note.type, note.lane)
+		_note_drawer.request_redraw()
 
 # 根据皮肤配置设置 long-f 中部贴图的应用方式
 # repeat → 水平拉伸+垂直重复（用 shader 实现）；stretch → 竖直拉伸（默认 STRETCH_SCALE）
@@ -616,19 +622,19 @@ var _note_max_size_y: float = 0
 var _note_fall_speed: float = 0
 var _note_fall_distance: float = 0
 
-func _create_note(tp: FlowNote.NoteType, x: float, _lane_idx: int = -1) -> Node:
+func _create_note(tp: FlowNote.NoteType, x: float, lane_idx: int = -1) -> Node:
 	# 仅 Long 使用 Control 节点池；Block/Slide 走 Node2D 批量绘制
 	var note_rect: Node = _get_long_from_pool()
 	note_rect.visible = true  # 从池中取出后立即可见
 
 	# _reset_long_for_reuse 会将 core.modulate 重置为 WHITE，此处需重新应用解析后的颜色
-	# 颜色由 _resolved_colors 决定（custom_color + enable_color + random_color 综合解析）
-	var resolved_color := _get_resolved_color_for_type(tp)
+	# 交替轨道颜色开启时优先用轨道色，否则回退到皮肤解析色（_resolved_colors）
+	var note_color := _get_note_color(tp, lane_idx)
 	for i in note_rect.get_node("VBoxC").get_children():
-		i.get_node("core").modulate = resolved_color
+		i.get_node("core").modulate = note_color
 
-	# 应用光效（颜色由 _resolved_colors 决定）
-	_apply_note_glow(note_rect, resolved_color, tp)
+	# 应用光效（颜色与音符一致）
+	_apply_note_glow(note_rect, note_color, tp)
 	# base position 只承载 x（轨道偏移），y 恒为 0；
 	# 动态下落 y 走 offset_transform_position，绕过 Control 布局重算
 	note_rect.position = Vector2(x, 0)
@@ -646,6 +652,11 @@ func _get_resolved_color_for_type(tp: FlowNote.NoteType) -> Color:
 		FlowNote.NoteType.Long:
 			return _resolved_colors.get("long", Color.WHITE)
 	return Color.WHITE
+
+## 获取音符最终颜色：交替轨道颜色开启（键盘模式）时优先轨道色，否则回退皮肤解析色
+func _get_note_color(tp: FlowNote.NoteType, lane_idx: int) -> Color:
+	var lane_cl = parent_node.get_lane_color(lane_idx)
+	return lane_cl if lane_cl != null else _get_resolved_color_for_type(tp)
 
 func _spawn_note(note_index: int) -> void:
 	if note_index >= notes_list.size():
@@ -685,7 +696,7 @@ func _spawn_note(note_index: int) -> void:
 		if _long_f_mode == "repeat":
 			_ensure_independent_repeat_material(nt.cached_body)
 			_ensure_independent_repeat_material(nt.rect.get_node_or_null("VBoxC/body/core"))
-		_apply_note_glow(nt.rect, _resolved_colors.get("long", Color.WHITE), FlowNote.NoteType.Long)
+		_apply_note_glow(nt.rect, _get_note_color(FlowNote.NoteType.Long, nt.lane), FlowNote.NoteType.Long)
 		var note_half_long = nt.long_tail_height / 2.0
 		var target_pos_y_long = jl.position.y - note_half_long
 		nt.rect.offset_transform_position.y = target_pos_y_long - _note_fall_distance
@@ -700,6 +711,8 @@ func _spawn_note(note_index: int) -> void:
 	nt.cached_x = start_x
 	nt.cached_center_x = start_x + note_visual_width * 0.5
 	nt.cached_half_height = _note_drawer.get_half_height(nt.type)
+	# 每音符颜色：交替轨道颜色开启时按轨道色，否则皮肤解析色
+	nt.cached_color = _get_note_color(nt.type, nt.lane)
 
 	active_notes.append(nt)
 	_add_note_to_lane_index(nt)
@@ -1526,8 +1539,8 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	if judge_note.type != FlowNote.NoteType.Long:
 		_remove_note(judge_note)
 
-	# 特效
-	var light_color = _get_resolved_color_for_type(judge_note.type)
+	# 特效（轨道光束颜色与音符一致：交替轨道颜色开启时按轨道色点亮）
+	var light_color = _get_note_color(judge_note.type, judge_note.lane)
 	get_parent().lane_area.light_lane(judge_note.lane, light_color)
 	
 	var preset = spark_presets.get(result, 0)

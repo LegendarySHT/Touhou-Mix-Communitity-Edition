@@ -208,7 +208,8 @@ func _draw() -> void:
 			continue
 		var is_slide = note.type == FlowNote.NoteType.Slide
 		var tex = _slide_core_tex if is_slide else _block_core_tex
+		# 每音符颜色（交替轨道颜色开启时为轨道色，否则为皮肤解析色，由 _spawn_note 设置）
 		# 还原旧 Control 路径: 最终颜色 = texture * modulate * self_modulate
-		var color = (_slide_color * _slide_self_modulate) if is_slide else (_block_color * _block_self_modulate)
+		var color = (note.cached_color * _slide_self_modulate) if is_slide else (note.cached_color * _block_self_modulate)
 		var rect = Rect2(note.cached_x, cy - half_h, _note_width, half_h * 2.0)
 		draw_texture_rect(tex, rect, false, color)

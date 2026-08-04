@@ -27,6 +27,13 @@ const KEY_ITEM_SCENE := preload("res://UI/Components/PopupWindow/KeySequenceItem
 @onready var _key_name_label: Label = $KeyName
 @onready var _display_name_edit: LineEdit = $KeyDisplayName/LineEdit
 @onready var _key_config_btn: Button = $KeyConfig/Button
+# 交替轨道颜色（键盘模式）
+@onready var _alt_color_cb: CheckBox = $KeyColor/CheckBox
+@onready var _alt_count_edit: LineEdit = $KeyColor/LineEdit
+@onready var _color_seq: HBoxContainer = $ColorSeq
+
+# 交替颜色序列按钮颜色（按索引保存，重建时保留）
+var _alt_colors_state: Array[Color] = []
 
 ## 共享模板（不进场景树），子项用 duplicate() 复用其 StyleBoxFlat 引用
 var _item_instance: KeySequenceItem = null
@@ -50,10 +57,14 @@ var _suppress_display_name_signal: bool = false
 func _ready() -> void:
 	_item_instance = KEY_ITEM_SCENE.instantiate()
 	apply_button_theme(ThemeMGR.get_color("primary"))
+	# 数量变化时动态重建颜色序列按钮
+	_alt_count_edit.text_changed.connect(_on_alt_count_changed)
 
 
 ## 由 PopupWindow.show_kb_mode_adjust 调用：解析配置字符串并重建 UI
-func init_adjust(current_keys: String, current_display_names: String) -> void:
+## alt_color / alt_count / alt_colors：交替轨道颜色配置（键盘模式覆盖音符颜色）
+func init_adjust(current_keys: String, current_display_names: String,
+		alt_color: Variant = true, alt_count: Variant = 2, alt_colors: String = "") -> void:
 	_cancel_recording()
 	# 显式重置按钮文本（_cancel_recording 在 _recording_key=false 时不设置文本）
 	_key_config_btn.text = "输入按键"
@@ -73,6 +84,16 @@ func init_adjust(current_keys: String, current_display_names: String) -> void:
 	_refresh_detail_panel()
 	_key_name_label.text = "当前按键： -"
 
+	# 交替轨道颜色：数量最低 1，颜色序列按数量补齐
+	_alt_color_cb.button_pressed = bool(alt_color)
+	var safe_count: int = max(1, int(alt_count))
+	_alt_count_edit.text = str(safe_count)
+	var colors: Array[Color] = _parse_alt_colors(alt_colors)
+	while colors.size() < safe_count:
+		colors.append(Color.WHITE)
+	colors.resize(safe_count)
+	_rebuild_color_buttons(safe_count, colors)
+
 
 ## 返回当前配置给 PopupWindow.show_kb_mode_adjust
 ## 过滤掉未设置按键（KEY_NONE）的 item，避免无效键写入配置
@@ -86,10 +107,78 @@ func get_result() -> Dictionary:
 		valid_keys.append(_key_to_config_string(k))
 		# strip_edges 保证与 parse_keyboard_display_names 的解析行为一致（round-trip）
 		valid_names.append(String(item.get("display_name", "")).strip_edges())
+
+	# 交替轨道颜色：数量最低 1（空/非法文本兜底为 1），颜色补齐到数量
+	var alt_count: int = max(1, _alt_count_edit.text.to_int())
+	var colors: Array[String] = []
+	for btn in _color_seq.get_children():
+		if btn is ColorPickerButton:
+			colors.append("#" + (btn as ColorPickerButton).color.to_html())
+	while colors.size() < alt_count:
+		colors.append("#ffffff")
+	colors.resize(alt_count)
+
 	return {
 		"keys": ",".join(valid_keys),
 		"display_names": ",".join(valid_names),
+		"alt_color": 1 if _alt_color_cb.button_pressed else 0,
+		"alt_count": alt_count,
+		"alt_colors": ",".join(colors),
 	}
+
+
+# ===== 交替轨道颜色 =====
+
+## 按数量重建颜色序列按钮（保留已有颜色；不够则生成，多余则移除）
+## colors 非空时以传入为准（init_adjust 用配置初始化）
+func _rebuild_color_buttons(count: int, colors: Array = []) -> void:
+	var existing: Array = _alt_colors_state.duplicate()
+	if not colors.is_empty():
+		existing = colors
+	# 移除所有 ColorPickerButton（保留「颜色序列」Label）
+	for btn in _color_seq.get_children():
+		if btn is ColorPickerButton:
+			_color_seq.remove_child(btn)
+			btn.queue_free()
+	# 生成 count 个按钮（先设色再连信号，避免程序设色触发 color_changed 越界）
+	_alt_colors_state.clear()
+	for i in count:
+		var btn := ColorPickerButton.new()
+		btn.custom_minimum_size = Vector2(60, 60)
+		btn.size_flags_horizontal = 10  # EXPAND | SHRINK_END（与 tscn 静态按钮一致）
+		btn.size_flags_vertical = 4     # SHRINK_CENTER
+		btn.edit_alpha = false
+		btn.color = existing[i] if i < existing.size() else Color.WHITE
+		btn.color_changed.connect(_on_alt_color_changed.bind(i))
+		_color_seq.add_child(btn)
+		_alt_colors_state.append(btn.color)
+
+
+## 数量 LineEdit 变化：数量 ≥1 时按新数量重建颜色序列按钮
+func _on_alt_count_changed(new_text: String) -> void:
+	var n := new_text.to_int()
+	if n < 1:
+		return  # 空/非法/0 → 不重建，由 get_result 兜底为 1
+	_rebuild_color_buttons(n)
+
+
+## 颜色按钮变化：记录到 _alt_colors_state（重建时保留）
+func _on_alt_color_changed(idx: int, col: Color) -> void:
+	if idx >= 0 and idx < _alt_colors_state.size():
+		_alt_colors_state[idx] = col
+
+
+## 解析交替颜色序列字符串（逗号分隔的 #RRGGBB / RRGGBB），空串或无效项跳过
+func _parse_alt_colors(colors_str: String) -> Array[Color]:
+	var result: Array[Color] = []
+	if colors_str.is_empty():
+		return result
+	for part in colors_str.split(",", false):
+		var p := part.strip_edges()
+		if p.is_empty() or not Color.html_is_valid(p):
+			continue
+		result.append(Color.from_string(p, Color.WHITE))
+	return result
 
 
 # ===== UI 重建 =====
@@ -265,8 +354,15 @@ func _input(event: InputEvent) -> void:
 		return
 
 	# 非录入模式：LineEdit 有焦点时不拦截（让用户正常编辑文本）
-	if _display_name_edit.has_focus():
+	if _display_name_edit.has_focus() or _alt_count_edit.has_focus():
 		return
+
+	# 颜色选择器弹窗打开时不拦截（避免其中按 Backspace/Delete 误删按键）
+	for btn in _color_seq.get_children():
+		if btn is ColorPickerButton:
+			var pp := (btn as ColorPickerButton).get_popup()
+			if pp and pp.visible:
+				return
 
 	# Backspace / Delete → 删除选中项（无确认弹窗以避免嵌套 PopupWindow）
 	if key_event.keycode in [Key.KEY_BACKSPACE, Key.KEY_DELETE]:

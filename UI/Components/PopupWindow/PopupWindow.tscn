@@ -179,7 +179,7 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 6
+current_tab = 5
 tabs_visible = false
 
 [node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
@@ -974,7 +974,6 @@ max_length = 64
 emoji_menu_enabled = false
 
 [node name="KBModeAdjust" type="VBoxContainer" parent="." unique_id=1259222601]
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
@@ -1071,7 +1070,57 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 
+[node name="KeyColor" type="HBoxContainer" parent="KBModeAdjust" unique_id=1160553796]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 20
+
+[node name="CheckBox" type="CheckBox" parent="KBModeAdjust/KeyColor" unique_id=87699784]
+custom_minimum_size = Vector2(60, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 32
+text = "交替轨道颜色"
+icon_alignment = 1
+expand_icon = true
+
+[node name="Label" type="Label" parent="KBModeAdjust/KeyColor" unique_id=927329373]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 10
+theme_override_font_sizes/font_size = 32
+text = "数量"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="LineEdit" type="LineEdit" parent="KBModeAdjust/KeyColor" unique_id=604655857]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+text = "2"
+
+[node name="ColorSeq" type="HBoxContainer" parent="KBModeAdjust" unique_id=349248518]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 20
+
+[node name="Label" type="Label" parent="KBModeAdjust/ColorSeq" unique_id=92683170]
+custom_minimum_size = Vector2(60, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "颜色序列"
+
+[node name="ColorPickerButton" type="ColorPickerButton" parent="KBModeAdjust/ColorSeq" unique_id=383006988]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+size_flags_horizontal = 10
+size_flags_vertical = 4
+color = Color(1, 1, 1, 1)
+edit_alpha = false
+
 [node name="FallingAdjust" type="HBoxContainer" parent="." unique_id=1432140694]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1

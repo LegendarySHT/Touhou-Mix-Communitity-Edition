@@ -183,17 +183,19 @@ func show_image_adjust(view_name: String = "", allow_cover: bool = false) -> Dic
 
 # 弹出键位设置窗口
 ## current_keys / current_display_names：由调用方从 pending 配置传入，未传则回退到配置文件
-## 返回 Dictionary: {"keys": "A,S,D,F,...", "display_names": "P1,,,..."}
+## 返回 Dictionary: {"keys": "A,S,D,F,...", "display_names": "P1,,,...",
+##                    "alt_color": 0/1, "alt_count": int, "alt_colors": "#rrggbb,..."}
 ## 关闭即返回当前编辑状态（无取消路径，调用方不应依赖空返回值判断取消）
-func show_kb_mode_adjust(current_keys: String = "", current_display_names: String = "") -> Dictionary:
+func show_kb_mode_adjust(current_keys: String = "", current_display_names: String = "",
+		current_alt_color: Variant = 1, current_alt_count: Variant = 2, current_alt_colors: String = "#ff0000,#0000ff") -> Dictionary:
 	_tab_c.current_tab = 5
-	size = Vector2(1500, 700)
+	size = Vector2(1500, 1100)
 	# 优先使用传入的 pending 值；为空时回退到配置文件（兼容直接调用）
 	var keys_str := current_keys if not current_keys.is_empty() else \
 		ConfigManager.instance.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")
 	var names_str := current_display_names if not current_display_names.is_empty() else \
 		ConfigManager.instance.get_string("Lane", "keyboard_mode_display_names", "")
-	_kb_mode_adjust.init_adjust(keys_str, names_str)
+	_kb_mode_adjust.init_adjust(keys_str, names_str, current_alt_color, current_alt_count, current_alt_colors)
 	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
 	await window_close
 	# 兜底取消录入状态（popup_hide 已调用，此处再保险一次）

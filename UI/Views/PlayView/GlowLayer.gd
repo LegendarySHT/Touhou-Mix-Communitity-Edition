@@ -30,7 +30,7 @@ func _draw() -> void:
 		if cy + half_h < top_limit or cy - half_h > bottom_limit:
 			continue
 		var is_slide = note.type == FlowNote.NoteType.Slide
-		var color = _drawer._slide_color if is_slide else _drawer._block_color
+		var color = note.cached_color
 		# 方形光效矩形：取音符宽高较大值 × 2，避免方形纹理被非均匀拉伸
 		# 原 ColorRect anchors -1..2 在非方形音符上会导致光效横向拉伸
 		var note_height = half_h * 2.0

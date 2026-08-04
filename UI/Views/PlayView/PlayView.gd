@@ -101,9 +101,10 @@ var judge_line_offset_y: int = 250
 var beam_alpha: float = 0.5
 var flash_color: Color = Color.WHITE
 var _flash_tween: Tween = null
-# 交错轨道颜色（启用时会覆盖音符颜色及轨道光效颜色）
-var intersect_lane_color: bool = true
-var intersect_color_set: Array = [Color.RED, Color.BLUE] # 这个颜色数量不能超过轨道数的一半
+# 交替轨道颜色（仅键盘模式生效，开启时覆盖音符颜色及轨道光效颜色）
+var keyboard_alt_color: bool = true
+var keyboard_alt_color_count: int = 2
+var keyboard_alt_colors: Array[Color] = [Color.RED, Color.BLUE] # 交替颜色序列，颜色数量可大于轨道数一半（多余的不会被用到）
 
 var show_debug_info: bool = false
 var debug_info_refresh_interval: float = 0.5
@@ -235,13 +236,29 @@ func _process(delta: float) -> void:
 func get_lane_count() -> int:
 	return lane_count if not keyboard_mode else key_map.size()
 
+## 获取轨道交替颜色（仅键盘模式 + 交替轨道颜色开启时返回，否则返回 null）
+## 交替方式：两端对称，colors[lane_idx % int(轨道数/2) % colors.size()]
+## 返回 null 时调用方回退到皮肤解析色
 func get_lane_color(lane_idx: int):
-	if lane_idx == -1:
-		return
-	if intersect_lane_color:
-		@warning_ignore("integer_division")
-		var lc = int(get_lane_count() / 2)
-		return intersect_color_set[lane_idx % lc % intersect_color_set.size()]
+	if lane_idx == -1 or not keyboard_mode or not keyboard_alt_color:
+		return null
+	if keyboard_alt_colors.is_empty():
+		return null
+	@warning_ignore("integer_division")
+	var lc = int(get_lane_count() / 2)
+	if lc <= 0:
+		return null
+	return keyboard_alt_colors[lane_idx % lc % keyboard_alt_colors.size()]
+
+## 解析交替颜色序列字符串（逗号分隔的 #RRGGBB / RRGGBB），空串或无效项跳过
+func _parse_alt_colors(colors_str: String) -> Array[Color]:
+	var result: Array[Color] = []
+	for part in colors_str.split(",", false):
+		var p := part.strip_edges()
+		if p.is_empty() or not Color.html_is_valid(p):
+			continue
+		result.append(Color.from_string(p, Color.WHITE))
+	return result
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
@@ -752,7 +769,18 @@ func _load_lane_parameters() -> void:
 	# 加载键盘键位显示名称（与 key_map 对齐，空字符串=使用按键默认名）
 	var keyboard_names_str = config_mgr.get_string("Lane", "keyboard_mode_display_names", "")
 	key_display_names = ConfigParser.parse_keyboard_display_names(keyboard_names_str, key_map.size())
-	
+
+	# 加载交替轨道颜色（默认开启；仅键盘模式生效）
+	keyboard_alt_color = config_mgr.get_bool("Lane", "keyboard_alt_color", true)
+	keyboard_alt_color_count = max(1, config_mgr.get_int("Lane", "keyboard_alt_color_count", 2))
+	keyboard_alt_colors = _parse_alt_colors(
+		config_mgr.get_string("Lane", "keyboard_alt_colors", "#ff0000,#0000ff")
+	)
+	# 颜色数组对齐到声明的数量（不足补白，多余截断）
+	while keyboard_alt_colors.size() < keyboard_alt_color_count:
+		keyboard_alt_colors.append(Color.WHITE)
+	keyboard_alt_colors.resize(keyboard_alt_color_count)
+
 	GLogger.info(
 		"PlayView lane parameters loaded: lane_count=%d, lane_padding=%d, keyboard_mode=%s, key_map_size=%d" % 
 		[lane_count, lane_padding, str(keyboard_mode), key_map.size()],
@@ -822,6 +850,25 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 				if keyboard_mode:
 					should_reinit = true
 				GLogger.info("PlayView keyboard_mode_display_names updated: %d names" % key_display_names.size(), "PlayView")
+
+		"keyboard_alt_color", "keyboard_alt_color_count", "keyboard_alt_colors":
+			if section == "Lane":
+				var old_alt_color := keyboard_alt_color
+				var old_alt_count := keyboard_alt_color_count
+				var old_alt_colors: Array = keyboard_alt_colors.duplicate()
+				keyboard_alt_color = int(value) == 1 if key == "keyboard_alt_color" else keyboard_alt_color
+				if key == "keyboard_alt_color_count":
+					keyboard_alt_color_count = max(1, int(value))
+				if key == "keyboard_alt_colors":
+					keyboard_alt_colors = _parse_alt_colors(str(value))
+					while keyboard_alt_colors.size() < keyboard_alt_color_count:
+						keyboard_alt_colors.append(Color.WHITE)
+					keyboard_alt_colors.resize(keyboard_alt_color_count)
+				# 仅键盘模式且颜色配置有变化时重初始化（刷新音符/光束颜色）
+				if keyboard_mode and (keyboard_alt_color != old_alt_color or keyboard_alt_color_count != old_alt_count or keyboard_alt_colors != old_alt_colors):
+					should_reinit = true
+				GLogger.info("PlayView keyboard_alt_color updated: enabled=%s count=%d colors=%s" %
+					[str(keyboard_alt_color), keyboard_alt_color_count, str(keyboard_alt_colors)], "PlayView")
 
 		"flash_alpha":
 			if section == "Lane":
