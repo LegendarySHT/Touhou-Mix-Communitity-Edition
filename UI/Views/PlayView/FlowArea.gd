@@ -20,6 +20,10 @@ var check_slide_when_finger_up: bool = true  # Judge/check_instant_blocks_when_f
 var only_perfect_slides: bool = false  # Judge/only_perfect_instant_blocks_before_judge
 var note_judger: NoteJudger = NoteJudger.new()
 
+# Slide 拖动认领的提前窗口（毫秒）：滑过判定仅在滑块临近判定线的这段时间内可认领，
+# 过早的随机滑过不会锁定滑块，避免误触/干扰其它手指接滑
+const SLIDE_CLAIM_EARLY_WINDOW_MS := 200.0
+
 # 音符下落动画
 var trans_before_line: int = Tween.TRANS_LINEAR as int
 var ease_before_line: int = Tween.EASE_IN_OUT as int
@@ -128,6 +132,20 @@ var note_idx: int = 0
 # 多点触控支持
 var touch_positions: Dictionary = {}  # 存储每个触摸点的位置
 var active_holds: Dictionary = {}     # 存储正在按住长条音符的触摸点ID和对应的音符
+
+# 触点手势状态（判定认领模型）：touch_id -> {
+#   "claimed": FlowNote,    # 正在被该触点滑动跟踪的滑块（滑过即判用）
+#   "press_pos": Vector2,
+#   "press_time_ms": float,
+#   "last_pos": Vector2,
+#   "last_time_ms": float,
+# }
+# 设计原则：
+# - 一次按下 = 一个音符：按下即判定选中的那一个音符，绝不连带判定其它音符（点块/滑块均只判一个）。
+# - 滑块接滑宽松（参考 Phigros/Cytus）：任何手指在滑块过线时位于其列内即判定（hold-catch），
+#   支持 block 后的滑块流、多指斜向放置；另支持「手指滑过其列、退出时刻在 Perfect 窗口内」的滑过即判。
+# - 长条按住中的手指不参与滑块判定；键盘不抢已被触点认领的滑块。
+var _gestures: Dictionary = {}
 
 # 输入去重：防止桌面环境下鼠标与触摸事件双触发导致一次点击判定多个音符
 const _PRESS_DEDUP_MS: float = 5.0
@@ -634,6 +652,7 @@ func clear_flow_area():
 	_clear_lane_index()
 	active_holds.clear()
 	touch_positions.clear()
+	_gestures.clear()
 	pressed_keys.clear()
 	note_idx = 0
 
@@ -690,6 +709,7 @@ func _spawn_note(note_index: int) -> void:
 	# 关键：重置 Note 数据对象的判定状态（修复多音符同时判定问题）
 	nt.is_judged = false
 	nt.can_judge = false
+	nt.claimed_by_touch_id = -1
 	nt.is_held = false
 	nt.held_by_touch_id = -1
 	nt.cooldown = 0
@@ -1064,6 +1084,12 @@ func _return_long_to_pool(note: Node) -> void:
 
 func _remove_note(note: FlowNote) -> void:
 	note.is_removed = true
+	# 释放认领：该滑块已不再可判定，认领它的触点手势同步清空
+	if note.claimed_by_touch_id >= 0:
+		var claim_touch: int = note.claimed_by_touch_id
+		if _gestures.has(claim_touch) and _gestures[claim_touch]["claimed"] == note:
+			_gestures[claim_touch]["claimed"] = null
+		_release_slide_claim(note)
 	if note.rect:
 		# Long: 回池
 		_return_long_to_pool(note.rect)
@@ -1209,8 +1235,26 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	if should_dedup:
 		return
 
+	# 新建手势状态，并清理该触点残留的滑块认领（一次按下 = 一个音符）
+	var g: Dictionary = {
+		"claimed": null,
+		"press_pos": pos,
+		"press_time_ms": judge_time_ms,
+		"last_pos": pos,
+		"last_time_ms": judge_time_ms,
+	}
+	_gestures[touch_id] = g
+	for note in active_notes:
+		if note.type == FlowNote.NoteType.Slide and note.claimed_by_touch_id == touch_id \
+				and not note.is_judged and not note.is_removed:
+			_release_slide_claim(note, touch_id)
+
 	var estimated_lane := _estimate_lane_from_x(pos.x)
 	var candidate_notes: Array = _get_notes_near_lane(estimated_lane)
+	candidate_notes = candidate_notes.filter(func(n):
+		return n != null and not n.is_judged and not n.is_removed and not n.is_held \
+			and n.claimed_by_touch_id < 0
+	)
 	if candidate_notes.is_empty():
 		return
 	if only_perfect_slides:
@@ -1227,7 +1271,7 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	if parent_node.play_mode and note.game_sequence_ref:
 		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
 	if note.type == FlowNote.NoteType.Slide:
-		# 仅在关闭“仅判定完美滑块”时允许点击滑块，且按点块计分
+		# 点击滑块按点块计分（INSTANT）；一次按下只判定这一个音符，后续滑块由过线/滑过接住
 		_judge_note(note, true, judge_time_ms, FlowNote.NoteType.Block)
 	else:
 		_judge_note(note, true, judge_time_ms)
@@ -1241,17 +1285,16 @@ func _handle_release(touch_id: int, input_time_ms: float = -1.0, released_lane: 
 	if check_slide_when_finger_up:
 		_judge_slides_on_release(touch_id, released_lane, judge_time_ms)
 
-	# 清理与该触点/按键绑定的滑块按住状态，避免后续拖动或同帧事件误判
+	# 清理该触点/按键绑定的滑块认领状态，结束手势
 	for note in active_notes:
 		if note.type != FlowNote.NoteType.Slide:
 			continue
 		if released_lane >= 0:
 			if note.lane == released_lane:
-				note.can_judge = false
-				note.held_by_touch_id = -1
-		elif note.held_by_touch_id == touch_id:
-			note.can_judge = false
-			note.held_by_touch_id = -1
+				_release_slide_claim(note, touch_id)
+		elif note.claimed_by_touch_id == touch_id:
+			_release_slide_claim(note, touch_id)
+	_clear_gesture(touch_id)
 
 	if touch_id not in active_holds:
 		return
@@ -1295,48 +1338,115 @@ func _hold_long_note(touch_id: int, note: FlowNote, press_x: float = NAN) -> voi
 		note.long_instance_id = FlowNote._gen_long_id()
 	active_holds[touch_id] = note
 
+# ========== 触点手势状态管理（判定认领模型） ==========
+
+## 获取（或惰性创建）触点手势状态
+func _get_gesture(touch_id: int) -> Dictionary:
+	if not _gestures.has(touch_id):
+		_gestures[touch_id] = {
+			"claimed": null,
+			"press_pos": Vector2.ZERO,
+			"press_time_ms": 0.0,
+			"last_pos": Vector2.ZERO,
+			"last_time_ms": 0.0,
+		}
+	return _gestures[touch_id]
+
+## 结束触点手势（抬起时调用）
+func _clear_gesture(touch_id: int) -> void:
+	_gestures.erase(touch_id)
+
+## 认领滑块：该滑块从此只允许此触点判定
+func _claim_slide(touch_id: int, note: FlowNote) -> void:
+	if note == null or note.is_judged or note.is_removed or note.is_held:
+		return
+	note.can_judge = true
+	note.claimed_by_touch_id = touch_id
+	_get_gesture(touch_id)["claimed"] = note
+
+## 释放滑块认领（touch_id >= 0 时仅释放该触点的认领）
+func _release_slide_claim(note: FlowNote, touch_id: int = -1) -> void:
+	if note == null:
+		return
+	if touch_id >= 0 and note.claimed_by_touch_id != touch_id:
+		return
+	note.can_judge = false
+	note.claimed_by_touch_id = -1
+
+## 判定一个滑块（滑过退出/hold-through/抬手统一入口）
+## result_override 非空时强制该结果（如 "Perfect"）；否则按 judge_time_ms 自然计算
+## 滑块接滑按自然类型（SHORT）计分；点击滑块按点块（INSTANT）计分由 _handle_press 单独处理
+func _judge_claimed_slide(touch_id: int, note: FlowNote, judge_time_ms: float,
+		result_override: String = "") -> void:
+	if note == null or note.is_judged or note.is_removed:
+		return
+	if parent_node.play_mode and note.game_sequence_ref:
+		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
+	if result_override.is_empty():
+		_judge_note(note, false, judge_time_ms)
+	else:
+		_judge_note(note, false, judge_time_ms, -1, result_override)
+	# 清空该触点对滑块的滑动跟踪（若有），并释放滑块认领
+	if _gestures.has(touch_id) and _gestures[touch_id]["claimed"] == note:
+		_gestures[touch_id]["claimed"] = null
+	_release_slide_claim(note)
+	GLogger.debug("[FlowArea] Slide judged by touch %d at %.0fms (result=%s)" % [touch_id, judge_time_ms, result_override if not result_override.is_empty() else "auto"], "FlowArea")
+
 # 检查slide音符是否在手指范围内（用于自动判定接近判定线的slide）
 # Block/Slide 已迁移到 Node2D 批量绘制，rect 为 null，使用 cached_center_x 进行位置判断
+# 认领模型：拖动中手指进入滑块列 → 认领；离开其列且退出时刻在 Perfect 窗口内 → 判 Perfect（滑过即判）
 func _check_slides_at_touch_pos(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> void:
 	var judge_time_ms := input_time_ms
 	if judge_time_ms < 0.0:
 		judge_time_ms = _get_realtime_position_ms()
+	if touch_id in active_holds:
+		return  # 长条按住中的手指不参与滑块判定
+	if not _gestures.has(touch_id):
+		return
 
+	var g: Dictionary = _gestures[touch_id]
+	g["last_pos"] = pos
+	g["last_time_ms"] = judge_time_ms
+
+	var claimed: FlowNote = g["claimed"]
+	if claimed != null:
+		# 手指离开认领滑块的列 → 滑过即判（仅 Perfect 窗口内判定，防误触；否则释放让滑块继续下落）
+		if abs(pos.x - claimed.cached_center_x) > note_judge_width:
+			if abs(judge_time_ms - claimed.start_time) <= float(judge_windows["perfect"]):
+				_judge_claimed_slide(touch_id, claimed, judge_time_ms, "Perfect")
+			else:
+				_release_slide_claim(claimed, touch_id)
+				g["claimed"] = null
+		return
+
+	# 无认领：在「列内 + 窗口内 + 未判 + 未被其它触点认领」的滑块中找最近候选认领（滑过即判用）
+	var best_candidate: FlowNote = null
+	var best_distance := INF
 	for note in active_notes:
 		if note == null or note.type != FlowNote.NoteType.Slide:
 			continue
-		if note.is_removed:
+		if note.is_judged or note.is_removed or note.is_held or note.claimed_by_touch_id >= 0:
 			continue
-
-		# Block/Slide 走 Node2D 批量绘制，使用 cached_center_x
-		var note_x = note.cached_center_x
-		var distance_to_touch = abs(pos.x - note_x)
-
-		if note.can_judge and note.held_by_touch_id == touch_id and distance_to_touch > note_judge_width:
-			note.can_judge = false
-			note.held_by_touch_id = -1
-
-		if distance_to_touch < note_judge_width and not note.can_judge:
-			note.can_judge = true
-			note.held_by_touch_id = touch_id
+		# 时间窗口门控：仅临近判定线的滑块可被滑过认领（过早/过晚的滑过不锁定滑块）
+		if judge_time_ms < note.start_time - SLIDE_CLAIM_EARLY_WINDOW_MS \
+				or judge_time_ms > note.start_time + float(judge_windows["bad"]):
+			continue
+		if abs(pos.x - note.cached_center_x) > note_judge_width:
+			continue
+		var distance: float = abs(pos.x - note.cached_center_x)
+		if distance < best_distance:
+			best_distance = distance
+			best_candidate = note
+	if best_candidate:
+		_claim_slide(touch_id, best_candidate)
 
 func _check_slide_stat(note: FlowNote):
-	if note.is_judged:
+	if note.is_judged or note.is_removed or note.is_held:
 		return
 
-	# 检查是否有按键或触摸手指在该音符的判定范围内
-	var has_input_on_lane = note.lane in pressed_keys.values()
-	if not has_input_on_lane:
-		# 触摸模式: 实时检查是否有手指在 slide 音符的判定宽度内
-		# 与 _check_slides_at_touch_pos 的 distance_to_touch < note_judge_width 逻辑一致
-		# 这样即使手指按下后未拖动( can_judge 未被设置), 也能在过线时自动判定
-		var note_x = note.cached_center_x
-		for touch_pos in touch_positions.values():
-			if abs(touch_pos.x - note_x) < note_judge_width:
-				has_input_on_lane = true
-				break
-
-	if has_input_on_lane:
+	# 键盘按键在该轨道上 → 直接判定（键盘点击滑块已即时判定，此处兜底过线接住）
+	# 已被触点认领的滑块不归键盘（避免键盘抢走正在被手指接的滑块）
+	if note.lane in pressed_keys.values() and note.claimed_by_touch_id < 0:
 		if parent_node.play_mode and note.game_sequence_ref:
 			_trigger_midi_notes_from_sequence(note.game_sequence_ref)
 		if only_perfect_slides:
@@ -1344,40 +1454,54 @@ func _check_slide_stat(note: FlowNote):
 		else:
 			_judge_note(note)
 		note.can_judge = false
+		note.claimed_by_touch_id = -1
 		return
 
-	if note.can_judge:
-		if parent_node.play_mode and note.game_sequence_ref:
-			_trigger_midi_notes_from_sequence(note.game_sequence_ref)
-		if only_perfect_slides:
-			_judge_note(note, false, note.start_time, -1, "Perfect")
-		else:
-			_judge_note(note)
-		note.can_judge = false
+	# 触摸 hold-catch（宽松）：认领该滑块的手指仍在列内优先判定，否则任何手指在列内均可接滑。
+	# 参考 Phigros/Cytus——滑块接滑本就该宽松：block 后紧跟的滑块流、多指斜向放置都能被接住。
+	var claim_touch: int = note.claimed_by_touch_id
+	if claim_touch >= 0:
+		if claim_touch in touch_positions \
+				and abs(touch_positions[claim_touch].x - note.cached_center_x) <= note_judge_width:
+			_judge_claimed_slide(claim_touch, note, _synced_current_time,
+				"Perfect" if only_perfect_slides else "")
+		return
+
+	var note_x := note.cached_center_x
+	for candidate_touch_id in touch_positions:
+		if candidate_touch_id in active_holds:
+			continue  # 长条按住中的手指不参与滑块判定
+		if abs(touch_positions[candidate_touch_id].x - note_x) > note_judge_width:
+			continue
+		_judge_claimed_slide(candidate_touch_id, note, _synced_current_time,
+			"Perfect" if only_perfect_slides else "")
+		return
 
 func _judge_slides_on_release(touch_id: int, released_lane: int, judge_time_ms: float) -> void:
+	# 键盘抬手：键盘点击滑块已即时判定，无认领概念，直接跳过
+	if released_lane >= 0:
+		return
+	if not _gestures.has(touch_id):
+		return
+
 	var perfect_window_ms = float(judge_windows["perfect"])
-	var pending_notes: Array[FlowNote] = []
+	var g: Dictionary = _gestures[touch_id]
+	var claimed: FlowNote = g["claimed"]
+	if claimed == null or claimed.is_judged or claimed.is_removed:
+		return
 
-	for note in active_notes:
-		if note == null or note.is_judged or note.is_held or note.type != FlowNote.NoteType.Slide:
-			continue
-		if note.is_removed:
-			continue
-
-		if released_lane >= 0:
-			if note.lane != released_lane or not note.can_judge:
-				continue
-		elif note.held_by_touch_id != touch_id or not note.can_judge:
-			continue
-
-		if abs(judge_time_ms - note.start_time) <= perfect_window_ms:
-			pending_notes.append(note)
-
-	for note in pending_notes:
-		if parent_node.play_mode and note.game_sequence_ref:
-			_trigger_midi_notes_from_sequence(note.game_sequence_ref)
-		_judge_note(note, false, judge_time_ms, -1, "Perfect")
+	# 手指仍在认领滑块列内抬手 → 按抬手时刻判定（Perfect 窗口内判 Perfect，保持原「抬手判滑块」语义）
+	var last_pos: Vector2 = g["last_pos"]
+	if abs(last_pos.x - claimed.cached_center_x) <= note_judge_width:
+		if abs(judge_time_ms - claimed.start_time) <= perfect_window_ms:
+			_judge_claimed_slide(touch_id, claimed, judge_time_ms, "Perfect")
+		else:
+			_release_slide_claim(claimed, touch_id)
+			g["claimed"] = null
+	else:
+		# 手指已滑出列（正常应由拖动处理），释放兜底
+		_release_slide_claim(claimed, touch_id)
+		g["claimed"] = null
 
 ## 获取音符的代表 Y 坐标（屏幕坐标）
 ## Long 音符使用 VBoxC/head 中心 Y；Block/Slide 走 Node2D 批量绘制，使用 cached_center_y
@@ -1402,7 +1526,7 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 			candidate_notes.append_array(_notes_by_lane[lane])
 
 	for note in candidate_notes:
-		if note.is_held or note.is_judged or note.is_removed:
+		if note.is_held or note.is_judged or note.is_removed or note.can_judge:
 			continue
 		if only_perfect_slides and note.type == FlowNote.NoteType.Slide:
 			continue

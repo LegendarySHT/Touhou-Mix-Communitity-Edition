@@ -27,6 +27,7 @@ var is_removed: bool = false        # 已从绘制列表移除标记（防止 _r
 
 # 用于滑键
 var can_judge: bool = false
+var claimed_by_touch_id: int = -1  # 认领该滑块的触点ID（触点认领模型，-1=无认领）
 
 # 防止重复判定标志
 var is_judged: bool = false  # 已被判定过，防止同一note重复记录combo
