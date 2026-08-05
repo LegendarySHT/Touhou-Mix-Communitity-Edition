@@ -18,6 +18,9 @@ var _total_charts: int = 0
 var _page_limit: int = 20
 var _is_loading: bool = false
 
+## 提示信息 Label（离线/连接失败/加载失败时显示在内容区域中央，替代本地示例数据）
+var _message_label: Label = null
+
 func _ready() -> void:
 	work_state = UIStateManager.UIState.STORE_VIEW
 	# 设置直接相邻状态：切到不在此集合的状态时释放所有列表项封面
@@ -84,9 +87,14 @@ func apply_theme() -> void:
 func _exit_tree() -> void:
 	if ThemeMGR:
 		ThemeMGR.unregister_theme_applier(self)
+	# 视图销毁时移除提示 Label，避免孤儿节点
+	if _message_label != null:
+		_message_label.queue_free()
+		_message_label = null
 
 ## 从服务端加载 MIDI 列表
 ## 首次 _ready 和重新进入 STORE_VIEW（列表为空时）调用
+## 离线/连接失败/加载失败时显示文字提示，不再回退到本地示例数据
 func _load_remote_charts() -> void:
 	if _is_loading:
 		return
@@ -97,9 +105,19 @@ func _load_remote_charts() -> void:
 	if indicate_loading:
 		indicate_loading.text = "加载中..."
 
-	if ResMGR == null or NetManager.instance == null or not NetManager.instance.is_online:
-		# 离线回退到本地数据
-		_load_local_fallback()
+	if ResMGR == null or NetManager.instance == null:
+		# 资源/网络管理器未就绪
+		_show_message("商店服务不可用")
+		_update_page_indicator()
+		_is_loading = false
+		return
+
+	if not NetManager.instance.is_online:
+		# 区分"在线模式未开启"与"连接失败"
+		if NetManager.instance.connect_state == NetManager.ConnectState.OFFLINE_MODE:
+			_show_message("在线模式未开启")
+		else:
+			_show_message("无法连接到服务器")
 		_update_page_indicator()
 		_is_loading = false
 		return
@@ -107,12 +125,15 @@ func _load_remote_charts() -> void:
 	var result: Dictionary = await ResMGR.get_chart_list(_current_page, _page_limit, "")
 
 	if not result.get("ok", false):
-		# 加载失败回退到本地
+		# 远程加载失败
 		GLogger.warning("Failed to load remote charts: %s" % str(result.get("error", "")), "StoreView")
-		_load_local_fallback()
+		_show_message("加载失败，请稍后重试")
 		_update_page_indicator()
 		_is_loading = false
 		return
+
+	# 远程加载成功，隐藏提示并渲染列表
+	_hide_message()
 
 	var data: Dictionary = result.data
 	_total_charts = int(data.get("total", 0))
@@ -131,25 +152,44 @@ func _load_remote_charts() -> void:
 	_is_loading = false
 	_last_scroll_vertical = scroll_vertical
 
-## 离线回退：加载本地 MIDI 数据
-func _load_local_fallback() -> void:
+## 在内容区域中央显示提示文字（替代离线本地示例数据）
+## Label 作为 Store 子节点覆盖在 StoreMidiList 上方，offset 留出 TopBar/Bottom 空间
+## 注意：使用 call_deferred 添加节点，因为 _ready 同步阶段父节点仍在构建子节点，
+## 直接 add_child 会触发 "Parent node is busy setting up children" 错误
+func _show_message(msg: String) -> void:
 	clear_items()
-	for i in range(36):
-		create_and_add_item("%d" % i, "StoreMidiItem")
-	if DataMGR.is_loading:
-		await EvtBus.data_loaded_complete
-	# 只水合前 5 张（离线回退仅显示前几个），避免全量水合卡顿
-	var local_midis: Array[MidiData] = DataMGR.get_midis_preview(5)
-	for i in range(local_midis.size()):
-		container.get_child(i).set_display(local_midis[i])
-	_last_scroll_vertical = scroll_vertical
+	if _message_label == null:
+		_message_label = Label.new()
+		_message_label.name = "MessageLabel"
+		_message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_message_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_message_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_message_label.add_theme_font_size_override("font_size", 42)
+		# 锚点占满 Store，再用 offset 留出 TopBar（约 180px）和 Bottom（约 100px）的空间
+		_message_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_message_label.offset_top = 180
+		_message_label.offset_bottom = -100
+		get_parent().add_child.call_deferred(_message_label)
+	_message_label.text = msg
+	_message_label.visible = true
+
+## 隐藏并移除提示 Label
+func _hide_message() -> void:
+	if _message_label != null:
+		_message_label.queue_free()
+		_message_label = null
 
 ## 更新分页指示器
 func _update_page_indicator() -> void:
-	var total_pages = max(1, ceili(float(_total_charts) / float(_page_limit)))
 	var indicate = get_parent().get_node_or_null("Bottom/Indicate")
-	if indicate:
-		indicate.text = "%d/%d" % [_current_page, total_pages]
+	if not indicate:
+		return
+	# 无数据时显示占位符，避免误导性的 "1/1"
+	if _total_charts <= 0:
+		indicate.text = "—"
+		return
+	var total_pages = max(1, ceili(float(_total_charts) / float(_page_limit)))
+	indicate.text = "%d/%d" % [_current_page, total_pages]
 
 func _on_state(old: UIStateManager.UIState, new: UIStateManager.UIState) -> void:
 	if new == UIStateManager.UIState.STORE_VIEW:
@@ -161,10 +201,11 @@ func _on_state(old: UIStateManager.UIState, new: UIStateManager.UIState) -> void
 	if old == UIStateManager.UIState.STORE_VIEW and new != UIStateManager.UIState.STORE_VIEW:
 		_cleanup()
 
-## 释放视图内部资源（列表项），保留节点壳和信号连接
+## 释放视图内部资源（列表项 + 提示 Label），保留节点壳和信号连接
 ## 重新进入时由 _on_state 检测列表为空并调用 _load_remote_charts 重新加载
 func _cleanup() -> void:
 	clear_items()
+	_hide_message()
 
 func return_to_top() -> void:
 	if _scroll_tween and _scroll_tween.is_running():
