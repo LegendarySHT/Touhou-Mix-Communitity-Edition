@@ -502,6 +502,10 @@ public partial class ChartDb : Node
     /// <summary>
     /// 返回专辑下所有歌曲的轻量投影（Array[Dictionary]）：{id, name, midi_count}。
     /// 替代 DataMGR.get_songs_by_album 的 SongData 水合，SongView/DelView 直接消费。
+    /// 注意：从 charts 集合直接推导（权威源），不依赖派生 songs 集合的 album_id——
+    /// 同一 song_id 可能分属多个专辑（源数据里同名歌在不同专辑各有一条谱面），派生集合
+    /// 的 album_id 取首见谱面覆盖，会导致专辑 song_ids 引用的歌曲 album_id 不一致，
+    /// 按 album_id 查 songs 返回空。此处按「该专辑全部谱面 → song_id 去重」推导。
     /// </summary>
     public Godot.Collections.Array GetSongItemsByAlbum(string albumId)
     {
@@ -509,8 +513,26 @@ public partial class ChartDb : Node
         if (!IsOpen() || string.IsNullOrEmpty(albumId)) return arr;
         lock (_lock)
         {
-            foreach (var d in _songs.Find(Query.EQ("album_id", albumId)).ToList())
-                arr.Add(SongItemDict(d));
+            var songs = new Dictionary<string, Godot.Collections.Dictionary>();
+            foreach (var d in _charts.Find(Query.EQ("album_id", albumId)).ToList())
+            {
+                var sid = BsonConvert.GetStr(d, "song_id");
+                if (sid.Length == 0) continue;
+                if (!songs.TryGetValue(sid, out var item))
+                {
+                    var name = BsonConvert.GetStr(d, "song_name");
+                    if (d.TryGetValue("song", out var sv) && sv.IsDocument)
+                        name = BsonConvert.GetStr(sv.AsDocument, "name");
+                    item = new Godot.Collections.Dictionary();
+                    item["id"] = sid;
+                    item["name"] = name;
+                    item["midi_count"] = (long)0;
+                    songs[sid] = item;
+                }
+                item["midi_count"] = (long)item["midi_count"] + 1;
+            }
+            foreach (var kv in songs)
+                arr.Add(kv.Value);
             return arr;
         }
     }
@@ -1159,7 +1181,7 @@ public partial class ChartDb : Node
     {
         var md = new Godot.Collections.Dictionary();
         md["id"] = BsonConvert.GetStr(doc, "folder_hash");
-        foreach (var key in new[] { "folder_name", "path", "json_path", "audio_path", "cover_path", "is_complete", "audio_entries", "_json_mtime", "_mid_mtime", "midi_id", "file_hash", "hash" })
+        foreach (var key in new[] { "folder_name", "path", "json_path", "audio_path", "cover_path", "is_complete", "audio_entries", "_json_mtime", "_mid_mtime", "_folder_mtime", "midi_id", "file_hash", "hash" })
         {
             if (doc.TryGetValue(key, out var v))
                 md[key] = BsonConvert.BsonToVariant(v);
@@ -1265,7 +1287,7 @@ public partial class ChartDb : Node
                 NormLog($"BaseDir/dicts zstd 已存在={System.IO.File.Exists(System.IO.Path.Combine(AppContext.BaseDirectory, "dicts", "dictionary_maxlength.zstd"))}");
                 NormLog($"res:// zstd File.Exists={_resZstdPath.Length > 0 && System.IO.File.Exists(_resZstdPath)}");
                 EnsureDefaultDictInPlace();
-                if (TryCreateNormalizer()) { LogNormalizerReady("默认词典"); return; }
+                if (TryCreateNormalizer()) { return; }
                 NormLog("所有加载路径失败，搜索退化为普通匹配");
             }
         }
@@ -1348,16 +1370,6 @@ public partial class ChartDb : Node
             }
         }
         catch (Exception e) { GD.Print($"[ChartDb][Norm] 预热启动失败: {e.Message}"); }
-    }
-
-    /// <summary>词典就绪后打印诊断 + 样本转换结果（真机排查：验证转换是否正常）。</summary>
-    private static void LogNormalizerReady(string via)
-    {
-        GD.Print($"[ChartDb][Norm] 词典加载成功 via {via}");
-        GD.Print($"[ChartDb][Norm] 早見沙織 -> {NormalizeCore("早見沙織")}");
-        GD.Print($"[ChartDb][Norm] 東方紅魔郷 -> {NormalizeCore("東方紅魔郷")}");
-        GD.Print($"[ChartDb][Norm] 音楽 -> {NormalizeCore("音楽")}");
-        GD.Print($"[ChartDb][Norm] 純白色的蕾絲 -> {NormalizeCore("純白色的蕾絲")}");
     }
 
     private static bool TryCreateNormalizer()

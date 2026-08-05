@@ -389,6 +389,9 @@ func clear_items() -> void:
 func _connect_head_and_tail() -> void:
 	if container == null:
 		return
+	# 少于 2 项时头尾连接无意义（空列表 get_child(0) 会越界崩溃）
+	if container.get_child_count() < 2:
+		return
 
 	var node_h: Control = container.get_child(0).button
 	var node_t: Control = container.get_child(-1).button

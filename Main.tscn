@@ -985,7 +985,6 @@ script = ExtResource("22_5mvff")
 
 [node name="TabC" parent="PlayerInfo/InfoPanelBtn" unique_id=1269850014 instance=ExtResource("23_oye8v")]
 layout_mode = 1
-current_tab = 0
 
 [node name="RB_Btn" type="Panel" parent="." unique_id=334519352]
 z_index = 23
@@ -1086,6 +1085,35 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.84313726)
+
+[node name="ImportTip" type="Label" parent="PopupWindowShader" unique_id=1974055026]
+visible = false
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_top = 60.0
+offset_bottom = 93.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "正在导入数据，请稍后"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ImportProgress" type="ProgressBar" parent="PopupWindowShader" unique_id=300482769]
+visible = false
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.15
+anchor_top = 0.5
+anchor_right = 0.85
+anchor_bottom = 0.5
+offset_top = 110.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="PopupWindow" type="PopupPanel" parent="." unique_id=1234285949]
 gui_embed_subwindows = true

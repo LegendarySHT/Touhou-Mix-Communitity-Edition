@@ -201,10 +201,106 @@ func _check_and_copy_default_resources_async() -> void:
 		await _copy_directory_contents_async(DEFAULT_BACKGROUND_SRC, BACKGROUND_DIR, "jpg,jpeg,png,webp")
 	
 	# 所有复制完成后扫描资源
-	# Convert external game data (THMIX) if present
-	ExternalGameConverter.check_and_convert()
-	
+	# 异步导入外部游戏数据（THMIX），后台 worker 转换 + 主线程进度 UI，不阻塞界面
+	await _import_external_charts_async()
+
 	call_deferred("_scan_all_resources")
+
+## 异步导入外部游戏（THMIX）数据
+## 主线程先快速检查导入任务（check_import_task，含诊断日志），决定是否显示导入 UI 并启动后台 worker
+## 转换在 WorkerThreadPool 后台执行（纯文件 I/O），进度经 progress_cb 以 call_deferred 送回主线程，
+## state 只在任务完成后读取（任务完成有 happens-before），全程无跨线程并发读写，不阻塞界面
+func _import_external_charts_async() -> void:
+	# 检查导入任务：has_work 决定是否启动后台 worker；ui_pending 决定是否显示进度 UI
+	var task_info: Dictionary = ExternalGameConverter.check_import_task()
+	if not task_info.get("has_work", false):
+		return
+	var pending: int = int(task_info.get("ui_pending", 0))
+	var show_ui: bool = pending > 0
+
+	# 显示导入遮罩 + 提示 + 进度条（仅 THMIX_Import 待导入时显示）
+	# get_node_or_null 返回 Node，需要显式类型才能访问 Control 属性
+	var overlay: Control = get_node_or_null("/root/Main/PopupWindowShader")
+	var tip: Control = get_node_or_null("/root/Main/PopupWindowShader/ImportTip") if overlay else null
+	var bar: ProgressBar = get_node_or_null("/root/Main/PopupWindowShader/ImportProgress") if overlay else null
+	if show_ui:
+		if overlay:
+			overlay.modulate.a = 1.0  # 复位透明度（与 PopupWindow 的 fade 共享此节点，防御残留 0）
+			overlay.visible = true
+		if tip:
+			tip.visible = true
+		if bar:
+			bar.visible = true
+			bar.min_value = 0
+			bar.max_value = maxf(pending, 1)
+			bar.value = 0
+			bar.show_percentage = true
+
+	# 进度回调：worker 内 call_deferred 调用 → 主线程执行，更新进度条（与 Logger 的 worker 转主线程同模式）
+	var progress_cb := func(cur: int, total: int) -> void:
+		if bar:
+			if total > 0:
+				bar.max_value = maxf(total, 1)
+			bar.value = minf(cur, total)
+
+	var state: Dictionary = {}
+	var task_id := WorkerThreadPool.add_task(
+		func(): ExternalGameConverter.check_and_convert(state, progress_cb),
+		false, "ImportTHMIX"
+	)
+	if task_id < 0:
+		GLogger.error("启动 THMIX 导入 worker 失败（task_id=%d）" % task_id, "FileSystemMGR")
+		_hide_import_ui(overlay, tip, bar)
+		return
+
+	while not WorkerThreadPool.is_task_completed(task_id):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(task_id)
+
+	# 输出 worker 收集的诊断日志（任务完成后读取，主线程统一写 GLogger）
+	for w in state.get("warnings", []):
+		GLogger.warning(w, "ExternalConverter")
+	for i in state.get("info", []):
+		GLogger.info(i, "ExternalConverter")
+
+	var converted: int = int(state.get("converted", 0))
+	GLogger.info("外部数据导入结束：转换 %d 个谱面" % converted, "FileSystemMGR")
+
+	# 立即把新导入的谱面扫描进 DB 缓存，让 _scan_all_resources 阶段 A 从缓存即可看到，无需等后台校验补扫
+	var imported_folders: Array = state.get("imported_folders", [])
+	if not imported_folders.is_empty() and ChartDB != null and ChartDB.IsOpen():
+		await _sync_imported_charts_to_db(imported_folders)
+
+	_hide_import_ui(overlay, tip, bar)
+
+## 隐藏导入 UI（遮罩 + 提示 + 进度条）
+func _hide_import_ui(overlay: Control, tip: Control, bar: ProgressBar) -> void:
+	if bar:
+		bar.visible = false
+	if tip:
+		tip.visible = false
+	if overlay:
+		overlay.visible = false
+
+## 把新导入的谱面文件夹扫描并写入 DB 缓存（复用分片扫描 worker）
+## 使随后的 _scan_all_resources 阶段 A 从缓存即可构建 charts_index，谱面立即可见
+func _sync_imported_charts_to_db(imported_folders: Array) -> void:
+	var chart_tasks := _start_charts_scan_tasks(imported_folders)
+	while not _all_chart_tasks_completed(chart_tasks):
+		await get_tree().process_frame
+	for t in chart_tasks:
+		WorkerThreadPool.wait_for_task_completion(t.id)
+
+	var new_data: Dictionary = {}
+	for t in chart_tasks:
+		var task_rw: Dictionary = t.result
+		var charts_data: Dictionary = task_rw.get("charts", {})
+		for folder_name in charts_data.keys():
+			new_data[folder_name] = charts_data[folder_name]
+	if new_data.is_empty():
+		return
+	_save_charts_cache(new_data)
+	GLogger.info("导入完成，已将 %d 个新谱面同步到 DB 缓存（无需等后台校验）" % new_data.size(), "FileSystemMGR")
 
 ## 异步复制所有默认谱面（在每个文件夹复制后让步）
 func _copy_default_charts_async() -> void:
@@ -873,7 +969,16 @@ func _validate_charts_cache_worker(cached_charts: Dictionary, current_folders: A
 			changed.append(folder_name)
 			new_set.erase(folder_name)
 			continue
-		# 对比 mTime：json 或 mid 文件被修改（内容变化）→ 标记需重扫
+		# 对比 mTime（两级，先快后全）：
+		# 1. 文件夹 mTime（一次性 stat）变化 → 必有增/删/改文件，直接标记重扫
+		# 2. 文件夹 mTime 未变 → 仍可能"文件内容就地修改"（Linux/Android 文件夹 mTime 不感知），回退文件级对比
+		var cached_folder_mtime: int = int(meta.get("_folder_mtime", 0))
+		var cur_folder_mtime := FileAccess.get_modified_time(chart_path)
+		if cached_folder_mtime != 0 and cur_folder_mtime != cached_folder_mtime:
+			changed.append(folder_name)
+			new_set.erase(folder_name)
+			continue
+		# 对比 json/mid 文件 mTime（内容变化 → 标记需重扫）
 		var cached_json_mtime: int = int(meta.get("_json_mtime", 0))
 		var cached_mid_mtime: int = int(meta.get("_mid_mtime", 0))
 		var cur_json_mtime := FileAccess.get_modified_time(json_path)
@@ -889,6 +994,51 @@ func _validate_charts_cache_worker(cached_charts: Dictionary, current_folders: A
 	result_wrapper["removed_folders"] = removed
 	result_wrapper["new_folders"] = new_folders
 	result_wrapper["is_clean"] = changed.is_empty() and removed.is_empty() and new_folders.is_empty()
+
+## 快速变更检测：基于文件夹 mTime 一次性找出 新增/删除/修改 的谱面文件夹
+## 只做轻量 stat（每文件夹 1 次），绝不读 JSON —— 供运行时自动检测歌曲变更复用
+## cached_charts: {folder_name: metadata_dict}（须含 _folder_mtime，来自 _load_charts_cache）
+## 返回 {new_folders, removed_folders, changed_folders, is_clean}
+##
+## 局限：Linux/Android 上文件夹 mTime 只随"增/删/改名"变化，不感知"文件内容就地修改"
+##   —— 需要捕捉就地编辑（如直接改 chart JSON）时，用 _validate_charts_cache_worker 的
+##      文件级 _json_mtime/_mid_mtime 校验兜底。本函数适合运行时轮询的快速第一道闸。
+func detect_chart_folder_changes_fast(cached_charts: Dictionary) -> Dictionary:
+	var current_folders := _list_chart_folder_names()
+	var folder_set: Dictionary = {}
+	for f in current_folders:
+		folder_set[f] = true
+
+	var new_folders: Array = []
+	var removed_folders: Array = []
+	var changed_folders: Array = []
+
+	# 缓存中有的：先查是否被删除，再对比文件夹 mTime
+	for folder_name in cached_charts.keys():
+		if not folder_set.has(folder_name):
+			removed_folders.append(folder_name)
+			continue
+		var meta: Dictionary = cached_charts[folder_name]
+		var cached_folder_mtime: int = int(meta.get("_folder_mtime", 0))
+		if cached_folder_mtime == 0:
+			# 缓存无 mTime（旧数据），保守视为变化，交调用方重扫
+			changed_folders.append(folder_name)
+			continue
+		var cur_folder_mtime := FileAccess.get_modified_time(CHARTS_DIR.path_join(folder_name))
+		if cur_folder_mtime != cached_folder_mtime:
+			changed_folders.append(folder_name)
+
+	# 磁盘上存在但缓存中没有 = 新增
+	for f in current_folders:
+		if not cached_charts.has(f):
+			new_folders.append(f)
+
+	return {
+		"new_folders": new_folders,
+		"removed_folders": removed_folders,
+		"changed_folders": changed_folders,
+		"is_clean": new_folders.is_empty() and removed_folders.is_empty() and changed_folders.is_empty(),
+	}
 
 ## 启动 charts 分片扫描的多个 worker task
 ## 返回 [{id: task_id, result: result_wrapper}, ...]
@@ -1120,6 +1270,9 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 	# 校验时对比 mTime，变化则重扫该文件夹
 	metadata["_json_mtime"] = FileAccess.get_modified_time(json_path)
 	metadata["_mid_mtime"] = FileAccess.get_modified_time(mid_path)
+	# 记录文件夹自身 mTime，供 detect_chart_folder_changes_fast 做快速变更检测（一次性 stat 比 2 次文件 stat 便宜）
+	# 注意：Linux/Android 上文件夹 mTime 只随 增/删/改名 变化，不感知"文件内容就地修改"
+	metadata["_folder_mtime"] = FileAccess.get_modified_time(chart_path)
 	if not warnings.is_empty():
 		metadata["_warnings"] = warnings
 	return metadata
