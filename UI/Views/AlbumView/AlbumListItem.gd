@@ -22,26 +22,27 @@ var expand_tween: Tween:
 		expand_tween = t
 		_extra_motion_tween = t
 
+## 是否已 ready（复用时直接刷新显示，不再 emit _init_fin 等 _ready 续跑）
+var _has_ready: bool = false
+
 signal _init_fin
 
 func _ready() -> void:
 	cover_texture = $cover
 	await _init_fin
 
-	if item_dict.is_empty():
-		push_error("AlbumListItem: Missing album data")
-		return
-	album_name_label.text = " %s" % String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown"
-	song_count_label.text = "%d" % item_dict.get("song_count", 0)
-
+	_refresh_labels()
 	# 直接开始加载封面（不等列表构建完毕）
 	# 命中 WeakRef 缓存时零开销同步应用；未命中则入 CoverLoader 异步队列，不阻塞主线程
 	# 列表的 trigger_cover_chain 仍处理"释放后重载"场景（状态切换回视图时）与 path 暂不可用的重试
 	start_cover_load()
 	# 启动文字滚动动画（如名称过长）
 	call_deferred("setup_name_scroll")
+	_has_ready = true
 
 ## 从专辑轻量投影字典初始化显示（DB 返回，无完整 AlbumData）
+## 新建节点（_has_ready=false）：emit _init_fin 触发 _ready 中的 await 继续
+## 复用节点（_has_ready=true）：直接 _refresh_display 刷新数据
 func setup_with_dict(parent: AlbumView, d: Dictionary, index:int, bg: ButtonGroup) -> void:
 	item_dict = d
 	item_id = String(d.get("id", ""))
@@ -53,7 +54,44 @@ func setup_with_dict(parent: AlbumView, d: Dictionary, index:int, bg: ButtonGrou
 
 	enable_selected_animation(button, parent)
 
-	_init_fin.emit()
+	if _has_ready:
+		_refresh_display()
+	else:
+		_init_fin.emit()
+
+## 更新名称/计数标签（新建与复用共用）
+func _refresh_labels() -> void:
+	if item_dict.is_empty():
+		push_error("AlbumListItem: Missing album data")
+		return
+	album_name_label.text = " %s" % String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown"
+	song_count_label.text = "%d" % item_dict.get("song_count", 0)
+
+## 复用刷新：重置展开/选中动画态 + 更新显示 + 重新加载封面
+## 保留旧封面显示直到新封面加载完成（switch_cover_data 不清空 texture）
+func _refresh_display() -> void:
+	_refresh_labels()
+
+	# 清理残留动画/选中态（展开动画改过尺寸/字号/NameBox 透明度，需复位到折叠默认）
+	if expand_tween:
+		expand_tween.kill()
+		expand_tween = null
+	if pulse_tween:
+		pulse_tween.kill()
+		pulse_tween = null
+	if press_tween:
+		press_tween.kill()
+		press_tween = null
+	offset_transform_scale = Vector2.ONE
+	custom_minimum_size = Vector2(600, 150)
+	album_name_label.add_theme_font_size_override("font_size", 25)
+	name_box.self_modulate.a = 0.0
+	button.set_pressed_no_signal(false)
+	is_selected = false
+
+	switch_cover_data()
+	start_cover_load()
+	call_deferred("setup_name_scroll")
 
 ## 重写基类虚函数：返回专辑封面 Texture2D
 ## 选择专辑下首个歌曲的首个 MIDI 的封面，否则由 FileSystemManager 返回默认封面

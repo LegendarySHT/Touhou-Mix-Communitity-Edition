@@ -89,6 +89,10 @@ var _delview_entered: bool = false
 var _midi_build_albums: Array = []
 var _midi_build_total: int = 0
 
+# 专辑子项懒加载：album_id → bool（子项是否已构建）；子项构建工作器 generation（取消在途构建）
+var _midi_album_loaded: Dictionary = {}
+var _midi_children_gen: int = 0
+
 # MIDI 扁平搜索模式（搜索词非空时切换为单层 TreeItem 列表，沿用 SortEngine.search_midis）
 var _midi_search_flat: bool = false
 var _midi_build_flat_items: Array[MidiData] = []
@@ -123,6 +127,9 @@ func _ready() -> void:
 	_tab_title.text = "MIDI 谱面管理"
 	_update_item_sum("未加载")
 	_collapse_toggle.visible = true
+	# MIDI 页默认只显示专辑层（折叠）：折叠按钮初始为「展开全部」态
+	_collapse_toggle.set_pressed_no_signal(true)
+	_collapse_toggle.text = "展开全部"
 	_select_toggle.disabled = true
 	_delete_btn.disabled = true
 
@@ -176,7 +183,8 @@ func _release_all_loaders() -> void:
 	for loader in [_midi_loader, _audio_loader, _sf2_loader, _skin_loader, _bg_loader]:
 		if loader:
 			loader.cancel()
-	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_selected, _midi_album_order, _midi_album_midi_map])
+	_cancel_all_expand_loaders()
+	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_selected, _midi_album_order, _midi_album_midi_map, _midi_album_loaded])
 	_clear_page(_audio_list, [_audio_root_map, _audio_item_map, _audio_group_order, _audio_items_in_group, _audio_items])
 	_clear_page(_sf2_list, [_sf2_nodes, _sf2_items])
 	_clear_page(_skin_list, [_skin_nodes, _skin_items])
@@ -330,6 +338,32 @@ func _update_tab_header(tab: Tab) -> void:
 			_tab_title.text = "背景管理"
 			_update_item_sum("共 %d 张背景" % _bg_items.size())
 			_update_flat_toggle_state(_bg_items)
+	_sync_collapse_button()
+
+
+## 将折叠按钮的 pressed/text 同步到当前 tab 的实际折叠态
+## （MIDI 默认全折叠 → pressed=true「展开全部」；Audio 默认全展开 → pressed=false「收起全部」）
+## 无根节点（未构建/扁平搜索/SF2 等页）时保持现状
+func _sync_collapse_button() -> void:
+	if not _collapse_toggle:
+		return
+	var all_collapsed := true
+	var any_root := false
+	match _current_tab:
+		Tab.MIDI:
+			for album_id in _midi_root_map:
+				any_root = true
+				if not bool(_midi_root_map[album_id].get_meta("collapsed", false)):
+					all_collapsed = false
+		Tab.AUDIO:
+			for song_name in _audio_root_map:
+				any_root = true
+				if not bool(_audio_root_map[song_name].get_meta("collapsed", false)):
+					all_collapsed = false
+	if not any_root:
+		return
+	_collapse_toggle.set_pressed_no_signal(all_collapsed)
+	_collapse_toggle.text = "展开全部" if all_collapsed else "收起全部"
 
 
 # ============================================================
@@ -338,7 +372,8 @@ func _update_tab_header(tab: Tab) -> void:
 
 func _build_midi_page() -> void:
 	_tab_data_built[Tab.MIDI] = false
-	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_selected, _midi_album_order, _midi_album_midi_map])
+	_cancel_all_expand_loaders()
+	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_selected, _midi_album_order, _midi_album_midi_map, _midi_album_loaded])
 	_update_item_sum("加载中...")
 	_update_midi_toggle_state()
 
@@ -361,16 +396,19 @@ func _build_midi_page() -> void:
 			_tab_data_built[Tab.MIDI] = true
 		return
 
-	# 数据源：按专辑名升序排序，Unknown 始终排最后（惰性水合，DB 聚合）
-	# DelView 按专辑名升序（与 AlbumView 的日期排序不同）；Unknown 由 C# 排最后
-	_midi_build_albums = ChartDB.GetSortedAlbumItems("name", 0)
+	# 数据源：与 AlbumView 同一套 [Browse] 配置排序（creation_time/download_time/name 三态），Unknown 由 C# 排最后
+	var method_str := ConfigManager.instance.get_string("Browse", "album_sort_method", "creation_time")
+	var dir_str := ConfigManager.instance.get_string("Browse", "album_sort_direction", "asc")
+	var direction := 0 if dir_str == "asc" else 1
+	_midi_build_albums = ChartDB.GetSortedAlbumItems(method_str, direction)
 	if _midi_build_albums.is_empty():
 		_update_item_sum("无谱面数据")
 		_tab_data_built[Tab.MIDI] = true
 		return
 
+	# 懒加载：只建专辑层（折叠态），展开/展开全部时才加载各专辑子项
 	_midi_build_total = 0
-	var completed: bool = await _midi_loader.build(_midi_build_albums.size(), _create_midi_album_group)
+	var completed: bool = await _midi_loader.build(_midi_build_albums.size(), _create_midi_album_root)
 	if not completed:
 		return  # 被取消（切 tab / 退出 DelView / 删除流程）
 	if _current_tab != Tab.MIDI:
@@ -385,42 +423,117 @@ func _build_midi_page() -> void:
 		_apply_search_filter()
 
 
-## MIDI 工厂：创建一个专辑分组（TreeRoot + 其下所有 TreeItem）
+## MIDI 工厂（专辑层）：只创建 TreeRoot（折叠态），不创建子项
+## 用 GetMidiKeysBySong（不水合）收集该专辑全部 midi key，预填 _midi_selected 供全选/勾选使用
 ## 返回 Array[Node]（已 add_child）；返回 null 请求中止构建
-func _create_midi_album_group(album_index: int) -> Variant:
+func _create_midi_album_root(album_index: int) -> Variant:
 	if _current_tab != Tab.MIDI:
 		return null  # 请求中止
 	var album: Dictionary = _midi_build_albums[album_index]
-	var created: Array = []
-	var album_midis: Array[String] = []
+	var album_id := String(album.get("id", ""))
 
-	# 创建 TreeRoot（专辑）
-	var root_node := _create_tree_root(String(album.get("name", "")), "%d 首" % album.get("total_midi_count", 0), String(album.get("id", "")))
+	var root_node := _create_tree_root(String(album.get("name", "")), "%d 首" % album.get("total_midi_count", 0), album_id)
 	_midi_list.add_child(root_node)
-	_midi_root_map[album.get("id", "")] = root_node
-	_midi_album_order.append(album.get("id", ""))
-	created.append(root_node)
+	_midi_root_map[album_id] = root_node
+	_midi_album_order.append(album_id)
+	_midi_album_loaded[album_id] = false
+	# 默认折叠：只显示专辑层，子项按需加载
+	root_node.set_meta("collapsed", true)
 
 	var root_cb := root_node.get_node("CheckBox") as CheckBox
-	root_cb.toggled.connect(_on_midi_root_checkbox_toggled.bind(album.get("id", "")))
+	root_cb.toggled.connect(_on_midi_root_checkbox_toggled.bind(album_id))
 
-	# 遍历歌曲 → 谱面，创建 TreeItem
-	for song in DataMGR.get_songs_by_album(String(album.get("id", ""))):
-		for midi in DataMGR.get_midis_by_song(String(song.get("id", ""))):
-			var author := midi.artist_name if not midi.artist_name.is_empty() else "-"
-			var item_node := _create_tree_item("    %s" % midi.name, author)
-			_midi_list.add_child(item_node)
-			_midi_item_map[midi.id] = item_node
-			_midi_selected[midi.id] = false
-			album_midis.append(midi.id)
-			created.append(item_node)
+	# 收集该专辑全部 midi key（轻量，不水合 MidiData），供选择数据与子项构建复用
+	var album_midis: Array[String] = []
+	for song in DataMGR.get_songs_by_album(album_id):
+		for midi_key: String in ChartDB.GetMidiKeysBySong(String(song.get("id", ""))):
+			_midi_selected[midi_key] = false
+			album_midis.append(midi_key)
+	_midi_album_midi_map[album_id] = album_midis
+	_midi_build_total += album_midis.size()
+	return [root_node]
 
-			var item_cb := item_node.get_node("CheckBox") as CheckBox
-			item_cb.toggled.connect(_on_midi_item_checkbox_toggled.bind(midi.id, album.get("id", "")))
-			_midi_build_total += 1
 
-	_midi_album_midi_map[album.get("id", "")] = album_midis
-	return created
+## MIDI 子项工厂：为指定专辑创建一条 TreeItem（懒加载，展开时才逐条构建）
+## slot_index 为 _midi_album_midi_map[album_id] 中的下标；每次只水合一条
+## 用 root_node.add_sibling 插到专辑根之后，保证专辑块在列表中保持连续
+## 返回 Array[Node]（已 add_child）；返回 null 请求中止构建
+func _create_midi_album_child(slot_index: int, album_id: String) -> Variant:
+	if _current_tab != Tab.MIDI:
+		return null  # 请求中止
+	var root_node: HBoxContainer = _midi_root_map.get(album_id)
+	if not root_node:
+		return null
+	var slots: Array = _midi_album_midi_map.get(album_id, [])
+	if slot_index < 0 or slot_index >= slots.size():
+		return null
+	var midi_key := String(slots[slot_index])
+	if _midi_item_map.has(midi_key):
+		return []  # 已存在（取消后重入续建），跳过
+	var midi: MidiData = DataMGR.get_midi_by_id(midi_key)
+	if not midi:
+		return null
+
+	var author := midi.artist_name if not midi.artist_name.is_empty() else "-"
+	var item_node := _create_tree_item("    %s" % midi.name, author)
+	# 插到专辑根之后（add_sibling = 紧随其后），折叠态时隐藏
+	root_node.add_sibling(item_node)
+	item_node.visible = not bool(root_node.get_meta("collapsed", false))
+	_midi_item_map[midi_key] = item_node
+
+	var item_cb := item_node.get_node("CheckBox") as CheckBox
+	item_cb.set_pressed_no_signal(_midi_selected.get(midi_key, false))
+	item_cb.toggled.connect(_on_midi_item_checkbox_toggled.bind(midi_key, album_id))
+	return [item_node]
+
+
+## 为指定专辑（或一组）构建子项：单线程顺序构建，每 20 条让一帧，单帧负载有界
+## 工厂幂等（已存在节点跳过），被取消后可安全重入续建（不重复）
+func _build_albums_children(album_ids: Array) -> void:
+	_midi_children_gen += 1
+	var my_gen := _midi_children_gen
+	var built := 0
+	for album_id in album_ids:
+		if my_gen != _midi_children_gen:
+			return  # 被新的子项构建取代
+		if _current_tab != Tab.MIDI:
+			return
+		if _midi_album_loaded.get(album_id, false):
+			continue
+		var slots: Array = _midi_album_midi_map.get(album_id, [])
+		if slots.is_empty():
+			_midi_album_loaded[album_id] = true
+			continue
+		var album_done := true
+		for slot in slots.size():
+			if my_gen != _midi_children_gen:
+				return
+			if _current_tab != Tab.MIDI:
+				return
+			if _create_midi_album_child(slot, album_id) == null:
+				album_done = false
+				break
+			built += 1
+			if built % 20 == 0:
+				await get_tree().process_frame
+		if album_done:
+			_midi_album_loaded[album_id] = true
+	await _apply_scrolls_to_container(_midi_list)
+
+
+## 展开单个专辑：开始构建其子项（fire-and-forget）
+func _start_load_album_children(album_id: String) -> void:
+	_build_albums_children([album_id])
+
+
+## 「展开全部」：顺序构建所有未加载专辑的子项（fire-and-forget）
+func _load_all_midi_children() -> void:
+	_build_albums_children(_midi_root_map.keys())
+
+
+## 取消所有在途的子项构建（重建/删除/退出时调用）
+func _cancel_all_expand_loaders() -> void:
+	_midi_children_gen += 1
 
 
 func _on_data_loaded() -> void:
@@ -549,9 +662,10 @@ func _on_midi_delete_selected() -> void:
 
 	# 取消进行中的 build，避免删除过程中工厂继续往已清空的容器写入
 	_midi_loader.cancel()
+	_cancel_all_expand_loaders()
 
 	# 先清空页面（视觉即时反馈）
-	_clear_page(_midi_list, [_midi_root_map, _midi_item_map])
+	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_album_loaded])
 	_midi_album_order.clear()
 	_midi_album_midi_map.clear()
 	_midi_selected.clear()
@@ -563,13 +677,16 @@ func _on_midi_delete_selected() -> void:
 	_search_query = ""
 	_midi_search_flat = false
 
+	# 批量删除：文件逐个删（每 3 个让一帧），DB 一次性提交（单锁 + 单次聚合重建）
+	var removed := await FileSystemManager.instance.delete_charts_batch(to_delete)
+	for midi_id in removed:
+		DataMGR.remove_midi(midi_id)
 	for midi_id in to_delete:
-		if FileSystemManager.instance.delete_chart(midi_id):
-			DataMGR.remove_midi(midi_id)
-			# 通知其他视图刷新
-			EvtBus.midi_deleted.emit(midi_id)
-		else:
+		if not removed.has(midi_id):
 			push_error("[DelView] 删除失败: %s" % midi_id)
+	if not removed.is_empty():
+		# 聚合通知一次，避免逐 id 触发 N 次视图刷新/收藏夹写盘
+		EvtBus.midis_deleted.emit(removed)
 
 	await get_tree().process_frame
 	_build_midi_page()
@@ -1193,6 +1310,9 @@ func _on_collapse_toggled(toggled: bool) -> void:
 			for album_id in _midi_root_map:
 				var root_node: HBoxContainer = _midi_root_map[album_id]
 				root_node.set_meta("collapsed", toggled)
+			if not toggled:
+				# 展开全部：加载所有未加载的专辑子项（fire-and-forget）
+				_load_all_midi_children()
 			_apply_collapse_visibility(_midi_list)
 		Tab.AUDIO:
 			for song_name in _audio_root_map:
@@ -1229,21 +1349,25 @@ func _toggle_root_collapse(root_node: HBoxContainer) -> void:
 	root_node.set_meta("collapsed", new_state)
 
 	var list_container := root_node.get_parent() as VBoxContainer
-	if not list_container:
-		return
+	if list_container:
+		var children := list_container.get_children()
+		var found_self := false
+		for child in children:
+			if child == root_node:
+				found_self = true
+				continue
+			if not found_self:
+				continue
+			# 遇到下一个 TreeRoot（有 collapsed meta）时停止
+			if child.has_meta("collapsed"):
+				break
+			child.visible = not new_state  # collapsed=true → visible=false
 
-	var children := list_container.get_children()
-	var found_self := false
-	for child in children:
-		if child == root_node:
-			found_self = true
-			continue
-		if not found_self:
-			continue
-		# 遇到下一个 TreeRoot（有 collapsed meta）时停止
-		if child.has_meta("collapsed"):
-			break
-		child.visible = not new_state  # collapsed=true → visible=false
+	# 展开且子项未加载 → 开始懒加载（新增子项由工厂按 collapsed 态设置可见性）
+	if not new_state:
+		var album_id := String(root_node.get_meta("group_id", ""))
+		if not album_id.is_empty() and not _midi_album_loaded.get(album_id, false):
+			_start_load_album_children(album_id)
 
 
 func _apply_collapse_visibility(list_container: VBoxContainer) -> void:
@@ -1332,7 +1456,8 @@ func _apply_midi_search_filter() -> void:
 func _search_midi_flat() -> void:
 	_tab_data_built[Tab.MIDI] = false
 	_midi_loader.cancel()
-	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_album_order, _midi_album_midi_map, _midi_selected])
+	_cancel_all_expand_loaders()
+	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_album_order, _midi_album_midi_map, _midi_selected, _midi_album_loaded])
 	_update_item_sum("搜索中...")
 	_update_midi_toggle_state()
 

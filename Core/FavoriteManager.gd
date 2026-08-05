@@ -18,6 +18,7 @@ func _ready() -> void:
 	instance = self
 	EvtBus.data_loaded_complete.connect(_on_data_loaded_complete)
 	EvtBus.midi_deleted.connect(_on_midi_deleted)
+	EvtBus.midis_deleted.connect(_on_midis_deleted)
 	# 先加载收藏夹数据（不依赖 DataManager）
 	_load_favorites()
 	# 提前通知 UI 加载收藏夹列表（无需等待 MIDI 扫描完成）
@@ -99,11 +100,20 @@ func _validate_favorites() -> void:
 
 ## MIDI 删除时同步清理收藏夹中的引用
 func _on_midi_deleted(midi_id: String) -> void:
+	_erase_ids_from_favorites([midi_id])
+
+## 批量 MIDI 删除时同步清理收藏夹中的引用（一次写盘，避免逐 id N 次 _save_favorites）
+func _on_midis_deleted(midi_ids: Array) -> void:
+	_erase_ids_from_favorites(midi_ids)
+
+## 从所有收藏夹中擦除指定 id（单条/批量共用；有变更才写盘一次）
+func _erase_ids_from_favorites(ids: Array) -> void:
 	var changed := false
 	for fav in favorites:
 		var original_size := fav.midi_ids.size()
-		# midi_id 可能是 id 或 file_hash（取决于 emit 处），多次 erase 安全
-		fav.midi_ids.erase(midi_id)
+		for midi_id in ids:
+			# midi_id 可能是 id 或 file_hash（取决于 emit 处），多次 erase 安全
+			fav.midi_ids.erase(midi_id)
 		if fav.midi_ids.size() != original_size:
 			changed = true
 	if changed:

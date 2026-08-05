@@ -28,6 +28,8 @@ signal theme_changed(theme_name: String)
 
 ## ========== 文件系统事件 ==========
 signal midi_deleted(midi_id: String)
+## 批量删除谱面（DelView 批量删除用，聚合一次通知，避免逐 id 触发 N 次视图刷新/收藏夹写盘）
+signal midis_deleted(midi_ids: Array)
 ## charts 扫描缓存后台校验完成
 ## 参数：是否有变化（true 时 UI 应刷新列表）
 ## 启动时先从缓存恢复 charts_index 让用户立即操作，后台 worker 校验文件状态

@@ -1460,6 +1460,10 @@ func get_settings_directory() -> String:
 
 ## 通过 chart_id/hash 查找 charts_index 条目（O(1)反向索引，未命中时回退到线性扫描）
 func _lookup_chart(chart_id: String) -> Dictionary:
+	# folder_name 直达（chart 文档 _id，与 C# LookupChartKey 别名漏斗第一项一致；
+	# DelView 懒加载以 folder_name 作 key 收集/删除，需支持）
+	if charts_index.has(chart_id):
+		return {"folder_name": chart_id, "metadata": charts_index[chart_id]}
 	if not _chart_id_to_folder.is_empty():
 		if _chart_id_to_folder.has(chart_id):
 			var fn: String = _chart_id_to_folder[chart_id]
@@ -1808,10 +1812,45 @@ func find_files_in_dir(dir_path: String, pattern: String) -> PackedStringArray:
 ## 删除谱面及其全部关联资源，并同步清理所有相关索引
 ## 返回: 是否成功
 func delete_chart(chart_id: String) -> bool:
+	var info := _delete_single_chart_files(chart_id)
+	if info.is_empty():
+		return false
+	# 同步移除 DB 中的 chart（含 chart_runtime + 聚合重算），修复原删除残留缓存的洞
+	if ChartDB and ChartDB.IsOpen():
+		ChartDB.RemoveChart(info["meta"].id)
+	clear_cover_cache()
+	GLogger.info("Deleted chart: %s (folder: %s)" % [chart_id, info["folder_name"]], "FileSystemMGR")
+	return true
+
+## 批量删除谱面（DelView 批量删除用）：逐条删目录 + 清内存索引，最后一次性写 DB
+## （单锁 + 单次 RebuildAlbumsSongs，替代逐条 RemoveChart 的 N 次全量聚合重建）
+## 每 3 条让一帧，避免大批量删除时主线程长时间无响应
+## 返回: 成功删除的 chart_id 数组
+func delete_charts_batch(chart_ids: Array) -> Array:
+	var removed: Array = []
+	var db_keys: Array = []
+	var i := 0
+	for chart_id in chart_ids:
+		var info := _delete_single_chart_files(chart_id)
+		if not info.is_empty():
+			removed.append(chart_id)
+			db_keys.append(info["meta"].id)
+		i += 1
+		if i % 3 == 0:
+			await get_tree().process_frame
+	if ChartDB and ChartDB.IsOpen() and not db_keys.is_empty():
+		ChartDB.RemoveCharts(db_keys)
+	clear_cover_cache()
+	GLogger.info("Batch deleted %d charts" % removed.size(), "FileSystemMGR")
+	return removed
+
+## 删除单个谱面的文件目录 + 清内存索引（不触碰 DB；DB 由调用方单次/批量提交）
+## 返回: {"folder_name", "meta"}；未找到或删除失败返回空字典
+func _delete_single_chart_files(chart_id: String) -> Dictionary:
 	var result = _lookup_chart(chart_id)
 	if result.is_empty():
 		GLogger.warning("delete_chart: chart not found: %s" % chart_id, "FileSystemMGR")
-		return false
+		return {}
 
 	var folder_name: String = result["folder_name"]
 	var meta: ChartMetadata = result["metadata"]
@@ -1824,19 +1863,14 @@ func delete_chart(chart_id: String) -> bool:
 
 	# 删除目录
 	if not delete_directory_recursive(folder_path):
-		return false
+		return {}
 
 	# 从 charts_index 移除
 	_chart_id_to_folder.erase(meta.id)
 	_hash_to_folder.erase(meta.hash)
 	_hash_to_folder.erase(meta.file_hash)
 	charts_index.erase(folder_name)
-	# 同步移除 DB 中的 chart（含 chart_runtime + 聚合重算），修复原删除残留缓存的洞
-	if ChartDB and ChartDB.IsOpen():
-		ChartDB.RemoveChart(meta.id)
-	clear_cover_cache()
-	GLogger.info("Deleted chart: %s (folder: %s)" % [chart_id, folder_name], "FileSystemMGR")
-	return true
+	return {"folder_name": folder_name, "meta": meta}
 
 ## 删除音频文件，并从 audio_files_index 移除
 func delete_audio(file_path: String) -> bool:

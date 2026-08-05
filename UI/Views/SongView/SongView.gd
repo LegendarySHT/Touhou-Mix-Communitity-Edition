@@ -35,6 +35,7 @@ func _ready() -> void:
 	# 连接事件
 	event_bus.album_selected.connect(_load_songs)
 	event_bus.midi_deleted.connect(func(_id): if not current_album_id.is_empty(): _load_songs(current_album_id))
+	event_bus.midis_deleted.connect(func(_ids): if not current_album_id.is_empty(): _load_songs(current_album_id))
 	# 回到 SongView 时自动刷新，确保删除等操作后数据最新
 	# 但 _load_songs 已处理首次进入和 album_selected 触发的场景，
 	# 需跳过冗余重建避免封面加载被中断
