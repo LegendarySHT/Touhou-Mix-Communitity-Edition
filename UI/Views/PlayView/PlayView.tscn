@@ -17,7 +17,7 @@ fill_to = Vector2(1, 1)
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_uj6qe"]
 color = Color(2, 2, 2, 1)
-thickness = 10
+thickness = 2
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kvdpo"]
 bg_color = Color(0.25336733, 0.36870298, 0.8464057, 1)

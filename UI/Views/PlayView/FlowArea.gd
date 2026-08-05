@@ -179,7 +179,8 @@ func init_flow_area():
 		lane_width = max(1.0, (safe_width - mid_gap - float(note_visual_width)) / float(lc - 1))
 	
 	# 设置判定线位置
-	jl.position.y = get_viewport().get_visible_rect().size.y - parent_node.judge_line_offset_y
+	_apply_judge_line_thickness()
+	_apply_judge_line_position()
 	
 	# 配置初始化
 	spark_presets["Perfect"] = ConfigManager.instance.get_int("Lane", "perfect_spark_preset", 0)
@@ -206,6 +207,21 @@ func init_flow_area():
 	# 预计算下落距离和速度
 	_note_fall_distance = jl.position.y + _note_max_size_y
 	_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
+
+func _apply_judge_line_position() -> void:
+	var viewport_height: float = get_viewport().get_visible_rect().size.y
+	var offset: int = parent_node.judge_line_offset_y if parent_node else 200
+	jl.position.y = viewport_height - max(0, offset)
+	_note_fall_distance = jl.position.y + _note_max_size_y
+	_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
+
+func _apply_judge_line_thickness() -> void:
+	var thickness : int = max(1, ConfigManager.instance.get_int("Appearance", "judge_line_thickness", 2))
+	var base_style: StyleBox = jl.get_theme_stylebox("separator")
+	if base_style is StyleBoxLine:
+		var line_style: StyleBoxLine = (base_style as StyleBoxLine).duplicate() as StyleBoxLine
+		line_style.thickness = thickness
+		jl.add_theme_stylebox_override("separator", line_style)
 
 func _apply_note_fall_config_from_settings() -> void:
 	var note_fall_time = ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
@@ -263,6 +279,9 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		if key == "touch_judging_criteria":
 			judge_mode = int(value)
 			return
+		if key == "judge_line_position":
+			_apply_judge_line_position()
+			return
 		if key == "block_judging_width":
 			# 需要重新计算音符尺寸
 			_recalculate_note_dimensions()
@@ -273,6 +292,10 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		if key == "only_perfect_instant_blocks_before_judge":
 			only_perfect_slides = int(value) == 1
 			return
+
+	if section == "Appearance" and key == "judge_line_thickness":
+		_apply_judge_line_thickness()
+		return
 
 	if section == "Appearance" and key == "block_size":
 		# 需要重新计算音符尺寸

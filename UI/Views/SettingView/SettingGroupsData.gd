@@ -391,7 +391,15 @@ static func get_setting_groups() -> Array:
 				"description": "调整判定线距离屏幕底部的距离",
 				"type": "TYPE_LINE_EDIT",
 				"default_value": "200",
-				"not_implemented": true,
+				"unit": "px"
+			},
+			{
+				"id": "judge_line_thickness",
+				"name_en": "Judge Line Thickness",
+				"name_zh": "判定线宽度",
+				"description": "调整判定线厚度，不影响判定，只影响外观",
+				"type": "TYPE_LINE_EDIT",
+				"default_value": "2",
 				"unit": "px"
 			},
 			{
@@ -724,16 +732,6 @@ static func get_setting_groups() -> Array:
 				"type": "TYPE_COLOR",
 				"edit_alpha": true,
 				"default_value": "#000000FF"
-			},
-			{
-				"id": "judge_line_thickness",
-				"name_en": "Judge Line Thickness",
-				"name_zh": "判定线粗细",
-				"description": "调整判定线厚度，不影响判定，只影响外观",
-				"type": "TYPE_LINE_EDIT",
-				"default_value": "2",
-				"not_implemented": true,
-				"unit": "px"
 			},
 			{
 				"id": "generate_short_connect",

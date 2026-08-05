@@ -776,6 +776,8 @@ func _load_lane_parameters() -> void:
 	lane_count = config_mgr.get_int("Lane", "lane_count", 12)
 	# 加载左右安全区（默认100）
 	lane_padding = config_mgr.get_int("Judge", "canvas_horizontal_padding", 100)
+	# 加载判定线高度（默认200）
+	judge_line_offset_y = max(0, config_mgr.get_int("Judge", "judge_line_position", 200))
 	
 	# 加载键盘模式（0=关闭，1=开启，默认0）
 	keyboard_mode = config_mgr.get_int("Lane", "keyboard_mode", 0) == 1
@@ -823,6 +825,15 @@ func _on_lane_config_changed(key: String, section: String, value: Variant) -> vo
 		return
 	
 	var should_reinit = false
+
+	if section == "Judge" and key == "judge_line_position":
+		var new_offset : int = max(0, int(value))
+		if new_offset != judge_line_offset_y:
+			judge_line_offset_y = new_offset
+			should_reinit = true
+			if flow_area and flow_area.has_method("_apply_judge_line_position"):
+				flow_area._apply_judge_line_position()
+			GLogger.info("PlayView judge_line_offset_y updated: %d" % judge_line_offset_y, "PlayView")
 
 	if section == "Judge" and key == "canvas_horizontal_padding":
 		var new_lane_padding = int(value)

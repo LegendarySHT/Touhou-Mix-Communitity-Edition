@@ -233,6 +233,8 @@ static func validate_value(setting_id: String, value: Variant) -> bool:
 			return int(value) >= 0
 		"judge_line_position":
 			return int(value) >= 0
+		"judge_line_thickness":
+			return int(value) >= 1 and int(value) <= 32
 		"block_judging_width":
 			return float(value) > 0.0
 		"perfect_time", "great_time", "good_time", "bad_time":
