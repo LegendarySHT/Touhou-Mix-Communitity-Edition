@@ -79,13 +79,16 @@ static func _parse_direct_recommendation(description: String) -> Array[int]:
 	return _extract_track_numbers(content)
 
 
-## 解析基于难度的推荐（"XX版：...开启Track..."），返回难度数组
+## 解析基于难度的推荐（"XX版：...Track..."），返回难度数组
 ## 支持写法:
 ##   普通版：开启Track1.
 ##   困难版：开启Track1,2.
 ##   标准版：开启Track2，Track10，Track11，Track12。
 ##   简易版：选用Lunatic 开启Track8，Track10，Track12。
+##   简单版：Track3,6,12,16,19,22,27,33,34          (无"开启"关键字，仅 Track 列表)
+##   普通版：Track3,6,7,9,12,16,19,20,22,27,33
 ## 按文本出现顺序返回所有难度，调用方只取第一个
+## "开启"为可选关键字：当存在时从其后提取数字，否则从冒号后整段提取
 static func _parse_difficulty_recommendations(description: String) -> Array:
 	var difficulties: Array = []
 	var regex := RegEx.new()
@@ -101,11 +104,12 @@ static func _parse_difficulty_recommendations(description: String) -> Array:
 			continue
 		var name := match.get_string(1).strip_edges()
 		var rest := match.get_string(2)
-		# 必须包含 "开启" 才视为难度推荐行
+		# "开启" 为可选关键字：存在时仅取其后内容，避免误把前缀词数字当轨道号
+		# 不存在时直接从 rest 起始提取（支持 "简单版：Track3,6,12" 这类省略写法）
+		var track_content := rest
 		var kai_idx := rest.find("开启")
-		if kai_idx < 0:
-			continue
-		var track_content := rest.substr(kai_idx + 2)
+		if kai_idx >= 0:
+			track_content = rest.substr(kai_idx + 2)
 		var tracks := _extract_track_numbers(track_content)
 		if not tracks.is_empty():
 			difficulties.append({"name": name, "tracks": tracks})
