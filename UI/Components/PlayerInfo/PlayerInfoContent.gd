@@ -148,6 +148,8 @@ func _sync_from_auth() -> void:
 		populate_profile()
 		populate_mini_info()
 		profile_page.update_display(_player_data)
+		# 清空历史列表（退出登录时）
+		profile_page.clear_history_lists()
 
 ## 异步拉取用户资料（昵称/简介/头像）并刷新显示
 func _fetch_profile_and_stats_async() -> void:
@@ -192,6 +194,8 @@ func _fetch_stats_async() -> void:
 	populate_profile()
 	populate_mini_info()
 	profile_page.update_display(_player_data)
+	# 通知 ProfilePage 刷新历史列表（成绩上传后会触发此路径）
+	profile_page.refresh_history_lists()
 	# 通知外部视图（如 ScoreView）统计已刷新，可同步更新显示
 	stats_refreshed.emit()
 

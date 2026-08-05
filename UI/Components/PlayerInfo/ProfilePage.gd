@@ -22,6 +22,11 @@ signal avatar_loaded(texture: Texture2D)
 @onready var best_play_btn: Button = $PC/PageContent/History/PC/TopBar/TopBtns/BestPlay
 @onready var most_play_btn: Button = $PC/PageContent/History/PC/TopBar/TopBtns/MostPlay
 
+# ========== History 页三个列表的 VBox 容器 ==========
+@onready var recent_list_vbox: VBoxContainer = $PC/PageContent/History/List/RecentPlay/VBox
+@onready var best_list_vbox: VBoxContainer = $PC/PageContent/History/List/BestPlay/VBox
+@onready var most_list_vbox: VBoxContainer = $PC/PageContent/History/List/MostPlay/VBox
+
 # ========== Profile 页显示节点 ==========
 @onready var profile_name_label: Label = $PC/PageContent/Profile/Main/Header/HBoxContainer/NameLevelVBox/NameLabel
 @onready var profile_pp_label: Label = $PC/PageContent/Profile/Main/Header/HBoxContainer/NameLevelVBox/Level/PPLabel
@@ -66,12 +71,24 @@ const LIST_RECENT := 0
 const LIST_BEST := 1
 const LIST_MOST := 2
 
+# 记录列表项场景（preload 避免每次加载）
+const RECORD_ITEM_SCENE := preload("res://UI/Components/PlayerInfo/recordListItem.tscn")
+# 单页记录数
+const RECORD_PAGE_LIMIT := 20
+
 ## 操作进行中（防止重复点击）
 var _busy: bool = false
 ## 头像 FileDialog（运行时创建）
 var _avatar_file_dialog: FileDialog = null
 ## 头像图片 HTTP 加载请求（避免重复加载）
 var _avatar_load_token: int = 0
+
+# 三个列表的懒加载状态标记
+var _recent_loaded: bool = false
+var _best_loaded: bool = false
+var _most_loaded: bool = false
+# 列表加载进行中（防止重复请求）
+var _history_loading: bool = false
 
 func _ready() -> void:
 	navi_profile_btn.pressed.connect(_on_navi_profile_pressed)
@@ -184,12 +201,18 @@ func _sync_navi_selection(tab_idx: int) -> void:
 
 func _on_recent_play_pressed() -> void:
 	_switch_history_list(LIST_RECENT, recent_play_btn)
+	if not _recent_loaded:
+		_load_recent_scores()
 
 func _on_best_play_pressed() -> void:
 	_switch_history_list(LIST_BEST, best_play_btn)
+	if not _best_loaded:
+		_load_best_scores()
 
 func _on_most_play_pressed() -> void:
 	_switch_history_list(LIST_MOST, most_play_btn)
+	if not _most_loaded:
+		_load_most_played()
 
 ## 切换 History/List 的 tab，并把激活按钮 z_index 抬到 1，其余压回 0
 ## 避免相邻按钮 stylebox 超边界部分被遮挡
@@ -422,3 +445,97 @@ func _on_avatar_file_selected(path: String) -> void:
 		profile_updated.emit()
 	else:
 		GLogger.warning("Avatar upload failed: %s" % str(result.get("error", "")), "ProfilePage")
+
+# ========== History 页成绩列表加载 ==========
+
+## 加载最近游玩记录
+func _load_recent_scores() -> void:
+	if _history_loading:
+		return
+	if AuthManager.instance == null or not AuthManager.instance.is_logged_in:
+		return
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		return
+	_history_loading = true
+	var result: Dictionary = await AuthManager.instance.get_recent_scores(RECORD_PAGE_LIMIT, 0)
+	_history_loading = false
+	if not is_instance_valid(self):
+		return
+	if not result.get("ok", false) or not result.data is Dictionary:
+		GLogger.warning("Failed to load recent scores: %s" % str(result.get("error", "")), "ProfilePage")
+		return
+	_populate_records(recent_list_vbox, result.data.get("records", []), RecordListItem.RecordMode.RECENT)
+	_recent_loaded = true
+
+## 加载最佳记录（按 MIDI 去重）
+func _load_best_scores() -> void:
+	if _history_loading:
+		return
+	if AuthManager.instance == null or not AuthManager.instance.is_logged_in:
+		return
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		return
+	_history_loading = true
+	var result: Dictionary = await AuthManager.instance.get_best_scores(RECORD_PAGE_LIMIT, 0)
+	_history_loading = false
+	if not is_instance_valid(self):
+		return
+	if not result.get("ok", false) or not result.data is Dictionary:
+		GLogger.warning("Failed to load best scores: %s" % str(result.get("error", "")), "ProfilePage")
+		return
+	_populate_records(best_list_vbox, result.data.get("records", []), RecordListItem.RecordMode.BEST)
+	_best_loaded = true
+
+## 加载最多游玩记录
+func _load_most_played() -> void:
+	if _history_loading:
+		return
+	if AuthManager.instance == null or not AuthManager.instance.is_logged_in:
+		return
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		return
+	_history_loading = true
+	var result: Dictionary = await AuthManager.instance.get_most_played(RECORD_PAGE_LIMIT, 0)
+	_history_loading = false
+	if not is_instance_valid(self):
+		return
+	if not result.get("ok", false) or not result.data is Dictionary:
+		GLogger.warning("Failed to load most played: %s" % str(result.get("error", "")), "ProfilePage")
+		return
+	_populate_records(most_list_vbox, result.data.get("records", []), RecordListItem.RecordMode.MOST)
+	_most_loaded = true
+
+## 清空 VBox 并填充记录项
+func _populate_records(vbox: VBoxContainer, records: Array, mode: int) -> void:
+	for child in vbox.get_children():
+		child.queue_free()
+	for record in records:
+		var item := RECORD_ITEM_SCENE.instantiate() as RecordListItem
+		vbox.add_child(item)
+		item.setup_record(record, mode)
+
+## 刷新所有历史列表（成绩上传后调用）：清空已加载标记并重新加载当前 Tab
+func refresh_history_lists() -> void:
+	_recent_loaded = false
+	_best_loaded = false
+	_most_loaded = false
+	# 重新加载当前可见的 Tab
+	match history_list.current_tab:
+		LIST_RECENT:
+			_load_recent_scores()
+		LIST_BEST:
+			_load_best_scores()
+		LIST_MOST:
+			_load_most_played()
+
+## 清空所有历史列表（退出登录时调用）
+func clear_history_lists() -> void:
+	for child in recent_list_vbox.get_children():
+		child.queue_free()
+	for child in best_list_vbox.get_children():
+		child.queue_free()
+	for child in most_list_vbox.get_children():
+		child.queue_free()
+	_recent_loaded = false
+	_best_loaded = false
+	_most_loaded = false

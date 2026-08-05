@@ -216,3 +216,15 @@ func upload_avatar(image_base64: String, content_type: String = "") -> Dictionar
 ## 获取当前用户统计：GET /api/users/me/stats
 func get_user_stats() -> Dictionary:
 	return await authed_request("GET", "/api/users/me/stats")
+
+## 获取最近游玩记录：GET /api/users/me/scores/recent?limit=&offset=
+func get_recent_scores(limit: int = 20, offset: int = 0) -> Dictionary:
+	return await authed_request("GET", "/api/users/me/scores/recent?limit=%d&offset=%d" % [limit, offset])
+
+## 获取最佳记录（按 MIDI 去重）：GET /api/users/me/scores/best?limit=&offset=
+func get_best_scores(limit: int = 20, offset: int = 0) -> Dictionary:
+	return await authed_request("GET", "/api/users/me/scores/best?limit=%d&offset=%d" % [limit, offset])
+
+## 获取最多游玩：GET /api/users/me/scores/most?limit=&offset=
+func get_most_played(limit: int = 20, offset: int = 0) -> Dictionary:
+	return await authed_request("GET", "/api/users/me/scores/most?limit=%d&offset=%d" % [limit, offset])

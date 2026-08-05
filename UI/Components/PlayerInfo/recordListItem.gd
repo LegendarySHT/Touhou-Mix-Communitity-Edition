@@ -10,6 +10,7 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 enum RecordMode { RECENT, BEST, MOST }
 
 # ========== 显示节点 ==========
+@onready var cover_rect: TextureRect = $HBox/Cover
 @onready var midi_name_label: Label = $HBox/Info/MidiName
 @onready var midi_author_label: Label = $HBox/Info/MidiAuthor
 @onready var date_label: Label = $HBox/Info/Date
@@ -25,6 +26,8 @@ enum RecordMode { RECENT, BEST, MOST }
 
 ## 当前列表类型：决定 MainInfo 显示内容与 PP 标签可见性
 var record_mode: int = RecordMode.RECENT
+## 当前记录的 MidiHash（用于下载封面）
+var _midi_hash: String = ""
 
 ## 文字滚动状态（MidiName / MidiAuthor 各一，TextScrollHelper）
 var _midi_name_scroll_state: TextScrollHelper.State = null
@@ -50,6 +53,8 @@ func setup_record(data: Dictionary, mode: int = -1) -> void:
 	if mode >= 0:
 		record_mode = mode
 
+	_midi_hash = str(data.get("midiHash", ""))
+
 	midi_name_label.text = _pick_str(data, ["midiName", "songName"], "—")
 	midi_author_label.text = _pick_str(data, ["authorName"], "—")
 	date_label.text = _format_played_at(_pick_str(data, ["playedAt"], ""))
@@ -70,12 +75,49 @@ func setup_record(data: Dictionary, mode: int = -1) -> void:
 
 	_update_main_info(pp, int(data.get("playCount", 0)))
 
+	# 加载远程封面（仅当 Chart 存在封面时）
+	if bool(data.get("hasCover", false)) and not _midi_hash.is_empty():
+		_load_remote_cover(_midi_hash)
+
 	# 文本变化后重算滚动（名称/作者过长时来回滚动）
 	call_deferred("_setup_text_scrolls")
 
 ## 设置中途退出（W 评级）状态：整体半透明以区分正常完成记录
 func set_withdraw_state(withdraw: bool) -> void:
 	modulate.a = 0.4 if withdraw else 1.0
+
+## 从服务端加载曲包封面（GET /api/charts/{hash}/cover）
+func _load_remote_cover(hash: String) -> void:
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		return
+	# 先隐藏默认封面，避免加载失败时显示占位图
+	cover_rect.texture = null
+	var cover_url := "%s/api/charts/%s/cover" % [NetManager.instance.server_url, hash]
+	var http := HTTPRequest.new()
+	add_child(http)
+	var err := http.request(cover_url)
+	if err != OK:
+		http.queue_free()
+		return
+	var resp = await http.request_completed
+	http.queue_free()
+	if not is_instance_valid(self):
+		return
+	var result_code = resp[0]
+	var response_code = resp[1]
+	var response_body = resp[3]
+	if result_code != HTTPRequest.RESULT_SUCCESS or response_code != 200:
+		return
+	if not response_body is PackedByteArray or response_body.size() == 0:
+		return
+	var image := Image.new()
+	var err_img := image.load_jpg_from_buffer(response_body)
+	if err_img != OK:
+		err_img = image.load_png_from_buffer(response_body)
+	if err_img != OK:
+		return
+	var tex := ImageTexture.create_from_image(image)
+	cover_rect.texture = tex
 
 # ========== 文字滚动（TextScrollHelper） ==========
 
