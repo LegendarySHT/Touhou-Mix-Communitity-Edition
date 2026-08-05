@@ -1378,6 +1378,9 @@ public partial class MeltySynthPlayer : Node
 		_virtualChannelCc10.Clear();
 		_virtualChannelPitchBend.Clear();
 		_channelStateAppliedToManual.Clear();
+		// 清理手动控制音符过滤器，防止上一首歌的 manual control 标记残留到新歌
+		// PlayView._finish_generate_game_sequences 会根据 play_mode 重新下发
+		_manualNoteFilters.Clear();
 		// GD.Print($"[MeltySynthPlayer] MIDI file loaded, cleared instrument overrides, _sequencerStarted reset to false");
 		// 注意：不在这里调用 Play()，而是等待明确的 play() 调用
 		// 这样可以与 MidiPlayer (Addon) 的行为保持一致

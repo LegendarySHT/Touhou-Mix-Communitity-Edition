@@ -348,12 +348,12 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		return
 
 	if section == "Playback" and key == "performing_mode":
-		var new_mode = (value as int) == 1
-		
+		var new_mode = int(value) == 1
+
 		# 只在值实际改变时处理
 		if new_mode == play_mode:
 			return
-		
+
 		play_mode = new_mode
 		
 		if play_mode:
@@ -950,9 +950,8 @@ func _reinit_lane_display() -> void:
 
 ## 从配置加载演奏模式设置
 func _load_play_mode_setting() -> void:
-	# 可以从配置文件读取演奏模式设置
-	# 临时使用默认值 true（演奏模式开启）
-	play_mode = true
+	var performing_mode = ConfigManager.instance.get_int("Playback", "performing_mode", 1)
+	play_mode = (performing_mode == 1)
 	GLogger.info("PlayView play mode: %s" % ("ON" if play_mode else "OFF"), "PlayView")
 
 ## 应用TrackView中保存的MIDI运行时配置（音量、静音、独奏等）
