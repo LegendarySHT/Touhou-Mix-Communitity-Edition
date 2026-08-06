@@ -302,6 +302,10 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 
 	elif event is InputEventKey and event.pressed:
+		# 文本输入控件获得焦点时，不拦截键盘事件，允许正常输入字母
+		var focused = get_viewport().gui_get_focus_owner()
+		if focused is LineEdit or focused is TextEdit:
+			return
 		if event.keycode in [KEY_W, KEY_S]:
 			var evt = InputEventKey.new()
 			if event.keycode == KEY_W:

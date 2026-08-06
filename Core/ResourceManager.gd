@@ -31,13 +31,17 @@ func _refresh_local_states() -> void:
 
 # ========== MIDI 资源 API ==========
 
-## 获取 MIDI 列表（分页+搜索）
+## 获取 MIDI 列表（分页 + 搜索 + 排序）
+## sort: uploaded_at(默认) | duration
+## order: desc(默认) | asc
 ## 返回 {ok, data: {charts: [], total: int}}
-func get_chart_list(page: int = 1, limit: int = 20, search: String = "") -> Dictionary:
+func get_chart_list(page: int = 1, limit: int = 20, search: String = "",
+		sort: String = "", order: String = "") -> Dictionary:
 	if NetManager.instance == null or not NetManager.instance.is_online:
 		return {"ok": false, "error": "offline"}
-	var url := "%s/api/charts?page=%d&limit=%d&search=%s" % [
-		NetManager.instance.server_url, page, limit, search.uri_encode()
+	var url := "%s/api/charts?page=%d&limit=%d&search=%s&sort=%s&order=%s" % [
+		NetManager.instance.server_url, page, limit,
+		search.uri_encode(), sort.uri_encode(), order.uri_encode()
 	]
 	return await NetManager.instance._request("GET", url, null)
 

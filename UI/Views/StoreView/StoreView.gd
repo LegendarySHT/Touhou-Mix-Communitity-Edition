@@ -18,6 +18,12 @@ var _total_charts: int = 0
 var _page_limit: int = 20
 var _is_loading: bool = false
 
+# 搜索 / 排序状态
+var _current_search: String = ""
+var _current_sort: String = "uploaded_at"   # uploaded_at | duration
+var _current_order: String = "desc"          # asc | desc
+var _search_debounce: SceneTreeTimer = null
+
 ## 提示信息 Label（离线/连接失败/加载失败时显示在内容区域中央，替代本地示例数据）
 var _message_label: Label = null
 
@@ -42,6 +48,20 @@ func _ready() -> void:
 		previ_btn.pressed.connect(_on_previ_pressed)
 	if next_btn and not next_btn.pressed.is_connected(_on_next_pressed):
 		next_btn.pressed.connect(_on_next_pressed)
+
+	# 连接搜索 / 排序控件（TopBar 内）
+	var line_edit := _top_bar.get_node_or_null("C/Search/HBoxC/LineEdit") as LineEdit
+	if line_edit:
+		if not line_edit.text_changed.is_connected(_on_search_text_changed):
+			line_edit.text_changed.connect(_on_search_text_changed)
+		if not line_edit.text_submitted.is_connected(_on_search_text_submitted):
+			line_edit.text_submitted.connect(_on_search_text_submitted)
+	var filter_btn := _top_bar.get_node_or_null("C/FilterBtn") as OptionButton
+	if filter_btn and not filter_btn.item_selected.is_connected(_on_filter_selected):
+		filter_btn.item_selected.connect(_on_filter_selected)
+	var order_btn := _top_bar.get_node_or_null("C/HBoxC/OrderBtn") as TextureButton
+	if order_btn and not order_btn.pressed.is_connected(_on_order_pressed):
+		order_btn.pressed.connect(_on_order_pressed)
 
 	_load_remote_charts()
 
@@ -122,7 +142,10 @@ func _load_remote_charts() -> void:
 		_is_loading = false
 		return
 
-	var result: Dictionary = await ResMGR.get_chart_list(_current_page, _page_limit, "")
+	var result: Dictionary = await ResMGR.get_chart_list(
+		_current_page, _page_limit, _current_search,
+		_current_sort, _current_order
+	)
 
 	if not result.get("ok", false):
 		# 远程加载失败
@@ -328,3 +351,43 @@ func _on_next_pressed() -> void:
 	if _current_page < total_pages:
 		_current_page += 1
 		_load_remote_charts()
+
+## 搜索输入回调（防抖 300ms，避免每次按键都打后端）
+func _on_search_text_changed(new_text: String) -> void:
+	_current_search = new_text
+	if _search_debounce and _search_debounce.timeout.is_connected(_debounced_reload):
+		_search_debounce.timeout.disconnect(_debounced_reload)
+	_search_debounce = get_tree().create_timer(0.3)
+	_search_debounce.timeout.connect(_debounced_reload)
+
+## 回车提交搜索（立即触发，跳过防抖）
+func _on_search_text_submitted(new_text: String) -> void:
+	_current_search = new_text
+	if _search_debounce and _search_debounce.timeout.is_connected(_debounced_reload):
+		_search_debounce.timeout.disconnect(_debounced_reload)
+	_search_debounce = null
+	_current_page = 1
+	_load_remote_charts()
+
+func _debounced_reload() -> void:
+	_search_debounce = null
+	_current_page = 1
+	_load_remote_charts()
+
+## 排序字段切换（FilterBtn OptionButton: 0=上传时间, 1=歌曲时长）
+func _on_filter_selected(index: int) -> void:
+	_current_sort = "duration" if index == 1 else "uploaded_at"
+	_current_page = 1
+	_load_remote_charts()
+
+## 正序 / 倒序切换（OrderBtn TextureButton toggle）
+## button_pressed == true 对应 Ascent 图标（升序 asc）
+## button_pressed == false 对应 Descent 图标（降序 desc）
+func _on_order_pressed() -> void:
+	var order_btn := _top_bar.get_node_or_null("C/HBoxC/OrderBtn") as TextureButton
+	if order_btn:
+		_current_order = "asc" if order_btn.button_pressed else "desc"
+	else:
+		_current_order = "asc" if _current_order == "desc" else "desc"
+	_current_page = 1
+	_load_remote_charts()
