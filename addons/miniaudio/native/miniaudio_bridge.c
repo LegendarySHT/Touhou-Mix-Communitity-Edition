@@ -294,6 +294,9 @@ ma_bridge_result ma_bridge_init(const ma_bridge_config* pConfig,
 #if defined(__ANDROID__)
     if (pConfig->aaudioExclusive) {
         devCfg.aaudio.usage = ma_aaudio_usage_game;
+        // 让 AAudio 使用请求的 bufferCapacityInFrames / framesPerDataCallback（256×2 ≈ 11ms）
+        // 否则 AAudio 回退到系统默认大缓冲
+        devCfg.aaudio.allowSetBufferCapacity = MA_TRUE;
     }
 #endif
 

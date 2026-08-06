@@ -39,12 +39,6 @@ var is_master: bool = false
 
 var note_color: Color
 
-## 音频延迟补偿（毫秒，正值=音频输出有延迟需延后视觉，负值=音频提前需提前视觉）
-## 与 PlayView.FlowArea 保持一致：TrackView 存在人声/MIDI 同步播放场景，
-## 视觉音符需与音频到达耳朵的时刻对齐，否则会出现"看到的音符"与"听到的声音"错位
-## 来源：ConfigManager [Gameplay] audio_playback_delay，由 DelayAdjust 校准得出
-var _audio_playback_delay_ms: float = 0.0
-
 # 批量绘制节点（单 Node2D 替代 N 个 ColorRect，参考 LaneEffect.BeamNode 设计）
 var _draw_node: NoteDrawNode = null
 
@@ -113,25 +107,10 @@ func _ready():
 	_draw_node.notes = active_notes  # 共享数组引用，原地修改对 _draw 可见
 	flow_area.add_child(_draw_node)
 
-	# 初始化音频延迟补偿，并监听配置变更
-	# 与 PlayView.FlowArea 保持一致，使 TrackView 的视觉音符与音频时序对齐
-	_audio_playback_delay_ms = float(ConfigManager.instance.get_int("Gameplay", "audio_playback_delay", 0))
-	if EvtBus and not EvtBus.config_changed.is_connected(_on_config_changed):
-		EvtBus.config_changed.connect(_on_config_changed)
-
 
 func _exit_tree() -> void:
-	# NoteDisplayer 实例随 MidiTrack 销毁时断开信号，避免引用悬空
-	if EvtBus and EvtBus.config_changed.is_connected(_on_config_changed):
-		EvtBus.config_changed.disconnect(_on_config_changed)
 	# 清空音符状态引用（_draw_node 随父节点 queue_free 自动释放）
 	active_notes.clear()
-
-
-## 配置变更回调：仅关注 audio_playback_delay，实时更新延迟补偿值
-func _on_config_changed(key: String, section: String, value: Variant) -> void:
-	if section == "Gameplay" and key == "audio_playback_delay":
-		_audio_playback_delay_ms = float(value)
 
 
 func _on_flow_area_resized():
@@ -170,11 +149,8 @@ func _process(_delta):
 		# 否则 MIDI 循环播放时 is_playing 短暂变化会导致 _process 永久停止，画面冻结
 		return
 
-	# 应用音频延迟补偿：将播放位置减去延迟后转换为 tick
-	# 与 PlayView.FlowArea.set_current_time 逻辑一致（time_ms - _audio_playback_delay_ms）
-	# 使视觉音符的通过时刻与音频到达耳朵的时刻对齐
-	# ct 与音符的 start_tick/end_tick 在同一 tick 参考系，保证视觉与音频同步
-	var delayed_ms: float = midi_mgr.get_position_ms() - _audio_playback_delay_ms
+	# 播放位置转换为 tick；ct 与音符的 start_tick/end_tick 在同一 tick 参考系
+	var delayed_ms: float = midi_mgr.get_position_ms()
 	var ct: float = midi_mgr._calculate_tick_from_position_with_bpm_timeline(delayed_ms, midi_mgr.midi_timebase)
 
 	# ct 异常保护：循环播放时 Sequencer.Position 可能继续增长而不跳回 0，

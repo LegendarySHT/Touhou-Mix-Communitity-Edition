@@ -59,16 +59,9 @@ func restore_midi_data_config() -> void:
 	midi_vol_slider.set_block_signals(true)
 	vocal_vol_slider.set_block_signals(true)
 
-	# 获取音量值，如果是默认值50则从全局设置中读取
-	var midi_vol = current_midi_data.midi_volume
+	# 获取音量值，默认值(50)时回退全局 default_midi_volume（与 PlayView 统一解析，并 clamp 到滑块范围）
+	var midi_vol = midi_playback_manager.get_effective_midi_volume(current_midi_data.midi_volume)
 	var vocal_vol = current_midi_data.vocal_volume
-
-	if midi_vol == 50:  # 默认值
-		var setting_view = _track_view.get_node_or_null("/root/Main/skew/C/SettingView")
-		if setting_view and setting_view.has_method("get_setting_value"):
-			var global_midi_vol = setting_view.get_setting_value("default_midi_volume")
-			if global_midi_vol != null:
-				midi_vol = int(global_midi_vol)
 
 	if vocal_vol == 50:  # 默认值
 		var setting_view = _track_view.get_node_or_null("/root/Main/skew/C/SettingView")

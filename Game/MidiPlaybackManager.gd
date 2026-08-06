@@ -350,6 +350,23 @@ func load_midi(midi_data: MidiData) -> bool:
 				if backend != null and backend.has_method("set_track_channel_volume"):
 					backend.set_track_channel_volume(track_idx, ch, midi_data.track_channel_volume_config[track_idx][ch])
 		print("[MidiPlaybackManager] Applied %d track volume configs" % midi_data.track_channel_volume_config.size())
+	else:
+		# 未配置过轨道音量：统一按 TrackView 默认 50% 应用（只改后端，不改 MidiData），
+		# 避免 PlayView（未配置默认 100%）与 TrackView（默认 50%）对同一新曲音量不一致
+		var default_volume := 0.5
+		var seen_pairs := {}
+		var default_count := 0
+		for note in current_notes:
+			if note is MidiParser.NoteEvent:
+				var pair_key := "%d_%d" % [note.track_index, note.channel]
+				if seen_pairs.has(pair_key):
+					continue
+				seen_pairs[pair_key] = true
+				if backend != null and backend.has_method("set_track_channel_volume"):
+					backend.set_track_channel_volume(note.track_index, note.channel, default_volume)
+				default_count += 1
+		if default_count > 0:
+			print("[MidiPlaybackManager] Applied %d default track volumes (50%%)" % default_count)
 	
 	# 清理旧乐器覆盖配置（双重保障：后端 set_file/load_midi 已清理，这里再次确认）
 	# 注意：后端的 set_file/load_midi 方法已经清理了 track_channel_instruments
@@ -1013,6 +1030,14 @@ func set_volume_db(volume: float) -> void:
 		backend.call("set_volume_db", volume)
 
 	midi_player_config["volume_db"] = volume
+
+## 统一解析 MIDI 主音量：per-midi 值优先，默认值(50)回退全局 default_midi_volume，并 clamp 到滑块范围 [0,100]
+## 供 TrackView/PlayView 共用，保证同一 MIDI 在各视图音量一致
+func get_effective_midi_volume(midi_volume: int) -> int:
+	var vol := midi_volume
+	if vol == 50:
+		vol = ConfigManager.instance.get_int("Gameplay", "default_midi_volume", 50)
+	return clampi(vol, 0, 100)
 
 ## 设置特定(track, channel)对的音量（线性值0.0-1.0）
 ## 立即生效到正在播放的Note

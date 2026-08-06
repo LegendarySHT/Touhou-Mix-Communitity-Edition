@@ -237,6 +237,11 @@ func _on_setting_value_changed(id: String, value: Variant):
 	_pending_config[id] = converted_value
 	GLogger.info("Pending config: %s = %s" % [id, str(converted_value)], "SettingList")
 
+	# performing_mode 实时生效：立即写入当前配置并 emit config_changed（与键盘模式弹窗同一约定）
+	# 否则退出时仅与进入快照 diff，同会话内来回切换会因最终值绕回初始值而被跳过，导致切不回原模式
+	if id == "performing_mode":
+		ConfigManager.instance.set_value_and_notify("Playback", "performing_mode", converted_value)
+
 	# 即时可见性刷新
 	if id == "show_advanced_settings":
 		_apply_advanced_visibility()
@@ -600,6 +605,11 @@ func apply_pending_config_updates() -> int:
 			continue
 		EvtBus.config_changed.emit(key, section, value)
 		emitted_count += 1
+
+	# 同步已应用状态到进入快照：后续 diff 基于"上次已应用值"而非"进入设置时快照"，
+	# 修复同一会话内将设置切回启动时初始值后，退出时被判定为"无变化"而跳过 emit/写盘的问题
+	for setting_id in _pending_config:
+		_initial_config[setting_id] = _pending_config[setting_id]
 
 	return emitted_count
 
