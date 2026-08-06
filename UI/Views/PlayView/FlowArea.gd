@@ -137,7 +137,8 @@ var active_holds: Dictionary = {}     # 存储正在按住长条音符的触摸�
 # - 一次按下 = 一个音符：按下即判定选中的那一个音符，绝不连带判定其它音符（点块/滑块均只判一个）。
 # - 滑块接滑宽松（参考 Phigros/Cytus）：任何手指在滑块过线时位于其列内即判定（hold-catch），
 #   支持 block 后的滑块流、多指斜向放置；另支持「手指滑过其列、退出时刻在 Perfect 窗口内」的滑过即判。
-# - 长条按住中的手指不参与滑块判定；键盘不抢已被触点认领的滑块。
+# - 按住长条的手指同样参与滑块接滑（hold-catch），保持旧版「手指在列内即接滑」的手感；
+#   键盘不抢已被触点认领的滑块。
 var _gestures: Dictionary = {}
 
 # 输入去重：防止桌面环境下鼠标与触摸事件双触发导致一次点击判定多个音符
@@ -1386,8 +1387,6 @@ func _check_slides_at_touch_pos(touch_id: int, pos: Vector2, input_time_ms: floa
 	var judge_time_ms := input_time_ms
 	if judge_time_ms < 0.0:
 		judge_time_ms = _get_realtime_position_ms()
-	if touch_id in active_holds:
-		return  # 长条按住中的手指不参与滑块判定
 	if not _gestures.has(touch_id):
 		return
 
@@ -1456,8 +1455,6 @@ func _check_slide_stat(note: FlowNote):
 
 	var note_x := note.cached_center_x
 	for candidate_touch_id in touch_positions:
-		if candidate_touch_id in active_holds:
-			continue  # 长条按住中的手指不参与滑块判定
 		if abs(touch_positions[candidate_touch_id].x - note_x) > note_judge_width:
 			continue
 		_judge_claimed_slide(candidate_touch_id, note, _synced_current_time,
