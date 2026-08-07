@@ -17,9 +17,9 @@ func save_midi_config() -> void:
 		push_warning("[TrackView] No MIDI data to save")
 		return
 
-	# 更新MidiData中的音量值
-	current_midi_data.midi_volume = int(_track_view.midi_vol_slider.value)
-	current_midi_data.vocal_volume = int(_track_view.vocal_vol_slider.value)
+	# 更新MidiData中的音量值（滑块为线性 0-1）
+	current_midi_data.midi_volume = _track_view.midi_vol_slider.value
+	current_midi_data.vocal_volume = _track_view.vocal_vol_slider.value
 
 	# 更新人声文件路径
 	current_midi_data.vocal_file_path = _track_view._vocal_controller.vocal_file_path
@@ -59,16 +59,18 @@ func restore_midi_data_config() -> void:
 	midi_vol_slider.set_block_signals(true)
 	vocal_vol_slider.set_block_signals(true)
 
-	# 获取音量值，默认值(50)时回退全局 default_midi_volume（与 PlayView 统一解析，并 clamp 到滑块范围）
+	# 获取音量值，默认值(0.5)时回退全局 default_midi_volume（与 PlayView 统一解析，并 clamp 到滑块范围）
 	var midi_vol = midi_playback_manager.get_effective_midi_volume(current_midi_data.midi_volume)
 	var vocal_vol = current_midi_data.vocal_volume
 
-	if vocal_vol == 50:  # 默认值
+	if vocal_vol == 0.5:  # 默认值
 		var setting_view = _track_view.get_node_or_null("/root/Main/skew/C/SettingView")
 		if setting_view and setting_view.has_method("get_setting_value"):
 			var global_vocal_vol = setting_view.get_setting_value("default_vocal_volume")
 			if global_vocal_vol != null:
-				vocal_vol = int(global_vocal_vol)
+				vocal_vol = float(global_vocal_vol)
+				if vocal_vol > 1.0:
+					vocal_vol /= 100.0  # 兼容旧版 0-100 配置
 
 	midi_vol_slider.value = midi_vol
 	vocal_vol_slider.value = vocal_vol
@@ -80,12 +82,12 @@ func restore_midi_data_config() -> void:
 	vocal_vol_slider.set_block_signals(false)
 
 	# 应用实际的播放音量，不只是更新UI
-	# MIDI音量实际效果为UI值的2倍: 新50%=旧100%(0dB), 新100%=旧200%(+6dB)
-	var midi_volume_db = linear_to_db(midi_vol / 50.0)
+	# MIDI音量实际效果为UI值的2倍: 0.5=0dB, 1.0=+6dB
+	var midi_volume_db = linear_to_db(midi_vol * 2.0)
 	midi_playback_manager.set_volume_db(midi_volume_db)
 
 	# 人声音量1:1映射
-	var vocal_volume_db = linear_to_db(vocal_vol / 100.0)
+	var vocal_volume_db = linear_to_db(vocal_vol)
 	midi_playback_manager.set_vocal_volume_db(vocal_volume_db)
 
 	# 恢复进度条位置和最大值（初始化为0）
@@ -109,8 +111,8 @@ func restore_midi_data_config() -> void:
 		print("[TrackView] Existing MIDI config restored: %d tracks have enabled channels" %
 			current_midi_data.selected_track_configs.size())
 
-	print("[TrackView] Restored MIDI data config: midi_volume=%d, vocal_volume=%d, solo_count=%d" %
-		[midi_vol, vocal_vol, _track_view.solo_pairs.size()])
+	print("[TrackView] Restored MIDI data config: midi_volume=%d%%, vocal_volume=%d%%, solo_count=%d" %
+		[int(round(midi_vol * 100.0)), int(round(vocal_vol * 100.0)), _track_view.solo_pairs.size()])
 
 	# 恢复轨道级音量配置（从保存的配置）
 	if not current_midi_data.track_channel_volume_config.is_empty():
@@ -190,7 +192,7 @@ func restore_midi_ui_config() -> void:
 			if track_item.volume_slider:
 				# 从saved配置中获取音量值，如果没有保存过则使用默认值1.0（100%）
 				var saved_volume = current_midi_data.get_track_channel_volume(track_idx, channel)
-				var slider_value = saved_volume * 100.0  # 转换为0-100的百分比
+				var slider_value = saved_volume  # 滑块已是线性 0-1 值
 
 				track_item.volume_slider.set_block_signals(true)
 				track_item.volume_slider.value = slider_value

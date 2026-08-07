@@ -970,9 +970,9 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 	if playback_mgr == null:
 		return
 	
-	# 应用全局音量 (MIDI音量实际效果为UI值的2倍: 50%=0dB, 100%=+6dB)
-	# 默认值(50)回退全局 default_midi_volume，与 TrackView 保持一致
-	playback_mgr.set_volume_db(linear_to_db(float(playback_mgr.get_effective_midi_volume(midi_data.midi_volume)) / 50.0))
+	# 应用全局音量 (MIDI音量实际效果为UI值的2倍: 0.5=0dB, 1.0=+6dB)
+	# 默认值(0.5)回退全局 default_midi_volume，与 TrackView 保持一致
+	playback_mgr.set_volume_db(linear_to_db(playback_mgr.get_effective_midi_volume(midi_data.midi_volume) * 2.0))
 	
 	# 应用轨道-通道的静音状态
 	# track_channel_mute_state: {track_idx: {channel: bool}}
@@ -994,19 +994,18 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 				var track = int(parts[0])
 				var channel = int(parts[1])
 				# 独奏意味着这个轨道要启用，其他非独奏的轨道要静音
-				playback_mgr.set_channel_mute(track, channel, false)
-	
+				playback_mgr.set_track_channel_mute(track, channel, false)
+
 	# 应用音轨-通道的音量调整
-	# track_channel_volume_config: {track_idx: {channel: volume_value}}
+	# track_channel_volume_config: {track_idx: {channel: volume_value}}（值为线性 0.0-1.0）
 	if not midi_data.track_channel_volume_config.is_empty():
 		for track_idx in midi_data.track_channel_volume_config.keys():
 			var channels = midi_data.track_channel_volume_config[track_idx]
 			if channels is Dictionary:
 				for channel in channels.keys():
 					var volume = channels[channel]
-					# 设置通道音量
-					if playback_mgr.has_method("set_channel_volume"):
-						playback_mgr.set_channel_volume(track_idx, channel, float(volume) / 100.0)
+					# 设置通道音量（线性值直接透传，勿再除以100）
+					playback_mgr.set_track_channel_volume(int(track_idx), int(channel), float(volume))
 	
 	# 应用乐器覆盖（如果有）
 	if not midi_data.track_channel_instrument_overrides.is_empty():
@@ -1023,8 +1022,8 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 	# 应用人声偏移量
 	playback_mgr.set_vocal_offset_ms(midi_data.vocal_offset_ms)
 	
-	GLogger.info("MIDI runtime config applied: volume=%d, mute_states=%d, solo_pairs=%d" % 
-		[midi_data.midi_volume, midi_data.track_channel_mute_state.size(), midi_data.solo_pairs.size()], "PlayView")
+	GLogger.info("MIDI runtime config applied: volume=%d%%, mute_states=%d, solo_pairs=%d" %
+		[int(round(midi_data.midi_volume * 100.0)), midi_data.track_channel_mute_state.size(), midi_data.solo_pairs.size()], "PlayView")
 
 ## 游戏结束回调
 func _on_game_finished() -> void:

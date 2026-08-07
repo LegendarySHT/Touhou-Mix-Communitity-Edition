@@ -338,9 +338,9 @@ func _on_midi_volume_changed(value: float) -> void:
 	if midi_playback_manager == null:
 		return
 
-	# MIDI音量实际效果为UI值的2倍: 新50%=旧100%(0dB), 新100%=旧200%(+6dB)
-	# 公式: linear = value / 50.0
-	var volume_db = linear_to_db(value / 50.0)
+	# MIDI音量实际效果为UI值的2倍: 0.5=0dB, 1.0=+6dB
+	# 公式: linear = value * 2.0
+	var volume_db = linear_to_db(value * 2.0)
 	midi_playback_manager.set_volume_db(volume_db)
 
 	# 更新标签
@@ -350,13 +350,13 @@ func _on_vocal_volume_changed(value: float) -> void:
 	if midi_playback_manager == null:
 		return
 
-	# 人声音量1:1映射: 新70%=旧70%
-	var volume_db = linear_to_db(value / 100.0)
+	# 人声音量1:1映射（0-1 线性）
+	var volume_db = linear_to_db(value)
 	midi_playback_manager.set_vocal_volume_db(volume_db)
 
 	# 更新MidiData中的音量值，用于持久化
 	if current_midi_data != null:
-		current_midi_data.vocal_volume = int(value)
+		current_midi_data.vocal_volume = value
 
 	# 更新标签
 	_vocal_controller.set_display_vocal_volume(value)
@@ -456,9 +456,9 @@ func _on_track_volume_changed(value: float, track_index: int, channel: int ) -> 
 	if track_ui == null:
 		return
 	
-	# 转换百分比到线性值 (0-100 → 0.0-1.0)
-	var volume_linear = value / 100.0
-	
+	# 滑块已是线性 0-1 值，直接透传
+	var volume_linear = value
+
 	# 调用MidiPlaybackManager设置轨道音量（立即生效）
 	midi_playback_manager.set_track_channel_volume(track_index, channel, volume_linear)
 	
@@ -642,12 +642,12 @@ func _set_note_displayers_process(enable: bool) -> void:
 
 # 更新MIDI音量标签
 func _set_display_midi_volume(value: float) -> void:
-	# value 已经是 0-100 的百分比
+	# value 是线性 0-1 值
 	midi_vol_slider.set_block_signals(true)
 	midi_vol_slider.value = value
 	midi_vol_slider.set_block_signals(false)
 
-	midi_vol_label.text = "%d%%" % int(value)
+	midi_vol_label.text = "%d%%" % int(round(value * 100.0))
 
 # 格式化时间（毫秒到 HH:MM:SS）
 func _format_time(ms: float) -> String:

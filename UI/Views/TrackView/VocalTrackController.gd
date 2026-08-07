@@ -269,4 +269,4 @@ func set_display_vocal_volume(value: float) -> void:
 	_vocal_vol_slider.value = value
 	_vocal_vol_slider.set_block_signals(false)
 
-	_vocal_vol_label.text = "%d%%" % int(value)
+	_vocal_vol_label.text = "%d%%" % int(round(value * 100.0))

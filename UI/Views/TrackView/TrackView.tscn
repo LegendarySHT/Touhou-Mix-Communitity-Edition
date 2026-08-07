@@ -370,6 +370,8 @@ custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+max_value = 1.0
+step = 0.01
 
 [node name="midiVolLabel" type="Label" parent="MC/VBox/VolumeView/HBoxC/GridC" unique_id=835564543]
 custom_minimum_size = Vector2(100, 0)
@@ -391,6 +393,8 @@ custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+max_value = 1.0
+step = 0.01
 
 [node name="vocalVolLabel" type="Label" parent="MC/VBox/VolumeView/HBoxC/GridC" unique_id=1145066087]
 custom_minimum_size = Vector2(100, 0)

@@ -157,6 +157,10 @@ func init_flow_area():
 	notes_list = saved_notes
 	note_idx = 0
 
+	# 清空手动 NoteOff 挂起队列（上一局的定时器/代数不应残留到下一局）
+	_pending_manual_offs.clear()
+	_manual_note_off_gens.clear()
+
 	if EvtBus and not EvtBus.config_changed.is_connected(_on_config_changed):
 		EvtBus.config_changed.connect(_on_config_changed)
 
@@ -643,6 +647,11 @@ func clear_flow_area():
 	_gestures.clear()
 	pressed_keys.clear()
 	note_idx = 0
+
+	# 释放尚未触发的手动 NoteOff（游戏结束/清场时，避免音符一直挂在合成器上）
+	_process_manual_note_offs(true)
+	_pending_manual_offs.clear()
+	_manual_note_off_gens.clear()
 
 ## 检查是否还有活跃音符（用于游戏结束后等待音符自然消除）
 func has_active_notes() -> bool:
@@ -1542,41 +1551,83 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 		return best_note
 	return null
 
+## 待触发的手动 NoteOff（驱动源为播放位置 _synced_current_time，而非墙钟 Timer）
+## 每项: {abs_end_ms, track, channel, pitch, velocity, gen}
+## 用播放位置驱动可避免：
+## 1) 提前点击时 NoteOff 被"点击后 duration_ms"锚定而提前发出（音符没响够就停）
+## 2) 暂停菜单打开时墙钟 Timer 照走，把正在响的音符掐断
+## 3) 同键快速连打时旧音的 NoteOff 把新音掐断（MeltySynth NoteOff 会结束该键全部 voice）
+var _pending_manual_offs: Array = []
+## "track:channel:pitch" -> 单调递增代数，用于判定某次 NoteOff 是否已被更新的音符取代
+var _manual_note_off_gens: Dictionary = {}
+
 ## 新增：从GameSequence触发MIDI音符（演奏模式）
 func _trigger_midi_notes_from_sequence(game_seq: Object) -> void:
 	# game_seq 是 KeySequenceManager.GameSequence 对象
 	if not game_seq or game_seq.original_notes.is_empty():
 		return
-	
+
 	var midi_player = MidiPlaybackManager.instance.midi_player
 	if not midi_player:
 		return
-	
+
 	# 触发原始notes中的所有MIDI音符
 	for note in game_seq.original_notes:
 		if note is MidiParser.NoteEvent:
 			var track_idx := int(note.track_index)
 
-			# 触发note_on
+			# 触发note_on（即时，保证点击反馈）
 			if midi_player.has_method("trigger_note_on"):
 				midi_player.call("trigger_note_on", note.pitch, note.velocity, note.channel, track_idx)
 			elif midi_player.has_method("note_on"):
 				midi_player.note_on(note.channel, note.pitch, note.velocity)
 
-			# 非阻塞调度 note_off（避免循环内 await 导致后续音符串行延后）
-			var delay_seconds = (game_seq.duration_ms / 1000.0) if game_seq.duration_ms > 0 else 0.1
-			_schedule_note_off(midi_player, note.pitch, note.velocity, note.channel, delay_seconds, track_idx)
+			# NoteOff 锚定到音符的绝对结束时刻（原曲 NoteOff 位于 note_start + duration）。
+			# 乐器音色由 sustain/release 包络决定，只有在该绝对时刻发出 NoteOff，
+			# 音色才与原曲一致；按"点击后 duration_ms"调度会把提前点击的音符提前掐断。
+			var abs_end_ms := float(game_seq.start_time_ms + game_seq.duration_ms)
+			var gen := _bump_note_off_gen(track_idx, note.channel, note.pitch)
+			_pending_manual_offs.append({
+				"abs_end_ms": abs_end_ms,
+				"track": track_idx,
+				"channel": note.channel,
+				"pitch": note.pitch,
+				"velocity": note.velocity,
+				"gen": gen,
+			})
 
-func _schedule_note_off(midi_player: Object, pitch: int, velocity: int, channel: int, delay_seconds: float, track_index: int = 0) -> void:
-	var timer = get_tree().create_timer(max(delay_seconds, 0.01))
-	timer.timeout.connect(func():
-		if not is_instance_valid(midi_player):
-			return
-		if midi_player.has_method("trigger_note_off"):
-			midi_player.call("trigger_note_off", pitch, velocity, channel, track_index)
-		elif midi_player.has_method("note_off"):
-			midi_player.note_off(channel, pitch)
-	)
+## 每帧由 _process 调用，按播放位置触发到期的手动 NoteOff
+## force=true 时全部触发（游戏结束/清场时释放残留音符）
+func _process_manual_note_offs(force: bool = false) -> void:
+	if _pending_manual_offs.is_empty():
+		return
+	var midi_player = MidiPlaybackManager.instance.midi_player
+	var t := _synced_current_time
+	var remaining: Array = []
+	for entry in _pending_manual_offs:
+		if force or t >= entry["abs_end_ms"]:
+			# 代数守卫：同键已触发更新的音符则跳过本次 NoteOff（旧音交给新音一起结束）
+			if _is_note_off_gen_current(entry["track"], entry["channel"], entry["pitch"], entry["gen"]):
+				if midi_player and is_instance_valid(midi_player):
+					if midi_player.has_method("trigger_note_off"):
+						midi_player.call("trigger_note_off", entry["pitch"], entry["velocity"], entry["channel"], entry["track"])
+					elif midi_player.has_method("note_off"):
+						midi_player.note_off(entry["channel"], entry["pitch"])
+		else:
+			remaining.append(entry)
+	_pending_manual_offs = remaining
+
+## 递增某键的 NoteOff 代数，返回新代数（使旧的待触发 NoteOff 失效）
+func _bump_note_off_gen(track_index: int, channel: int, pitch: int) -> int:
+	var key := "%d:%d:%d" % [track_index, channel, pitch]
+	var gen: int = int(_manual_note_off_gens.get(key, 0)) + 1
+	_manual_note_off_gens[key] = gen
+	return gen
+
+## 校验某次 NoteOff 的代数是否仍是最新（未被更新的同键音符取代）
+func _is_note_off_gen_current(track_index: int, channel: int, pitch: int, gen: int) -> bool:
+	var key := "%d:%d:%d" % [track_index, channel, pitch]
+	return int(_manual_note_off_gens.get(key, 0)) == gen
 
 func _trigger_touch_vibration() -> void:
 	if not Input.has_method("vibrate_handheld"):
@@ -1704,6 +1755,9 @@ func _process(delta: float) -> void:
 
 	if _is_pause:
 		return
+
+	# 驱动手动音符的 NoteOff（按播放位置触发，暂停时自动停）
+	_process_manual_note_offs()
 
 	# 生成音符
 	while note_idx < notes_list.size() and notes_list[note_idx].start_time < parent_node.current_time + note_generation_lead_time:

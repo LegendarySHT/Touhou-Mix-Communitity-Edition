@@ -1039,13 +1039,16 @@ func set_volume_db(volume: float) -> void:
 
 	midi_player_config["volume_db"] = volume
 
-## 统一解析 MIDI 主音量：per-midi 值优先，默认值(50)回退全局 default_midi_volume，并 clamp 到滑块范围 [0,100]
+## 统一解析 MIDI 主音量：per-midi 值优先，默认值(0.5)回退全局 default_midi_volume，并 clamp 到 [0,1]
 ## 供 TrackView/PlayView 共用，保证同一 MIDI 在各视图音量一致
-func get_effective_midi_volume(midi_volume: int) -> int:
+func get_effective_midi_volume(midi_volume: float) -> float:
 	var vol := midi_volume
-	if vol == 50:
-		vol = ConfigManager.instance.get_int("Gameplay", "default_midi_volume", 50)
-	return clampi(vol, 0, 100)
+	if vol == 0.5:
+		var cfg := ConfigManager.instance.get_float("Gameplay", "default_midi_volume", 0.5)
+		if cfg > 1.0:
+			cfg /= 100.0  # 兼容旧版 0-100 配置
+		vol = cfg
+	return clampf(vol, 0.0, 1.0)
 
 ## 设置特定(track, channel)对的音量（线性值0.0-1.0）
 ## 立即生效到正在播放的Note
@@ -1531,7 +1534,7 @@ func start_vocal_playback() -> void:
 	var start_position_ms = max(0.0, expected_vocal_position)
 
 	# 设置人声声音
-	audio_manager.set_vocal_volume_db(linear_to_db(current_midi_data.vocal_volume / 100.0))
+	audio_manager.set_vocal_volume_db(linear_to_db(current_midi_data.vocal_volume))
 	# 先 play 触发解码器预热（即使马上要暂停），恢复时只需取消 stream_paused，
 	# 避免 seek_vocal 造成的解码卡顿
 	audio_manager.play_vocal(vocal_stream, start_position_ms)

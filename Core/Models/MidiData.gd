@@ -140,11 +140,11 @@ var track_channel_instruments: Dictionary = {}
 
 ## ========== 用户配置字段（运行时可修改，需持久化）==========
 
-## MIDI播放音量（0-100）
-var midi_volume: int = 50
+## MIDI播放音量（线性 0.0-1.0，0.5=原始音量 0dB）
+var midi_volume: float = 0.5
 
-## 人声音量（0-100）
-var vocal_volume: int = 50
+## 人声音量（线性 0.0-1.0）
+var vocal_volume: float = 0.5
 
 ## 人声文件路径（完整路径或相对路径）
 var vocal_file_path: String = ""
@@ -231,8 +231,13 @@ func from_json(json_data: Dictionary) -> void:
 	# 读取用户运行时配置（从 _runtime 对象）
 	var runtime_config = json_data.get("_runtime", {})
 	if runtime_config is Dictionary:
-		midi_volume = runtime_config.get("midi_volume", 50)
-		vocal_volume = runtime_config.get("vocal_volume", 50)
+		midi_volume = float(runtime_config.get("midi_volume", 0.5))
+		vocal_volume = float(runtime_config.get("vocal_volume", 0.5))
+		# 兼容旧版 0-100 存值：大于 1 视为旧百分比，折算为 0-1
+		if midi_volume > 1.0:
+			midi_volume /= 100.0
+		if vocal_volume > 1.0:
+			vocal_volume /= 100.0
 		vocal_enabled = runtime_config.get("vocal_enabled", false)
 		
 		# 恢复轨道选择配置
