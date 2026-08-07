@@ -371,12 +371,20 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 	if ksm == null or midi.parsed_notes.is_empty():
 		return
 
+	# 计算前先确保轨道配置已按简介完成初始化（幂等）：
+	# 若首次进入 MidiView 时仍未初始化，统计口径会退化为"全部轨道"，
+	# 与 TrackView / PlayView 的"按简介推荐轨道"不一致。
+	var pm := MidiPlaybackManager.instance
+	if pm != null and not midi._track_config_initialized:
+		pm.ensure_track_config_initialized(midi, midi.parsed_notes)
+
 	# 构建 (track, channel) 启用集合，键格式："track:channel"
-	# selected_track_configs 为空有两种情况：
-	#   1. 从未进过 TrackView（_track_config_initialized == false）→ 默认全部启用
-	#   2. 用户在 TrackView 逐一禁用了所有轨道（_track_config_initialized == true）→ 显示 0
-	var configs_initialized: bool = midi._track_config_initialized \
-			or not midi.selected_track_configs.is_empty()
+	# 走到这里时 _track_config_initialized 通常已为 true（ensure_track_config_initialized 幂等保证）；
+	# 仅当 pm 不可用等极端情况下才保留 false=全部启用的兜底语义。
+	# 注意：不能把 selected_track_configs 非空当作"已初始化"。from_json 曾为新 MIDI 写入占位
+	# {0:[0]}，若据此过滤，音符全在第 1 轨之后的谱面（如 issue #62 的成对的神兽，音符在
+	# track1/2）会在首次进入 MidiView 时错误显示 0 音符 / "-" NPM。
+	var configs_initialized: bool = midi._track_config_initialized
 	var enabled_pairs: Dictionary = midi.get_enabled_pairs_flat() if configs_initialized else {}
 
 	# 声明 entry 变量，传递缓存数据
@@ -410,7 +418,6 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 		return
 
 	# 若 MidiPlaybackManager 当前加载的不是本 midi，暂时注入 bpm 参数供 generate_keys 使用
-	var pm := MidiPlaybackManager.instance
 	var saved_timeline: Array = []
 	var saved_timebase: int = 480
 	var need_restore := false

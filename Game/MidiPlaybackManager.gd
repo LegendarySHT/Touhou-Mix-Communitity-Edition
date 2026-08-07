@@ -198,6 +198,61 @@ func _process(_delta: float) -> void:
 	# 调用自动同步逻辑
 	_sync_vocal_with_midi()
 
+## 确保该 MIDI 的轨道配置已按简介完成初始化（幂等，仅主线程调用）
+## 首次进入 MidiView（统计音符数 / MPP）前必须保证已调用，使统计口径与
+## TrackView / PlayView 的"按简介推荐轨道"一致；已初始化时直接返回。
+## 一次性完成：
+## 1) 解析简介（提取音频偏移、推荐轨道）
+## 2) 应用 vocal_offset_ms
+## 3) 缓存 desc_recommended_tracks
+## 4) 根据 notes 应用推荐轨道到 selected_track_configs（无推荐则启用全部）
+## 5) 标记 _track_config_initialized=true
+## 6) 立即持久化到 DB，避免下次启动重复解析简介
+func ensure_track_config_initialized(midi_data: MidiData, notes: Array) -> void:
+	if midi_data == null or midi_data._track_config_initialized:
+		return
+	var desc_parse = MidiDescriptionParser.parse(midi_data.description)
+	GLogger.info("[DescParse] id=%s offset_ms=%d recommended=%s difficulties=%d" % [
+		midi_data.id,
+		desc_parse["audio_offset_ms"],
+		desc_parse["recommended_tracks"],
+		desc_parse["difficulties"].size()
+	], "MidiPlaybackManager")
+
+	# 应用音频偏移
+	if desc_parse["audio_offset_ms"] >= 0:
+		midi_data.vocal_offset_ms = desc_parse["audio_offset_ms"]
+
+	# 缓存推荐轨道
+	midi_data.desc_recommended_tracks.clear()
+	for t in desc_parse["recommended_tracks"]:
+		midi_data.desc_recommended_tracks.append(int(t))
+
+	# 根据 notes 应用推荐轨道
+	midi_data.selected_track_configs.clear()
+	var recommended := midi_data.desc_recommended_tracks
+	var use_recommendation := not recommended.is_empty()
+	for note in notes:
+		if note is MidiParser.NoteEvent:
+			var should_enable := true
+			if use_recommendation:
+				should_enable = note.track_index in recommended
+			midi_data.set_track_channel_enabled(note.track_index, note.channel, should_enable)
+	# 回退：推荐轨道均不存在于 MIDI 时启用全部，避免无音符可见
+	if use_recommendation and midi_data.selected_track_configs.is_empty():
+		for note in notes:
+			if note is MidiParser.NoteEvent:
+				midi_data.set_track_channel_enabled(note.track_index, note.channel, true)
+		GLogger.info("Recommended tracks %s not found in MIDI, fell back to enabling all" % [recommended], "MidiPlaybackManager")
+	elif use_recommendation:
+		GLogger.info("Enabled recommended tracks from description: %s" % [recommended], "MidiPlaybackManager")
+	else:
+		GLogger.info("Initialized selected_track_configs with all (track, channel) pairs for new MIDI", "MidiPlaybackManager")
+
+	midi_data._track_config_initialized = true
+	# 立即持久化到 DB，避免下次启动重复解析简介
+	_save_runtime_config(midi_data)
+
 ## 加载MIDI文件
 ## 返回: success (bool)
 func load_midi(midi_data: MidiData) -> bool:
@@ -283,55 +338,8 @@ func load_midi(midi_data: MidiData) -> bool:
 		for i in range(current_midi_data.track_count):
 			current_midi_data.selected_track_indices.append(i)
 
-	# 首次进入此 MIDI 的 TrackView 时，一次性完成：
-	# 1) 解析简介（提取音频偏移、推荐轨道）
-	# 2) 应用 vocal_offset_ms
-	# 3) 缓存 desc_recommended_tracks
-	# 4) 根据 notes 应用推荐轨道到 selected_track_configs（无推荐则启用全部）
-	# 5) 标记 _track_config_initialized=true
-	# 6) 立即持久化到 JSON，避免下次启动重复解析
-	if not current_midi_data._track_config_initialized:
-		var desc_parse = MidiDescriptionParser.parse(current_midi_data.description)
-		GLogger.info("[DescParse] id=%s offset_ms=%d recommended=%s difficulties=%d" % [
-			current_midi_data.id,
-			desc_parse["audio_offset_ms"],
-			desc_parse["recommended_tracks"],
-			desc_parse["difficulties"].size()
-		], "MidiPlaybackManager")
-
-		# 应用音频偏移
-		if desc_parse["audio_offset_ms"] >= 0:
-			current_midi_data.vocal_offset_ms = desc_parse["audio_offset_ms"]
-
-		# 缓存推荐轨道
-		current_midi_data.desc_recommended_tracks.clear()
-		for t in desc_parse["recommended_tracks"]:
-			current_midi_data.desc_recommended_tracks.append(int(t))
-
-		# 根据 notes 应用推荐轨道
-		current_midi_data.selected_track_configs.clear()
-		var recommended := current_midi_data.desc_recommended_tracks
-		var use_recommendation := not recommended.is_empty()
-		for note in current_notes:
-			if note is MidiParser.NoteEvent:
-				var should_enable := true
-				if use_recommendation:
-					should_enable = note.track_index in recommended
-				current_midi_data.set_track_channel_enabled(note.track_index, note.channel, should_enable)
-		# 回退：推荐轨道均不存在于 MIDI 时启用全部，避免无音符可见
-		if use_recommendation and current_midi_data.selected_track_configs.is_empty():
-			for note in current_notes:
-				if note is MidiParser.NoteEvent:
-					current_midi_data.set_track_channel_enabled(note.track_index, note.channel, true)
-			GLogger.info("Recommended tracks %s not found in MIDI, fell back to enabling all" % [recommended], "MidiPlaybackManager")
-		elif use_recommendation:
-			GLogger.info("Enabled recommended tracks from description: %s" % [recommended], "MidiPlaybackManager")
-		else:
-			GLogger.info("Initialized selected_track_configs with all (track, channel) pairs for new MIDI", "MidiPlaybackManager")
-
-		current_midi_data._track_config_initialized = true
-		# 立即持久化到 JSON，避免下次启动重复解析简介
-		_save_runtime_config(current_midi_data)
+	# 首次需要轨道配置的入口（MidiView 统计 / TrackView / PlayView）前确保已按简介初始化
+	ensure_track_config_initialized(current_midi_data, current_notes)
 	
 	# 加载到活跃后端
 	var backend = _get_active_backend()

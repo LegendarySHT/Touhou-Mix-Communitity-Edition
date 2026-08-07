@@ -298,10 +298,12 @@ func from_json(json_data: Dictionary) -> void:
 				# selected_track_configs 可能为空，这表示用户禁用了所有音轨（正常行为）
 			_track_config_initialized = true  # 标记为已配置
 		else:
-			# 第一次加载此MIDI，没有保存过配置，使用默认值
-			if not _track_config_initialized:
-				selected_track_configs[0] = [0]
-				#GLogger.info("First load: No track config found, using default: track 0, channel 0", "MidiData")
+			# 第一次加载此MIDI，没有保存过配置：保持 selected_track_configs 为空。
+			# "未初始化"（_track_config_initialized == false）的语义是"默认全部启用"，
+			# 由 MidiPlaybackManager.load_midi / MidiListItem 等消费方按此处理。
+			# 不要写入 {0:[0]} 占位：会让 MidiListItem 误以为仅启用 track0/ch0，
+			# 导致音符全在第 1 轨之后的谱面在 MidiView 首次显示 0 音符（issue #62）。
+			pass
 		
 		# 恢复人声文件路径
 		var saved_vocal_path = runtime_config.get("vocal_file_path", "")
