@@ -120,7 +120,6 @@ func _ready() -> void:
 	# 从配置加载键盘和轨道相关的参数
 	_load_lane_parameters()
 	_load_debug_display_setting()
-	_load_lane_effect_quality_setting()
 	_load_note_skin_setting()
 	
 	# 窗口大小变化
@@ -201,6 +200,15 @@ func _notification(what: int) -> void:
 var current_time: float = 0
 var max_time: float = 20
 
+# 视觉时钟（毫秒）：墙钟 delta 累加，平滑驱动音符渲染位置；
+# 判定仍走 current_time（音频钟），保证判定与听到的声音对齐。
+var _visual_time_ms: float = 0.0
+# 视觉钟软锚定：每帧纠正与音频钟偏差的 2%，上限 ±0.5ms/帧（≈60ms/s 收敛，肉眼不可见）
+const _VISUAL_ANCHOR_RATE := 0.02
+const _VISUAL_ANCHOR_MAX_MS := 0.5
+# 需要硬锚定（开始播放/暂停恢复时对齐音频钟，避免大跳）
+var _visual_time_needs_anchor: bool = true
+
 func _process(delta: float) -> void:
 	if score_wait_to_add > 0:
 		var amount = int(sqrt(score_wait_to_add))
@@ -217,13 +225,22 @@ func _process(delta: float) -> void:
 		if _is_finishing_game:
 			# 游戏结束阶段：用delta模拟时间推进，让剩余音符自然下落
 			current_time += delta * 1000.0
-			flow_area.set_current_time(current_time)
+			_visual_time_ms = current_time
+			flow_area.set_current_time(current_time, current_time)
 		else:
-			# 如果正在播放MIDI，使用MIDI播放管理器的时间
+			# 如果正在播放MIDI，使用MIDI播放管理器的时间（判定时钟）
 			current_time = playback_mgr.get_position_ms()
 			progress_bar.value = current_time
-			# 【方案C】同步时间到FlowArea，确保note判定与MIDI播放位置完全一致
-			flow_area.set_current_time(current_time)
+			# 视觉时钟：墙钟累加 + 软锚定音频钟（渲染平滑，判定仍用音频钟）
+			if _visual_time_needs_anchor:
+				_visual_time_ms = current_time
+				_visual_time_needs_anchor = false
+			else:
+				_visual_time_ms += delta * 1000.0
+				var drift: float = current_time - _visual_time_ms
+				_visual_time_ms += clampf(drift * _VISUAL_ANCHOR_RATE, -_VISUAL_ANCHOR_MAX_MS, _VISUAL_ANCHOR_MAX_MS)
+			# 【方案C】同步双时钟到FlowArea：判定用音频钟，渲染用平滑视觉钟
+			flow_area.set_current_time(current_time, _visual_time_ms)
 
 			# 检测MIDI播放结束：position连续多帧不增长说明已被clamp到midiFile.Length
 			# 当 duration_ms 与 midiFile.Length 不一致时，进度条可能永远无法达到 max_value
@@ -315,12 +332,6 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			flash_color = Color(color_str)
 		return
 
-	if section == "Appearance" and key == "lane_effect_quality":
-		if lane_area and lane_area.has_method("set_quality_mode"):
-			lane_area.set_quality_mode(int(value))
-			lane_area.set_beam_alpha(beam_alpha)
-		return
-
 	if section == "Appearance" and key in ["note_glow_intensity", "note_glow_size"]:
 		var gi = ConfigManager.instance.get_float("Appearance", "note_glow_intensity", 0.5)
 		var gs = ConfigManager.instance.get_float("Appearance", "note_glow_size", 5.0)
@@ -372,10 +383,6 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 func _load_debug_display_setting() -> void:
 	show_debug_info = ConfigManager.instance.get_int("General", "display_debug_info", 0) == 1
 
-
-func _load_lane_effect_quality_setting() -> void:
-	if lane_area and lane_area.has_method("set_quality_mode"):
-		lane_area.set_quality_mode(ConfigManager.instance.get_int("Appearance", "lane_effect_quality", 1))
 
 func _load_note_skin_setting() -> void:
 	# 如果 FileSystemManager 还未完成资源扫描，等待扫描完成
@@ -466,6 +473,8 @@ var is_pause: bool = false:
 				playback_mgr.pause()
 			else:
 				playback_mgr.resume()
+				# 暂停期间音频钟冻结，恢复时硬锚定视觉钟，避免音符位置大跳
+				_visual_time_needs_anchor = true
 
 func show_or_hide_menu():
 	song_info.visible = false
@@ -537,6 +546,8 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	var note_fall_time = ConfigManager.instance.get_float("Generator", "note_fall_time", 1.5)
 	var seek_position = -(1000 + note_fall_time * 1000)
 	playback_mgr.seek(seek_position)
+	# 视觉钟硬锚定：开局 pre-roll 从负时间起，首次 resume 对齐音频钟
+	_visual_time_needs_anchor = true
 	is_pause = true
 
 	# 读取并设置音频同步阈值
@@ -1376,8 +1387,21 @@ const color_map = {
 	"Miss": Color.RED
 }
 
+# ---- 帧内判定 UI 合并刷新 ----
+# 三押/多指同帧多次判定时，Label.set_text / add_theme_color_override / tween 创建 / 全屏闪光
+# 都是引擎 C++ 原生开销（GDScript profiler 不统计），同帧 ×N 会叠加成帧时间尖峰。
+# 策略：计分数据（record_judgment / score_wait_to_add）逐判定实时累加，展示部分攒到帧末
+# call_deferred 合并刷一次 —— 同帧 3 次判定只更新 1 次 UI。
+var _judge_ui_dirty: bool = false
+var _judge_ui_result: String = ""
+var _judge_ui_offset: String = ""
+var _judge_ui_cl: Color = Color.WHITE
+var _judge_ui_snap: Dictionary = {}
+# LONG 持续加分 tick：只刷数据类 UI，跳过 center 动画/偏移指示/背景闪光（保持旧轻量语义）
+var _judge_ui_hold_tick: bool = false
+
 func _on_note_judged(result: String, offset: String, block_type: int, timing_sec: float, signed_offset_sec: float):
-	# ---- 委托 ScoreCalculator 计算 ----
+	# ---- 委托 ScoreCalculator 计算（数据源，逐判定实时） ----
 	var judgment = ScoreCalculator.Judgment.MISS
 	match result:
 		"Perfect": judgment = ScoreCalculator.Judgment.PERFECT
@@ -1388,17 +1412,58 @@ func _on_note_judged(result: String, offset: String, block_type: int, timing_sec
 
 	var snap = score_calc.record_judgment(judgment, block_type, timing_sec, signed_offset_sec)
 
-	# ---- 以下纯 UI 刷新，数据全部来自快照 ----
+	# 分数增量逐判定累加（_process 逐帧消化）
+	_score_add_accumulate(int(snap["last_score_add"]))
+
+	# 展示数据合并：用本帧最后一次判定的快照，帧末统一刷新一次
+	_queue_judge_ui(result, offset, color_map[result], snap)
+
+## LONG 持续 tick 加分（已委托 ScoreCalculator）
+func _on_long_holding(long_instance_id: int):
+	var snap = score_calc.record_long_sustain(ScoreCalculator.Judgment.PERFECT, long_instance_id)
+	_score_add_accumulate(int(snap["last_score_add"]))
+	_queue_judge_ui("Perfect", "", color_map["Perfect"], snap, true)
+
+## 存展示快照并排定帧末刷新；同帧后续判定只覆盖快照，不重复排队。
+## 用 call_deferred 而非 _process 做帧末 flush：PlayView._process 先于子节点 FlowArea._process
+## 执行，auto 判定发生在 FlowArea._process，若用 _process 刷会把反馈推迟一帧；call_deferred
+## 在整帧结束后统一 flush，覆盖 input / PlayView._process / FlowArea._process 所有来源的判定。
+func _queue_judge_ui(result: String, offset: String, cl: Color, snap: Dictionary, is_hold_tick: bool = false) -> void:
+	_judge_ui_result = result
+	_judge_ui_offset = offset
+	_judge_ui_cl = cl
+	_judge_ui_snap = snap
+	_judge_ui_hold_tick = is_hold_tick
+	if not _judge_ui_dirty:
+		_judge_ui_dirty = true
+		_apply_judge_ui.call_deferred()
+
+## 帧末统一应用判定 UI（Label/颜色/tween/闪光全部只执行一次）
+func _apply_judge_ui() -> void:
+	if not _judge_ui_dirty:
+		return
+	_judge_ui_dirty = false
+	var snap: Dictionary = _judge_ui_snap
+	var result: String = _judge_ui_result
+	var cl: Color = _judge_ui_cl
+	var offset: String = _judge_ui_offset
+	var is_hold_tick: bool = _judge_ui_hold_tick
+
 	center_text.text = result
-	var cl = color_map[result]
 	center_text.add_theme_color_override("font_color", cl)
 
 	# combo显示
 	combo.text = str(snap["combo"])
 
-	# 增加分数
-	var score_add_amount = int(snap["last_score_add"])
-	_set_score_add_amount(score_add_amount)
+	# 增加分数（增量已逐判定累加到 score_wait_to_add，这里只刷展示）
+	var score_add_amount := int(snap["last_score_add"])
+	if score_add_amount != 0:
+		score_add.text = "+%d" % score_add_amount
+		score_add.modulate.a = 1
+		var tween = ani._create_tween("score_add_out")
+		tween.set_trans(Tween.TRANS_CUBIC)
+		tween.tween_property(score_add, "modulate:a", 0.0, 2)
+		ani.animate_pulse(score_add, 1, 1.1, 0.1, "score_pluse")
 
 	# 设置进度条颜色
 	_set_progress_bar_color(cl)
@@ -1406,6 +1471,10 @@ func _on_note_judged(result: String, offset: String, block_type: int, timing_sec
 	# pp和准度
 	pp_text.text = snap["pp_text"]
 	accuracy_text.text = snap["accuracy_text"]
+
+	# LONG hold tick：轻量路径，到这里就结束（不清偏移指示、不播 center 动画、不闪背景）
+	if is_hold_tick:
+		return
 
 	# 显示偏移
 	early_text.self_modulate.a = 0
@@ -1420,47 +1489,25 @@ func _on_note_judged(result: String, offset: String, block_type: int, timing_sec
 
 	# 动画
 	center.rotation_degrees = (randf()-0.5) * 5
-	var tween: Tween = ani._create_tween("center pluse")
-	tween.set_parallel(true)
+	var pulse: Tween = ani._create_tween("center pluse")
+	pulse.set_parallel(true)
 	center.scale = Vector2.ONE * 1.1
-	tween.tween_property(center, "scale", Vector2.ONE, 0.1)
-	tween.tween_property(center, "rotation_degrees", 0, 0.1)
+	pulse.tween_property(center, "scale", Vector2.ONE, 0.1)
+	pulse.tween_property(center, "rotation_degrees", 0, 0.1)
 
-	var t = ani._create_tween("center fade out")
+	var fade = ani._create_tween("center fade out")
 	center.modulate.a = 1
-	t.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	t.tween_property(center, "modulate:a", 0.0, 2)
+	fade.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	fade.tween_property(center, "modulate:a", 0.0, 2)
 
 	if result != "Miss":
 		_flash_background()
 
-## LONG 持续 tick 加分（已委托 ScoreCalculator）
-func _on_long_holding(long_instance_id: int):
-	var snap = score_calc.record_long_sustain(ScoreCalculator.Judgment.PERFECT, long_instance_id)
-
-	var cl = color_map["Perfect"]
-	center_text.add_theme_color_override("font_color", cl)
-	center_text.text = "Perfect"
-	combo.text = str(snap["combo"])
-
-	_set_progress_bar_color(cl)
-	_set_score_add_amount(int(snap["last_score_add"]))
-
-	pp_text.text = snap["pp_text"]
-	accuracy_text.text = snap["accuracy_text"]
-
 var score_wait_to_add = 0
-func _set_score_add_amount(amount: int):
+func _score_add_accumulate(amount: int) -> void:
 	if amount == 0:
 		return
 	score_wait_to_add += amount
-	score_add.text = "+%d" % amount
-
-	score_add.modulate.a = 1
-	var tween = ani._create_tween("score_add_out")
-	tween.set_trans(Tween.TRANS_CUBIC)
-	tween.tween_property(score_add, "modulate:a", 0.0, 2)
-	ani.animate_pulse(score_add, 1, 1.1, 0.1, "score_pluse")
 
 # 进度条颜色填充回调
 var _current_rect: ColorRect = null

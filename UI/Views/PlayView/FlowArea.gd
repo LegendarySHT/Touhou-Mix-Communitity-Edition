@@ -118,6 +118,10 @@ var parent_node: Node = null
 ## 用于确保note判定与MIDI播放位置完全同步
 var _synced_current_time: float = 0.0
 
+# 渲染时钟（毫秒）：来自 PlayView 的平滑视觉墙钟，仅用于计算音符显示位置。
+# 判定（过线/Miss/长条结束/滑过认领）仍用 _synced_current_time（音频钟），保证判定与声音对齐。
+var _render_time_ms: float = 0.0
+
 # 修改为从PlayView传入的音符列表
 var notes_list: Array[FlowNote] = []  # 移除测试用的音符
 var note_idx: int = 0
@@ -744,7 +748,7 @@ func _spawn_note(note_index: int) -> void:
 		active_notes.append(nt)
 		_add_note_to_lane_index(nt)
 		nt.tween = null
-		_update_long_note_fall(nt, _synced_current_time)
+		_update_long_note_fall(nt, _synced_current_time, _render_time_ms)
 		return
 
 	# Block/Slide: Node2D 批量绘制，不创建 Control 节点
@@ -759,7 +763,7 @@ func _spawn_note(note_index: int) -> void:
 	_add_note_to_lane_index(nt)
 	_note_drawer.add_note(nt)
 	nt.tween = null
-	_update_block_note_fall(nt, _synced_current_time)
+	_update_block_note_fall(nt, _synced_current_time, _render_time_ms)
 
 func _compute_center_y_by_judge_time(judge_time_ms: float, current_time_ms: float, half_height: float) -> float:
 	var pre_ms = max(1.0, _note_fall_time_seconds * 1000.0)
@@ -788,12 +792,15 @@ func _compute_center_y_by_judge_time(judge_time_ms: float, current_time_ms: floa
 ## 每帧由 _process 调用, 根据 _synced_current_time 计算音符位置
 ## 同时处理过线回调 (Slide 检查/auto_mode) 和 Miss 判定
 ## Node2D 批量绘制版：写入 note.cached_center_y，drawer 在 _draw 中读取
-func _update_block_note_fall(note: FlowNote, current_time_ms: float) -> void:
+## current_time_ms = 判定时钟（音频），render_time_ms = 渲染时钟（平滑视觉，可选）
+func _update_block_note_fall(note: FlowNote, current_time_ms: float, render_time_ms: float = -1.0) -> void:
 	if note.is_removed:
 		return
+	if render_time_ms < 0.0:
+		render_time_ms = current_time_ms
 
 	var half_height = note.cached_half_height
-	var center_y = _compute_center_y_by_judge_time(note.start_time, current_time_ms, half_height)
+	var center_y = _compute_center_y_by_judge_time(note.start_time, render_time_ms, half_height)
 	note.cached_center_y = center_y
 
 	# 过线回调: 音符首次到达/超过判定线时触发 (原 Tween.finished 逻辑)
@@ -815,9 +822,12 @@ func _update_block_note_fall(note: FlowNote, current_time_ms: float) -> void:
 			_remove_note(note)
 			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
 
-func _update_long_note_fall(note: FlowNote, current_time_ms: float) -> void:
+## current_time_ms = 判定时钟（音频），render_time_ms = 渲染时钟（平滑视觉，可选）
+func _update_long_note_fall(note: FlowNote, current_time_ms: float, render_time_ms: float = -1.0) -> void:
 	if not note.rect:
 		return
+	if render_time_ms < 0.0:
+		render_time_ms = current_time_ms
 
 	var head := note.cached_head as Control
 	var tail := note.cached_tail as Control
@@ -830,10 +840,10 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float) -> void:
 	var head_half = note.long_head_height * 0.5
 	var tail_half = note.long_tail_height * 0.5
 
-	var head_center = _compute_center_y_by_judge_time(note.start_time, current_time_ms, head_half)
+	var head_center = _compute_center_y_by_judge_time(note.start_time, render_time_ms, head_half)
 	if note.is_held:
 		head_center = jl.position.y
-	var tail_center = _compute_center_y_by_judge_time(note.start_time + max(0.0, note.duration), current_time_ms, tail_half)
+	var tail_center = _compute_center_y_by_judge_time(note.start_time + max(0.0, note.duration), render_time_ms, tail_half)
 
 	var tail_top = tail_center - tail_half
 	var tail_bottom = tail_center + tail_half
@@ -1387,7 +1397,7 @@ func _judge_claimed_slide(touch_id: int, note: FlowNote, judge_time_ms: float,
 	if _gestures.has(touch_id) and _gestures[touch_id]["claimed"] == note:
 		_gestures[touch_id]["claimed"] = null
 	_release_slide_claim(note)
-	GLogger.debug("[FlowArea] Slide judged by touch %d at %.0fms (result=%s)" % [touch_id, judge_time_ms, result_override if not result_override.is_empty() else "auto"], "FlowArea")
+	# GLogger.debug("[FlowArea] Slide judged by touch %d at %.0fms (result=%s)" % [touch_id, judge_time_ms, result_override if not result_override.is_empty() else "auto"], "FlowArea")
 
 # 检查slide音符是否在手指范围内（用于自动判定接近判定线的slide）
 # Block/Slide 已迁移到 Node2D 批量绘制，rect 为 null，使用 cached_center_x 进行位置判断
@@ -1670,9 +1680,11 @@ func _generate_particle(type: String, pos: Vector2, scl: int = 200) -> void:
 	ptc.play(type)
 	
 ## 【方案C】同步当前播放时间（毫秒）
-## 由 PlayView._process() 每帧调用，确保 FlowArea 的时间与 MIDI 播放位置完全同步
-func set_current_time(time_ms: float) -> void:
+## 由 PlayView._process() 每帧调用，确保 FlowArea 的时间与 MIDI 播放位置完全同步。
+## time_ms = 音频钟（判定用）；render_time_ms = 渲染钟（平滑视觉，可选，缺省回退音频钟）。
+func set_current_time(time_ms: float, render_time_ms: float = -1.0) -> void:
 	_synced_current_time = time_ms
+	_render_time_ms = render_time_ms if render_time_ms >= 0.0 else time_ms
 
 func _get_realtime_position_ms() -> float:
 	var playback_mgr = MidiPlaybackManager.instance
@@ -1769,10 +1781,10 @@ func _process(delta: float) -> void:
 	# Long: _update_long_note_fall 直接修改 rect 节点位置；_update_note_visibility 仅对 Long 有效（Control 节点裁剪）
 	for note in active_notes:
 		if note.type == FlowNote.NoteType.Long:
-			_update_long_note_fall(note, _synced_current_time)
+			_update_long_note_fall(note, _synced_current_time, _render_time_ms)
 			_update_note_visibility(note)
 		else:
-			_update_block_note_fall(note, _synced_current_time)
+			_update_block_note_fall(note, _synced_current_time, _render_time_ms)
 
 	# Block/Slide 位置已更新，通知 Node2D 批量绘制器重绘
 	if _note_drawer and not active_notes.is_empty():

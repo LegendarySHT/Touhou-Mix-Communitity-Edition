@@ -94,6 +94,11 @@ public partial class MeltySynthPlayer
 			private int _perfSlowCallbackCount = 0;
 			private int _perfTotalCallbackCount = 0;
 
+			// ---- 位置外推（非系统时钟模式） ----
+			// _sequencer.Position 只在音频回调边界推进，读取时陈旧 0~一个周期。
+			// 记录最后一次渲染的墙钟时间戳，get_position_ms 据此外推消除锯齿滞后。
+			private long _lastRenderTimestampTicks = Stopwatch.GetTimestamp();
+
 			// ---- 无锁事件队列 ----
 			private struct NoteEvent
 			{
@@ -557,6 +562,7 @@ public partial class MeltySynthPlayer
 							_sequencer.Render(discardSpan, discardSpan);
 							_postSeekSilenceFrames -= silence;
 							FillRemainderWithDecay(0, framesRequested);
+							_lastRenderTimestampTicks = Stopwatch.GetTimestamp();
 							Marshal.Copy(_outputBuffer, 0, pOutput, framesRequested * 2);
 							return;
 						}
@@ -596,6 +602,7 @@ public partial class MeltySynthPlayer
 						}
 					}
 
+					_lastRenderTimestampTicks = Stopwatch.GetTimestamp();
 					Marshal.Copy(_outputBuffer, 0, pOutput, framesRequested * 2);
 				}
 				catch (Exception ex)
@@ -779,6 +786,24 @@ public partial class MeltySynthPlayer
 			float ringLatencyMs = 0f;
 
 			return (deviceLatencyMs, ringLatencyMs);
+			}
+
+			/// <summary>
+			/// 自最后一次音频渲染以来的墙钟流逝（毫秒），用于非系统时钟模式下外推陈旧位置。
+			/// 上限 2 个回调周期：正常只需桥接 0~1 周期；超过说明设备真实卡顿，停止外推。
+			/// </summary>
+			public double GetExtrapolationMs()
+			{
+				double elapsedMs = (Stopwatch.GetTimestamp() - _lastRenderTimestampTicks) / (double)Stopwatch.Frequency * 1000.0;
+				double periodMs = _sampleRate > 0 ? _actualPeriod * 1000.0 / (double)_sampleRate : 0.0;
+				double maxExtrapMs = Math.Max(1.0, periodMs * 2.0);
+				return Math.Min(elapsedMs, maxExtrapMs);
+			}
+
+			/// <summary>重置渲染时间戳（播放/seek 重启时调用，避免首帧误外推）</summary>
+			public void ResetLastRenderTimestamp()
+			{
+				_lastRenderTimestampTicks = Stopwatch.GetTimestamp();
 			}
 
 			/// <summary>用 period size × (count - 0.5) 估算设备延迟 (fallback)</summary>

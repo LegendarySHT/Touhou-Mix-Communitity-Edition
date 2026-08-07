@@ -416,6 +416,7 @@ public partial class MeltySynthPlayer : Node
 			}
 			_currentOffsetMs = 0.0;  // 清除任何 pre-roll offset
 			_hasSkippedPreroolEvents = true;  // 正数seek时无需跳过事件
+			ResetRenderTimestamp();
 
 			// 3. 如果之前在播放，重新启动 AudioStreamPlayer
 			if (playing)
@@ -454,6 +455,7 @@ public partial class MeltySynthPlayer : Node
 				
 				_hasSkippedPreroolEvents = true;
 				_currentOffsetMs = 0.0;  // 重置 offset，准备正常播放阶段
+				ResetRenderTimestamp();
 				
 				// 【不要返回】继续执行到正常播放流程，让 sequencer 自然渲染第一批帧
 			}
@@ -617,6 +619,15 @@ public partial class MeltySynthPlayer : Node
 	public float get_volume_db() => _volume_db;
 	public StringName get_bus() => _bus;
 
+	/// <summary>重置音频渲染时间戳（位置重启时调用，避免首帧误外推）</summary>
+	private void ResetRenderTimestamp()
+	{
+		if (_audioOutput is MiniaudioAudioOutputBridge maBridge)
+		{
+			maBridge.ResetLastRenderTimestamp();
+		}
+	}
+
 	public double get_position_ms()
 	{
 		// 【修复】seek 待处理期间返回目标位置，避免 NoteDisplayer 看到不连贯的位置跳跃
@@ -668,7 +679,15 @@ public partial class MeltySynthPlayer : Node
 		if (_audioOutput != null && _audioOutput.IsPlaying)
 		{
 			float latencyMs = _audioOutput.GetLatencyMs();
-			return Math.Max(0.0, sequencerMs - latencyMs);
+			// 【修复】非系统时钟模式：Position 只在音频回调边界推进（读取时陈旧 0~一个周期），
+			// 减去固定缓冲深度后产生 0→周期 的锯齿滞后。用"自上次回调渲染以来的墙钟流逝"
+			// 外推消除锯齿（上限 2 周期，真实音频卡顿时停止外推）。
+			double extrapolationMs = 0.0;
+			if (_audioOutput is MiniaudioAudioOutputBridge maBridge)
+			{
+				extrapolationMs = maBridge.GetExtrapolationMs();
+			}
+			return Math.Max(0.0, sequencerMs + extrapolationMs - latencyMs);
 		}
 
 		return sequencerMs;

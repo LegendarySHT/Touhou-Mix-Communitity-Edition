@@ -41,6 +41,11 @@ func set_soundfont(_soundfont_path: String) -> bool:
 func set_volume_db(_volume_db: float) -> void:
 	push_error("set_volume_db not implemented")
 
+## 获取主音量（dB）
+func get_volume_db() -> float:
+	push_error("get_volume_db not implemented")
+	return 0.0
+
 ## 设置特定轨道通道的音量（线性值，0.0-1.0）
 func set_track_channel_volume(_track_index: int, _channel: int, _volume_linear: float) -> void:
 	push_error("set_track_channel_volume not implemented")

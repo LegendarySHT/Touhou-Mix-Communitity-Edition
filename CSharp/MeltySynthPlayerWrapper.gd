@@ -70,6 +70,13 @@ func set_volume_db(db: float) -> void:
 		return
 	meltysynth_player.call("set_volume_db", db)
 
+## 获取当前音量（dB）
+func get_volume_db() -> float:
+	if meltysynth_player == null:
+		return 0.0
+	var result = meltysynth_player.call("get_volume_db")
+	return result if result is float else 0.0
+
 ## 设置音频总线
 func set_bus(bus_name: String) -> void:
 	if meltysynth_player == null:

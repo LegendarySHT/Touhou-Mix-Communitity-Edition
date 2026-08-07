@@ -105,7 +105,12 @@ func save_config() -> void:
 	_read_ui_to_config()
 	SkinMGR.save_skin_config(_current_skin_name, _working_config)
 	# 通过 config_changed 触发 PlayView 的 flow_area.load_note_skin() 重载
-	ConfigManager.instance.set_value_and_notify("Appearance", "block_skin_preset", _current_skin_name)
+	# set_value_and_notify 在值未变化时不发通知——只改了光效/颜色等皮肤配置而没换皮肤时，
+	# block_skin_preset 不变，不会触发重载，导致切换光效要换一次皮肤才生效。
+	# 这里用 set_value 写值 + 强制 emit 一次，保证皮肤配置任何改动关闭弹窗后立即应用到游戏端
+	ConfigManager.instance.set_value("Appearance", "block_skin_preset", _current_skin_name)
+	if EvtBus:
+		EvtBus.config_changed.emit("block_skin_preset", "Appearance", _current_skin_name)
 
 ## 构造一个默认的工作副本配置（皮肤未找到时兜底）
 func _build_default_working_config() -> Dictionary:
@@ -241,6 +246,10 @@ func _apply_preview_glow(note_root: Node, glow_color: Color, enable_glow: bool) 
 	if not enable_glow:
 		glow.material = null
 		return
+	# 共享的 note 场景中 _glow 节点 z_index=-1（绘制在音符/面板背景之下），而预览面板
+	# NotePreview 背景是半透明深色，会把光效盖得几乎看不见。这里把 z_index 提到 0，
+	# 让光效绘制在音符与预览面板背景之上，实时开关光效时才能看清（仅影响本预览实例）
+	glow.z_index = 0
 	if glow.material == null or not (glow.material is ShaderMaterial) or (glow.material as ShaderMaterial).shader != NOTE_GLOW_SHADER:
 		var mat := ShaderMaterial.new()
 		mat.shader = NOTE_GLOW_SHADER

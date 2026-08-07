@@ -292,20 +292,6 @@ static func get_setting_groups() -> Array:
 				]
 			},
 			{
-				"id": "lane_effect_quality",
-				"name_en": "Lane Effect Quality",
-				"name_zh": "轨道光效质量",
-				"description": "控制轨道光效的渲染策略。推荐使用Shader模式以降低Tween和GPU混合开销；Discard模式会更激进地裁剪弱贡献像素。",
-				"type": "TYPE_OPTION",
-				"default_value": "1",
-				"advanced": true,
-				"options": [
-					{"text_en": "Legacy", "text_zh": "传统"},
-					{"text_en": "Shader", "text_zh": "Shader"},
-					{"text_en": "Shader + Discard", "text_zh": "Shader + 剔除"}
-				]
-			},
-			{
 				"id": "perfect_spark",
 				"name_en": "Perfect Spark",
 				"name_zh": "Perfect特效设定",

@@ -96,7 +96,6 @@ static var mappings: Dictionary = {
 	"generate_instant_connect": {"section": "Appearance", "key": "generate_instant_connect", "value_type": "int"},
 	"instant_connect_max_time": {"section": "Appearance", "key": "instant_connect_max_time", "value_type": "float"},
 	"hdr_2d": {"section": "Appearance", "key": "hdr_2d", "value_type": "int"},
-	"lane_effect_quality": {"section": "Appearance", "key": "lane_effect_quality", "value_type": "int"},
 }
 
 ## 将 INI 配置转换为 SettingList 格式的字典
@@ -227,8 +226,6 @@ static func validate_value(setting_id: String, value: Variant) -> bool:
 			return float(value) > 0.0 and float(value) <= 3.0
 		"flash_alpha":
 			return float(value) >= 0.0 and float(value) <= 1.0
-		"lane_effect_quality":
-			return int(value) >= 0 and int(value) <= 2
 		"vibration_duration":
 			return int(value) >= 0
 		"judge_line_position":

@@ -607,7 +607,10 @@ func play() -> void:
 	if current_midi_data == null:
 		push_error("No MIDI loaded")
 		return
-	
+
+	# 调试：打印启动时的当前音量（TrackView 起始入口）
+	_log_volume_state("play()")
+
 	# 设置音源
 	if not _soundfont_preloaded_to_backend and not current_soundfont_path.is_empty() and backend.has_method("set_soundfont"):
 		backend.set_soundfont(current_soundfont_path)
@@ -673,7 +676,7 @@ func resume() -> void:
 	var backend = _get_active_backend()
 	if backend == null:
 		return
-	
+
 	backend.resume()
 	is_playing = true
 	is_paused = false
@@ -1049,6 +1052,22 @@ func get_effective_midi_volume(midi_volume: float) -> float:
 			cfg /= 100.0  # 兼容旧版 0-100 配置
 		vol = cfg
 	return clampf(vol, 0.0, 1.0)
+
+## 调试：打印当前音量状态（诊断 TrackView/PlayView 音量不一致）
+## TrackView 起始走 play()，PlayView 起始走 is_pause=false → resume()，
+## 两个入口各打一次，对比即可看出各视图启动时的实际后端音量。
+func _log_volume_state(tag: String) -> void:
+	var backend = _get_active_backend()
+	var db_cfg: float = midi_player_config.get("volume_db", 0.0)
+	var db_backend: float = db_cfg
+	if backend != null and backend.has_method("get_volume_db"):
+		db_backend = backend.get_volume_db()
+	var midi_vol: float = current_midi_data.midi_volume if current_midi_data else 0.0
+	var eff: float = get_effective_midi_volume(midi_vol) if current_midi_data else 0.0
+	var track_entries: int = current_midi_data.track_channel_volume_config.size() if current_midi_data else 0
+	print("[MidiPlaybackManager] %s | volume_db(cfg)=%.1f volume_db(backend)=%.1f midi_volume=%.2f effective_midi_volume=%.2f track_cfg_entries=%d" % [
+		tag, db_cfg, db_backend, midi_vol, eff, track_entries,
+	])
 
 ## 设置特定(track, channel)对的音量（线性值0.0-1.0）
 ## 立即生效到正在播放的Note
