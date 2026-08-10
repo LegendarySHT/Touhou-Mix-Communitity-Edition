@@ -408,7 +408,7 @@ func _do_load_note_skin() -> void:
 
 ## 根据当前皮肤的 random_color 配置生成随机颜色并推送到 FlowArea
 ## 仅在 custom_color 主开关 + 该类型 enable_color + random_color 均开启时生成
-## 必须在 flow_area.init_flow_area() 之前调用，使对象池节点用新颜色重建
+## 必须在 flow_area.init_flow_area() 之前调用，使新音符按新颜色生成
 func _regenerate_random_note_colors() -> void:
 	if not flow_area:
 		return
@@ -518,7 +518,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 重置 ScoreCalculator
 	if score_calc:
 		score_calc.reset()
-	# 生成随机颜色（若皮肤配置启用）— 必须在 init_flow_area 前完成，使对象池节点用新颜色重建
+	# 生成随机颜色（若皮肤配置启用）— 必须在 init_flow_area 前完成，使新音符按新颜色生成
 	_regenerate_random_note_colors()
 	flow_area.init_flow_area()
 	auto_label.visible = flow_area.auto_mode

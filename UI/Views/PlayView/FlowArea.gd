@@ -1,8 +1,6 @@
 extends Panel
 
 class_name FlowArea
-const NOTE_GLOW_SHADER: Shader = preload("res://UI/Views/PlayView/Shaders/NoteGlow.gdshader")
-const LONG_BODY_REPEAT_SHADER: Shader = preload("res://UI/Views/PlayView/Shaders/LongBodyRepeat.gdshader")
 
 # 判定线
 @onready var jl: HSeparator = $JudgeLine
@@ -33,11 +31,6 @@ var ease_after_line: int = Tween.EASE_OUT as int
 var note_color_short: Color = Color.DEEP_PINK
 var note_color_slide: Color = Color.CYAN
 var note_color_long: Color = Color.DARK_ORANGE
-
-# 皮肤core贴图标记：用于决定是否显示光晕
-var _skin_has_short_core: bool = true
-var _skin_has_instant_core: bool = true
-var _skin_has_long_core: bool = true
 
 # 当前皮肤的完整配置（来自 skin.ini 新结构）
 # {general:{enable_glow,custom_color}, short:{enable_color,color,random_color}, instant:{...}, long:{...,long_connect_mode,long_f_mode}}
@@ -93,21 +86,14 @@ var lane_width: float = 0
 var active_notes: Array = []  # 存储活跃的音符
 var _notes_by_lane: Dictionary = {}  # 按轨道分组索引：{lane: Array[FlowNote]}，加速音符判定查找
 
-@onready var nt_b = load("res://UI/Views/PlayView/note_block.tscn").instantiate()
-@onready var nt_s = load("res://UI/Views/PlayView/note_slide.tscn").instantiate()
-@onready var nt_l = load("res://UI/Views/PlayView/note_long.tscn").instantiate()
 @onready var particle = load("res://UI/Views/PlayView/particleSquare.tscn").instantiate()
 
 # 粒子对象池：预创建固定数量实例并复用，避免每次按键 duplicate()+queue_free()
 const _PARTICLE_POOL_SIZE = 12
 var _particle_pool: Array = []
 
-# Block/Slide 音符批量绘制器（Node2D _draw 替代 N 个 Control 节点）
-var _note_drawer: NoteBatchDrawer = null
-
-# Long 音符对象池（Block/Slide 不再使用对象池，走 Node2D 批量绘制）
-const _NOTE_POOL_LONG_SIZE = 6
-var _note_pool_long: Array[Node] = []
+# Block/Slide/Long 音符批量绘制器（PlayView.tscn 场景节点，Node2D _draw 替代 N 个 Control 节点）
+@onready var _note_drawer: NoteBatchDrawer = $SVP/NoteBatchDrawer
 
 var _note_fall_calculator: NoteFallCalculator = NoteFallCalculator.new()
 
@@ -212,7 +198,7 @@ func init_flow_area():
 	_init_particle_pool()
 	_init_note_pool()
 	# 应用解析后的颜色（由 load_note_skin + PlayView 随机颜色生成共同决定）
-	# 池刚初始化时只有模板颜色，refresh_note_colors 会同步更新池中节点
+	# 新音符颜色在 _spawn_note 时经 _get_note_color → _resolved_colors 应用，此处只刷新已存在音符
 	refresh_note_colors()
 
 	set_note_width(note_visual_width)
@@ -345,101 +331,25 @@ func _recalculate_note_dimensions() -> void:
 	set_note_width(note_visual_width)
 	GLogger.info("Note dimensions recalculated: visual_width=%d, judge_width=%d" % [int(note_visual_width), int(note_judge_width)], "FlowArea")
 
-# 修改音符颜色
-func set_note_color(type: FlowNote.NoteType, cl: Color):
-	match type:
-		FlowNote.NoteType.Block:
-			nt_b.get_node("core").modulate = cl
-			if _note_drawer:
-				_note_drawer._block_color = cl
-		FlowNote.NoteType.Slide:
-			nt_s.get_node("core").modulate = cl
-			if _note_drawer:
-				_note_drawer._slide_color = cl
-		FlowNote.NoteType.Long:
-			for i in nt_l.get_node("VBoxC").get_children():
-				i.get_node("core").modulate = cl
-
-# 创建完全透明的纹理用于缺失贴图回退
-func _create_transparent_texture(width: int = 64, height: int = 64) -> Texture2D:
-	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0, 0, 0, 0))
-	var texture = ImageTexture.create_from_image(image)
-	return texture
-
 # 修改音符皮肤 数组顺序[短块图片，短块上色区图片，滑块。。。，长条（从头到尾）]
 func set_note_texture(texture_array: Array):
-	# 创建透明纹理作为回退
-	var transparent_texture = _create_transparent_texture()
-	
-	# 短块
-	if texture_array.size() > 0 and texture_array[0]:
-		nt_b.texture = texture_array[0]
-	else:
-		nt_b.texture = transparent_texture
-	
-	if texture_array.size() > 1 and texture_array[1]:
-		nt_b.get_node("core").texture = texture_array[1]
-	else:
-		nt_b.get_node("core").texture = transparent_texture
-	
-	# 滑块
-	if texture_array.size() > 2 and texture_array[2]:
-		nt_s.texture = texture_array[2]
-	else:
-		nt_s.texture = transparent_texture
-	
-	if texture_array.size() > 3 and texture_array[3]:
-		nt_s.get_node("core").texture = texture_array[3]
-	else:
-		nt_s.get_node("core").texture = transparent_texture
-	
-	# 长条头部
-	if texture_array.size() > 4 and texture_array[4]:
-		nt_l.get_node("VBoxC/head").texture = texture_array[4]
-	else:
-		nt_l.get_node("VBoxC/head").texture = transparent_texture
-	
-	if texture_array.size() > 5 and texture_array[5]:
-		nt_l.get_node("VBoxC/head/core").texture = texture_array[5]
-	else:
-		nt_l.get_node("VBoxC/head/core").texture = transparent_texture
-	
-	# 长条身体
-	if texture_array.size() > 6 and texture_array[6]:
-		nt_l.get_node("VBoxC/body").texture = texture_array[6]
-	else:
-		nt_l.get_node("VBoxC/body").texture = transparent_texture
-	
-	if texture_array.size() > 7 and texture_array[7]:
-		nt_l.get_node("VBoxC/body/core").texture = texture_array[7]
-	else:
-		nt_l.get_node("VBoxC/body/core").texture = transparent_texture
-	
-	# 长条尾部
-	if texture_array.size() > 8 and texture_array[8]:
-		nt_l.get_node("VBoxC/tail").texture = texture_array[8]
-	else:
-		nt_l.get_node("VBoxC/tail").texture = transparent_texture
-	
-	if texture_array.size() > 9 and texture_array[9]:
-		nt_l.get_node("VBoxC/tail/core").texture = texture_array[9]
-	else:
-		nt_l.get_node("VBoxC/tail/core").texture = transparent_texture
-
-	# 同步 Block/Slide 贴图到 Node2D 批量绘制器
+	# 直接同步到批量绘制器（drawer 为场景节点始终存在；缺失贴图由 drawer 内部回退透明纹理）
 	if _note_drawer:
-		_note_drawer.set_textures(
-			texture_array[0] if texture_array.size() > 0 else null,
+		_note_drawer.set_textures(texture_array[0] if texture_array.size() > 0 else null,
 			texture_array[1] if texture_array.size() > 1 else null,
 			texture_array[2] if texture_array.size() > 2 else null,
-			texture_array[3] if texture_array.size() > 3 else null
-		)
-		# 同步 core 节点的 self_modulate 提亮系数（还原旧 Control 路径的提亮效果）
-		_note_drawer.set_self_modulates(
-			nt_b.get_node("core").self_modulate,
-			nt_s.get_node("core").self_modulate
-		)
+			texture_array[3] if texture_array.size() > 3 else null)
+		_note_drawer.set_long_textures(texture_array[4] if texture_array.size() > 4 else null,
+			texture_array[5] if texture_array.size() > 5 else null,
+			texture_array[6] if texture_array.size() > 6 else null,
+			texture_array[7] if texture_array.size() > 7 else null,
+			texture_array[8] if texture_array.size() > 8 else null,
+			texture_array[9] if texture_array.size() > 9 else null)
+		_note_drawer.set_long_body_mode(_long_f_mode)
+		# 贴图变化会重算各类型半高：同步刷新最大全高，保证 _note_fall_distance/速度在换肤后不过期
+		_note_max_size_y = _note_drawer.get_max_half_height() * 2.0
+		_note_fall_distance = jl.position.y + _note_max_size_y
+		_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
 
 # 加载并应用指定皮肤的贴图
 func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
@@ -452,11 +362,6 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 		# 读取光效总开关与长条连接模式
 		_is_glow_enabled = SkinMGR.is_glow_enabled(skin_name)
 		_long_connect_mode = SkinMGR.get_long_connect_mode(skin_name)
-
-	# 更新core贴图标记
-	_skin_has_short_core = skin_textures.has("short_core")
-	_skin_has_instant_core = skin_textures.has("instant_core")
-	_skin_has_long_core = skin_textures.has("long_b_core") or skin_textures.has("long_f_core") or skin_textures.has("long_t_core")
 
 	# 构建纹理数组，按顺序: short, short_core, instant, instant_core, long_b, long_b_core, long_f, long_f_core, long_t, long_t_core
 	var texture_array = [
@@ -479,20 +384,14 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 	_apply_long_f_mode()
 
 	# 解析音符颜色（基于新皮肤配置 + 已有 _random_colors）
+	# 每音符颜色在 _spawn_note 时由 _get_note_color → _resolved_colors 应用，无需模板
 	_resolve_note_colors()
-	# 重新应用颜色到模板（load_note_skin 后 _init_note_pool 会用新模板重建）
-	set_note_color(FlowNote.NoteType.Block, _resolved_colors.get("short", Color.WHITE))
-	set_note_color(FlowNote.NoteType.Slide, _resolved_colors.get("instant", Color.WHITE))
-	set_note_color(FlowNote.NoteType.Long, _resolved_colors.get("long", Color.WHITE))
 
-	# 清空音符对象池，使下次 _init_note_pool 用新皮肤纹理重建节点
-	_clear_and_free_note_pools()
-
-	# 同步光效开关到 drawer
+	# 同步光效开关到 drawer（Long 与 Block/Slide 同走批量绘制，无需重建对象池）
 	if _note_drawer:
 		_note_drawer.set_glow_enabled(_is_glow_enabled)
 
-	print("[FlowArea] Loaded note skin: %s, glow=%s, connect_mode=%s, core flags: short=%s, instant=%s, long=%s" % [skin_name, _is_glow_enabled, _long_connect_mode, _skin_has_short_core, _skin_has_instant_core, _skin_has_long_core])
+	print("[FlowArea] Loaded note skin: %s, glow=%s, connect_mode=%s" % [skin_name, _is_glow_enabled, _long_connect_mode])
 
 ## 根据 _skin_config + _random_colors 解析出最终音符颜色
 ## 规则：
@@ -517,21 +416,10 @@ func _resolve_note_colors() -> void:
 					color = sec.get("color", Color.WHITE)
 		_resolved_colors[key] = color
 
-## 重新解析颜色并应用到模板 + 对象池中所有节点（用于随机颜色刷新等场景）
-## 当对象池已存在（如 retry）时，set_note_color 只改模板不影响池中已创建节点，
-## 此方法会遍历池中节点同步更新 core.modulate 和光效颜色
+## 重新解析颜色并同步到所有活跃音符（用于随机颜色刷新等场景）
+## 每音符颜色在 _spawn_note 时由 _get_note_color 应用，此处只刷新已生成仍绘制的音符
 func refresh_note_colors() -> void:
 	_resolve_note_colors()
-	set_note_color(FlowNote.NoteType.Block, _resolved_colors.get("short", Color.WHITE))
-	set_note_color(FlowNote.NoteType.Slide, _resolved_colors.get("instant", Color.WHITE))
-	set_note_color(FlowNote.NoteType.Long, _resolved_colors.get("long", Color.WHITE))
-	# 同步更新 Long 池中已存在的节点（Block/Slide 颜色已通过 set_note_color 同步到 drawer）
-	for note in _note_pool_long:
-		if is_instance_valid(note):
-			for i in note.get_node("VBoxC").get_children():
-				i.get_node("core").modulate = _resolved_colors.get("long", Color.WHITE)
-			_apply_note_glow(note, _resolved_colors.get("long", Color.WHITE), FlowNote.NoteType.Long)
-	# 同步已生成但仍在绘制的 Block/Slide 音符（皮肤/交替状态变化时刷新每音符颜色）
 	if _note_drawer:
 		for note in _note_drawer._notes:
 			if is_instance_valid(note):
@@ -539,88 +427,23 @@ func refresh_note_colors() -> void:
 		_note_drawer.request_redraw()
 
 # 根据皮肤配置设置 long-f 中部贴图的应用方式
-# repeat → 水平拉伸+垂直重复（用 shader 实现）；stretch → 竖直拉伸（默认 STRETCH_SCALE）
+# repeat → 水平拉伸+垂直重复（drawer 分条绘制）；stretch → 竖直拉伸
 func _apply_long_f_mode() -> void:
 	var mode = "repeat"
 	if _skin_config.has("long") and _skin_config["long"].has("long_f_mode"):
 		mode = _skin_config["long"]["long_f_mode"]
 	_long_f_mode = mode
-	# 应用到模板
-	_apply_long_f_mode_to_body(nt_l.get_node_or_null("VBoxC/body"))
-	_apply_long_f_mode_to_body(nt_l.get_node_or_null("VBoxC/body/core"))
-	# 应用到池中所有 long note（皮肤热切换时同步更新）
-	for note_node in _note_pool_long:
-		if is_instance_valid(note_node):
-			_apply_long_f_mode_to_body(note_node.get_node_or_null("VBoxC/body"))
-			_apply_long_f_mode_to_body(note_node.get_node_or_null("VBoxC/body/core"))
-
-# 设置单个 body 节点的 long-f 贴图模式
-# repeat 模式：附加 LongBodyRepeat shader（水平 UV 0-1 拉伸，垂直 UV 重复）
-# stretch 模式：移除 material，恢复默认 STRETCH_SCALE 行为
-func _apply_long_f_mode_to_body(_tr) -> void:
-	if not (_tr is TextureRect):
-		return
-	if _long_f_mode == "repeat":
-		var mat = _tr.material
-		if mat == null or not (mat is ShaderMaterial) or (mat as ShaderMaterial).shader != LONG_BODY_REPEAT_SHADER:
-			var new_mat := ShaderMaterial.new()
-			new_mat.shader = LONG_BODY_REPEAT_SHADER
-			_tr.material = new_mat
-	else:
-		_tr.material = null
-
-# 清空 Long 对象池中所有节点（皮肤热切换时调用，使下次 _init_note_pool 用新模板重建）
-# Block/Slide 由 NoteBatchDrawer 管理，皮肤切换时通过 set_textures 同步新贴图
-func _clear_and_free_note_pools() -> void:
-	for note in _note_pool_long:
-		if is_instance_valid(note):
-			note.queue_free()
-	_note_pool_long.clear()
-
-# 确保节点持有独立的 repeat shader material 副本（避免多 note 共享同一 material）
-func _ensure_independent_repeat_material(_tr) -> void:
-	if not (_tr is TextureRect):
-		return
-	var mat = _tr.material
-	if mat is ShaderMaterial and (mat as ShaderMaterial).shader == LONG_BODY_REPEAT_SHADER:
-		_tr.material = (mat as ShaderMaterial).duplicate()
-
-# 更新长条 body 的垂直重复次数（每帧调用，因 body 高度动态变化）
-# v_repeat = body 高度 / 贴图原始高度；body 比贴图短时至少重复 1 次（拉伸显示）
-func _update_long_body_v_repeat(note: FlowNote, body_height: float) -> void:
-	if _long_f_mode != "repeat" or body_height <= 0.0:
-		return
-	_set_v_repeat_for(note.cached_body, body_height)
-	var body_core = note.rect.get_node_or_null("VBoxC/body/core")
-	_set_v_repeat_for(body_core, body_height)
-
-func _set_v_repeat_for(_tr, body_height: float) -> void:
-	if not (_tr is TextureRect):
-		return
-	var mat = _tr.material
-	if not (mat is ShaderMaterial):
-		return
-	if (mat as ShaderMaterial).shader != LONG_BODY_REPEAT_SHADER:
-		return
-	var tex = _tr.texture
-	var tex_h = 1.0
-	if tex and tex.get_height() > 0:
-		tex_h = float(tex.get_height())
-	var v_repeat = max(1.0, body_height / tex_h)
-	(mat as ShaderMaterial).set_shader_parameter("v_repeat", v_repeat)
+	# 同步到批量绘制器（皮肤热切换时实时更新）
+	if _note_drawer:
+		_note_drawer.set_long_body_mode(_long_f_mode)
 
 # 修改音符宽度
 func set_note_width(wid: float):
-	for nt in [nt_b, nt_s, nt_l]:
-		# 关键：使用 custom_minimum_size 而非 size.x（修复 VBoxContainer 覆盖问题）
-		nt.custom_minimum_size = Vector2(wid, 0)
-		nt.size.x = wid  # 保留兼容性
-		if nt == nt_l:
-			nt = nt.get_node("VBoxC/head")
-		_note_max_size_y = _note_max_size_y if _note_max_size_y > nt.size.y else nt.size.y
-	# 同步 drawer 宽度（drawer 自行从纹理比例计算 half_height）
+	# 模板 Control 已移除：宽度同步给 drawer，由 drawer 按纹理比例派生各类型半高
 	if _note_drawer:
 		_note_drawer.set_note_width(wid)
+		# 最大音符全高（下落距离用，保证音符在屏幕外生成/消失）
+		_note_max_size_y = _note_drawer.get_max_half_height() * 2.0
 
 func clear_flow_area():
 	# 斩断 FlowNote ↔ GameSequence 的 RefCounted 循环引用，释放旧音符
@@ -631,16 +454,7 @@ func clear_flow_area():
 				note.game_sequence_ref = null
 		notes_list.clear()
 
-	for note in active_notes.duplicate():
-		if note.tween:
-			note.tween.kill()
-		# Long 音符有 rect，回池；Block/Slide 由 drawer 管理，仅清列表
-		if note.rect:
-			note.rect.visible = false
-			_return_long_to_pool(note.rect)
-			note.rect = null
-
-	# 清空 drawer 的绘制列表
+	# 清空 drawer 的绘制列表（Block/Slide/Long 统一走批量绘制）
 	if _note_drawer:
 		_note_drawer.clear()
 
@@ -665,26 +479,6 @@ func has_active_notes() -> bool:
 var _note_max_size_y: float = 0
 var _note_fall_speed: float = 0
 var _note_fall_distance: float = 0
-
-func _create_note(tp: FlowNote.NoteType, x: float, lane_idx: int = -1) -> Node:
-	# 仅 Long 使用 Control 节点池；Block/Slide 走 Node2D 批量绘制
-	var note_rect: Node = _get_long_from_pool()
-	note_rect.visible = true  # 从池中取出后立即可见
-
-	# _reset_long_for_reuse 会将 core.modulate 重置为 WHITE，此处需重新应用解析后的颜色
-	# 交替轨道颜色开启时优先用轨道色，否则回退到皮肤解析色（_resolved_colors）
-	var note_color := _get_note_color(tp, lane_idx)
-	for i in note_rect.get_node("VBoxC").get_children():
-		i.get_node("core").modulate = note_color
-
-	# 应用光效（颜色与音符一致）
-	_apply_note_glow(note_rect, note_color, tp)
-	# base position 只承载 x（轨道偏移），y 恒为 0；
-	# 动态下落 y 走 offset_transform_position，绕过 Control 布局重算
-	note_rect.position = Vector2(x, 0)
-	note_rect.offset_transform_position = Vector2.ZERO
-
-	return note_rect
 
 ## 根据 NoteType 返回 _resolved_colors 中对应的颜色
 func _get_resolved_color_for_type(tp: FlowNote.NoteType) -> Color:
@@ -716,43 +510,27 @@ func _spawn_note(note_index: int) -> void:
 	nt.cooldown = 0
 	nt.judge_line_passed = false
 	nt.is_removed = false
-	if nt.type == FlowNote.NoteType.Long:
-		nt.long_head_height = 0.0
-		nt.long_tail_height = 0.0
 
 	# 计算音符位置
 	var beam_node_for_note = parent_node.lane_area.get_lane_by_idx(nt.lane)
 	var beam_margin = max(0.0, (beam_node_for_note.beam_size.x - note_visual_width) / 2.0)
 	var start_x = beam_node_for_note.position.x + beam_margin
 
+	# Long: 走 Node2D 批量绘制（与 Block/Slide 统一），不创建 Control 节点
 	if nt.type == FlowNote.NoteType.Long:
-		# Long: 走 Control 对象池（结构复杂，同屏数量少）
-		var rect = _create_note(nt.type, start_x, nt.lane)
-		nt.set_rect(rect)
-		await get_tree().process_frame
-		nt.long_tail_height = nt.rect.get_node("VBoxC/tail").size.y
-		nt.long_head_height = nt.rect.get_node("VBoxC/head").size.y
-		nt.cached_vbox = nt.rect.get_node("VBoxC")
-		nt.cached_head = nt.rect.get_node("VBoxC/head")
-		nt.cached_tail = nt.rect.get_node("VBoxC/tail")
-		nt.cached_body = nt.rect.get_node("VBoxC/body")
-		# repeat 模式下，确保每个 note 实例的 body material 是独立副本
-		# （否则多根长条共享同一 material，v_repeat 会互相覆盖）
-		if _long_f_mode == "repeat":
-			_ensure_independent_repeat_material(nt.cached_body)
-			_ensure_independent_repeat_material(nt.rect.get_node_or_null("VBoxC/body/core"))
-		_apply_note_glow(nt.rect, _get_note_color(FlowNote.NoteType.Long, nt.lane), FlowNote.NoteType.Long)
-		var note_half_long = nt.long_tail_height / 2.0
-		var target_pos_y_long = jl.position.y - note_half_long
-		nt.rect.offset_transform_position.y = target_pos_y_long - _note_fall_distance
+		nt.cached_x_base = start_x  # 拖动手势偏移基准（按住时随触摸平移）
+		nt.cached_x = start_x
+		nt.cached_center_x = start_x + note_visual_width * 0.5
+		nt.cached_head_half_height = _note_drawer.get_long_head_half_height()
+		nt.cached_tail_half_height = _note_drawer.get_long_tail_half_height()
+		nt.cached_color = _get_note_color(nt.type, nt.lane)
 		active_notes.append(nt)
 		_add_note_to_lane_index(nt)
-		nt.tween = null
+		_note_drawer.add_note(nt)
 		_update_long_note_fall(nt, _synced_current_time, _render_time_ms)
 		return
 
 	# Block/Slide: Node2D 批量绘制，不创建 Control 节点
-	nt.rect = null  # 显式置空，标记走 drawer 路径
 	nt.cached_x = start_x
 	nt.cached_center_x = start_x + note_visual_width * 0.5
 	nt.cached_half_height = _note_drawer.get_half_height(nt.type)
@@ -762,7 +540,6 @@ func _spawn_note(note_index: int) -> void:
 	active_notes.append(nt)
 	_add_note_to_lane_index(nt)
 	_note_drawer.add_note(nt)
-	nt.tween = null
 	_update_block_note_fall(nt, _synced_current_time, _render_time_ms)
 
 func _compute_center_y_by_judge_time(judge_time_ms: float, current_time_ms: float, half_height: float) -> float:
@@ -823,96 +600,45 @@ func _update_block_note_fall(note: FlowNote, current_time_ms: float, render_time
 			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
 
 ## current_time_ms = 判定时钟（音频），render_time_ms = 渲染时钟（平滑视觉，可选）
+## Node2D 批量绘制版：写入 cached_head_center_y / cached_tail_center_y / cached_body_* 缓存字段，
+## drawer 在 _draw() 中读取绘制（body → tail → head），裁剪由 drawer 内部处理
 func _update_long_note_fall(note: FlowNote, current_time_ms: float, render_time_ms: float = -1.0) -> void:
-	if not note.rect:
+	if note.is_removed:
 		return
 	if render_time_ms < 0.0:
 		render_time_ms = current_time_ms
 
-	var head := note.cached_head as Control
-	var tail := note.cached_tail as Control
-
-	if note.long_head_height <= 0.0:
-		note.long_head_height = head.size.y
-	if note.long_tail_height <= 0.0:
-		note.long_tail_height = tail.size.y
-
-	var head_half = note.long_head_height * 0.5
-	var tail_half = note.long_tail_height * 0.5
+	var head_half = note.cached_head_half_height
+	var tail_half = note.cached_tail_half_height
 
 	var head_center = _compute_center_y_by_judge_time(note.start_time, render_time_ms, head_half)
 	if note.is_held:
 		head_center = jl.position.y
 	var tail_center = _compute_center_y_by_judge_time(note.start_time + max(0.0, note.duration), render_time_ms, tail_half)
 
-	var tail_top = tail_center - tail_half
-	var tail_bottom = tail_center + tail_half
-	var tail_judge_y = tail_center  # 使用 tail 中心而非顶部判定，避免特效位置过低
-	var head_top = head_center - head_half
+	note.cached_head_center_y = head_center
+	note.cached_tail_center_y = tail_center
+	note.cached_center_y = head_center  # 判定/特效用代表中心（NoteJudger / hit_pos）
 
 	# 长条连接模式：edge（边缘连接，body 从 tail_bottom 到 head_top）
 	# 或 center（中心连接，body 从 tail_center 到 head_center，head/tail 各向 body 偏移半高）
-	var body_target_h: float
-	var root_offset_y: float
+	# 两种模式下 head/tail 矩形相同（head 半高居中于 head_center，tail 半高居中于 tail_center）
 	if _long_connect_mode == "center":
-		# 中心连接：body 覆盖纯时长距离（head_center - tail_center）
-		body_target_h = max(0.0, head_center - tail_center)
-		note.rect.size.y = note.long_tail_height + body_target_h + note.long_head_height
-		# tail 向 body 靠拢半高（下移半个 tail 高度）
-		tail.offset_transform_position.y = note.long_tail_height * 0.5
-		# head 向 body 靠拢半高（上移半个 head 高度）
-		head.offset_transform_position.y = -note.long_head_height * 0.5
-		# root 锚定：使 tail 的视觉中心 = tail_center
-		# root 顶部 = tail_center - tail_half - tail_half（因为 tail 中心相对 root 顶部偏移 tail_half + tail.offset）
-		# 简化：root 顶部 = tail_top - tail_half（让 tail 的视觉中心落在 tail_center）
-		root_offset_y = tail_top - note.long_tail_height * 0.5
+		note.cached_body_top_y = tail_center
+		note.cached_body_height = max(0.0, head_center - tail_center)
 	else:
-		# 边缘连接（默认）：body 从 tail_bottom 到 head_top
-		body_target_h = max(0.0, head_top - tail_bottom)
-		note.rect.size.y = note.long_tail_height + body_target_h + note.long_head_height
-		tail.offset_transform_position.y = 0.0
-		head.offset_transform_position.y = 0.0
-		root_offset_y = tail_top
-
-	# repeat 模式下，按 body 高度更新垂直重复次数
-	_update_long_body_v_repeat(note, body_target_h)
-	note.rect.offset_transform_position.y = root_offset_y
+		# 边缘连接（默认）：body 从 tail_bottom（tail_center+tail_half）到 head_top（head_center-head_half）
+		note.cached_body_top_y = tail_center + tail_half
+		note.cached_body_height = max(0.0, (head_center - head_half) - (tail_center + tail_half))
 
 	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
 		var window_y = _cached_viewport_height
-		if tail_judge_y >= window_y:
+		if tail_center >= window_y:
 			_remove_note(note)
 			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
 
-func _update_note_visibility(note: FlowNote) -> void:
-	# Block/Slide 由 drawer._draw() 内部裁剪，无需 Control visible 管理
-	if not note or not note.rect:
-		return
-
-	var rect_ctrl := note.rect as Control
-	if rect_ctrl == null:
-		return
-
-	var top_y := rect_ctrl.position.y + rect_ctrl.offset_transform_position.y
-	var visual_height := rect_ctrl.size.y
-
-	if note.type == FlowNote.NoteType.Long and rect_ctrl.has_node("VBoxC"):
-		var vbox := note.cached_vbox as Control
-		if vbox:
-			visual_height = max(visual_height, vbox.size.y)
-
-	var bottom_y = top_y + max(1.0, visual_height)
-	var view_h := _cached_viewport_height
-	var visible_top := -_note_cull_margin_top
-	var visible_bottom := view_h + _note_cull_margin_bottom
-
-	rect_ctrl.visible = (bottom_y >= visible_top and top_y <= visible_bottom)
-
 var _auto_hold_idx: int = 0
 func _auto_click(note: FlowNote):
-	# Long 需要 rect 才能绘制；Block/Slide 走 drawer，无 rect
-	if note.type == FlowNote.NoteType.Long and not note.rect:
-		return
 	if parent_node.play_mode and note.game_sequence_ref:
 		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
 	if note.type == FlowNote.NoteType.Long:
@@ -926,65 +652,6 @@ func _auto_click(note: FlowNote):
 func _delay_free(list, item_to_free):
 	list.erase(item_to_free)
 
-func _apply_note_glow(note_root: Node, c: Color, note_type: FlowNote.NoteType = FlowNote.NoteType.Block) -> void:
-	# 光效总开关关闭 → 清除 material 并返回
-	if not _is_glow_enabled or glow_intensity <= 0.0:
-		_clear_glow(note_root)
-		return
-
-	# 光效颜色 = 音符颜色（已是 _resolved_colors 中的值，或白色）
-	var glow_color = c
-	if note_root is Panel:
-		var vbox = note_root.get_node_or_null("VBoxC")
-		if vbox:
-			for child in vbox.get_children():
-				if child is TextureRect and child.name != "body":
-					var uv_center := Vector2(0.5, 0.60) if child.name == "head" else Vector2(0.5, 0.40)
-					_ensure_glow_child(child, glow_color, FlowNote.NoteType.Long, uv_center)
-		return
-	_ensure_glow_child(note_root, glow_color, note_type)
-
-## 清除音符节点的光效 material（关闭光效时调用）
-func _clear_glow(note_root: Node) -> void:
-	if note_root is Panel:
-		var vbox = note_root.get_node_or_null("VBoxC")
-		if vbox:
-			for child in vbox.get_children():
-				if child is TextureRect:
-					var glow = child.get_node_or_null("_glow")
-					if glow and glow.material:
-						glow.material = null
-		return
-	if note_root is TextureRect:
-		var glow = note_root.get_node_or_null("_glow")
-		if glow and glow.material:
-			glow.material = null
-
-func _ensure_glow_child(tr_: TextureRect, col: Color, note_type: FlowNote.NoteType = FlowNote.NoteType.Block, uv_center: Vector2 = Vector2(0.5, 0.5)) -> void:
-	var glow: ColorRect = tr_.get_node_or_null("_glow")
-	if glow == null:
-		push_warning("[FlowArea] Glow node not found in note")
-		return
-	if glow.material == null:
-		var mat := ShaderMaterial.new()
-		mat.shader = NOTE_GLOW_SHADER
-		glow.material = mat
-	var mat2 := glow.material as ShaderMaterial
-	mat2.set_shader_parameter("glow_color", col)
-	mat2.set_shader_parameter("glow_intensity", glow_intensity)
-	mat2.set_shader_parameter("note_uv_center", uv_center)
-
-	# 光晕大小：使用全局 glow_size（long 保留 +3 偏移以视觉加粗）
-	match note_type:
-		FlowNote.NoteType.Long:
-			mat2.set_shader_parameter("glow_stretch", 0.6)
-			mat2.set_shader_parameter("glow_size", glow_size + 3)
-			mat2.set_shader_parameter("note_uv_half", Vector2(0.25, 0.1667))
-		_:
-			mat2.set_shader_parameter("glow_stretch", 1.0)
-			mat2.set_shader_parameter("glow_size", glow_size)
-			mat2.set_shader_parameter("note_uv_half", Vector2(0.1667, 0.1667))
-
 func set_glow_params(intensity: float, size_val: float) -> void:
 	glow_intensity = clampf(intensity, 0.0, 2.0)
 	glow_size = clampf(size_val, 1.0, 30.0)
@@ -993,101 +660,12 @@ func set_glow_params(intensity: float, size_val: float) -> void:
 		_note_drawer.set_glow_params(glow_intensity, glow_size)
 
 func _init_note_pool() -> void:
-	"""初始化音符对象池：仅 Long；Block/Slide 由 NoteBatchDrawer 批量绘制"""
-	# 创建 Block/Slide 批量绘制器（首次调用时）
-	if _note_drawer == null:
-		_note_drawer = NoteBatchDrawer.new()
-		_note_drawer.name = "NoteBatchDrawer"
-		canvas.add_child(_note_drawer)
-		# 同步当前状态到 drawer
-		_note_drawer.set_colors(
-			_resolved_colors.get("short", Color.WHITE),
-			_resolved_colors.get("instant", Color.WHITE)
-		)
-		_note_drawer.set_note_width(note_visual_width)
-		_note_drawer.set_glow_enabled(_is_glow_enabled)
-		_note_drawer.set_glow_params(glow_intensity, glow_size)
-		_note_drawer.set_cull_margins(_note_cull_margin_top, _note_cull_margin_bottom)
-		_note_drawer.set_viewport_height(get_viewport().get_visible_rect().size.y)
-		# 同步贴图（从模板读取当前纹理）
-		_note_drawer.set_textures(
-			nt_b.texture,
-			nt_b.get_node("core").texture,
-			nt_s.texture,
-			nt_s.get_node("core").texture
-		)
-		# 同步 core 节点的 self_modulate 提亮系数
-		_note_drawer.set_self_modulates(
-			nt_b.get_node("core").self_modulate,
-			nt_s.get_node("core").self_modulate
-		)
-	# Long 音符池
-	if _note_pool_long.is_empty():
-		for _i in _NOTE_POOL_LONG_SIZE:
-			var note_node = nt_l.duplicate()
-			note_node.visible = false
-			canvas.add_child(note_node)
-			_note_pool_long.append(note_node)
-	for note in _note_pool_long:
-		_apply_note_glow(note, _resolved_colors.get("long", Color.WHITE), FlowNote.NoteType.Long)
-
-## 重用 Long 节点前的完整状态重置
-func _reset_long_for_reuse(note: Node) -> void:
-	# ✅ P0: 位置、可见性、基础属性
-	note.offset_transform_position = Vector2.ZERO
-	note.visible = true
-	note.modulate = Color.WHITE
-	note.scale = Vector2.ONE
-	note.rotation = 0.0
-	# ✅ P1: 重新应用尺寸约束
-	note.custom_minimum_size = Vector2(note_visual_width, 0)
-	note.size.x = note_visual_width
-	note.size.y = 0
-	var body = note.get_node_or_null("VBoxC/body")
-	if body:
-		body.custom_minimum_size.y = 0
-	var head_node = note.get_node_or_null("VBoxC/head")
-	if head_node:
-		head_node.offset_transform_position = Vector2.ZERO
-	var tail_node = note.get_node_or_null("VBoxC/tail")
-	if tail_node:
-		tail_node.offset_transform_position = Vector2.ZERO
-	note.set_meta("_needs_height_recalc", true)
-	# ✅ P2: 清理动画状态
-	if note.has_meta("_last_tween"):
-		var old_tween = note.get_meta("_last_tween")
-		if old_tween and old_tween.is_valid():
-			old_tween.kill()
-		note.remove_meta("_last_tween")
-	# ✅ P3: 清理子节点状态
-	for child in note.get_children():
-		child.visible = true
-		child.modulate = Color.WHITE
-
-## 从 Long 池中获取一个音符节点，池空则动态创建
-func _get_long_from_pool() -> Node:
-	# 清理池中已释放的节点（解决 queue_free 延迟导致的无效节点问题）
-	while not _note_pool_long.is_empty():
-		var note = _note_pool_long.pop_back()
-		if is_instance_valid(note):
-			_reset_long_for_reuse(note)
-			return note
-	# 池空：动态创建新节点（Long 同屏数量少，动态扩容开销可接受）
-	GLogger.warning("Long note pool overflow, creating new node", "FlowArea")
-	var new_node = nt_l.duplicate()
-	_reset_long_for_reuse(new_node)
-	canvas.add_child(new_node)
-	return new_node
-
-## 将 Long 音符节点返回到池中重复使用
-## 池满时（动态扩容产生的多余节点）直接释放，避免内存常驻
-func _return_long_to_pool(note: Node) -> void:
-	note.visible = false
-	note.offset_transform_position = Vector2.ZERO
-	if _note_pool_long.size() < _NOTE_POOL_LONG_SIZE:
-		_note_pool_long.append(note)
-	else:
-		note.queue_free()
+	"""初始化 NoteBatchDrawer（PlayView.tscn 场景节点，此处仅同步运行状态）"""
+	_note_drawer.set_note_width(note_visual_width)
+	_note_drawer.set_glow_enabled(_is_glow_enabled)
+	_note_drawer.set_glow_params(glow_intensity, glow_size)
+	_note_drawer.set_cull_margins(_note_cull_margin_top, _note_cull_margin_bottom)
+	_note_drawer.set_viewport_height(get_viewport().get_visible_rect().size.y)
 
 func _remove_note(note: FlowNote) -> void:
 	note.is_removed = true
@@ -1097,26 +675,17 @@ func _remove_note(note: FlowNote) -> void:
 		if _gestures.has(claim_touch) and _gestures[claim_touch]["claimed"] == note:
 			_gestures[claim_touch]["claimed"] = null
 		_release_slide_claim(note)
-	if note.rect:
-		# Long: 回池
-		_return_long_to_pool(note.rect)
-		note.rect = null
-		call_deferred("_delay_free", active_notes, note)
-	else:
-		# Block/Slide: 从 drawer 移除（remove_note 内部会 queue_redraw 立即清除画面，仍保持同步）
-		if _note_drawer:
-			_note_drawer.remove_note(note)
-		# 从 active_notes 的移除推迟到帧末执行（与 Long 路径一致）：
-		# AUTO 模式下过线判定在 _process 遍历 active_notes 的循环体内触发 _remove_note，
-		# 若此处同步 erase，GDScript 数组迭代器（idx++ 后取 arr.get(idx)）会因元素前移跳过
-		# 下一个音符，使其一帧不更新位置/不判定，在判定线附近停滞一帧。
-		# 延迟删除后遍历期间数组不再变化；drawer 的 _notes 已同步移除，画面不会残留。
-		call_deferred("_delay_free", active_notes, note)
+	# Block/Slide/Long 统一从 drawer 移除（remove_note 内部会 queue_redraw 立即清除画面，仍保持同步）
+	# 从 active_notes 的移除推迟到帧末执行：
+	# AUTO 模式下过线判定在 _process 遍历 active_notes 的循环体内触发 _remove_note，
+	# 若此处同步 erase，GDScript 数组迭代器（idx++ 后取 arr.get(idx)）会因元素前移跳过
+	# 下一个音符，使其一帧不更新位置/不判定，在判定线附近停滞一帧。
+	# 延迟删除后遍历期间数组不再变化；drawer 的 _notes 已同步移除，画面不会残留。
+	if _note_drawer:
+		_note_drawer.remove_note(note)
+	call_deferred("_delay_free", active_notes, note)
 
 	_remove_note_from_lane_index(note)
-
-	if note.tween:
-		note.tween.kill()
 
 	# 如果是被按住的长条音符，清理触摸点
 	if note.is_held and note.held_by_touch_id in active_holds:
@@ -1309,11 +878,6 @@ func _handle_release(touch_id: int, input_time_ms: float = -1.0, released_lane: 
 	var note = active_holds[touch_id]
 	note.is_held = false
 	
-	# 如果VBoxC没有完全移动完毕，提前判定
-	# if note.rect.size.y > note.rect.get_node("VBoxC").size.y * 0.2:
-		# 判定为Good（提前释放）
-		# note_judged.emit("Good", "提前释放")
-	
 	# 移除音符
 	_remove_note(note)
 	active_holds.erase(touch_id)
@@ -1330,7 +894,11 @@ func _handle_touch_drag(touch_id: int, pos: Vector2) -> void:
 	if is_nan(note.hold_press_x):
 		return  # 非触摸来源（键盘/自动模式）不跟踪手势
 
-	note.rect.offset_transform_position.x = pos.x - note.hold_press_x
+	# 批量绘制版：平移 cached_x（相对 spawn 基准偏移），drawer 在 _draw 中读取
+	note.cached_x = note.cached_x_base + (pos.x - note.hold_press_x)
+	note.cached_center_x = note.cached_x + note_visual_width * 0.5
+	if _note_drawer:
+		_note_drawer.request_redraw()
 
 # 按住长条音符
 # 注意：调用方负责在调用此函数之前已通过 _judge_note() 完成判定
@@ -1506,14 +1074,8 @@ func _judge_slides_on_release(touch_id: int, released_lane: int, judge_time_ms: 
 		_release_slide_claim(claimed, touch_id)
 		g["claimed"] = null
 
-## 获取音符的代表 Y 坐标（屏幕坐标）
-## Long 音符使用 VBoxC/head 中心 Y；Block/Slide 走 Node2D 批量绘制，使用 cached_center_y
+## 获取音符的代表 Y 坐标（屏幕坐标；Long 与 Block/Slide 统一用 cached_center_y）
 func _get_note_center_y(note: FlowNote) -> float:
-	if note.type == FlowNote.NoteType.Long:
-		var head := note.cached_head as Control
-		if head:
-			return head.global_position.y + head.size.y * 0.5
-		return 0.0
 	return note.cached_center_y
 
 ## 键盘模式专用：在指定轨道范围内查找最合适的音符并完成判定
@@ -1723,13 +1285,8 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 
 	# 标记该note已被判定，防止重复
 	judge_note.is_judged = true
-	var hit_pos := Vector2.ZERO
-	if judge_note.rect:
-		# Long: rect 中心
-		hit_pos = judge_note.rect.position + judge_note.rect.offset_transform_position + judge_note.rect.size / 2.0
-	else:
-		# Block/Slide: 走 Node2D 批量绘制，使用 cached 字段
-		hit_pos = Vector2(judge_note.cached_center_x, judge_note.cached_center_y)
+	# 走 Node2D 批量绘制，Long 与 Block/Slide 统一用 cached 字段（cached_center_y = head 中心）
+	var hit_pos := Vector2(judge_note.cached_center_x, judge_note.cached_center_y)
 	
 	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff],
 		block_type, timing_sec, signed_offset_sec)
@@ -1753,16 +1310,10 @@ func _process(delta: float) -> void:
 	if not parent_node:
 		return
 
-	# 暂停处理
+	# 暂停处理（音符下落由 _process 时间驱动，暂停时下方提前 return 即冻结，无需 Tween 暂停）
 	if parent_node.is_pause and not _is_pause:
-		for i in active_notes:
-			if i.tween:
-				i.tween.pause()
 		_is_pause = true
 	elif not parent_node.is_pause and _is_pause:
-		for i in active_notes:
-			if i.tween:
-				i.tween.play()
 		_is_pause = false
 
 	if _is_pause:
@@ -1777,41 +1328,36 @@ func _process(delta: float) -> void:
 		note_idx += 1
 
 	# 每帧更新所有活跃音符位置
-	# Block/Slide: _update_block_note_fall 写入 cached_center_y，统一在循环末尾 queue_redraw
-	# Long: _update_long_note_fall 直接修改 rect 节点位置；_update_note_visibility 仅对 Long 有效（Control 节点裁剪）
+	# Block/Slide/Long 统一写入 cached_* 字段，drawer 在 _draw 中批量绘制（Long 由 _update_long_note_fall 维护）
 	for note in active_notes:
 		if note.type == FlowNote.NoteType.Long:
 			_update_long_note_fall(note, _synced_current_time, _render_time_ms)
-			_update_note_visibility(note)
 		else:
 			_update_block_note_fall(note, _synced_current_time, _render_time_ms)
 
-	# Block/Slide 位置已更新，通知 Node2D 批量绘制器重绘
+	# 位置已更新，通知 Node2D 批量绘制器重绘
 	if _note_drawer and not active_notes.is_empty():
 		_note_drawer.request_redraw()
-	
-	# 自动按长条
+
+	# 自动按长条（head 中心距判定线 < 12ms 判定）
 	if auto_mode:
 		for long in active_notes.filter(func(nt):
-			if nt.type == FlowNote.NoteType.Long and not nt.is_held and nt.rect:
-				var head = nt.cached_head
-				return abs(head.global_position.y + head.size.y/2 - jl.position.y) < 12
+			if nt.type == FlowNote.NoteType.Long and not nt.is_held:
+				return abs(nt.cached_head_center_y - jl.position.y) < 12
 			return false):
 			_auto_click(long)
 
-	# 更新长条音符的按住进度和显示
+	# 更新长条音符的按住进度和显示（Long 与 Block/Slide 统一走 cached 字段）
 	for touch_id in active_holds.keys():
 		var note = active_holds[touch_id]
-		if not note or not note.rect or not note.is_held:
+		if not note or not note.is_held:
 			continue
 
 		var long_end_time = note.start_time + max(0.0, note.duration)
 		if _synced_current_time >= long_end_time:
-			var tail = note.cached_tail as Control
-			var t_half = tail.size.y * 0.5
 			var preset = spark_presets.get("Perfect", 0)
 			if preset > 0:
-				_generate_particle("Perfect", tail.global_position + Vector2(float(note_visual_width) * 0.5, t_half), spark_scalings.get("Perfect", 200))
+				_generate_particle("Perfect", Vector2(note.cached_center_x, note.cached_tail_center_y), spark_scalings.get("Perfect", 200))
 			_remove_note(note)
 			active_holds.erase(touch_id)
 			continue

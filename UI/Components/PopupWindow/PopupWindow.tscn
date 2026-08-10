@@ -1,18 +1,25 @@
 [gd_scene format=3 uid="uid://6x22q0274hxw"]
 
-[ext_resource type="PackedScene" uid="uid://3ofq4u0124qy" path="res://UI/Views/PlayView/note_block.tscn" id="3_6fqj7"]
 [ext_resource type="Script" uid="uid://dy3ing4k0ohsf" path="res://UI/Components/PopupWindow/NoteSkinAdjust.gd" id="3_gghdr"]
 [ext_resource type="Texture2D" uid="uid://bpgl1nsjuf8yf" path="res://Resources/Components/CancelBtn.png" id="3_wi0v8"]
 [ext_resource type="Script" uid="uid://bouqpji0hyu7b" path="res://UI/Components/PopupWindow/DelayAdjust.gd" id="3_xybxw"]
-[ext_resource type="PackedScene" uid="uid://b3wpw7ylic5wl" path="res://UI/Views/PlayView/note_slide.tscn" id="4_fyi7o"]
 [ext_resource type="Texture2D" uid="uid://1q15cy2pddpj" path="res://Resources/Components/ConfirmBtn.png" id="4_yttj5"]
-[ext_resource type="PackedScene" uid="uid://dnnxx5it0pnum" path="res://UI/Views/PlayView/note_long.tscn" id="5_v2710"]
+[ext_resource type="Texture2D" uid="uid://dty1c7rmcvog8" path="res://Resources/Skins/旧版2/short.png" id="5_lcba5"]
+[ext_resource type="Texture2D" uid="uid://7n85g6v6g6fb" path="res://Resources/Skins/旧版2/short-core.png" id="6_4gkd0"]
 [ext_resource type="Script" uid="uid://c2ylo07cj00rw" path="res://UI/Components/TouchScrollOptionButton.gd" id="6_fyi7o"]
 [ext_resource type="Script" uid="uid://cyad78ab6lgat" path="res://UI/Components/PopupWindow/ParticleAdjust.gd" id="6_ukd1n"]
 [ext_resource type="Script" uid="uid://birrx3o1ktn31" path="res://UI/Components/PopupWindow/ImageAdjust.gd" id="6_v2710"]
+[ext_resource type="Texture2D" uid="uid://l8ea12v6pxcj" path="res://Resources/Skins/旧版2/instant.png" id="7_y8iwb"]
+[ext_resource type="Texture2D" uid="uid://fabmpyvd83ml" path="res://Resources/Skins/旧版2/instant-core.png" id="8_e72im"]
+[ext_resource type="Texture2D" uid="uid://p8ay6vm1nqur" path="res://Resources/Skins/旧版2/long-t.png" id="9_uuek7"]
+[ext_resource type="Texture2D" uid="uid://dq0wisp34wi7q" path="res://Resources/Skins/旧版2/long-t-core.png" id="10_gnu8x"]
+[ext_resource type="Texture2D" uid="uid://cajl5tclnp81v" path="res://Resources/Skins/旧版2/long-f.png" id="11_52hqx"]
 [ext_resource type="Script" uid="uid://bybph8jhlvdlx" path="res://UI/Components/PopupWindow/KBModeAdjust.gd" id="11_krk8y"]
+[ext_resource type="Texture2D" uid="uid://cvvug867frcsn" path="res://Resources/Skins/旧版2/long-f-core.png" id="12_5sb8f"]
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="13_ff7qk"]
+[ext_resource type="Texture2D" uid="uid://cmyfsfeqqdncw" path="res://Resources/Skins/旧版2/long-b.png" id="13_hty1c"]
 [ext_resource type="Script" uid="uid://drs7ctrsh2gjs" path="res://UI/Components/PopupWindow/FallingAdjust.gd" id="13_tewhg"]
+[ext_resource type="Texture2D" uid="uid://d1wixwjbj4pcj" path="res://Resources/Skins/旧版2/long-b-core.png" id="14_mv616"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qxcsx"]
 content_margin_left = 50.0
@@ -144,6 +151,8 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_fanli"]
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ff7qk"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2xvos"]
@@ -181,7 +190,7 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 5
+current_tab = 2
 tabs_visible = false
 
 [node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
@@ -347,7 +356,6 @@ action_mode = 0
 shortcut = SubResource("Shortcut_krk8y")
 
 [node name="NoteSkinAdjust" type="HBoxContainer" parent="." unique_id=1274646299]
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
@@ -384,17 +392,191 @@ layout_mode = 2
 theme_override_constants/separation = 50
 alignment = 1
 
-[node name="block" parent="NoteSkinAdjust/NotePreview/HBoxC/VBoxC" unique_id=1716205642 instance=ExtResource("3_6fqj7")]
-layout_mode = 2
-offset_transform_position = Vector2(0, -40)
-
-[node name="slide" parent="NoteSkinAdjust/NotePreview/HBoxC/VBoxC" unique_id=425160628 instance=ExtResource("4_fyi7o")]
-layout_mode = 2
-offset_transform_position = Vector2(0, 40)
-
-[node name="long" parent="NoteSkinAdjust/NotePreview/HBoxC" unique_id=193727071 instance=ExtResource("5_v2710")]
+[node name="block" type="TextureRect" parent="NoteSkinAdjust/NotePreview/HBoxC/VBoxC" unique_id=1716205642]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -40)
+offset_transform_visual_only = false
+mouse_filter = 2
+texture = ExtResource("5_lcba5")
+expand_mode = 4
+stretch_mode = 5
+
+[node name="core" type="TextureRect" parent="NoteSkinAdjust/NotePreview/HBoxC/VBoxC/block" unique_id=1652068263]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("6_4gkd0")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="_glow" type="ColorRect" parent="NoteSkinAdjust/NotePreview/HBoxC/VBoxC/block" unique_id=1486668923]
+z_index = -1
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -1.0
+anchor_top = -1.0
+anchor_right = 2.0
+anchor_bottom = 2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+
+[node name="slide" type="TextureRect" parent="NoteSkinAdjust/NotePreview/HBoxC/VBoxC" unique_id=425160628]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 40)
+offset_transform_visual_only = false
+mouse_filter = 2
+texture = ExtResource("7_y8iwb")
+expand_mode = 4
+stretch_mode = 5
+
+[node name="core" type="TextureRect" parent="NoteSkinAdjust/NotePreview/HBoxC/VBoxC/slide" unique_id=460432536]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("8_e72im")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="_glow" type="ColorRect" parent="NoteSkinAdjust/NotePreview/HBoxC/VBoxC/slide" unique_id=1557272806]
+z_index = -1
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -1.0
+anchor_top = -1.0
+anchor_right = 2.0
+anchor_bottom = 2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+
+[node name="long" type="Panel" parent="NoteSkinAdjust/NotePreview/HBoxC" unique_id=193727071]
+modulate = Color(2, 2, 2, 1)
+self_modulate = Color(2, 2, 2, 1)
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+offset_transform_enabled = true
+offset_transform_visual_only = false
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_fanli")
+
+[node name="VBoxC" type="VBoxContainer" parent="NoteSkinAdjust/NotePreview/HBoxC/long" unique_id=1714797954]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="tail" type="TextureRect" parent="NoteSkinAdjust/NotePreview/HBoxC/long/VBoxC" unique_id=189974738]
+layout_mode = 2
+size_flags_vertical = 8
+offset_transform_enabled = true
+offset_transform_visual_only = false
+mouse_filter = 2
+texture = ExtResource("9_uuek7")
+expand_mode = 5
+stretch_mode = 6
+
+[node name="core" type="TextureRect" parent="NoteSkinAdjust/NotePreview/HBoxC/long/VBoxC/tail" unique_id=1210380996]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("10_gnu8x")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="_glow" type="ColorRect" parent="NoteSkinAdjust/NotePreview/HBoxC/long/VBoxC/tail" unique_id=370521889]
+z_index = -1
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -1.5
+anchor_top = -2.0
+anchor_right = 2.5
+anchor_bottom = 4.0
+offset_bottom = -80.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+
+[node name="body" type="TextureRect" parent="NoteSkinAdjust/NotePreview/HBoxC/long/VBoxC" unique_id=2011043594]
+z_index = 1
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+texture = ExtResource("11_52hqx")
+expand_mode = 1
+
+[node name="core" type="TextureRect" parent="NoteSkinAdjust/NotePreview/HBoxC/long/VBoxC/body" unique_id=297831054]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("12_5sb8f")
+expand_mode = 1
+
+[node name="head" type="TextureRect" parent="NoteSkinAdjust/NotePreview/HBoxC/long/VBoxC" unique_id=163416007]
+layout_mode = 2
+size_flags_vertical = 0
+offset_transform_enabled = true
+offset_transform_visual_only = false
+mouse_filter = 2
+texture = ExtResource("13_hty1c")
+expand_mode = 5
+stretch_mode = 6
+
+[node name="core" type="TextureRect" parent="NoteSkinAdjust/NotePreview/HBoxC/long/VBoxC/head" unique_id=733083095]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("14_mv616")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="_glow" type="ColorRect" parent="NoteSkinAdjust/NotePreview/HBoxC/long/VBoxC/head" unique_id=253231214]
+z_index = -1
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -1.0
+anchor_top = -3.0
+anchor_right = 2.0
+anchor_bottom = 3.0
+offset_top = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
 
 [node name="VBoxC" type="VBoxContainer" parent="NoteSkinAdjust" unique_id=2130040965]
 layout_mode = 2
@@ -976,6 +1158,7 @@ max_length = 64
 emoji_menu_enabled = false
 
 [node name="KBModeAdjust" type="VBoxContainer" parent="." unique_id=1259222601]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
@@ -1191,7 +1374,7 @@ size_flags_horizontal = 4
 size_flags_vertical = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_nhoxv")
 
-[node name="block" parent="FallingAdjust/FallingPreview" unique_id=2005207291 instance=ExtResource("3_6fqj7")]
+[node name="block" type="TextureRect" parent="FallingAdjust/FallingPreview" unique_id=2005207291]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 1
 anchors_preset = 5
@@ -1200,8 +1383,38 @@ anchor_right = 0.5
 offset_left = -50.0
 offset_top = -100.0
 offset_right = 50.0
-offset_bottom = 0.0
 grow_horizontal = 2
+offset_transform_enabled = true
+offset_transform_visual_only = false
+mouse_filter = 2
+texture = ExtResource("5_lcba5")
+expand_mode = 4
+stretch_mode = 5
+
+[node name="core" type="TextureRect" parent="FallingAdjust/FallingPreview/block" unique_id=1867928489]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("6_4gkd0")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="_glow" type="ColorRect" parent="FallingAdjust/FallingPreview/block" unique_id=19207050]
+z_index = -1
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -1.0
+anchor_top = -1.0
+anchor_right = 2.0
+anchor_bottom = 2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
 
 [node name="Line" type="PanelContainer" parent="FallingAdjust/FallingPreview" unique_id=974903155]
 custom_minimum_size = Vector2(0, 4)

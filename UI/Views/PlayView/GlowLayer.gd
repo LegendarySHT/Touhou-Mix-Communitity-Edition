@@ -8,7 +8,7 @@ extends Node2D
 # 随谱面密度线性增长（每个活跃音符每帧一张加色大 quad）。
 # 注意取舍：glow 高斯纹理是整体拉伸到 quad 上的，quad 变小光晕在屏幕空间会同步收紧
 # ~30%（各 glow_size 下比例一致），并非纯减填充零视觉变化；想视觉完全不变需在
-# _bake_glow_texture 里放大 σ 抵消（会牵涉 Long 的 NoteGlow shader 保持一致），此处先做纯缩 quad。
+# _bake_glow_texture 里放大 σ 抵消（NoteGlow shader 仅剩 NoteSkinAdjust 皮肤预览使用，运行时 Long 走本层方形光效），此处先做纯缩 quad。
 const GLOW_QUAD_SCALE := 1.6
 
 var _drawer: NoteBatchDrawer = null
@@ -29,15 +29,29 @@ func _draw() -> void:
 	var note_width = _drawer._note_width
 	var glow_intensity = _drawer._glow_intensity
 
+	# 只跳过已移除音符：Long 被按住时 is_judged=true 但仍需显示光效
 	for note in notes:
-		if note.is_judged or note.is_removed:
+		if note.is_removed:
+			continue
+		var color = note.cached_color
+		if note.type == FlowNote.NoteType.Long:
+			# Long：头尾各一个与 Block/Slide 相同的方形光效（直接复用现有 glow 纹理）
+			# 旧 NoteGlow shader 因尺寸设置问题需横向拉伸补偿，此处统一为方块光效
+			for part in [[note.cached_head_center_y, note.cached_head_half_height], [note.cached_tail_center_y, note.cached_tail_half_height]]:
+				var cy = part[0]
+				var half_h = part[1]
+				if cy + half_h < top_limit or cy - half_h > bottom_limit:
+					continue
+				var part_height = half_h * 2.0
+				var part_glow = maxf(note_width, part_height) * GLOW_QUAD_SCALE
+				var rect = Rect2(note.cached_center_x - part_glow * 0.5, cy - part_glow * 0.5, part_glow, part_glow)
+				var glow_modulate := Color(color.r, color.g, color.b, color.a * glow_intensity)
+				draw_texture_rect(glow_tex, rect, false, glow_modulate)
 			continue
 		var cy = note.cached_center_y
 		var half_h = note.cached_half_height
 		if cy + half_h < top_limit or cy - half_h > bottom_limit:
 			continue
-		var is_slide = note.type == FlowNote.NoteType.Slide
-		var color = note.cached_color
 		# 方形光效矩形：取音符宽高较大值 × 2，避免方形纹理被非均匀拉伸
 		# 原 ColorRect anchors -1..2 在非方形音符上会导致光效横向拉伸
 		var note_height = half_h * 2.0

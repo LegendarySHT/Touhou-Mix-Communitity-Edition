@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_7ak4s"]
 [ext_resource type="Script" uid="uid://d1iexilqlavwd" path="res://UI/Views/PlayView/FlowArea.gd" id="2_jlvmc"]
 [ext_resource type="Script" uid="uid://da4iihe2e4ool" path="res://UI/Views/PlayView/LaneEffect.gd" id="3_kvdpo"]
+[ext_resource type="Script" uid="uid://b47npyuqw7acg" path="res://UI/Views/PlayView/NoteBatchDrawer.gd" id="4_8x7c2"]
 
 [sub_resource type="Gradient" id="Gradient_7ak4s"]
 colors = PackedColorArray(0.3882353, 0.20392157, 0.654902, 1, 0.71, 0.355, 0.71, 1)
@@ -140,6 +141,9 @@ mouse_filter = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_uj6qe")
 
 [node name="SVP" type="CanvasLayer" parent="FlowArea" unique_id=610203907]
+
+[node name="NoteBatchDrawer" type="Node2D" parent="FlowArea/SVP" unique_id=1935847162]
+script = ExtResource("4_8x7c2")
 
 [node name="Layer" type="CanvasLayer" parent="." unique_id=1802311030]
 layer = 2

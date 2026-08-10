@@ -33,9 +33,6 @@ func find_best_note(click_pos: Vector2, active_notes: Array, judge_line_y: float
 	for note in active_notes:
 		if note.is_held or note.is_judged or note.is_removed:
 			continue
-		# Long 需要 rect 存在；Block/Slide 走 Node2D 批量绘制无 rect，由 cached 字段提供位置
-		if note.type == 2 and note.rect == null:
-			continue
 
 		var center: Vector2 = _get_note_center(note)
 
@@ -76,16 +73,6 @@ func find_best_note(click_pos: Vector2, active_notes: Array, judge_line_y: float
 	return best_note
 
 ## 获取音符的代表中心点（屏幕坐标）
-## Long 音符（type == 2）使用 VBoxC/head 节点中心
-## Block/Slide 走 Node2D 批量绘制，使用 cached_center_x / cached_center_y（无 rect）
+## 统一走 Node2D 批量绘制缓存字段：Long 与 Block/Slide 均由 FlowArea 维护 cached_center_x / cached_center_y
 func _get_note_center(note: Object) -> Vector2:
-	# NoteType.Long == 2（不直接引用 FlowArea.NoteType 以避免循环依赖）
-	if note.type == 2:
-		var rect: Control = note.rect as Control
-		var head: Control = rect.get_node("VBoxC/head") as Control
-		return Vector2(
-			rect.global_position.x + rect.size.x * 0.5,
-			head.global_position.y + head.size.y * 0.5
-		)
-	# Block/Slide: cached_center_x/cached_center_y 由 FlowArea._spawn_note + _update_block_note_fall 维护
 	return Vector2(note.cached_center_x, note.cached_center_y)

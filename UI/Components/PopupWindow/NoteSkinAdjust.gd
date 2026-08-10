@@ -2,8 +2,8 @@ extends HBoxContainer
 
 class_name NoteSkinAdjust
 
-const NOTE_GLOW_SHADER: Shader = preload("res://UI/Views/PlayView/Shaders/NoteGlow.gdshader")
-const LONG_BODY_REPEAT_SHADER: Shader = preload("res://UI/Views/PlayView/Shaders/LongBodyRepeat.gdshader")
+const NOTE_GLOW_SHADER: Shader = preload("res://UI/Components/PopupWindow/NoteGlow.gdshader")
+const LONG_BODY_REPEAT_SHADER: Shader = preload("res://UI/Components/PopupWindow/LongBodyRepeat.gdshader")
 
 @onready var _note_preview_hboxc: HBoxContainer = $NotePreview/HBoxC
 @onready var _note_block_node: TextureRect = $NotePreview/HBoxC/VBoxC/block
@@ -246,10 +246,7 @@ func _apply_preview_glow(note_root: Node, glow_color: Color, enable_glow: bool) 
 	if not enable_glow:
 		glow.material = null
 		return
-	# 共享的 note 场景中 _glow 节点 z_index=-1（绘制在音符/面板背景之下），而预览面板
-	# NotePreview 背景是半透明深色，会把光效盖得几乎看不见。这里把 z_index 提到 0，
-	# 让光效绘制在音符与预览面板背景之上，实时开关光效时才能看清（仅影响本预览实例）
-	glow.z_index = 0
+	note_root.z_index = 1
 	if glow.material == null or not (glow.material is ShaderMaterial) or (glow.material as ShaderMaterial).shader != NOTE_GLOW_SHADER:
 		var mat := ShaderMaterial.new()
 		mat.shader = NOTE_GLOW_SHADER

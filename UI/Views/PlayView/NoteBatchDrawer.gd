@@ -1,10 +1,9 @@
 extends Node2D
 class_name NoteBatchDrawer
 
-## Block/Slide 音符批量绘制器
+## Block/Slide/Long 音符批量绘制器
 ## 用单个 Node2D + _draw() 替代 N 个 TextureRect Control 节点
 ## 消除 Control 布局 / offset_transform / size 重算开销
-## Long 音符仍走 Control 对象池（结构复杂，同屏数量少）
 
 # 贴图引用（由 FlowArea.set_note_texture 同步）
 var _block_tex: Texture2D = null
@@ -12,14 +11,15 @@ var _block_core_tex: Texture2D = null
 var _slide_tex: Texture2D = null
 var _slide_core_tex: Texture2D = null
 
-# 颜色（由 FlowArea.set_note_color / refresh_note_colors 同步）
-# _block_color / _slide_color = 用户设置的 modulate 颜色（GlowLayer 也用此值）
-var _block_color: Color = Color.WHITE
-var _slide_color: Color = Color.WHITE
-# self_modulate 提亮系数（对应 tscn 中 core 节点的 self_modulate，通常 Color(2,2,2,1)）
-# _draw core 贴图时用 color * self_modulate 还原旧 Control 路径的提亮效果
-var _block_self_modulate: Color = Color.WHITE
-var _slide_self_modulate: Color = Color.WHITE
+# Long 长条贴图（head=long_b 头部 / body=long_f 中部 / tail=long_t 尾部）
+var _long_head_tex: Texture2D = null
+var _long_head_core_tex: Texture2D = null
+var _long_body_tex: Texture2D = null
+var _long_body_core_tex: Texture2D = null
+var _long_tail_tex: Texture2D = null
+var _long_tail_core_tex: Texture2D = null
+
+# 每音符颜色由 FlowArea 在 _spawn_note 时写入 note.cached_color，_draw 直接用，无全局颜色字段
 
 # 光效
 var _glow_tex: Texture2D = null       # 程序预烘焙的白色 glow 纹理
@@ -36,6 +36,13 @@ const GLOW_PEAK := 0.45
 var _note_width: float = 100.0
 var _block_half_height: float = 50.0
 var _slide_half_height: float = 50.0
+# Long 头/尾半高（按贴图宽高比计算）与 body 贴图原始高度（repeat 分条用）
+var _long_head_half_height: float = 50.0
+var _long_tail_half_height: float = 50.0
+var _long_body_tex_height: float = 50.0
+var _long_body_core_tex_height: float = 50.0  # core body 贴图原始高度（与 base 可能不同）
+# body 中部贴图应用方式："repeat"（水平拉伸+垂直重复）或 "stretch"（竖直拉伸）
+var _long_body_mode: String = "repeat"
 
 # 渲染裁剪参数（与 FlowArea._note_cull_margin_* 对齐）
 var _cull_margin_top: float = 120.0
@@ -88,14 +95,28 @@ func set_textures(block_tex: Texture2D, block_core_tex: Texture2D,
 	_slide_core_tex = slide_core_tex if slide_core_tex else _transparent_tex
 	_recompute_heights()
 
-## 同步 core 节点的 self_modulate 提亮系数（从 tscn 模板读取）
-func set_self_modulates(block_sm: Color, slide_sm: Color) -> void:
-	_block_self_modulate = block_sm
-	_slide_self_modulate = slide_sm
+## 同步 Long 长条贴图（head=long_b 头部 / body=long_f 中部 / tail=long_t 尾部）
+func set_long_textures(head_tex: Texture2D, head_core_tex: Texture2D,
+		body_tex: Texture2D, body_core_tex: Texture2D,
+		tail_tex: Texture2D, tail_core_tex: Texture2D) -> void:
+	_long_head_tex = head_tex if head_tex else _transparent_tex
+	_long_head_core_tex = head_core_tex if head_core_tex else _transparent_tex
+	_long_body_tex = body_tex if body_tex else _transparent_tex
+	_long_body_core_tex = body_core_tex if body_core_tex else _transparent_tex
+	_long_tail_tex = tail_tex if tail_tex else _transparent_tex
+	_long_tail_core_tex = tail_core_tex if tail_core_tex else _transparent_tex
+	_recompute_heights()
 
-func set_colors(block_color: Color, slide_color: Color) -> void:
-	_block_color = block_color
-	_slide_color = slide_color
+## 设置 body 中部贴图应用方式（"repeat" / "stretch"）
+func set_long_body_mode(mode: String) -> void:
+	_long_body_mode = mode
+
+## Long 头/尾半高（spawn 时由 FlowArea 读取）
+func get_long_head_half_height() -> float:
+	return _long_head_half_height
+
+func get_long_tail_half_height() -> float:
+	return _long_tail_half_height
 
 func set_note_width(wid: float) -> void:
 	_note_width = wid
@@ -127,17 +148,31 @@ func get_half_height(note_type: int) -> float:
 		return _slide_half_height
 	return _block_half_height
 
+## 所有类型音符中的最大半高（FlowArea 计算 _note_max_size_y 用）
+func get_max_half_height() -> float:
+	return maxf(maxf(_block_half_height, _slide_half_height), maxf(_long_head_half_height, _long_tail_half_height))
+
 
 # ========== 内部实现 ==========
 
 func _recompute_heights() -> void:
 	_block_half_height = _compute_half_height(_block_tex)
 	_slide_half_height = _compute_half_height(_slide_tex)
+	_long_head_half_height = _compute_half_height(_long_head_tex)
+	_long_tail_half_height = _compute_half_height(_long_tail_tex)
+	_long_body_tex_height = _compute_tex_height(_long_body_tex)
+	_long_body_core_tex_height = _compute_tex_height(_long_body_core_tex)
 
 func _compute_half_height(tex: Texture2D) -> float:
 	if tex == null or tex.get_width() <= 0:
 		return _note_width * 0.5
 	return _note_width * (float(tex.get_height()) / float(tex.get_width())) * 0.5
+
+func _compute_tex_height(tex: Texture2D) -> float:
+	# body 贴图原始高度：repeat 分条重复的单位高度；缺失时退化为 note_width（v_repeat=1）
+	if tex == null or tex.get_height() <= 0:
+		return _note_width
+	return float(tex.get_height())
 
 func _create_transparent_texture(size: int = 64) -> Texture2D:
 	var image = Image.create(size, size, false, Image.FORMAT_RGBA8)
@@ -185,9 +220,13 @@ func _draw() -> void:
 	var top_limit = -_cull_margin_top
 	var bottom_limit = view_h + _cull_margin_bottom
 
-	# 第一遍：所有外层贴图（short / instant）
+	# 绘制音符贴图（short / instant / long）
+	# 只跳过已移除音符：Long 被按住时 is_judged=true 但仍需显示，不能按 is_judged 跳过
 	for note in _notes:
-		if note.is_judged or note.is_removed:
+		if note.is_removed:
+			continue
+		if note.type == FlowNote.NoteType.Long:
+			_draw_long_note(note, top_limit, bottom_limit)
 			continue
 		var cy = note.cached_center_y
 		var half_h = note.cached_half_height
@@ -195,21 +234,67 @@ func _draw() -> void:
 			continue
 		var is_slide = note.type == FlowNote.NoteType.Slide
 		var tex = _slide_tex if is_slide else _block_tex
+		var core_tex = _slide_core_tex if is_slide else _block_core_tex
+		var color = note.cached_color  # core 上色区直接按音符颜色上色（模板 core 无 self_modulate，无需提亮通道）
+
 		var rect = Rect2(note.cached_x, cy - half_h, _note_width, half_h * 2.0)
 		draw_texture_rect(tex, rect, false)
+		draw_texture_rect(core_tex, rect, false, color)
 
-	# 第二遍：所有 core 贴图（modulate by resolved color * self_modulate）
-	for note in _notes:
-		if note.is_judged or note.is_removed:
-			continue
-		var cy = note.cached_center_y
-		var half_h = note.cached_half_height
-		if cy + half_h < top_limit or cy - half_h > bottom_limit:
-			continue
-		var is_slide = note.type == FlowNote.NoteType.Slide
-		var tex = _slide_core_tex if is_slide else _block_core_tex
-		# 每音符颜色（交替轨道颜色开启时为轨道色，否则为皮肤解析色，由 _spawn_note 设置）
-		# 还原旧 Control 路径: 最终颜色 = texture * modulate * self_modulate
-		var color = (note.cached_color * _slide_self_modulate) if is_slide else (note.cached_color * _block_self_modulate)
-		var rect = Rect2(note.cached_x, cy - half_h, _note_width, half_h * 2.0)
+## 批量绘制 Long 长条：绘制顺序 body → tail → head（头尾盖在 body 上）
+func _draw_long_note(note, top_limit: float, bottom_limit: float) -> void:
+	var x: float = note.cached_x
+	var head_cy: float = note.cached_head_center_y
+	var tail_cy: float = note.cached_tail_center_y
+	var head_half: float = note.cached_head_half_height
+	var tail_half: float = note.cached_tail_half_height
+	var color: Color = note.cached_color
+
+	# 1) body（长条连接部分）先绘
+	var body_top: float = note.cached_body_top_y
+	var body_h: float = note.cached_body_height
+	if body_h > 0.0 and body_top + body_h >= top_limit and body_top <= bottom_limit:
+		var body_rect := Rect2(x, body_top, _note_width, body_h)
+		if _long_body_mode == "repeat":
+			_draw_long_body_repeat(_long_body_tex, body_rect)
+			_draw_long_body_repeat(_long_body_core_tex, body_rect, color, _long_body_core_tex_height)
+		else:
+			# stretch：整体竖直拉伸
+			draw_texture_rect(_long_body_tex, body_rect, false)
+			draw_texture_rect(_long_body_core_tex, body_rect, false, color)
+
+	# 2) tail（尾部）
+	if tail_cy + tail_half >= top_limit and tail_cy - tail_half <= bottom_limit:
+		var tail_rect := Rect2(x, tail_cy - tail_half, _note_width, tail_half * 2.0)
+		draw_texture_rect(_long_tail_tex, tail_rect, false)
+		draw_texture_rect(_long_tail_core_tex, tail_rect, false, color)
+
+	# 3) head（头部最后绘，盖在 body 上）
+	if head_cy + head_half >= top_limit and head_cy - head_half <= bottom_limit:
+		var head_rect := Rect2(x, head_cy - head_half, _note_width, head_half * 2.0)
+		draw_texture_rect(_long_head_tex, head_rect, false)
+		draw_texture_rect(_long_head_core_tex, head_rect, false, color)
+
+## repeat 模式下分条绘制 body：水平拉伸（0-1），垂直按贴图原始高度逐条重复
+## 最后一条不足贴图高度时只取贴图顶部剩余部分（与 LongBodyRepeat shader 的 fract(UV.y*v_repeat) 一致）
+## tex_height 缺省用 base body 高度；core 贴图高度不同时单独传入
+func _draw_long_body_repeat(tex: Texture2D, rect: Rect2, color: Color = Color.WHITE, tex_height: float = -1.0) -> void:
+	var tex_h := tex_height if tex_height > 0.0 else _long_body_tex_height
+	if tex_h <= 0.0:
 		draw_texture_rect(tex, rect, false, color)
+		return
+	var tex_w := tex.get_width()
+	var top := rect.position.y
+	var remain := rect.size.y
+	var guard := 0
+	while remain > 0.01:
+		var h := minf(tex_h, remain)
+		draw_texture_rect_region(tex,
+			Rect2(rect.position.x, top, rect.size.x, h),
+			Rect2(0, 0, tex_w, h),
+			color)
+		top += h
+		remain -= h
+		guard += 1
+		if guard > 256:
+			break
