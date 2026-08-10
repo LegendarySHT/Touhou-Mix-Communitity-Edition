@@ -86,9 +86,10 @@ var lane_width: float = 0
 var active_notes: Array = []  # 存储活跃的音符
 var _notes_by_lane: Dictionary = {}  # 按轨道分组索引：{lane: Array[FlowNote]}，加速音符判定查找
 
-@onready var particle = load("res://UI/Views/PlayView/particleSquare.tscn").instantiate()
+# 精灵图序列帧粒子播放器场景（替代旧的 GPUParticles2D 方块粒子）
+const _PARTICLE_SCENE := preload("res://UI/Views/PlayView/particle_player.tscn")
 
-# 粒子对象池：预创建固定数量实例并复用，避免每次按键 duplicate()+queue_free()
+# 粒子对象池：预创建固定数量实例并复用，避免每次按键 instantiate()+queue_free()
 const _PARTICLE_POOL_SIZE = 12
 var _particle_pool: Array = []
 
@@ -188,13 +189,13 @@ func init_flow_area():
 	
 	# 配置初始化
 	spark_presets["Perfect"] = ConfigManager.instance.get_int("Lane", "perfect_spark_preset", 0)
-	spark_scalings["Perfect"] = ConfigManager.instance.get_float("Lane", "perfect_spark_scaling", 50)
+	spark_scalings["Perfect"] = ConfigManager.instance.get_float("Lane", "perfect_spark_scaling", 100)
 	spark_presets["Great"] = ConfigManager.instance.get_int("Lane", "great_spark_preset", 0)
-	spark_scalings["Great"] = ConfigManager.instance.get_float("Lane", "great_spark_scaling", 50)
+	spark_scalings["Great"] = ConfigManager.instance.get_float("Lane", "great_spark_scaling", 100)
 	spark_presets["Good"] = ConfigManager.instance.get_int("Lane", "good_spark_preset", 0)
-	spark_scalings["Good"] = ConfigManager.instance.get_float("Lane", "good_spark_scaling", 50)
+	spark_scalings["Good"] = ConfigManager.instance.get_float("Lane", "good_spark_scaling", 100)
 	spark_presets["Bad"] = ConfigManager.instance.get_int("Lane", "bad_spark_preset", 0)
-	spark_scalings["Bad"] = ConfigManager.instance.get_float("Lane", "bad_spark_scaling", 50)
+	spark_scalings["Bad"] = ConfigManager.instance.get_float("Lane", "bad_spark_scaling", 100)
 	_init_particle_pool()
 	_init_note_pool()
 	# 应用解析后的颜色（由 load_note_skin + PlayView 随机颜色生成共同决定）
@@ -300,6 +301,15 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	if section == "Appearance" and key == "block_size":
 		# 需要重新计算音符尺寸
 		_recalculate_note_dimensions()
+		return
+
+	# 粒子特效配置（Lane 段 spark_preset/spark_scaling）：热更新，暂停中调整立即生效
+	if section == "Lane" and (key.ends_with("_spark_preset") or key.ends_with("_spark_scaling")):
+		for judge in spark_presets.keys():
+			var preset_key := "%s_spark_preset" % judge.to_lower()
+			var scaling_key := "%s_spark_scaling" % judge.to_lower()
+			spark_presets[judge] = ConfigManager.instance.get_int("Lane", preset_key, 0)
+			spark_scalings[judge] = ConfigManager.instance.get_float("Lane", scaling_key, 100)
 		return
 
 	if section != "Generator":
@@ -1215,7 +1225,7 @@ func _init_particle_pool() -> void:
 	if not _particle_pool.is_empty():
 		return
 	for _i in _PARTICLE_POOL_SIZE:
-		var ptc = particle.duplicate()
+		var ptc := _PARTICLE_SCENE.instantiate()
 		canvas.add_child(ptc)
 		ptc.visible = false
 		ptc.particle_done.connect(_on_particle_done.bind(ptc))
@@ -1228,18 +1238,21 @@ func _on_particle_done(ptc: Node2D) -> void:
 func _get_particle_from_pool() -> Node2D:
 	if _particle_pool.is_empty():
 		# 池耗尽时回退创建（密集谱面极端情况）
-		var ptc := particle.duplicate() as Node2D
+		var ptc := _PARTICLE_SCENE.instantiate() as Node2D
 		canvas.add_child(ptc)
 		ptc.particle_done.connect(_on_particle_done.bind(ptc))
 		return ptc
 	return _particle_pool.pop_back()
 
-func _generate_particle(type: String, pos: Vector2, scl: int = 200) -> void:
+func _generate_particle(type: String, pos: Vector2, scl: int = 100) -> void:
+	# 按预设索引取粒子包（预设 0=None，调用方已判断 >0，此处防御性校验）
+	var pack_key := ParticleMGR.get_particle_pack_by_index(spark_presets.get(type, 0))
+	if pack_key.is_empty():
+		return
 	var ptc := _get_particle_from_pool()
 	ptc.position = pos
-	ptc.set_particle_scale(scl)
 	ptc.visible = true
-	ptc.play(type)
+	ptc.play(pack_key, type, scl)
 	
 ## 【方案C】同步当前播放时间（毫秒）
 ## 由 PlayView._process() 每帧调用，确保 FlowArea 的时间与 MIDI 播放位置完全同步。
@@ -1301,7 +1314,7 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	
 	var preset = spark_presets.get(result, 0)
 	if preset > 0 and judge_note.type != FlowNote.NoteType.Long and hit_pos != Vector2.ZERO:
-		_generate_particle(result, hit_pos, spark_scalings.get(result, 200))
+		_generate_particle(result, hit_pos, spark_scalings.get(result, 100))
 
 var _is_pause: bool = false
 var _cached_viewport_height: float = 0.0
@@ -1357,7 +1370,7 @@ func _process(delta: float) -> void:
 		if _synced_current_time >= long_end_time:
 			var preset = spark_presets.get("Perfect", 0)
 			if preset > 0:
-				_generate_particle("Perfect", Vector2(note.cached_center_x, note.cached_tail_center_y), spark_scalings.get("Perfect", 200))
+				_generate_particle("Perfect", Vector2(note.cached_center_x, note.cached_tail_center_y), spark_scalings.get("Perfect", 100))
 			_remove_note(note)
 			active_holds.erase(touch_id)
 			continue

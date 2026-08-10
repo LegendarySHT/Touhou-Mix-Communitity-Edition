@@ -823,7 +823,7 @@ custom_minimum_size = Vector2(50, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 theme_override_font_sizes/font_size = 32
-text = "px"
+text = "%"
 horizontal_alignment = 1
 vertical_alignment = 1
 

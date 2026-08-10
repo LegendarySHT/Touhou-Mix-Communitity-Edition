@@ -17,6 +17,8 @@ static var CHARTS_DIR: String:
 	get: return PathHelper.get_charts_dir()
 static var SKINS_DIR: String:
 	get: return PathHelper.get_skins_dir()
+static var PARTICLES_DIR: String:
+	get: return PathHelper.get_particles_dir()
 static var SOUNDFONT_DIR: String:
 	get: return PathHelper.get_soundfont_dir()
 static var BACKGROUND_DIR: String:
@@ -117,7 +119,8 @@ func check_critical_resources() -> void:
 		"Charts Directory": DEFAULT_CHARTS_SRC,
 		"Soundfont Directory": DEFAULT_SOUNDFONT_SRC,
 		"Background Directory": DEFAULT_BACKGROUND_SRC,
-		"Skins Directory": SkinManager.DEFAULT_SKINS_SRC
+		"Skins Directory": SkinManager.DEFAULT_SKINS_SRC,
+		"Particles Directory": ParticleMGR.DEFAULT_PARTICLES_SRC
 	}
 	
 	for resource_name in critical_resources.keys():
@@ -153,6 +156,7 @@ func initialize_directory_structure() -> void:
 	var directories = [
 		CHARTS_DIR,
 		SKINS_DIR,
+		PARTICLES_DIR,
 		SOUNDFONT_DIR,
 		BACKGROUND_DIR,
 		LOGS_DIR,
@@ -625,6 +629,7 @@ func _scan_all_resources() -> void:
 	_hash_to_folder.clear()
 	audio_files_index.clear()
 	SkinMGR.clear_index()
+	ParticleMGR.clear_index()
 	soundfonts_index.clear()
 	backgrounds_index.clear()
 
@@ -659,11 +664,16 @@ func _scan_all_resources() -> void:
 	if use_fast_path:
 		_build_charts_index_from_data(all_charts_data, [])
 
-	# === 阶段 A.4：启动 skins/sf/bg 并行扫描 ===
+	# === 阶段 A.4：启动 skins/particles/sf/bg 并行扫描 ===
 	var skins_rw: Dictionary = {}
 	var skins_task := WorkerThreadPool.add_task(
 		func(): SkinMGR._build_skins_index_worker(skins_rw),
 		false, "ScanSkins"
+	)
+	var particles_rw: Dictionary = {}
+	var particles_task := WorkerThreadPool.add_task(
+		func(): ParticleMGR._build_particles_index_worker(particles_rw),
+		false, "ScanParticles"
 	)
 	var sf_rw: Dictionary = {}
 	var sf_task := WorkerThreadPool.add_task(
@@ -687,14 +697,15 @@ func _scan_all_resources() -> void:
 	# === 阶段 A.6：等待 skins/sf/bg 完成 ===
 	# 快速路径：只等 skins/sf/bg（charts 已从缓存恢复）
 	# 全量路径：_scan_charts_full_sync 已完成，只等 skins/sf/bg
-	var simple_tasks := [skins_task, sf_task, bg_task]
+	var simple_tasks := [skins_task, particles_task, sf_task, bg_task]
 	while not _all_simple_tasks_completed(simple_tasks):
 		await get_tree().process_frame
 	WorkerThreadPool.wait_for_task_completion(skins_task)
+	WorkerThreadPool.wait_for_task_completion(particles_task)
 	WorkerThreadPool.wait_for_task_completion(sf_task)
 	WorkerThreadPool.wait_for_task_completion(bg_task)
 
-	# 合并 skins/sf/bg 结果
+	# 合并 skins/particles/sf/bg 结果
 	var skins_data: Dictionary = skins_rw.get("skins", {})
 	for skin_key in skins_data:
 		SkinMGR.skins_index[skin_key] = SkinMetadata.from_dict(skins_data[skin_key])
@@ -703,6 +714,12 @@ func _scan_all_resources() -> void:
 			GLogger.warning(log_entry.msg, "SkinMGR")
 		else:
 			GLogger.info(log_entry.msg, "SkinMGR")
+	ParticleMGR.particles_index = particles_rw.get("particles", {})
+	for log_entry in particles_rw.get("logs", []):
+		if log_entry.get("is_warning", true):
+			GLogger.warning(log_entry.msg, "ParticleMGR")
+		else:
+			GLogger.info(log_entry.msg, "ParticleMGR")
 	soundfonts_index = sf_rw.get("soundfonts", {})
 	for w in sf_rw.get("warnings", []):
 		GLogger.warning(w, "FileSystemMGR")
@@ -720,15 +737,17 @@ func _scan_all_resources() -> void:
 
 	var t_end := Time.get_ticks_usec()
 	if use_fast_path:
-		GLogger.info("Resources ready in %.0fms (charts=%d from cache, skins=%d, sf=%d, bg=%d)" % [
+		GLogger.info("Resources ready in %.0fms (charts=%d from cache, skins=%d, particles=%d, sf=%d, bg=%d)" % [
 			(t_end - t_start) / 1000.0,
 			charts_index.size(), SkinMGR.skins_index.size(),
+			ParticleMGR.particles_index.size(),
 			soundfonts_index.size(), backgrounds_index.size()
 		], "FileSystemMGR")
 	else:
-		GLogger.info("Directory structure initialized in %.0fms (charts=%d, skins=%d, sf=%d, bg=%d)" % [
+		GLogger.info("Directory structure initialized in %.0fms (charts=%d, skins=%d, particles=%d, sf=%d, bg=%d)" % [
 			(t_end - t_start) / 1000.0,
 			charts_index.size(), SkinMGR.skins_index.size(),
+			ParticleMGR.particles_index.size(),
 			soundfonts_index.size(), backgrounds_index.size()
 		], "FileSystemMGR")
 

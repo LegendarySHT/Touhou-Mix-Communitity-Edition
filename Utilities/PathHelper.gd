@@ -53,6 +53,10 @@ static func get_charts_dir() -> String:
 static func get_skins_dir() -> String:
 	return get_files_dir() + "Skins/"
 
+## 粒子目录（用户粒子包，外部导入放这里）
+static func get_particles_dir() -> String:
+	return get_files_dir() + "Particles/"
+
 ## 内置皮肤配置覆盖目录
 ## res:// 在导出后为只读，内置皮肤的修改持久化到此目录
 static func get_builtin_skin_config_dir() -> String:

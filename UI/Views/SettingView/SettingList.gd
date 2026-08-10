@@ -408,7 +408,7 @@ func _popup_spark_adjust(judge_type: String) -> void:
 		return
 	var judge_lower := judge_type.to_lower()
 	_pending_config[judge_lower + "_spark_preset"] = result.get("preset", 0)
-	_pending_config[judge_lower + "_spark_scaling"] = result.get("scaling", 50)
+	_pending_config[judge_lower + "_spark_scaling"] = result.get("scaling", 100)
 	GLogger.info("%s spark updated: preset=%s scaling=%s (pending save)" % [judge_type, result.get("preset"), result.get("scaling")], "SettingList")
 
 # ===== 各视图背景设置弹窗入口 =====
