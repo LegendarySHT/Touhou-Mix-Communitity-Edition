@@ -11,6 +11,9 @@ var _current_midi: MidiData = null
 ## 加载中标记
 var _loading: bool = false
 
+## 请求版本号：快速切换 MIDI 时丢弃过期响应
+var _request_version: int = 0
+
 ## 提示信息 Label（无数据/加载中/错误时显示在列表中央）
 var _message_label: Label = null
 
@@ -18,6 +21,8 @@ var _message_label: Label = null
 ## midi: 要查询的 MidiData（使用 file_hash 作为 key）
 func load_scores(midi: MidiData) -> void:
 	_current_midi = midi
+	_request_version += 1
+	var request_version := _request_version
 	_hide_message()
 	clear_items()
 
@@ -38,6 +43,8 @@ func load_scores(midi: MidiData) -> void:
 	_show_message("加载中...")
 
 	var result = await ScoreManager.instance.get_leaderboard(midi.file_hash, LOAD_LIMIT, 0)
+	if request_version != _request_version:
+		return  # 已有更新的请求，丢弃过期响应
 	_loading = false
 
 	if not result.get("ok", false):

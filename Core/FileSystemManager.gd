@@ -1891,14 +1891,36 @@ func _delete_single_chart_files(chart_id: String) -> Dictionary:
 	charts_index.erase(folder_name)
 	return {"folder_name": folder_name, "meta": meta}
 
-## 删除音频文件，并从 audio_files_index 移除
+## 删除音频文件，并从 audio_files_index 移除；同步清理引用该文件的 MidiData 人声配置
 func delete_audio(file_path: String) -> bool:
 	if not delete_file(file_path):
 		return false
+	var affected_chart_ids: Array[String] = []
 	for i in range(audio_files_index.size() - 1, -1, -1):
 		if audio_files_index[i].get("path", "") == file_path:
+			var chart_id := str(audio_files_index[i].get("chart_id", ""))
+			if not chart_id.is_empty() and not affected_chart_ids.has(chart_id):
+				affected_chart_ids.append(chart_id)
 			audio_files_index.remove_at(i)
+	_clear_vocal_config_for_deleted_audio(file_path, affected_chart_ids)
 	return true
+
+## 音频文件删除后，清空引用它的 MidiData 人声路径/开关并写回 chart_runtime
+func _clear_vocal_config_for_deleted_audio(file_path: String, chart_ids: Array[String]) -> void:
+	if chart_ids.is_empty():
+		return
+	for chart_id in chart_ids:
+		var midi = DataMGR.get_midi_by_id(chart_id) if DataMGR != null else null
+		if midi == null:
+			GLogger.warning("Cannot find MIDI data for deleted audio: %s (chart: %s)" % [file_path, chart_id], "FileSystemMGR")
+			continue
+		if midi.vocal_file_path != file_path:
+			continue
+		midi.vocal_file_path = ""
+		midi.vocal_enabled = false
+		if ChartDB and ChartDB.IsOpen():
+			ChartDB.SaveRuntime(chart_id, midi.export_runtime_config())
+			GLogger.info("Cleared vocal config for chart %s after audio deletion: %s" % [chart_id, file_path], "FileSystemMGR")
 
 ## 删除 SF2 音源文件，并从 soundfonts_index 移除
 func delete_soundfont(file_path: String) -> bool:

@@ -78,6 +78,12 @@ static func normalize_chart_json(data: Dictionary) -> bool:
 		var song: Dictionary = data["song"]
 		var sid := _get_str(song, "_id", "")
 		if sid.is_empty():
+			# 兼容旧格式：部分来源用 "id" 而非 "_id"（如旧版下载 JSON）
+			sid = _get_str(song, "id", "")
+			if not sid.is_empty():
+				song["_id"] = sid
+				changed = true
+		if sid.is_empty():
 			var sn := _get_str(song, "name", "Unknown Song")
 			song["_id"] = "song_" + sn.sha256_text().substr(0, 16)
 			changed = true
@@ -100,6 +106,12 @@ static func normalize_chart_json(data: Dictionary) -> bool:
 	if data.has("album") and _has_meaningful_data(data["album"]):
 		var album: Dictionary = data["album"]
 		var aid := _get_str(album, "_id", "")
+		if aid.is_empty():
+			# 兼容旧格式：部分来源用 "id" 而非 "_id"（如旧版下载 JSON）
+			aid = _get_str(album, "id", "")
+			if not aid.is_empty():
+				album["_id"] = aid
+				changed = true
 		if aid.is_empty():
 			var an := _get_str(album, "name", "Unknown Album")
 			album["_id"] = "album_" + an.sha256_text().substr(0, 16)
