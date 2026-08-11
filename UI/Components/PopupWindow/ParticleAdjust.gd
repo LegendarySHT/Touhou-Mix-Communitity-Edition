@@ -11,8 +11,6 @@ class_name ParticleAdjust
 ## 粒子 preset 选项（索引 0=None，之后动态从 ParticleMGR 读取粒子包）
 ## 与 SettingGroupsData 中 spark_preset 的 options 语义一致（0=无，1 起对应粒子包）
 var _particle_presets: Array[String] = ["None"]
-## 预览时使用的判定类型（仅用于触发粒子播放，展示粒子样式本身）
-const _PARTICLE_PREVIEW_TYPE: String = "Perfect"
 ## 粒子预览场景（精灵图序列帧播放器）
 var _particle_scene: PackedScene = preload("res://UI/Views/PlayView/particle_player.tscn")
 ## 预览循环定时器
@@ -94,8 +92,8 @@ func _play_preview_particle() -> void:
 	_particle_preview.add_child(ptc)
 	# Node2D 在 Control 下的 position 以左上角为原点，Panel size=500x500 → 中心 250,250
 	ptc.position = _particle_preview.size / 2.0
-	# 用 Perfect 类型触发 play（仅展示粒子样式本身，不区分判定类型）
-	ptc.play(pack_key, _PARTICLE_PREVIEW_TYPE, scaling)
+	# 用当前正在编辑的判定类型触发 play（预览对应判定的精灵图）
+	ptc.play(pack_key, _judge_type, scaling)
 	# 播放完成后自动 queue_free
 	ptc.particle_done.connect(func() -> void:
 		if is_instance_valid(ptc):
