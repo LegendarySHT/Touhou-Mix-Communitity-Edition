@@ -219,6 +219,12 @@ func _on_state(old: UIStateManager.UIState, new: UIStateManager.UIState) -> void
 		# 重新进入时若列表项已被 _cleanup 清空，重新加载远程列表
 		if list_items.is_empty():
 			_load_remote_charts()
+		else:
+			# 防御：列表项仍存在时（未走 _cleanup 路径），刷新下载状态，
+			# 避免本地删除谱面后残留"已下载"显示
+			for item in list_items:
+				if item and is_instance_valid(item) and item is StoreMidiListItem:
+					(item as StoreMidiListItem).refresh_download_state()
 		return_to_top()
 	# 退出 STORE_VIEW 时释放列表项
 	if old == UIStateManager.UIState.STORE_VIEW and new != UIStateManager.UIState.STORE_VIEW:

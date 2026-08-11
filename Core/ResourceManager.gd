@@ -217,7 +217,16 @@ func is_chart_downloaded(chart_hash: String) -> bool:
 ## 获取下载状态
 func get_download_state(chart_hash: String) -> DownloadState:
 	if _download_states.has(chart_hash):
-		return _download_states[chart_hash]
+		var cached: int = _download_states[chart_hash]
+		# 本地谱面删除后（MidiView 删除曲包 / DelView 批量删除 / 外部删除后重扫），
+		# 缓存的 DOWNLOADED 会残留，导致 StoreView 仍显示"已下载"且点击无反应。
+		# 已下载状态以文件系统索引为准：命中缓存时再校验 _hash_to_folder，不存在则自愈回落。
+		if cached == DownloadState.DOWNLOADED:
+			if FileSystemManager.instance and FileSystemManager.instance._hash_to_folder.has(chart_hash):
+				return cached as DownloadState
+			_download_states.erase(chart_hash)
+			return DownloadState.NOT_DOWNLOADED
+		return cached as DownloadState
 	# 检查 FileSystemManager 是否有该 hash
 	if FileSystemManager.instance and FileSystemManager.instance._hash_to_folder.has(chart_hash):
 		_download_states[chart_hash] = DownloadState.DOWNLOADED
