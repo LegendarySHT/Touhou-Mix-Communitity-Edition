@@ -2,9 +2,9 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bf7nd5qojdcla"
-path.s3tc="res://.godot/imported/lily-white.png-31094b9f67ea79f2f8e3bf51b21dcbed.s3tc.ctex"
-path.etc2="res://.godot/imported/lily-white.png-31094b9f67ea79f2f8e3bf51b21dcbed.etc2.ctex"
+uid="uid://b143g35nbdsfi"
+path.s3tc="res://.godot/imported/BlockG.png-1092ffb16bf393926248f5aaf3718fe1.s3tc.ctex"
+path.etc2="res://.godot/imported/BlockG.png-1092ffb16bf393926248f5aaf3718fe1.etc2.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
@@ -12,8 +12,8 @@ metadata={
 
 [deps]
 
-source_file="res://Resources/icon/lily-white.png"
-dest_files=["res://.godot/imported/lily-white.png-31094b9f67ea79f2f8e3bf51b21dcbed.s3tc.ctex", "res://.godot/imported/lily-white.png-31094b9f67ea79f2f8e3bf51b21dcbed.etc2.ctex"]
+source_file="res://Resources/Particles/blockWithParticle/BlockG.png"
+dest_files=["res://.godot/imported/BlockG.png-1092ffb16bf393926248f5aaf3718fe1.s3tc.ctex", "res://.godot/imported/BlockG.png-1092ffb16bf393926248f5aaf3718fe1.etc2.ctex"]
 
 [params]
 
