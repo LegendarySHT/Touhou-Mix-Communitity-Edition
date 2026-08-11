@@ -1352,11 +1352,15 @@ func _process(delta: float) -> void:
 	if _note_drawer and not active_notes.is_empty():
 		_note_drawer.request_redraw()
 
-	# 自动按长条（head 中心距判定线 < 12ms 判定）
+	# 自动按长条：
+	# - 视觉窗口：head 中心距判定线 < 12px（正常帧下与画面精确对齐）
+	# - 音频钟兜底：_synced_current_time 已过 start_time 即接（与 Block/Slide 过线回调一致）
+	#   防止开局卡顿/跳帧/迟到生成导致 head 一帧越过 12px 窗口而漏接
 	if auto_mode:
 		for long in active_notes.filter(func(nt):
 			if nt.type == FlowNote.NoteType.Long and not nt.is_held:
-				return abs(nt.cached_head_center_y - jl.position.y) < 12
+				return abs(nt.cached_head_center_y - jl.position.y) < 12 \
+					or _synced_current_time >= nt.start_time
 			return false):
 			_auto_click(long)
 
