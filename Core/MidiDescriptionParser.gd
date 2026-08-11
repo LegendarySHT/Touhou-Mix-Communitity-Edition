@@ -119,12 +119,18 @@ static func _parse_difficulty_recommendations(description: String) -> Array:
 
 ## 从文本中提取所有轨道编号（连续数字串）
 ## 容忍任意分隔符（全角/半角逗号、空格、"Track"前缀、句点等）
+## 只匹配"音轨段"中的独立整数：排除小数片段（如音频偏移 0.05 / -0.05），避免同一行其他数字误判为音轨
 static func _extract_track_numbers(content: String) -> Array[int]:
 	var tracks: Array[int] = []
 	var regex := RegEx.new()
-	regex.compile("\\d+")
+	# 两种合法形态：
+	# 1) 独立 token：前面是行首/分隔符（全角半角逗号、顿号、分号、空白、冒号、连字符），且后面不是数字或小数片段（0.05 之类）
+	# 2) Track/T 前缀（可带空格），如 Track1、T 10
+	# 注意：允许 "-" 作前置分隔符以支持 "Track1-16" 这类范围写法（负数偏移如 -0.05 仍会被小数规则排除）
+	regex.compile("(?:^|[，,、;；\\s:：\\-])(\\d+)(?!\\d|\\.\\d)|(?:Track|T)\\s*(\\d+)")
 	for match in regex.search_all(content):
-		var num := int(match.get_string(0))
+		var num_str := match.get_string(1) if not match.get_string(1).is_empty() else match.get_string(2)
+		var num := int(num_str)
 		if num not in tracks:
 			tracks.append(num)
 	return tracks

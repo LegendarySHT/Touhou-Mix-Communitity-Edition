@@ -285,6 +285,15 @@ func _slide(bar: Control, off_top: float, off_bottom: float) -> Tween:
 	return t
 
 func _input(event: InputEvent) -> void:
+	# 键盘事件：焦点在本视图（或其子控件）内时，Godot GUI 链会正常送达 _gui_input，
+	# 此时不再手动转发，避免 W/S 重映射被处理两次
+	if event is InputEventKey and event.pressed:
+		var focused := get_viewport().gui_get_focus_owner()
+		if focused != null and (focused == self or is_ancestor_of(focused)):
+			return
+	# 鼠标事件：指针在本视图矩形内时同样由 GUI 链送达，避免滚轮等被处理两次
+	elif event is InputEventMouse and get_global_rect().has_point(get_global_mouse_position()):
+		return
 	super._gui_input(event)
 
 ## 本地 MIDI 点击：跳转 MidiView

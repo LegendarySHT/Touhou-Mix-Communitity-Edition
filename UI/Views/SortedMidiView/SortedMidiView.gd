@@ -155,7 +155,9 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 		node.setup_with_dict(item, counter, item_bg)
 		counter += 1
 
-		await get_tree().process_frame
+		# 与 AlbumView 一致：每 3 项让出一帧，避免数百项列表逐个等待帧导致构建耗时数秒
+		if counter % 3 == 0:
+			await get_tree().process_frame
 
 	# 最终校验:仅当本次 generation 仍为最新时触发未加载项的封面加载
 	if my_generation == _load_generation:

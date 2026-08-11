@@ -87,8 +87,10 @@ var _avatar_load_token: int = 0
 var _recent_loaded: bool = false
 var _best_loaded: bool = false
 var _most_loaded: bool = false
-# 列表加载进行中（防止重复请求）
-var _history_loading: bool = false
+# 列表加载进行中（每列表独立，防止切换 tab 时互相阻塞导致加载被静默丢弃）
+var _recent_loading: bool = false
+var _best_loading: bool = false
+var _most_loading: bool = false
 
 func _ready() -> void:
 	navi_profile_btn.pressed.connect(_on_navi_profile_pressed)
@@ -450,15 +452,15 @@ func _on_avatar_file_selected(path: String) -> void:
 
 ## 加载最近游玩记录
 func _load_recent_scores() -> void:
-	if _history_loading:
+	if _recent_loading:
 		return
 	if AuthManager.instance == null or not AuthManager.instance.is_logged_in:
 		return
 	if NetManager.instance == null or not NetManager.instance.is_online:
 		return
-	_history_loading = true
+	_recent_loading = true
 	var result: Dictionary = await AuthManager.instance.get_recent_scores(RECORD_PAGE_LIMIT, 0)
-	_history_loading = false
+	_recent_loading = false
 	if not is_instance_valid(self):
 		return
 	if not result.get("ok", false) or not result.data is Dictionary:
@@ -469,15 +471,15 @@ func _load_recent_scores() -> void:
 
 ## 加载最佳记录（按 MIDI 去重）
 func _load_best_scores() -> void:
-	if _history_loading:
+	if _best_loading:
 		return
 	if AuthManager.instance == null or not AuthManager.instance.is_logged_in:
 		return
 	if NetManager.instance == null or not NetManager.instance.is_online:
 		return
-	_history_loading = true
+	_best_loading = true
 	var result: Dictionary = await AuthManager.instance.get_best_scores(RECORD_PAGE_LIMIT, 0)
-	_history_loading = false
+	_best_loading = false
 	if not is_instance_valid(self):
 		return
 	if not result.get("ok", false) or not result.data is Dictionary:
@@ -488,15 +490,15 @@ func _load_best_scores() -> void:
 
 ## 加载最多游玩记录
 func _load_most_played() -> void:
-	if _history_loading:
+	if _most_loading:
 		return
 	if AuthManager.instance == null or not AuthManager.instance.is_logged_in:
 		return
 	if NetManager.instance == null or not NetManager.instance.is_online:
 		return
-	_history_loading = true
+	_most_loading = true
 	var result: Dictionary = await AuthManager.instance.get_most_played(RECORD_PAGE_LIMIT, 0)
-	_history_loading = false
+	_most_loading = false
 	if not is_instance_valid(self):
 		return
 	if not result.get("ok", false) or not result.data is Dictionary:

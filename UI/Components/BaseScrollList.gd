@@ -283,6 +283,9 @@ func _process_snap(delta: float) -> void:
 func _on_v_scrollbar_gui_input(event):
 	if event is InputEventScreenTouch:
 		_is_dragging_bar = event.pressed
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		# 桌面端鼠标拖拽滚动条同样标记拖拽中，避免 snap 吸附与用户拖拽打架
+		_is_dragging_bar = event.pressed
 
 func _gui_input(event: InputEvent) -> void:
 	if work_state != UiStatMGR.current_state:
