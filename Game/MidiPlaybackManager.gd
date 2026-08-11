@@ -42,9 +42,6 @@ var midi_timebase: int = 480
 ## 总时长（毫秒）
 var duration_ms: float = 0.0
 
-## 可用的SoundFont列表（缓存）
-var available_soundfonts: Array = []
-
 ## 默认SoundFont路径
 var default_soundfont_path: String = "res://Resources/Soundfont/GeneralUser-GS.sf2"
 
@@ -106,9 +103,6 @@ func _ready() -> void:
 	
 	_initialize_backend()
 	
-	# 扫描可用的SoundFont
-	_scan_soundfonts()
-	
 	# 从配置文件加载音源设置
 	_load_soundfont_from_config()
 	
@@ -122,30 +116,29 @@ func _ready() -> void:
 ## @param setting_name: 改变的设置名 ("*" 表示所有设置)
 ## @param value: 设置的新值（此时未使用，因为我们直接从配置文件读取）
 func _on_settings_changed(setting_name: String, value: Variant) -> void:
-	print("[MidiPlaybackManager] Settings changed event: setting_name='%s', value=%s" % [setting_name, value])
+	GLogger.info("Settings changed event: setting_name='%s', value=%s" % [setting_name, value], "MidiPlaybackManager")
 
 	# 如果是泛指信号或音源改变
 	if setting_name == "*" or setting_name == "soundfont_select":
 		# 重新读取音源配置
-		print("[MidiPlaybackManager] Reloading soundfont from settings")
+		GLogger.info("Reloading soundfont from settings", "MidiPlaybackManager")
 		_load_soundfont_from_config()
-		print("[MidiPlaybackManager] Soundfont reloaded successfully")
+		GLogger.info("Soundfont reloaded successfully", "MidiPlaybackManager")
 	
 	# 【修复D-4】如果是泛指信号或系统时钟设置改变
 	if setting_name == "*" or setting_name == "use_system_stopwatch":
-		print("[MidiPlaybackManager] Applying system stopwatch setting")
+		GLogger.info("Applying system stopwatch setting", "MidiPlaybackManager")
 		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
 		var backend = _get_active_backend()
 		if backend != null and backend.has_method("set_use_system_stopwatch"):
 			backend.set_use_system_stopwatch(use_system_stopwatch)
 			GLogger.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
-			print("[MidiPlaybackManager] System stopwatch mode set to: %s" % ("ON" if use_system_stopwatch else "OFF"))
 		else:
-			print("[MidiPlaybackManager] Current backend does not support system stopwatch setting")
+			GLogger.warning("Current backend does not support system stopwatch setting", "MidiPlaybackManager")
 
 	# 最大复音数改变（需要重新加载SoundFont才能生效）
 	if setting_name == "*" or setting_name == "max_polyphony":
-		print("[MidiPlaybackManager] Polyphony setting changed, reloading soundfont")
+		GLogger.info("Polyphony setting changed, reloading soundfont", "MidiPlaybackManager")
 
 		# 获取当前是否正在播放
 		var was_playing = is_playing
@@ -162,17 +155,17 @@ func _on_settings_changed(setting_name: String, value: Variant) -> void:
 			if backend.has_method("set_max_polyphony"):
 				var max_polyphony = ConfigManager.instance.get_int("Playback", "max_polyphony", 96)
 				backend.call("set_max_polyphony", max_polyphony)
-				print("[MidiPlaybackManager] Updated max polyphony to: %d" % max_polyphony)
+				GLogger.info("Updated max polyphony to: %d" % max_polyphony, "MidiPlaybackManager")
 
 			# 重新加载SoundFont使设置生效
 			_load_soundfont_from_config()
-			print("[MidiPlaybackManager] Soundfont reloaded with new audio settings")
+			GLogger.info("Soundfont reloaded with new audio settings", "MidiPlaybackManager")
 
 			# 如果之前正在播放，恢复播放位置
 			if was_playing and current_midi_data != null:
 				seek(current_pos)
 				play()
-				print("[MidiPlaybackManager] Resumed playback at %.2fms" % current_pos)
+				GLogger.info("Resumed playback at %.2fms" % current_pos, "MidiPlaybackManager")
 
 
 func _process(_delta: float) -> void:
@@ -1039,11 +1032,12 @@ func set_volume_db(volume: float) -> void:
 
 	midi_player_config["volume_db"] = volume
 
-## 统一解析 MIDI 主音量：per-midi 值优先，默认值(0.5)回退全局 default_midi_volume，并 clamp 到 [0,1]
+## 统一解析 MIDI 主音量：per-midi 显式值优先，未配置（midi_volume < 0，约定 -1）回退全局
+## default_midi_volume，并 clamp 到 [0,1]。0.5 现在是合法显式值（用户设为 50% 不再被当作哨兵）。
 ## 供 TrackView/PlayView 共用，保证同一 MIDI 在各视图音量一致
 func get_effective_midi_volume(midi_volume: float) -> float:
 	var vol := midi_volume
-	if vol == 0.5:
+	if vol < 0.0:
 		var cfg := ConfigManager.instance.get_float("Gameplay", "default_midi_volume", 0.5)
 		if cfg > 1.0:
 			cfg /= 100.0  # 兼容旧版 0-100 配置
@@ -1158,29 +1152,6 @@ func get_selected_track_notes() -> Array:
 		return []
 	
 	return MidiParser.extract_notes_by_track(current_notes, current_midi_data.selected_track_indices)
-
-## 扫描可用的SoundFont文件
-func _scan_soundfonts() -> void:
-	available_soundfonts.clear()
-	
-	var soundfont_dir = "res://Resources/Soundfont"
-	var dir = DirAccess.open(soundfont_dir)
-	
-	if dir == null:
-		push_warning("Soundfont directory not found: %s" % soundfont_dir)
-		return
-	
-	dir.list_dir_begin()
-	var file_name = dir.get_next()
-	
-	while file_name != "":
-		if file_name.ends_with(".sf2"):
-			available_soundfonts.append(file_name)
-		file_name = dir.get_next()
-
-## 获取可用的SoundFont列表
-func get_available_soundfonts() -> Array:
-	return available_soundfonts.duplicate()
 
 ## 获取可用的乐器预设列表
 func get_presets_list() -> Array:

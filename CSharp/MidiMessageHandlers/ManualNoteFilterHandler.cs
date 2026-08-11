@@ -22,7 +22,8 @@ internal sealed class ManualNoteFilterHandler : IMidiMessageHandler
 		if (isNoteOn || isNoteOff)
 		{
 			var key = MessageHandlerContext.MakeManualFilterKey(virtualChannel, data1);
-			if (_context.ManualNoteFilters.TryGetValue(key, out var state))
+			var filters = _context.ManualFilterRegistry.Filters;  // 捕获当前快照（volatile 读）
+			if (filters.TryGetValue(key, out var state))
 			{
 				if (isNoteOn)
 				{

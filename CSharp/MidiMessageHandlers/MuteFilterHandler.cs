@@ -16,7 +16,7 @@ internal sealed class MuteFilterHandler : IMidiMessageHandler
 
 	public bool Process(Synthesizer synthesizer, int virtualChannel, ref int command, ref int data1, ref int data2, int tick)
 	{
-		if (_context.MutedVirtualChannels.Contains(virtualChannel) && command == 0x90 && data2 > 0)
+		if (_context.MutedVirtualChannels.ContainsKey(virtualChannel) && command == 0x90 && data2 > 0)
 		{
 			return false;
 		}

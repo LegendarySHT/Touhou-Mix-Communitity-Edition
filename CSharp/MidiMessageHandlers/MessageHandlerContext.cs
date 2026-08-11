@@ -7,31 +7,31 @@ using System.Collections.Generic;
 /// </summary>
 internal sealed class MessageHandlerContext
 {
-	public readonly Dictionary<int, int> VirtualChannelCurrentBank;
-	public readonly Dictionary<int, int> VirtualChannelCurrentProgram;
-	public readonly Dictionary<int, int> VirtualChannelCc7;
-	public readonly Dictionary<int, int> VirtualChannelCc11;
-	public readonly Dictionary<int, int> VirtualChannelCc10;
-	public readonly Dictionary<int, int> VirtualChannelPitchBend;
-	public readonly Dictionary<int, (int bank, int program)> VirtualChannelInstruments;
-	public readonly Dictionary<int, float> VirtualChannelVolumes;
-	public readonly Dictionary<long, ManualFilterState> ManualNoteFilters;
-	public readonly HashSet<int> MutedVirtualChannels;
+	public readonly ConcurrentDictionary<int, int> VirtualChannelCurrentBank;
+	public readonly ConcurrentDictionary<int, int> VirtualChannelCurrentProgram;
+	public readonly ConcurrentDictionary<int, int> VirtualChannelCc7;
+	public readonly ConcurrentDictionary<int, int> VirtualChannelCc11;
+	public readonly ConcurrentDictionary<int, int> VirtualChannelCc10;
+	public readonly ConcurrentDictionary<int, int> VirtualChannelPitchBend;
+	public readonly ConcurrentDictionary<int, (int bank, int program)> VirtualChannelInstruments;
+	public readonly ConcurrentDictionary<int, float> VirtualChannelVolumes;
+	public readonly ManualNoteFilterRegistry ManualFilterRegistry;
+	public readonly ConcurrentDictionary<int, byte> MutedVirtualChannels;
 	public readonly ConcurrentDictionary<int, byte> ChannelStateAppliedToManual;
 
 	public const int ManualWildcardTick = -1;
 
 	public MessageHandlerContext(
-		Dictionary<int, int> virtualChannelCurrentBank,
-		Dictionary<int, int> virtualChannelCurrentProgram,
-		Dictionary<int, int> virtualChannelCc7,
-		Dictionary<int, int> virtualChannelCc11,
-		Dictionary<int, int> virtualChannelCc10,
-		Dictionary<int, int> virtualChannelPitchBend,
-		Dictionary<int, (int bank, int program)> virtualChannelInstruments,
-		Dictionary<int, float> virtualChannelVolumes,
-		Dictionary<long, ManualFilterState> manualNoteFilters,
-		HashSet<int> mutedVirtualChannels,
+		ConcurrentDictionary<int, int> virtualChannelCurrentBank,
+		ConcurrentDictionary<int, int> virtualChannelCurrentProgram,
+		ConcurrentDictionary<int, int> virtualChannelCc7,
+		ConcurrentDictionary<int, int> virtualChannelCc11,
+		ConcurrentDictionary<int, int> virtualChannelCc10,
+		ConcurrentDictionary<int, int> virtualChannelPitchBend,
+		ConcurrentDictionary<int, (int bank, int program)> virtualChannelInstruments,
+		ConcurrentDictionary<int, float> virtualChannelVolumes,
+		ManualNoteFilterRegistry manualFilterRegistry,
+		ConcurrentDictionary<int, byte> mutedVirtualChannels,
 		ConcurrentDictionary<int, byte> channelStateAppliedToManual)
 	{
 		VirtualChannelCurrentBank = virtualChannelCurrentBank;
@@ -42,7 +42,7 @@ internal sealed class MessageHandlerContext
 		VirtualChannelPitchBend = virtualChannelPitchBend;
 		VirtualChannelInstruments = virtualChannelInstruments;
 		VirtualChannelVolumes = virtualChannelVolumes;
-		ManualNoteFilters = manualNoteFilters;
+		ManualFilterRegistry = manualFilterRegistry;
 		MutedVirtualChannels = mutedVirtualChannels;
 		ChannelStateAppliedToManual = channelStateAppliedToManual;
 	}
@@ -51,6 +51,16 @@ internal sealed class MessageHandlerContext
 	{
 		return ((long)virtualChannel << 32) | (uint)pitch;
 	}
+}
+
+/// <summary>
+/// 手动音符过滤快照的 volatile 容器（TMX-005）。
+/// 主线程构建新快照后一次性交换引用（volatile 写）；音频线程每条消息只读一次 Filters
+/// （volatile 读），字典结构发布后不再修改，内部计数（ManualFilterState）仅音频线程改。
+/// </summary>
+internal sealed class ManualNoteFilterRegistry
+{
+	public volatile Dictionary<long, ManualFilterState> Filters = new Dictionary<long, ManualFilterState>();
 }
 
 /// <summary>

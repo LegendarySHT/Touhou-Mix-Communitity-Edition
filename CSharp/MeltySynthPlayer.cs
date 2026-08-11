@@ -59,6 +59,14 @@ public partial class MeltySynthPlayer : Node
 	private SoundFont _soundFont;
 
 	private int _sampleRate;
+	// 线程模型说明（TMX-005）：
+	// - 下列标量字段（_volumeLinear/_sequencerStarted/_pendingSeekMs/_currentOffsetMs/_lastPositionMs/
+	//   _hasSkippedPreroolEvents 等）均仅由主线程读写；音频线程在 MiniaudioBridge 内有自己的
+	//   _volumeLinear/_playing 副本并通过 _synthLock 保护合成器引用交换，不直接访问本类标量字段，
+	//   因此无需 volatile（double 也无法标记 volatile）。
+	// - 真正跨线程共享的是下方字典：音频回调 handler 链（OnSendMessage）读写 vs 主线程
+	//   set_track_channel_* 写入，全部改为 ConcurrentDictionary；
+	//   _manualFilterRegistry 采用"不可变快照 + volatile 引用交换"（播放中禁止重建）。
 	private float _volumeLinear = 1.0f;
 	private bool _sequencerStarted = false;  // 追踪 sequencer 是否已启动
 	private double _pendingSeekMs = double.NaN;  // 待处理的 seek 位置（NaN 表示无待处理的 seek）
@@ -70,17 +78,17 @@ public partial class MeltySynthPlayer : Node
 	private bool _useSystemStopwatch = false;      // 是否启用系统时钟模式
 	private bool _previousPlaying = false;         // 上一帧的播放状态
 
-	private readonly Dictionary<int, float> _virtualChannelVolumes = new Dictionary<int, float>();
-	private readonly Dictionary<int, (int bank, int program)> _virtualChannelInstruments = new Dictionary<int, (int bank, int program)>();
-	private readonly Dictionary<int, int> _virtualChannelCurrentBank = new Dictionary<int, int>();
-	private readonly Dictionary<int, int> _virtualChannelCurrentProgram = new Dictionary<int, int>();
-	private readonly Dictionary<int, int> _virtualChannelCc7 = new Dictionary<int, int>();
-	private readonly Dictionary<int, int> _virtualChannelCc11 = new Dictionary<int, int>();
-	private readonly Dictionary<int, int> _virtualChannelCc10 = new Dictionary<int, int>();
-	private readonly Dictionary<int, int> _virtualChannelPitchBend = new Dictionary<int, int>();
+	private readonly ConcurrentDictionary<int, float> _virtualChannelVolumes = new ConcurrentDictionary<int, float>();
+	private readonly ConcurrentDictionary<int, (int bank, int program)> _virtualChannelInstruments = new ConcurrentDictionary<int, (int bank, int program)>();
+	private readonly ConcurrentDictionary<int, int> _virtualChannelCurrentBank = new ConcurrentDictionary<int, int>();
+	private readonly ConcurrentDictionary<int, int> _virtualChannelCurrentProgram = new ConcurrentDictionary<int, int>();
+	private readonly ConcurrentDictionary<int, int> _virtualChannelCc7 = new ConcurrentDictionary<int, int>();
+	private readonly ConcurrentDictionary<int, int> _virtualChannelCc11 = new ConcurrentDictionary<int, int>();
+	private readonly ConcurrentDictionary<int, int> _virtualChannelCc10 = new ConcurrentDictionary<int, int>();
+	private readonly ConcurrentDictionary<int, int> _virtualChannelPitchBend = new ConcurrentDictionary<int, int>();
 
-	private readonly Dictionary<long, ManualFilterState> _manualNoteFilters = new Dictionary<long, ManualFilterState>();
-	private readonly HashSet<int> _mutedVirtualChannels = new HashSet<int>();
+	private readonly ManualNoteFilterRegistry _manualFilterRegistry = new ManualNoteFilterRegistry();
+	private readonly ConcurrentDictionary<int, byte> _mutedVirtualChannels = new ConcurrentDictionary<int, byte>();
 
 	// ============ 选项 A：独立合成器用于低延迟手动音符 ============
 	private Synthesizer _manualSynth;      // 专用于手动触发的音符
@@ -96,7 +104,8 @@ public partial class MeltySynthPlayer : Node
 
 	// ============ OnSendMessage 拦截器管道 ============
 	private MessageHandlerContext _messageContext;
-	private readonly List<IMidiMessageHandler> _handlers = new List<IMidiMessageHandler>();
+	// 管道只构建一次，但用 volatile 引用交换保证音频线程迭代的是一致快照
+	private volatile IReadOnlyList<IMidiMessageHandler> _handlers = Array.Empty<IMidiMessageHandler>();
 
 	private void RequestAudioOutputPlay()
 	{
@@ -883,10 +892,17 @@ public partial class MeltySynthPlayer : Node
 
 	public void set_manually_controlled_notes(Godot.Collections.Dictionary manuallyControlled)
 	{
-		_manualNoteFilters.Clear();
+		// 【TMX-005】快照重建契约：播放中禁止重建。
+		// 音频线程在播放中持有旧快照并修改内部计数，重建只能在非播放状态进行。
+		if (playing)
+		{
+			GD.PrintErr("[MeltySynthPlayer] set_manually_controlled_notes ignored while playing (snapshot rebuild not allowed)");
+			return;
+		}
 
 		// 新格式：{track_index: {channel: {pitch: {start_tick: true}}}}
 		// 旧格式：{channel: {pitch: true}}
+		var newFilters = new Dictionary<long, ManualFilterState>();
 		foreach (var key in manuallyControlled.Keys)
 		{
 			var level1Variant = (Variant)manuallyControlled[key];
@@ -936,7 +952,7 @@ public partial class MeltySynthPlayer : Node
 						if (TryConvertToInt(pitchKey, out var pitch))
 						{
 							var startTickMapVariant = (Variant)pitchMap[pitchKey];
-							AddManualFilterCountsByTick(virtualChannel, pitch, startTickMapVariant);
+							AddManualFilterCountsByTick(newFilters, virtualChannel, pitch, startTickMapVariant);
 						}
 					}
 				}
@@ -951,27 +967,19 @@ public partial class MeltySynthPlayer : Node
 				{
 					if (TryConvertToInt(pitchKey, out var pitch))
 					{
-						// 旧格式只有 bool，保持“全局屏蔽该音高”语义
-						AddManualFilterCount(virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, int.MaxValue / 4);
+						// 旧格式只有 bool，保持"全局屏蔽该音高"语义
+						AddManualFilterCount(newFilters, virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, int.MaxValue / 4);
 					}
 				}
 			}
 		}
 
-		var mappedPairs = 0;
-		var pendingOns = 0;
-		foreach (var pair in _manualNoteFilters)
-		{
-			mappedPairs += 1;
-			foreach (var count in pair.Value.PendingManualOnsByTick.Values)
-			{
-				pendingOns += count;
-			}
-		}
-		// GD.Print($"[MeltySynthPlayer] Manual control mapping updated: vc_pitch_entries={mappedPairs}, pending_manual_ons={pendingOns}");
+		// 【TMX-005】不可变快照：构建完成后一次性交换引用（volatile 写）。
+		// 音频线程在每条消息里只捕获一次引用、只读字典结构（内部计数仅音频线程改）。
+		_manualFilterRegistry.Filters = newFilters;
 	}
 
-	private void AddManualFilterCount(int virtualChannel, int pitch, int tick, int count)
+	private void AddManualFilterCount(Dictionary<long, ManualFilterState> filters, int virtualChannel, int pitch, int tick, int count)
 	{
 		if (count <= 0)
 		{
@@ -979,10 +987,10 @@ public partial class MeltySynthPlayer : Node
 		}
 
 		var key = MessageHandlerContext.MakeManualFilterKey(virtualChannel, pitch);
-		if (!_manualNoteFilters.TryGetValue(key, out var state))
+		if (!filters.TryGetValue(key, out var state))
 		{
 			state = new ManualFilterState();
-			_manualNoteFilters[key] = state;
+			filters[key] = state;
 		}
 
 		var current = state.PendingManualOnsByTick.ContainsKey(tick) ? state.PendingManualOnsByTick[tick] : 0;
@@ -996,7 +1004,7 @@ public partial class MeltySynthPlayer : Node
 		}
 	}
 
-	private void AddManualFilterCountsByTick(int virtualChannel, int pitch, Variant startTickMapVariant)
+	private void AddManualFilterCountsByTick(Dictionary<long, ManualFilterState> filters, int virtualChannel, int pitch, Variant startTickMapVariant)
 	{
 		if (startTickMapVariant.VariantType == Variant.Type.Dictionary)
 		{
@@ -1026,7 +1034,7 @@ public partial class MeltySynthPlayer : Node
 						break;
 				}
 
-				AddManualFilterCount(virtualChannel, pitch, tick, count);
+				AddManualFilterCount(filters, virtualChannel, pitch, tick, count);
 			}
 			return;
 		}
@@ -1035,24 +1043,24 @@ public partial class MeltySynthPlayer : Node
 		{
 			if (startTickMapVariant.AsBool())
 			{
-				AddManualFilterCount(virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, 1);
+				AddManualFilterCount(filters, virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, 1);
 			}
 			return;
 		}
 
 		if (startTickMapVariant.VariantType == Variant.Type.Int)
 		{
-			AddManualFilterCount(virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, Math.Max(0, (int)startTickMapVariant.AsInt64()));
+			AddManualFilterCount(filters, virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, Math.Max(0, (int)startTickMapVariant.AsInt64()));
 			return;
 		}
 
 		if (startTickMapVariant.VariantType == Variant.Type.Float)
 		{
-			AddManualFilterCount(virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, Math.Max(0, (int)Math.Round(startTickMapVariant.AsDouble())));
+			AddManualFilterCount(filters, virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, Math.Max(0, (int)Math.Round(startTickMapVariant.AsDouble())));
 			return;
 		}
 
-		AddManualFilterCount(virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, 1);
+		AddManualFilterCount(filters, virtualChannel, pitch, MessageHandlerContext.ManualWildcardTick, 1);
 	}
 
 	private static bool TryConvertToInt(object value, out int result)
@@ -1124,7 +1132,7 @@ public partial class MeltySynthPlayer : Node
 		var volume = _virtualChannelVolumes.TryGetValue(virtualId, out var vol) ? vol : 1.0f;
 		var scaledVelocity = Math.Clamp((int)Math.Round(velocity * volume), 0, 127);
 
-		if (_mutedVirtualChannels.Contains(virtualId) || scaledVelocity == 0)
+		if (_mutedVirtualChannels.ContainsKey(virtualId) || scaledVelocity == 0)
 		{
 			return;
 		}
@@ -1186,13 +1194,13 @@ public partial class MeltySynthPlayer : Node
 		var virtualId = trackIndex * 16 + channel;
 		if (muted)
 		{
-			_mutedVirtualChannels.Add(virtualId);
+			_mutedVirtualChannels.TryAdd(virtualId, 0);
 			stop_channel_notes(virtualId);
 			stop_channel_notes_manual(virtualId);
 		}
 		else
 		{
-			_mutedVirtualChannels.Remove(virtualId);
+			_mutedVirtualChannels.TryRemove(virtualId, out _);
 		}
 	}
 
@@ -1346,15 +1354,19 @@ public partial class MeltySynthPlayer : Node
 				_virtualChannelCurrentBank, _virtualChannelCurrentProgram,
 				_virtualChannelCc7, _virtualChannelCc11, _virtualChannelCc10,
 				_virtualChannelPitchBend, _virtualChannelInstruments,
-				_virtualChannelVolumes, _manualNoteFilters,
+				_virtualChannelVolumes, _manualFilterRegistry,
 				_mutedVirtualChannels, _channelStateAppliedToManual);
-			_handlers.Clear();
-			_handlers.Add(new ChannelStateMirrorHandler(_messageContext));
-			_handlers.Add(new ManualNoteFilterHandler(_messageContext));
-			_handlers.Add(new MuteFilterHandler(_messageContext));
-			_handlers.Add(new InstrumentOverrideHandler(_messageContext));
-			_handlers.Add(new VolumeScaleHandler(_messageContext));
-			_handlers.Add(new SynthForwarderHandler());
+			var handlerList = new List<IMidiMessageHandler>
+			{
+				new ChannelStateMirrorHandler(_messageContext),
+				new ManualNoteFilterHandler(_messageContext),
+				new MuteFilterHandler(_messageContext),
+				new InstrumentOverrideHandler(_messageContext),
+				new VolumeScaleHandler(_messageContext),
+				new SynthForwarderHandler()
+			};
+			// volatile 引用交换：音频线程只读一致快照，不会在迭代中被 Clear/Add 破坏
+			_handlers = handlerList;
 		}
 
 		_sequencer = new MidiFileSequencer(_autoSynth)
@@ -1384,6 +1396,11 @@ public partial class MeltySynthPlayer : Node
 			_manualSynth = _autoSynth;  // 回退：使用同一个合成器
 			// GD.Print("[MeltySynthPlayer] Using single synthesizer for both auto and manual notes");
 		}
+
+		// 【TMX-005】合成器重建后清理手动通道状态缓存，并重新应用乐器覆盖：
+		// 纯 soundfont 重载（未重新 load_midi）时，手动音符不再退回默认音色。
+		_channelStateAppliedToManual.Clear();
+		ApplyInstrumentOverridesToSynth();
 
 		// 重置状态
 		_sequencerStarted = false;
@@ -1446,7 +1463,7 @@ public partial class MeltySynthPlayer : Node
 		_channelStateAppliedToManual.Clear();
 		// 清理手动控制音符过滤器，防止上一首歌的 manual control 标记残留到新歌
 		// PlayView._finish_generate_game_sequences 会根据 play_mode 重新下发
-		_manualNoteFilters.Clear();
+		_manualFilterRegistry.Filters = new Dictionary<long, ManualFilterState>();
 		// GD.Print($"[MeltySynthPlayer] MIDI file loaded, cleared instrument overrides, _sequencerStarted reset to false");
 		// 注意：不在这里调用 Play()，而是等待明确的 play() 调用
 		// 这样可以与 MidiPlayer (Addon) 的行为保持一致
@@ -1508,12 +1525,19 @@ public partial class MeltySynthPlayer : Node
 		{
 			_synth.ProcessMidiMessage(kvp.Key, 0xB0, 0x00, kvp.Value.bank);
 			_synth.ProcessMidiMessage(kvp.Key, 0xC0, kvp.Value.program, 0);
+			// 独立手动合成器同样应用覆盖，保证纯 soundfont 重载后手动音符音色正确
+			if (_manualSynth != null && _manualSynth != _synth)
+			{
+				_manualSynth.ProcessMidiMessage(kvp.Key, 0xB0, 0x00, kvp.Value.bank);
+				_manualSynth.ProcessMidiMessage(kvp.Key, 0xC0, kvp.Value.program, 0);
+			}
 		}
 	}
 
 	private void OnSendMessage(Synthesizer synthesizer, int virtualChannel, int command, int data1, int data2, int tick)
 	{
-		foreach (var handler in _handlers)
+		var handlers = _handlers;  // volatile 快照：与主线程重建管道互不干扰
+		foreach (var handler in handlers)
 		{
 			if (!handler.Process(synthesizer, virtualChannel, ref command, ref data1, ref data2, tick))
 				return;

@@ -1041,7 +1041,7 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 	playback_mgr.set_vocal_offset_ms(midi_data.vocal_offset_ms)
 	
 	GLogger.info("MIDI runtime config applied: volume=%d%%, mute_states=%d, solo_pairs=%d" %
-		[int(round(midi_data.midi_volume * 100.0)), midi_data.track_channel_mute_state.size(), midi_data.solo_pairs.size()], "PlayView")
+		[int(round(playback_mgr.get_effective_midi_volume(midi_data.midi_volume) * 100.0)), midi_data.track_channel_mute_state.size(), midi_data.solo_pairs.size()], "PlayView")
 
 ## 游戏结束回调
 func _on_game_finished() -> void:
