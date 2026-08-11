@@ -63,6 +63,7 @@ public partial class MeltySynthPlayer : Node
 	private bool _sequencerStarted = false;  // 追踪 sequencer 是否已启动
 	private double _pendingSeekMs = double.NaN;  // 待处理的 seek 位置（NaN 表示无待处理的 seek）
 	private double _currentOffsetMs = 0.0;  // 当前相对于 sequencer 的时间偏移（支持负数 pre-roll）
+	private double _lastPositionMs = 0.0;  // 最后已知播放位置（暂停/seek 后保持，供 get_position_ms 读取）
 	private bool _hasSkippedPreroolEvents = false;  // 标志：已跳过 pre-roll 事件
 
 	// 系统时钟模式的时间追踪
@@ -403,12 +404,15 @@ public partial class MeltySynthPlayer : Node
 					GD.PrintErr($"[MeltySynthPlayer] Native sequencer seek failed, fallback to legacy seek: {ex.Message}");
 					LegacySeekByFastForward(_pendingSeekMs);
 				}
+				// 原生 Seek 内部会调用 synthesizer.Reset()，把 Play 时应用的乐器覆盖清掉；
+				// 这里幂等地重新应用（通道状态消息已在重建过程中按序生效，重复应用无害）。
+				ApplyInstrumentOverridesToSynth();
 				// Schedule post-seek silence to consume transient note attacks.
 				// Rendered audio will be silently discarded for ~50ms instead of
 				// doing a synchronous flush that can crash the renderer.
 				// 通过接口访问音频后端
 				if (_audioOutput != null)
-					_audioOutput.PostSeekSilenceFrames = (int)(_sampleRate * 0.25);
+					_audioOutput.PostSeekSilenceFrames = (int)(_sampleRate * 0.05);
 			}
 			else
 			{
@@ -417,6 +421,7 @@ public partial class MeltySynthPlayer : Node
 			_currentOffsetMs = 0.0;  // 清除任何 pre-roll offset
 			_hasSkippedPreroolEvents = true;  // 正数seek时无需跳过事件
 			ResetRenderTimestamp();
+			_lastPositionMs = _pendingSeekMs;  // 记录 seek 目标，供非播放状态读取
 
 			// 3. 如果之前在播放，重新启动 AudioStreamPlayer
 			if (playing)
@@ -464,6 +469,16 @@ public partial class MeltySynthPlayer : Node
 				// 还在 pre-roll 期间，不播放声音
 				return;
 			}
+		}
+
+		// 【修复D-5】自然播放结束检测（非循环模式）：
+		// Sequencer 处理完全部事件后 EndOfSequence 为 true（循环模式恒为 false），
+		// 此时停止播放并发出 finished 信号，驱动 GDScript 侧 midi_finished → 游戏结算。
+		// 此前 finished 信号从未 emit，PlayView 只能依赖"位置停滞"启发式兜底。
+		if (playing && !loop && _sequencerStarted && _sequencer != null && _midiFile != null && _sequencer.EndOfSequence)
+		{
+			FinishPlayback();
+			return;
 		}
 
 		if (!playing || _sequencer == null || _audioOutput == null)
@@ -540,6 +555,26 @@ public partial class MeltySynthPlayer : Node
 		_sequencer?.Stop();
 		_sequencerStarted = false;  // 重置标志，下次 play() 会重新启动
 		_currentOffsetMs = 0.0;  // 重置 offset
+		_lastPositionMs = 0.0;  // 重置最后已知位置（stop 语义为回到开头）
+	}
+
+	private void FinishPlayback()
+	{
+		if (!playing)
+		{
+			return;
+		}
+
+		playing = false;
+		_audioOutput?.Stop();
+		_sequencer?.Stop();
+		_sequencerStarted = false;
+		_hasSkippedPreroolEvents = false;
+		_currentOffsetMs = 0.0;
+		_lastPositionMs = _midiFile != null ? _midiFile.Length.TotalMilliseconds : 0.0;
+
+		// 通知 GDScript 侧（MidiPlaybackManager._on_midi_finished → midi_finished）
+		EmitSignal(SignalName.finished);
 	}
 
 	public void seek_ms(double positionMs)
@@ -634,18 +669,22 @@ public partial class MeltySynthPlayer : Node
 		// 支持负数位置（pre-roll）
 		if (!double.IsNaN(_pendingSeekMs))
 		{
+			_lastPositionMs = _pendingSeekMs;
 			return _pendingSeekMs;
 		}
 
 		// 在 pre-roll 阶段返回当前的负数 offset
 		if (_currentOffsetMs < 0.0)
 		{
+			_lastPositionMs = _currentOffsetMs;
 			return _currentOffsetMs;
 		}
 
+		// 【修复D-4】非播放状态（暂停 / seek 后 / 自然结束）返回最后已知位置，不再归零，
+		// 避免暂停或 seek 后位置丢失（TrackView / NoteDisplayer / 判定链路读取位置时依赖稳定值）
 		if (!playing)
 		{
-			return 0.0;
+			return _lastPositionMs;
 		}
 
 		// 【修复D-3】使用 Sequencer 内部系统时钟模式（如果启用）
@@ -653,7 +692,7 @@ public partial class MeltySynthPlayer : Node
 		{
 			if (_sequencer == null || !_sequencerStarted)
 			{
-				return 0.0;
+				return _lastPositionMs;
 			}
 
 			double resultMs = _sequencer.Position.TotalMilliseconds;
@@ -666,11 +705,15 @@ public partial class MeltySynthPlayer : Node
 				resultMs = Math.Max(0.0, resultMs - deviceLatencyMs);
 			}
 
+			_lastPositionMs = resultMs;
 			return resultMs;
 		}
 
 		// 【原有逻辑】使用 sequencer.Position + 缓冲补偿
-		if (_sequencer == null || !_sequencerStarted) return 0.0;
+		if (_sequencer == null || !_sequencerStarted)
+		{
+			return _lastPositionMs;
+		}
 
 		var sequencerMs = _sequencer.Position.TotalMilliseconds;
 
@@ -687,9 +730,12 @@ public partial class MeltySynthPlayer : Node
 			{
 				extrapolationMs = maBridge.GetExtrapolationMs();
 			}
-			return Math.Max(0.0, sequencerMs + extrapolationMs - latencyMs);
+			var compensatedMs = Math.Max(0.0, sequencerMs + extrapolationMs - latencyMs);
+			_lastPositionMs = compensatedMs;
+			return compensatedMs;
 		}
 
+		_lastPositionMs = sequencerMs;
 		return sequencerMs;
 	}
 
@@ -1384,6 +1430,7 @@ public partial class MeltySynthPlayer : Node
 		_sequencerStarted = false;  // 重置标志，等待 play() 调用
 		_currentOffsetMs = 0.0;  // 重置 offset
 		_hasSkippedPreroolEvents = false;  // 重置跳过标志
+		_lastPositionMs = 0.0;  // 清除上一首 MIDI 的位置残留
 		
 		// 清理旧的乐器覆盖配置，防止状态在不同 MIDI 之间错误延续
 		track_channel_instruments.Clear();

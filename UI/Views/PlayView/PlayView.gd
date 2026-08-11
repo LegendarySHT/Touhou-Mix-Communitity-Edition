@@ -143,6 +143,11 @@ func _ready() -> void:
 	if playback_mgr == null:
 		push_error("MidiPlaybackManager not initialized!")
 		return
+
+	# 播放自然结束时立即触发游戏结算（C# 后端 finished → midi_finished）
+	# 原"位置停滞"启发式检测保留作为兜底
+	if not playback_mgr.midi_finished.is_connected(_on_game_finished):
+		playback_mgr.midi_finished.connect(_on_game_finished)
 	
 	# 从配置加载演奏模式设置
 	_load_play_mode_setting()
@@ -995,17 +1000,19 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 					var is_muted = channels[channel]
 					playback_mgr.set_track_channel_mute(track_idx, channel, is_muted)
 	
-	# 应用独奏状态（Additive Solo）
+	# 应用独奏状态（Additive Solo，与 TrackView._apply_solo_state 一致）：
+	# - 独奏轨保持其持久化静音状态（上面已按 track_channel_mute_state 应用）
+	# - 非独奏轨运行时静音（不写入 MidiData，避免污染持久化配置）
 	# solo_pairs: {"track:channel": true}
 	if not midi_data.solo_pairs.is_empty():
-		for solo_key in midi_data.solo_pairs.keys():
-			# solo_key 格式: "track:channel"
-			var parts = solo_key.split(":")
-			if parts.size() == 2:
-				var track = int(parts[0])
-				var channel = int(parts[1])
-				# 独奏意味着这个轨道要启用，其他非独奏的轨道要静音
-				playback_mgr.set_track_channel_mute(track, channel, false)
+		var seen_pairs := {}
+		for note in playback_mgr.current_notes:
+			var solo_key := "%d:%d" % [note.track_index, note.channel]
+			if seen_pairs.has(solo_key):
+				continue
+			seen_pairs[solo_key] = true
+			if not midi_data.solo_pairs.has(solo_key):
+				playback_mgr.set_track_channel_mute_runtime(note.track_index, note.channel, true)
 
 	# 应用音轨-通道的音量调整
 	# track_channel_volume_config: {track_idx: {channel: volume_value}}（值为线性 0.0-1.0）

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace MeltySynth
 {
@@ -165,22 +166,119 @@ namespace MeltySynth
 
             synthesizer.Reset();
 
-            for (var i = 0; i < nextIndex; i++)
-            {
-                var msg = midiFile.Messages[i];
-                if (msg.Type == MidiFile.MessageType.Normal)
-                {
-                    SendMessage(msg, midiFile.Ticks[i]);
-                }
-                else if (loop && msg.Type == MidiFile.MessageType.LoopStart)
-                {
-                    latestLoopIndex = i;
-                }
-            }
+            // 【seek 噪音修复】原实现会把目标位置之前的全部事件一次性重放：
+            // 密集谱面中成千上万个 note-on/note-off 会在同一帧内集中触发，
+            // 产生"seek 后大量音符同时爆发"的噪音。
+            // 改为状态重建：只按序重放通道状态消息（Program/CC/PitchBend 等），
+            // 音符仅对目标时刻仍在发声的键补发 note-on；已结束的音符直接跳过。
+            latestLoopIndex = ReconstructSeekState(nextIndex);
 
             msgIndex = nextIndex;
             loopIndex = latestLoopIndex;
             blockWrote = synthesizer.BlockSize;
+        }
+
+        /// <summary>
+        /// 状态重建式 seek：重建目标时刻的合成器状态而不触发历史音符。
+        /// </summary>
+        /// <param name="nextIndex">目标位置之后的第一个消息索引（不含目标时刻本身）。</param>
+        /// <returns>目标位置之前最近的 LoopStart 索引（仅循环模式使用）。</returns>
+        private int ReconstructSeekState(int nextIndex)
+        {
+            var latestLoopIndex = 0;
+
+            // 每个虚拟通道中"当前按下且尚未释放"的键（按按下顺序）及其力度。
+            var heldNotes = new Dictionary<int, List<(byte Key, byte Velocity)>>();
+
+            for (var i = 0; i < nextIndex; i++)
+            {
+                var msg = midiFile.Messages[i];
+                if (msg.Type == MidiFile.MessageType.LoopStart)
+                {
+                    if (loop)
+                    {
+                        latestLoopIndex = i;
+                    }
+                    continue;
+                }
+
+                if (msg.Type != MidiFile.MessageType.Normal)
+                {
+                    continue;
+                }
+
+                var virtualChannel = synthesizer.GetVirtualChannelId(msg.TrackIndex, msg.Channel);
+                var command = msg.Command & 0xF0;
+                var data1 = msg.Data1;
+                var data2 = msg.Data2;
+
+                if (command == 0x90 && data2 > 0) // Note On
+                {
+                    if (!heldNotes.TryGetValue(virtualChannel, out var held))
+                    {
+                        held = new List<(byte, byte)>();
+                        heldNotes[virtualChannel] = held;
+                    }
+
+                    // 同键重复 note-on 视为重触发：移除旧记录后追加，保持按下顺序。
+                    var index = held.FindIndex(p => p.Item1 == data1);
+                    if (index >= 0)
+                    {
+                        held.RemoveAt(index);
+                    }
+                    held.Add((data1, data2));
+                    continue; // 延后到末尾统一触发，避免历史音符爆发
+                }
+
+                if (command == 0x80 || (command == 0x90 && data2 == 0)) // Note Off
+                {
+                    if (heldNotes.TryGetValue(virtualChannel, out var held))
+                    {
+                        var index = held.FindIndex(p => p.Item1 == data1);
+                        if (index >= 0)
+                        {
+                            held.RemoveAt(index);
+                        }
+                    }
+                    continue; // 已结束的音符不再触发
+                }
+
+                if (command == 0xB0 && (data1 == 0x78 || data1 == 0x7B))
+                {
+                    // All Sound Off / All Notes Off：清空按住集合，并让合成器真正执行。
+                    heldNotes.Remove(virtualChannel);
+                    SendRaw(virtualChannel, msg.Command, data1, data2, midiFile.Ticks[i]);
+                    continue;
+                }
+
+                // 通道状态消息（Program Change / CC / Pitch Bend / Pressure 等）
+                // 按序重放以重建音色、音量、弯音等状态；不产生音符，开销可忽略。
+                SendRaw(virtualChannel, msg.Command, data1, data2, midiFile.Ticks[i]);
+            }
+
+            // 补发目标时刻仍在发声的 note-on。此时通道状态（音色/音量/弯音）已就位；
+            // 按最初按下顺序触发，与真实播放中的触发顺序一致。
+            foreach (var channelPair in heldNotes)
+            {
+                foreach (var note in channelPair.Value)
+                {
+                    SendRaw(channelPair.Key, 0x90, note.Key, note.Velocity, 0);
+                }
+            }
+
+            return latestLoopIndex;
+        }
+
+        private void SendRaw(int virtualChannel, int command, int data1, int data2, int tick)
+        {
+            if (onSendMessage == null)
+            {
+                synthesizer.ProcessMidiMessage(virtualChannel, command, data1, data2);
+            }
+            else
+            {
+                onSendMessage(synthesizer, virtualChannel, command, data1, data2, tick);
+            }
         }
 
         /// <summary>
@@ -331,14 +429,7 @@ namespace MeltySynth
         private void SendMessage(MidiFile.Message msg, int tick)
         {
             var virtualChannel = synthesizer.GetVirtualChannelId(msg.TrackIndex, msg.Channel);
-            if (onSendMessage == null)
-            {
-                synthesizer.ProcessMidiMessage(virtualChannel, msg.Command, msg.Data1, msg.Data2);
-            }
-            else
-            {
-                onSendMessage(synthesizer, virtualChannel, msg.Command, msg.Data1, msg.Data2, tick);
-            }
+            SendRaw(virtualChannel, msg.Command, msg.Data1, msg.Data2, tick);
         }
 
 

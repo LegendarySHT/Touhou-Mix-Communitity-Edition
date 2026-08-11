@@ -104,15 +104,6 @@ func _ready() -> void:
 	
 	add_to_group("singleton")
 	
-	# 检测 Android 平台，降级音频参数以避免引擎级崩溃
-	_is_android = OS.get_name() == "Android"
-	if _is_android:
-		# Android 上 AudioStreamPlayer 数量过多会导致音频线程 StringName 腐败
-		# 从 96（192个播放器节点）降低到 24（48个播放器节点）
-		midi_player_config["max_polyphony"] = 24
-		print("[MidiPlaybackManager] Android detected: max_polyphony reduced to 24")
-	
-	# 初始化MIDI播放器（唯一后端：MeltySynth）
 	_initialize_backend()
 	
 	# 扫描可用的SoundFont
@@ -621,6 +612,12 @@ func play() -> void:
 
 	# 保留当前 seek 目标（可为负数 pre-roll），避免 play() 覆盖外部预设位置
 	var start_position_ms = position_ms
+	# 上次播放已自然结束（位置已到达/越过时长）时，重新播放从开头开始，
+	# 避免复用末尾位置导致 play() 后立即 seek 到结尾并再次触发 finished
+	if not is_paused and duration_ms > 0.0 and start_position_ms >= duration_ms - 100.0:
+		start_position_ms = 0.0
+		position_ms = 0.0
+		position = 0.0
 
 	backend.play()
 	is_playing = true
@@ -1309,6 +1306,8 @@ func _locate_midi_file(midi_data: MidiData) -> String:
 ## 回调：MIDI播放完成
 func _on_midi_finished() -> void:
 	is_playing = false
+	# 同步停止人声播放，避免 MIDI 结束后人声继续响
+	stop_vocal_playback()
 	midi_finished.emit()
 
 ## 获取当前MIDI的轨道信息列表
