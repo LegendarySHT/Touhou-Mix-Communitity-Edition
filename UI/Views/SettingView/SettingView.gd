@@ -164,6 +164,21 @@ func save_config_to_file() -> bool:
 		if str(old_value) == str(value):
 			continue
 
+		# 按 value_type 统一转为字符串：配置链（INI 解析/内存读取）一律以字符串存储，
+		# 避免 typed 值（int/bool/float）进入 _current_config 后 get_bool 等类型假设失效
+		var value_type = mapping.get("value_type", "string")
+		match value_type:
+			"int":
+				value = str(int(value))
+			"float":
+				value = str(float(value))
+			"bool":
+				value = "1" if ConfigManager.parse_bool(value) else "0"
+			"color":
+				value = value.to_html() if value is Color else str(value)
+			_:
+				value = str(value)
+
 		# soundfont 文件存在性校验，不存在则回退默认
 		if setting_id == "soundfont_select":
 			if not setting_list._verify_soundfont_exists(str(value)):

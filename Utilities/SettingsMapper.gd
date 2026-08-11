@@ -175,15 +175,9 @@ static func settings_to_ini(settings: Dictionary) -> Dictionary:
 		# 类型转换
 		match value_type:
 			"int":
-				if value is String and value.is_valid_int():
-					result[section][key] = int(value)
-				else:
-					result[section][key] = int(value)
+				result[section][key] = int(value)
 			"float":
-				if value is String and value.is_valid_float():
-					result[section][key] = float(value)
-				else:
-					result[section][key] = float(value)
+				result[section][key] = float(value)
 			"bool":
 				var bool_val = false
 				if value is String:

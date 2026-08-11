@@ -441,14 +441,14 @@ func _apply_single_setting(setting_name: String, value: Variant) -> void:
 
 	# 显示相关设置
 	elif setting_name == "fullscreen":
-		var is_fullscreen = value in ["1", "true", "True", "yes", "Yes"]
+		var is_fullscreen = ConfigManager.parse_bool(value)
 		if is_fullscreen:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 		else:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 
 	elif setting_name == "vsync_enabled":
-		var is_vsync = value in ["1", "true", "True", "yes", "Yes"]
+		var is_vsync = ConfigManager.parse_bool(value)
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if is_vsync else DisplayServer.VSYNC_DISABLED)
 
 ## 配置变更回调（新增）
@@ -477,17 +477,17 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		
 		"Display":
 			if key == "fullscreen":
-				var is_fullscreen = value in ["1", "true", "True", "yes", "Yes"]
+				var is_fullscreen = ConfigManager.parse_bool(value)
 				if is_fullscreen:
 					DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 				else:
 					DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 			elif key == "vsync_enabled":
-				var is_vsync = value in ["1", "true", "True", "yes", "Yes"]
+				var is_vsync = ConfigManager.parse_bool(value)
 				DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if is_vsync else DisplayServer.VSYNC_DISABLED)
 
 		"Appearance":
 			if key == "hdr_2d":
-				var hdr_on = value in [1, "1", "true", "True"]
+				var hdr_on = ConfigManager.parse_bool(value)
 				get_tree().root.use_hdr_2d = hdr_on
 				logger.info("HDR 2D set to: %s" % ("enabled" if hdr_on else "disabled"), "Main")

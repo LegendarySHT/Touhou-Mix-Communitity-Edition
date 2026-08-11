@@ -17,6 +17,9 @@ enum ConnectState {
 ## 服务器地址（从 ConfigManager [General] server_address 读取）
 var server_url: String = ""
 
+## 配置地址无效时的回退地址（开发默认，与 config.ini 默认一致）
+const FALLBACK_SERVER_URL: String = "http://localhost:5000"
+
 ## 当前是否在线（服务端可达）
 var is_online: bool = false
 
@@ -57,16 +60,63 @@ func _ready() -> void:
 		return
 	add_to_group("singleton")
 	_load_server_url()
+	if EvtBus:
+		EvtBus.config_changed.connect(_on_config_changed)
 	GLogger.info("NetManager initialized, server_url=%s" % server_url, "NetMGR")
 
 ## 从配置加载服务器地址
 func _load_server_url() -> void:
 	var addr = ConfigManager.instance.get_string("General", "server_address", "thmix.org")
-	# 若地址不含 http 前缀，默认补 http://localhost:5000（开发期）
-	if not addr.begins_with("http"):
-		server_url = "http://localhost:5000"
-	else:
-		server_url = addr
+	server_url = _normalize_server_url(addr)
+	GLogger.info("Server URL loaded: %s" % server_url, "NetMGR")
+
+## 规范化服务器地址：去除首尾空白/引号；无协议前缀时按主机自动补全。
+## 本机地址（localhost/127.0.0.1）用 http，其余域名默认 https，避免裸域名被静默改写成 localhost。
+func _normalize_server_url(addr: String) -> String:
+	var url := addr.strip_edges()
+	if url.length() >= 2 and url.begins_with("\"") and url.ends_with("\""):
+		url = url.substr(1, url.length() - 2).strip_edges()
+	if url.is_empty():
+		return FALLBACK_SERVER_URL
+	if url.begins_with("http://") or url.begins_with("https://"):
+		if _is_valid_host(_extract_host(url)):
+			return url
+		GLogger.warning("Invalid server address (bad host), falling back to %s: %s" % [FALLBACK_SERVER_URL, addr], "NetMGR")
+		return FALLBACK_SERVER_URL
+	if url.begins_with("localhost") or url.begins_with("127.0.0.1") or url.begins_with("0.0.0.0"):
+		return "http://" + url
+	if _is_valid_host(url):
+		return "https://" + url
+	GLogger.warning("Invalid server address, falling back to %s: %s" % [FALLBACK_SERVER_URL, addr], "NetMGR")
+	return FALLBACK_SERVER_URL
+
+## 从 URL 中提取主机部分（去掉 scheme 与路径/端口校验前的部分）
+func _extract_host(url: String) -> String:
+	var rest := url
+	if rest.begins_with("http://"):
+		rest = rest.trim_prefix("http://")
+	elif rest.begins_with("https://"):
+		rest = rest.trim_prefix("https://")
+	return rest.split("/")[0]
+
+## 主机有效性：非空、无空白；本机/IP 或含点号的域名视为有效
+func _is_valid_host(host: String) -> bool:
+	var h := host.strip_edges()
+	if h.is_empty() or h.contains(" ") or h.contains("\t"):
+		return false
+	if h.begins_with("localhost") or h.begins_with("127.0.0.1") or h.begins_with("0.0.0.0") or h.begins_with("["):
+		return true
+	return "." in h
+
+## 配置变更：server_address 修改后立即生效（无需重启）
+func _on_config_changed(key: String, section: String, _value: Variant) -> void:
+	if section == "General" and key == "server_address":
+		_load_server_url()
+		if _online_mode_enabled:
+			# 地址变化后重建连接（旧连接基于旧地址，需重新握手）
+			_stop_all_timers()
+			is_online = false
+			_start_quick_retry()
 
 ## 设置在线模式开关（由 Main.gd 在初始化和配置变更时调用）
 func set_online_mode(enabled: bool) -> void:

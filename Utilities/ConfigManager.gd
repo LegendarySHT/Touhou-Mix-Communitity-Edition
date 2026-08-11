@@ -190,8 +190,21 @@ func get_float(section: String, key: String, default: float = 0.0, config: Varia
 
 ## 获取布尔值
 func get_bool(section: String, key: String, default: bool = false, config: Variant = null) -> bool:
-	var value = get_value(section, key, str(default), config).to_lower()
-	return value in ["true", "1", "yes"]
+	var value = get_value(section, key, str(default), config)
+	return parse_bool(value, default)
+
+## 类型安全的布尔解析：兼容 bool / int / float / 字符串（含 "1"/"true"/"yes"/"on"）
+## 配置链中同一 key 可能以字符串（INI 解析）或 typed 值（set_value_and_notify）存在，
+## 统一在此转换，避免对非字符串调用字符串方法导致运行时错误。
+static func parse_bool(value: Variant, default: bool = false) -> bool:
+	if value is bool:
+		return value
+	if value is int or value is float:
+		return value != 0
+	var s := str(value).strip_edges().to_lower()
+	if s.is_empty():
+		return default
+	return s in ["1", "true", "yes", "on"]
 
 func get_string(section: String, key: String, default: String = "", config: Variant = null) -> String:
 	return str(get_value(section, key, default, config))
@@ -254,7 +267,10 @@ func save_config(file_path: String, config: Variant = null) -> bool:
 	# 同时更新为最新的配置
 	configs[file_path] = config
 	if file_path == USER_CONFIG_PATH:
-		_current_config = config
+		# 用户配置可能只包含部分 section：先与默认配置合并再作为当前活跃配置，
+		# 避免部分写入后默认 section/key 从内存配置中丢失
+		var default_config = load_config(DEFAULT_CONFIG_PATH)
+		_current_config = merge_with_defaults(config, default_config) if not default_config.is_empty() else config
 	
 	GLogger.info("Config saved to: %s" % file_path, "ConfigManager")
 	return true

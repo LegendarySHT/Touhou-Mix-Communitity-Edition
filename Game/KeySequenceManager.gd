@@ -1414,9 +1414,9 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	elif section == "Appearance":
 		match key:
 			"generate_short_connect":
-				generate_short_connect = value in ["1", "true", "True", "yes", "Yes"]
+				generate_short_connect = ConfigManager.parse_bool(value, true)
 			"generate_instant_connect":
-				generate_instant_connect = value in ["1", "true", "True", "yes", "Yes"]
+				generate_instant_connect = ConfigManager.parse_bool(value, true)
 			"instant_connect_max_time":
 				max_instant_connect_seconds = float(value)
 			"block_size":
