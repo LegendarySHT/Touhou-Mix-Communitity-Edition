@@ -314,37 +314,6 @@ func get_active_tween_count() -> int:
 func _exit_tree() -> void:
 	stop_all_tweens()
 
-func _kill_scene_transition_tweens() -> void:
-	for key in ui_exist.keys():
-		stop_tween("%s_out" % key)
-		stop_tween("%s_in" % key)
-
-	var secondary := [
-		"SSPosition", "SongListFadeOut", "SongListFadeIn",
-		"CharactorPosition", "PlayerInfoPosition", "MenuBarPosition",
-		"top_bar_in", "bottom_in", "track_pos", "MidiViewFadeIn",
-		"RandomSelectFadeIn", "RandomSelectFadeOut",
-		"sv_bg", "sv_btns", "sv_info", "sv_chara", "sv_bottom",
-		"sv_rank", "sv_score", "sv_score_fade", "sv_acc",
-	]
-	for tid in secondary:
-		if active_tweens.has(tid):
-			stop_tween(tid)
-
-	var score_view := get_comp("Score_View")
-	if is_instance_valid(score_view) and score_view.has_method("_kill_loop_ani"):
-		score_view._kill_loop_ani()
-
-	# 强制隐藏所有已标记为不存在的组件，防止动画被打断导致组件卡在屏幕上
-	for key in ui_exist.keys():
-		if not ui_exist[key]:
-			var comp := get_comp(key)
-			if is_instance_valid(comp):
-				comp.visible = false
-				if comp is CanvasItem:
-					comp.modulate.a = 0.0
-
-
 ############################## 页面切换动画 #######################################
 
 ## 记录所有组件的状态
@@ -408,25 +377,6 @@ var tan15 = tan(deg_to_rad(15))
 ## 页面组件退出动画
 func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
 	_current_transition_version = UiStatMGR.transition_version
-	_kill_scene_transition_tweens()
-
-	# 修复 ui_exist 并重置位置（包括被杀死补间破坏的子节点）
-	for key in ui_part.get(old_state, []):
-		var comp := get_comp(key)
-		if not ui_exist.get(key, false):
-			ui_exist[key] = true
-			if is_instance_valid(comp):
-				comp.visible = true
-				if comp is CanvasItem:
-					comp.modulate.a = 1.0
-		# 无条件重置位置（即使 ui_exist 已为 true），防止补间被杀后位置损坏
-		if is_instance_valid(comp) and comp.offset_transform_enabled:
-			comp.offset_transform_position = Vector2.ZERO
-		# 同时重置 Chara 子节点
-		if key == "Player_Info" and is_instance_valid(comp):
-			var chara := comp.get_node_or_null("Chara")
-			if chara and chara.offset_transform_enabled:
-				chara.offset_transform_position = Vector2.ZERO
 
 	# 收集所有退出动画的有效 tween，等待其中任一完成后再进入新场景
 	var valid_out_tween: Tween = null

@@ -297,3 +297,11 @@ func switch_page_instant() -> void:
 	setting_page.visible = true
 	delete_page.visible = false
 	delete_page.on_exited_to_setting_list()
+
+## 返回处理：DelView 子页面可见时先切回设置主页（Esc / Android 返回键调用）
+## 返回 true 表示已消费返回事件，上层不应再执行 go_back
+func handle_back_request() -> bool:
+	if delete_page and delete_page.visible and not setting_page.visible:
+		EvtBus.page_right.emit()
+		return true
+	return false

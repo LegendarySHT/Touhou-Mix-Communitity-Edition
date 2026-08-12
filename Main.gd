@@ -104,6 +104,12 @@ func _handle_back_request() -> void:
 			play_view.show_or_hide_menu()
 			return
 
+	# 设置页内部子页面（DelView）→ 先切回设置主页，而非直接退出设置
+	if state_manager.current_state == UIStateManager.UIState.SETTINGS_VIEW:
+		var setting_view: Variant = state_manager.get_loaded_view(UIStateManager.UIState.SETTINGS_VIEW)
+		if setting_view and setting_view.has_method("handle_back_request") and setting_view.handle_back_request():
+			return
+
 	# 其他层级 → 返回上一级
 	state_manager.go_back()
 

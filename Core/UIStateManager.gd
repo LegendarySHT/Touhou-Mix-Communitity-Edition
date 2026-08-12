@@ -113,6 +113,10 @@ func ensure_view_loaded(state: UIState) -> Node:
 	# 不再需要在此手动补应用（见 ThemeManager.register_theme_applier）
 	return instance
 
+## 获取已加载的懒加载视图实例（未加载返回 null）
+func get_loaded_view(state: UIState) -> Node:
+	return _loaded_lazy_views.get(state)
+
 ## 转换状态
 func change_state(new_state: UIState, stash_state: bool = true) -> void:
 	if new_state == current_state:
