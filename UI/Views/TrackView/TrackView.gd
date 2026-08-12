@@ -288,7 +288,7 @@ func _create_track_views() -> void:
 func _on_progress_bar_drag_started() -> void:
 	# 拖拽开始时停止自动更新进度条
 	is_progress_dragging = true
-	print("Progress bar drag started")
+	GLogger.info("Progress bar drag started", "TrackView")
 
 # 进度条拖拽结束 - 执行跳转
 func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
@@ -298,7 +298,7 @@ func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
 		return
 	
 	var target_ms = progress_bar.value
-	print("Progress bar seek to: %.1f ms" % target_ms)
+	GLogger.info("Progress bar seek to: %.1f ms" % target_ms, "TrackView")
 	
 	# 执行跳转
 	midi_playback_manager.seek(target_ms)
@@ -373,7 +373,7 @@ func _on_expand_master_area_btn_toggled(is_expanded: bool) -> void:
 	var node: Panel = $MC/VBox/TotalView
 	var expd_y:int = int(get_viewport().get_visible_rect().size.y) - 50
 	
-	var tween: Tween = create_tween()
+	var tween: Tween = AniMGR.create_managed_tween(self)
 	tween.pause()
 	tween.set_parallel(true)
 	
@@ -406,7 +406,7 @@ func _on_track_enable_toggled(is_checked: bool, track_index: int, channel: int) 
 
 # 轨道静音切换
 func _on_track_mute_toggled(is_muted: bool, track_index: int, channel: int) -> void:
-	print("Track %d Channel %d mute: %s" % [track_index, channel, is_muted])
+	GLogger.info("Track %d Channel %d mute: %s" % [track_index, channel, is_muted], "TrackView")
 	if midi_playback_manager == null:
 		return
 
@@ -415,7 +415,7 @@ func _on_track_mute_toggled(is_muted: bool, track_index: int, channel: int) -> v
 
 # 轨道独奏切换
 func _on_track_solo_toggled(is_solo: bool, track_index: int, channel: int) -> void:
-	print("Track %d Channel %d solo: %s" % [track_index, channel, is_solo])
+	GLogger.info("Track %d Channel %d solo: %s" % [track_index, channel, is_solo], "TrackView")
 	if midi_playback_manager == null:
 		return
 
@@ -466,7 +466,7 @@ func _on_track_volume_changed(value: float, track_index: int, channel: int ) -> 
 	if current_midi_data != null:
 		current_midi_data.set_track_channel_volume(track_index, channel, volume_linear)
 	
-	print("[TrackView] Track %d Channel %d volume changed: %.1f%%" % [track_index, channel, value])
+	GLogger.info("Track %d Channel %d volume changed: %.1f%%" % [track_index, channel, value], "TrackView")
 	
 # 乐器选择
 func _on_track_instrument_changed(index: int, track_index: int, channel: int) -> void:
@@ -512,8 +512,8 @@ func _on_track_instrument_changed(index: int, track_index: int, channel: int) ->
 		push_error("[TrackView] midi_player doesn't have set_track_channel_instrument method")
 		return
 	
-	print("[TrackView] 【调用】 set_track_channel_instrument(track=%d, channel=%d, bank=%d, program=%d)" %
-		[track_index, channel, instr_data["bank"], instr_data["program"]])
+	GLogger.info("【调用】 set_track_channel_instrument(track=%d, channel=%d, bank=%d, program=%d)" %
+		[track_index, channel, instr_data["bank"], instr_data["program"]], "TrackView")
 	
 	midi_player_ref.set_track_channel_instrument(
 		track_index,
@@ -522,8 +522,8 @@ func _on_track_instrument_changed(index: int, track_index: int, channel: int) ->
 		instr_data["program"]
 	)
 	
-	print("[TrackView] Track %d Channel %d: 乐器设置为 %s (Bank %d Program %d)" %
-		[track_index, channel, instr_data["name"], instr_data["bank"], instr_data["program"]])
+	GLogger.info("Track %d Channel %d: 乐器设置为 %s (Bank %d Program %d)" %
+		[track_index, channel, instr_data["name"], instr_data["bank"], instr_data["program"]], "TrackView")
 
 # 解析乐器字符串 "乐器名 (BX:PY)" 返回 {name, bank, program}
 func _parse_instrument_string(instrument_str: String) -> Dictionary:
@@ -567,7 +567,7 @@ func _on_track_instrument_reset(track_index: int, channel: int) -> void:
 		if track_ui:
 			_set_track_instrument_from_midi_data(track_ui, track_index, channel)
 	
-	print("[TrackView] Track %d Channel %d: 已重置为原始乐器" % [track_index, channel])
+	GLogger.info("Track %d Channel %d: 已重置为原始乐器" % [track_index, channel], "TrackView")
 
 # 更新预览（当轨道或音源改变时）
 func _update_preview() -> void:	
@@ -685,7 +685,7 @@ func _process(delta: float) -> void:
 		
 		# 检测循环播放重置（位置从大跳到小，说明循环了）
 		if current_position < last_position_ms - 100:  # 100ms容差，避免误判seek操作
-			print("[TrackView] Loop detected: %.1f -> %.1f ms, resetting noteDisplayers" % [last_position_ms, current_position])
+			GLogger.info("Loop detected: %.1f -> %.1f ms, resetting noteDisplayers" % [last_position_ms, current_position], "TrackView")
 			_reset_player()
 		
 		# 更新当前时间
@@ -720,18 +720,18 @@ func _init_master_note_displayer() -> void:
 	# 推荐轨道的首次应用与 _track_config_initialized 标记已在 MidiPlaybackManager.load_midi 中完成
 	# TrackView 只需根据已恢复的 selected_track_configs 显示 UI（由 restore_midi_ui_config 处理）
 	# 这里仅记录日志，不再重复应用推荐轨道
-	if current_midi_data._track_config_initialized:
-		print("[TrackView] MIDI config already initialized: %d tracks have enabled channels" %
-			current_midi_data.selected_track_configs.size())
+	if current_midi_data.is_track_config_initialized():
+		GLogger.info("MIDI config already initialized: %d tracks have enabled channels" %
+			current_midi_data.selected_track_configs.size(), "TrackView")
 	else:
 		# 理论上不应走到这里（load_midi 已设置 _track_config_initialized=true），防御性日志
-		push_warning("[TrackView] Unexpected: _track_config_initialized is false, selected_track_configs may be incomplete")
+		push_warning("[TrackView] Unexpected: track config not initialized, selected_track_configs may be incomplete")
 	
 	# 统计音符总数（从 buckets 汇总）
 	var total_notes = 0
 	for bucket in _all_buckets:
 		total_notes += bucket.notes.size()
-	print("[TrackView] Master note displayer: %d total notes across %d buckets" % [total_notes, _all_buckets.size()])
+	GLogger.info("Master note displayer: %d total notes across %d buckets" % [total_notes, _all_buckets.size()], "TrackView")
 	# 初始化主音符显示器（传入所有 buckets + max_end_tick 从 MidiData 直接读取），随后按 selected_track_configs 过滤可见性
 	master_note_displayer.init_displayer_with_buckets(self, _all_buckets, current_midi_data.max_end_tick)
 	if not current_midi_data.selected_track_configs.is_empty():
@@ -780,8 +780,8 @@ func _init_track_note_displayer(track_scene: MidiTrack, source_bucket: NoteDispl
 	bucket.hue = source_bucket.hue
 	bucket.notes = source_bucket.notes  # 共享数组引用
 
-	print("[TrackView] Track %d Channel %d: %d notes (time-sorted)" %
-		[bucket.track_index, bucket.channel, bucket.notes.size()])
+	GLogger.info("Track %d Channel %d: %d notes (time-sorted)" %
+		[bucket.track_index, bucket.channel, bucket.notes.size()], "TrackView")
 	# 初始化该(track, channel)的音符显示器
 	# max_end_tick 复用主显示器的全局值（子 displayer 的音符是全局子集，使用全局 max_end_tick 安全）
 	var max_end_tick := current_midi_data.max_end_tick if current_midi_data != null else 0.0
@@ -823,7 +823,7 @@ func _initialize_track_volumes_for_new_midi() -> void:
 			current_midi_data.set_track_channel_volume(track_idx, channel, default_volume)
 			initialized_count += 1
 	
-	print("[TrackView] Initialized %d tracks with default volume 50%%" % initialized_count)
+	GLogger.info("Initialized %d tracks with default volume 50%%" % initialized_count, "TrackView")
 
 # 页面状态回调
 func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
@@ -849,7 +849,7 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 			midi_playback_manager.set_loop(true)
 			midi_playback_manager.resume()
 			_set_note_displayers_process(true)
-			print("[TrackView] Reloaded MIDI after returning from settings")
+			GLogger.info("Reloaded MIDI after returning from settings", "TrackView")
 
 ## 释放视图内部资源（列表项、音符数据），保留节点壳和信号连接
 ## 不 unload_midi / 不 clear_parsed_notes：同一 MIDI 在 MidiView/TrackView/PlayView 间
@@ -899,7 +899,7 @@ func _on_latency_changed(new_text: String) -> void:
 	if midi_playback_manager.is_playing:
 		midi_playback_manager.apply_vocal_offset()
 
-	print("[TrackView] Latency offset changed to %d ms" % offset_ms)
+	GLogger.info("Latency offset changed to %d ms" % offset_ms, "TrackView")
 
 ## 缓存上次提取乐器列表时使用的 SoundFont 路径
 ## 乐器列表只依赖 SoundFont（与 MIDI 文件无关），同 SoundFont 下无需重复提取
@@ -959,8 +959,8 @@ func _extract_instruments_from_midi() -> void:
 		# 全局列表包含所有
 		instrument_options.append(display_name)
 
-	print("[TrackView] 已提取 %d 个常规乐器, %d 个鼓组乐器" %
-		[regular_instruments.size(), drum_instruments.size()])
+	GLogger.info("已提取 %d 个常规乐器, %d 个鼓组乐器" %
+		[regular_instruments.size(), drum_instruments.size()], "TrackView")
 
 	# 提取成功后记录所用 SoundFont 路径，供下次进入时跳过重复提取
 	_instruments_soundfont_path = current_sf_path
@@ -981,7 +981,7 @@ func _set_track_instrument_from_midi_data(track_scene: MidiTrack, track_idx: int
 		bank = override_instr.get("bank", 0)
 		program = override_instr.get("program", 0)
 		preset_name = override_instr.get("name", midi_playback_manager.get_preset_name(program, bank))
-		print("[TrackView] Track %d Channel %d: 使用用户覆盖乐器 %s" % [track_idx, channel, preset_name])
+		GLogger.info("Track %d Channel %d: 使用用户覆盖乐器 %s" % [track_idx, channel, preset_name], "TrackView")
 	else:
 		# 使用 MIDI 文件中的原始乐器
 		var instrument_info = midi_playback_manager.get_track_channel_instrument(track_idx, channel)
@@ -1005,12 +1005,12 @@ func _set_track_instrument_from_midi_data(track_scene: MidiTrack, track_idx: int
 		track_scene.instruments_option_btn.select(selected_index)
 		track_scene.instruments_option_btn.set_block_signals(false)
 
-		print("[TrackView] 轨道 %d 通道 %d: 设置乐器为 '%s' (program: %d, bank: %d)" %
-			[track_idx, channel, preset_name, program, bank])
+		GLogger.info("轨道 %d 通道 %d: 设置乐器为 '%s' (program: %d, bank: %d)" %
+			[track_idx, channel, preset_name, program, bank], "TrackView")
 
 ## 当SoundFont变更时，重新提取乐器列表并更新UI
 func _on_soundfont_changed(soundfont_path: String) -> void:
-	print("[TrackView] SoundFont changed: %s" % soundfont_path)
+	GLogger.info("SoundFont changed: %s" % soundfont_path, "TrackView")
 
 	# 重新提取乐器列表
 	_extract_instruments_from_midi()
@@ -1020,7 +1020,7 @@ func _on_soundfont_changed(soundfont_path: String) -> void:
 
 ## 当乐器列表变更时，快速更新所有MidiTrack的选项
 func _refresh_all_track_instruments() -> void:
-	print("[TrackView] Refreshing all track instrument options")
+	GLogger.info("Refreshing all track instrument options", "TrackView")
 
 	if current_midi_data == null or not has_meta("list_items"):
 		return
@@ -1037,4 +1037,4 @@ func _refresh_all_track_instruments() -> void:
 			var channel = item.track_channel
 			_set_track_instrument_from_midi_data(item, track_idx, channel)
 
-			print("[TrackView] Updated instrument options for track %d channel %d" % [track_idx, channel])
+			GLogger.info("Updated instrument options for track %d channel %d" % [track_idx, channel], "TrackView")

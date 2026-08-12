@@ -178,7 +178,7 @@ func _on_click_start_btn() -> void:
 	var midi:MidiData = midi_list.get_selection()
 	if not midi:
 		return
-	print("选择歌曲： %s" % midi.name)
+	GLogger.info("选择歌曲： %s" % midi.name, "MidiView")
 
 	# 先 change_state 触发 PlayView 懒加载（_ready 连接 start_game_with 信号），
 	# 再用 call_deferred emit，确保信号不丢失（与 _on_click_track_btn 模式一致）
@@ -220,7 +220,7 @@ func _show_favor_panel() -> void:
 	favor_panel.modulate.a = 0.0
 	favor_panel.offset_transform_position.y = 800
 	# 第一阶段：TabBtn 淡出 + 高度收缩，布局空间平滑释放
-	var tween1 := create_tween().set_parallel(true)
+	var tween1 := AniMGR.create_managed_tween(self).set_parallel(true)
 	tween1.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 	tween1.tween_property(tab_btn, "modulate:a", 0.0, 0.2)
 	tween1.tween_property(tab_btn, "custom_minimum_size:y", 0, 0.2)
@@ -229,7 +229,7 @@ func _show_favor_panel() -> void:
 	await tween1.finished
 	tab_btn.visible = false
 	# 第二阶段：FavorPanel 从下方滑入 + 淡入
-	var tween2 := create_tween().set_parallel(true)
+	var tween2 := AniMGR.create_managed_tween(self).set_parallel(true)
 	tween2.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 	tween2.tween_property(favor_panel, "modulate:a", 1.0, 0.3)
 	tween2.tween_property(favor_panel, "offset_transform_position:y", 0, 0.4)
@@ -249,7 +249,7 @@ func _hide_favor_panel(exiting_page: bool = false) -> void:
 		push_error("[MidiView] Invalid target page index: %d" % _prev_tab_idx)
 	if not exiting_page:
 		# 第一阶段：FavorPanel 滑出到下方 + 淡出
-		var tween1 := create_tween().set_parallel(true)
+		var tween1 := AniMGR.create_managed_tween(self).set_parallel(true)
 		tween1.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 		tween1.tween_property(favor_panel, "modulate:a", 0.0, 0.2)
 		tween1.tween_property(favor_panel, "offset_transform_position:y", 800, 0.3)
@@ -266,7 +266,7 @@ func _hide_favor_panel(exiting_page: bool = false) -> void:
 	target_page.visible = true
 	target_page.modulate.a = 1.0 if exiting_page else 0.0
 	if not exiting_page:
-		var tween2 := create_tween().set_parallel(true)
+		var tween2 := AniMGR.create_managed_tween(self).set_parallel(true)
 		tween2.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 		tween2.tween_property(tab_btn, "modulate:a", 1.0, 0.25)
 		tween2.tween_property(tab_btn, "custom_minimum_size:y", 120, 0.25)
@@ -312,7 +312,9 @@ func _on_del_btn_pressed():
 	if not await window.show_message("请选择要删除的内容", true, ["删除曲包", "删除设定", "删除人声音频"]):
 		return
 
-	var chart_id: String = midi_to_del.file_hash if not midi_to_del.file_hash.is_empty() else midi_to_del.id
+	# 统一使用规范键（folder_name）发起删除/写回，避免 id / file_hash 别名混用（TMX-020）
+	var chart_id: String = midi_to_del.chart_key if not midi_to_del.chart_key.is_empty() \
+		else (midi_to_del.file_hash if not midi_to_del.file_hash.is_empty() else midi_to_del.id)
 
 	match window.get_selected():
 		"删除人声音频": # 删除人声音频文件，并清除人声相关设置
@@ -342,7 +344,7 @@ func _on_del_btn_pressed():
 			midi_to_del.midi_volume = -1.0  # -1=未配置（跟随全局 default_midi_volume）
 			# 重置 _track_config_initialized=false：使下次进入 TrackView 时 MidiPlaybackManager.load_midi
 			# 重新解析简介并应用推荐轨道（修复 #59：删除设定后不会回落到从简介读取音轨配置的状态）
-			midi_to_del._track_config_initialized = false
+			midi_to_del.set_track_config_initialized(false)
 			# 清空 chart_runtime（文档存在=已配置，删除=从未配置；与旧 JSON 整块移除 _runtime 语义一致）
 			ChartDB.ClearRuntime(chart_id)
 			GLogger.info("已重置谱面设定: %s" % midi_to_del.name, "MidiView")
@@ -372,7 +374,7 @@ func _on_del_btn_pressed():
 			else:
 				# Song 和 Album 都被删除，直接跳回 AlbumView
 				# 确保 SS 节点被清理（直接跳转时可能跳过 SongView 的退出流程）
-				var ss_node = get_node_or_null("/root/Main/skew/SS")
+				var ss_node = get_node_or_null(PathRegistry.SKEW_SS)
 				if is_instance_valid(ss_node):
 					ss_node.queue_free()
 				UiStatMGR.go_back_to(UIStateManager.UIState.ALBUM_VIEW)

@@ -78,7 +78,7 @@ func _play_refresh_slide_in() -> void:
 	if in_view:
 		# 可见：从左侧 -2 滑入到 0
 		offset_transform_position_ratio.x = -2.0
-		_refresh_ani_tween = create_tween()
+		_refresh_ani_tween = AniMGR.create_managed_tween(self)
 		_refresh_ani_tween.tween_property(
 			self, "offset_transform_position_ratio:x", 0.0, 0.4
 		).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
@@ -125,7 +125,7 @@ func setup_with_dict(d: Dictionary, index: int, bg:ButtonGroup) -> void:
 	# 初始化按钮（MidiNode 本身即 Button，复用时已初始化，跳过重复初始化）
 	if not button:
 		button = self
-		enable_selected_animation(button, get_node("/root/Main/skew/C/SortedMidisList"))
+		enable_selected_animation(button, get_node(PathRegistry.SORTED_MIDIS_LIST))
 	button.button_group = bg
 
 	if _has_ready:

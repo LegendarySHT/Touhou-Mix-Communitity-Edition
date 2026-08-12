@@ -47,12 +47,12 @@ const LAZY_VIEW_PATHS := {
 
 ## 视图父节点路径（与 Main.tscn 结构对应）
 const LAZY_VIEW_PARENTS := {
-	UIState.MIDI_VIEW: "/root/Main/skew/C",
-	UIState.STORE_VIEW: "/root/Main",
-	UIState.TRACK_VIEW: "/root/Main/skew/C",
-	UIState.SETTINGS_VIEW: "/root/Main/skew/C",
-	UIState.PLAY_VIEW: "/root/Main",
-	UIState.SCORE_VIEW: "/root/Main",
+	UIState.MIDI_VIEW: PathRegistry.SKEW_C,
+	UIState.STORE_VIEW: PathRegistry.MAIN,
+	UIState.TRACK_VIEW: PathRegistry.SKEW_C,
+	UIState.SETTINGS_VIEW: PathRegistry.SKEW_C,
+	UIState.PLAY_VIEW: PathRegistry.MAIN,
+	UIState.SCORE_VIEW: PathRegistry.MAIN,
 }
 
 ## 已加载的懒加载视图实例 {UIState: Node}
@@ -101,11 +101,11 @@ func ensure_view_loaded(state: UIState) -> Node:
 	# StoreView → 移到 RB_Btn 之前；ScoreView → 移到 LT_Btn 之前
 	match state:
 		UIState.STORE_VIEW:
-			var rb := get_node_or_null("/root/Main/RB_Btn")
+			var rb := get_node_or_null(PathRegistry.RB_BTN)
 			if rb and rb.get_parent() == parent:
 				parent.move_child(instance, rb.get_index())
 		UIState.SCORE_VIEW:
-			var lt := get_node_or_null("/root/Main/LT_Btn")
+			var lt := get_node_or_null(PathRegistry.LT_BTN)
 			if lt and lt.get_parent() == parent:
 				parent.move_child(instance, lt.get_index())
 	_loaded_lazy_views[state] = instance

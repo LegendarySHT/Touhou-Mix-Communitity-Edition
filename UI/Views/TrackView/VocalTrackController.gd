@@ -184,7 +184,7 @@ func on_vocal_file_selected(file_path: String) -> void:
 		midi_playback_manager.start_vocal_playback()
 
 	GLogger.info("Vocal file imported successfully: %s -> %s" % [selected_file, destination_path], "TrackView")
-	print("[TrackView] Vocal file imported to: %s" % destination_path)
+	GLogger.info("Vocal file imported to: %s" % destination_path, "VocalTrackController")
 
 
 ## 人声启用/禁用按钮回调
@@ -223,8 +223,9 @@ func detect_vocal_file(midi_data: MidiData) -> void:
 
 	# 从 FileSystemManager 的反向索引查找对应谱面（O(1)，统一匹配 id / file_hash / hash）
 	var filesystem_mgr = FileSystemManager.instance
-	var chart_id = midi_data.file_hash if not midi_data.file_hash.is_empty() else midi_data.id
-	var lookup = filesystem_mgr._lookup_chart(chart_id)
+	var chart_id = midi_data.chart_key if not midi_data.chart_key.is_empty() \
+		else (midi_data.file_hash if not midi_data.file_hash.is_empty() else midi_data.id)
+	var lookup = filesystem_mgr.lookup_chart(chart_id)
 	if not lookup.is_empty():
 		var metadata: ChartMetadata = lookup["metadata"]
 		var audio_path = metadata.audio_path

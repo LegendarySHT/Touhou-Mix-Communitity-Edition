@@ -17,7 +17,6 @@ static var instance: KeySequenceManager
 
 ## 游戏序列（玩家操作的键）
 class GameSequence:
-	var note_index: int         # 原始Note在all_notes中的索引
 	var key_id: int             # 生成的键ID
 	var pitch: int              # MIDI音符号（主要pitch）
 	var start_time_ms: float    # 开始时间
@@ -32,8 +31,7 @@ class GameSequence:
 	var flow_note_ref: Object = null  # 新增：指向对应的FlowArea.Note（演奏模式使用）
 	var lane: int = -1  # 视觉轨道索引（可能因 max_touch_move_velocity 限制而偏离 pitch % lane_count）
 	
-	func _init(idx: int, key: int, p: int, start: float, dur: float, x: float, oct: int, vel: int) -> void:
-		note_index = idx
+	func _init(key: int, p: int, start: float, dur: float, x: float, oct: int, vel: int) -> void:
 		key_id = key
 		pitch = p
 		start_time_ms = start
@@ -366,8 +364,8 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	var cache_key := "%s|%s" % [midi_id, pairs_hash.hash()]
 	if cache_key == _cache_key and not _cached_sequences.is_empty():
 		# 命中缓存，直接复用（选歌预览与 PlayView 重复生成时命中）
-		game_sequences = _cached_sequences.duplicate()
-		background_sequences = _cached_background_sequences.duplicate()
+		game_sequences = _clone_game_sequences(_cached_sequences)
+		background_sequences = _clone_background_sequences(_cached_background_sequences)
 		last_manual_control_notes = _cached_manual_notes.duplicate()
 		last_auto_play_notes = _cached_auto_notes.duplicate()
 		GLogger.debug("generate_keys HIT cache, reuse %d sequences" % game_sequences.size(), "KSM")
@@ -456,7 +454,8 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 
 	# 写入缓存（引用共享，不 duplicate）
 	# game_sequences/background_sequences/last_* 在此后不再修改，
-	# 下次 generate_keys 命中缓存时会 duplicate 一份给 game_sequences 使用（见上方 cache hit 分支），
+	# 下次 generate_keys 命中缓存时会深拷贝 GameSequence/BackgroundSequence 副本给消费方
+	# （见上方 cache hit 分支），
 	# 因此 _cached_* 引用的内容不会被外部修改
 	_cache_key = cache_key
 	_cached_sequences = game_sequences
@@ -465,6 +464,35 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	_cached_auto_notes = last_auto_play_notes
 
 	return true
+
+## 深拷贝 GameSequence 数组（缓存命中时返回独立副本，消费方写入 flow_note_ref 等字段不污染缓存）
+## 返回类型必须与 game_sequences 一致（Array[GameSequence]），否则缓存命中赋值会报
+## "Trying to assign an array of type Array to a variable of type Array[GameSequence]"
+func _clone_game_sequences(src: Array[GameSequence]) -> Array[GameSequence]:
+	var result: Array[GameSequence] = []
+	result.resize(src.size())
+	for i in range(src.size()):
+		var s: GameSequence = src[i]
+		var c := GameSequence.new(s.key_id, s.pitch, s.start_time_ms, s.duration_ms, s.screen_x, s.octave, s.velocity)
+		c.block_type = s.block_type
+		c.pitch_list = s.pitch_list.duplicate()
+		c.connected_prev = s.connected_prev
+		c.original_notes = s.original_notes.duplicate()
+		c.lane = s.lane
+		# flow_note_ref 不复制：由消费方按需设置，避免残留引用污染
+		result[i] = c
+	return result
+
+## 深拷贝背景序列数组（notes 数组复制，NoteEvent 对象只读共享）
+func _clone_background_sequences(src: Array[BackgroundSequence]) -> Array[BackgroundSequence]:
+	var result: Array[BackgroundSequence] = []
+	result.resize(src.size())
+	for i in range(src.size()):
+		var s: BackgroundSequence = src[i]
+		var c := BackgroundSequence.new(s.track_index)
+		c.notes = s.notes.duplicate()
+		result[i] = c
+	return result
 
 ## 单任务模式：同一时间只允许一个 generate_keys worker 运行
 ## 新任务启动前必须等待旧任务完成（防止并发写入 game_sequences 等共享字段）
@@ -1078,7 +1106,6 @@ func _convert_blocks_to_game_sequences(blocks: Array[BlockInfo]) -> void:
 		var octave_info = MidiParser.get_note_octave_and_relative_pitch(main_note.pitch)
 
 		var game_seq = GameSequence.new(
-			0,  # note_index
 			next_key_id,
 			main_note.pitch,
 			block.start_time_ms,

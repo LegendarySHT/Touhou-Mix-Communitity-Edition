@@ -19,7 +19,7 @@ var _name_scroll_state: TextScrollHelper.State = null
 ## 展开动画补间
 var expand_tween: Tween
 
-var INDICATOR = "/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator"
+var INDICATOR = PathRegistry.MIDI_VIEW_INDICATOR
 
 ## ========== 信息缓存（静态，跨实例共享）==========
 ## schema: { midi_id: { "time_str", "bpm_str", "bpm_timeline", "timebase",
@@ -127,7 +127,7 @@ func on_item_button_toggled(toggled_on: bool):
 	var primary_dark := Color(0.129, 0.412, 0.702)
 	if ThemeMGR:
 		primary_dark = ThemeMGR.get_color("primary_dark")
-	create_tween().tween_property(indicator_node.get_child(item_index), "color", primary_dark if toggled_on else Color(1, 1, 1), 0.15)
+	AniMGR.create_managed_tween(self).tween_property(indicator_node.get_child(item_index), "color", primary_dark if toggled_on else Color(1, 1, 1), 0.15)
 	if toggled_on:
 		# 切换到新 MIDI 项时，清理上一个 MIDI 的运行时缓存（parsed_notes + GameSequence + 播放管理器）
 		# 避免浏览多个大 MIDI 后 parsed_notes 累积导致内存增长
@@ -142,7 +142,7 @@ func on_item_button_toggled(toggled_on: bool):
 		else:
 			parent_node.need_snap = true
 			# 指示器移到新选中项
-			create_tween().tween_property(indicator_node, "offset_transform_position:y", 100 - item_index * 24, 0.35)
+			AniMGR.create_managed_tween(self).tween_property(indicator_node, "offset_transform_position:y", 100 - item_index * 24, 0.35)
 		_update_data_display()
 
 ## 设置展开/收起（由 MidiList._show_midi_list 批量调用）
@@ -150,7 +150,7 @@ func set_expanded(expanded: bool) -> void:
 	if expand_tween:
 		expand_tween.kill()
 	var expa := 1 if expanded else 0
-	expand_tween = create_tween()
+	expand_tween = AniMGR.create_managed_tween(self)
 	expand_tween.set_ease(Tween.EASE_OUT)
 	expand_tween.set_trans(Tween.TRANS_QUINT)
 	expand_tween.set_parallel(true)
@@ -172,8 +172,8 @@ func set_expanded(expanded: bool) -> void:
 
 ## 更新信息面板（入口）
 func _update_data_display() -> void:
-	var info_node: GridContainer = get_node_or_null("/root/Main/skew/C/MidiView/LeftArea/DetailData")
-	var description: RichTextLabel = get_node_or_null("/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Description")
+	var info_node: GridContainer = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
+	var description: RichTextLabel = get_node_or_null(PathRegistry.MIDI_VIEW_DESCRIPTION)
 	if not (info_node and description):
 		push_error("[MidiNode] Info Set Failed")
 		return
@@ -274,7 +274,7 @@ func _on_parse_done(result: Dictionary) -> void:
 
 	# 将解析结果回填到 MidiData（若 MidiPlaybackManager 尚未填入）
 	if midi.duration_ms <= 0:
-		midi.duration_ms = result.get("duration", 0.0)
+		midi.duration_ms = result.get("duration_ms", 0.0)
 	if midi.bpm <= 0.0 or midi.bpm == 120.0:
 		midi.bpm = result.get("bpm", 120.0)
 	if midi.parsed_notes.is_empty():
@@ -375,7 +375,7 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 	# 若首次进入 MidiView 时仍未初始化，统计口径会退化为"全部轨道"，
 	# 与 TrackView / PlayView 的"按简介推荐轨道"不一致。
 	var pm := MidiPlaybackManager.instance
-	if pm != null and not midi._track_config_initialized:
+	if pm != null and not midi.is_track_config_initialized():
 		pm.ensure_track_config_initialized(midi, midi.parsed_notes)
 
 	# 构建 (track, channel) 启用集合，键格式："track:channel"
@@ -384,7 +384,7 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 	# 注意：不能把 selected_track_configs 非空当作"已初始化"。from_json 曾为新 MIDI 写入占位
 	# {0:[0]}，若据此过滤，音符全在第 1 轨之后的谱面（如 issue #62 的成对的神兽，音符在
 	# track1/2）会在首次进入 MidiView 时错误显示 0 音符 / "-" NPM。
-	var configs_initialized: bool = midi._track_config_initialized
+	var configs_initialized: bool = midi.is_track_config_initialized()
 	var enabled_pairs: Dictionary = midi.get_enabled_pairs_flat() if configs_initialized else {}
 
 	# 声明 entry 变量，传递缓存数据
@@ -457,7 +457,7 @@ func _apply_display() -> void:
 	if parent_node == null or parent_node.selected_item != item_index:
 		return # 本 item 未展开，无需刷新共享面板
 
-	var info_node: GridContainer = get_node_or_null("/root/Main/skew/C/MidiView/LeftArea/DetailData")
+	var info_node: GridContainer = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
 	if info_node == null:
 		return
 
@@ -491,7 +491,7 @@ func _on_config_changed(key: String, section: String, _value: Variant) -> void:
 		_info_cache[mid_id].erase("mpp_str")
 	# 若本 item 正展开，立即重新触发计算
 	if parent_node and parent_node.selected_item == item_index and midi_data != null:
-		var info_node = get_node_or_null("/root/Main/skew/C/MidiView/LeftArea/DetailData")
+		var info_node = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
 		if info_node:
 			info_node.get_node("Note/Label").text = "..."
 			info_node.get_node("MPP/Label").text = "..."
@@ -507,7 +507,7 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 			_info_cache[mid_id].erase("mpp_str")
 		# 若本 item 正展开，立即重触发
 		if parent_node and parent_node.selected_item == item_index and midi_data != null:
-			var info_node = get_node_or_null("/root/Main/skew/C/MidiView/LeftArea/DetailData")
+			var info_node = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
 			if info_node:
 				info_node.get_node("Note/Label").text = "..."
 				info_node.get_node("MPP/Label").text = "..."

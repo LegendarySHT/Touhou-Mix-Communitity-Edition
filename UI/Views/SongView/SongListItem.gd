@@ -91,7 +91,7 @@ func _get_cover_texture() -> Texture2D:
 	var fs_mgr := FileSystemManager.instance
 	if not fs_mgr:
 		return null
-	return fs_mgr._load_cover_with_cache(fs_mgr.default_cover_if_missing(ChartDB.GetSongCoverPath(String(item_dict.get("id", "")))))
+	return fs_mgr.load_cover_with_cache(fs_mgr.default_cover_if_missing(ChartDB.GetSongCoverPath(String(item_dict.get("id", "")))))
 
 ## 重写基类虚函数：返回封面文件路径（主线程调用，供异步加载器使用）
 ## 路径查询在主线程完成，后台线程只负责读盘

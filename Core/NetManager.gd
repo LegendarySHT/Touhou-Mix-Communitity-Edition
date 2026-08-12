@@ -29,6 +29,10 @@ var connect_state: ConnectState = ConnectState.OFFLINE_MODE
 ## 最近一次延迟（毫秒），-1 表示未知
 var _latency_ms: int = -1
 
+## 读取最近一次连接延迟（毫秒；-1 = 未知/未连接，外部只读统一走此方法，TMX-019）
+func get_latency_ms() -> int:
+	return _latency_ms
+
 ## online_mode 开关
 var _online_mode_enabled: bool = false
 

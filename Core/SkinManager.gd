@@ -279,7 +279,7 @@ func _parse_color(value) -> Color:
 
 ## 将结构化配置 Dictionary 写入 skin.ini 文件
 ## logs 参数：传入 Array 则收集日志到数组（worker 模式，避免在 worker 线程调用 GLogger）；传 null 则直接调用 GLogger（主线程模式）
-func _save_skin_config_to_file(config_path: String, config: Dictionary, logs: Variant = null) -> void:
+func _save_skin_config_to_file(config_path: String, config: Dictionary, logs: Variant = null) -> bool:
 	var content = _serialize_skin_config(config)
 	var file = FileAccess.open(config_path, FileAccess.WRITE)
 	if file == null:
@@ -288,9 +288,10 @@ func _save_skin_config_to_file(config_path: String, config: Dictionary, logs: Va
 			(logs as Array).append({"msg": msg, "is_warning": true})
 		else:
 			GLogger.warning(msg, "SkinMGR")
-		return
+		return false
 	file.store_string(content)
 	file.close()
+	return true
 
 ## 将配置 Dictionary 序列化为 INI 文本
 func _serialize_skin_config(config: Dictionary) -> String:
@@ -417,13 +418,15 @@ func save_skin_config(skin_name: String, config: Dictionary) -> bool:
 		if not PathHelper.ensure_dir_exists(BUILTIN_CONFIG_DIR):
 			GLogger.error("Failed to create builtin config dir: %s" % BUILTIN_CONFIG_DIR, "SkinMGR")
 			return false
-		_save_skin_config_to_file(override_path, normalized)
+		if not _save_skin_config_to_file(override_path, normalized):
+			return false
 		GLogger.info("Saved builtin skin override config: %s" % override_path, "SkinMGR")
 		return true
 
 	# 用户皮肤写入皮肤包目录
 	var config_path = skin_data.path.path_join(SKIN_CONFIG_FILE)
-	_save_skin_config_to_file(config_path, normalized)
+	if not _save_skin_config_to_file(config_path, normalized):
+		return false
 	GLogger.info("Saved skin config: %s" % config_path, "SkinMGR")
 	return true
 
@@ -506,7 +509,8 @@ func clear_skin_cache(skin_name: String = "") -> void:
 
 ## 获取默认皮肤的贴图
 func get_default_skin_textures() -> Dictionary:
-	return get_skin_textures("旧版2 [内置]")
+	var default_name: String = ConfigManager.instance.get_string("Appearance", "block_skin_preset", "旧版2 [内置]")
+	return get_skin_textures(default_name)
 
 ## 获取皮肤路径
 func get_skin_path(skin_name: String) -> String:

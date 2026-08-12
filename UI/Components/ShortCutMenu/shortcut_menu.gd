@@ -67,7 +67,7 @@ func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateMana
 		favor_list_button.button_pressed = false
 
 func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
-	var tween = create_tween()
+	var tween = AniMGR.create_managed_tween(self)
 	tween.set_ease(Tween.EASE_OUT)
 	tween.set_trans(Tween.TRANS_QUINT)
 	tween.set_parallel(true)

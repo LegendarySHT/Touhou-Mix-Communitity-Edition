@@ -117,7 +117,7 @@ func _disconnect_stats_refreshed() -> void:
 
 ## 获取 PlayerInfoContent 节点（可能在不同路径下）
 func _get_player_info_content() -> PlayerInfoContent:
-	for path in ["/root/Main/TopLayer/PlayerInfo/InfoPanelBtn/TabC", "/root/Main/PlayerInfo/InfoPanelBtn/TabC"]:
+	for path in [PathRegistry.PLAYER_INFO_TAB_C_LEGACY, PathRegistry.PLAYER_INFO_TAB_C]:
 		var node = get_node_or_null(path)
 		if node and node is PlayerInfoContent:
 			return node as PlayerInfoContent
@@ -167,13 +167,14 @@ func _update_player_info() -> void:
 	# 头像
 	avator.texture = pic.mini_avatar_rect.texture
 	# 名称
-	name_label.text = pic._player_data.display_name if not pic._player_data.display_name.is_empty() else pic._player_data.name
+	var player_data: Dictionary = pic.get_player_data()
+	name_label.text = player_data.display_name if not player_data.display_name.is_empty() else player_data.name
 	# 等级 = floor(sqrt(pp))
-	var pp_val = pic._player_data.pp
-	var lvl = pic._calc_level(pp_val)
+	var pp_val = player_data.pp
+	var lvl = pic.calc_level(pp_val)
 	lvl_label.text = "Lv%d" % lvl
 	# 升级进度 = (pp - level²) / ((level+1)² - level²)
-	lvl_exp_progress.value = pic._calc_level_progress(pp_val, lvl) * 100.0
+	lvl_exp_progress.value = pic.calc_level_progress(pp_val, lvl) * 100.0
 
 func _on_like_btn_pressed():
 	pass
@@ -199,8 +200,8 @@ func _kill_loop_ani():
 
 func _play_loop_ani():
 	_kill_loop_ani()
-	_loop_ani_chara = create_tween()
-	_loop_ani_rank = create_tween()
+	_loop_ani_chara = AniMGR.create_managed_tween(self, "score_loop_chara")
+	_loop_ani_rank = AniMGR.create_managed_tween(self, "score_loop_rank")
 
 	_loop_ani_chara.set_loops()
 	_loop_ani_rank.set_loops()

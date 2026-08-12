@@ -83,7 +83,7 @@ func _on_button_down():
 	if pulse_tween:
 		pulse_tween.kill()
 
-	press_tween = create_tween()
+	press_tween = AniMGR.create_managed_tween(self)
 	press_tween.tween_property(self, "offset_transform_scale", Vector2(0.96, 0.96), 0.07).set_ease(Tween.EASE_OUT)
 
 func _on_button_up():
@@ -94,7 +94,7 @@ func _on_button_up():
 	if press_tween:
 		press_tween.kill()
 	
-	press_tween = create_tween()
+	press_tween = AniMGR.create_managed_tween(self)
 	press_tween.tween_property(self, "offset_transform_scale", Vector2(1.03, 1.03), 0.06).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BOUNCE)
 	
 	press_tween.tween_property(self, "offset_transform_scale", Vector2(0.98, 0.98), 0.34).set_ease(Tween.EASE_IN_OUT)
@@ -136,7 +136,7 @@ func _pulse_animation(enable: bool):
 		pulse_tween = null
 	
 	if enable:
-		pulse_tween = create_tween()
+		pulse_tween = AniMGR.create_managed_tween(self)
 		pulse_tween.set_loops()
 		
 		# 柔和的脉冲
@@ -144,7 +144,7 @@ func _pulse_animation(enable: bool):
 		
 		pulse_tween.tween_property(self, "offset_transform_scale", Vector2(0.99, 0.99), 0.8).set_ease(Tween.EASE_IN_OUT)
 	else:
-		create_tween().tween_property(self, "offset_transform_scale", Vector2.ONE, 0.2).set_ease(Tween.EASE_IN_OUT)
+		AniMGR.create_managed_tween(self).tween_property(self, "offset_transform_scale", Vector2.ONE, 0.2).set_ease(Tween.EASE_IN_OUT)
 
 # 虚函数：初始化列表项
 func initialize(id: String, type: String) -> void:

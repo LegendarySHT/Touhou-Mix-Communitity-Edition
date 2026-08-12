@@ -239,7 +239,7 @@ func _cleanup() -> void:
 func return_to_top() -> void:
 	if _scroll_tween and _scroll_tween.is_running():
 		_scroll_tween.kill()
-	_scroll_tween = create_tween()
+	_scroll_tween = AniMGR.create_managed_tween(self)
 	_scroll_tween.tween_property(self, "scroll_vertical", 0, 0.5) \
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_toggle_top(true)
@@ -279,7 +279,7 @@ func _toggle_bottom(_show: bool) -> void:
 	_bottom_tween = _slide(_bottom_bar, 5 if not _show else -h, h if not _show else 0)
 
 func _slide(bar: Control, off_top: float, off_bottom: float) -> Tween:
-	var t := create_tween().set_parallel()
+	var t := AniMGR.create_managed_tween(self).set_parallel()
 	t.tween_property(bar, "offset_top", off_top, 0.45).set_trans(Tween.TRANS_CUBIC)
 	t.tween_property(bar, "offset_bottom", off_bottom, 0.45).set_trans(Tween.TRANS_CUBIC)
 	return t

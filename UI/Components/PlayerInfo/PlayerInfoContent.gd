@@ -31,6 +31,10 @@ var _player_data := {
 	"recent_scores": [],
 }
 
+## 读取玩家数据副本（外部只读请用此方法，避免跨类直读私有字段，TMX-019）
+func get_player_data() -> Dictionary:
+	return _player_data.duplicate()
+
 # MiniInfo（收起状态）
 @onready var tip: Control = $MiniInfo/Tip
 @onready var tip_label: Label = $MiniInfo/Tip/Label
@@ -126,6 +130,7 @@ func _sync_from_auth() -> void:
 		# 异步拉取服务端资料与统计
 		_fetch_profile_and_stats_async()
 	else:
+		HttpImageLoader.clear_cache()
 		_player_data.name = "Anonymous Player"
 		_player_data.display_name = ""
 		_player_data.bio = ""
@@ -337,8 +342,8 @@ func _clear_login_form() -> void:
 func populate_profile() -> void:
 	profile_name.text = _player_data.display_name if not _player_data.display_name.is_empty() else _player_data.name
 	# 等级 = floor(sqrt(pp))，升级进度 = (pp - level²) / ((level+1)² - level²)
-	var lvl := _calc_level(_player_data.pp)
-	var lvl_progress := _calc_level_progress(_player_data.pp, lvl)
+	var lvl := calc_level(_player_data.pp)
+	var lvl_progress := calc_level_progress(_player_data.pp, lvl)
 	_player_data.level = lvl
 	_player_data.level_progress = lvl_progress
 	profile_level.text = "Level %d" % lvl
@@ -359,19 +364,19 @@ func populate_profile() -> void:
 func populate_mini_info() -> void:
 	mini_name.text = _player_data.display_name if not _player_data.display_name.is_empty() else _player_data.name
 	# 等级与进度条同步
-	var lvl := _calc_level(_player_data.pp)
-	var lvl_progress := _calc_level_progress(_player_data.pp, lvl)
+	var lvl := calc_level(_player_data.pp)
+	var lvl_progress := calc_level_progress(_player_data.pp, lvl)
 	mini_level.text = "Lv%d" % lvl
 	mini_pp.text = "%.2f pp" % _player_data.pp
 	mini_progress.value = lvl_progress * 100.0
 
 ## 计算等级：level = floor(sqrt(pp))
-func _calc_level(pp: float) -> int:
+func calc_level(pp: float) -> int:
 	return int(floor(sqrt(max(0.0, pp))))
 
 ## 计算从当前等级到下一级的升级进度（0.0 ~ 1.0）
 ## progress = (pp - level²) / ((level+1)² - level²)
-func _calc_level_progress(pp: float, level: int) -> float:
+func calc_level_progress(pp: float, level: int) -> float:
 	var current_threshold := float(level) * float(level)
 	var next_threshold := float(level + 1) * float(level + 1)
 	var diff := next_threshold - current_threshold

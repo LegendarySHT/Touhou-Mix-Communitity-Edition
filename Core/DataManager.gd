@@ -1,6 +1,6 @@
 ## 数据管理器
 ## 负责歌曲数据的惰性水合缓存与查询（数据唯一源 = ChartDb LiteDB）
-## 启动不再构造全部 MidiData；视图需要时经 _ensureMidi 按需水合
+## 启动不再构造全部 MidiData；视图需要时经 _ensure_midi 按需水合
 extends Node
 
 class_name DataManager
@@ -80,7 +80,7 @@ func _rebuild_data_tree() -> void:
 ## ========== 惰性水合 ==========
 
 ## 按规范键（folder_name）水合 MidiData，缓存命中返回同一实例（对象身份稳定）
-func _ensureMidi(chart_key: String) -> MidiData:
+func _ensure_midi(chart_key: String) -> MidiData:
 	if chart_key.is_empty():
 		return null
 	if midis.has(chart_key):
@@ -96,6 +96,7 @@ func _ensureMidi(chart_key: String) -> MidiData:
 	midi.from_json(json_data)
 	if midi.id.is_empty():
 		return null
+	midi.chart_key = chart_key  # 规范键（folder_name）随对象携带，跨模块 ID 传递统一使用（TMX-020）
 
 	# 初始化人声配置：仅对未保存过 vocal_enabled 配置的新 MIDI 生效，已保存的配置尊重用户选择
 	var runtime_config: Variant = json_data.get("_runtime", {})
@@ -140,7 +141,7 @@ func get_midis_by_song(song_id: String) -> Array[MidiData]:
 	if ChartDB == null or not ChartDB.IsOpen():
 		return result
 	for chart_key: String in ChartDB.GetMidiKeysBySong(song_id):
-		var midi: MidiData = _ensureMidi(chart_key)
+		var midi: MidiData = _ensure_midi(chart_key)
 		if midi:
 			result.append(midi)
 	return result
@@ -150,11 +151,27 @@ func get_midi_by_id(midi_id: String) -> MidiData:
 	if midi_id.is_empty():
 		return null
 	if ChartDB == null or not ChartDB.IsOpen():
-		return midis.get(midi_id)
+		# DB 未打开：仅能在已水合缓存中查找，支持 chart_key / id / file_hash 任意别名
+		if midis.has(midi_id):
+			return midis[midi_id]
+		for midi: MidiData in midis.values():
+			if midi.chart_key == midi_id or midi.id == midi_id or midi.file_hash == midi_id:
+				return midi
+		return null
 	var chart_key: String = ChartDB.LookupChartKey(midi_id)
 	if chart_key.is_empty():
 		return null
-	return _ensureMidi(chart_key)
+	return _ensure_midi(chart_key)
+
+## 将任意 ID 别名（id / file_hash / hash / midi_id / folder_name）解析为规范键（folder_name）
+## DB 未打开时无法解析，原样返回别名（调用方需自行降级处理）
+func resolve_chart_key(alias: String) -> String:
+	if alias.is_empty():
+		return ""
+	if ChartDB == null or not ChartDB.IsOpen():
+		return alias
+	var key: String = ChartDB.LookupChartKey(alias)
+	return key if not key.is_empty() else alias
 
 ## 按状态过滤MIDI谱面
 func get_midis_by_status(status: String) -> Array[MidiData]:
@@ -162,7 +179,7 @@ func get_midis_by_status(status: String) -> Array[MidiData]:
 	if ChartDB == null or not ChartDB.IsOpen():
 		return result
 	for chart_key: String in ChartDB.GetChartsByStatus(status):
-		var midi: MidiData = _ensureMidi(chart_key)
+		var midi: MidiData = _ensure_midi(chart_key)
 		if midi:
 			result.append(midi)
 	return result
@@ -174,7 +191,7 @@ func search_all_midis(query: String) -> Array[MidiData]:
 	if ChartDB == null or not ChartDB.IsOpen() or query.is_empty():
 		return result
 	for chart_key: String in ChartDB.SearchMidiKeys(query):
-		var midi: MidiData = _ensureMidi(chart_key)
+		var midi: MidiData = _ensure_midi(chart_key)
 		if midi:
 			result.append(midi)
 	return result
@@ -187,7 +204,7 @@ func get_midis_preview(count: int) -> Array[MidiData]:
 	var keys: Array = ChartDB.GetAllChartKeys()
 	var limit: int = min(count, keys.size())
 	for i in range(limit):
-		var midi: MidiData = _ensureMidi(String(keys[i]))
+		var midi: MidiData = _ensure_midi(String(keys[i]))
 		if midi:
 			result.append(midi)
 	return result

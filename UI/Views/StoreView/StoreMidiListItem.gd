@@ -39,7 +39,7 @@ func _ready() -> void:
 	_parallax_enabled = false
 	# StoreMidiNode 本身即 Button（原 PanelContainer + 子 Button 已合并）
 	button = self
-	parent_node = get_node("/root/Main/Store/StoreMidiList")
+	parent_node = get_node(PathRegistry.STORE_MIDI_LIST)
 
 	# 直接bind参数会传初始化时的值有点难绷
 	# 通过实例变量读取，确保按下时获取最新值
@@ -162,7 +162,7 @@ func _update_download_state_ui() -> void:
 ## 启动脉冲动画（下载中提示）
 func _start_pulse_animation() -> void:
 	_stop_pulse_animation()
-	var tween := create_tween()
+	var tween := AniMGR.create_managed_tween(self)
 	tween.set_loops()
 	tween.tween_property(song_name, "modulate:a", 0.3, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(song_name, "modulate:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -182,33 +182,13 @@ func _load_remote_cover(target_hash: String) -> void:
 	if cover_texture:
 		cover_texture.visible = false
 	var cover_url := "%s/api/charts/%s/cover" % [NetManager.instance.server_url, target_hash]
-	var http := HTTPRequest.new()
-	add_child(http)
-	var err := http.request(cover_url)
-	if err != OK:
-		http.queue_free()
-		return
-	var resp = await http.request_completed
-	http.queue_free()
-	if not is_instance_valid(self):
-		return
-	var result_code = resp[0]
-	var response_code = resp[1]
-	var response_body = resp[3]
-	if result_code != HTTPRequest.RESULT_SUCCESS or response_code != 200:
-		return
-	if not response_body is PackedByteArray or response_body.size() == 0:
-		return
-	var image := Image.new()
-	var err_img := image.load_jpg_from_buffer(response_body)
-	if err_img != OK:
-		err_img = image.load_png_from_buffer(response_body)
-	if err_img != OK:
-		return
-	var tex := ImageTexture.create_from_image(image)
-	if cover_texture:
-		cover_texture.texture = tex
-		cover_texture.visible = true
+	HttpImageLoader.load(cover_url, self, func(tex: Texture2D) -> void:
+		if not is_instance_valid(self):
+			return
+		if tex and cover_texture:
+			cover_texture.texture = tex
+			cover_texture.visible = true
+	)
 
 ## 刷新下载状态（供 StoreView 下载完成后调用）
 func refresh_download_state() -> void:

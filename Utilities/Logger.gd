@@ -23,6 +23,9 @@ var log_to_console: bool = true
 ## 日志文件路径（会在 _ready 中初始化）
 var log_file_path: String = ""
 
+## 日志文件句柄（复用，避免每次写入都重新打开文件）
+var _log_file: FileAccess = null
+
 ## 日志前缀映射
 var level_names = {
 	LogLevel.DEBUG: "[DEBUG]",
@@ -124,24 +127,28 @@ func _emit_log(level: LogLevel, message: String, context: String) -> void:
 
 ## 写入到日志文件
 func _write_to_file(message: String) -> void:
-	# 检查日志目录是否存在
-	if not FileAccess.file_exists(log_file_path):
-		_ensure_log_directory()
-	
-	# 尝试以追加模式打开（WRITE模式会从头开始覆盖）
-	var file = FileAccess.open(log_file_path, FileAccess.READ_WRITE)
-	if file == null:
-		# 如果失败，尝试创建新文件
-		file = FileAccess.open(log_file_path, FileAccess.WRITE)
-		if file == null:
+	if log_file_path.is_empty():
+		return
+	if _log_file == null:
+		_log_file = FileAccess.open(log_file_path, FileAccess.READ_WRITE)
+		if _log_file == null:
+			# 文件不存在时尝试创建
+			_log_file = FileAccess.open(log_file_path, FileAccess.WRITE)
+		if _log_file == null:
 			push_error("Failed to open or create log file: %s" % log_file_path)
 			return
-	
-	# 移动到文件末尾以追加
-	if file.get_length() > 0:
-		file.seek_end()
-	
-	file.store_line(message)
+		if _log_file.get_length() > 0:
+			_log_file.seek_end()
+	_log_file.store_line(message)
+
+## 刷新并释放文件句柄（退出/读文件前调用）
+func _flush_log_file() -> void:
+	if _log_file:
+		_log_file.flush()
+		_log_file = null
+
+func _exit_tree() -> void:
+	_flush_log_file()
 
 ## 设置日志级别
 func set_log_level(level: LogLevel) -> void:
@@ -149,12 +156,18 @@ func set_log_level(level: LogLevel) -> void:
 
 ## 清空日志文件
 func clear_log_file() -> void:
+	_flush_log_file()
 	var file = FileAccess.open(log_file_path, FileAccess.WRITE)
-	file.truncate_64(0)
+	if file:
+		file.truncate_64(0)
+		file.close()
 
 ## 获取日志文件内容
 func get_log_contents() -> String:
+	_flush_log_file()
 	var file = FileAccess.open(log_file_path, FileAccess.READ)
 	if file == null:
 		return ""
-	return file.get_as_text()
+	var content := file.get_as_text()
+	file.close()
+	return content

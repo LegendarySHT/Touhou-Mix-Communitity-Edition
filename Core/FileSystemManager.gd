@@ -57,7 +57,7 @@ var backgrounds_index: Dictionary = {}
 ## 用 WeakRef 而非强引用：列表项释放 cover_texture.texture=null 后，
 ## Texture 引用计数归零自动 GC，缓存中的 WeakRef 随之失效，下次重新加载
 ## 多列表项共享同一 Texture 时，只要任一项仍引用，WeakRef 即有效（命中缓存零开销）
-## WeakRef 失效时 _load_cover_with_cache 会自动 erase 条目，Dictionary 不会无限增长
+## WeakRef 失效时 load_cover_with_cache 会自动 erase 条目，Dictionary 不会无限增长
 var _cover_texture_cache: Dictionary = {}
 
 ## ========== 反向索引 ==========
@@ -224,9 +224,9 @@ func _import_external_charts_async() -> void:
 
 	# 显示导入遮罩 + 提示 + 进度条（仅 THMIX_Import 待导入时显示）
 	# get_node_or_null 返回 Node，需要显式类型才能访问 Control 属性
-	var overlay: Control = get_node_or_null("/root/Main/PopupWindowShader")
-	var tip: Control = get_node_or_null("/root/Main/PopupWindowShader/ImportTip") if overlay else null
-	var bar: ProgressBar = get_node_or_null("/root/Main/PopupWindowShader/ImportProgress") if overlay else null
+	var overlay: Control = get_node_or_null(PathRegistry.POPUP_WINDOW_SHADER)
+	var tip: Control = get_node_or_null(PathRegistry.POPUP_WINDOW_IMPORT_TIP) if overlay else null
+	var bar: ProgressBar = get_node_or_null(PathRegistry.POPUP_WINDOW_IMPORT_PROGRESS) if overlay else null
 	if show_ui:
 		if overlay:
 			overlay.modulate.a = 1.0  # 复位透明度（与 PopupWindow 的 fade 共享此节点，防御残留 0）
@@ -1478,7 +1478,8 @@ func get_settings_directory() -> String:
 	return SETTINGS_DIR
 
 ## 通过 chart_id/hash 查找 charts_index 条目（O(1)反向索引，未命中时回退到线性扫描）
-func _lookup_chart(chart_id: String) -> Dictionary:
+## 磁盘侧规范解析器：chart 文档规范键 = folder_name；DB 打开时优先经 ChartDB.LookupChartKey 统一解析
+func lookup_chart(chart_id: String) -> Dictionary:
 	# folder_name 直达（chart 文档 _id，与 C# LookupChartKey 别名漏斗第一项一致；
 	# DelView 懒加载以 folder_name 作 key 收集/删除，需支持）
 	if charts_index.has(chart_id):
@@ -1507,7 +1508,7 @@ func _lookup_chart(chart_id: String) -> Dictionary:
 func chart_exists_on_disk(chart_id: String) -> bool:
 	if chart_id.is_empty():
 		return false
-	return not _lookup_chart(chart_id).is_empty()
+	return not lookup_chart(chart_id).is_empty()
 
 ## 从 chart_id 反向查询对应的曲包文件夹路径
 ## 参数: chart_id - MidiData 中的 id 字段或 file_hash 字段
@@ -1518,7 +1519,7 @@ func get_chart_folder_path(chart_id: String) -> String:
 		GLogger.warning("charts_index is empty, cannot locate chart folder", "FileSystemMGR")
 		return ""
 	
-	var result = _lookup_chart(chart_id)
+	var result = lookup_chart(chart_id)
 	if not result.is_empty():
 		var path: String = result["metadata"].path
 		if not path.is_empty():
@@ -1597,7 +1598,7 @@ func get_chart_path(chart_id: String) -> String:
 	var metadata: ChartMetadata = charts_index[chart_id]
 	return metadata.path
 
-## 封面路径兜底：为空或 user:// 文件不存在 → 返回默认封面路径（与 _load_cover_with_cache 回退一致）
+## 封面路径兜底：为空或 user:// 文件不存在 → 返回默认封面路径（与 load_cover_with_cache 回退一致）
 ## Album/Song 列表项（DB 直查 cover_path）与 _cover_path_from_chart 共用
 func default_cover_if_missing(path: String) -> String:
 	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
@@ -1611,9 +1612,9 @@ func default_cover_if_missing(path: String) -> String:
 ## 未命中或为空返回默认封面路径；user:// 路径校验文件存在性
 func _cover_path_from_chart(file_hash: String, midi_id: String) -> String:
 	# 优先用 file_hash 反向索引查找
-	var result = _lookup_chart(file_hash)
+	var result = lookup_chart(file_hash)
 	if result.is_empty():
-		result = _lookup_chart(midi_id)
+		result = lookup_chart(midi_id)
 	if not result.is_empty():
 		return default_cover_if_missing(result["metadata"].cover_path)
 	return default_cover_if_missing("")
@@ -1623,19 +1624,19 @@ func _cover_path_from_chart(file_hash: String, midi_id: String) -> String:
 func get_cover_path_by_ids(file_hash: String, midi_id: String) -> String:
 	return _cover_path_from_chart(file_hash, midi_id)
 
-## 按 file_hash / midi_id 加载封面 Texture2D（同步，走 _load_cover_with_cache）
+## 按 file_hash / midi_id 加载封面 Texture2D（同步，走 load_cover_with_cache）
 func get_cover_by_ids(file_hash: String, midi_id: String) -> Texture2D:
-	return _load_cover_with_cache(_cover_path_from_chart(file_hash, midi_id))
+	return load_cover_with_cache(_cover_path_from_chart(file_hash, midi_id))
 
 func get_cover_by_midiData(midi: MidiData) -> Texture2D:
 	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	if not midi:
-		return _load_cover_with_cache(DEFAULT_COVER_PATH)
+		return load_cover_with_cache(DEFAULT_COVER_PATH)
 	return get_cover_by_ids(midi.file_hash, midi.id)
 
 ## 查询封面文件路径（不读盘，主线程调用，供异步加载器使用）
 ## 返回 path 字符串：命中返回 metadata.cover_path，未命中或为空返回默认封面路径
-## 与 _load_cover_with_cache 的回退行为一致：user:// 文件不存在时回退到默认封面
+## 与 load_cover_with_cache 的回退行为一致：user:// 文件不存在时回退到默认封面
 ## 避免异步加载器读到 null 后无回退逻辑导致封面空白
 func get_cover_path_by_midiData(midi: MidiData) -> String:
 	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
@@ -1665,7 +1666,7 @@ func _cache_cover_texture(path: String, tex: Texture2D) -> void:
 ## 带弱引用缓存的封面纹理加载
 ## 同 path 多次调用：若上次加载的 Texture 仍被列表项引用（WeakRef 有效），直接返回，零读盘开销
 ## 若 Texture 已被 GC（所有列表项都释放了），WeakRef 失效，重新从磁盘加载并清理失效条目
-func _load_cover_with_cache(path: String) -> Texture2D:
+func load_cover_with_cache(path: String) -> Texture2D:
 	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	# 命中缓存：通过 WeakRef 取回 Texture
 	if _cover_texture_cache.has(path):
@@ -1685,13 +1686,13 @@ func _load_cover_with_cache(path: String) -> Texture2D:
 	else:
 		if not FileAccess.file_exists(path):
 			GLogger.warning("Cover file not found: %s" % path, "FileSystemMGR")
-			return _load_cover_with_cache(DEFAULT_COVER_PATH)
+			return load_cover_with_cache(DEFAULT_COVER_PATH)
 		var image := Image.load_from_file(path)
 		if image:
 			texture = ImageTexture.create_from_image(image)
 		else:
 			GLogger.warning("Failed to load cover image: %s" % path, "FileSystemMGR")
-			return _load_cover_with_cache(DEFAULT_COVER_PATH)
+			return load_cover_with_cache(DEFAULT_COVER_PATH)
 
 	if texture:
 		# 缓存 WeakRef：不持有强引用，Texture 随列表项引用计数归零自动 GC
@@ -1707,7 +1708,7 @@ func clear_cover_cache() -> void:
 ## 参数: chart_id - MidiData中的id字段或file_hash字段
 ## 返回: user://files/Charts/[folder_name]/[chart_id].json
 func get_chart_json_path(chart_id: String) -> String:
-	var result = _lookup_chart(chart_id)
+	var result = lookup_chart(chart_id)
 	if not result.is_empty():
 		var meta: ChartMetadata = result["metadata"]
 		# 优先使用已缓存的json_path
@@ -1745,18 +1746,10 @@ func delete_directory_recursive(absolute_path: String) -> bool:
 		GLogger.warning("delete_directory_recursive: path is empty", "FileSystemMGR")
 		return false
 
-	# Android 上优先用 rm -rf，避免 DirAccess 逐个文件删除卡住
-	if OS.get_name() == "Android":
-		var exit_code := OS.execute("rm", ["-rf", absolute_path])
-		if exit_code == 0 and not DirAccess.dir_exists_absolute(absolute_path):
-			GLogger.info("Deleted directory (rm): %s" % absolute_path, "FileSystemMGR")
-			return true
-		GLogger.warning("delete_directory_recursive: rm -rf failed (exit %d), falling back to manual delete: %s" % [exit_code, absolute_path], "FileSystemMGR")
-
-	# 手动递归删除（非 Android 或 rm 失败时）
+	# 手动递归删除（不再依赖外部 rm 命令，避免平台/权限依赖；
+	# 若 Android 上出现删除大目录卡顿，另行评估 DirAccess 批量删除方案）
 	var dir = DirAccess.open(absolute_path)
 	if dir == null:
-		# rm -rf 可能已经成功删除了
 		if not DirAccess.dir_exists_absolute(absolute_path):
 			GLogger.info("Directory already gone: %s" % absolute_path, "FileSystemMGR")
 			return true
@@ -1792,7 +1785,7 @@ func delete_directory_recursive(absolute_path: String) -> bool:
 ## 从 charts_index 中移除指定 chart_id 对应的条目
 ## 参数: chart_id - MidiData 中的 file_hash 或 id
 func remove_from_charts_index(chart_id: String) -> void:
-	var result = _lookup_chart(chart_id)
+	var result = lookup_chart(chart_id)
 	if not result.is_empty():
 		var folder_name: String = result["folder_name"]
 		var meta: ChartMetadata = result["metadata"]
@@ -1866,7 +1859,7 @@ func delete_charts_batch(chart_ids: Array) -> Array:
 ## 删除单个谱面的文件目录 + 清内存索引（不触碰 DB；DB 由调用方单次/批量提交）
 ## 返回: {"folder_name", "meta"}；未找到或删除失败返回空字典
 func _delete_single_chart_files(chart_id: String) -> Dictionary:
-	var result = _lookup_chart(chart_id)
+	var result = lookup_chart(chart_id)
 	if result.is_empty():
 		GLogger.warning("delete_chart: chart not found: %s" % chart_id, "FileSystemMGR")
 		return {}

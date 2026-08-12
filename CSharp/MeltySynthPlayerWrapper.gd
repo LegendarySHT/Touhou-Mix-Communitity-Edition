@@ -149,13 +149,6 @@ func get_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
 	var result = meltysynth_player.call("get_track_channel_instrument", track_index, channel)
 	return result if result is Dictionary else {}
 
-## 获取当前位置（tick 单位）
-func get_position_tick() -> float:
-	if meltysynth_player == null:
-		return 0.0
-	var result = meltysynth_player.call("get_position_tick")
-	return result if result is float else 0.0
-
 ## 检查是否正在播放
 func is_playing() -> bool:
 	if meltysynth_player == null:
@@ -202,7 +195,7 @@ func seek_ms(position_ms: float) -> void:
 	meltysynth_player.call("seek_ms", position_ms)
 
 ## 设置音频缓冲区大小（帧）
-func SetAudioBufferFrames(frames: int) -> void:
+func set_audio_buffer_frames(frames: int) -> void:
 	if meltysynth_player == null:
 		return
-	meltysynth_player.call("SetAudioBufferFrames", frames)
+	meltysynth_player.call("set_audio_buffer_frames", frames)

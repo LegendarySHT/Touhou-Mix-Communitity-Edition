@@ -250,7 +250,7 @@ func _spawn_adjust_line_ghost(pos_x: float) -> void:
 	_shadow_line.offset_transform_position = Vector2(pos_x, 0)
 	_shadow_line.modulate.a = 1.0
 	_shadow_line.visible = true
-	_shadow_tween = create_tween()
+	_shadow_tween = AniMGR.create_managed_tween(self)
 	_shadow_tween.tween_property(_shadow_line, "modulate:a", 0.0, 1.0)
 	_shadow_tween.finished.connect(func() -> void:
 		_shadow_line.visible = false

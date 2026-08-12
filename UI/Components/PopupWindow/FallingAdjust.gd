@@ -243,7 +243,7 @@ func _start_preview_loop() -> void:
 	# 设置初始位置
 	_preview_block.offset_transform_position.y = start_offset
 
-	_preview_tween = create_tween()
+	_preview_tween = AniMGR.create_managed_tween(self)
 	_preview_tween.set_loops()
 	# 第一段：从顶部下落到判定线（判定线前缓动）
 	_preview_tween.tween_property(_preview_block, "offset_transform_position:y", line_offset, fall_time) \

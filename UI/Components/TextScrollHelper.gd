@@ -83,7 +83,7 @@ static func setup(label: Label, clip_container: Control, full_text: String,
 
 	# 文字溢出：来回滚动
 	var max_offset := text_width - box_width + 20.0  # 额外留点空隙
-	var tween := label.create_tween().set_loops()
+	var tween := AniMGR.create_managed_tween(label).set_loops()
 	tween.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(label, "offset_transform_position:x", -max_offset, SCROLL_DURATION)
 	tween.tween_interval(PAUSE_DURATION)

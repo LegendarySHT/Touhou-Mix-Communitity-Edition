@@ -93,31 +93,12 @@ func _load_remote_cover(hash: String) -> void:
 	# 先隐藏默认封面，避免加载失败时显示占位图
 	cover_rect.texture = null
 	var cover_url := "%s/api/charts/%s/cover" % [NetManager.instance.server_url, hash]
-	var http := HTTPRequest.new()
-	add_child(http)
-	var err := http.request(cover_url)
-	if err != OK:
-		http.queue_free()
-		return
-	var resp = await http.request_completed
-	http.queue_free()
-	if not is_instance_valid(self):
-		return
-	var result_code = resp[0]
-	var response_code = resp[1]
-	var response_body = resp[3]
-	if result_code != HTTPRequest.RESULT_SUCCESS or response_code != 200:
-		return
-	if not response_body is PackedByteArray or response_body.size() == 0:
-		return
-	var image := Image.new()
-	var err_img := image.load_jpg_from_buffer(response_body)
-	if err_img != OK:
-		err_img = image.load_png_from_buffer(response_body)
-	if err_img != OK:
-		return
-	var tex := ImageTexture.create_from_image(image)
-	cover_rect.texture = tex
+	HttpImageLoader.load(cover_url, self, func(tex: Texture2D) -> void:
+		if not is_instance_valid(self):
+			return
+		if tex:
+			cover_rect.texture = tex
+	)
 
 # ========== 文字滚动（TextScrollHelper） ==========
 

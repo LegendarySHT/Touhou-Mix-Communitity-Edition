@@ -47,7 +47,7 @@ func _load_favorites() -> void:
 
 
 ## 保存收藏夹数据（带缩进，用户可读）
-func _save_favorites() -> void:
+func _save_favorites() -> bool:
 	var path := _get_favorites_path()
 	PathHelper.ensure_dir_exists(PathHelper.get_files_dir())
 	var data := {"favorites": []}
@@ -56,9 +56,12 @@ func _save_favorites() -> void:
 	# 带缩进的 JSON，方便用户直接编辑
 	var json_str := JSON.stringify(data, "\t")
 	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file:
-		file.store_string(json_str)
-		file.close()
+	if file == null:
+		GLogger.error("Failed to save favorites: %s" % path, "FavMGR")
+		return false
+	file.store_string(json_str)
+	file.close()
+	return true
 
 
 func _get_favorites_path() -> String:
@@ -90,7 +93,19 @@ func _validate_favorites() -> void:
 		var original_size := fav.midi_ids.size()
 		# 以磁盘扫描结果为准校验存在性（charts_index 来自磁盘目录扫描），而非 DB 水合：
 		# DB 与磁盘不一致时（启动失败重建中 / 缓存过期）以磁盘为准，避免误删
-		fav.midi_ids = fav.midi_ids.filter(func(id): return fsm != null and fsm.chart_exists_on_disk(id))
+		# 同时把别名（id / file_hash / hash）统一迁移为规范键 folder_name（TMX-020）
+		var canonical_ids: Array[String] = []
+		for raw_id in fav.midi_ids:
+			if fsm == null:
+				canonical_ids.append(raw_id)
+				continue
+			var lookup := fsm.lookup_chart(raw_id)
+			if lookup.is_empty():
+				continue  # 磁盘上不存在，清理引用
+			var key: String = lookup["folder_name"]
+			if key not in canonical_ids:
+				canonical_ids.append(key)
+		fav.midi_ids = canonical_ids
 		if fav.midi_ids.size() != original_size:
 			changed = true
 	if changed:
@@ -215,7 +230,9 @@ func get_midis_of_favorite(fav_id: String) -> Array[MidiData]:
 # ========== 内部工具 ==========
 
 func _get_chart_id(midi: MidiData) -> String:
-	return midi.file_hash if not midi.file_hash.is_empty() else midi.id
+	# 规范键（folder_name）优先，其次 file_hash，最后 id（TMX-020）
+	return midi.chart_key if not midi.chart_key.is_empty() \
+		else (midi.file_hash if not midi.file_hash.is_empty() else midi.id)
 
 
 func _generate_id() -> String:

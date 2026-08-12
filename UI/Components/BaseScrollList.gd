@@ -136,7 +136,7 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 
 	# 聚焦列表项
 	if enable:
-		print("Node: %s , ProcessMode: %s" % [self.name, enable])
+		GLogger.info("Node: %s , ProcessMode: %s" % [self.name, enable], "BaseScrollList")
 
 ## 释放所有列表项封面（切到不直接相邻状态时调用）
 ## FileSystemManager 用 WeakRef 缓存 Texture：列表项 texture=null 后引用计数归零，
@@ -324,7 +324,7 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 
 		elif event.keycode in [KEY_TAB]:
-			get_node("/root/Main/skew/C/ShortCutMenu/Btns/Search").grab_focus()
+			get_node(PathRegistry.SHORTCUT_MENU_SEARCH).grab_focus()
 			accept_event()
 
 func select_item(index: int) -> int:

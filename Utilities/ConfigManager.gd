@@ -287,15 +287,34 @@ func _serialize_ini(config: Dictionary) -> String:
 			for key in section_data.keys():
 				var value = section_data[key]
 				
-				# 处理需要引号的值
-				if value is String and (" " in value or value.is_empty()):
-					result += "%s = \"%s\"\n" % [key, value]
+				var value_str = str(value)
+				# 处理需要引号的值（含空白/空串/引号/分号/等号/换行等，转义后写入）
+				if value is String and _needs_ini_quoting(value_str):
+					result += "%s = \"%s\"\n" % [key, _escape_ini_value(value_str)]
 				else:
-					result += "%s = %s\n" % [key, str(value)]
+					result += "%s = %s\n" % [key, value_str]
 		
 		result += "\n"
 	
 	return result
+
+## 判断字符串值是否需要加引号并转义
+func _needs_ini_quoting(value: String) -> bool:
+	return value.is_empty() \
+		or value != value.strip_edges() \
+		or "\"" in value \
+		or ";" in value \
+		or "=" in value \
+		or "\n" in value \
+		or "\r" in value
+
+## 转义 INI 字符串值（与 IniParser._unescape_value 对称）
+func _escape_ini_value(value: String) -> String:
+	return value \
+		.replace("\\", "\\\\") \
+		.replace("\"", "\\\"") \
+		.replace("\n", "\\n") \
+		.replace("\r", "\\r")
 
 # ============ 配置管理高级方法 ============
 

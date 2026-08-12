@@ -36,10 +36,10 @@ func _on_state_enter():
 				selected_node.button.grab_focus()
 		ui.UIState.SETTINGS_VIEW:
 			if not is_mobile:
-				get_node("/root/Main/skew/C/SettingView").short_cut_btn.grab_focus()
+				get_node(PathRegistry.SETTING_VIEW).short_cut_btn.grab_focus()
 		ui.UIState.STORE_VIEW:
 			# 防御性检查：列表项可能已被 _cleanup 清空（懒加载重新进入时）
-			var store_list = get_node_or_null("/root/Main/Store/StoreMidiList")
+			var store_list = get_node_or_null(PathRegistry.STORE_MIDI_LIST)
 			if store_list and store_list.get_child_count() > 0:
 				var container_node = store_list.get_child(0)
 				if container_node and container_node.get_child_count() > 0:
@@ -53,5 +53,5 @@ func _on_state_enter():
 # 	if ui.current_state in [ui.UIState.ALBUM_VIEW, ui.UIState.SONG_VIEW, ui.UIState.SORTED_VIEW]:
 # 		if event is InputEventKey and event.pressed:
 # 			if event.keycode in [KEY_TAB]:
-# 				get_node("/root/Main/skew/C/ShortCutMenu/Btns/Search").grab_focus()
+# 				get_node(PathRegistry.SHORTCUT_MENU_SEARCH).grab_focus()
 # 				accept_event()

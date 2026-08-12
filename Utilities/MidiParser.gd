@@ -34,7 +34,7 @@ class TrackInfo:
 		name = n if not n.is_empty() else "Track %d" % idx
 
 ## 加载并解析MIDI文件（薄包装：调用 C# MidiParserNative 完成 SMF 解析）
-## 返回: {success: bool, notes: Array, soa: Dictionary, bpm: float, duration: float, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary], max_end_tick: int, track_instruments: Dictionary}
+## 返回: {success: bool, notes: Array, soa: Dictionary, bpm: float, duration_ms: float（毫秒）, track_infos: Array[TrackInfo], bpm_timeline: Array[Dictionary], max_end_tick: int, track_instruments: Dictionary}
 ## 说明:
 ##   - notes: 空数组（NoteEvent 重建由调用方在主线程通过 build_notes_from_soa 完成）
 ##   - soa: 紧凑 SOA 数组 {pitches, velocities, start_ticks, durations, track_indices, channels}（PackedInt32Array）
@@ -51,7 +51,7 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 		"notes": [],
 		"soa": {},
 		"bpm": 120.0,
-		"duration": 0.0,
+		"duration_ms": 0.0,
 		"track_infos": [],
 		"timebase": 480,
 		"bpm_timeline": [],
@@ -121,7 +121,7 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 		"channels": native["channels"],
 	}
 	result["bpm"] = float(native["bpm"])
-	result["duration"] = float(native["duration_ms"])
+	result["duration_ms"] = float(native["duration_ms"])
 	result["track_infos"] = track_infos
 	result["timebase"] = int(native["timebase"])
 	result["bpm_timeline"] = bpm_timeline
@@ -130,7 +130,7 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 	result["success"] = true
 
 	var parse_ms: float = float(native.get("parse_time_ms", 0.0))
-	GLogger.info("MIDI parsed (C#): %d notes, %.0fms, parse=%.1fms" % [count, result["duration"], parse_ms], "MidiParser")
+	GLogger.info("MIDI parsed (C#): %d notes, %.0fms, parse=%.1fms" % [count, result["duration_ms"], parse_ms], "MidiParser")
 
 	return result
 

@@ -253,7 +253,7 @@ func _process(delta: float) -> void:
 				_position_stall_frames += 1
 				if _position_stall_frames >= _PLAYBACK_STALL_THRESHOLD:
 					_position_stall_frames = 0
-					print("[PlayView] Playback position stalled at %.1fms, triggering game finished" % current_time)
+					GLogger.warning("Playback position stalled at %.1fms, triggering game finished" % current_time, "PlayView")
 					_on_game_finished()
 			else:
 				_position_stall_frames = 0
@@ -320,7 +320,7 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 		is_pause = true
 
 	if enable:
-		print("Node: %s , ProcessMode: %s" % [self.name, enable])
+		GLogger.info("Node: %s , ProcessMode: %s" % [self.name, enable], "PlayView")
 		# 从设置界面切回时，背景配置可能已变更，重新应用 play 背景（含 cover 模式烘焙）
 		if _oldState == UIStateManager.UIState.SETTINGS_VIEW and current_midi != null:
 			_apply_play_background()
@@ -392,7 +392,7 @@ func _load_debug_display_setting() -> void:
 func _load_note_skin_setting() -> void:
 	# 如果 FileSystemManager 还未完成资源扫描，等待扫描完成
 	if FileSystemManager.instance and not FileSystemManager.instance.resources_scanned:
-		print("[PlayView] Waiting for FileSystemManager to scan resources...")
+		GLogger.info("Waiting for FileSystemManager to scan resources...", "PlayView")
 		if not FileSystemManager.instance.resources_ready.is_connected(_on_skin_resources_ready):
 			FileSystemManager.instance.resources_ready.connect(_on_skin_resources_ready)
 		return
@@ -409,7 +409,7 @@ func _do_load_note_skin() -> void:
 	# 应用皮肤
 	if flow_area and flow_area.has_method("load_note_skin"):
 		flow_area.load_note_skin(skin_name)
-		print("[PlayView] Loaded note skin: %s" % skin_name)
+		GLogger.info("Loaded note skin: %s" % skin_name, "PlayView")
 
 ## 根据当前皮肤的 random_color 配置生成随机颜色并推送到 FlowArea
 ## 仅在 custom_color 主开关 + 该类型 enable_color + random_color 均开启时生成
@@ -439,7 +439,7 @@ func _regenerate_random_note_colors() -> void:
 			# （饱和 <1 的粉彩色三个通道都 >0，同色光效叠加会往白里走）
 			random_colors[key] = Color.from_hsv(randf(), 1.0, 1.0)
 	flow_area._random_colors = random_colors
-	print("[PlayView] Generated random note colors: %s" % str(random_colors.keys()))
+	GLogger.info("Generated random note colors: %s" % str(random_colors.keys()), "PlayView")
 
 func _set_debug_overlay_visible(_is_visible: bool) -> void:
 	if debug_info_label == null:
@@ -556,12 +556,12 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	is_pause = true
 
 	# 读取并设置音频同步阈值
-	var setting_view = get_node_or_null("/root/Main/skew/C/SettingView")
+	var setting_view = get_node_or_null(PathRegistry.SETTING_VIEW)
 	if setting_view and setting_view.has_method("get_setting_value"):
 		var sync_threshold = setting_view.get_setting_value("audio_sync_threshold")
 		if sync_threshold != null:
 			playback_mgr.set_sync_threshold(float(sync_threshold))
-			print("[PlayView] Audio sync threshold set to %.0f ms" % float(sync_threshold))
+			GLogger.info("Audio sync threshold set to %.0f ms" % float(sync_threshold), "PlayView")
 
 	# 提前启动 generate_keys 的 worker 线程（主线程筛选音符 + 后台线程跑 generate_keys）
 	# 通常 MidiView 已触发过 generate_keys，此处命中缓存直接返回（0ms）
@@ -572,17 +572,23 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 等待 generate_keys worker 完成（每帧让出主线程，动画继续推进）
 	# 完成后做后续处理（分类提交、缓存序列）
 	await _finish_generate_game_sequences(midi, gen_task_id)
-	print("[PlayView] After _finish_generate_game_sequences, game_sequences.size() = %d" % game_sequences.size())
+	GLogger.info("After _finish_generate_game_sequences, game_sequences.size() = %d" % game_sequences.size(), "PlayView")
 
 	# 将生成的游戏序列转换为FlowArea所需的音符格式
 	var flow_notes = _convert_game_sequences_to_flow_notes(game_sequences)
-	print("[PlayView] After _convert_game_sequences_to_flow_notes, flow_notes.size() = %d" % flow_notes.size())
+	GLogger.info("After _convert_game_sequences_to_flow_notes, flow_notes.size() = %d" % flow_notes.size(), "PlayView")
+	# TEMP DIAG: 生成参数与首批音符时间（诊断后移除）
+	var first3: Array = []
+	for i in range(min(3, flow_notes.size())):
+		first3.append(flow_notes[i].start_time)
+	GLogger.info("DIAG gen: timebase=%d timeline=%d dur=%.0f first3=%s" % [
+		playback_mgr.midi_timebase, playback_mgr.bpm_timeline.size(), current_midi.duration_ms, first3], "PlayView")
 	flow_area.notes_list = flow_notes
 	# 告知 ScoreCalculator 总音符数(LONG的持续 tick 不计入)
 	if score_calc:
 		score_calc.total_notes = flow_notes.size()
 	play_result.total_notes = flow_notes.size()
-	print("[PlayView] FlowArea initialized with %d game sequences" % flow_notes.size())
+	GLogger.info("FlowArea initialized with %d game sequences" % flow_notes.size(), "PlayView")
 	# 设置进度条最大值
 	progress_bar.max_value = current_midi.duration_ms
 
@@ -614,14 +620,14 @@ func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
 	# 应用TrackView中保存的MIDI配置（音量、静音、独奏等）
 	_apply_midi_runtime_config(midi_data)
 	
-	print("[PlayView] MIDI loaded and runtime config applied")
+	GLogger.info("MIDI loaded and runtime config applied", "PlayView")
 
 ## 将KeySequenceManager生成的游戏序列转换为FlowArea所需的格式
 func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowNote]:
-	print("[PlayView] _convert_game_sequences_to_flow_notes called with %d sequences" % sequences.size())
+	GLogger.info("_convert_game_sequences_to_flow_notes called with %d sequences" % sequences.size(), "PlayView")
 	var flow_notes: Array[FlowNote] = []
 	var lc = get_lane_count()
-	print("[PlayView] Lane count: %d" % lc)
+	GLogger.info("Lane count: %d" % lc, "PlayView")
 
 	for seq in sequences:
 		# 确定车道：优先使用 KeySequenceManager 计算的 lane（可能因速度限制而偏移），
@@ -661,7 +667,7 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowNote]:
 		
 		flow_notes.append(flow_note)
 	
-	print("[PlayView] Converted %d sequences to flow notes" % flow_notes.size())
+	GLogger.info("Converted %d sequences to flow notes" % flow_notes.size(), "PlayView")
 	# FlowArea期望按时间排序（虽然KeySequenceManager应该已排序）
 	flow_notes.sort_custom(func(a, b): return a.start_time < b.start_time)
 	
@@ -737,9 +743,9 @@ func _finish_generate_game_sequences(_midi_data: MidiData, task_id: int) -> void
 
 	# 缓存生成的游戏序列
 	var raw_sequences = key_sequence_mgr.get_game_sequences()
-	print("[PlayView] get_game_sequences returned %d items" % raw_sequences.size())
+	GLogger.info("get_game_sequences returned %d items" % raw_sequences.size(), "PlayView")
 	game_sequences = raw_sequences
-	print("[PlayView] game_sequences assigned, size = %d" % game_sequences.size())
+	GLogger.info("game_sequences assigned, size = %d" % game_sequences.size(), "PlayView")
 
 	GLogger.info("Generated %d game sequences for play mode" % game_sequences.size(), "PlayView")
 
@@ -753,7 +759,7 @@ func _filter_notes_by_enabled_track_channels(all_notes: Array, midi_data: MidiDa
 
 	# selected_track_configs 是 Dictionary，格式: {track_idx: [channel1, channel2, ...]}
 	if midi_data.selected_track_configs.is_empty():
-		if midi_data._track_config_initialized:
+		if midi_data.is_track_config_initialized():
 			push_error("[PlayView] All (track, channel) pairs are disabled! Cannot play game without enabled notes.")
 		else:
 			push_error("[PlayView] No (track, channel) configuration found and no default configuration applied!")
@@ -1025,17 +1031,8 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 					# 设置通道音量（线性值直接透传，勿再除以100）
 					playback_mgr.set_track_channel_volume(int(track_idx), int(channel), float(volume))
 	
-	# 应用乐器覆盖（如果有）
-	if not midi_data.track_channel_instrument_overrides.is_empty():
-		for track_index in midi_data.track_channel_instrument_overrides.keys():
-			var channels = midi_data.track_channel_instrument_overrides[track_index]
-			for channel in channels.keys():
-				var instrument = channels[channel]
-				var bank = instrument.get("bank", 0)
-				var program = instrument.get("program", 0)
-				# 设置乐器
-				if playback_mgr.has_method("set_track_channel_program"):
-					playback_mgr.set_track_channel_program(track_index, channel, bank, program)
+	# 乐器覆盖已在 MidiPlaybackManager.load_midi 中应用（MidiPlaybackManager.gd:372），
+	# 此处不再重复设置（原 set_track_channel_program 调用不存在，属死代码，TMX-023）
 	
 	# 应用人声偏移量
 	playback_mgr.set_vocal_offset_ms(midi_data.vocal_offset_ms)
@@ -1049,7 +1046,7 @@ func _on_game_finished() -> void:
 		return
 	_is_finishing_game = true
 
-	print("[PlayView] Game finished!")
+	GLogger.info("Game finished!", "PlayView")
 
 	# 停止MIDI播放但不暂停FlowArea，让剩余音符继续自然下落
 	if playback_mgr:
@@ -1081,7 +1078,7 @@ func _on_game_finished() -> void:
 	# 进入结算界面（资源清理已统一由 _on_state_changed 处理）
 	await get_tree().create_timer(1).timeout
 	UiStatMGR.change_state(UIStateManager.UIState.SCORE_VIEW, false)
-	get_node("/root/Main/ScoreView").set_display(play_result)
+	get_node(PathRegistry.SCORE_VIEW).set_display(play_result)
 	# 异步上传成绩（不阻塞结算界面）
 	_upload_score_async(current_midi, snap)
 
@@ -1339,7 +1336,7 @@ func _flash_background() -> void:
 	if _flash_tween and _flash_tween.is_valid():
 		_flash_tween.kill()
 	mat.set_shader_parameter("flash_progress", 1.0)
-	_flash_tween = create_tween()
+	_flash_tween = AniMGR.create_managed_tween(self)
 	_flash_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_flash_tween.tween_method(_set_flash_progress.bind(mat), 1.0, 0.0, 1)
 
@@ -1369,9 +1366,10 @@ func _has_cover_for_current_midi() -> bool:
 	if current_midi == null or FileSystemManager.instance == null:
 		return false
 
-	var result = FileSystemManager.instance._lookup_chart(current_midi.file_hash)
+	var result = FileSystemManager.instance.lookup_chart(
+		current_midi.chart_key if not current_midi.chart_key.is_empty() else current_midi.file_hash)
 	if result.is_empty():
-		result = FileSystemManager.instance._lookup_chart(current_midi.id)
+		result = FileSystemManager.instance.lookup_chart(current_midi.id)
 	if result.is_empty():
 		return false
 	var metadata: ChartMetadata = result["metadata"]

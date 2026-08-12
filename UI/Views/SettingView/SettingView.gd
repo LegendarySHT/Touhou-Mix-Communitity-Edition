@@ -137,7 +137,7 @@ func _load_config_from_file() -> void:
 	# 加载到 SettingList（内部会触发 options_provider 自动填充下拉选项、应用可见性等）
 	setting_list.load_settings(settings_dict)
 
-	print("[SettingView] Loaded %d settings from: %s" % [settings_dict.size(), config_path])
+	GLogger.info("Loaded %d settings from: %s" % [settings_dict.size(), config_path], "SettingView")
 
 ## 保存配置到文件（由 AnimationManager 在退出时调用）
 ## 取 SettingList._pending_config 与进入时的 _initial_config 的 diff，仅写入变更项
@@ -182,13 +182,13 @@ func save_config_to_file() -> bool:
 		# soundfont 文件存在性校验，不存在则回退默认
 		if setting_id == "soundfont_select":
 			if not setting_list._verify_soundfont_exists(str(value)):
-				print("[SettingView] Soundfont '%s' not found, falling back to default" % value)
+				GLogger.warning("Soundfont '%s' not found, falling back to default" % value, "SettingView")
 				value = "GeneralUser-GS"
 
 		if not base_config.has(section) or not (base_config[section] is Dictionary):
 			base_config[section] = {}
 		base_config[section][key] = value
-		print("[SettingView] Save diff: [%s] %s = %s" % [section, key, str(value)])
+		GLogger.info("Save diff: [%s] %s = %s" % [section, key, str(value)], "SettingView")
 
 	# 确保有 Game 节（包含版本号）
 	if not base_config.has("Game"):
@@ -199,11 +199,11 @@ func save_config_to_file() -> bool:
 	var success = config_manager.save_config(CONFIG_PATH, base_config)
 
 	if success:
-		print("[SettingView] Saved config to: %s" % CONFIG_PATH)
+		GLogger.info("Saved config to: %s" % CONFIG_PATH, "SettingView")
 		# 仅在成功保存后统一 emit config_changed，避免输入过程频繁触发重逻辑
 		if setting_list and setting_list.has_method("apply_pending_config_updates"):
 			var applied_count = setting_list.apply_pending_config_updates()
-			print("[SettingView] Applied %d deferred config updates" % applied_count)
+			GLogger.info("Applied %d deferred config updates" % applied_count, "SettingView")
 	else:
 		push_error("[SettingView] Failed to save config to: %s" % CONFIG_PATH)
 
@@ -220,7 +220,7 @@ func _on_button_toggled(_toggled_on: bool, idx: int):
 			if c_idx == target_idx:
 				if _snap_tween:
 					_snap_tween.kill()
-				_snap_tween = create_tween()
+				_snap_tween = AniMGR.create_managed_tween(self)
 				_snap_tween.tween_property(setting_list, "scroll_vertical", node.position.y + node.size.y, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 				_snap_tween.finished.connect(func ():
 					_snap_tween = null
@@ -264,7 +264,7 @@ func get_setting_value(setting_id: String) -> Variant:
 						return int(value_str)
 			return value_str
 
-	print("[SettingView] Setting not found: %s" % setting_id)
+	GLogger.warning("Setting not found: %s" % setting_id, "SettingView")
 	return null
 
 @onready var setting_page = $HBoxC

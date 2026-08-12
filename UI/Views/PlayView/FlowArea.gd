@@ -104,6 +104,7 @@ var parent_node: Node = null
 ## 这个时间来自 MidiPlaybackManager.get_position_ms()，已包含缓冲补偿
 ## 用于确保note判定与MIDI播放位置完全同步
 var _synced_current_time: float = 0.0
+var _diag_auto_log_count: int = 0  # TEMP DIAG: auto 判定采样计数（诊断后移除）
 
 # 渲染时钟（毫秒）：来自 PlayView 的平滑视觉墙钟，仅用于计算音符显示位置。
 # 判定（过线/Miss/长条结束/滑过认领）仍用 _synced_current_time（音频钟），保证判定与声音对齐。
@@ -401,7 +402,7 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 	if _note_drawer:
 		_note_drawer.set_glow_enabled(_is_glow_enabled)
 
-	print("[FlowArea] Loaded note skin: %s, glow=%s, connect_mode=%s" % [skin_name, _is_glow_enabled, _long_connect_mode])
+	GLogger.info("Loaded note skin: %s, glow=%s, connect_mode=%s" % [skin_name, _is_glow_enabled, _long_connect_mode], "FlowArea")
 
 ## 根据 _skin_config + _random_colors 解析出最终音符颜色
 ## 规则：
@@ -1277,6 +1278,10 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	var judge_time_ms := input_time_ms if input_time_ms >= 0.0 else _get_realtime_position_ms()
 	var time_diff = judge_note.start_time - judge_time_ms  # 毫秒，优先使用事件时刻的实时播放位置
 	var abs_diff = abs(time_diff)
+	if auto_mode and _diag_auto_log_count < 30:
+		_diag_auto_log_count += 1
+		GLogger.info("DIAG auto judge #%d: start=%.1f judge=%.1f diff=%.1f type=%d" % [
+			_diag_auto_log_count, judge_note.start_time, judge_time_ms, time_diff, judge_note.type], "FlowArea")
 	var result: String = result_override
 
 	if result.is_empty():

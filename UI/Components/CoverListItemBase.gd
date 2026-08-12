@@ -94,7 +94,7 @@ func _on_cover_loaded_async(path: String, image: Image, _version: int) -> void:
 	_loading_path = ""  # 消费在途标记
 
 	if image == null:
-		# 读盘失败(文件损坏等):回退到默认封面,与旧 _load_cover_with_cache 行为一致
+		# 读盘失败(文件损坏等):回退到默认封面,与 load_cover_with_cache 行为一致
 		# 避免封面保持空白;默认封面是 res:// 路径,主线程同步加载
 		_fallback_to_default_cover(path)
 		return

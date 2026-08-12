@@ -36,8 +36,8 @@ const TAB_RIGHT_RESERVE_NORM := 150.0
 	info_panel_btn.get_theme_stylebox("hover"),
 ]
 @onready var shader_overlay: ColorRect = $ExpandPanelShader
-@onready var shortcut_menu = get_node_or_null("/root/Main/skew/C/ShortCutMenu")
-@onready var rb_btn = get_node_or_null("/root/Main/RB_Btn")
+@onready var shortcut_menu = get_node_or_null(PathRegistry.SHORTCUT_MENU)
+@onready var rb_btn = get_node_or_null(PathRegistry.RB_BTN)
 
 # ========== 运行时 ==========
 var _state: State = State.LOGGED_OUT
@@ -75,7 +75,7 @@ func _on_auth_changed(user_data: Variant) -> void:
 func _animate_to_state(s: State) -> void:
 	if _tween and _tween.is_valid():
 		_tween.kill()
-	_tween = create_tween()
+	_tween = AniMGR.create_managed_tween(self)
 	_tween.set_parallel(true)
 	_tween.set_ease(Tween.EASE_OUT)
 	_tween.set_trans(Tween.TRANS_CUBIC)
@@ -216,7 +216,7 @@ func _setup_rb_btn_for_state(s: State) -> void:
 	if _is_expanded(s):
 		# 仅在首次进入展开时保存原始状态（避免展开↔半展开之间切换时覆盖）
 		if _saved_rb_stat < 0:
-			_saved_rb_stat = rb_btn._current_stat
+			_saved_rb_stat = rb_btn.get_current_stat()
 		# FULL_EXPANDED 的 RB_Btn 缩回到半展开；其它展开状态完全收起
 		if s == State.FULL_EXPANDED:
 			rb_btn.pressed_override = Callable(self, "_shrink_to_half")

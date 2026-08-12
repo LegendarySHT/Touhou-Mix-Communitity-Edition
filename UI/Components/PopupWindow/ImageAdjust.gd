@@ -276,7 +276,7 @@ func _on_cover_blur_changed(_new_text: String) -> void:
 ## 获取一个可用于预览的封面（随机从 AlbumList 已渲染的列表项中取一个封面纹理）
 ## 优先用界面已加载的封面，避免重复 IO；AlbumList 不可用时回退到数据层取第一个
 func _get_preview_cover_texture() -> Texture2D:
-	var album_list := get_node_or_null("/root/Main/skew/C/AlbumList")
+	var album_list := get_node_or_null(PathRegistry.ALBUM_LIST)
 	if album_list is BaseScrollList:
 		var container: Container = album_list.container
 		if container and container.get_child_count() > 0:

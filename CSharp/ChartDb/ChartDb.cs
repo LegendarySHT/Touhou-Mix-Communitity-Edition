@@ -860,7 +860,7 @@ public partial class ChartDb : Node
             gd["dCount"] = BsonConvert.GetLong(doc, "d_count");
             gd["fCount"] = BsonConvert.GetLong(doc, "f_count");
 
-            // song/album 子文档（from_json 不读，但保留完整性 + 供 _ensureMidi 关联）
+	// song/album 子文档（from_json 不读，但保留完整性 + 供 _ensure_midi 关联）
             if (doc.TryGetValue("song", out var sv) && sv.IsDocument)
                 gd["song"] = BsonConvert.BsonToVariant(sv);
             if (doc.TryGetValue("album", out var av) && av.IsDocument)

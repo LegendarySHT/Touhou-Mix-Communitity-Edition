@@ -19,7 +19,7 @@ var _favorite_ids: Array = []
 @onready var se: SortingEngine = SortEngine
 
 ## 空结果提示节点
-@onready var no_items_node: Label = get_node_or_null("/root/Main/skew/C/NoItems")
+@onready var no_items_node: Label = get_node_or_null(PathRegistry.NO_ITEMS)
 
 var item_bg: ButtonGroup = null
 
@@ -99,7 +99,7 @@ func on_item_button_confirmed(index: int) -> void:
 ## 复用机制：切换内容时不全量清空，先尝试替换现有项的数据，多余项从尾部清理，不足项新建
 func _load_sorted_midis(refectch: bool = true) -> void:
 	if not dm or not se:
-		print("Missing manager instances")
+		GLogger.warning("Missing manager instances", "SortedMidiView")
 		return
 
 	# 递增 generation,使之前在途的加载循环自动失效(旧循环检测到 generation 不匹配后 return)

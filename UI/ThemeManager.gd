@@ -16,12 +16,17 @@ extends Node
 func _ready() -> void:
 	add_to_group("singletons")
 	load_theme()
+	_save_timer = Timer.new()
+	_save_timer.one_shot = true
+	_save_timer.wait_time = SAVE_DEBOUNCE_SECONDS
+	_save_timer.timeout.connect(_flush_scheduled_save)
+	add_child(_save_timer)
 	if EvtBus:
 		EvtBus.theme_changed.connect(_on_theme_changed)
 	# 监听 UI 状态变化，触发主背景交叉淡入淡出
 	if UiStatMGR:
 		UiStatMGR.state_changed.connect(_on_state_changed_for_bg)
-	# 延迟初始化主背景节点引用，确保 /root/Main 已就绪
+	# 延迟初始化主背景节点引用，确保 PathRegistry.MAIN 已就绪
 	call_deferred("_init_main_bg_nodes")
 
 # ============ 配置路径 ============
@@ -41,8 +46,18 @@ var _presets: Dictionary = {}
 var _theme_name: String = "default"
 var _loaded: bool = false
 
-# 背景图片纹理缓存（file_name → Texture2D），避免主题切换时重复 Image.load_from_file 同步阻塞
+# 背景图片纹理缓存（file_name → Texture2D），避免主题切换时重复读盘
 var _bg_image_cache: Dictionary = {}
+
+# 主题保存防抖（颜色选择器拖动等高频回调只落盘一次）
+var _save_timer: Timer = null
+var _save_pending: bool = false
+const SAVE_DEBOUNCE_SECONDS := 0.25
+
+# 背景图异步加载（TMX-037）：缓存未命中时由后台线程读盘，避免主线程同步 IO 卡顿
+var _bg_load_thread: Thread = null
+var _bg_pending_rects: Dictionary = {}   # file_name -> Array[{rect, stretch}]
+var _bg_load_queue: Array[String] = []
 
 # 固定色 — 不从预设中读取
 const PANEL_BG := Color("#161A2E")       # 面板背景
@@ -67,7 +82,7 @@ func set_color(key: String, value: Color) -> void:
 	# 不适合连接到颜色选择器拖动等高频回调（每帧调用会堆叠 I/O 与 refresh 协程）。
 	_palette[key.to_lower()] = value
 	GLogger.info("Theme color changed: %s = %s" % [key, value.to_html(true)], "ThemeManager")
-	save_theme()
+	_schedule_save_theme()
 	refresh_theme_only()
 	if EvtBus:
 		EvtBus.theme_changed.emit(_theme_name)
@@ -109,7 +124,7 @@ func set_palette_colors(pri: Color, pri_light: Color, pri_dark: Color) -> void:
 	_palette["primary_dark"] = pri_dark
 	_theme_name = "custom"
 	GLogger.info("主题色已自定义设置", "ThemeManager")
-	save_theme()
+	_schedule_save_theme()
 	refresh_theme_only()
 	if EvtBus:
 		EvtBus.theme_changed.emit(_theme_name)
@@ -214,18 +229,23 @@ func apply_background(texture_rect: TextureRect, view_name: String) -> void:
 		"image":
 			var img_path: String = _backgrounds.get(prefix + "image_path", "")
 			if not img_path.is_empty():
-				var tex := load_background_image(img_path)
+				var tex := get_cached_background_image(img_path)
 				if tex:
 					texture_rect.texture = tex
 					texture_rect.modulate = Color.WHITE
 					var stretch: String = _backgrounds.get(prefix + "image_stretch", "cover")
 					texture_rect.stretch_mode = _parse_stretch_mode(stretch)
 					return
+				# 缓存未命中：先应用渐变占位，再异步加载背景图（避免主线程同步 IO 卡顿）
+				_apply_gradient(texture_rect, prefix)
+				_request_background_image_load(img_path, texture_rect, _parse_stretch_mode(_backgrounds.get(prefix + "image_stretch", "cover")))
+				return
 			_apply_gradient(texture_rect, prefix)
 		_:
 			_apply_gradient(texture_rect, prefix)
 
-func load_background_image(file_name: String) -> Texture2D:
+## 获取已缓存的背景图（不触发磁盘 IO）；未缓存返回 null
+func get_cached_background_image(file_name: String) -> Texture2D:
 	if file_name.is_empty():
 		return null
 	# 缓存命中检查（同时校验纹理是否仍有效，避免引用已释放资源）
@@ -234,6 +254,14 @@ func load_background_image(file_name: String) -> Texture2D:
 		if is_instance_valid(cached):
 			return cached
 		_bg_image_cache.erase(file_name)
+	return null
+
+## 同步加载背景图（读盘 + 缓存）。仅限用户触发的单图预览（如 ImageAdjust 弹窗），
+## 批量应用背景请走 apply_background（缓存命中立即、未命中走异步加载）。
+func load_background_image(file_name: String) -> Texture2D:
+	var cached := get_cached_background_image(file_name)
+	if cached:
+		return cached
 	var full_path := PathHelper.get_background_dir().path_join(file_name)
 	if not FileAccess.file_exists(full_path):
 		return null
@@ -244,6 +272,82 @@ func load_background_image(file_name: String) -> Texture2D:
 	if tex:
 		_bg_image_cache[file_name] = tex
 	return tex
+
+## 请求异步加载背景图：命中缓存立即应用；否则入队由后台线程读盘（TMX-037）
+func _request_background_image_load(file_name: String, rect: TextureRect, stretch: int) -> void:
+	if file_name.is_empty() or not is_instance_valid(rect):
+		return
+	var cached := get_cached_background_image(file_name)
+	if cached:
+		rect.texture = cached
+		rect.modulate = Color.WHITE
+		rect.stretch_mode = stretch as TextureRect.StretchMode
+		return
+	if not _bg_pending_rects.has(file_name):
+		_bg_pending_rects[file_name] = []
+		_bg_load_queue.append(file_name)
+	var rects: Array = _bg_pending_rects[file_name]
+	rects.append({"rect": rect, "stretch": stretch})
+	_bg_pending_rects[file_name] = rects
+	_start_bg_load_if_idle()
+
+func _start_bg_load_if_idle() -> void:
+	if _bg_load_thread != null or _bg_load_queue.is_empty():
+		return
+	var file_name: String = _bg_load_queue[0]
+	_bg_load_queue.pop_front()
+	_bg_load_thread = Thread.new()
+	_bg_load_thread.start(_bg_image_load_worker.bind(file_name))
+
+## 后台线程：读取图片文件（纯文件 IO，不在主线程执行）
+func _bg_image_load_worker(file_name: String) -> void:
+	var full_path := PathHelper.get_background_dir().path_join(file_name)
+	var img: Image = null
+	if FileAccess.file_exists(full_path):
+		img = Image.load_from_file(full_path)
+	# call_deferred 跨线程投递到主线程是安全的
+	call_deferred("_on_bg_image_loaded", file_name, img)
+
+## 主线程：把后台加载的图片应用到所有等待中的 TextureRect
+func _on_bg_image_loaded(file_name: String, img: Image) -> void:
+	if _bg_load_thread:
+		_bg_load_thread.wait_to_finish()
+		_bg_load_thread = null
+	var tex: Texture2D = null
+	if img:
+		tex = ImageTexture.create_from_image(img)
+		if tex:
+			_bg_image_cache[file_name] = tex
+	var rects: Array = _bg_pending_rects.get(file_name, [])
+	_bg_pending_rects.erase(file_name)
+	for entry in rects:
+		var rect: TextureRect = entry.get("rect")
+		if is_instance_valid(rect):
+			if tex:
+				rect.texture = tex
+				rect.modulate = Color.WHITE
+				rect.stretch_mode = entry.get("stretch", rect.stretch_mode)
+			# 加载失败：保持渐变占位（apply_background 已应用）
+	_start_bg_load_if_idle()
+
+func _exit_tree() -> void:
+	_flush_scheduled_save()
+	if _bg_load_thread:
+		_bg_load_thread.wait_to_finish()
+		_bg_load_thread = null
+
+## 计划一次延迟落盘（高频调用合并为最后一次变更后 0.25s 写一次）
+func _schedule_save_theme() -> void:
+	_save_pending = true
+	if _save_timer:
+		_save_timer.start()
+
+func _flush_scheduled_save() -> void:
+	if not _save_pending:
+		return
+	_save_pending = false
+	if not save_theme():
+		GLogger.error("Theme save failed after debounce", "ThemeManager")
 
 ## 清除背景图片缓存（删除背景文件后调用，避免缓存指向已删除的文件）
 ## 传空字符串清空全部缓存，否则只清除指定 file_name
@@ -425,7 +529,7 @@ func unregister_theme_applier(node: Node) -> void:
 ## - 真正的痛点是 godot 内部对 StyleBox/Theme 的批量重绘卡顿，分帧是把卡顿摊到多帧而非消除。
 ## - 短时间内连续调用会并发执行多个协程，但 _palette 已是终态值，每帧的阶段幂等。
 func refresh_theme_only() -> void:
-	var main := get_node_or_null("/root/Main")
+	var main := get_node_or_null(PathRegistry.MAIN)
 	if not main:
 		return
 
@@ -471,7 +575,7 @@ func _on_theme_changed(preset_name: String) -> void:
 
 ## 仅刷新背景（设置界面修改背景配置后调用）
 func refresh_backgrounds() -> void:
-	var main := get_node_or_null("/root/Main")
+	var main := get_node_or_null(PathRegistry.MAIN)
 	if not main:
 		return
 	_apply_all_backgrounds(main)
@@ -514,7 +618,7 @@ const _BG_SWITCH_DURATION := 0.4         # 交叉淡入淡出时长（秒）
 
 ## 初始化主背景节点引用（延迟调用确保 Main 就绪）
 func _init_main_bg_nodes() -> void:
-	var main := get_node_or_null("/root/Main")
+	var main := get_node_or_null(PathRegistry.MAIN)
 	if not main:
 		return
 	_active_bg = main.get_node_or_null("Background")
@@ -570,7 +674,7 @@ func _switch_main_bg(target_view: String) -> void:
 	_inactive_bg.modulate.a = 0.0
 	apply_background(_inactive_bg, target_view)
 	# 交叉淡入淡出（inactive 0→1，active 1→0）
-	_bg_switch_tween = create_tween()
+	_bg_switch_tween = AniMGR.create_managed_tween(self)
 	_bg_switch_tween.set_parallel(true)
 	_bg_switch_tween.tween_property(_inactive_bg, "modulate:a", 1.0, _BG_SWITCH_DURATION)
 	_bg_switch_tween.tween_property(_active_bg, "modulate:a", 0.0, _BG_SWITCH_DURATION)

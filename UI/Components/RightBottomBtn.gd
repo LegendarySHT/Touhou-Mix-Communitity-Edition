@@ -53,6 +53,11 @@ func _on_state_change(_old_state, new_state: UIStateManager.UIState):
 		switch_display(ShowStat.BACK_BTN)
 
 var _current_stat: ShowStat = ShowStat.STORE_BTN
+
+## 读取当前显示状态（外部只读统一走此方法，避免跨类直读私有字段，TMX-019）
+func get_current_stat() -> ShowStat:
+	return _current_stat
+
 var _visible: bool = true
 
 # 文本输入时禁用快捷键，避免字母键触发跳转（由 LeftTopBtn 统一驱动）

@@ -6,6 +6,10 @@ extends Resource
 ## 唯一标识符
 var id: String
 
+## 规范键（ChartDb 主键 = folder_name），水合时由 DataMGR._ensure_midi 填充；
+## 跨模块 ID 传递应优先使用此字段，避免 id / file_hash 别名混用（TMX-020）
+var chart_key: String = ""
+
 ## 谱面名称
 var name: String
 
@@ -170,6 +174,14 @@ var track_channel_instrument_overrides: Dictionary = {}
 ## 该标记在第一次配置时被设为true，保存到JSON中，使得重新加载时不会误把禁用状态视为新MIDI
 var _track_config_initialized: bool = false
 
+## 查询音轨配置是否已初始化（外部读取统一走此方法，避免跨类直读私有字段，TMX-019）
+func is_track_config_initialized() -> bool:
+	return _track_config_initialized
+
+## 设置音轨配置初始化标记（外部写入统一走此方法，TMX-019）
+func set_track_config_initialized(value: bool) -> void:
+	_track_config_initialized = value
+
 ## 从简介解析出的推荐轨道索引（仅首次加载时填充，运行时缓存，不持久化）
 ## 用于 TrackView 首次初始化时设置默认启用的轨道；为空表示简介无推荐，按原逻辑启用全部
 var desc_recommended_tracks: Array[int] = []
@@ -212,10 +224,8 @@ func from_json(json_data: Dictionary) -> void:
 	up_count = json_data.get("upCount", 0)
 	down_count = json_data.get("downCount", 0)
 	
-	# 平均准确率可能有不同字段名
-	avg_accuracy = json_data.get("avgAccuracy", 0.0)
-	if avg_accuracy == 0.0:
-		avg_accuracy = json_data.get("avgAccuracy", 0.0)
+	# 平均准确率可能有不同字段名（优先 avgAccuracy，兼容 avg_accuracy）
+	avg_accuracy = json_data.get("avgAccuracy", json_data.get("avg_accuracy", 0.0))
 	
 	pass_count = json_data.get("passCount", 0)
 	fail_count = json_data.get("failCount", 0)
@@ -401,6 +411,7 @@ func set_soundfont(soundfont_name: String) -> void:
 func clear_parsed_notes() -> void:
 	parsed_notes.clear()
 	_runtime_track_infos.clear()
+	runtime_track_channel_notes.clear()
 
 ## ========== (Track, Channel) 静音接口 ==========
 

@@ -69,12 +69,12 @@ static var phase_display_names: Dictionary = {
 static var trans_int_to_name: Dictionary = {}
 static var ease_int_to_name: Dictionary = {}
 
-func _init():
-	# 初始化反向映射
+## 静态初始化：类首次加载时填充反向映射
+## （此前放在实例 _init 中，而全项目只做静态调用，导致 trans_to_string/ease_to_string 恒走 fallback）
+static func _static_init() -> void:
 	if trans_int_to_name.is_empty():
 		for name in func_names.keys():
 			trans_int_to_name[func_names[name]] = name
-	
 	if ease_int_to_name.is_empty():
 		for name in phase_names.keys():
 			ease_int_to_name[phase_names[name]] = name

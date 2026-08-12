@@ -11,12 +11,12 @@ var last_selection:int = -1 # 上一次选中的节点
 var _collapsed: bool = false # 列表是否处于收起状态
 var _prev_scroll: int = 0  # 上帧滚动位置，变化说明有人在动列表
 
-@onready var indicator = $/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Right/Center/Indicator
-@onready var  previ_btn = $/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Left/PreviBtn
-@onready var info_btn = $/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/Right/InfoBtn
+@onready var indicator = get_node(PathRegistry.MIDI_VIEW_INDICATOR)
+@onready var  previ_btn = get_node(PathRegistry.MIDI_VIEW_PREVI_BTN)
+@onready var info_btn = get_node(PathRegistry.MIDI_VIEW_INFO_BTN)
 
 # MidiView
-@onready var midi_view = $/root/Main/skew/C/MidiView
+@onready var midi_view = get_node(PathRegistry.MIDI_VIEW)
 
 func _ready() -> void:
 	work_state = UIStateManager.UIState.MIDI_VIEW
@@ -68,7 +68,7 @@ func _setup_focus_neighbor():
 # 返回当前的选择
 func get_selection() -> MidiData:
 	if selected_item == -1:
-		print("未选择Midi")
+		GLogger.warning("未选择Midi", "MidiList")
 		return null
 
 	return current_midis[selected_item]
@@ -138,7 +138,7 @@ func _show_midi_list(_index: int = -1) -> void:
 		need_snap = true
 		# 指示器移到选中项
 		if indicator and selected_item != -1:
-			create_tween().tween_property(indicator, "offset_transform_position:y", 100 - selected_item * 24, 0.35)
+			AniMGR.create_managed_tween(self).tween_property(indicator, "offset_transform_position:y", 100 - selected_item * 24, 0.35)
 
 func _previous() -> void:
 	if current_midis.size() != 1:

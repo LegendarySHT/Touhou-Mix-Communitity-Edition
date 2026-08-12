@@ -91,7 +91,7 @@ func _refresh_display() -> void:
 	clear_items()
 	
 	var is_active := UiStatMGR.current_state == UIStateManager.UIState.SONG_VIEW
-	var no_items := get_node_or_null("/root/Main/skew/C/NoItems")
+	var no_items := get_node_or_null(PathRegistry.NO_ITEMS)
 	
 	if current_songs.is_empty():
 		if no_items and is_active:
@@ -138,7 +138,7 @@ func _update_ss_count() -> void:
 	var album: Dictionary = ChartDB.GetAlbum(current_album_id)
 	if album.is_empty():
 		return
-	var ss_node = get_node_or_null("/root/Main/skew/SS")
+	var ss_node = get_node_or_null(PathRegistry.SKEW_SS)
 	if not is_instance_valid(ss_node):
 		return
 	var count_label = ss_node.get_node_or_null("SongCount")
@@ -150,7 +150,7 @@ func on_item_button_confirmed(index: int):
 	if index < 0 or index >= current_songs.size():
 		return
 	var song: Dictionary = current_songs[index]
-	print("Select Song:", song.get("name", ""))
+	GLogger.info("Select Song: %s" % song.get("name", ""), "SongView")
 	# 切换到MIDI视图
 	state_manager.change_state(state_manager.UIState.MIDI_VIEW)
 	event_bus.emit_song_selected(String(song.get("id", "")))

@@ -151,7 +151,7 @@ func _process(_delta):
 
 	# 播放位置转换为 tick；ct 与音符的 start_tick/end_tick 在同一 tick 参考系
 	var delayed_ms: float = midi_mgr.get_position_ms()
-	var ct: float = midi_mgr._calculate_tick_from_position_with_bpm_timeline(delayed_ms, midi_mgr.midi_timebase)
+	var ct: float = midi_mgr.calculate_tick_from_position_with_bpm_timeline(delayed_ms, midi_mgr.midi_timebase)
 
 	# ct 异常保护：循环播放时 Sequencer.Position 可能继续增长而不跳回 0，
 	# 导致 ct 超过所有音符的 end_tick。此时不做移除操作，等待 TrackView 循环检测恢复
@@ -292,7 +292,7 @@ func reset_playhead_position(target_ms: float) -> void:
 
 	# 计算目标tick（根据BPM时间线）
 	# 后端统一为 MeltySynth，直接使用其维护的 midi_timebase
-	var target_tick = midi_playback_mgr._calculate_tick_from_position_with_bpm_timeline(
+	var target_tick = midi_playback_mgr.calculate_tick_from_position_with_bpm_timeline(
 		target_ms, midi_playback_mgr.midi_timebase)
 
 	# 清空所有活动的音符状态（原地清空，_draw_node.notes 引用保持有效）

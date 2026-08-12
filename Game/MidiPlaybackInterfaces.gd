@@ -71,11 +71,6 @@ func get_position_ms() -> float:
 	push_error("get_position_ms not implemented")
 	return 0.0
 
-## 获取当前播放位置（tick）
-func get_position_tick() -> float:
-	push_error("get_position_tick not implemented")
-	return 0.0
-
 ## 获取总时长（毫秒）
 func get_duration_ms() -> float:
 	push_error("get_duration_ms not implemented")

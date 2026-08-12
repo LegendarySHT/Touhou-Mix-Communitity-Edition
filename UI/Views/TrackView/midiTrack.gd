@@ -69,7 +69,7 @@ func _ready():
 			instruments_option_btn.add_item(i)
 		instruments_option_btn.set_block_signals(false)
 
-	print("[MidiTrack] Track %d initialized with %d instrument options" % [track_index, instruments_option_btn.item_count])
+	GLogger.info("Track %d initialized with %d instrument options" % [track_index, instruments_option_btn.item_count], "MidiTrack")
 
 	# 从MidiData读取启用状态
 	if midi_data:
@@ -127,7 +127,7 @@ func _connect_signals():
 	)
 
 	if not parent_node:
-		print("轨道 %d 初始化失败: 无父节点" % track_index)
+		GLogger.error("轨道 %d 初始化失败: 无父节点" % track_index, "MidiTrack")
 		return
 
 	if parent_node.has_method("_on_track_enable_toggled"):
@@ -159,14 +159,14 @@ func setup_track(parent: Node, index: int, track_name: String, instruments: Arra
 		# Channel 9 是鼓轨道，只显示鼓组乐器
 		if "drum_instruments" in parent and not parent.drum_instruments.is_empty():
 			instrument_options = parent.drum_instruments
-			print("[MidiTrack] Track %d Channel %d: 使用鼓组乐器列表 (%d 个)" % [index, channel, instrument_options.size()])
+			GLogger.info("Track %d Channel %d: 使用鼓组乐器列表 (%d 个)" % [index, channel, instrument_options.size()], "MidiTrack")
 		else:
 			instrument_options = instruments  # fallback
 	else:
 		# 普通 channel，只显示常规乐器
 		if "regular_instruments" in parent and not parent.regular_instruments.is_empty():
 			instrument_options = parent.regular_instruments
-			print("[MidiTrack] Track %d Channel %d: 使用常规乐器列表 (%d 个)" % [index, channel, instrument_options.size()])
+			GLogger.info("Track %d Channel %d: 使用常规乐器列表 (%d 个)" % [index, channel, instrument_options.size()], "MidiTrack")
 		else:
 			instrument_options = instruments  # fallback
 

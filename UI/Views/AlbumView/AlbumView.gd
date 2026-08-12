@@ -85,7 +85,7 @@ func _on_config_changed(_key: String, section: String, _value: Variant) -> void:
 ## 与 SortedMidiView 一致，避免 clear_items 全清重建造成的闪烁 + 封面重载
 func _refresh_display_async(my_generation: int) -> void:
 	var is_active := UiStatMGR.current_state == UIStateManager.UIState.ALBUM_VIEW
-	var no_items := get_node_or_null("/root/Main/skew/C/NoItems")
+	var no_items := get_node_or_null(PathRegistry.NO_ITEMS)
 
 	if current_albums.is_empty():
 		clear_items()
@@ -162,7 +162,7 @@ func _refresh_display_async(my_generation: int) -> void:
 func _on_album_first_step() -> void:
 	if _loading_node:
 		_loading_node.stop_rotation()
-	create_tween().tween_property(self, "modulate:a", 1.0, 0.3)
+	AniMGR.create_managed_tween(self).tween_property(self, "modulate:a", 1.0, 0.3)
 
 func _process(delta):
 	super._process(delta)
@@ -175,7 +175,7 @@ func _gui_input(event: InputEvent) -> void:
 
 ## 状态变化时补检空列表显示（由 state_changed call_deferred 调用）
 func _check_empty_display() -> void:
-	var no_items := get_node_or_null("/root/Main/skew/C/NoItems")
+	var no_items := get_node_or_null(PathRegistry.NO_ITEMS)
 	if not current_albums.is_empty():
 		if no_items:
 			no_items.visible = false

@@ -101,7 +101,7 @@ func _get_cover_texture() -> Texture2D:
 	var fs_mgr := FileSystemManager.instance
 	if not fs_mgr:
 		return null
-	return fs_mgr._load_cover_with_cache(fs_mgr.default_cover_if_missing(ChartDB.GetAlbumCoverPath(String(item_dict.get("id", "")))))
+	return fs_mgr.load_cover_with_cache(fs_mgr.default_cover_if_missing(ChartDB.GetAlbumCoverPath(String(item_dict.get("id", "")))))
 
 ## 重写基类虚函数：返回封面文件路径（主线程调用，供异步加载器使用）
 ## 路径查询在主线程完成，后台线程只负责读盘
@@ -118,7 +118,7 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 	if expand_tween:
 		expand_tween.kill()
 	
-	expand_tween = create_tween()
+	expand_tween = AniMGR.create_managed_tween(self)
 	expand_tween.set_ease(Tween.EASE_OUT)
 	expand_tween.set_trans(Tween.TRANS_SINE)
 	expand_tween.set_parallel(true)

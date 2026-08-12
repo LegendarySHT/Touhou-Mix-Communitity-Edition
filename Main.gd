@@ -34,14 +34,14 @@ var _is_reloading_settings: bool = false
 func _ready():	
 	# Android 平台：请求存储权限（fire-and-forget，外部私有目录实际不需要运行时权限）
 	if PathHelper.is_android():
-		print("=== Android platform detected ===")
-		print("=== Base dir: %s ===" % PathHelper.get_base_dir())
+		GLogger.info("Android platform detected", "Main")
+		GLogger.info("Base dir: %s" % PathHelper.get_base_dir(), "Main")
 		OS.request_permissions()
 	
 	# 桌面端：无重力传感器，立即关闭自动旋转 _process，避免 2 秒无意义等待
 	if not PathHelper.is_android():
 		if Input.get_gravity() == Vector3.ZERO:
-			print("自动旋转屏幕方向功能已关闭")
+			GLogger.info("自动旋转屏幕方向功能已关闭", "Main")
 			set_process(false)
 		# 桌面端无需等待，直接开始初始化
 		_initialize_core_systems()
@@ -53,7 +53,7 @@ func _ready():
 	# 短暂等待传感器数据可用（远少于 2 秒，传感器通常 100ms 内就绪）
 	await get_tree().create_timer(0.3).timeout
 	if Input.get_gravity() == Vector3.ZERO:
-		print("自动旋转屏幕方向功能已关闭")
+		GLogger.info("自动旋转屏幕方向功能已关闭", "Main")
 		set_process(false)
 
 var timer = 0
@@ -109,7 +109,7 @@ func _handle_back_request() -> void:
 
 ## 初始化核心系统
 func _initialize_core_systems() -> void:
-	print("=== Initializing Core Systems ===")
+	GLogger.info("Initializing Core Systems", "Main")
 
 	# 1. 初始化日志系统（单例，已自动管理）
 	logger = GLogger
@@ -258,7 +258,7 @@ func _initialize_core_systems() -> void:
 	# 异步加载MIDI数据
 	_load_midi_data()
 	
-	print("=== Core Systems Initialized ===")
+	GLogger.info("Core Systems Initialized", "Main")
 
 func _init_ui() -> void:
 	# 6 个视图（MidiView/StoreView/TrackView/SettingView/ScoreView/PlayView）改为懒加载，

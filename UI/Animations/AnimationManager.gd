@@ -227,6 +227,40 @@ func delay_call(callback: Callable, delay: float, tween_id: String = "") -> Twee
 func create_sequence(tween_id: String = "") -> Tween:
 	return _create_tween(tween_id)
 
+## 通用 Tween 工厂：绑定到指定节点并纳入统一管理（替代各处的裸 create_tween()）
+## tween_id 可选：提供后可用 stop_tween/pause_tween/resume_tween 管理；重名会先杀掉旧 Tween。
+## 注意：绑定到 target 节点（与调用方裸 create_tween() 的暂停/生命周期语义一致），
+## 仅创建与清理路径经过 AnimationManager 统一管理。
+func create_managed_tween(target: Node, tween_id: String = "") -> Tween:
+	if not is_instance_valid(target):
+		push_warning("AnimationManager.create_managed_tween: invalid target")
+		return null
+	if not tween_id.is_empty() and active_tweens.has(tween_id):
+		active_tweens[tween_id].kill()
+	if tween_id.is_empty():
+		tween_id = "managed_%d" % tween_counter
+		tween_counter += 1
+	_prune_active_tweens()
+	var tween := target.create_tween()
+	active_tweens[tween_id] = tween
+	tween.finished.connect(func() -> void:
+		if active_tweens.get(tween_id) == tween:
+			active_tweens.erase(tween_id)
+	)
+	return tween
+
+## 清理已失效的 Tween 条目（防止循环动画等长期存活条目无限堆积）
+func _prune_active_tweens() -> void:
+	if active_tweens.size() < 256:
+		return
+	var stale: Array[String] = []
+	for tid in active_tweens:
+		var tw: Tween = active_tweens[tid]
+		if tw == null or not tw.is_valid():
+			stale.append(tid)
+	for tid in stale:
+		active_tweens.erase(tid)
+
 ## 获取或创建Tween（使用tween_id来保存和重用）
 func _create_tween(tween_id: String = "") -> Tween:
 	# 如果提供了ID且已存在，则杀死旧Tween
@@ -341,17 +375,17 @@ var ui_part = {
 }
 
 var ui_path_map = {
-	"Album_List" : "/root/Main/skew/C/AlbumList",
-	"Song_List" : "/root/Main/skew/C/SongList",
-	"Player_Info": "/root/Main/PlayerInfo",
-	"Sorted_List" : "/root/Main/skew/C/SortedMidisList",
-	"Shortcut_Menu" : "/root/Main/skew/C/ShortCutMenu",
-	"Midi_Info_View" : "/root/Main/skew/C/MidiView",
-	"Store_View": "/root/Main/Store",
-	"Track_List": "/root/Main/skew/C/TrackView",
-	"Play_View": "/root/Main/PlayView",
-	"Setting_View": "/root/Main/skew/C/SettingView",
-	"Score_View": "/root/Main/ScoreView",
+	"Album_List" : PathRegistry.ALBUM_LIST,
+	"Song_List" : PathRegistry.SONG_LIST,
+	"Player_Info": PathRegistry.PLAYER_INFO,
+	"Sorted_List" : PathRegistry.SORTED_MIDIS_LIST,
+	"Shortcut_Menu" : PathRegistry.SHORTCUT_MENU,
+	"Midi_Info_View" : PathRegistry.MIDI_VIEW,
+	"Store_View": PathRegistry.STORE_VIEW,
+	"Track_List": PathRegistry.TRACK_VIEW,
+	"Play_View": PathRegistry.PLAY_VIEW,
+	"Setting_View": PathRegistry.SETTING_VIEW,
+	"Score_View": PathRegistry.SCORE_VIEW,
 }
 
 func get_comp(ui_part_name: String) -> Node:
@@ -366,7 +400,7 @@ func get_comp(ui_part_name: String) -> Node:
 		GLogger.debug("[AniMGR] COMP %s Not Found" % ui_part_name, "AniMGR")
 		return null
 
-var _SS = "/root/Main/skew/SS"
+var _SS = PathRegistry.SKEW_SS
 
 var tan15 = tan(deg_to_rad(15))
 
@@ -437,7 +471,7 @@ func _scene_transition_enter(old_state: UIStateManager.UIState, new_state: UISta
 		scene_transition_fin.emit()
 
 func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> Tween:
-	print("组件退出动画: %s" % ui_name)
+	GLogger.info("组件退出动画: %s" % ui_name, "AnimationManager")
 	var tween_id = "%s_out" % ui_name
 	var tween : Tween
 	
@@ -445,7 +479,7 @@ func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_sta
 	var SS = get_node_or_null(_SS)
 	var album_list:AlbumView = get_comp("Album_List")
 	var song_list:SongView = get_comp("Song_List")
-	var skew = get_node_or_null("/root/Main/skew")
+	var skew = get_node_or_null(PathRegistry.SKEW)
 	var ani_comp = get_comp(ui_name)
 
 	match ui_name:
@@ -552,7 +586,7 @@ func _save_settings_on_exit(setting_view: Control) -> void:
 	var success = setting_view.save_config_to_file()
 	
 	if success:
-		print("[AnimationManager] Settings saved successfully")
+		GLogger.info("Settings saved successfully", "AnimationManager")
 		
 		# 发出通配符信号，通知所有监听者配置已变化
 		if EvtBus:
@@ -561,7 +595,7 @@ func _save_settings_on_exit(setting_view: Control) -> void:
 		push_warning("[AnimationManager] Failed to save settings")
 
 func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> Tween:
-	print("组件进入动画: %s" % ui_name)
+	GLogger.info("组件进入动画: %s" % ui_name, "AnimationManager")
 	var tween_id = "%s_in" % ui_name
 	var tween : Tween
 
@@ -569,7 +603,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> Tween:
 	var SS = get_node_or_null(_SS)
 	var album_list:AlbumView = get_comp("Album_List")
 	var song_list:SongView = get_comp("Song_List")
-	var skew = get_node_or_null("/root/Main/skew")
+	var skew = get_node_or_null(PathRegistry.SKEW)
 	var ani_comp = get_comp(ui_name)
 	if is_instance_valid(ani_comp) and ani_comp is CanvasItem:
 		ani_comp.visible = true

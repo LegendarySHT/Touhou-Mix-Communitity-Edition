@@ -210,6 +210,9 @@ public partial class MeltySynthPlayer : Node
 			maBridge.SetBackend(MiniaudioNative.Backend.Wasapi);
 			bool useExclusive = System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1";
 			maBridge.SetWASAPIExclusive(useExclusive);
+			// 注意: Windows 下 period 固定为 256/128（共享/独占），有意忽略
+			// set_audio_buffer_frames(_desiredBufferFrames)：共享模式 WASAPI 对
+			// 更小 period 支持不稳定，且当前无任何 UI 暴露该设置（TMX-041 结论）。
 			maPeriod = useExclusive ? 128u : 256u;
 		}
 		else if (osName == "Android")
@@ -235,7 +238,7 @@ public partial class MeltySynthPlayer : Node
 	/// 设置音频缓冲区大小（帧）
 	/// 注意：此设置需要重新初始化音频后端才能生效
 	/// </summary>
-	public void SetAudioBufferFrames(int frames)
+	public void set_audio_buffer_frames(int frames)
 	{
 		// 对齐到 2 的幂，避免内部 DSP 块不对齐
 		var aligned = 256;
@@ -1263,17 +1266,6 @@ public partial class MeltySynthPlayer : Node
 	public void seek(float positionMs)
 	{
 		seek_ms((double)positionMs);
-	}
-
-	/// <summary>获取播放位置 tick (接口方法)</summary>
-	public float get_position_tick()
-	{
-		// MeltySynth 使用 TimeSpan，无原生 tick 支持
-		// 返回近似值：假设 480 ticks/beat, 120 BPM
-		var ms = get_position_ms();
-		var seconds = ms / 1000.0;
-		var beats = seconds * 2.0; // 120 BPM = 2 beats/sec
-		return (float)(beats * 480.0); // 480 ticks/beat
 	}
 
 	/// <summary>获取总时长 (接口方法)</summary>

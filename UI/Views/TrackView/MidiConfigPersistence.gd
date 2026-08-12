@@ -37,8 +37,8 @@ func save_midi_config() -> void:
 	var chart_id = current_midi_data.file_hash if not current_midi_data.file_hash.is_empty() else current_midi_data.id
 	if ChartDB and ChartDB.IsOpen():
 		ChartDB.SaveRuntime(chart_id, runtime_config)
-		print("[TrackView] Successfully saved MIDI config to DB (volume: %d/%d, solo: %d, track_enabled: %s, vocal: %s)" %
-			[current_midi_data.midi_volume, current_midi_data.vocal_volume, _track_view.solo_pairs.size(), current_midi_data.selected_track_configs, _track_view._vocal_controller.vocal_file_path])
+		GLogger.info("Successfully saved MIDI config to DB (volume: %d/%d, solo: %d, track_enabled: %s, vocal: %s)" %
+			[current_midi_data.midi_volume, current_midi_data.vocal_volume, _track_view.solo_pairs.size(), current_midi_data.selected_track_configs, _track_view._vocal_controller.vocal_file_path], "TrackView")
 	else:
 		push_error("[TrackView] ChartDB not open, cannot save MIDI config for: %s" % current_midi_data.id)
 
@@ -64,7 +64,7 @@ func restore_midi_data_config() -> void:
 	var vocal_vol = current_midi_data.vocal_volume
 
 	if vocal_vol == 0.5:  # 默认值
-		var setting_view = _track_view.get_node_or_null("/root/Main/skew/C/SettingView")
+		var setting_view = _track_view.get_node_or_null(PathRegistry.SETTING_VIEW)
 		if setting_view and setting_view.has_method("get_setting_value"):
 			var global_vocal_vol = setting_view.get_setting_value("default_vocal_volume")
 			if global_vocal_vol != null:
@@ -102,17 +102,17 @@ func restore_midi_data_config() -> void:
 
 	# 初始化音轨启用状态：如果是新MIDI（从未配置过），则默认全部启用
 	# 这很重要，因为restore_midi_ui_config()会检查这个值来显示enable按钮状态
-	if not current_midi_data._track_config_initialized:
+	if not current_midi_data.is_track_config_initialized():
 		# 新MIDI：等待All_Notes加载后进行初始化（在_init_master_note_displayer中）
 		# 但这里需要先设置一个占位符，否则restore_midi_ui_config会显示"禁用"
-		print("[TrackView] New MIDI detected (not initialized), will initialize in _init_master_note_displayer")
+		GLogger.info("New MIDI detected (not initialized), will initialize in _init_master_note_displayer", "TrackView")
 	else:
 		# 旧MIDI：selected_track_configs已从JSON恢复（可能为空或有配置），将在restore_midi_ui_config中应用
-		print("[TrackView] Existing MIDI config restored: %d tracks have enabled channels" %
-			current_midi_data.selected_track_configs.size())
+		GLogger.info("Existing MIDI config restored: %d tracks have enabled channels" %
+			current_midi_data.selected_track_configs.size(), "TrackView")
 
-	print("[TrackView] Restored MIDI data config: midi_volume=%d%%, vocal_volume=%d%%, solo_count=%d" %
-		[int(round(midi_vol * 100.0)), int(round(vocal_vol * 100.0)), _track_view.solo_pairs.size()])
+	GLogger.info("Restored MIDI data config: midi_volume=%d%%, vocal_volume=%d%%, solo_count=%d" %
+		[int(round(midi_vol * 100.0)), int(round(vocal_vol * 100.0)), _track_view.solo_pairs.size()], "TrackView")
 
 	# 恢复轨道级音量配置（从保存的配置）
 	if not current_midi_data.track_channel_volume_config.is_empty():
@@ -122,7 +122,7 @@ func restore_midi_data_config() -> void:
 				var volume = channels[channel]
 				# 立即应用到播放器（转换track_index和channel为int）
 				midi_playback_manager.set_track_channel_volume(int(track_index), int(channel), volume)
-		print("[TrackView] Restored track volumes: %d tracks" % current_midi_data.track_channel_volume_config.size())
+		GLogger.info("Restored track volumes: %d tracks" % current_midi_data.track_channel_volume_config.size(), "TrackView")
 
 	# 恢复轨道-通道乐器覆盖配置（从保存的配置）
 	if not current_midi_data.track_channel_instrument_overrides.is_empty():
@@ -138,7 +138,7 @@ func restore_midi_data_config() -> void:
 						instr.get("bank", 0),
 						instr.get("program", 0)
 					)
-		print("[TrackView] Restored instrument overrides: %d tracks" % current_midi_data.track_channel_instrument_overrides.size())
+		GLogger.info("Restored instrument overrides: %d tracks" % current_midi_data.track_channel_instrument_overrides.size(), "TrackView")
 
 
 ## 恢复MIDI配置的UI部分（按钮状态、音量值）
@@ -157,7 +157,7 @@ func restore_midi_ui_config() -> void:
 			# 更新启用按钮状态
 			# 新MIDI时，尚未初始化配置，应该默认显示"启用"
 			var is_enabled = current_midi_data.is_track_channel_selected(track_idx, channel)
-			if not current_midi_data._track_config_initialized:
+			if not current_midi_data.is_track_config_initialized():
 				# 新MIDI的情况：默认认为所有轨道启用（待_init_master_note_displayer正式初始化）
 				is_enabled = true
 
@@ -203,15 +203,15 @@ func restore_midi_ui_config() -> void:
 					track_item.volume_label.text = "%.2fdB" % linear_to_db(saved_volume)
 
 	if not _track_view.solo_pairs.is_empty():
-		print("[TrackView] Restored solo pairs: %d channels are soloed" % _track_view.solo_pairs.size())
+		GLogger.info("Restored solo pairs: %d channels are soloed" % _track_view.solo_pairs.size(), "TrackView")
 		# 【关键】恢复UI后，立即应用独奏状态到后端（包括mute状态和快照）
 		_track_view._capture_solo_snapshot()
 		_track_view._apply_solo_state()
 
-	if current_midi_data._track_config_initialized:
+	if current_midi_data.is_track_config_initialized():
 		if not current_midi_data.selected_track_configs.is_empty():
-			print("[TrackView] Restored enable states: %d tracks with enabled channels" % current_midi_data.selected_track_configs.size())
+			GLogger.info("Restored enable states: %d tracks with enabled channels" % current_midi_data.selected_track_configs.size(), "TrackView")
 		else:
-			print("[TrackView] Restored enable states: All tracks are DISABLED")
+			GLogger.info("Restored enable states: All tracks are DISABLED", "TrackView")
 	else:
-		print("[TrackView] New MIDI: All tracks shown as enabled, will be finalized in _init_master_note_displayer")
+		GLogger.info("New MIDI: All tracks shown as enabled, will be finalized in _init_master_note_displayer", "TrackView")

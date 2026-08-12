@@ -45,7 +45,7 @@ func _update_lag_display(state: int = -1, latency_ms: int = -1) -> void:
 		# 初始化时从 NetManager 读取当前状态
 		if NetManager.instance != null:
 			state = NetManager.instance.connect_state
-			latency_ms = NetManager.instance._latency_ms
+			latency_ms = NetManager.instance.get_latency_ms()
 		else:
 			state = NetManager.ConnectState.OFFLINE_MODE
 	match state:
@@ -170,6 +170,6 @@ func _on_button_pressed() -> void:
 		ui.UIState.SCORE_VIEW:
 			ui.change_state(ui.UIState.PLAY_VIEW, false)
 			#await get_tree().create_timer(0.3).timeout
-			get_node("/root/Main/PlayView").retry_btn.pressed.emit()
+			get_node(PathRegistry.PLAY_VIEW).retry_btn.pressed.emit()
 		_:
 			ui.change_state(ui.UIState.SETTINGS_VIEW)

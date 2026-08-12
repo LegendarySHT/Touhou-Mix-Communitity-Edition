@@ -173,11 +173,15 @@ func _process(_delta: float) -> void:
 	if not is_playing or backend == null:
 		return
 
+	# TEMP DIAG: 缓存时钟 vs 实时时钟是否发散（诊断后移除）
+	if Engine.get_process_frames() % 60 == 0:
+		GLogger.info("DIAG clock: cached=%.1f live=%.1f" % [position_ms, backend.get_position_ms()], "MidiPlaybackManager")
+
 	# MeltySynth 后端：使用毫秒位置
 	position_ms = backend.get_position_ms()
 	# 将毫秒转为tick（使用BPM时间线）
 	if midi_timebase > 0:
-		position = _calculate_tick_from_position_with_bpm_timeline(position_ms, midi_timebase)
+		position = calculate_tick_from_position_with_bpm_timeline(position_ms, midi_timebase)
 
 	# 调用自动同步逻辑
 	_sync_vocal_with_midi()
@@ -193,7 +197,7 @@ func _process(_delta: float) -> void:
 ## 5) 标记 _track_config_initialized=true
 ## 6) 立即持久化到 DB，避免下次启动重复解析简介
 func ensure_track_config_initialized(midi_data: MidiData, notes: Array) -> void:
-	if midi_data == null or midi_data._track_config_initialized:
+	if midi_data == null or midi_data.is_track_config_initialized():
 		return
 	var desc_parse = MidiDescriptionParser.parse(midi_data.description)
 	GLogger.info("[DescParse] id=%s offset_ms=%d recommended=%s difficulties=%d" % [
@@ -233,7 +237,7 @@ func ensure_track_config_initialized(midi_data: MidiData, notes: Array) -> void:
 	else:
 		GLogger.info("Initialized selected_track_configs with all (track, channel) pairs for new MIDI", "MidiPlaybackManager")
 
-	midi_data._track_config_initialized = true
+	midi_data.set_track_config_initialized(true)
 	# 立即持久化到 DB，避免下次启动重复解析简介
 	_save_runtime_config(midi_data)
 
@@ -243,6 +247,12 @@ func load_midi(midi_data: MidiData) -> bool:
 	if midi_data == null:
 		push_error("MidiData is null")
 		return false
+
+	# 加载新曲前先停止当前播放（幂等）：
+	# TrackView 循环播放中直接进入 PlayView 时，后端 sequencer/playing 状态可能残留
+	# （实测：旧曲位置停留在 74s，pre-roll seek(-2000) 后 crossing-zero 状态机错乱，
+	# 表现为判定时钟异常 + 位置冻结 + 游戏提前结束）。先 stop() 保证干净状态。
+	stop()
 
 	# 清理上一首歌的人声预加载资源（若新歌无人声或路径不同，旧 stream 会一直驻留）
 	if current_midi_data != null and _vocal_preload_path != "":
@@ -300,13 +310,13 @@ func load_midi(midi_data: MidiData) -> bool:
 		current_midi_data.parsed_notes = current_notes
 		current_midi_data.track_count = track_infos.size()
 		current_midi_data.bpm = parse_result["bpm"]
-		current_midi_data.duration_ms = parse_result["duration"]
+		current_midi_data.duration_ms = parse_result["duration_ms"]
 		current_midi_data.bpm_timeline = bpm_timeline.duplicate()
 		current_midi_data.midi_timebase = midi_timebase
 		current_midi_data._runtime_track_infos = track_infos
 		current_midi_data.max_end_tick = float(parse_result.get("max_end_tick", 0))
 		current_midi_data.track_channel_instruments = parse_result.get("track_instruments", {})
-		duration_ms = parse_result["duration"]
+		duration_ms = parse_result["duration_ms"]
 
 	# 从 C# MidiParserNative 一次性提取的 track_channel_instruments 中复用乐器信息
 	# （C# 解析阶段已完成 control_change/program_change 提取，无需 GDScript 遍历 events）
@@ -341,7 +351,7 @@ func load_midi(midi_data: MidiData) -> bool:
 			for ch in midi_data.track_channel_volume_config[track_idx].keys():
 				if backend != null and backend.has_method("set_track_channel_volume"):
 					backend.set_track_channel_volume(track_idx, ch, midi_data.track_channel_volume_config[track_idx][ch])
-		print("[MidiPlaybackManager] Applied %d track volume configs" % midi_data.track_channel_volume_config.size())
+		GLogger.info("Applied %d track volume configs" % midi_data.track_channel_volume_config.size(), "MidiPlaybackManager")
 	else:
 		# 未配置过轨道音量：统一按 TrackView 默认 50% 应用（只改后端，不改 MidiData），
 		# 避免 PlayView（未配置默认 100%）与 TrackView（默认 50%）对同一新曲音量不一致
@@ -358,14 +368,14 @@ func load_midi(midi_data: MidiData) -> bool:
 					backend.set_track_channel_volume(note.track_index, note.channel, default_volume)
 				default_count += 1
 		if default_count > 0:
-			print("[MidiPlaybackManager] Applied %d default track volumes (50%%)" % default_count)
+			GLogger.info("Applied %d default track volumes (50%%)" % default_count, "MidiPlaybackManager")
 	
 	# 清理旧乐器覆盖配置（双重保障：后端 set_file/load_midi 已清理，这里再次确认）
 	# 注意：后端的 set_file/load_midi 方法已经清理了 track_channel_instruments
 	# 这里的检查主要用于防御性编程，确保清理操作成功
 	if backend != null and "track_channel_instruments" in backend:
 		if backend.track_channel_instruments.size() > 0:
-			print("[MidiPlaybackManager] Warning: Backend still has %d instrument overrides after file load, clearing..." % backend.track_channel_instruments.size())
+			GLogger.warning("Backend still has %d instrument overrides after file load, clearing..." % backend.track_channel_instruments.size(), "MidiPlaybackManager")
 			backend.track_channel_instruments.clear()
 	
 	# 应用轨道-通道乐器覆盖配置
@@ -375,7 +385,7 @@ func load_midi(midi_data: MidiData) -> bool:
 				var instr = midi_data.track_channel_instrument_overrides[track_idx][ch]
 				if backend != null and backend.has_method("set_track_channel_instrument"):
 					backend.set_track_channel_instrument(track_idx, ch, instr["bank"], instr["program"])
-		print("[MidiPlaybackManager] Applied %d instrument overrides" % midi_data.track_channel_instrument_overrides.size())
+		GLogger.info("Applied %d instrument overrides" % midi_data.track_channel_instrument_overrides.size(), "MidiPlaybackManager")
 	
 	# 同步轨道-通道静音状态（清理旧MIDI的残留静音）
 	_apply_mute_state_to_backend(backend)
@@ -497,7 +507,7 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	midi_data._runtime_track_infos = parse_result["track_infos"]
 	midi_data.track_count = parse_result["track_infos"].size()
 	midi_data.bpm = parse_result["bpm"]
-	midi_data.duration_ms = parse_result["duration"]
+	midi_data.duration_ms = parse_result["duration_ms"]
 	midi_data.max_end_tick = float(parse_result.get("max_end_tick", 0))
 
 	# 复用 worker 中已构建的乐器信息字典（避免 load_midi 重新提取，省 ~5-15ms）
@@ -627,9 +637,9 @@ func play() -> void:
 	# 启动人声播放（如果有人声文件）
 	if not current_midi_data.vocal_file_path.is_empty():
 		start_vocal_playback()
-		print("[MidiPlaybackManager] Started vocal playback: %s (offset: %d ms)" % [current_midi_data.vocal_file_path, vocal_offset_ms])
+		GLogger.info("Started vocal playback: %s (offset: %d ms)" % [current_midi_data.vocal_file_path, vocal_offset_ms], "MidiPlaybackManager")
 	else:
-		print("[MidiPlaybackManager] No vocal file configured (path: '%s')" % current_midi_data.vocal_file_path)
+		GLogger.info("No vocal file configured (path: '%s')" % current_midi_data.vocal_file_path, "MidiPlaybackManager")
 
 ## 停止播放
 func stop() -> void:
@@ -694,7 +704,7 @@ func set_loop(enabled: bool) -> void:
 	
 	# 同时更新配置
 	midi_player_config["loop"] = enabled
-	print("[MidiPlaybackManager] Loop set to: %s" % enabled)
+	GLogger.info("Loop set to: %s" % enabled, "MidiPlaybackManager")
 
 ## 获取循环播放状态
 func get_loop() -> bool:
@@ -711,15 +721,15 @@ func get_loop() -> bool:
 func seek(pos: float) -> void:
 	position_ms = pos
 	if midi_player == null:
-		print("[MidiPlaybackManager] Seek failed: backend not available")
+		GLogger.warning("Seek failed: backend not available", "MidiPlaybackManager")
 		return
 
 	# 直接调用 C# 的 seek_ms 方法
-	print("[MidiPlaybackManager] Calling MeltySynth seek_ms(%.1f)" % pos)
+	GLogger.info("Calling MeltySynth seek_ms(%.1f)" % pos, "MidiPlaybackManager")
 	midi_player.seek_ms(pos)
 	# 立即同步 position（从毫秒转 tick）
 	if midi_timebase > 0:
-		position = _calculate_tick_from_position_with_bpm_timeline(pos, midi_timebase)
+		position = calculate_tick_from_position_with_bpm_timeline(pos, midi_timebase)
 
 ## 辅助函数：根据BPM时间线计算当前的实际播放时间（毫秒）
 func _calculate_position_with_bpm_timeline(current_tick: float, timebase: int) -> float:
@@ -763,7 +773,8 @@ func _calculate_position_with_bpm_timeline(current_tick: float, timebase: int) -
 	return cumulative_time_ms
 
 ## 辅助函数：根据BPM时间线计算从时间位置（毫秒）到tick的转换
-func _calculate_tick_from_position_with_bpm_timeline(target_time_ms: float, timebase: int) -> float:
+## 公开供 noteDisplayer 等播放链路消费方使用（原下划线命名误导为私有，TMX-019）
+func calculate_tick_from_position_with_bpm_timeline(target_time_ms: float, timebase: int) -> float:
 	if bpm_timeline.is_empty():
 		# 如果没有BPM时间线，使用默认计算方式
 		var seconds_per_tick: float = 60.0 / (120.0 * timebase)  # 默认120 BPM
@@ -828,10 +839,10 @@ func _preload_soundfont_to_backend() -> void:
 	if midi_player == null or current_soundfont_path.is_empty():
 		return
 
-	print("[MidiPlaybackManager] Pre-loading SoundFont: %s" % current_soundfont_path)
+	GLogger.info("Pre-loading SoundFont: %s" % current_soundfont_path, "MidiPlaybackManager")
 	midi_player.set_soundfont(current_soundfont_path)
 	_soundfont_preloaded_to_backend = true
-	print("[MidiPlaybackManager] SoundFont pre-loaded successfully")
+	GLogger.info("SoundFont pre-loaded successfully", "MidiPlaybackManager")
 
 ## 确保 SoundFont 已加载到后端合成器
 ## 供 trigger_note_on 等即时音符播放场景（如 DelayAdjust 校准）调用，
@@ -860,7 +871,7 @@ func set_soundfont(soundfont_name: String) -> bool:
 	
 	if soundfont_path.is_empty():
 		# 文件不存在，尝试回退到默认
-		print("[MidiPlaybackManager] Soundfont '%s' not found, falling back to default" % soundfont_name)
+		GLogger.warning("Soundfont '%s' not found, falling back to default" % soundfont_name, "MidiPlaybackManager")
 		soundfont_path = _locate_soundfont("GeneralUser-GS")
 		
 		if soundfont_path.is_empty():
@@ -881,7 +892,7 @@ func set_soundfont(soundfont_name: String) -> bool:
 	else:
 		_soundfont_preloaded_to_backend = false
 
-	print("[MidiPlaybackManager] Soundfont set to: %s" % soundfont_path)
+	GLogger.info("Soundfont set to: %s" % soundfont_path, "MidiPlaybackManager")
 	return true
 
 ## 初始化MIDI后端（唯一后端：MeltySynth C#）
@@ -897,12 +908,12 @@ func _initialize_backend() -> bool:
 ## 返回: bool - 初始化是否成功
 func _initialize_meltysynth_backend() -> bool:
 	if midi_player != null:
-		print("[MidiPlaybackManager] MeltySynth backend already initialized, skipping")
+		GLogger.info("MeltySynth backend already initialized, skipping", "MidiPlaybackManager")
 		return true  # 已经初始化
 	
 	# 尝试加载预制场景
 	var scene_path = "res://CSharp/MeltySynthPlayer.tscn"
-	print("[MidiPlaybackManager] Attempting to load MeltySynth scene: %s" % scene_path)
+	GLogger.info("Attempting to load MeltySynth scene: %s" % scene_path, "MidiPlaybackManager")
 	
 	if not ResourceLoader.exists(scene_path):
 		push_error("[MidiPlaybackManager] MeltySynth scene path does not exist: %s" % scene_path)
@@ -913,14 +924,14 @@ func _initialize_meltysynth_backend() -> bool:
 		push_error("[MidiPlaybackManager] Failed to load MeltySynth PackedScene from: %s" % scene_path)
 		return false
 	
-	print("[MidiPlaybackManager] MeltySynth scene loaded successfully")
+	GLogger.info("MeltySynth scene loaded successfully", "MidiPlaybackManager")
 	
 	var wrapper = scene.instantiate() as MidiPlaybackInterface
 	if wrapper == null:
 		push_error("[MidiPlaybackManager] Failed to instantiate MeltySynth wrapper as MidiPlaybackInterface")
 		return false
 	
-	print("[MidiPlaybackManager] MeltySynth wrapper instantiated successfully")
+	GLogger.info("MeltySynth wrapper instantiated successfully", "MidiPlaybackManager")
 	
 	# 获取 C# 后端子节点
 	var csharp_backend = wrapper.get_node_or_null("CSharpBackend")
@@ -929,49 +940,49 @@ func _initialize_meltysynth_backend() -> bool:
 		wrapper.queue_free()
 		return false
 	
-	print("[MidiPlaybackManager] CSharpBackend child node found")
+	GLogger.info("CSharpBackend child node found", "MidiPlaybackManager")
 	
 	# 设置 wrapper 持有的 C# 后端子节点引用
 	wrapper.set("meltysynth_player", csharp_backend)
-	print("[MidiPlaybackManager] Set meltysynth_player property on wrapper")
+	GLogger.info("Set meltysynth_player property on wrapper", "MidiPlaybackManager")
 
 	# 添加为子节点
 	add_child(wrapper as Node)
-	print("[MidiPlaybackManager] Added wrapper as child node")
+	GLogger.info("Added wrapper as child node", "MidiPlaybackManager")
 
 	# 配置播放器参数
 	wrapper.set("max_polyphony", midi_player_config["max_polyphony"])
 	if wrapper.has_method("set_loop"):
 		wrapper.call("set_loop", midi_player_config["loop"])
-	print("[MidiPlaybackManager] Set playback parameters")
+	GLogger.info("Set playback parameters", "MidiPlaybackManager")
 
 	if wrapper.has_method("set_volume_db"):
 		wrapper.call("set_volume_db", midi_player_config["volume_db"])
-		print("[MidiPlaybackManager] Called set_volume_db")
+		GLogger.info("Called set_volume_db", "MidiPlaybackManager")
 
 	if wrapper.has_method("set_bus"):
 		wrapper.call("set_bus", "Master")
-		print("[MidiPlaybackManager] Called set_bus")
+		GLogger.info("Called set_bus", "MidiPlaybackManager")
 
 	# 初始化系统时钟配置
 	if wrapper.has_method("set_use_system_stopwatch"):
 		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
 		wrapper.call("set_use_system_stopwatch", use_system_stopwatch)
-		print("[MidiPlaybackManager] Set system stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"))
+		GLogger.info("Set system stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
 
 	# 设置最大复音数
 	wrapper.set("max_polyphony", ConfigManager.instance.get_int("Playback", "max_polyphony", 96))
-	print("[MidiPlaybackManager] Set max polyphony: %d" % wrapper.max_polyphony)
+	GLogger.info("Set max polyphony: %d" % wrapper.max_polyphony, "MidiPlaybackManager")
 
 	# 连接信号
 	if wrapper.has_signal("finished"):
 		wrapper.finished.connect(_on_midi_finished)
-		print("[MidiPlaybackManager] Connected finished signal")
+		GLogger.info("Connected finished signal", "MidiPlaybackManager")
 
 	# 保存引用
 	midi_player = wrapper
 	GLogger.info("MeltySynth C# backend initialized successfully", "MidiPlaybackManager")
-	print("[MidiPlaybackManager] MeltySynth backend initialization complete")
+	GLogger.info("MeltySynth backend initialization complete", "MidiPlaybackManager")
 
 	return true
 
@@ -981,13 +992,13 @@ func _initialize_meltysynth_backend() -> bool:
 func _is_csharp_available() -> bool:
 	# 1. 检查 Godot C# 运行时是否可用（仅 Mono 构建版本有此类）
 	if not ClassDB.class_exists(&"CSharpScript"):
-		print("[MidiPlaybackManager] C# runtime not available (non-Mono build)")
+		GLogger.warning("C# runtime not available (non-Mono build)", "MidiPlaybackManager")
 		return false
 	# 2. 检查 MeltySynth 场景是否存在
 	if not ResourceLoader.exists("res://CSharp/MeltySynthPlayer.tscn"):
-		print("[MidiPlaybackManager] MeltySynth scene not found")
+		GLogger.warning("MeltySynth scene not found", "MidiPlaybackManager")
 		return false
-	print("[MidiPlaybackManager] C# runtime and MeltySynth scene available")
+	GLogger.info("C# runtime and MeltySynth scene available", "MidiPlaybackManager")
 	return true
 
 ## 获取活跃的MIDI播放器（唯一后端：MeltySynth）
@@ -1056,9 +1067,9 @@ func _log_volume_state(tag: String) -> void:
 	var midi_vol: float = current_midi_data.midi_volume if current_midi_data else 0.0
 	var eff: float = get_effective_midi_volume(midi_vol) if current_midi_data else 0.0
 	var track_entries: int = current_midi_data.track_channel_volume_config.size() if current_midi_data else 0
-	print("[MidiPlaybackManager] %s | volume_db(cfg)=%.1f volume_db(backend)=%.1f midi_volume=%.2f effective_midi_volume=%.2f track_cfg_entries=%d" % [
+	GLogger.info("%s | volume_db(cfg)=%.1f volume_db(backend)=%.1f midi_volume=%.2f effective_midi_volume=%.2f track_cfg_entries=%d" % [
 		tag, db_cfg, db_backend, midi_vol, eff, track_entries,
-	])
+	], "MidiPlaybackManager")
 
 ## 设置特定(track, channel)对的音量（线性值0.0-1.0）
 ## 立即生效到正在播放的Note
@@ -1073,8 +1084,8 @@ func set_track_channel_volume(track_index: int, channel: int, volume_linear: flo
 	if backend.has_method("set_track_channel_volume"):
 		backend.set_track_channel_volume(track_index, channel, clamped_volume)
 
-	print("[MidiPlaybackManager] Track %d Channel %d volume set to: %.1f%%" %
-		[track_index, channel, clamped_volume * 100.0])
+	GLogger.info("Track %d Channel %d volume set to: %.1f%%" %
+		[track_index, channel, clamped_volume * 100.0], "MidiPlaybackManager")
 
 ## 获取特定(track, channel)对的音量
 func get_track_channel_volume(track_index: int, channel: int) -> float:
@@ -1090,7 +1101,7 @@ func set_vocal_volume_db(volume_db: float) -> void:
 	var audio_manager = AudioManager.instance
 	if audio_manager != null:
 		audio_manager.set_vocal_volume_db(volume_db)
-		print("[MidiPlaybackManager] Set vocal volume to %.2f dB" % volume_db)
+		GLogger.info("Set vocal volume to %.2f dB" % volume_db, "MidiPlaybackManager")
 	else:
 		push_error("[MidiPlaybackManager] AudioManager not available")
 
@@ -1110,7 +1121,7 @@ func set_track_channel_mute(track_index: int, channel: int, muted: bool) -> void
 	# 1. 检查状态是否改变（优化：避免重复操作）
 	var previous_state = current_midi_data.get_track_channel_mute(track_index, channel)
 	if previous_state == muted:
-		print("[MidiPlaybackManager] Channel %d already %s, skipping" % [channel, "muted" if muted else "unmuted"])
+		GLogger.info("Channel %d already %s, skipping" % [channel, "muted" if muted else "unmuted"], "MidiPlaybackManager")
 		return
 	
 	# 2. 更新 MidiData 中的状态
@@ -1144,7 +1155,7 @@ func unmute_all_channels() -> void:
 		return
 	
 	current_midi_data.clear_all_mutes()
-	print("[MidiPlaybackManager] All channels unmuted")
+	GLogger.info("All channels unmuted", "MidiPlaybackManager")
 
 ## 获取已选中轨道对应的Note
 func get_selected_track_notes() -> Array:
@@ -1226,7 +1237,7 @@ func _apply_mute_state_to_backend(backend: MidiPlaybackInterface) -> void:
 			var muted = current_midi_data.get_track_channel_mute(track_idx, channel)
 			backend.set_track_channel_mute(track_idx, channel, muted)
 	
-	print("[MidiPlaybackManager] Applied mute state for %d tracks" % cached_track_channel_instruments.size())
+	GLogger.info("Applied mute state for %d tracks" % cached_track_channel_instruments.size(), "MidiPlaybackManager")
 
 ## 辅助函数：定位MIDI文件路径
 func _locate_midi_file(midi_data: MidiData) -> String:
@@ -1236,9 +1247,10 @@ func _locate_midi_file(midi_data: MidiData) -> String:
 		push_error("FileSystemManager not initialized")
 		return ""
 
-	var lookup = filesystem_manager._lookup_chart(midi_data.id)
+	var lookup = filesystem_manager.lookup_chart(
+		midi_data.chart_key if not midi_data.chart_key.is_empty() else midi_data.id)
 	if lookup.is_empty() and not midi_data.file_hash.is_empty():
-		lookup = filesystem_manager._lookup_chart(midi_data.file_hash)
+		lookup = filesystem_manager.lookup_chart(midi_data.file_hash)
 	if lookup.is_empty():
 		return ""
 	var metadata: ChartMetadata = lookup["metadata"]
@@ -1338,8 +1350,8 @@ func classify_notes(all_notes: Array, manual_track_indices: Array[int] = []) -> 
 			# 非NoteEvent类型，默认为自动播放
 			result["auto_play_notes"].append(note)
 	
-	print("[MidiPlaybackManager] Classified notes: %d auto-play, %d manual-control" % 
-		[result["auto_play_notes"].size(), result["manual_control_notes"].size()])
+	GLogger.info("Classified notes: %d auto-play, %d manual-control" % 
+		[result["auto_play_notes"].size(), result["manual_control_notes"].size()], "MidiPlaybackManager")
 	
 	return result
 
@@ -1384,8 +1396,8 @@ func set_manual_control_notes(manual_control_notes: Array) -> void:
 			for ch in manually_controlled[track_key].keys():
 				for pitch in manually_controlled[track_key][ch].keys():
 					total_entries += manually_controlled[track_key][ch][pitch].size()
-		print("[MidiPlaybackManager] Set manual control: %d notes, %d precise (track,ch,pitch,start_tick) entries" % 
-			[manual_control_notes.size(), total_entries])
+		GLogger.info("Set manual control: %d notes, %d precise (track,ch,pitch,start_tick) entries" % 
+			[manual_control_notes.size(), total_entries], "MidiPlaybackManager")
 	else:
 		push_warning("[MidiPlaybackManager] MidiPlayer does not support set_manually_controlled_notes")
 
@@ -1398,7 +1410,7 @@ func clear_manual_control_notes() -> void:
 	# 传递空字典给MidiPlayer，清除所有手动控制标记
 	if midi_player.has_method("set_manually_controlled_notes"):
 		midi_player.set_manually_controlled_notes({})
-		print("[MidiPlaybackManager] Cleared all manual control notes, restored auto-play")
+		GLogger.info("Cleared all manual control notes, restored auto-play", "MidiPlaybackManager")
 
 ## ========== 位置单位转换工具 ==========
 ## 将tick位置转换为毫秒（使用BPM时间线）
@@ -1442,12 +1454,12 @@ func _load_soundfont_from_config() -> void:
 	if not soundfont_name.is_empty():
 		# 去掉 .sf2 扩展名和 [内置] 标签（如果有）
 		soundfont_name = soundfont_name.replace(".sf2", "").replace("[内置]", "").strip_edges()
-		print("[MidiPlaybackManager] Loading soundfont from config: %s" % soundfont_name)
+		GLogger.info("Loading soundfont from config: %s" % soundfont_name, "MidiPlaybackManager")
 		if set_soundfont(soundfont_name):
 			return
 	
 	# 使用硬编码的默认值（如果加载失败）
-	print("[MidiPlaybackManager] Using hardcoded default soundfont")
+	GLogger.info("Using hardcoded default soundfont", "MidiPlaybackManager")
 	current_soundfont_path = default_soundfont_path
 
 ## ========== 人声同步相关方法 ==========
@@ -1486,7 +1498,7 @@ func start_vocal_playback() -> void:
 	# 优先使用预加载的 stream（消除 is_pause=false 时的解码卡顿）
 	if _preloaded_vocal_stream != null and _vocal_preload_path == vocal_file_path:
 		vocal_stream = _preloaded_vocal_stream
-		print("[MidiPlaybackManager] Using preloaded vocal file: %s" % vocal_file_path)
+		GLogger.info("Using preloaded vocal file: %s" % vocal_file_path, "MidiPlaybackManager")
 	else:
 		# 预加载未完成或路径不匹配，回退到同步加载
 		# 首先检查文件是否存在（使用FileAccess，支持user://目录）
@@ -1500,13 +1512,13 @@ func start_vocal_playback() -> void:
 		match file_ext:
 			"ogg":
 				vocal_stream = AudioStreamOggVorbis.load_from_file(vocal_file_path)
-				print("[MidiPlaybackManager] Loading OGG vocal file: %s" % vocal_file_path)
+				GLogger.info("Loading OGG vocal file: %s" % vocal_file_path, "MidiPlaybackManager")
 			"mp3":
 				vocal_stream = AudioStreamMP3.load_from_file(vocal_file_path)
-				print("[MidiPlaybackManager] Loading MP3 vocal file: %s" % vocal_file_path)
+				GLogger.info("Loading MP3 vocal file: %s" % vocal_file_path, "MidiPlaybackManager")
 			"wav":
 				vocal_stream = AudioStreamWAV.load_from_file(vocal_file_path)
-				print("[MidiPlaybackManager] Loading WAV vocal file: %s" % vocal_file_path)
+				GLogger.info("Loading WAV vocal file: %s" % vocal_file_path, "MidiPlaybackManager")
 			_:
 				push_error("Unsupported audio format: %s (file: %s)" % [file_ext, vocal_file_path])
 				return
@@ -1516,7 +1528,7 @@ func start_vocal_playback() -> void:
 			push_error("Failed to load vocal file: %s" % vocal_file_path)
 			return
 
-	print("[MidiPlaybackManager] Successfully loaded vocal file: %s" % vocal_file_path)
+	GLogger.info("Successfully loaded vocal file: %s" % vocal_file_path, "MidiPlaybackManager")
 
 	# 播放人声，使用当前的MIDI位置作为起始位置
 	var expected_vocal_position = position_ms - vocal_offset_ms
@@ -1594,7 +1606,7 @@ func _sync_vocal_with_midi() -> void:
 	# 如果差值超过阈值，进行同步调整
 	if diff > sync_threshold_ms:
 		audio_manager.seek_vocal(expected_vocal_position)
-		print("[MidiPlaybackManager] Vocal sync adjusted: diff=%.0f ms, target=%.0f ms" % [diff, expected_vocal_position])
+		GLogger.info("Vocal sync adjusted: diff=%.0f ms, target=%.0f ms" % [diff, expected_vocal_position], "MidiPlaybackManager")
 
 	# 更新上次同步检查的位置
 	last_sync_check_pos_ms = position_ms
@@ -1623,7 +1635,7 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	if section == "Playback":
 		# 最大复音数改变（需要重新加载SoundFont才能生效）
 		if key == "max_polyphony":
-			print("[MidiPlaybackManager] Polyphony setting changed via config: %s = %s" % [key, value])
+			GLogger.info("Polyphony setting changed via config: %s = %s" % [key, value], "MidiPlaybackManager")
 
 			# 获取当前是否正在播放
 			var was_playing = is_playing
@@ -1640,15 +1652,15 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 				if backend.has_method("set_max_polyphony"):
 					var max_polyphony = int(value) if value is int else ConfigManager.instance.get_int("Playback", "max_polyphony", 96)
 					backend.call("set_max_polyphony", max_polyphony)
-					print("[MidiPlaybackManager] Updated max polyphony to: %d" % max_polyphony)
+					GLogger.info("Updated max polyphony to: %d" % max_polyphony, "MidiPlaybackManager")
 
 				# 重新加载SoundFont使设置生效
 				_load_soundfont_from_config()
-				print("[MidiPlaybackManager] Soundfont reloaded with new audio settings")
+				GLogger.info("Soundfont reloaded with new audio settings", "MidiPlaybackManager")
 
 				# 如果之前正在播放，恢复播放位置
 				if was_playing and current_midi_data != null:
 					seek(current_pos)
 					play()
-					print("[MidiPlaybackManager] Resumed playback at %.2fms" % current_pos)
+					GLogger.info("Resumed playback at %.2fms" % current_pos, "MidiPlaybackManager")
 			return
