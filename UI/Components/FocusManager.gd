@@ -45,6 +45,11 @@ func _grab_list_selected(list_path: String) -> void:
 	if nd == null or not ("selected_item" in nd):
 		return
 	if nd.selected_item == -1:
+		# 列表正在滚动/吸附中时，选中态可能刚被滚动逻辑清除（reset_selection），
+		# 强制选首项会让吸附突然跳到列表头（"滚动中点一下停住 → 吸附到第一项"）。
+		# 此时跳过兜底，让列表自然停下，由各视图 _process 的 need_snap 自动吸附到当前可见项。
+		if nd.has_method("is_scrolling") and nd.is_scrolling():
+			return
 		nd.select_item(0)
 	if nd.selected_item < 0 or nd.selected_item >= nd.list_items.size():
 		return

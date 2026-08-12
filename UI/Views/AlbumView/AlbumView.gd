@@ -206,5 +206,5 @@ func _on_random_select_btn_pressed() -> void:
 	if current_albums.is_empty() or list_items.is_empty():
 		return
 	var random_index := randi() % current_albums.size()
-	select_item(random_index)
-	need_snap = true
+	# 用 force_snap_to：列表滚动中也要立即取消惯性并吸附到随机项（普通 need_snap 会被滚动状态门控）
+	force_snap_to(random_index)

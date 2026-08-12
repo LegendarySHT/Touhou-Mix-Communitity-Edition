@@ -153,6 +153,50 @@ func _on_scroll_stable():
 func is_scrolling() -> bool:
 	return not _scroll_stable or _pointer_pressed or _drag_scrolling or _is_dragging_bar or _snap_active
 
+## 当前是否正在播放吸附动画（区别于普通惯性/拖拽滚动）
+## 供焦点导航延迟选中判断：只有吸附动画飞向屏幕外远处目标时才需要延迟，
+## 普通惯性滚动中按键应立即选中（会取消惯性、开始新吸附）
+func is_snapping() -> bool:
+	return _snap_active
+
+## 判断指定索引的列表项是否在可视视口内（与视口有可见重叠）
+## 供焦点导航延迟选中判断：滚动/吸附中焦点落到屏幕外的项时，
+## 等待该项滚入视口再选中，避免把吸附目标反复改到屏幕外
+func is_item_visible(index: int) -> bool:
+	if index < 0 or index >= list_items.size():
+		return false
+	var item: Control = list_items[index]
+	if not is_instance_valid(item):
+		return false
+	var list_top := global_position.y
+	var list_bottom := global_position.y + size.y
+	var item_top := item.global_position.y
+	var item_bottom := item.global_position.y + item.size.y
+	return item_top < list_bottom and item_bottom > list_top
+
+## 把焦点拉回吸附项：
+## 吸附飞行中（目标还没滚进视口）Godot 自动焦点导航（钳制在 ScrollContainer 可见区域，
+## 见引擎 control.cpp 的 _window_find_focus_neighbor）会把焦点丢到屏幕内任意可见项；
+## 此时 grab_focus 会触发 ScrollContainer 滚动与吸附打架，故仅当吸附目标已进入视口时才拉回。
+## 焦点本就在吸附项上、或焦点在这张列表之外（搜索框/按钮等）时不打扰。
+## 效果：吸附目标一在屏幕内可见，按键即可从吸附项继续正常导航（无需等吸附完全结束）。
+func _grab_focus_to_selected() -> void:
+	if selected_item < 0 or selected_item >= list_items.size():
+		return
+	if not is_item_visible(selected_item):
+		return  # 目标还没滚进视口，此时 grab 会触发滚动与吸附打架
+	var sel_node := get_selected_node()
+	if sel_node == null or not is_instance_valid(sel_node):
+		return
+	var btn: Control = sel_node.button
+	if btn == null or not is_instance_valid(btn):
+		return
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	if focus_owner == btn:
+		return
+	if focus_owner != null and container.is_ancestor_of(focus_owner):
+		btn.grab_focus()
+
 # 滚动条值变化（scrollbar 自身拖拽时）
 func _on_v_scrollbar_changed(_value: float):
 	if work_state in [UIStateManager.UIState.ALBUM_VIEW] and _is_dragging_bar:
@@ -303,6 +347,12 @@ func _process(delta: float) -> void:
 		_snap_stable_frames = 0
 		_snap_clamped_frames = 0
 
+	# 吸附飞行中焦点可能被 Godot 自动焦点导航（钳制 ScrollContainer 可见区域）丢到
+	# 屏幕内任意项；一旦吸附目标滚进视口就把焦点拉回吸附项，保证吸附结束后
+	# 按键从吸附目标处继续正常导航（"吸附项在屏幕内可见时即可按键选择"）
+	if _snap_active and selected_item >= 0 and selected_item < list_items.size():
+		_grab_focus_to_selected()
+
 
 func _find_snap_target_from_visible() -> int:
 	var view_top = global_position.y
@@ -428,6 +478,31 @@ func select_item(index: int) -> int:
 	selected_item = index
 
 	return index
+
+## 强制吸附到指定项：无视滚动/拖拽状态，立即取消惯性并开始吸附
+## 供"随机选择""外部选中"等程序化跳转使用 —— 列表滚动中时普通 need_snap
+## 会被 _process 的 (_scroll_stable or _snap_active) 门控，且滚动快的分支还会
+## call_deferred("reset_selection") 清掉本次选中，导致吸附延迟甚至吸附到别处
+func force_snap_to(index: int) -> void:
+	if list_items.is_empty():
+		return
+	# 先清除滚动状态机的拖拽标记，避免随后的 value_changed 回调误触发 reset_selection
+	_is_dragging_bar = false
+	_pointer_pressed = false
+	_pointer_release_observed = false
+	# 取消原生拖拽会话（含惯性）：set_v_scroll 内部调 _cancel_drag() 停惯性并发出 scroll_ended
+	scroll_vertical = scroll_vertical
+	_drag_scrolling = false
+	# 立即置为稳定，让吸附条件立刻满足
+	_scroll_stable = true
+	if _scroll_stable_timer and not _scroll_stable_timer.is_stopped():
+		_scroll_stable_timer.stop()
+	_scroll_speed = 0.0
+	_prev_scroll_vertical = scroll_vertical
+	select_item(index)
+	need_snap = true
+	# 立即激活吸附：跳过 _process 中"滚动速度快 → reset_selection"分支对本次选中的清除
+	_snap_active = true
 
 func get_selected_node() -> Control:
 	if selected_item == -1:

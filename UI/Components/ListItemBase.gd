@@ -66,10 +66,27 @@ func _on_focus_entered():
 		_pass_focus = false
 		return
 
-	# 方向键聚焦时需要触发按钮
+	# 方向键聚焦时需要触发按钮。
+	# 吸附飞行中（吸附目标还没滚进视口）忽略本次按键选中：进入焦点时捕获当时的
+	# 吸附状态，之后即使目标滚进视口也不再放行 —— 首尾 focus 相连 + 按住方向键时，
+	# 焦点一旦滚出屏幕，Godot 自动焦点导航（钳制 ScrollContainer 可见区域，见引擎
+	# control.cpp _window_find_focus_neighbor）会把焦点丢到屏幕内任意可见项，此时选中
+	# 该项会把吸附目标从中途改走，表现为"吸附未完成时吸附到其它项 / 选中项回退来回跳"。
+	# 吸附目标进入视口（或吸附结束）后按键即恢复选中；BaseScrollList._grab_focus_to_selected
+	# 会在目标可见时把焦点拉回吸附项，保证按键从吸附项继续导航。
+	var list = parent_node
+	var snapped_off_target := false
+	if list is BaseScrollList and list.is_snapping() \
+			and list.selected_item >= 0 \
+			and not list.is_item_visible(list.selected_item):
+		snapped_off_target = true
+
 	await get_tree().process_frame
 	if not button.button_pressed and _mouse_press_pos == Vector2.ZERO:
-		parent_node.select_item(item_index)
+		if snapped_off_target:
+			return  # 进入焦点时吸附目标未进视口，忽略本次按键选择
+		if is_instance_valid(parent_node):
+			parent_node.select_item(item_index)
 
 func _on_button_down():
 	_mouse_press_pos = get_global_mouse_position()
@@ -113,8 +130,11 @@ func _on_toggled(toggled_on: bool):
 	var temp = is_selected
 	is_selected = final
 	_pass_focus = final
+	# 仅鼠标驱动的选中才抢焦点回选中项：键盘导航时焦点已经在该项上（_on_focus_entered 触发的选中），
+	# 抢焦点会把焦点从新聚焦的项拉回选中项，导致按键选择回退/来回跳（吸附动画中尤其明显）
+	var was_mouse_press := _mouse_press
 	await get_tree().process_frame
-	if is_selected and self != get_viewport().gui_get_focus_owner():
+	if is_selected and was_mouse_press and self != get_viewport().gui_get_focus_owner():
 		button.grab_focus()
 	_mouse_press_pos = Vector2.ZERO
 	_mouse_press = false

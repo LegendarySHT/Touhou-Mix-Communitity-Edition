@@ -854,6 +854,7 @@ offset_top = -110.0
 offset_right = 172.5
 grow_horizontal = 2
 grow_vertical = 0
+focus_mode = 0
 theme_override_colors/icon_pressed_color = Color(0.74978, 0.74978, 0.74977994, 1)
 theme_override_colors/icon_hover_color = Color(0.8992584, 0.8992584, 0.8992584, 1)
 icon = ExtResource("17_oye8v")
