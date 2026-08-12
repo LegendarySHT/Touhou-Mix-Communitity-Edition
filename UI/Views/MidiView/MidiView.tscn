@@ -18,7 +18,6 @@
 [ext_resource type="Texture2D" uid="uid://yupw24rudalj" path="res://Resources/icon/midiInfoPage/status/upCount.png" id="15_27bbn"]
 [ext_resource type="Texture2D" uid="uid://dpwyd6fd4q7j7" path="res://Resources/icon/midiInfoPage/status/avgAcc.png" id="16_8spcd"]
 [ext_resource type="Texture2D" uid="uid://dw6l1r7cawiyj" path="res://Resources/icon/midiInfoPage/status/avgPP.png" id="17_8kmhx"]
-[ext_resource type="ButtonGroup" uid="uid://b6ls2gympic81" path="res://Resources/ButtonGroup/MidiInfoMenu.tres" id="18_1rn3q"]
 [ext_resource type="Script" uid="uid://du6e1o3nahcc1" path="res://UI/Views/MidiView/option_ui.gd" id="18_2bu1o"]
 [ext_resource type="Texture2D" uid="uid://cn6jximeoko1h" path="res://Resources/icon/midiInfoPage/rank.png" id="19_fx5ny"]
 [ext_resource type="Texture2D" uid="uid://mg7stpbld131" path="res://Resources/icon/midiInfoPage/option.png" id="20_2bu1o"]
@@ -142,6 +141,8 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
+[sub_resource type="ButtonGroup" id="ButtonGroup_f13vx"]
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_dnql7"]
 content_margin_top = 40.0
 
@@ -160,6 +161,14 @@ content_margin_bottom = 30.0
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_vqh6o"]
 content_margin_left = 50.0
 content_margin_right = 50.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_f13vx"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_y3sh5"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_mo7xw"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_gjqh3"]
 
 [node name="MidiView" type="HBoxContainer" unique_id=2031959890]
 anchors_preset = -1
@@ -589,7 +598,7 @@ layout_mode = 2
 size_flags_horizontal = 7
 toggle_mode = true
 button_pressed = true
-button_group = ExtResource("18_1rn3q")
+button_group = SubResource("ButtonGroup_f13vx")
 icon = ExtResource("19_fx5ny")
 icon_alignment = 1
 expand_icon = true
@@ -599,7 +608,7 @@ metadata/id = 1
 layout_mode = 2
 size_flags_horizontal = 7
 toggle_mode = true
-button_group = ExtResource("18_1rn3q")
+button_group = SubResource("ButtonGroup_f13vx")
 icon = ExtResource("20_2bu1o")
 icon_alignment = 1
 expand_icon = true
@@ -609,7 +618,7 @@ metadata/id = 2
 layout_mode = 2
 size_flags_horizontal = 7
 toggle_mode = true
-button_group = ExtResource("18_1rn3q")
+button_group = SubResource("ButtonGroup_f13vx")
 icon = ExtResource("23_u7brx")
 icon_alignment = 1
 expand_icon = true
@@ -775,18 +784,24 @@ size_flags_horizontal = 4
 mouse_filter = 2
 alignment = 1
 
-[node name="AddBtn" type="TextureButton" parent="OptionPanel/VBoxC/TabView/FavorPanel/VBoxC/CreateList" unique_id=315885352]
+[node name="AddBtn" type="Button" parent="OptionPanel/VBoxC/TabView/FavorPanel/VBoxC/CreateList" unique_id=675184273]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
-texture_normal = ExtResource("31_add")
-ignore_texture_size = true
-stretch_mode = 5
+theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
+theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_f13vx")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_y3sh5")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_mo7xw")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_gjqh3")
+icon = ExtResource("31_add")
+icon_alignment = 1
+expand_icon = true
 
 [connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/PreviBtn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_previous"]
 [connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/Fold/Btn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_show_midi_list"]
 [connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Left/NextBtn" to="LeftArea/InfoWindow/HBoxC/MidiList" method="_next"]
-[connection signal="pressed" from="LeftArea/MainBtn/PlayBtn" to="." method="_on_click_start_btn"]
-[connection signal="pressed" from="LeftArea/MainBtn/TrackViewBtn" to="." method="_on_click_track_btn"]
-[connection signal="pressed" from="LeftArea/MainBtn/FavorListBtn" to="." method="_on_click_favor_list_btn"]
 [connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Right/InfoBtn" to="." method="_on_info_btn_pressed"]
 [connection signal="pressed" from="LeftArea/InfoWindow/HBoxC/Right/DelBtn" to="." method="_on_del_btn_pressed"]
+[connection signal="pressed" from="LeftArea/MainBtn/TrackViewBtn" to="." method="_on_click_track_btn"]
+[connection signal="pressed" from="LeftArea/MainBtn/PlayBtn" to="." method="_on_click_start_btn"]
+[connection signal="pressed" from="LeftArea/MainBtn/FavorListBtn" to="." method="_on_click_favor_list_btn"]

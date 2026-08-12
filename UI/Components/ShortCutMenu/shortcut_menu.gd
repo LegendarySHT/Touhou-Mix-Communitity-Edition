@@ -16,7 +16,7 @@ extends VBoxContainer
 @onready var favor_list_container: VBoxContainer = $Panel/Page/FavorPage/FavorList/VBoxC
 @onready var favor_list: ScrollContainer = $Panel/Page/FavorPage/FavorList
 @onready var create_list: VBoxContainer = $Panel/Page/FavorPage/CreateList
-@onready var add_btn: TextureButton = $Panel/Page/FavorPage/CreateList/AddBtn
+@onready var add_btn: Button = $Panel/Page/FavorPage/CreateList/AddBtn
 @onready var favor_page: VBoxContainer = $Panel/Page/FavorPage
 
 # 收藏夹列表项场景
@@ -135,7 +135,7 @@ func _on_status_pressed() -> void:
 	# Midi状态筛选
 	sortByStatus=(sortByStatus+1)%5 as SortEngine.SortStatField
 
-	sort_btns.get_node("Status").texture_normal=load(_sort_stat_icon_map[sortByStatus])
+	sort_btns.get_node("Status").icon=load(_sort_stat_icon_map[sortByStatus])
 	# 切换状态时保留当前字段/方向选择（否则 set_sort_mode 默认参数会把排序字段重置回默认）
 	se.set_sort_mode(sortByStatus, sortByData, sortDirection)
 
@@ -151,18 +151,17 @@ var _sort_data_icon_map = {
 	SortEngine.SortDataField.TRIAL_COUNT: "res://Resources/icon/Sort/Data/Played.png",
 	SortEngine.SortDataField.UPLOADED_DATE: "res://Resources/icon/Sort/Data/CreateTime.png",
 }
-func _on_data_toggled(toggled_on: bool) -> void:
-	if toggled_on:
-		sortByData = (sortByData + 1) % 6 as SortEngine.SortDataField
+func _on_data_pressed() -> void:
+	sortByData = (sortByData + 1) % 6 as SortEngine.SortDataField
 
-		sort_btns.get_node("Data").texture_normal=load(_sort_data_icon_map[sortByData])
-		se.set_sort_mode(sortByStatus, sortByData, sortDirection)
-		if ui.current_state!=ui.UIState.SORTED_VIEW:
-			ui.change_state(ui.UIState.SORTED_VIEW)
+	sort_btns.get_node("Data").icon=load(_sort_data_icon_map[sortByData])
+	se.set_sort_mode(sortByStatus, sortByData, sortDirection)
+	if ui.current_state!=ui.UIState.SORTED_VIEW:
+		ui.change_state(ui.UIState.SORTED_VIEW)
 
 func _on_ordering_pressed() -> void:
 	sortDirection = (sortDirection + 1) % 2 as SortEngine.SortDirection
-	sort_btns.get_node("Ordering").texture_normal=load("res://Resources/icon/Sort/Ordering/Ascent.png" if sortDirection == SortEngine.SortDirection.ASCENDING else "res://Resources/icon/Sort/Ordering/Descent.png")
+	sort_btns.get_node("Ordering").icon=load("res://Resources/icon/Sort/Ordering/Ascent.png" if sortDirection == SortEngine.SortDirection.ASCENDING else "res://Resources/icon/Sort/Ordering/Descent.png")
 	se.set_sort_mode(sortByStatus, sortByData, sortDirection)
 
 	if ui.current_state!=ui.UIState.SORTED_VIEW:
@@ -182,10 +181,17 @@ func _on_search_query(query: String = "") -> void:
 func _refresh_favor_list(_arg1 = null, _arg2 = null, _arg3 = null) -> void:
 	if not FavoriteManager.instance:
 		return
+	# 记住当前聚焦项：重建会销毁节点，重建后恢复焦点（如重命名完成后的场景）
+	var focused_id := ""
+	for child in favor_list_container.get_children():
+		if child is FavorListItem and child.has_focus():
+			focused_id = child.favorite_id
+			break
 	# 清空现有列表项
 	for child in favor_list_container.get_children():
 		child.queue_free()
 	# 重新填充
+	var target_item: FavorListItem = null
 	for fav in FavoriteManager.instance.favorites:
 		var item = FAVOR_ITEM_SCENE.instantiate()
 		favor_list_container.add_child(item)
@@ -193,6 +199,11 @@ func _refresh_favor_list(_arg1 = null, _arg2 = null, _arg3 = null) -> void:
 		item.favor_item_clicked.connect(_on_favor_item_clicked)
 		item.favor_item_renamed.connect(_on_favor_item_renamed)
 		item.favor_item_deleted.connect(_on_favor_item_deleted)
+		if fav.id == focused_id:
+			target_item = item
+	# 重建后恢复焦点到原项
+	if target_item:
+		target_item.grab_focus()
 
 
 ## AddBtn 点击：根据当前状态切换新建/确认
@@ -217,7 +228,7 @@ func _enter_create_mode() -> void:
 	create_list.add_child(_create_edit)
 	create_list.move_child(_create_edit, 0)
 	# 切换 AddBtn 图标为 confirm
-	add_btn.texture_normal = load(ICON_CONFIRM)
+	add_btn.icon = load(ICON_CONFIRM)
 	_create_edit.grab_focus()
 
 
@@ -232,7 +243,7 @@ func _confirm_create() -> void:
 	# 恢复 FavorList 高度
 	favor_list.custom_minimum_size.y = FAVOR_LIST_DEFAULT_HEIGHT
 	# 切换 AddBtn 图标回 add
-	add_btn.texture_normal = load(ICON_ADD)
+	add_btn.icon = load(ICON_ADD)
 	# 创建收藏夹
 	if not fav_name.is_empty():
 		FavoriteManager.instance.create_favorite(fav_name)

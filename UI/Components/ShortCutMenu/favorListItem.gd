@@ -2,7 +2,8 @@
 ## 支持两种交互模式：
 ## - BROWSE: AlbumView 中点击列表项，跳转到 SortedMidiView 浏览收藏夹内容
 ## - MANAGE: MidiView 弹窗中点击列表项，切换当前 MIDI 的收藏状态
-extends HBoxContainer
+## 根节点为 Button：提供焦点效果 + 点击主操作（pressed 信号），替代旧 _gui_input 触摸点击判定
+extends Button
 
 class_name FavorListItem
 
@@ -23,15 +24,14 @@ var mode: Mode = Mode.BROWSE
 var favorite_id: String = ""
 var current_midi: MidiData = null
 
-@onready var cover: TextureRect = $Cover
-@onready var name_label: Label = $Detail/NameBox/name
-@onready var name_box: Control = $Detail/NameBox
-@onready var midi_count_label: Label = $Detail/midiCount
-@onready var name_edit: LineEdit = $Detail/nameEdit
-@onready var action_icon_wrap: Control = $Cover/ActionIconWrap
-@onready var action_icon: TextureRect = $Cover/ActionIconWrap/ActionIcon
-@onready var manage_btns: HBoxContainer = $ManageBtns
-@onready var delete_btn: TextureButton = $ManageBtns/DeleteBtn
+@onready var cover: TextureRect = $HBox/Cover
+@onready var name_label: Label = $HBox/Detail/NameBox/name
+@onready var name_box: Control = $HBox/Detail/NameBox
+@onready var midi_count_label: Label = $HBox/Detail/midiCount
+@onready var name_edit: LineEdit = $HBox/Detail/NameBox/nameEdit
+@onready var action_icon_wrap: Control = $HBox/Cover/ActionIconWrap
+@onready var action_icon: TextureRect = $HBox/Cover/ActionIconWrap/ActionIcon
+@onready var delete_btn: Button = $HBox/DeleteBtn
 
 const ICON_ADD := "res://Resources/icon/add.png"
 const ICON_DELETE := "res://Resources/icon/minus.png"
@@ -44,68 +44,53 @@ const TAP_MOVE_THRESHOLD := 15.0
 var _name_scroll_state: TextScrollHelper.State = null
 var _name_full_text: String = ""
 
-# 触摸追踪状态：用于区分“点击”与“滚动拖拽”
-# 同一时刻只有一个触摸目标，故状态可共享
+# 名称触摸追踪状态：用于区分“点击重命名”与“滚动拖拽”
 var _touch_start_pos: Vector2 = Vector2.ZERO
 var _touch_pending: bool = false   # 是否有待释放的触摸
-var _touch_on_name: bool = false   # 触摸起点是否在 name Label 上（用于保证按下与释放由同一控件处理）
 
 ## 点击名称区域：进入重命名模式
 ## 仅在"按下后未发生明显移动"时才判定为点击，避免滚动误触
-## name Label 设为 MOUSE_FILTER_PASS，事件会继续冒泡至 _gui_input，通过 _touch_pending 守卫避免重复处理
+## name Label 设为 MOUSE_FILTER_STOP，事件被其消费后不再冒泡到根 Button，
+## 因此点击名称只会进入重命名，不会同时触发列表项主操作
 func _on_name_label_gui_input(event: InputEvent) -> void:
 	if not (event is InputEventScreenTouch):
 		return
 	if event.pressed:
 		_touch_start_pos = event.position
 		_touch_pending = true
-		_touch_on_name = true
-	elif _touch_pending and _touch_on_name:
+	elif _touch_pending:
 		_touch_pending = false
 		if _is_tap(event.position):
 			_enter_rename_mode()
 
 
-## 拦截删除按钮触摸：标记 _touch_pending 以阻止 _gui_input 触发列表项点击
-## DeleteBtn 设为 MOUSE_FILTER_PASS，按钮自身的 pressed 信号仍正常工作
-func _on_delete_btn_gui_input(event: InputEvent) -> void:
-	if not (event is InputEventScreenTouch):
-		return
-	if event.pressed:
-		_touch_pending = true
-	elif _touch_pending:
-		_touch_pending = false
-
-
-## 内置 gui_input：点击列表项主体（非按钮区域）触发主操作
-## 仅在"按下后未发生明显移动"时才判定为点击，避免滚动误触
-## FavorListItem 设为 MOUSE_FILTER_PASS，触摸事件会继续冒泡至父级 ScrollContainer 以支持滚动
-## 子控件（name Label、DeleteBtn）的 gui_input 先于本函数触发并设置 _touch_pending，通过守卫避免重复处理
-func _gui_input(event: InputEvent) -> void:
-	if not (event is InputEventScreenTouch):
-		return
-	if event.pressed:
-		# 若子控件已认领此触摸（_touch_pending 为 true），跳过以保留其状态
-		if _touch_pending:
-			return
-		_touch_start_pos = event.position
-		_touch_pending = true
-		_touch_on_name = false
-	elif _touch_pending and not _touch_on_name:
-		_touch_pending = false
-		if _is_tap(event.position):
-			# 编辑模式下不响应点击
-			if name_edit.visible:
-				return
-			if mode == Mode.BROWSE:
-				favor_item_clicked.emit(favorite_id)
-			else:
-				favor_midi_toggled.emit(favorite_id)
-
-
 ## 判定触摸释放是否构成有效点击（移动距离小于阈值）
 func _is_tap(release_pos: Vector2) -> bool:
 	return release_pos.distance_to(_touch_start_pos) <= TAP_MOVE_THRESHOLD
+
+
+# ========== 键盘快捷键（根节点聚焦时） ==========
+
+## 聚焦到列表项时拦截按键：
+## - Del / Backspace → 触发删除按钮（_on_delete_pressed）
+## - F2 / R → 触发重命名（_enter_rename_mode）
+## 说明：定义 _gui_input 不会覆盖 Button 原生处理（_call_gui_input 中 GDVIRTUAL 调用后
+## 仍会调原生 gui_input），仅对拦截的按键 accept_event()，其余事件继续传给原生逻辑（点击照常触发 pressed）
+func _gui_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	if not event.pressed or event.echo:
+		return
+	# 重命名编辑中不响应（name_edit 已 grab_focus，按键走 LineEdit；此守卫兜底）
+	if name_edit.visible:
+		return
+	match event.keycode:
+		KEY_DELETE, KEY_BACKSPACE:
+			_on_delete_pressed()
+			accept_event()
+		KEY_F2, KEY_R:
+			_enter_rename_mode()
+			accept_event()
 
 
 ## 初始化列表项
@@ -141,13 +126,11 @@ func _load_cover(fav: FavoriteListData) -> void:
 
 func _apply_mode() -> void:
 	var show_action := (mode == Mode.MANAGE) and current_midi != null
-	# 整个 Wrap（含黑色背景）在 BROWSE 模式下隐藏
+	# 切换 Wrap 可见性即可控制图标整体显隐（含黑色背景），ActionIcon 默认可见
 	action_icon_wrap.visible = show_action
 	if show_action:
 		var in_fav := FavoriteManager.instance.is_midi_in_favorite(favorite_id, current_midi)
 		action_icon.texture = load(ICON_DELETE if in_fav else ICON_ADD)
-		# tscn 中 ActionIcon 默认 visible=false，需显式开启
-		action_icon.visible = true
 
 
 # ========== 文字滚动动画 ==========
@@ -168,7 +151,7 @@ func _enter_rename_mode() -> void:
 	TextScrollHelper.stop(_name_scroll_state)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_edit.text = _name_full_text
-	name_box.visible = false
+	name_label.visible = false
 	name_edit.visible = true
 	name_edit.grab_focus()
 	name_edit.select_all()
@@ -182,21 +165,48 @@ func _on_rename_focus_exited() -> void:
 	_confirm_rename()
 
 
+## 收尾重命名中标记：grab_focus 会触发 name_edit 的 focus_exited 重入 _confirm_rename，此守卫防止重复处理
+var _finalizing_rename: bool = false
+
 func _confirm_rename() -> void:
 	if not name_edit.visible:
 		return
+	if _finalizing_rename:
+		return
+	_finalizing_rename = true
 	var new_name := name_edit.text.strip_edges()
+	# 先转移焦点回列表项根 Button 再隐藏 name_edit：
+	# 隐藏持有焦点的控件会让引擎释放焦点（viewport 对不可见焦点项 release_focus）；
+	# 且列表重建时 _refresh_favor_list 依赖该项的焦点状态来定位并恢复焦点
+	grab_focus()
+	# grab_focus 使 name_edit 同步触发 focus_exited → _on_rename_focus_exited → _confirm_rename，由上述守卫拦截
 	name_edit.visible = false
-	name_box.visible = true
+	name_label.visible = true
 	if not new_name.is_empty() and new_name != _name_full_text:
 		favor_item_renamed.emit(favorite_id, new_name)
 	else:
 		# 恢复显示并重启滚动
 		_name_full_text = name_label.text
 		_setup_name_scroll()
+	_finalizing_rename = false
 
 
 # ========== 删除交互 ==========
 
 func _on_delete_pressed() -> void:
 	favor_item_deleted.emit(favorite_id)
+
+
+# ========== 主操作（根 Button pressed） ==========
+
+## 点击列表项主体触发主操作（替换旧 _gui_input 触摸点击判定）
+## DeleteBtn 是独立 Button（MOUSE_FILTER_STOP），其自身 pressed 已连接 _on_delete_pressed，
+## 触摸事件在 DeleteBtn 处被消费，不会冒泡到根 Button，故无需再拦截删除按钮触摸
+func _on_favor_list_item_pressed() -> void:
+	# 重命名编辑中不响应点击（name_edit 为 LineEdit 会消费事件，此守卫兜底）
+	if name_edit.visible:
+		return
+	if mode == Mode.BROWSE:
+		favor_item_clicked.emit(favorite_id)
+	else:
+		favor_midi_toggled.emit(favorite_id)

@@ -16,7 +16,7 @@ var _create_edit: LineEdit = null
 @onready var favor_list_container: VBoxContainer = $VBoxC/FavorList/VBoxC
 @onready var favor_list: ScrollContainer = $VBoxC/FavorList
 @onready var create_list: VBoxContainer = $VBoxC/CreateList
-@onready var add_btn: TextureButton = $VBoxC/CreateList/AddBtn
+@onready var add_btn: Button = $VBoxC/CreateList/AddBtn
 
 const FAVOR_LIST_DEFAULT_HEIGHT := 500
 const FAVOR_LIST_CREATE_HEIGHT := 400
@@ -100,7 +100,7 @@ func _enter_create_mode() -> void:
 	# 插入到 CreateList 内部 AddBtn 上方
 	create_list.add_child(_create_edit)
 	create_list.move_child(_create_edit, 0)
-	add_btn.texture_normal = load(ICON_CONFIRM)
+	add_btn.icon = load(ICON_CONFIRM)
 	_create_edit.grab_focus()
 
 
@@ -113,7 +113,7 @@ func _confirm_create() -> void:
 	_create_edit = null
 	# 恢复 FavorList 高度
 	favor_list.custom_minimum_size.y = FAVOR_LIST_DEFAULT_HEIGHT
-	add_btn.texture_normal = load(ICON_ADD)
+	add_btn.icon = load(ICON_ADD)
 	if not fav_name.is_empty():
 		FavoriteManager.instance.create_favorite(fav_name)
 
@@ -127,4 +127,4 @@ func cancel_create() -> void:
 		_create_edit = null
 	# 恢复 FavorList 高度
 	favor_list.custom_minimum_size.y = FAVOR_LIST_DEFAULT_HEIGHT
-	add_btn.texture_normal = load(ICON_ADD)
+	add_btn.icon = load(ICON_ADD)

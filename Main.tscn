@@ -14,7 +14,6 @@
 [ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="12_40n85"]
 [ext_resource type="Texture2D" uid="uid://b4rxi3wio8sjy" path="res://Resources/icon/Sort/Status/All.png" id="14_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://c8twb3tyhwm1t" path="res://Resources/icon/Sort/Data/Played.png" id="14_sph85"]
-[ext_resource type="ButtonGroup" uid="uid://ba4mkjssd25nv" path="res://Resources/ButtonGroup/SortButton.tres" id="15_bg4s2"]
 [ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="16_vi5kq"]
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
 [ext_resource type="Texture2D" uid="uid://cctd38so3swat" path="res://Resources/icon/random.png" id="17_oye8v"]
@@ -383,6 +382,14 @@ corner_radius_top_right = 24
 corner_radius_bottom_right = 24
 corner_radius_bottom_left = 24
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_iygje"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_j02sm"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_2xvos"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_40n85"]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mxvw5"]
 bg_color = Color(0.050980393, 0.5294118, 1, 1)
 border_width_right = 8
@@ -497,6 +504,7 @@ layout_mode = 3
 anchors_preset = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
+focus_mode = 1
 script = ExtResource("8_3b0ty")
 metadata/_edit_lock_ = true
 
@@ -524,11 +532,13 @@ alignment = 1
 [node name="Search" type="Button" parent="skew/C/ShortCutMenu/Btns" unique_id=1214033665]
 custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
+focus_neighbor_left = NodePath("../../..")
 focus_neighbor_right = NodePath("../FavorList")
 focus_next = NodePath("../FavorList")
 theme_override_styles/focus = SubResource("StyleBoxFlat_5mvff")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_3b0ty")
+icon = ExtResource("12_40n85")
 icon_alignment = 1
 
 [node name="Border" type="PanelContainer" parent="skew/C/ShortCutMenu/Btns/Search" unique_id=1530113959]
@@ -538,31 +548,19 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_hri7i")
-
-[node name="TextureRect" type="TextureRect" parent="skew/C/ShortCutMenu/Btns/Search" unique_id=408583662]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = -10.0
-offset_bottom = -10.0
-grow_horizontal = 2
-grow_vertical = 2
-texture = ExtResource("12_40n85")
-expand_mode = 3
-stretch_mode = 5
 
 [node name="FavorList" type="Button" parent="skew/C/ShortCutMenu/Btns" unique_id=1822879373]
 custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
 focus_neighbor_left = NodePath("../Search")
+focus_neighbor_bottom = NodePath("../../Panel/Page/FavorPage/FavorList/VBoxC/FavorListItem")
 focus_next = NodePath("../Search")
 theme_override_styles/focus = SubResource("StyleBoxFlat_5mvff")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_3b0ty")
+icon = ExtResource("19_ny7u2")
 icon_alignment = 1
 expand_icon = true
 
@@ -573,22 +571,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_hri7i")
-
-[node name="TextureRect" type="TextureRect" parent="skew/C/ShortCutMenu/Btns/FavorList" unique_id=480893636]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = -10.0
-offset_bottom = -10.0
-grow_horizontal = 2
-grow_vertical = 2
-texture = ExtResource("19_ny7u2")
-expand_mode = 3
-stretch_mode = 5
 
 [node name="Panel" type="Panel" parent="skew/C/ShortCutMenu" unique_id=1377748302]
 show_behind_parent = true
@@ -627,6 +611,7 @@ layout_mode = 2
 [node name="TextEdit" type="LineEdit" parent="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox" unique_id=637319179]
 custom_minimum_size = Vector2(440, 100)
 layout_mode = 2
+focus_neighbor_left = NodePath("../../../../../Btns/Search")
 focus_next = NodePath("../../../../../Btns/FavorList")
 theme_override_font_sizes/font_size = 35
 theme_override_styles/normal = SubResource("StyleBoxFlat_devvj")
@@ -634,13 +619,13 @@ placeholder_text = "please enter..."
 alignment = 1
 caret_blink = true
 
-[node name="SearchBtn" type="TextureButton" parent="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox" unique_id=1105840886]
+[node name="SearchBtn" type="Button" parent="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox" unique_id=540940752]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 focus_next = NodePath("../../../../../Btns/FavorList")
-texture_normal = ExtResource("12_40n85")
-ignore_texture_size = true
-stretch_mode = 5
+icon = ExtResource("12_40n85")
+icon_alignment = 1
+expand_icon = true
 
 [node name="Line" type="ColorRect" parent="skew/C/ShortCutMenu/Panel/Page/SortPage" unique_id=155937236]
 custom_minimum_size = Vector2(600, 5)
@@ -653,31 +638,50 @@ layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 40
 
-[node name="Status" type="TextureButton" parent="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton" unique_id=1906757788]
+[node name="Status" type="Button" parent="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton" unique_id=59956079]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
+focus_neighbor_left = NodePath("../../../../../Btns/Search")
+focus_neighbor_right = NodePath("../Data")
 focus_next = NodePath("../../../../../Btns/FavorList")
-texture_normal = ExtResource("14_3b0ty")
-ignore_texture_size = true
-stretch_mode = 5
+theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
+theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_iygje")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_j02sm")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_2xvos")
+icon = ExtResource("14_3b0ty")
+icon_alignment = 1
+expand_icon = true
 
-[node name="Data" type="TextureButton" parent="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton" unique_id=847340100]
+[node name="Data" type="Button" parent="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton" unique_id=1988043361]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
+focus_neighbor_left = NodePath("../Status")
+focus_neighbor_right = NodePath("../Ordering")
 focus_next = NodePath("../../../../../Btns/FavorList")
-toggle_mode = true
-button_group = ExtResource("15_bg4s2")
-texture_normal = ExtResource("14_sph85")
-ignore_texture_size = true
-stretch_mode = 5
+theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
+theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_iygje")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_j02sm")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_2xvos")
+icon = ExtResource("14_sph85")
+icon_alignment = 1
+expand_icon = true
 
-[node name="Ordering" type="TextureButton" parent="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton" unique_id=38091999]
+[node name="Ordering" type="Button" parent="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton" unique_id=1323616722]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
+focus_neighbor_left = NodePath("../Data")
+focus_neighbor_right = NodePath("../../SearchBox/SearchBtn")
 focus_next = NodePath("../../../../../Btns/FavorList")
-texture_normal = ExtResource("16_vi5kq")
-ignore_texture_size = true
-stretch_mode = 5
+theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
+theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_iygje")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_j02sm")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_2xvos")
+icon = ExtResource("16_vi5kq")
+icon_alignment = 1
+expand_icon = true
 
 [node name="MarginContainer" type="MarginContainer" parent="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton" unique_id=1037083053]
 layout_mode = 2
@@ -687,11 +691,14 @@ theme_override_constants/margin_right = 20
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
-theme_override_constants/separation = 60
+theme_override_constants/separation = 20
 
 [node name="FavorList" type="ScrollContainer" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage" unique_id=1954604137]
 custom_minimum_size = Vector2(500, 530)
 layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxEmpty_40n85")
+follow_focus = true
 
 [node name="VBoxC" type="VBoxContainer" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage/FavorList" unique_id=1181947446]
 layout_mode = 2
@@ -702,17 +709,18 @@ layout_mode = 2
 
 [node name="CreateList" type="VBoxContainer" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage" unique_id=659633133]
 layout_mode = 2
-size_flags_vertical = 3
 alignment = 1
 
-[node name="AddBtn" type="TextureButton" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage/CreateList" unique_id=482899021]
+[node name="AddBtn" type="Button" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage/CreateList" unique_id=628121933]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 8
-texture_normal = ExtResource("17_5mkgo")
-ignore_texture_size = true
-stretch_mode = 5
+theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
+theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
+icon = ExtResource("17_5mkgo")
+icon_alignment = 1
+expand_icon = true
 
 [node name="AlbumList" type="ScrollContainer" parent="skew/C" unique_id=257977288]
 physics_interpolation_mode = 1
@@ -1159,14 +1167,14 @@ theme_override_styles/panel = SubResource("StyleBoxTexture_w3rk5")
 [node name="TabC" parent="PopupWindow" unique_id=1542807723 instance=ExtResource("28_hri7i")]
 offset_left = 20.0
 offset_top = 0.0
-offset_right = 830.0
+offset_right = 1260.0
 offset_bottom = 600.0
 offset_transform_enabled = true
 
 [connection signal="text_submitted" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox/TextEdit" to="skew/C/ShortCutMenu" method="_on_search_query"]
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox/SearchBtn" to="skew/C/ShortCutMenu" method="_on_search_query"]
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Status" to="skew/C/ShortCutMenu" method="_on_status_pressed"]
-[connection signal="toggled" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Data" to="skew/C/ShortCutMenu" method="_on_data_toggled"]
+[connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Data" to="skew/C/ShortCutMenu" method="_on_data_pressed"]
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Ordering" to="skew/C/ShortCutMenu" method="_on_ordering_pressed"]
 [connection signal="pressed" from="skew/C/RandomSelectBtn" to="skew/C/AlbumList" method="_on_random_select_btn_pressed"]
 [connection signal="pressed" from="LT_Btn/Button" to="LT_Btn" method="_on_button_pressed"]

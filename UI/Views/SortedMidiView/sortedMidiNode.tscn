@@ -71,6 +71,7 @@ offset_bottom = 10.0
 size_flags_horizontal = 0
 size_flags_vertical = 0
 offset_transform_enabled = true
+focus_neighbor_right = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
 focus_next = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
 mouse_filter = 1
 theme_override_styles/normal = SubResource("StyleBoxFlat_aaj07")
