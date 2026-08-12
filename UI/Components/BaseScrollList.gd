@@ -7,6 +7,7 @@ class_name BaseScrollList
 
 enum ScrollControlState {
 	IDLE,              # 空闲 —— 无滚动活动
+	USER_DRAG,         # 用户拖拽列表内容（含释放后的惯性阶段）
 	SCROLLBAR_DRAG,    # 用户拖拽滚动条
 	SNAP_ANIMATION,    # 吸附动画播放中
 }
@@ -28,10 +29,29 @@ var _items_process_enabled: bool = true
 ## 正在拖动滚动条（内部状态，对外通过 scroll_control_state 统一查询）
 var _is_dragging_bar: bool = false
 
+## 正在拖拽列表内容（ScrollContainer 原生拖拽会话进行中，含释放后的惯性阶段）
+## 拖拽期间即使速度为 0（用户按住停住看字）也不允许触发吸附，fix #72
+var _drag_scrolling: bool = false
+
+## 手指/鼠标是否正按在列表内容上（含尚未越过死区的按住阶段）
+## 原生 scroll_started 只在越过死区后发出，若只靠它，用户"按住停住看字"且未越过
+## 死区时吸附仍会触发；因此按下即置位、松开即清除，fix #72
+var _pointer_pressed: bool = false
+
+## 是否已观察到本次指针按下后的松开（用于原生会话兜底）
+## Godot 原生 drag 会话的 scroll_ended 依赖松手事件送达 ScrollContainer；
+## 若松手被子控件吞掉、或因松手时 drag_speed 非零进入惯性减速，scroll_ended 可能
+## 迟迟不来甚至永远不来，导致 _drag_scrolling 永久卡死、吸附不再恢复（fix #72 跟进）。
+## 因此：指针已松开 + 滚动已稳定（0.15s 无位移）时，即使 scroll_ended 未发出，
+## 也视为原生会话已结束，解除 _drag_scrolling。
+var _pointer_release_observed: bool = false
+
 ## 滚动控制状态 —— 统一查询当前是谁在控制滚动位置
-## IDLE=空闲, SCROLLBAR_DRAG=拖拽滚动条, SNAP_ANIMATION=吸附动画
+## IDLE=空闲, USER_DRAG=拖拽列表内容, SCROLLBAR_DRAG=拖拽滚动条, SNAP_ANIMATION=吸附动画
 var scroll_control_state: ScrollControlState:
 	get:
+		if _drag_scrolling:
+			return ScrollControlState.USER_DRAG
 		if _is_dragging_bar:
 			return ScrollControlState.SCROLLBAR_DRAG
 		if _snap_active:
@@ -52,7 +72,7 @@ var need_snap: bool = false # 吸附请求标志
 var snap_offset_y: float = 500 # 吸附偏移量
 var _snap_active: bool = false # 吸附动画进行中
 var _snap_stable_frames: int = 0 # 连续稳定帧计数（防止布局抖动导致提前收敛）
-var _snap_integral: float = 0.0 # PI控制积分项
+var _snap_clamped_frames: int = 0 # 连续无法移动帧计数（滚动到 0/max 边界时结束吸附，避免卡死）
 
 ## 滚动速度追踪（像素/秒）—— 替代手动拖拽检测
 var _prev_scroll_vertical: int = 0
@@ -79,9 +99,48 @@ func _ready() -> void:
 	UiStatMGR.state_changed.connect(_on_state_changed)
 	_on_state_changed(UIStateManager.UIState.NONE, UiStatMGR.current_state)
 
+	# 原生拖拽会话跟踪：scroll_started/scroll_ended 只在"拖拽式滚动"会话中发出
+	# （滚轮、滚动条拖拽不会触发；代码赋值 scroll_vertical 会取消拖拽并发出 scroll_ended），
+	# 正好用于区分"用户按住停住"与"滚动自然结束"
+	scroll_started.connect(_on_drag_scroll_started)
+	scroll_ended.connect(_on_drag_scroll_ended)
+	gui_input.connect(_on_gui_input_event)
+
 	get_v_scroll_bar().gui_input.connect(_on_v_scrollbar_gui_input)
 	get_v_scroll_bar().value_changed.connect(_on_v_scrollbar_changed)
 	get_v_scroll_bar().custom_minimum_size.x = 18
+
+## 用户拖拽开始（越过死区、列表开始跟随手指/鼠标移动）
+func _on_drag_scroll_started() -> void:
+	_drag_scrolling = true
+	# 立即终止进行中的吸附动画，避免吸附与手指拖拽互相抢滚动位置
+	if _snap_active:
+		_snap_active = false
+		_snap_stable_frames = 0
+		_snap_clamped_frames = 0
+	# 拖拽开始即清除选中，保证松手后 AlbumView 会重新请求吸附。
+	# 之前只靠"滚动速度 > 阈值"触发 reset_selection，慢拖/小拖时旧选中项残留，
+	# AlbumView._process 因 selected_item != -1 不再置 need_snap，导致松手后不吸附
+	# （fix #72 跟进）。
+	if has_method("reset_selection"):
+		call("reset_selection")
+
+## 拖拽会话结束（手指松开；若带惯性则等惯性自然停止后）
+func _on_drag_scroll_ended() -> void:
+	_drag_scrolling = false
+
+## 按住/松开列表内容期间更新指针按下状态（含未越过死区的阶段），fix #72
+func _on_gui_input_event(event: InputEvent) -> void:
+	if work_state != UiStatMGR.current_state:
+		return
+	if work_state in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
+		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_pointer_pressed = event.pressed
+		_pointer_release_observed = not event.pressed
+	elif event is InputEventScreenTouch and event.index == 0:
+		_pointer_pressed = event.pressed
+		_pointer_release_observed = not event.pressed
 
 func _on_scroll_stable():
 	_scroll_stable = true
@@ -92,7 +151,7 @@ func _on_scroll_stable():
 
 ## 外部查询：当前是否正在滚动（用于封面视差等效果）
 func is_scrolling() -> bool:
-	return not _scroll_stable or _is_dragging_bar or _snap_active
+	return not _scroll_stable or _pointer_pressed or _drag_scrolling or _is_dragging_bar or _snap_active
 
 # 滚动条值变化（scrollbar 自身拖拽时）
 func _on_v_scrollbar_changed(_value: float):
@@ -110,6 +169,12 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 	# TRACK_VIEW 和 SETTINGS_VIEW 不需要 BaseScrollList 的触摸/滚动逻辑
 	if work_state in [UIStateManager.UIState.TRACK_VIEW, UIStateManager.UIState.SETTINGS_VIEW]:
 		enable = false
+
+	# 离开本视图时清掉拖拽会话标记，避免返回后误以为仍在拖拽
+	if state != work_state:
+		_drag_scrolling = false
+		_pointer_pressed = false
+		_pointer_release_observed = false
 
 	# 状态切换封面释放/重载逻辑（仅对设置了邻接状态的列表生效）
 	if work_state != UIStateManager.UIState.NONE and not _adjacent_states.is_empty():
@@ -215,22 +280,28 @@ func _process(delta: float) -> void:
 		_scroll_stable = false
 		if _scroll_stable_timer and not _scroll_stable_timer.is_stopped():
 			_scroll_stable_timer.stop()
-		if work_state in [UIStateManager.UIState.ALBUM_VIEW]:
+		if work_state in [UIStateManager.UIState.ALBUM_VIEW] and has_method("reset_selection"):
 			call_deferred("reset_selection")
 	# 速度降到阈值以下 → 准备吸附
 	elif not _snap_active and _scroll_speed < SCROLL_SPEED_SNAP and not _scroll_stable:
 		if _scroll_stable_timer and _scroll_stable_timer.is_stopped():
 			_scroll_stable_timer.start()
 
+	# 原生会话兜底：指针已松开且滚动已稳定时，即使 scroll_ended 未发出
+	# （松手事件被吞 / 惯性残留），也解除 _drag_scrolling，保证吸附能恢复
+	if _drag_scrolling and _pointer_release_observed and not _pointer_pressed and _scroll_stable:
+		_drag_scrolling = false
+
 	# 吸附（逐帧 lerp，每帧重新计算目标位置以应对项展开/收起导致的布局变化）
-	# 仅当滚动已稳定且未拖拽滚动条时执行
-	if list_items and need_snap and not _is_dragging_bar and (_scroll_stable or _snap_active):
+	# 仅当滚动已稳定、未拖拽滚动条、且用户未在拖拽列表内容时执行
+	if list_items and need_snap and not _is_dragging_bar and not _pointer_pressed and not _drag_scrolling and (_scroll_stable or _snap_active):
 		if not _snap_active:
 			_snap_active = true
 		_process_snap(delta)
 	elif _snap_active:
 		_snap_active = false
 		_snap_stable_frames = 0
+		_snap_clamped_frames = 0
 
 
 func _find_snap_target_from_visible() -> int:
@@ -239,6 +310,10 @@ func _find_snap_target_from_visible() -> int:
 	for it in container.get_children():
 		if it.global_position.y > view_top:
 			return it.get_index()
+	# 底部边界兜底：没有项顶部低于视口顶部时（列表滚到末尾），以最后一项为目标，
+	# 吸附会被滚动范围钳制在末尾，避免"特定位置松手后不吸附"（fix #72 跟进）
+	if container.get_child_count() > 0:
+		return container.get_child_count() - 1
 	return -1
 
 ## 逐帧吸附处理
@@ -250,35 +325,52 @@ func _process_snap(delta: float) -> void:
 		if found != -1:
 			select_item(found)
 		if selected_item == -1:
-			need_snap = false
-			_snap_active = false
+			_finish_snap()
 			return
 
 	var snap_node := container.get_child(selected_item)
 	if not snap_node:
-		need_snap = false
-		_snap_active = false
+		_finish_snap()
 		return
 
 	# 目标：项顶部距离 ScrollContainer 顶部 = snap_offset_y 像素
 	# 只用全局位置算距离，不依赖 scroll_vertical（避免容器尺寸变化干扰）
 	var distance: float = snap_node.global_position.y - global_position.y - snap_offset_y
 
-	# PI 控制：P项快速响应，I项累积小偏差消除稳态误差
-	_snap_integral = clampf(_snap_integral + distance * delta, -20.0, 20.0)
-	var step: float = distance * clampf(delta * 12.0, 0.0, 1.0) + _snap_integral * 0.3
-
 	if abs(distance) < 1.0:
 		_snap_stable_frames += 1
 		if _snap_stable_frames >= 5:
-			need_snap = false
-			_snap_active = false
-			_snap_integral = 0.0
+			_finish_snap()
+		return
+
+	_snap_stable_frames = 0
+
+	# 纯 P 控制 + 至少 1px 步进：
+	# 旧实现带积分项，在特定滚动位置会因积分残留把目标推过头并缓慢振荡，
+	# 表现为"松手后长时间不吸附"（fix #72 三跟进）。去掉积分后每帧按剩余距离
+	# 的固定比例逼近，舍入到 0 时强制走 1px，保证收敛且不过冲。
+	var step: float = distance * clampf(delta * 12.0, 0.0, 1.0)
+	var int_step := roundi(step)
+	if int_step == 0:
+		int_step = 1 if distance > 0.0 else -1
+
+	var before := scroll_vertical
+	scroll_vertical += int_step
+	if scroll_vertical == before:
+		# 滚动已到边界（0 / max），目标不可达：按钳制位置结束吸附，
+		# 避免 _snap_active / need_snap 永久卡死
+		_snap_clamped_frames += 1
+		if _snap_clamped_frames >= 5:
+			_finish_snap()
 	else:
-		_snap_stable_frames = 0
-		var int_step := roundi(step)
-		if int_step != 0:
-			scroll_vertical += int_step
+		_snap_clamped_frames = 0
+
+## 结束吸附：统一清理吸附标志与计数
+func _finish_snap() -> void:
+	need_snap = false
+	_snap_active = false
+	_snap_stable_frames = 0
+	_snap_clamped_frames = 0
 
 func _on_v_scrollbar_gui_input(event):
 	if event is InputEventScreenTouch:
@@ -386,8 +478,11 @@ func clear_items() -> void:
 	need_snap = false
 	_snap_active = false
 	_snap_stable_frames = 0
-	_snap_integral = 0.0
+	_snap_clamped_frames = 0
 	_is_dragging_bar = false
+	_drag_scrolling = false
+	_pointer_pressed = false
+	_pointer_release_observed = false
 	_scroll_stable = true
 	_scroll_speed = 0.0
 	_prev_scroll_vertical = 0
