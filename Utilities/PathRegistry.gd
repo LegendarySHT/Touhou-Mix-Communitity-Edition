@@ -32,6 +32,7 @@ const SORTED_MIDIS_LIST := "/root/Main/skew/C/SortedMidisList"
 const SHORTCUT_MENU := "/root/Main/skew/C/ShortCutMenu"
 const SHORTCUT_MENU_SEARCH := "/root/Main/skew/C/ShortCutMenu/Btns/Search"
 const NO_ITEMS := "/root/Main/skew/C/NoItems"
+const RANDOM_SELECT_BTN := "/root/Main/skew/C/RandomSelectBtn"
 
 ## 懒加载视图（实例化后存在，读取前请用 get_node_or_null）
 const STORE_VIEW := "/root/Main/Store"

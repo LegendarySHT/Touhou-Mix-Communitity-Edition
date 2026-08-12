@@ -515,6 +515,7 @@ func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_sta
 			animate_list_item_horizontal(album_list, sIndex, tIndex, -1200, tween_id)
 			out_item_idx = sIndex
 			tween = animate_fade_out(album_list, 0.7, "AlbumListFadeOut")
+			tween = animate_fade_out(get_node(PathRegistry.RANDOM_SELECT_BTN), 0.7, tween_id)
 		"Song_List":
 			if new_state == UIStateManager.UIState.ALBUM_VIEW and out_item_idx >= 0:
 				animate_position(SS, skew.to_local(album_list.container.get_child(out_item_idx).global_position), 0.25, "SSPosition")
@@ -628,6 +629,7 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> Tween:
 				SS.queue_free()
 			
 			song_list.clear_items.call_deferred()
+			tween = animate_fade_in(get_node(PathRegistry.RANDOM_SELECT_BTN), 0.35, tween_id)
 		"Song_List":
 			if old_state == UIStateManager.UIState.ALBUM_VIEW:
 				animate_position(SS, skew.to_local(Vector2(280, 40)), 0.15, "SSPosition")

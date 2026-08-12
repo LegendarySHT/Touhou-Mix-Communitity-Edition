@@ -28,12 +28,18 @@ func _on_state_enter():
 	match ui.current_state:
 		ui.UIState.ALBUM_VIEW, ui.UIState.SONG_VIEW, ui.UIState.SORTED_VIEW:
 			var nd = get_node(ani.ui_path_map[ani.ui_path_map.keys()[ui.current_state]])
+			# 防御：nd 可能因键序变化取到无 selected_item 的普通节点（如按钮），先校验
+			if nd == null or not ("selected_item" in nd):
+				return
 			if nd.selected_item == -1:
 				nd.select_item(0)
-				var selected_node = nd.get_selected_node()
-				if selected_node == null:
-					return
-				selected_node.button.grab_focus()
+			# 已有选中项（如从 SongView 返回）时也转移焦点到选中项，保证键盘/手柄导航从原项继续
+			if nd.selected_item < 0 or nd.selected_item >= nd.list_items.size():
+				return
+			var selected_node = nd.get_selected_node()
+			if selected_node == null:
+				return
+			selected_node.button.grab_focus()
 		ui.UIState.SETTINGS_VIEW:
 			if not is_mobile:
 				get_node(PathRegistry.SETTING_VIEW).short_cut_btn.grab_focus()

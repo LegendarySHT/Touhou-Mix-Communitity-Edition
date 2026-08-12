@@ -198,3 +198,13 @@ func on_item_button_confirmed(index: int):
 		await container.get_child(index).expand_tween.finished
 	event_bus.album_selected.emit(album_id)
 	UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
+
+
+func _on_random_select_btn_pressed() -> void:
+	if work_state != UiStatMGR.current_state:
+		return
+	if current_albums.is_empty() or list_items.is_empty():
+		return
+	var random_index := randi() % current_albums.size()
+	select_item(random_index)
+	need_snap = true
