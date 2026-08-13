@@ -19,8 +19,8 @@ func _draw() -> void:
 	var glow_tex = _drawer._glow_tex
 	if glow_tex == null:
 		return
-	var notes = _drawer._notes
-	if notes.is_empty():
+	var notes = _drawer._notes_source
+	if notes == null or notes.is_empty():
 		return
 
 	var view_h = _drawer._viewport_height

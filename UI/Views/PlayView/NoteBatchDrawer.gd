@@ -49,8 +49,8 @@ var _cull_margin_top: float = 120.0
 var _cull_margin_bottom: float = 180.0
 var _viewport_height: float = 0.0
 
-# 活跃音符列表（FlowArea.add_note / remove_note 维护）
-var _notes: Array = []
+# 活跃音符来源：FlowArea.active_notes 引用（set_notes_source 注入，_draw 直接遍历同一数组，省去同步簿记）
+var _notes_source: Array = []
 
 # 透明纹理回退（贴图缺失时）
 var _transparent_tex: Texture2D = null
@@ -64,20 +64,13 @@ func _ready() -> void:
 
 # ========== 公共 API ==========
 
-func add_note(note) -> void:
-	_notes.append(note)
-
-func remove_note(note) -> void:
-	_notes.erase(note)
-	# 立即触发重绘，确保判定后画面立即清除该音符
-	# 不依赖外部 _process 的 request_redraw（输入事件触发的判定与 _process 不同步）
-	queue_redraw()
-	if _glow_layer:
-		_glow_layer.queue_redraw()
+## 注入活跃音符来源数组（FlowArea.active_notes，按引用共享）。
+## 之后 _draw 直接遍历该数组，FlowArea 的增删无需再同步到 drawer。
+func set_notes_source(notes: Array) -> void:
+	_notes_source = notes
 
 func clear() -> void:
-	_notes.clear()
-	# 清空后必须触发重绘，否则最后一帧画面残留
+	# 数组本身由 FlowArea.clear_flow_area 清空（_notes_source 是同一引用），此处只触发重绘
 	queue_redraw()
 	if _glow_layer:
 		_glow_layer.queue_redraw()
@@ -214,7 +207,7 @@ func _setup_glow_layer() -> void:
 	add_child(_glow_layer)
 
 func _draw() -> void:
-	if _notes.is_empty():
+	if _notes_source == null or _notes_source.is_empty():
 		return
 	var view_h = _viewport_height
 	var top_limit = -_cull_margin_top
@@ -222,7 +215,7 @@ func _draw() -> void:
 
 	# 绘制音符贴图（short / instant / long）
 	# 只跳过已移除音符：Long 被按住时 is_judged=true 但仍需显示，不能按 is_judged 跳过
-	for note in _notes:
+	for note in _notes_source:
 		if note.is_removed:
 			continue
 		if note.type == FlowNote.NoteType.Long:

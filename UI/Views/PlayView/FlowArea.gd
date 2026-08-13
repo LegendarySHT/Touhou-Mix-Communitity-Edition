@@ -40,6 +40,7 @@ var _long_f_mode: String = "repeat"
 
 # 长条连接模式："edge"（边缘连接，默认）或 "center"（中心连接）
 var _long_connect_mode: String = "edge"
+var _long_connect_center: bool = false  # 缓存 _long_connect_mode=="center"，热路径避免每帧字符串比较
 
 # 随机颜色（由 PlayView 在 _prepare_game 时生成并传入）
 # 结构: {note_type_key: Color}，仅在该类型启用 random_color 时存在对应键
@@ -139,6 +140,8 @@ var _last_press_was_mouse: bool = false
 var pressed_keys: Dictionary = {}
 
 func init_flow_area():
+	# 单一数组模型：drawer 直接遍历 active_notes（按引用共享），增删无需再同步到 drawer
+	_note_drawer.set_notes_source(active_notes)
 	# 保存 notes_list，因为 clear_flow_area() 会清空它
 	var saved_notes = notes_list.duplicate()
 	clear_flow_area()
@@ -147,6 +150,7 @@ func init_flow_area():
 
 	# 清空手动 NoteOff 挂起队列（上一局的定时器/代数不应残留到下一局）
 	_pending_manual_offs.clear()
+	_pending_manual_offs_min_end = INF
 	_manual_note_off_gens.clear()
 
 	if EvtBus and not EvtBus.config_changed.is_connected(_on_config_changed):
@@ -206,15 +210,14 @@ func init_flow_area():
 		_note_drawer.set_viewport_height(get_viewport().get_visible_rect().size.y)
 
 	# 预计算下落距离和速度
-	_note_fall_distance = jl.position.y + _note_max_size_y
-	_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
+	_recompute_fall_constants()
 
 func _apply_judge_line_position() -> void:
 	var viewport_height: float = get_viewport().get_visible_rect().size.y
 	var offset: int = parent_node.judge_line_offset_y if parent_node else 200
 	jl.position.y = viewport_height - max(0, offset)
-	_note_fall_distance = jl.position.y + _note_max_size_y
-	_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
+	_judge_line_y = jl.position.y
+	_recompute_fall_constants()
 
 func _apply_judge_line_thickness() -> void:
 	var thickness : int = max(1, ConfigManager.instance.get_int("Appearance", "judge_line_thickness", 2))
@@ -265,6 +268,9 @@ func _apply_note_fall_config_from_settings() -> void:
 
 	_note_fall_time_seconds = note_fall_time
 	_note_fall_speed_after_judge_multiplier = max(0.01, note_fall_speed_after_judge_multiplier)
+	# 预计算下落窗口毫秒并重建缓动查表（每音符每帧的缓动从 O(easing 计算) 降到 O(1) 查表）
+	_note_fall_pre_ms = max(1.0, _note_fall_time_seconds * 1000.0)
+	_rebuild_curve_luts()
 
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	if section == "Playback" and key == "auto_mode":
@@ -321,8 +327,7 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		"note_fall_easing_after_phase"
 	]:
 		_apply_note_fall_config_from_settings()
-		_note_fall_distance = jl.position.y + _note_max_size_y
-		_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
+		_recompute_fall_constants()
 		GLogger.info("Note fall config hot-reloaded: [%s] %s=%s" % [section, key, str(value)], "FlowArea")
 
 ## 重新计算音符尺寸（根据比例系数）
@@ -354,8 +359,7 @@ func set_note_texture(texture_array: Array):
 		_note_drawer.set_long_body_mode(_long_f_mode)
 		# 贴图变化会重算各类型半高：同步刷新最大全高，保证 _note_fall_distance/速度在换肤后不过期
 		_note_max_size_y = _note_drawer.get_max_half_height() * 2.0
-		_note_fall_distance = jl.position.y + _note_max_size_y
-		_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
+		_recompute_fall_constants()
 
 # 加载并应用指定皮肤的贴图
 func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
@@ -368,6 +372,7 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 		# 读取光效总开关与长条连接模式
 		_is_glow_enabled = SkinMGR.is_glow_enabled(skin_name)
 		_long_connect_mode = SkinMGR.get_long_connect_mode(skin_name)
+		_long_connect_center = _long_connect_mode == "center"
 
 	# 构建纹理数组，按顺序: short(点块Block), short_core, instant(滑块Slide), instant_core, long_b, long_b_core, long_f, long_f_core, long_t, long_t_core
 	var texture_array = [
@@ -444,10 +449,11 @@ func _get_global_color(key: String) -> Color:
 ## 每音符颜色在 _spawn_note 时由 _get_note_color 应用，此处只刷新已生成仍绘制的音符
 func refresh_note_colors() -> void:
 	_resolve_note_colors()
+	# 单一数组模型：直接遍历 active_notes（drawer 与之同引用）
+	for note in active_notes:
+		if is_instance_valid(note):
+			note.cached_color = _get_note_color(note.type, note.lane)
 	if _note_drawer:
-		for note in _note_drawer._notes:
-			if is_instance_valid(note):
-				note.cached_color = _get_note_color(note.type, note.lane)
 		_note_drawer.request_redraw()
 
 # 根据皮肤配置设置 long-f 中部贴图的应用方式
@@ -497,6 +503,7 @@ func clear_flow_area():
 	# 释放尚未触发的手动 NoteOff（游戏结束/清场时，避免音符一直挂在合成器上）
 	_process_manual_note_offs(true)
 	_pending_manual_offs.clear()
+	_pending_manual_offs_min_end = INF
 	_manual_note_off_gens.clear()
 
 ## 检查是否还有活跃音符（用于游戏结束后等待音符自然消除）
@@ -507,6 +514,14 @@ func has_active_notes() -> bool:
 var _note_max_size_y: float = 0
 var _note_fall_speed: float = 0
 var _note_fall_distance: float = 0
+
+# 性能优化缓存：每帧热点路径避免重复读取节点属性 / 调用缓动计算
+var _judge_line_y: float = 0.0  # jl.position.y 缓存（_apply_judge_line_position 维护）
+var _note_fall_pre_ms: float = 1000.0  # _note_fall_time_seconds*1000（clamp 后），下落窗口时长
+var _after_speed_px_per_ms: float = 0.0  # 判定线后下落速度 = _note_fall_speed * 倍率
+const _CURVE_LUT_SIZE: int = 1024  # 缓动曲线查表分辨率（对 BACK/ELASTIC 等振荡曲线足够平滑）
+var _curve_lut_before: PackedFloat32Array = PackedFloat32Array()  # 判定线前缓动曲线 LUT
+var _curve_lut_after: PackedFloat32Array = PackedFloat32Array()   # 判定线后缓动曲线 LUT
 
 ## 根据 NoteType 返回 _resolved_colors 中对应的颜色
 func _get_resolved_color_for_type(tp: FlowNote.NoteType) -> Color:
@@ -556,7 +571,6 @@ func _spawn_note(note_index: int) -> void:
 		nt.cached_color = _get_note_color(nt.type, nt.lane)
 		active_notes.append(nt)
 		_add_note_to_lane_index(nt)
-		_note_drawer.add_note(nt)
 		_update_long_note_fall(nt, _synced_current_time, _render_time_ms)
 		return
 
@@ -569,31 +583,59 @@ func _spawn_note(note_index: int) -> void:
 
 	active_notes.append(nt)
 	_add_note_to_lane_index(nt)
-	_note_drawer.add_note(nt)
 	_update_block_note_fall(nt, _synced_current_time, _render_time_ms)
 
+## 集中刷新下落常量：距离 / 速度 / 线后速度（判定线 Y、音符尺寸、下落配置变化时调用）
+func _recompute_fall_constants() -> void:
+	_note_fall_distance = _judge_line_y + _note_max_size_y
+	_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
+	_after_speed_px_per_ms = max(0.0001, _note_fall_speed * _note_fall_speed_after_judge_multiplier)
+
+## 重建两条缓动曲线的查表（配置变化时调用一次；热路径只查表）
+func _rebuild_curve_luts() -> void:
+	_curve_lut_before = _build_curve_lut(trans_before_line, ease_before_line)
+	_curve_lut_after = _build_curve_lut(trans_after_line, ease_after_line)
+
+func _build_curve_lut(trans: int, ease_: int) -> PackedFloat32Array:
+	var lut := PackedFloat32Array()
+	lut.resize(_CURVE_LUT_SIZE)
+	for i in _CURVE_LUT_SIZE:
+		lut[i] = _note_fall_calculator.evaluate_curve_progress(float(i) / float(_CURVE_LUT_SIZE - 1), trans, ease_)
+	return lut
+
+## 查表求缓动值（线性插值）：替代每音符每帧调用 Tween.interpolate_value（热路径核心优化）
+func _evaluate_lut(lut: PackedFloat32Array, progress: float) -> float:
+	if lut.is_empty():
+		return progress  # 防御：LUT 未就绪时退化为线性（仅在配置未初始化前出现）
+	var scaled := progress * float(_CURVE_LUT_SIZE - 1)
+	var idx := int(scaled)
+	if idx < 0:
+		return lut[0]
+	if idx >= _CURVE_LUT_SIZE - 1:
+		return lut[_CURVE_LUT_SIZE - 1]
+	var frac := scaled - float(idx)
+	return lut[idx] + (lut[idx + 1] - lut[idx]) * frac
+
 func _compute_center_y_by_judge_time(judge_time_ms: float, current_time_ms: float, half_height: float) -> float:
-	var pre_ms = max(1.0, _note_fall_time_seconds * 1000.0)
-	var spawn_time_ms = judge_time_ms - pre_ms
+	var pre_ms := _note_fall_pre_ms
+	var spawn_time_ms := judge_time_ms - pre_ms
 
 	if current_time_ms <= judge_time_ms:
 		if current_time_ms < spawn_time_ms:
 			# 提前生成时继续保持匀速下落，避免音符在顶端静止等待
-			var early_dt_ms = spawn_time_ms - current_time_ms
-			return jl.position.y - _note_fall_distance - early_dt_ms * _note_fall_speed
-		var progress = clamp((current_time_ms - spawn_time_ms) / pre_ms, 0.0, 1.0)
-		var eased = _note_fall_calculator.evaluate_curve_progress(progress, trans_before_line, ease_before_line)
-		return jl.position.y - _note_fall_distance + eased * _note_fall_distance
+			var early_dt_ms := spawn_time_ms - current_time_ms
+			return _judge_line_y - _note_fall_distance - early_dt_ms * _note_fall_speed
+		var progress := (current_time_ms - spawn_time_ms) / pre_ms
+		progress = clamp(progress, 0.0, 1.0)
+		var eased := _evaluate_lut(_curve_lut_before, progress)
+		return _judge_line_y - _note_fall_distance + eased * _note_fall_distance
 
-	var window_y = get_viewport().get_visible_rect().size.y
-	var after_distance = max(1.0, window_y - jl.position.y + half_height)
-	var after_time_ms = max(
-		1.0,
-		_note_fall_calculator.compute_after_line_duration_seconds(after_distance, _note_fall_speed, _note_fall_speed_after_judge_multiplier) * 1000.0
-	)
-	var after_progress = clamp((current_time_ms - judge_time_ms) / after_time_ms, 0.0, 1.0)
-	var eased_after = _note_fall_calculator.evaluate_curve_progress(after_progress, trans_after_line, ease_after_line)
-	return jl.position.y + eased_after * after_distance
+	var after_distance : float = max(1.0, _cached_viewport_height - _judge_line_y + half_height)
+	var after_time_ms : float = max(1.0, after_distance / _after_speed_px_per_ms)
+	var after_progress : float = (current_time_ms - judge_time_ms) / after_time_ms
+	after_progress = clamp(after_progress, 0.0, 1.0)
+	var eased_after := _evaluate_lut(_curve_lut_after, after_progress)
+	return _judge_line_y + eased_after * after_distance
 
 ## Block/Slide 音符的 synced time 驱动位置更新 (替代 Tween)
 ## 每帧由 _process 调用, 根据 _synced_current_time 计算音符位置
@@ -641,9 +683,12 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float, render_time_
 	var head_half = note.cached_head_half_height
 	var tail_half = note.cached_tail_half_height
 
-	var head_center = _compute_center_y_by_judge_time(note.start_time, render_time_ms, head_half)
+	# 按住时长条头部钉在判定线，跳过缓动计算（原实现先算再覆盖，浪费一次 easing）
+	var head_center: float
 	if note.is_held:
-		head_center = jl.position.y
+		head_center = _judge_line_y
+	else:
+		head_center = _compute_center_y_by_judge_time(note.start_time, render_time_ms, head_half)
 	var tail_center = _compute_center_y_by_judge_time(note.start_time + max(0.0, note.duration), render_time_ms, tail_half)
 
 	note.cached_head_center_y = head_center
@@ -653,7 +698,7 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float, render_time_
 	# 长条连接模式：edge（边缘连接，body 从 tail_bottom 到 head_top）
 	# 或 center（中心连接，body 从 tail_center 到 head_center，head/tail 各向 body 偏移半高）
 	# 两种模式下 head/tail 矩形相同（head 半高居中于 head_center，tail 半高居中于 tail_center）
-	if _long_connect_mode == "center":
+	if _long_connect_center:
 		note.cached_body_top_y = tail_center
 		note.cached_body_height = max(0.0, head_center - tail_center)
 	else:
@@ -705,14 +750,14 @@ func _init_note_pool() -> void:
 
 func _remove_note(note: FlowNote) -> void:
 	note.is_removed = true
-	# Block/Slide/Long 统一从 drawer 移除（remove_note 内部会 queue_redraw 立即清除画面，仍保持同步）
+	# 单一数组模型：drawer 遍历的就是 active_notes，此处只触发重绘立即清除画面
 	# 从 active_notes 的移除推迟到帧末执行：
 	# AUTO 模式下过线判定在 _process 遍历 active_notes 的循环体内触发 _remove_note，
 	# 若此处同步 erase，GDScript 数组迭代器（idx++ 后取 arr.get(idx)）会因元素前移跳过
 	# 下一个音符，使其一帧不更新位置/不判定，在判定线附近停滞一帧。
-	# 延迟删除后遍历期间数组不再变化；drawer 的 _notes 已同步移除，画面不会残留。
+	# 延迟删除后遍历期间数组不再变化；期间 drawer 按 note.is_removed 跳过绘制，画面不会残留。
 	if _note_drawer:
-		_note_drawer.remove_note(note)
+		_note_drawer.request_redraw()
 	call_deferred("_delay_free", active_notes, note)
 
 	_remove_note_from_lane_index(note)
@@ -1128,6 +1173,8 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 ## 2) 暂停菜单打开时墙钟 Timer 照走，把正在响的音符掐断
 ## 3) 同键快速连打时旧音的 NoteOff 把新音掐断（MeltySynth NoteOff 会结束该键全部 voice）
 var _pending_manual_offs: Array = []
+## 待触发 NoteOff 的最小绝对结束时刻：绝大多数帧 t < min 直接跳过扫描（O(n)→O(1)）
+var _pending_manual_offs_min_end: float = INF
 ## "track:channel:pitch" -> 单调递增代数，用于判定某次 NoteOff 是否已被更新的音符取代
 var _manual_note_off_gens: Dictionary = {}
 
@@ -1165,15 +1212,21 @@ func _trigger_midi_notes_from_sequence(game_seq: Object) -> void:
 				"velocity": note.velocity,
 				"gen": gen,
 			})
+			if abs_end_ms < _pending_manual_offs_min_end:
+				_pending_manual_offs_min_end = abs_end_ms
 
 ## 每帧由 _process 调用，按播放位置触发到期的手动 NoteOff
 ## force=true 时全部触发（游戏结束/清场时释放残留音符）
 func _process_manual_note_offs(force: bool = false) -> void:
 	if _pending_manual_offs.is_empty():
 		return
+	# 绝大多数帧没有 NoteOff 到期，直接跳过整轮扫描（最小到期时刻缓存）
+	if not force and _pending_manual_offs_min_end > _synced_current_time:
+		return
 	var midi_player = MidiPlaybackManager.instance.midi_player
 	var t := _synced_current_time
 	var remaining: Array = []
+	var new_min := INF
 	for entry in _pending_manual_offs:
 		if force or t >= entry["abs_end_ms"]:
 			# 代数守卫：同键已触发更新的音符则跳过本次 NoteOff（旧音交给新音一起结束）
@@ -1185,7 +1238,10 @@ func _process_manual_note_offs(force: bool = false) -> void:
 						midi_player.note_off(entry["channel"], entry["pitch"])
 		else:
 			remaining.append(entry)
+			if entry["abs_end_ms"] < new_min:
+				new_min = entry["abs_end_ms"]
 	_pending_manual_offs = remaining
+	_pending_manual_offs_min_end = new_min
 
 ## 递增某键的 NoteOff 代数，返回新代数（使旧的待触发 NoteOff 失效）
 func _bump_note_off_gen(track_index: int, channel: int, pitch: int) -> int:
@@ -1326,7 +1382,7 @@ func _process(delta: float) -> void:
 	if auto_mode:
 		for long in active_notes.filter(func(nt):
 			if nt.type == FlowNote.NoteType.Long and not nt.is_held:
-				return abs(nt.cached_head_center_y - jl.position.y) < 12 \
+				return abs(nt.cached_head_center_y - _judge_line_y) < 12 \
 					or _synced_current_time >= nt.start_time
 			return false):
 			_auto_click(long)

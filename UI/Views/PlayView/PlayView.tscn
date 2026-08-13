@@ -146,7 +146,7 @@ theme_override_styles/separator = SubResource("StyleBoxLine_uj6qe")
 [node name="NoteBatchDrawer" type="Node2D" parent="FlowArea/SVP" unique_id=1935847162]
 script = ExtResource("4_8x7c2")
 
-[node name="ParticleBatchDrawer" parent="FlowArea/SVP" unique_id=3358176442 instance=ExtResource("5_ptcl")]
+[node name="ParticleBatchDrawer" parent="FlowArea/SVP" unique_id=-936790854 instance=ExtResource("5_ptcl")]
 
 [node name="Layer" type="CanvasLayer" parent="." unique_id=1802311030]
 layer = 2
