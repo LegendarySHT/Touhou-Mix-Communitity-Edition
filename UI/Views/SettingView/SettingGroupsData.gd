@@ -131,7 +131,6 @@ static func get_setting_groups() -> Array:
 				"description": "关闭后，音乐开始前不会有准备动画",
 				"type": "TYPE_OPTION",
 				"default_value": "1",
-				"not_implemented": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}

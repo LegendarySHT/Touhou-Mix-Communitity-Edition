@@ -547,8 +547,11 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	_last_playback_position = -1.0
 	_position_stall_frames = 0
 
-	# 先初始化显示并显示歌曲信息面板
-	_init_display()
+	# 读取“播放准备动画”设置（0=关闭, 1=开启）
+	var play_ready_animation: bool = ConfigManager.instance.get_int("Playback", "play_ready_animation", 1) == 1
+	GLogger.info("Play ready animation: %s" % ("ON" if play_ready_animation else "OFF"), "PlayView")
+	# 初始化显示；开启准备动画时显示歌曲信息面板
+	_init_display(play_ready_animation)
 
 	# 重置 ScoreCalculator
 	if score_calc:
@@ -629,9 +632,10 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# resume() 触发 start_vocal_playback 的同步加载/解码卡顿
 	await playback_mgr.prepare_vocal_playback()
 
-	# 歌曲信息面板已显示足够时间（所有加载时会造成卡顿的部分已处理完毕），现在淡出
-	await get_tree().create_timer(1).timeout
-	await AniMGR.animate_fade_out(center_bg, 1).finished
+	if play_ready_animation:
+		# 歌曲信息面板已显示足够时间（所有加载时会造成卡顿的部分已处理完毕），现在淡出
+		await get_tree().create_timer(1).timeout
+		await AniMGR.animate_fade_out(center_bg, 1).finished
 
 	# 记录游玩开始时间（用于统计游玩时长）
 	_play_start_time = Time.get_ticks_msec()
@@ -1163,7 +1167,7 @@ func _upload_score_on_quit() -> void:
 	await _upload_score_async(current_midi, snap)
 
 # 初始化分数等内容的显示
-func _init_display():
+func _init_display(show_ready_animation: bool = true):
 	_is_finishing_game = false
 	score.text = "0"
 	combo.text = "0"
@@ -1180,7 +1184,8 @@ func _init_display():
 		cover.texture = cover_texture
 	_apply_play_background(cover_texture, has_custom_cover)
 
-	ani.animate_fade_in(center_bg, 0.2, "_show_bg")
+	if show_ready_animation:
+		ani.animate_fade_in(center_bg, 0.2, "_show_bg")
 	album.text = current_midi.artist_name
 	song.text = current_midi.song_name
 	artist.text = current_midi.author_name if current_midi.author_name else "Unknow"
@@ -1191,10 +1196,10 @@ func _init_display():
 	midi_author.text = current_midi.artist_name
 	
 	menu.visible = false
-	song_info.visible = true
+	song_info.visible = show_ready_animation
 
 	center.modulate.a = 0
-	center_bg.visible = true
+	center_bg.visible = show_ready_animation
 	is_pause = true
 	
 	# 恢复flow_area显示
