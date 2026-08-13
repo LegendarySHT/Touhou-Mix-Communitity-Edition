@@ -49,6 +49,10 @@ var _long_connect_mode: String = "edge"
 # 结构: {note_type_key: Color}，仅在该类型启用 random_color 时存在对应键
 var _random_colors: Dictionary = {}
 
+# 全局随机颜色（非键盘模式 + 皮肤 custom_color 关闭时生效）
+# 由 PlayView 在 _prepare_game 时生成并传入，结构同 _random_colors
+var _global_random_colors: Dictionary = {}
+
 # 最终解析出的音符颜色（结合 custom_color 主开关 + enable_color + random_color）
 # 结构: {note_type_key: Color}，键为 "short"/"instant"/"long"（short=点块 Block、instant=滑块 Slide）
 var _resolved_colors: Dictionary = {}
@@ -405,17 +409,19 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 
 	GLogger.info("Loaded note skin: %s, glow=%s, connect_mode=%s" % [skin_name, _is_glow_enabled, _long_connect_mode], "FlowArea")
 
-## 根据 _skin_config + _random_colors 解析出最终音符颜色
-## 规则：
-##   custom_color 主开关 OFF → 该类型 color = Color.WHITE
-##   主开关 ON + enable_color ON + random_color ON → color = _random_colors[key]
-##   主开关 ON + enable_color ON + random_color OFF → color = config[key].color
-##   主开关 ON + enable_color OFF → color = Color.WHITE
+## 根据 _skin_config + _random_colors + _global_random_colors 解析出最终音符颜色
+## 规则（按优先级）：
+##   皮肤 custom_color ON → 沿用皮肤规则（含皮肤内 random_color）
+##   非键盘模式 + 全局随机 ON → _global_random_colors[key]
+##   非键盘模式 + 全局随机 OFF → 全局手动颜色（short/instant/long_block_color）
+##   键盘模式 + custom_color OFF → Color.WHITE（现状不变）
 func _resolve_note_colors() -> void:
 	_resolved_colors.clear()
 	var custom_color_on: bool = false
 	if _skin_config.has("general"):
 		custom_color_on = bool(_skin_config["general"].get("custom_color", false))
+	var keyboard_mode: bool = parent_node != null and bool(parent_node.get("keyboard_mode"))
+	var global_random_on := ConfigManager.instance.get_int("Appearance", "randomize_block_color", 0) == 1
 
 	for key in ["short", "instant", "long"]:
 		var color := Color.WHITE
@@ -426,7 +432,23 @@ func _resolve_note_colors() -> void:
 					color = _random_colors[key]
 				else:
 					color = sec.get("color", Color.WHITE)
+		elif not keyboard_mode:
+			if global_random_on and _global_random_colors.has(key):
+				color = _global_random_colors[key]
+			else:
+				color = _get_global_color(key)
 		_resolved_colors[key] = color
+
+## 读取全局手动音符颜色（非键盘模式 + 皮肤 custom_color OFF + 全局随机 OFF 时使用）
+## 默认值与 config.ini [Appearance] 保持一致
+func _get_global_color(key: String) -> Color:
+	var default_hex := "#4ECDC4"  # short=点块
+	if key == "instant":
+		default_hex = "#FF6B6B"   # instant=滑块
+	elif key == "long":
+		default_hex = "#45B7D1"   # long=长条
+	var raw := ConfigManager.instance.get_string("Appearance", "%s_block_color" % key, default_hex)
+	return Color.from_string(raw, Color.WHITE)
 
 ## 重新解析颜色并同步到所有活跃音符（用于随机颜色刷新等场景）
 ## 每音符颜色在 _spawn_note 时由 _get_note_color 应用，此处只刷新已生成仍绘制的音符

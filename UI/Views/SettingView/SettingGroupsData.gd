@@ -589,10 +589,9 @@ static func get_setting_groups() -> Array:
 				"id": "randomize_block_color",
 				"name_en": "Randomize Block Color",
 				"name_zh": "随机音符顏色",
-				"description": "随机设置下落音符的颜色。由于光柱特效的颜色与音符的颜色相同，所以当玩家使用自定义皮肤时该设置项相当于随机设置光柱特效的颜色",
+				"description": "非键盘模式下，每局随机生成一次音符调色板；点块、滑块、长条三种颜色的色相至少相差 30°",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
-				"not_implemented": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
@@ -602,10 +601,9 @@ static func get_setting_groups() -> Array:
 				"id": "sync_color_across_block_type",
 				"name_en": "Sync Color Across Block Type",
 				"name_zh": "统一音符颜色",
-				"description": "使点块、滑块和长条的颜色统一，同时也会统一光柱特效的颜色，但打开此项后音符颜色无法随机",
+				"description": "仅在随机音符颜色开启时生效：点块、滑块和长条使用同一个随机颜色，光柱特效颜色也同步统一",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
-				"not_implemented": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
@@ -615,28 +613,25 @@ static func get_setting_groups() -> Array:
 				"id": "instant_block_color",
 				"name_en": "Instant Block Color",
 				"name_zh": "更改滑块颜色",
-				"description": "通过输入RGB颜色编码或颜色的英文名字来改变滑块及其光柱特效颜色",
+				"description": "非键盘模式下，未开启随机音符颜色时，修改滑块及其光柱特效颜色",
 				"type": "TYPE_COLOR",
 				"default_value": "#FF6B6B",
-				"not_implemented": true
 			},
 			{
 				"id": "short_block_color",
 				"name_en": "Short Block Color",
 				"name_zh": "更改点块颜色",
-				"description": "通过输入RGB颜色编码或颜色的英文名字来改变点块及其光柱特效颜色",
+				"description": "非键盘模式下，未开启随机音符颜色时，修改点块及其光柱特效颜色",
 				"type": "TYPE_COLOR",
 				"default_value": "#4ECDC4",
-				"not_implemented": true
 			},
 			{
 				"id": "long_block_color",
 				"name_en": "Long Block Color",
 				"name_zh": "更改长条颜色",
-				"description": "通过输入RGB颜色编码或颜色的英文名字来改变长条及其光柱特效颜色",
+				"description": "非键盘模式下，未开启随机音符颜色时，修改长条及其光柱特效颜色",
 				"type": "TYPE_COLOR",
 				"default_value": "#45B7D1",
-				"not_implemented": true
 			},
 			{
 				"id": "main_background",

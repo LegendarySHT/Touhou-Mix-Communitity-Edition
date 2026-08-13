@@ -353,6 +353,18 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			flow_area.load_note_skin(skin_name)
 		return
 
+	if section == "Appearance" and key in [
+		"randomize_block_color",
+		"sync_color_across_block_type",
+		"short_block_color",
+		"instant_block_color",
+		"long_block_color",
+	]:
+		_regenerate_global_random_colors()
+		if flow_area:
+			flow_area.refresh_note_colors()
+		return
+
 	if section == "General" and key == "display_debug_info":
 		show_debug_info = int(value) == 1
 		_set_debug_overlay_visible(show_debug_info)
@@ -445,6 +457,19 @@ func _regenerate_random_note_colors() -> void:
 	flow_area._random_colors = random_colors
 	GLogger.info("Generated random note colors: %s" % str(random_colors.keys()), "PlayView")
 
+## 根据全局设置（非键盘模式 + 皮肤 custom_color 关闭时生效）生成随机调色板并推送到 FlowArea
+## 必须在 flow_area.init_flow_area() 之前调用，使新音符按新颜色生成
+func _regenerate_global_random_colors() -> void:
+	if not flow_area:
+		return
+	var random_on := ConfigManager.instance.get_int("Appearance", "randomize_block_color", 0) == 1
+	if not random_on:
+		flow_area._global_random_colors = {}
+		return
+	var unified := ConfigManager.instance.get_int("Appearance", "sync_color_across_block_type", 0) == 1
+	flow_area._global_random_colors = NoteColorPalette.generate(unified)
+	GLogger.info("Generated global random note colors: %s" % str(flow_area._global_random_colors.keys()), "PlayView")
+
 func _set_debug_overlay_visible(_is_visible: bool) -> void:
 	if debug_info_label == null:
 		return
@@ -530,6 +555,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 		score_calc.reset()
 	# 生成随机颜色（若皮肤配置启用）— 必须在 init_flow_area 前完成，使新音符按新颜色生成
 	_regenerate_random_note_colors()
+	_regenerate_global_random_colors()
 	flow_area.init_flow_area()
 	_is_auto_mode_play = flow_area.auto_mode
 	auto_label.visible = flow_area.auto_mode
