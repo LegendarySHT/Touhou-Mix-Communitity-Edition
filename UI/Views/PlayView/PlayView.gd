@@ -1543,6 +1543,8 @@ func _set_progress_bar_color(cl: Color):
 	if not _current_rect or (_current_rect.size.x > 15 and cl != _current_rect.color):
 		_current_rect = null
 		_on_top_progress_bar_value_changed(progress_bar.value)
+		if _current_rect:
+			_current_rect.color = cl
 		return
 
 	_current_rect.color = cl
