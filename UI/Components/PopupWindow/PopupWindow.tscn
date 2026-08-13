@@ -190,7 +190,7 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 2
+current_tab = 3
 tabs_visible = false
 
 [node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
@@ -356,6 +356,7 @@ action_mode = 0
 shortcut = SubResource("Shortcut_krk8y")
 
 [node name="NoteSkinAdjust" type="HBoxContainer" parent="." unique_id=1274646299]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
@@ -750,7 +751,6 @@ icon_alignment = 1
 expand_icon = true
 
 [node name="ParticleAdjust" type="HBoxContainer" parent="." unique_id=392630132]
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
@@ -780,34 +780,26 @@ text = "Perfect 特效设定"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="OptionButton" type="OptionButton" parent="ParticleAdjust/VBoxC" unique_id=1398312008]
-custom_minimum_size = Vector2(600, 60)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 0
-theme_override_font_sizes/font_size = 32
-alignment = 1
-
-[node name="OtherOptions" type="GridContainer" parent="ParticleAdjust/VBoxC" unique_id=1648522083]
+[node name="Options" type="GridContainer" parent="ParticleAdjust/VBoxC" unique_id=1648522083]
 custom_minimum_size = Vector2(0, 320)
 layout_mode = 2
 columns = 2
 
-[node name="Label" type="Label" parent="ParticleAdjust/VBoxC/OtherOptions" unique_id=2032973593]
+[node name="Label4" type="Label" parent="ParticleAdjust/VBoxC/Options" unique_id=1621551623]
 custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
-text = "粒子缩放"
+text = "整体缩放"
 vertical_alignment = 1
 
-[node name="ValueLineEdit" type="HBoxContainer" parent="ParticleAdjust/VBoxC/OtherOptions" unique_id=43757917]
+[node name="TotalScale" type="HBoxContainer" parent="ParticleAdjust/VBoxC/Options" unique_id=1854890561]
 custom_minimum_size = Vector2(200, 60)
 custom_maximum_size = Vector2(500, -1)
 layout_mode = 2
 size_flags_vertical = 4
 
-[node name="LineEdit" type="LineEdit" parent="ParticleAdjust/VBoxC/OtherOptions/ValueLineEdit" unique_id=1158713396]
+[node name="LineEdit" type="LineEdit" parent="ParticleAdjust/VBoxC/Options/TotalScale" unique_id=1354624774]
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -818,7 +810,114 @@ alignment = 1
 max_length = 64
 emoji_menu_enabled = false
 
-[node name="Label" type="Label" parent="ParticleAdjust/VBoxC/OtherOptions/ValueLineEdit" unique_id=407175546]
+[node name="Label" type="Label" parent="ParticleAdjust/VBoxC/Options/TotalScale" unique_id=547696524]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 32
+text = "%"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label5" type="Label" parent="ParticleAdjust/VBoxC/Options" unique_id=1886415963]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "不透明度"
+vertical_alignment = 1
+
+[node name="TotalAlpha" type="HBoxContainer" parent="ParticleAdjust/VBoxC/Options" unique_id=1860456358]
+custom_minimum_size = Vector2(200, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="LineEdit" type="LineEdit" parent="ParticleAdjust/VBoxC/Options/TotalAlpha" unique_id=175364893]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+placeholder_text = "num..."
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false
+
+[node name="Label" type="Label" parent="ParticleAdjust/VBoxC/Options/TotalAlpha" unique_id=490650153]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 32
+text = "%"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control" type="Control" parent="ParticleAdjust/VBoxC/Options" unique_id=147490482]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+
+[node name="Control2" type="Control" parent="ParticleAdjust/VBoxC/Options" unique_id=353090467]
+layout_mode = 2
+
+[node name="Label2" type="Label" parent="ParticleAdjust/VBoxC/Options" unique_id=1000721247]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "基础粒子"
+vertical_alignment = 1
+
+[node name="BasicParticle" type="OptionButton" parent="ParticleAdjust/VBoxC/Options" unique_id=1398312008]
+custom_minimum_size = Vector2(400, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 32
+alignment = 1
+
+[node name="Label3" type="Label" parent="ParticleAdjust/VBoxC/Options" unique_id=1296577285]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "散射粒子"
+vertical_alignment = 1
+
+[node name="ParticleEmitter" type="OptionButton" parent="ParticleAdjust/VBoxC/Options" unique_id=1256617099]
+custom_minimum_size = Vector2(400, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 32
+alignment = 1
+
+[node name="Label" type="Label" parent="ParticleAdjust/VBoxC/Options" unique_id=2032973593]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "粒子缩放"
+vertical_alignment = 1
+
+[node name="EmitterScale" type="HBoxContainer" parent="ParticleAdjust/VBoxC/Options" unique_id=43757917]
+custom_minimum_size = Vector2(200, 60)
+custom_maximum_size = Vector2(500, -1)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="LineEdit" type="LineEdit" parent="ParticleAdjust/VBoxC/Options/EmitterScale" unique_id=1158713396]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_font_sizes/font_size = 32
+placeholder_text = "num..."
+alignment = 1
+max_length = 64
+emoji_menu_enabled = false
+
+[node name="Label" type="Label" parent="ParticleAdjust/VBoxC/Options/EmitterScale" unique_id=407175546]
 custom_minimum_size = Vector2(50, 0)
 layout_mode = 2
 size_flags_horizontal = 0

@@ -72,7 +72,12 @@ var _note_fall_speed_after_judge_multiplier: float = 1.0
 var _note_cull_margin_top: float = 120.0
 var _note_cull_margin_bottom: float = 180.0
 var spark_presets: Dictionary = {}
+var spark_emitters: Dictionary = {}
 var spark_scalings: Dictionary = {}
+var spark_alphas: Dictionary = {}
+var spark_emitter_scales: Dictionary = {}
+## 判定类型（与判定特效配置键 {j}_spark_* 一一对应）
+const _JUDGE_TYPES: Array[String] = ["Perfect", "Great", "Good", "Bad"]
 ###################################
 
 ## note_judged(result: String, offset: String, block_type: int, timing_sec: float, signed_offset_sec: float)
@@ -188,15 +193,8 @@ func init_flow_area():
 	_apply_judge_line_thickness()
 	_apply_judge_line_position()
 	
-	# 配置初始化
-	spark_presets["Perfect"] = ConfigManager.instance.get_int("Lane", "perfect_spark_preset", 0)
-	spark_scalings["Perfect"] = ConfigManager.instance.get_float("Lane", "perfect_spark_scaling", 100)
-	spark_presets["Great"] = ConfigManager.instance.get_int("Lane", "great_spark_preset", 0)
-	spark_scalings["Great"] = ConfigManager.instance.get_float("Lane", "great_spark_scaling", 100)
-	spark_presets["Good"] = ConfigManager.instance.get_int("Lane", "good_spark_preset", 0)
-	spark_scalings["Good"] = ConfigManager.instance.get_float("Lane", "good_spark_scaling", 100)
-	spark_presets["Bad"] = ConfigManager.instance.get_int("Lane", "bad_spark_preset", 0)
-	spark_scalings["Bad"] = ConfigManager.instance.get_float("Lane", "bad_spark_scaling", 100)
+	# 配置初始化（基础粒子/散射粒子 preset + 整体缩放/不透明度/发射器缩放）
+	_reload_spark_config()
 	_init_note_pool()
 	# 应用解析后的颜色（由 load_note_skin + PlayView 随机颜色生成共同决定）
 	# 新音符颜色在 _spawn_note 时经 _get_note_color → _resolved_colors 应用，此处只刷新已存在音符
@@ -305,13 +303,11 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		_recalculate_note_dimensions()
 		return
 
-	# 粒子特效配置（Lane 段 spark_preset/spark_scaling）：热更新，暂停中调整立即生效
-	if section == "Lane" and (key.ends_with("_spark_preset") or key.ends_with("_spark_scaling")):
-		for judge in spark_presets.keys():
-			var preset_key := "%s_spark_preset" % judge.to_lower()
-			var scaling_key := "%s_spark_scaling" % judge.to_lower()
-			spark_presets[judge] = ConfigManager.instance.get_int("Lane", preset_key, 0)
-			spark_scalings[judge] = ConfigManager.instance.get_float("Lane", scaling_key, 100)
+	# 粒子特效配置（Lane 段 spark_*）：热更新，暂停中调整立即生效
+	if section == "Lane" and (key.ends_with("_spark_preset") or key.ends_with("_spark_emitter")
+			or key.ends_with("_spark_scaling") or key.ends_with("_spark_alpha")
+			or key.ends_with("_spark_emitter_scaling")):
+		_reload_spark_config()
 		return
 
 	if section != "Generator":
@@ -1265,12 +1261,29 @@ func _trigger_touch_vibration() -> void:
 	var duration_ms = max(1.0, ConfigManager.instance.get_int("Playback", "vibration_duration", 20))
 	Input.vibrate_handheld(duration_ms, 0.5)
 
-func _generate_particle(type: String, pos: Vector2, scl: int = 100) -> void:
-	# 按预设索引取粒子包（预设 0=None，调用方已判断 >0，此处防御性校验）
-	var pack_key := ParticleMGR.get_particle_pack_by_index(spark_presets.get(type, 0))
-	if pack_key.is_empty():
+func _generate_particle(type: String, pos: Vector2) -> void:
+	# 取基础/散射粒子包键（_reload_spark_config 已按名字解析好，空=该层关闭，此处防御性校验）
+	var base_key: String = spark_presets.get(type, "")
+	var emitter_key: String = spark_emitters.get(type, "")
+	if base_key.is_empty() and emitter_key.is_empty():
 		return
-	_particle_drawer.spawn(pack_key, type, pos, scl)
+	# 三个数值已由 _reload_spark_config 预换算为倍率/不透明度（spawn 内部不再除 100）
+	_particle_drawer.spawn(base_key, emitter_key, pos,
+		spark_scalings.get(type, 1.0), spark_alphas.get(type, 1.0), spark_emitter_scales.get(type, 1.5))
+
+## 读取全部判定特效配置（基础粒子/散射粒子 preset + 整体缩放/不透明度/发射器缩放）
+## 供 init_flow_area 初始化与 config_changed 热更新共用
+func _reload_spark_config() -> void:
+	for judge in _JUDGE_TYPES:
+		var jl := judge.to_lower()
+		spark_presets[judge] = ParticleMGR.get_particle_pack_by_name(
+			ConfigManager.instance.get_string("Lane", jl + "_spark_preset", ""))
+		spark_emitters[judge] = ParticleMGR.get_particle_pack_by_name(
+			ConfigManager.instance.get_string("Lane", jl + "_spark_emitter", ""))
+		# 配置存百分比，预换算为倍率/不透明度（0-1），spawn 热路径直接取用免除法
+		spark_scalings[judge] = ConfigManager.instance.get_float("Lane", jl + "_spark_scaling", 100) / 100.0
+		spark_alphas[judge] = ConfigManager.instance.get_float("Lane", jl + "_spark_alpha", 100) / 100.0
+		spark_emitter_scales[judge] = ConfigManager.instance.get_float("Lane", jl + "_spark_emitter_scaling", 150) / 100.0
 	
 ## 【方案C】同步当前播放时间（毫秒）
 ## 由 PlayView._process() 每帧调用，确保 FlowArea 的时间与 MIDI 播放位置完全同步。
@@ -1335,9 +1348,10 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	var light_color = _get_note_color(judge_note.type, judge_note.lane)
 	get_parent().lane_area.light_lane(judge_note.lane, light_color)
 	
-	var preset = spark_presets.get(result, 0)
-	if preset > 0 and judge_note.type != FlowNote.NoteType.Long and hit_pos != Vector2.ZERO:
-		_generate_particle(result, hit_pos, spark_scalings.get(result, 100))
+	var preset = spark_presets.get(result, "")
+	var emitter = spark_emitters.get(result, "")
+	if (not preset.is_empty() or not emitter.is_empty()) and judge_note.type != FlowNote.NoteType.Long and hit_pos != Vector2.ZERO:
+		_generate_particle(result, hit_pos)
 
 var _is_pause: bool = false
 var _cached_viewport_height: float = 0.0
@@ -1395,9 +1409,10 @@ func _process(delta: float) -> void:
 
 		var long_end_time = note.start_time + max(0.0, note.duration)
 		if _synced_current_time >= long_end_time:
-			var preset = spark_presets.get("Perfect", 0)
-			if preset > 0:
-				_generate_particle("Perfect", Vector2(note.cached_center_x, note.cached_tail_center_y), spark_scalings.get("Perfect", 100))
+			var preset = spark_presets.get("Perfect", "")
+			var emitter = spark_emitters.get("Perfect", "")
+			if not preset.is_empty() or not emitter.is_empty():
+				_generate_particle("Perfect", Vector2(note.cached_center_x, note.cached_tail_center_y))
 			_remove_note(note)
 			active_holds.erase(touch_id)
 			continue

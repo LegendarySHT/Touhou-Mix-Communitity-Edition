@@ -407,9 +407,13 @@ func _popup_spark_adjust(judge_type: String) -> void:
 	if result.is_empty():
 		return
 	var judge_lower := judge_type.to_lower()
-	_pending_config[judge_lower + "_spark_preset"] = result.get("preset", 0)
+	_pending_config[judge_lower + "_spark_preset"] = result.get("preset", "")
+	_pending_config[judge_lower + "_spark_emitter"] = result.get("emitter", "")
 	_pending_config[judge_lower + "_spark_scaling"] = result.get("scaling", 100)
-	GLogger.info("%s spark updated: preset=%s scaling=%s (pending save)" % [judge_type, result.get("preset"), result.get("scaling")], "SettingList")
+	_pending_config[judge_lower + "_spark_alpha"] = result.get("alpha", 100)
+	_pending_config[judge_lower + "_spark_emitter_scaling"] = result.get("emitter_scaling", 150)
+	GLogger.info("%s spark updated: base=%s emitter=%s scale=%s alpha=%s emitter_scale=%s (pending save)"
+		% [judge_type, result.get("preset"), result.get("emitter"), result.get("scaling"), result.get("alpha"), result.get("emitter_scaling")], "SettingList")
 
 # ===== 各视图背景设置弹窗入口 =====
 # 每个视图一个 TYPE_BUTTON 入口，调用统一的 _popup_view_background_adjust(view_name)

@@ -2,22 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cake0a212mjui"
-path.s3tc="res://.godot/imported/BlockAndParticleP2.png-0c6aa99ffdaca9dfcf55d43a0708aca4.s3tc.ctex"
-path.etc2="res://.godot/imported/BlockAndParticleP2.png-0c6aa99ffdaca9dfcf55d43a0708aca4.etc2.ctex"
+uid="uid://beqjobacnlsfu"
+path="res://.godot/imported/base.png-2fbb1e4767a1443a8e23dc993c665fef.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
-source_file="res://Resources/Particles/blockWithParticle/BlockAndParticleP2.png"
-dest_files=["res://.godot/imported/BlockAndParticleP2.png-0c6aa99ffdaca9dfcf55d43a0708aca4.s3tc.ctex", "res://.godot/imported/BlockAndParticleP2.png-0c6aa99ffdaca9dfcf55d43a0708aca4.etc2.ctex"]
+source_file="res://Resources/Particles/Diamond-Orange/base.png"
+dest_files=["res://.godot/imported/base.png-2fbb1e4767a1443a8e23dc993c665fef.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

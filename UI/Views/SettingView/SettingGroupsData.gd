@@ -294,7 +294,7 @@ static func get_setting_groups() -> Array:
 				"id": "perfect_spark",
 				"name_en": "Perfect Spark",
 				"name_zh": "Perfect特效设定",
-				"description": "点击按钮打开窗口，调整 Perfect 判定的按键特效样式与大小",
+				"description": "点击按钮打开窗口，调整 Perfect 判定的按键特效：基础粒子、散射粒子、整体缩放/不透明度、散射粒子缩放",
 				"type": "TYPE_BUTTON",
 				"default_value": null,
 				"on_click": "_popup_perfect_spark_adjust"
@@ -303,7 +303,7 @@ static func get_setting_groups() -> Array:
 				"id": "great_spark",
 				"name_en": "Great Spark",
 				"name_zh": "Great特效设定",
-				"description": "点击按钮打开窗口，调整 Great 判定的按键特效样式与大小",
+				"description": "点击按钮打开窗口，调整 Great 判定的按键特效：基础粒子、散射粒子、整体缩放/不透明度、散射粒子缩放",
 				"type": "TYPE_BUTTON",
 				"default_value": null,
 				"on_click": "_popup_great_spark_adjust"
@@ -312,7 +312,7 @@ static func get_setting_groups() -> Array:
 				"id": "good_spark",
 				"name_en": "Good Spark",
 				"name_zh": "Good特效设定",
-				"description": "点击按钮打开窗口，调整 Good 判定的按键特效样式与大小",
+				"description": "点击按钮打开窗口，调整 Good 判定的按键特效：基础粒子、散射粒子、整体缩放/不透明度、散射粒子缩放",
 				"type": "TYPE_BUTTON",
 				"default_value": null,
 				"on_click": "_popup_good_spark_adjust"
@@ -321,7 +321,7 @@ static func get_setting_groups() -> Array:
 				"id": "bad_spark",
 				"name_en": "Bad Spark",
 				"name_zh": "Bad特效设定",
-				"description": "点击按钮打开窗口，调整 Bad 判定的按键特效样式与大小",
+				"description": "点击按钮打开窗口，调整 Bad 判定的按键特效：基础粒子、散射粒子、整体缩放/不透明度、散射粒子缩放",
 				"type": "TYPE_BUTTON",
 				"default_value": null,
 				"on_click": "_popup_bad_spark_adjust"

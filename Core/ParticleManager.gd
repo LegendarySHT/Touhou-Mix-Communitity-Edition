@@ -3,13 +3,12 @@
 ## 支持内置粒子（res://Resources/Particles）与用户粒子（user://files/Particles）统一管理
 ## 结构参考 SkinManager：
 ##   粒子包目录下含 particle.ini（配置）+ 若干精灵图（序列帧 spritesheet）
-##   particle.ini 声明单帧尺寸/总帧数/帧率/是否循环/是否淡出，以及
-##   Perfect/Great/Good/Bad 四种判定分别使用的精灵图
-##   每个判定节 file 可声明多张基础精灵图（逗号分隔），播放时随机选取一张，
-##   用于表现「同判定下发射规律随机轮换」的粒子
-##   particle 键声明叠加粒子动画（同帧率/帧数的另一张精灵图），绘制时叠在基础图之上，
-##   可用 particle_scaling（相对基础的显示尺寸百分比）与 particle_rotation（随机旋转角度）
-##   控制叠加效果；旋转支持 [a,b,c] 离散集 / a,b 连续范围 / 单值固定 三种规格
+##   particle.ini 声明单帧尺寸/总帧数/帧率/是否循环/是否淡出，以及粒子角色：
+##     [base] 节：基础粒子精灵图（游戏「基础粒子」下拉选择此包时播放）
+##     [emitter] 节：发射器/散射粒子精灵图（游戏「散射粒子」下拉选择此包时播放）
+##   一个包可同时声明两种角色；每个角色 file 可声明多张精灵图（逗号分隔），
+##   播放时随机选取一张，用于表现「同角色下发射规律随机轮换」的粒子
+##   每个角色还可声明 rotation（随机旋转角度，规格见 _parse_rotation）：空/缺省不旋转
 extends Node
 
 class_name ParticleManager
@@ -27,22 +26,28 @@ const PARTICLE_CONFIG_FILE = "particle.ini"
 ## 内置包显示后缀（与皮肤一致）
 const BUILTIN_SUFFIX = " [内置]"
 
-## 四种判定类型（读取 [perfect]/[great]/[good]/[bad] 节的顺序）
-const JUDGE_TYPES: Array[String] = ["Perfect", "Great", "Good", "Bad"]
+## 粒子角色（对应 particle.ini 的 [base]/[emitter] 节）
+const ROLE_BASE: String = "base"
+const ROLE_EMITTER: String = "emitter"
 
 ## ========== 资源索引 ==========
 ## 粒子包索引 {pack_key: Dictionary}
 ## pack_key = 文件夹名（内置加 [内置] 后缀）
-## 字段：{name, path, is_builtin, size, frame, fps, loop, fade_out, cols, rows, files, overlays}
-##   files: {judge_type: [基础精灵图文件名, ...]}（多图时播放随机选取）
-##   overlays: {judge_type: {particle: [叠加精灵图文件名, ...], scaling: float, rotation: Variant}}
+## 字段：{name, path, is_builtin, size, frame, fps, loop, fade_out, cols, rows,
+##        base_files, emitter_files, base_rotation, emitter_rotation}
+##   base_files:    [基础粒子精灵图文件名, ...]（多图时播放随机选取）
+##   emitter_files: [发射器/散射粒子精灵图文件名, ...]（多图时播放随机选取）
 var particles_index: Dictionary = {}
 
-## 精灵图缓存 {pack_key: {judge_type: Array[Texture2D]}}（get_particle_textures 结果，含跨判定回退）
-var _texture_cache: Dictionary = {}
+## 基础粒子精灵图缓存 {pack_key: Array[Texture2D]}（get_base_textures 结果）
+var _base_texture_cache: Dictionary = {}
 
-## 叠加粒子配置缓存 {pack_key: {judge_type: Dictionary}}
-var _overlay_cache: Dictionary = {}
+## 发射器粒子精灵图缓存 {pack_key: Array[Texture2D]}（get_emitter_textures 结果）
+var _emitter_texture_cache: Dictionary = {}
+
+## 包层模板缓存 {role + "|" + pack_key: Dictionary}（get_layer_template 结果）
+## 预烘焙包级静态元数据，spawn 时免重复字段解析；粒子包重扫时随 clear_index 清空
+var _layer_template_cache: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("singleton")
@@ -51,8 +56,9 @@ func _ready() -> void:
 ## 清空粒子索引（由 FileSystemManager._scan_all_resources 统一扫描前调用）
 func clear_index() -> void:
 	particles_index.clear()
-	_texture_cache.clear()
-	_overlay_cache.clear()
+	_base_texture_cache.clear()
+	_emitter_texture_cache.clear()
+	_layer_template_cache.clear()
 
 ## ========== 扫描 ==========
 
@@ -109,8 +115,8 @@ func _load_pack_worker(pack_path: String, pack_key: String, is_builtin: bool, lo
 		local_logs.append({"msg": "Particle pack config invalid (missing size): %s" % config_path, "is_warning": true})
 		return {}
 
-	# 校验至少存在一张精灵图（用于任意判定类型），否则视为无效包
-	if not _has_any_sprite(pack_path, normalized.get("files", {}), normalized.get("overlays", {})):
+	# 校验至少存在一张精灵图（基础或发射器任一角色），否则视为无效包
+	if not _has_any_sprite(pack_path, normalized.get("base_files", []), normalized.get("emitter_files", [])):
 		local_logs.append({"msg": "Particle pack has no sprites: %s" % pack_path, "is_warning": true})
 		return {}
 
@@ -125,8 +131,10 @@ func _load_pack_worker(pack_path: String, pack_key: String, is_builtin: bool, lo
 		"fade_out": normalized.get("fade_out", true),
 		"cols": normalized.get("cols", 0),
 		"rows": normalized.get("rows", 0),
-		"files": normalized.get("files", {}),
-		"overlays": normalized.get("overlays", {}),
+		"base_files": normalized.get("base_files", []),
+		"emitter_files": normalized.get("emitter_files", []),
+		"base_rotation": normalized.get("base_rotation", null),
+		"emitter_rotation": normalized.get("emitter_rotation", null),
 	}
 
 ## 将 INI 解析结果 {section: {key: str}} 规范化为带类型的结构化 Dictionary
@@ -146,18 +154,14 @@ func _normalize_pack_config(raw: Dictionary, local_logs: Array) -> Dictionary:
 	var cols := int(general.get("cols", "0"))
 	var rows := int(general.get("rows", "0"))
 
-	var files: Dictionary = {}
-	var overlays: Dictionary = {}
-	# 每判定类型可声明一张或多张基础精灵图（file 逗号分隔），多图时播放随机选取；
-	# 另可声明叠加粒子动画（particle 逗号分隔 + particle_scaling/particle_rotation）
-	for judge in JUDGE_TYPES:
-		var sec: Dictionary = raw.get(judge.to_lower(), {})
-		var file_names := _parse_file_list(sec.get("file", ""))
-		if not file_names.is_empty():
-			files[judge] = file_names
-		var overlay := _parse_overlay(sec, local_logs)
-		if not overlay.is_empty():
-			overlays[judge] = overlay
+	# 基础粒子与发射器粒子各自声明精灵图（file 逗号分隔，多图时播放随机选取）
+	var base_files := _parse_file_list(raw.get(ROLE_BASE, {}).get("file", ""))
+	var emitter_files := _parse_file_list(raw.get(ROLE_EMITTER, {}).get("file", ""))
+
+	# 每层可声明随机旋转角度（rotation 键，规格同旧 particle_rotation）：
+	#   [a,b,c] 离散集 / a,b 连续范围 / 单值固定；空或非法 → null（不旋转）
+	var base_rotation = _parse_rotation(raw.get(ROLE_BASE, {}).get("rotation", ""), local_logs)
+	var emitter_rotation = _parse_rotation(raw.get(ROLE_EMITTER, {}).get("rotation", ""), local_logs)
 
 	return {
 		"size": size,
@@ -167,11 +171,13 @@ func _normalize_pack_config(raw: Dictionary, local_logs: Array) -> Dictionary:
 		"fade_out": _parse_bool(general.get("fade_out", "true")),
 		"cols": cols,
 		"rows": rows,
-		"files": files,
-		"overlays": overlays,
+		"base_files": base_files,
+		"emitter_files": emitter_files,
+		"base_rotation": base_rotation,
+		"emitter_rotation": emitter_rotation,
 	}
 
-## 解析 [judge] 节的 file 键：支持逗号分隔的多精灵图列表（随机选取用）
+## 解析节内 file 键：支持逗号分隔的多精灵图列表（随机选取用）
 ## 单文件 / 空值 / 带空格逗号 均兼容
 func _parse_file_list(file_value: Variant) -> Array[String]:
 	var list: Array[String] = []
@@ -183,21 +189,6 @@ func _parse_file_list(file_value: Variant) -> Array[String]:
 		if not name.is_empty():
 			list.append(name)
 	return list
-
-## 解析 [judge] 节的叠加粒子配置（particle / particle_scaling / particle_rotation 键）
-## 无 particle 键返回空 Dictionary（表示不叠加）
-func _parse_overlay(sec: Dictionary, local_logs: Array) -> Dictionary:
-	var particle_names := _parse_file_list(sec.get("particle", ""))
-	if particle_names.is_empty():
-		return {}
-	var scaling := float(sec.get("particle_scaling", "100"))
-	if scaling <= 0.0:
-		scaling = 100.0
-	return {
-		"particle": particle_names,
-		"scaling": scaling,
-		"rotation": _parse_rotation(sec.get("particle_rotation", ""), local_logs),
-	}
 
 ## 解析随机旋转规格，返回 null（不旋转）或 {mode, ...}：
 ##   [a,b,c] → {mode: "set",   values: [a, b, c]}（每次播放从列出的角度随机取一个）
@@ -228,7 +219,7 @@ func _parse_rotation(value: Variant, local_logs: Array) -> Variant:
 		if a.is_valid_float() and b.is_valid_float():
 			if parts.size() > 2:
 				local_logs.append({
-					"msg": "particle_rotation=%s 含 %d 个逗号分隔值，按前两个作连续范围，多余忽略" % [text, parts.size()],
+					"msg": "particle rotation=%s 含 %d 个逗号分隔值，按前两个作连续范围，多余忽略" % [text, parts.size()],
 					"is_warning": true,
 				})
 			var lo := minf(float(a), float(b))
@@ -240,18 +231,15 @@ func _parse_rotation(value: Variant, local_logs: Array) -> Variant:
 		return {"mode": "fixed", "value": float(text)}
 	return null
 
-## 检查粒子包目录下是否至少存在一张配置声明的精灵图（基础或叠加）
+## 检查粒子包目录下是否至少存在一张配置声明的精灵图（基础或发射器）
 ## res:// 走 ResourceLoader（导出后源图以 .ctex 存在，FileAccess 不可读），user:// 走文件存在性检查
-func _has_any_sprite(pack_path: String, files: Dictionary, overlays: Dictionary) -> bool:
-	for judge in JUDGE_TYPES:
-		var file_list: Array = files.get(judge, [])
-		for file_name in file_list:
-			if _sprite_exists(pack_path, file_name):
-				return true
-		var overlay: Dictionary = overlays.get(judge, {})
-		for file_name in overlay.get("particle", []):
-			if _sprite_exists(pack_path, file_name):
-				return true
+func _has_any_sprite(pack_path: String, base_files: Array, emitter_files: Array) -> bool:
+	for file_name in base_files:
+		if _sprite_exists(pack_path, file_name):
+			return true
+	for file_name in emitter_files:
+		if _sprite_exists(pack_path, file_name):
+			return true
 	return false
 
 ## 单张精灵图存在性检查（空名视为不存在）
@@ -294,83 +282,108 @@ func get_particle_pack_by_index(index: int) -> String:
 		return ""
 	return list[index - 1]
 
-## 获取粒子包在某判定类型下可用的全部精灵图（Texture2D 列表）
-## 当前判定类型未配置/缺失时依次回退 Perfect→Great→Good→Bad
-## 返回列表可能为空（播放器会透明播完）
-func get_particle_textures(pack_key: String, judge_type: String) -> Array:
-	if _texture_cache.has(pack_key) and _texture_cache[pack_key].has(judge_type):
-		return _texture_cache[pack_key][judge_type]
+## 按粒子包名字取包键（config 用包名字而非数字索引，避免新增粒子包导致索引错位）
+## 精确匹配包键；找不到（包被删除/改名/值为旧数字格式）返回空 = None（无特效）
+func get_particle_pack_by_name(name: String) -> String:
+	if name.is_empty():
+		return ""
+	return name if particles_index.has(name) else ""
 
+## 获取声明了指定角色精灵图的粒子包键列表（按名称排序）
+## role: ROLE_BASE / ROLE_EMITTER；供设置弹窗按角色过滤下拉选项
+## 一个包声明了 [base]+[emitter] 时会同时出现在两个角色列表里
+func get_particle_list_for_role(role: String) -> Array:
+	var result: Array = []
+	for pack_key in particles_index.keys():
+		var files: Array = particles_index[pack_key].get(role + "_files", [])
+		if not files.is_empty():
+			result.append(pack_key)
+	result.sort_custom(func(a: String, b: String) -> bool: return a.to_lower() < b.to_lower())
+	return result
+
+## 获取包在指定角色下的预烘焙模板（纹理列表 + 网格/帧率/帧数/淡出/旋转规格等静态元数据）
+## role: ROLE_BASE / ROLE_EMITTER。模板缓存复用，spawn 时只做随机选图 + 旋转采样 + 尺寸换算，
+## 免每次 spawn 重复字段解析与网格推导。无效包/缺精灵图返回空 Dictionary
+func get_layer_template(pack_key: String, role: String) -> Dictionary:
+	var cache_key := role + "|" + pack_key
+	if _layer_template_cache.has(cache_key):
+		return _layer_template_cache[cache_key]
+	var tpl := _build_layer_template(pack_key, role)
+	_layer_template_cache[cache_key] = tpl
+	return tpl
+
+## 构建单个包层模板（网格推导/帧数截断/帧率容错，与播放器 Layer 原初始化逻辑一致）
+func _build_layer_template(pack_key: String, role: String) -> Dictionary:
+	var data := get_particle_data(pack_key)
+	if data.is_empty():
+		return {}
+	var textures := get_emitter_textures(pack_key) if role == ROLE_EMITTER else get_base_textures(pack_key)
+	if textures.is_empty():
+		return {}
+	var source_size := float(data.get("size", 0))
+	if source_size <= 0.0:
+		return {}
+	# 网格：优先配置显式 cols/rows，否则按贴图尺寸 / 单帧尺寸推导
+	var tex: Texture2D = textures[0]
+	var tex_w := tex.get_width()
+	var tex_h := tex.get_height()
+	var cfg_cols := int(data.get("cols", 0))
+	var cfg_rows := int(data.get("rows", 0))
+	var cols: int
+	if cfg_cols > 0:
+		cols = cfg_cols
+	elif tex_w > 0:
+		cols = maxi(1, tex_w / int(source_size))
+	else:
+		cols = 1
+	var rows: int
+	if cfg_rows > 0:
+		rows = cfg_rows
+	elif tex_h > 0:
+		rows = maxi(1, tex_h / int(source_size))
+	else:
+		rows = 1
+	# 帧数：配置显式声明优先，否则网格全部帧；超出网格可用帧时截断
+	var cfg_frame := int(data.get("frame", 0))
+	var available := cols * rows
+	var frame_count: int = cfg_frame if cfg_frame > 0 else available
+	frame_count = clampi(frame_count, 1, available)
+	var fps := float(data.get("fps", 30.0))
+	if fps <= 0.0:
+		fps = 30.0
+	return {
+		"textures": textures,
+		"size": source_size,
+		"fps": fps,
+		"loop": bool(data.get("loop", false)),
+		"fade_out": bool(data.get("fade_out", true)),
+		"cols": cols,
+		"rows": rows,
+		"frame_count": frame_count,
+		"rotation_spec": data.get("emitter_rotation" if role == ROLE_EMITTER else "base_rotation", null),
+	}
+
+## 获取粒子包在基础角色下可用的全部精灵图（Texture2D 列表）
+## 返回列表可能为空（该包未声明 [base]，播放器会透明跳过基础层）
+func get_base_textures(pack_key: String) -> Array:
+	return _get_role_textures(pack_key, ROLE_BASE, _base_texture_cache)
+
+## 获取粒子包在发射器角色下可用的全部精灵图（Texture2D 列表）
+## 返回列表可能为空（该包未声明 [emitter]，播放器会透明跳过发射器层）
+func get_emitter_textures(pack_key: String) -> Array:
+	return _get_role_textures(pack_key, ROLE_EMITTER, _emitter_texture_cache)
+
+## 通用角色精灵图查询（带缓存，避免反复读盘）
+func _get_role_textures(pack_key: String, role: String, cache: Dictionary) -> Array:
+	if cache.has(pack_key):
+		return cache[pack_key]
 	var result: Array = []
 	var data := get_particle_data(pack_key)
 	if not data.is_empty():
 		var pack_path: String = data.get("path", "")
-		var files: Dictionary = data.get("files", {})
-
-		# 当前判定类型的精灵图列表
-		result = _load_sprite_list(pack_path, files.get(judge_type, []))
-		# 回退：按 Perfect→Great→Good→Bad 顺序找可用的
-		if result.is_empty():
-			for jt in JUDGE_TYPES:
-				if jt == judge_type:
-					continue
-				result = _load_sprite_list(pack_path, files.get(jt, []))
-				if not result.is_empty():
-					break
-
-	# 缓存结果（含空数组，避免反复读盘）
-	if not _texture_cache.has(pack_key):
-		_texture_cache[pack_key] = {}
-	_texture_cache[pack_key][judge_type] = result
-	return result
-
-## 兼容接口：返回该判定类型解析后的第一张精灵图（多图时仅取第一张）
-## 需要随机多图选取请用 get_particle_textures()
-func get_particle_texture(pack_key: String, judge_type: String) -> Texture2D:
-	var textures := get_particle_textures(pack_key, judge_type)
-	return textures[0] if not textures.is_empty() else null
-
-## 获取粒子包在某判定类型下的叠加粒子配置（play() 时叠加在基础动画之上）
-## 返回 {textures: [Texture2D, ...], scaling: float, rotation: Variant}，未配置叠加返回 {}
-## textures 为叠加精灵图列表（播放时随机取一张），scaling 为相对基础的显示尺寸百分比，
-## rotation 为 _parse_rotation 解析出的旋转规格（null=不旋转）
-func get_particle_overlay(pack_key: String, judge_type: String) -> Dictionary:
-	if _overlay_cache.has(pack_key) and _overlay_cache[pack_key].has(judge_type):
-		return _overlay_cache[pack_key][judge_type]
-
-	var result := {}
-	var data := get_particle_data(pack_key)
-	if not data.is_empty():
-		var pack_path: String = data.get("path", "")
-		var overlays: Dictionary = data.get("overlays", {})
-		var overlay: Dictionary = overlays.get(judge_type, {})
-		if not overlay.is_empty():
-			var textures := _load_sprite_list(pack_path, overlay.get("particle", []))
-			if not textures.is_empty():
-				# 健壮性：叠加动画与基础动画共用同一网格（cols/rows/size）取样，
-				# 叠加图尺寸与基础不一致会按基础网格取叠加帧导致画面错位——加载时告警一次（结果已缓存，不会重复触发）
-				var base_list := get_particle_textures(pack_key, judge_type)
-				if not base_list.is_empty():
-					var base_tex: Texture2D = base_list[0]
-					var ov_tex: Texture2D = textures[0]
-					if ov_tex.get_width() != base_tex.get_width() or ov_tex.get_height() != base_tex.get_height():
-						GLogger.warning(
-							"Particle overlay grid mismatch (pack=%s, judge=%s): overlay %dx%d != base %dx%d" % [
-								pack_key, judge_type,
-								ov_tex.get_width(), ov_tex.get_height(),
-								base_tex.get_width(), base_tex.get_height(),
-							],
-							"ParticleMGR"
-						)
-				result = {
-					"textures": textures,
-					"scaling": float(overlay.get("scaling", 100.0)),
-					"rotation": overlay.get("rotation", null),
-				}
-
-	if not _overlay_cache.has(pack_key):
-		_overlay_cache[pack_key] = {}
-	_overlay_cache[pack_key][judge_type] = result
+		var files: Array = data.get(role + "_files", [])
+		result = _load_sprite_list(pack_path, files)
+	cache[pack_key] = result
 	return result
 
 ## 加载一组精灵图文件名，返回成功加载的 Texture2D 列表（失败项自动跳过）
@@ -401,5 +414,5 @@ func _try_load_sprite(pack_path: String, file_name: String) -> Texture2D:
 
 ## 清空精灵图缓存（粒子包重扫时调用）
 func clear_texture_cache() -> void:
-	_texture_cache.clear()
-	_overlay_cache.clear()
+	_base_texture_cache.clear()
+	_emitter_texture_cache.clear()

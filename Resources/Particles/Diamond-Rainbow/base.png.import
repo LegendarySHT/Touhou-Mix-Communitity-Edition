@@ -2,22 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b143g35nbdsfi"
-path.s3tc="res://.godot/imported/BlockG.png-1092ffb16bf393926248f5aaf3718fe1.s3tc.ctex"
-path.etc2="res://.godot/imported/BlockG.png-1092ffb16bf393926248f5aaf3718fe1.etc2.ctex"
+uid="uid://cfgg5527mnpb"
+path="res://.godot/imported/base.png-182346e0d55932ab20e6866536485b9f.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
-source_file="res://Resources/Particles/blockWithParticle/BlockG.png"
-dest_files=["res://.godot/imported/BlockG.png-1092ffb16bf393926248f5aaf3718fe1.s3tc.ctex", "res://.godot/imported/BlockG.png-1092ffb16bf393926248f5aaf3718fe1.etc2.ctex"]
+source_file="res://Resources/Particles/Diamond-Rainbow/base.png"
+dest_files=["res://.godot/imported/base.png-182346e0d55932ab20e6866536485b9f.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

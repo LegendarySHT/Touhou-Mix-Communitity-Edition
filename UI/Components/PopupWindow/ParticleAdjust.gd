@@ -4,13 +4,18 @@ class_name ParticleAdjust
 
 @onready var _particle_preview: Panel = $ParticlePreview
 @onready var _title_label: Label = $VBoxC/Title
-@onready var _particle_type_btn: OptionButton = $VBoxC/OptionButton
-@onready var _particle_scaling_edit: LineEdit = $VBoxC/OtherOptions/ValueLineEdit/LineEdit
+@onready var _basic_particle_btn: OptionButton = $VBoxC/Options/BasicParticle
+@onready var _emitter_btn: OptionButton = $VBoxC/Options/ParticleEmitter
+@onready var _total_scale_edit: LineEdit = $VBoxC/Options/TotalScale/LineEdit
+@onready var _total_alpha_edit: LineEdit = $VBoxC/Options/TotalAlpha/LineEdit
+@onready var _emitter_scale_edit: LineEdit = $VBoxC/Options/EmitterScale/LineEdit
 
 # ===== 粒子设置页 =====
 ## 粒子 preset 选项（索引 0=None，之后动态从 ParticleMGR 读取粒子包）
-## 与 SettingGroupsData 中 spark_preset 的 options 语义一致（0=无，1 起对应粒子包）
-var _particle_presets: Array[String] = ["None"]
+## 下拉项即粒子包完整名字（如 "BoxBurst [内置]"）；配置按名字读写而非索引，避免新增包时索引错位
+## 每个下拉只列出声明了对应角色精灵图的粒子包：有 [base] 才进基础下拉，有 [emitter] 才进散射下拉
+var _base_presets: Array[String] = ["None"]
+var _emitter_presets: Array[String] = ["None"]
 ## 粒子预览场景（精灵图序列帧批绘节点）
 var _particle_scene: PackedScene = preload("res://UI/Views/PlayView/particle_player.tscn")
 ## 常驻批绘节点（预览粒子全部由单个 Node2D 统一绘制）
@@ -19,30 +24,33 @@ var _particle_drawer: Node2D = null
 var _particle_preview_timer: Timer = null
 ## 粒子预览自动播放间隔（秒）
 const _PARTICLE_PREVIEW_INTERVAL: float = 1.8
-## 缩放值防抖定时器（连续输入时只保存 + 预览一次，避免逐字符写盘/重复实例化）
-var _scaling_debounce_timer: Timer = null
-const _SCALING_DEBOUNCE_SEC := 0.4
+## 数值输入防抖定时器（连续输入时只保存 + 预览一次，避免逐字符写盘/重复实例化）
+var _value_debounce_timer: Timer = null
+const _VALUE_DEBOUNCE_SEC := 0.4
 
 ## 当前正在编辑的判定类型（Perfect / Great / Good / Bad）
 ## 由 PopupWindow.show_particle_adjust 传入，决定读写哪个 spark 配置字段
 var _judge_type: String = "Perfect"
 
 func _ready() -> void:
-	_particle_type_btn.item_selected.connect(_on_particle_preset_selected)
-	_particle_scaling_edit.text_changed.connect(_on_particle_scaling_changed)
+	_basic_particle_btn.item_selected.connect(_on_preset_changed)
+	_emitter_btn.item_selected.connect(_on_preset_changed)
+	_total_scale_edit.text_changed.connect(_on_value_changed)
+	_total_alpha_edit.text_changed.connect(_on_value_changed)
+	_emitter_scale_edit.text_changed.connect(_on_value_changed)
 	# 常驻单个批绘节点，预览粒子由它统一绘制
 	_particle_drawer = _particle_scene.instantiate()
 	_particle_preview.add_child(_particle_drawer)
 	_init_particle_preview()
-	_init_scaling_debounce()
+	_init_value_debounce()
 
-## 初始化缩放防抖定时器（one-shot，连续输入只触发一次保存 + 预览）
-func _init_scaling_debounce() -> void:
-	_scaling_debounce_timer = Timer.new()
-	_scaling_debounce_timer.one_shot = true
-	_scaling_debounce_timer.wait_time = _SCALING_DEBOUNCE_SEC
-	_scaling_debounce_timer.timeout.connect(_apply_scaling_debounced)
-	add_child(_scaling_debounce_timer)
+## 初始化数值防抖定时器（one-shot，连续输入只触发一次保存 + 预览）
+func _init_value_debounce() -> void:
+	_value_debounce_timer = Timer.new()
+	_value_debounce_timer.one_shot = true
+	_value_debounce_timer.wait_time = _VALUE_DEBOUNCE_SEC
+	_value_debounce_timer.timeout.connect(_apply_values_debounced)
+	add_child(_value_debounce_timer)
 
 ## 初始化粒子预览循环定时器（粒子由常驻批绘节点统一绘制，定时触发 spawn）
 func _init_particle_preview() -> void:
@@ -59,42 +67,75 @@ func init_adjust(judge_type: String = "Perfect") -> void:
 	_title_label.text = "%s 特效设定" % judge_type
 	# 刷新粒子样式选项（动态从 ParticleMGR 读取，支持外部导入的粒子包）
 	_refresh_presets()
-	# 选中当前配置值
-	var preset_key := "%s_spark_preset" % judge_type.to_lower()
-	var current_preset: int = ConfigManager.instance.get_int("Lane", preset_key, 0)
-	_particle_type_btn.selected = clampi(current_preset, 0, _particle_presets.size() - 1)
-	# 显示当前缩放值（临时断开信号避免回环）
-	var scaling_key := "%s_spark_scaling" % judge_type.to_lower()
-	var current_scaling: int = ConfigManager.instance.get_int("Lane", scaling_key, 100)
-	_particle_scaling_edit.text_changed.disconnect(_on_particle_scaling_changed)
-	_particle_scaling_edit.text = str(current_scaling)
-	_particle_scaling_edit.text_changed.connect(_on_particle_scaling_changed)
+	var jl := judge_type.to_lower()
+	# 基础粒子 preset（配置存粒子包名字，找不到回退 None=索引0）
+	var preset_name: String = ConfigManager.instance.get_string("Lane", jl + "_spark_preset", "")
+	_basic_particle_btn.selected = _preset_index_of(preset_name, _base_presets)
+	# 散射粒子 preset
+	var emitter_name: String = ConfigManager.instance.get_string("Lane", jl + "_spark_emitter", "")
+	_emitter_btn.selected = _preset_index_of(emitter_name, _emitter_presets)
+	# 三个数值（临时断开信号避免回环）
+	_total_scale_edit.text_changed.disconnect(_on_value_changed)
+	_total_scale_edit.text = str(ConfigManager.instance.get_int("Lane", jl + "_spark_scaling", 100))
+	_total_scale_edit.text_changed.connect(_on_value_changed)
+	_total_alpha_edit.text_changed.disconnect(_on_value_changed)
+	_total_alpha_edit.text = str(ConfigManager.instance.get_int("Lane", jl + "_spark_alpha", 100))
+	_total_alpha_edit.text_changed.connect(_on_value_changed)
+	_emitter_scale_edit.text_changed.disconnect(_on_value_changed)
+	_emitter_scale_edit.text = str(ConfigManager.instance.get_int("Lane", jl + "_spark_emitter_scaling", 150))
+	_emitter_scale_edit.text_changed.connect(_on_value_changed)
 
-## 刷新粒子包选项列表（索引 0=None，1 起按 ParticleMGR 扫描顺序：内置在前，用户在后）
+## 刷新粒子包选项列表（索引 0=None，1 起按 ParticleMGR 扫描顺序）
+## 基础下拉只列声明了 [base] 的包，散射下拉只列声明了 [emitter] 的包；
+## 两种角色都声明的包（复合包）会同时出现在两个下拉
 func _refresh_presets() -> void:
-	_particle_presets = ["None"]
-	for pack_key in ParticleMGR.get_particle_list():
-		_particle_presets.append(pack_key)
-	# 同步到 OptionButton 的显示项
-	_particle_type_btn.clear()
-	for pack_name in _particle_presets:
-		_particle_type_btn.add_item(pack_name)
+	_base_presets = ["None"]
+	_emitter_presets = ["None"]
+	for pack_key in ParticleMGR.get_particle_list_for_role(ParticleMGR.ROLE_BASE):
+		_base_presets.append(pack_key)
+	for pack_key in ParticleMGR.get_particle_list_for_role(ParticleMGR.ROLE_EMITTER):
+		_emitter_presets.append(pack_key)
+	_fill_btn(_basic_particle_btn, _base_presets)
+	_fill_btn(_emitter_btn, _emitter_presets)
 
-## 播放一次预览粒子（在 ParticlePreview 中心，使用当前选中的 preset 和缩放值）
+## 用指定选项列表填充一个 OptionButton
+func _fill_btn(btn: OptionButton, list: Array) -> void:
+	btn.clear()
+	for pack_name in list:
+		btn.add_item(pack_name)
+
+## 读取百分比数值输入（非法回退默认值）
+func _read_pct(edit: LineEdit, default: int) -> int:
+	var text := edit.text
+	return int(text) if text.is_valid_int() else default
+
+## 配置中存的是粒子包名字（如 "Diamond-Rainbow [内置]"），转成对应角色下拉的索引；找不到 → 0(None)
+func _preset_index_of(name: String, list: Array) -> int:
+	if name.is_empty():
+		return 0
+	var idx := list.find(name)
+	return idx if idx >= 0 else 0
+
+## 播放一次预览粒子（在 ParticlePreview 中心，使用当前选中的预设与数值）
 ## 由常驻批绘节点直接 spawn，粒子内部 _process/_draw 统一推进绘制
 func _play_preview_particle() -> void:
 	if not is_visible_in_tree():
 		return
-	# preset=0 (None) 时不播放
-	var preset_idx: int = _particle_type_btn.selected
-	if preset_idx == 0:
+	# base 与 emitter 都为 None 时不播放
+	var base_idx: int = _basic_particle_btn.selected
+	var emitter_idx: int = _emitter_btn.selected
+	if base_idx == 0 and emitter_idx == 0:
 		return
-	var scaling_str := _particle_scaling_edit.text
-	var scaling: int = int(scaling_str) if scaling_str.is_valid_int() else 100
-	var pack_key: String = _particle_presets[preset_idx]
+	var base_key: String = _base_presets[base_idx] if base_idx > 0 else ""
+	var emitter_key: String = _emitter_presets[emitter_idx] if emitter_idx > 0 else ""
+	# 数值预换算为倍率/不透明度再传 spawn（spawn 内部不再除 100）
+	var scale_mult := float(_read_pct(_total_scale_edit, 100)) / 100.0
+	var alpha := clampf(float(_read_pct(_total_alpha_edit, 100)) / 100.0, 0.0, 1.0)
+	var emitter_scale_mult := float(_read_pct(_emitter_scale_edit, 150)) / 100.0
 	# 单节点批绘：直接 spawn，粒子由内部 _process/_draw 统一推进绘制
 	# Node2D 在 Control 下的 position 以左上角为原点，Panel size=500x500 → 中心 250,250
-	_particle_drawer.spawn(pack_key, _judge_type, _particle_preview.size / 2.0, scaling)
+	_particle_drawer.spawn(base_key, emitter_key, _particle_preview.size / 2.0,
+		scale_mult, alpha, emitter_scale_mult)
 
 ## 启动粒子预览循环
 func start_preview() -> void:
@@ -108,25 +149,27 @@ func stop_preview() -> void:
 	if _particle_preview_timer and not _particle_preview_timer.is_stopped():
 		_particle_preview_timer.stop()
 
-## 切换粒子样式：即时保存到对应判定类型的配置字段并播放一次预览
-func _on_particle_preset_selected(_index: int) -> void:
-	# preset 配置对应 Lane 段的 {judge_type_lower}_spark_preset 字段
-	var preset_value: int = _particle_type_btn.selected
-	var preset_key := "%s_spark_preset" % _judge_type.to_lower()
-	ConfigManager.instance.set_value_and_notify("Lane", preset_key, preset_value)
+## 将当前所有控件值写入对应判定类型的配置字段（set_value_and_notify 即时应用 + 热更新）
+func _save_current() -> void:
+	var jl := _judge_type.to_lower()
+	ConfigManager.instance.set_value_and_notify("Lane", jl + "_spark_preset", _base_presets[_basic_particle_btn.selected])
+	ConfigManager.instance.set_value_and_notify("Lane", jl + "_spark_emitter", _emitter_presets[_emitter_btn.selected])
+	ConfigManager.instance.set_value_and_notify("Lane", jl + "_spark_scaling", _read_pct(_total_scale_edit, 100))
+	ConfigManager.instance.set_value_and_notify("Lane", jl + "_spark_alpha", _read_pct(_total_alpha_edit, 100))
+	ConfigManager.instance.set_value_and_notify("Lane", jl + "_spark_emitter_scaling", _read_pct(_emitter_scale_edit, 150))
+
+## 切换基础/散射粒子下拉：即时保存到对应判定类型的配置字段并播放一次预览
+func _on_preset_changed(_index: int) -> void:
+	_save_current()
 	_play_preview_particle()
 
-## 缩放值修改：重启防抖定时器，停顿后统一保存 + 播放预览
-func _on_particle_scaling_changed(_new_text: String) -> void:
-	_scaling_debounce_timer.start()
+## 数值输入修改：重启防抖定时器，停顿后统一保存 + 播放预览
+func _on_value_changed(_new_text: String) -> void:
+	_value_debounce_timer.start()
 
-## 防抖触发：将当前缩放值保存到对应判定类型的配置字段并播放一次预览
-func _apply_scaling_debounced() -> void:
-	if not _particle_scaling_edit.text.is_valid_int():
-		return
-	var value := int(_particle_scaling_edit.text)
-	var scaling_key := "%s_spark_scaling" % _judge_type.to_lower()
-	ConfigManager.instance.set_value_and_notify("Lane", scaling_key, value)
+## 防抖触发：将当前数值保存到对应判定类型的配置字段并播放一次预览
+func _apply_values_debounced() -> void:
+	_save_current()
 	# 弹窗已关闭时不再重复播放预览（配置保存本身无副作用）
 	if is_visible_in_tree():
 		_play_preview_particle()
@@ -135,7 +178,9 @@ func _apply_scaling_debounced() -> void:
 func get_result() -> Dictionary:
 	return {
 		"judge_type": _judge_type,
-		"preset": _particle_type_btn.selected,
-		"preset_name": _particle_presets[_particle_type_btn.selected],
-		"scaling": int(_particle_scaling_edit.text) if _particle_scaling_edit.text.is_valid_int() else 100,
+		"preset": _base_presets[_basic_particle_btn.selected],
+		"emitter": _emitter_presets[_emitter_btn.selected],
+		"scaling": _read_pct(_total_scale_edit, 100),
+		"alpha": _read_pct(_total_alpha_edit, 100),
+		"emitter_scaling": _read_pct(_emitter_scale_edit, 150),
 	}

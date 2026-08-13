@@ -49,7 +49,7 @@ static var SOUNDFONT_DIR: String:
 	get: return PathHelper.get_soundfont_dir()
 
 ## 配置版本号
-const CONFIG_VERSION = "1.0.0"
+const CONFIG_VERSION = "1.2.0"
 
 # ============ 内部状态 ============
 
