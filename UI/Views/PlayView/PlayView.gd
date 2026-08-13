@@ -76,6 +76,9 @@ var game_sequences: Array[KeySequenceManager.GameSequence] = []
 
 var _is_finishing_game: bool = false
 
+## 本次游玩是否开启 AUTO 模式（开局时快照，AUTO 模式成绩不上传）
+var _is_auto_mode_play: bool = false
+
 ## position stall 检测：当 loop=false 时 MIDI 播放结束后 position 被 clamp 到 midiFile.Length
 ## 若 duration_ms 与 midiFile.Length 不一致，进度条可能永远无法达到 max_value
 ## 通过检测 position 停止增长来触发游戏结束
@@ -515,6 +518,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	current_midi = midi
 	play_result = ScoreView.ScoreData.new()
 	_is_finishing_game = false
+	_is_auto_mode_play = false
 	_last_playback_position = -1.0
 	_position_stall_frames = 0
 
@@ -527,6 +531,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 生成随机颜色（若皮肤配置启用）— 必须在 init_flow_area 前完成，使新音符按新颜色生成
 	_regenerate_random_note_colors()
 	flow_area.init_flow_area()
+	_is_auto_mode_play = flow_area.auto_mode
 	auto_label.visible = flow_area.auto_mode
 
 	# 线程化预解析 MIDI：将昂贵的文件 I/O + 数据结构构建移到 worker 线程
@@ -1087,6 +1092,9 @@ func _on_game_finished() -> void:
 func _upload_score_async(midi: MidiData, snapshot: Dictionary) -> void:
 	if midi == null or midi.file_hash.is_empty():
 		GLogger.warning("Score upload skipped: midi is null or file_hash empty (midi=%s hash=%s)" % [str(midi), str(midi.file_hash) if midi else "null"], "PlayView")
+		return
+	if _is_auto_mode_play:
+		GLogger.info("Score upload skipped: auto mode enabled (midi=%s)" % midi.file_hash, "PlayView")
 		return
 	if NetManager.instance == null or not NetManager.instance.is_online:
 		GLogger.warning("Score upload skipped: offline (NetManager=%s is_online=%s)" % [str(NetManager.instance), str(NetManager.instance.is_online) if NetManager.instance else "null"], "PlayView")
