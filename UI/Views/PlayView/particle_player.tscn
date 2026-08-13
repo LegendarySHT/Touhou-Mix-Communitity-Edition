@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" path="res://UI/Views/PlayView/particle_player.gd" id="1_x"]
 
-[node name="ParticlePlayer" type="Node2D"]
+[node name="ParticleBatchDrawer" type="Node2D"]
 script = ExtResource("1_x")

@@ -5,7 +5,7 @@ class_name FlowArea
 # 判定线
 @onready var jl: HSeparator = $JudgeLine
 @onready var ui: UIStateManager = UiStatMGR
-@onready var canvas: CanvasLayer = $SVP
+@onready var _particle_drawer: ParticleBatchDrawer = $SVP/ParticleBatchDrawer
 
 ########## 配置参数 #############
 var auto_mode: bool = false
@@ -87,12 +87,6 @@ var lane_width: float = 0
 var active_notes: Array = []  # 存储活跃的音符
 var _notes_by_lane: Dictionary = {}  # 按轨道分组索引：{lane: Array[FlowNote]}，加速音符判定查找
 
-# 精灵图序列帧粒子播放器场景（替代旧的 GPUParticles2D 方块粒子）
-const _PARTICLE_SCENE := preload("res://UI/Views/PlayView/particle_player.tscn")
-
-# 粒子对象池：预创建固定数量实例并复用，避免每次按键 instantiate()+queue_free()
-const _PARTICLE_POOL_SIZE = 12
-var _particle_pool: Array = []
 
 # Block/Slide/Long 音符批量绘制器（PlayView.tscn 场景节点，Node2D _draw 替代 N 个 Control 节点）
 @onready var _note_drawer: NoteBatchDrawer = $SVP/NoteBatchDrawer
@@ -199,7 +193,6 @@ func init_flow_area():
 	spark_scalings["Good"] = ConfigManager.instance.get_float("Lane", "good_spark_scaling", 100)
 	spark_presets["Bad"] = ConfigManager.instance.get_int("Lane", "bad_spark_preset", 0)
 	spark_scalings["Bad"] = ConfigManager.instance.get_float("Lane", "bad_spark_scaling", 100)
-	_init_particle_pool()
 	_init_note_pool()
 	# 应用解析后的颜色（由 load_note_skin + PlayView 随机颜色生成共同决定）
 	# 新音符颜色在 _spawn_note 时经 _get_note_color → _resolved_colors 应用，此处只刷新已存在音符
@@ -488,6 +481,10 @@ func clear_flow_area():
 	# 清空 drawer 的绘制列表（Block/Slide/Long 统一走批量绘制）
 	if _note_drawer:
 		_note_drawer.clear()
+
+	# 清空批绘粒子的活跃列表
+	if _particle_drawer:
+		_particle_drawer.clear()
 
 	active_notes.clear()
 	_clear_lane_index()
@@ -1212,38 +1209,12 @@ func _trigger_touch_vibration() -> void:
 	var duration_ms = max(1.0, ConfigManager.instance.get_int("Playback", "vibration_duration", 20))
 	Input.vibrate_handheld(duration_ms, 0.5)
 
-func _init_particle_pool() -> void:
-	if not _particle_pool.is_empty():
-		return
-	for _i in _PARTICLE_POOL_SIZE:
-		var ptc := _PARTICLE_SCENE.instantiate()
-		canvas.add_child(ptc)
-		ptc.visible = false
-		ptc.particle_done.connect(_on_particle_done.bind(ptc))
-		_particle_pool.append(ptc)
-
-func _on_particle_done(ptc: Node2D) -> void:
-	ptc.visible = false
-	_particle_pool.append(ptc)
-
-func _get_particle_from_pool() -> Node2D:
-	if _particle_pool.is_empty():
-		# 池耗尽时回退创建（密集谱面极端情况）
-		var ptc := _PARTICLE_SCENE.instantiate() as Node2D
-		canvas.add_child(ptc)
-		ptc.particle_done.connect(_on_particle_done.bind(ptc))
-		return ptc
-	return _particle_pool.pop_back()
-
 func _generate_particle(type: String, pos: Vector2, scl: int = 100) -> void:
 	# 按预设索引取粒子包（预设 0=None，调用方已判断 >0，此处防御性校验）
 	var pack_key := ParticleMGR.get_particle_pack_by_index(spark_presets.get(type, 0))
 	if pack_key.is_empty():
 		return
-	var ptc := _get_particle_from_pool()
-	ptc.position = pos
-	ptc.visible = true
-	ptc.play(pack_key, type, scl)
+	_particle_drawer.spawn(pack_key, type, pos, scl)
 	
 ## 【方案C】同步当前播放时间（毫秒）
 ## 由 PlayView._process() 每帧调用，确保 FlowArea 的时间与 MIDI 播放位置完全同步。

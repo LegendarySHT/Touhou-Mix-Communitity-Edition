@@ -11,8 +11,10 @@ class_name ParticleAdjust
 ## 粒子 preset 选项（索引 0=None，之后动态从 ParticleMGR 读取粒子包）
 ## 与 SettingGroupsData 中 spark_preset 的 options 语义一致（0=无，1 起对应粒子包）
 var _particle_presets: Array[String] = ["None"]
-## 粒子预览场景（精灵图序列帧播放器）
+## 粒子预览场景（精灵图序列帧批绘节点）
 var _particle_scene: PackedScene = preload("res://UI/Views/PlayView/particle_player.tscn")
+## 常驻批绘节点（预览粒子全部由单个 Node2D 统一绘制）
+var _particle_drawer: Node2D = null
 ## 预览循环定时器
 var _particle_preview_timer: Timer = null
 ## 粒子预览自动播放间隔（秒）
@@ -28,6 +30,9 @@ var _judge_type: String = "Perfect"
 func _ready() -> void:
 	_particle_type_btn.item_selected.connect(_on_particle_preset_selected)
 	_particle_scaling_edit.text_changed.connect(_on_particle_scaling_changed)
+	# 常驻单个批绘节点，预览粒子由它统一绘制
+	_particle_drawer = _particle_scene.instantiate()
+	_particle_preview.add_child(_particle_drawer)
 	_init_particle_preview()
 	_init_scaling_debounce()
 
@@ -39,7 +44,7 @@ func _init_scaling_debounce() -> void:
 	_scaling_debounce_timer.timeout.connect(_apply_scaling_debounced)
 	add_child(_scaling_debounce_timer)
 
-## 初始化粒子预览循环定时器（实际粒子实例在每次播放时 instantiate）
+## 初始化粒子预览循环定时器（粒子由常驻批绘节点统一绘制，定时触发 spawn）
 func _init_particle_preview() -> void:
 	_particle_preview_timer = Timer.new()
 	_particle_preview_timer.wait_time = _PARTICLE_PREVIEW_INTERVAL
@@ -76,7 +81,7 @@ func _refresh_presets() -> void:
 		_particle_type_btn.add_item(pack_name)
 
 ## 播放一次预览粒子（在 ParticlePreview 中心，使用当前选中的 preset 和缩放值）
-## 每次播放都 instantiate 新实例，避免 CONNECT_ONE_SHOT 重复连接冲突（与 FlowArea 对象池一致的做法）
+## 由常驻批绘节点直接 spawn，粒子内部 _process/_draw 统一推进绘制
 func _play_preview_particle() -> void:
 	if not is_visible_in_tree():
 		return
@@ -87,18 +92,9 @@ func _play_preview_particle() -> void:
 	var scaling_str := _particle_scaling_edit.text
 	var scaling: int = int(scaling_str) if scaling_str.is_valid_int() else 100
 	var pack_key: String = _particle_presets[preset_idx]
-	# 每次播放创建新实例，播完后通过 particle_done 信号自动回收
-	var ptc: Node2D = _particle_scene.instantiate()
-	_particle_preview.add_child(ptc)
+	# 单节点批绘：直接 spawn，粒子由内部 _process/_draw 统一推进绘制
 	# Node2D 在 Control 下的 position 以左上角为原点，Panel size=500x500 → 中心 250,250
-	ptc.position = _particle_preview.size / 2.0
-	# 用当前正在编辑的判定类型触发 play（预览对应判定的精灵图）
-	ptc.play(pack_key, _judge_type, scaling)
-	# 播放完成后自动 queue_free
-	ptc.particle_done.connect(func() -> void:
-		if is_instance_valid(ptc):
-			ptc.queue_free()
-	)
+	_particle_drawer.spawn(pack_key, _judge_type, _particle_preview.size / 2.0, scaling)
 
 ## 启动粒子预览循环
 func start_preview() -> void:
