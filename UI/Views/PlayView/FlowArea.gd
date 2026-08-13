@@ -1384,7 +1384,7 @@ func _process(delta: float) -> void:
 			active_holds.erase(touch_id)
 			continue
 
-		# 加分及加combo
+		# 加分（长条持续 tick 只加分，不加 combo；combo 仅由首判增加）
 		if note.cooldown > 0.25: # 0.25是触发频率
 			note.cooldown = 0
 			long_holding.emit(note.long_instance_id)

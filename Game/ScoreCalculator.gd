@@ -139,7 +139,7 @@ static func judge_from_timing(abs_timing_sec: float) -> Judgment:
 ## block_type: BlockType 枚举值
 ## timing_sec: 偏差绝对值（秒），用于 timingMultiplier
 ## signed_offset_sec: 带符号偏差（>0 = Early, <0 = Late），仅用于 Early/Late 统计
-## is_long_sustain: 是否为 LONG 的持续判定（非首判），不参与 accuracy
+## is_long_sustain: 是否为 LONG 的持续判定（非首判），不参与 accuracy，也不改变 combo（只加分）
 ## long_instance_id: 同一条长条的唯一标识，用于独立衰减链
 func record_judgment(judgment: Judgment, block_type: int, timing_sec: float,
 		signed_offset_sec: float = 0.0, is_long_sustain: bool = false,
@@ -148,15 +148,16 @@ func record_judgment(judgment: Judgment, block_type: int, timing_sec: float,
 	# 1. 判定计数（LONG 持续判定也计入判定总数但不计入 accuracy）
 	judge_counts[judgment] += 1
 
-	# 2. Combo
-	if judgment == Judgment.BAD or judgment == Judgment.MISS:
-		if combo > max_combo:
-			max_combo = combo
-		combo = 0
-	else:
-		combo += 1
-		if combo > max_combo:
-			max_combo = combo
+	# 2. Combo（LONG 持续判定只加分、不改变 combo，保证实际 max_combo 不超过理论值）
+	if not is_long_sustain:
+		if judgment == Judgment.BAD or judgment == Judgment.MISS:
+			if combo > max_combo:
+				max_combo = combo
+			combo = 0
+		else:
+			combo += 1
+			if combo > max_combo:
+				max_combo = combo
 
 	# 3. Early / Late（Miss 无偏移方向）
 	if judgment != Judgment.MISS:
