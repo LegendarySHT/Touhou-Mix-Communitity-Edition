@@ -41,6 +41,8 @@ class Layer:
 	# ===== 播放状态 =====
 	var frame: int = 0
 	var frame_time: float = 0.0
+	## 单帧时长（1.0 / fps）预计算：_advance_layer 热路径免每帧除法
+	var frame_dur: float = 0.0
 	# ===== 绘制缓存 =====
 	## 上一帧绘制时的 frame 与对应源矩形（frame 未变时复用，免每帧重算除法取模）
 	var cached_frame: int = -1
@@ -63,6 +65,12 @@ var _active: Array = []
 ## 基础/发射器层各自分桶，绘制时先基础桶序再发射器桶序，保证基础在下、散射在上
 var _base_buckets: Dictionary = {}
 var _emitter_buckets: Dictionary = {}
+
+
+func _ready() -> void:
+	# 默认禁用 _process：spawn 在首个粒子入队时 set_process(true)，
+	# 避免空 ParticleBatchDrawer 实例（如已关闭的 ParticleAdjust 预览）每帧空跑
+	set_process(false)
 
 
 # ========== 公共 API ==========
@@ -121,6 +129,8 @@ func _add_role_layer(p: ActiveParticle, pack_key: String, is_emitter: bool, scal
 	# 每层独立随机旋转角（spawn 时抽一次，整段动画固定该角；包未声明 rotation 规格 → 0）
 	layer.rotation = _sample_rotation(tpl.get("rotation_spec", null))
 	layer.fps = float(tpl.get("fps", 30.0))
+	# 预计算单帧时长：fps<=0 时退化为 INF（与原 1.0/fps 行为一致，frame_time 永远 < INF，层不推进）
+	layer.frame_dur = 1.0 / layer.fps if layer.fps > 0.0 else INF
 	layer.loop = bool(tpl.get("loop", false))
 	layer.fade_out = bool(tpl.get("fade_out", true))
 	layer.cols = int(tpl.get("cols", 1))
@@ -209,7 +219,7 @@ func _advance(p: ActiveParticle, delta: float) -> bool:
 
 ## 推进单个绘制层一帧，返回该层是否已播放结束
 func _advance_layer(layer: Layer, delta: float) -> bool:
-	var frame_dur := 1.0 / layer.fps
+	var frame_dur := layer.frame_dur
 	layer.frame_time += delta
 	while layer.frame_time >= frame_dur:
 		layer.frame_time -= frame_dur
@@ -240,34 +250,34 @@ func _draw() -> void:
 
 
 ## 绘制单个层（位置/不透明度取自层快照；无旋转直绘免 transform，有旋转走 transform 画后恢复）
+## 内联 _layer_region / _layer_color 热路径（每帧每层两次函数调用 → 直接展开）
 func _draw_layer(layer: Layer) -> void:
 	var hs := layer.half_size
 	var pos := layer.pos
-	if layer.rotation == 0.0:
-		draw_texture_rect_region(layer.texture, Rect2(pos.x - hs, pos.y - hs, hs * 2.0, hs * 2.0),
-			_layer_region(layer), _layer_color(layer, layer.alpha))
-	else:
-		draw_set_transform(pos, layer.rotation, Vector2.ONE)
-		draw_texture_rect_region(layer.texture, Rect2(-hs, -hs, hs * 2.0, hs * 2.0),
-			_layer_region(layer), _layer_color(layer, layer.alpha))
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-
-## 当前帧在 spritesheet 中的源矩形（frame 未变时复用缓存，避免每帧重算除法取模 + 构造 Rect2）
-func _layer_region(layer: Layer) -> Rect2:
+	# 内联 _layer_region：frame 未变时复用缓存，避免每帧重算除法取模 + 构造 Rect2
 	if layer.cached_frame != layer.frame:
 		layer.cached_frame = layer.frame
 		var col := layer.frame % layer.cols
 		var row := layer.frame / layer.cols
 		layer.cached_region = Rect2(col * layer.source_size, row * layer.source_size, layer.source_size, layer.source_size)
-	return layer.cached_region
+	var region := layer.cached_region
 
-
-## 当前透明度色（尾部淡出：最后 40% 线性降到 0；整体不透明度 alpha 乘入）
-func _layer_color(layer: Layer, alpha: float) -> Color:
-	var a := alpha
+	# 内联 _layer_color：尾部淡出（最后 40% 线性降到 0），整体 alpha 乘入
+	var a := layer.alpha
 	if layer.fade_out and not layer.loop:
 		var progress := (layer.frame + layer.frame_time * layer.fps) / float(layer.frame_count)
 		if progress > 0.6:
-			a *= clampf(1.0 - (progress - 0.6) / 0.4, 0.0, 1.0)
-	return Color(1.0, 1.0, 1.0, a)
+			a *= 1.0 - (progress - 0.6) * 2.5
+			if a < 0.0:
+				a = 0.0
+			elif a > 1.0:
+				a = 1.0
+	var modulate := Color(1.0, 1.0, 1.0, a)
+
+	if layer.rotation == 0.0:
+		draw_texture_rect_region(layer.texture, Rect2(pos.x - hs, pos.y - hs, hs * 2.0, hs * 2.0), region, modulate)
+	else:
+		draw_set_transform(pos, layer.rotation, Vector2.ONE)
+		draw_texture_rect_region(layer.texture, Rect2(-hs, -hs, hs * 2.0, hs * 2.0), region, modulate)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

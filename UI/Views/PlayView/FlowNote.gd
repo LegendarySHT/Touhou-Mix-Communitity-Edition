@@ -22,6 +22,7 @@ var cached_center_x: float = 0.0    # 音符中心 x（判定查找用）
 var cached_center_y: float = 0.0    # 音符中心 y（每帧更新，绘制 + 判定用）
 var cached_half_height: float = 0.0 # 音符半高（绘制 + after_distance 计算用）
 var cached_color: Color = Color.WHITE # 音符颜色（交替轨道颜色开启时为轨道色，否则为皮肤解析色；_spawn_note 设置）
+var bucket_ref: Array = []        # 所在颜色分桶引用（FlowArea._add_to_bucket 写入，移除时用）
 var is_removed: bool = false        # 已从绘制列表移除标记（防止 _remove_note 后 _process 重复处理）
 
 # 用于滑键

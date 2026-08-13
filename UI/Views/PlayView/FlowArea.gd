@@ -90,7 +90,17 @@ signal long_holding(long_instance_id: int)
 
 # 音符相关
 var lane_width: float = 0
-var active_notes: Array = []  # 存储活跃的音符
+# 音符按 类型(Block/Slide/Long) → 颜色 → 数组 三级分桶存储
+# 替代原单一 active_notes 数组：_draw/_process 免逐音符类型分发；同色音符同桶连续绘制利于贴图批处理
+const _TYPE_ORDER: Array = [FlowNote.NoteType.Block, FlowNote.NoteType.Slide, FlowNote.NoteType.Long]
+## _process 热路径遍历用：Block/Slide 共用 _update_block_note_fall，避免每帧分配 [Block, Slide] 数组
+const _BLOCK_SLIDE_TYPES: Array = [FlowNote.NoteType.Block, FlowNote.NoteType.Slide]
+var _note_buckets: Dictionary = {
+	FlowNote.NoteType.Block: {},
+	FlowNote.NoteType.Slide: {},
+	FlowNote.NoteType.Long: {},
+}
+var _active_note_count: int = 0  # 活跃音符计数
 var _notes_by_lane: Dictionary = {}  # 按轨道分组索引：{lane: Array[FlowNote]}，加速音符判定查找
 
 
@@ -145,8 +155,8 @@ var _last_press_was_mouse: bool = false
 var pressed_keys: Dictionary = {}
 
 func init_flow_area():
-	# 单一数组模型：drawer 直接遍历 active_notes（按引用共享），增删无需再同步到 drawer
-	_note_drawer.set_notes_source(active_notes)
+	# 分桶模型：drawer 直接遍历 _note_buckets（按引用共享字典），增删无需再同步到 drawer
+	_note_drawer.set_notes_source(_note_buckets)
 	# 保存 notes_list，因为 clear_flow_area() 会清空它
 	var saved_notes = notes_list.duplicate()
 	clear_flow_area()
@@ -203,9 +213,12 @@ func init_flow_area():
 	set_note_width(note_visual_width)
 
 	# 同步 drawer 的裁剪参数和视口高度
+	# 同时初始化 _cached_viewport_height：避免首帧 _process 之前若被其他路径调用 _spawn_note
+	# 读到默认 0.0 导致 after_distance 计算错误
+	_cached_viewport_height = get_viewport().get_visible_rect().size.y
 	if _note_drawer:
 		_note_drawer.set_cull_margins(_note_cull_margin_top, _note_cull_margin_bottom)
-		_note_drawer.set_viewport_height(get_viewport().get_visible_rect().size.y)
+		_note_drawer.set_viewport_height(_cached_viewport_height)
 
 	# 预计算下落距离和速度
 	_recompute_fall_constants()
@@ -445,10 +458,18 @@ func _get_global_color(key: String) -> Color:
 ## 每音符颜色在 _spawn_note 时由 _get_note_color 应用，此处只刷新已生成仍绘制的音符
 func refresh_note_colors() -> void:
 	_resolve_note_colors()
-	# 单一数组模型：直接遍历 active_notes（drawer 与之同引用）
-	for note in active_notes:
-		if is_instance_valid(note):
-			note.cached_color = _get_note_color(note.type, note.lane)
+	# 分桶模型：换色的音符从旧色桶移到新色桶（跳过已移除，避免与挂起的延迟删除竞态）
+	for type_key in _TYPE_ORDER:
+		var color_keys: Array = _note_buckets[type_key].keys()  # 拷贝，允许遍历中增删 key
+		for color_key in color_keys:
+			var bucket: Array = _note_buckets[type_key][color_key]
+			var snapshot: Array = bucket.duplicate()  # 快照，遍历中 _move_note_to_bucket 安全
+			for note in snapshot:
+				if note.is_removed:
+					continue
+				var new_color: Color = _get_note_color(note.type, note.lane)
+				if new_color != note.cached_color:
+					_move_note_to_bucket(note, new_color)
 	if _note_drawer:
 		_note_drawer.request_redraw()
 
@@ -488,7 +509,9 @@ func clear_flow_area():
 	if _particle_drawer:
 		_particle_drawer.clear()
 
-	active_notes.clear()
+	for type_key in _TYPE_ORDER:
+		_note_buckets[type_key].clear()
+	_active_note_count = 0
 	_clear_lane_index()
 	active_holds.clear()
 	touch_positions.clear()
@@ -504,7 +527,7 @@ func clear_flow_area():
 
 ## 检查是否还有活跃音符（用于游戏结束后等待音符自然消除）
 func has_active_notes() -> bool:
-	return active_notes.size() > 0
+	return _active_note_count > 0
 
 
 var _note_max_size_y: float = 0
@@ -514,7 +537,7 @@ var _note_fall_distance: float = 0
 # 性能优化缓存：每帧热点路径避免重复读取节点属性 / 调用缓动计算
 var _judge_line_y: float = 0.0  # jl.position.y 缓存（_apply_judge_line_position 维护）
 var _note_fall_pre_ms: float = 1000.0  # _note_fall_time_seconds*1000（clamp 后），下落窗口时长
-var _after_speed_px_per_ms: float = 0.0  # 判定线后下落速度 = _note_fall_speed * 倍率
+var _after_speed_px_per_ms_inv: float = 0.0  # 判定线后下落速度的倒数 = 1.0 / (_note_fall_speed * 倍率)
 const _CURVE_LUT_SIZE: int = 1024  # 缓动曲线查表分辨率（对 BACK/ELASTIC 等振荡曲线足够平滑）
 var _curve_lut_before: PackedFloat32Array = PackedFloat32Array()  # 判定线前缓动曲线 LUT
 var _curve_lut_after: PackedFloat32Array = PackedFloat32Array()   # 判定线后缓动曲线 LUT
@@ -554,30 +577,25 @@ func _spawn_note(note_index: int) -> void:
 
 	# 计算音符位置
 	var beam_node_for_note = parent_node.lane_area.get_lane_by_idx(nt.lane)
-	var beam_margin = max(0.0, (beam_node_for_note.beam_size.x - note_visual_width) / 2.0)
-	var start_x = beam_node_for_note.position.x + beam_margin
+	var beam_margin := maxf(0.0, (beam_node_for_note.beam_size.x - note_visual_width) / 2.0)
+	var start_x : float = beam_node_for_note.position.x + beam_margin
 
+	nt.cached_x = start_x
+	nt.cached_center_x = start_x + note_visual_width * 0.5
+	
 	# Long: 走 Node2D 批量绘制（与 Block/Slide 统一），不创建 Control 节点
 	if nt.type == FlowNote.NoteType.Long:
 		nt.cached_x_base = start_x  # 拖动手势偏移基准（按住时随触摸平移）
-		nt.cached_x = start_x
-		nt.cached_center_x = start_x + note_visual_width * 0.5
 		nt.cached_head_half_height = _note_drawer.get_long_head_half_height()
 		nt.cached_tail_half_height = _note_drawer.get_long_tail_half_height()
-		nt.cached_color = _get_note_color(nt.type, nt.lane)
-		active_notes.append(nt)
-		_add_note_to_lane_index(nt)
-		_update_long_note_fall(nt, _synced_current_time, _render_time_ms)
-		return
+	else: # Block/Slide: Node2D 批量绘制，不创建 Control 节点
+		nt.cached_half_height = _note_drawer.get_half_height(nt.type)
 
-	# Block/Slide: Node2D 批量绘制，不创建 Control 节点
-	nt.cached_x = start_x
-	nt.cached_center_x = start_x + note_visual_width * 0.5
-	nt.cached_half_height = _note_drawer.get_half_height(nt.type)
 	# 每音符颜色：交替轨道颜色开启时按轨道色，否则皮肤解析色
 	nt.cached_color = _get_note_color(nt.type, nt.lane)
 
-	active_notes.append(nt)
+	_prewarm_composite(nt)
+	_add_to_bucket(nt)
 	_add_note_to_lane_index(nt)
 	_update_block_note_fall(nt, _synced_current_time, _render_time_ms)
 
@@ -585,7 +603,7 @@ func _spawn_note(note_index: int) -> void:
 func _recompute_fall_constants() -> void:
 	_note_fall_distance = _judge_line_y + _note_max_size_y
 	_note_fall_speed = _note_fall_calculator.compute_speed_px_per_ms(_note_fall_distance, _note_fall_time_seconds)
-	_after_speed_px_per_ms = max(0.0001, _note_fall_speed * _note_fall_speed_after_judge_multiplier)
+	_after_speed_px_per_ms_inv = 1.0 / max(0.0001, _note_fall_speed * _note_fall_speed_after_judge_multiplier)
 
 ## 重建两条缓动曲线的查表（配置变化时调用一次；热路径只查表）
 func _rebuild_curve_luts() -> void:
@@ -599,45 +617,12 @@ func _build_curve_lut(trans: int, ease_: int) -> PackedFloat32Array:
 		lut[i] = _note_fall_calculator.evaluate_curve_progress(float(i) / float(_CURVE_LUT_SIZE - 1), trans, ease_)
 	return lut
 
-## 查表求缓动值（线性插值）：替代每音符每帧调用 Tween.interpolate_value（热路径核心优化）
-func _evaluate_lut(lut: PackedFloat32Array, progress: float) -> float:
-	if lut.is_empty():
-		return progress  # 防御：LUT 未就绪时退化为线性（仅在配置未初始化前出现）
-	var scaled := progress * float(_CURVE_LUT_SIZE - 1)
-	var idx := int(scaled)
-	if idx < 0:
-		return lut[0]
-	if idx >= _CURVE_LUT_SIZE - 1:
-		return lut[_CURVE_LUT_SIZE - 1]
-	var frac := scaled - float(idx)
-	return lut[idx] + (lut[idx + 1] - lut[idx]) * frac
-
-func _compute_center_y_by_judge_time(judge_time_ms: float, current_time_ms: float, half_height: float) -> float:
-	var pre_ms := _note_fall_pre_ms
-	var spawn_time_ms := judge_time_ms - pre_ms
-
-	if current_time_ms <= judge_time_ms:
-		if current_time_ms < spawn_time_ms:
-			# 提前生成时继续保持匀速下落，避免音符在顶端静止等待
-			var early_dt_ms := spawn_time_ms - current_time_ms
-			return _judge_line_y - _note_fall_distance - early_dt_ms * _note_fall_speed
-		var progress := (current_time_ms - spawn_time_ms) / pre_ms
-		progress = clamp(progress, 0.0, 1.0)
-		var eased := _evaluate_lut(_curve_lut_before, progress)
-		return _judge_line_y - _note_fall_distance + eased * _note_fall_distance
-
-	var after_distance : float = max(1.0, _cached_viewport_height - _judge_line_y + half_height)
-	var after_time_ms : float = max(1.0, after_distance / _after_speed_px_per_ms)
-	var after_progress : float = (current_time_ms - judge_time_ms) / after_time_ms
-	after_progress = clamp(after_progress, 0.0, 1.0)
-	var eased_after := _evaluate_lut(_curve_lut_after, after_progress)
-	return _judge_line_y + eased_after * after_distance
-
 ## Block/Slide 音符的 synced time 驱动位置更新 (替代 Tween)
 ## 每帧由 _process 调用, 根据 _synced_current_time 计算音符位置
 ## 同时处理过线回调 (Slide 检查/auto_mode) 和 Miss 判定
 ## Node2D 批量绘制版：写入 note.cached_center_y，drawer 在 _draw 中读取
 ## current_time_ms = 判定时钟（音频），render_time_ms = 渲染时钟（平滑视觉，可选）
+## 热路径：内联 _compute_center_y_by_judge_time + _evaluate_lut（每音符每帧 3 次函数调用 → 0）
 func _update_block_note_fall(note: FlowNote, current_time_ms: float, render_time_ms: float = -1.0) -> void:
 	if note.is_removed:
 		return
@@ -645,31 +630,66 @@ func _update_block_note_fall(note: FlowNote, current_time_ms: float, render_time
 		render_time_ms = current_time_ms
 
 	var half_height = note.cached_half_height
-	var center_y = _compute_center_y_by_judge_time(note.start_time, render_time_ms, half_height)
+	var judge_time_ms = note.start_time
+	var pre_ms = _note_fall_pre_ms
+	var spawn_time_ms : float = judge_time_ms - pre_ms
+	var center_y: float
+	
+	var lut_m1 := _CURVE_LUT_SIZE - 1
+	
+	# 内联 _compute_center_y_by_judge_time
+	if render_time_ms <= judge_time_ms:
+		if render_time_ms < spawn_time_ms:
+			# 提前生成时继续保持匀速下落，避免音符在顶端静止等待
+			center_y = _judge_line_y - _note_fall_distance - (spawn_time_ms - render_time_ms) * _note_fall_speed
+		else:
+			var progress : float = clampf((render_time_ms - spawn_time_ms) / pre_ms, 0.0, 1.0)
+			
+			# 内联 _evaluate_lut
+			var scaled := progress * float(lut_m1)
+			var idx := int(scaled)
+			var eased: float
+			if idx >= lut_m1:
+				eased = _curve_lut_before[lut_m1]
+			else:
+				eased = _curve_lut_before[idx] + (_curve_lut_before[idx + 1] - _curve_lut_before[idx]) * (scaled - float(idx))
+			center_y = _judge_line_y - _note_fall_distance + eased * _note_fall_distance
+	else:
+		var after_distance := maxf(_cached_viewport_height - _judge_line_y + half_height, 1.0)
+		var after_time_ms := maxf(after_distance * _after_speed_px_per_ms_inv, 1.0)
+		var after_progress : float = clampf((render_time_ms - judge_time_ms) / after_time_ms, 0.0, 1.0)
+		
+		# 内联 _evaluate_lut
+		var scaled := after_progress * float(lut_m1)
+		var idx := int(scaled)
+		var eased_after: float
+		if idx >= lut_m1:
+			eased_after = _curve_lut_after[lut_m1]
+		else:
+			eased_after = _curve_lut_after[idx] + (_curve_lut_after[idx + 1] - _curve_lut_after[idx]) * (scaled - float(idx))
+		center_y = _judge_line_y + eased_after * after_distance
+
 	note.cached_center_y = center_y
 
-	# 过线回调: 音符首次到达/超过判定线时触发 (原 Tween.finished 逻辑)
-	if not note.judge_line_passed and current_time_ms >= note.start_time:
+	# 过线回调: 音符首次到达/超过判定线时触发
+	if not note.judge_line_passed and current_time_ms >= judge_time_ms:
 		note.judge_line_passed = true
 		if note.is_judged or note.is_removed:
 			return
-		if note.type == FlowNote.NoteType.Slide:
-			_check_slide_stat(note)
-		if note.is_judged or note.is_removed:
+		if note.type == FlowNote.NoteType.Slide and _check_slide_stat(note):
 			return
 		if auto_mode:
 			_auto_click(note)
 
 	# Miss 判定: 音符超出窗口底部且未被击打 (原第二 Tween.finished 逻辑)
-	if not note.is_judged and not note.is_removed:
-		var window_y = _cached_viewport_height
-		if center_y >= window_y:
-			_remove_note(note)
-			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
+	if not note.is_judged and not note.is_removed and center_y >= _cached_viewport_height:
+		_remove_note(note)
+		note_judged.emit("Miss", "", note.type, 1.0, 0.0)
 
 ## current_time_ms = 判定时钟（音频），render_time_ms = 渲染时钟（平滑视觉，可选）
 ## Node2D 批量绘制版：写入 cached_head_center_y / cached_tail_center_y / cached_body_* 缓存字段，
 ## drawer 在 _draw() 中读取绘制（body → tail → head），裁剪由 drawer 内部处理
+## 热路径：内联 _evaluate_lut + 常量预读
 func _update_long_note_fall(note: FlowNote, current_time_ms: float, render_time_ms: float = -1.0) -> void:
 	if note.is_removed:
 		return
@@ -678,14 +698,16 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float, render_time_
 
 	var head_half = note.cached_head_half_height
 	var tail_half = note.cached_tail_half_height
+	var pre_ms = _note_fall_pre_ms
+	var lut_m1 := _CURVE_LUT_SIZE - 1
 
 	# 按住时长条头部钉在判定线，跳过缓动计算（原实现先算再覆盖，浪费一次 easing）
 	var head_center: float
 	if note.is_held:
 		head_center = _judge_line_y
 	else:
-		head_center = _compute_center_y_by_judge_time(note.start_time, render_time_ms, head_half)
-	var tail_center = _compute_center_y_by_judge_time(note.start_time + max(0.0, note.duration), render_time_ms, tail_half)
+		head_center = _compute_center_y_inlined(note.start_time, render_time_ms, head_half, pre_ms, lut_m1)
+	var tail_center = _compute_center_y_inlined(note.start_time + max(0.0, note.duration), render_time_ms, tail_half, pre_ms, lut_m1)
 
 	note.cached_head_center_y = head_center
 	note.cached_tail_center_y = tail_center
@@ -703,31 +725,98 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float, render_time_
 		note.cached_body_height = max(0.0, (head_center - head_half) - (tail_center + tail_half))
 
 	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
-		var window_y = _cached_viewport_height
-		if tail_center >= window_y:
+		if tail_center >= _cached_viewport_height:
 			_remove_note(note)
 			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
+
+## 内联辅助：长条更新用（保留 _compute_center_y_by_judge_time 逻辑，但接收预计算常量避免重复取值）
+## 等价于 _compute_center_y_by_judge_time(judge_time_ms, render_time_ms, half_height)，
+## 但把 _note_fall_pre_ms / _CURVE_LUT_SIZE-1 作为参数传入，让调用方共享读取
+func _compute_center_y_inlined(judge_time_ms: float, render_time_ms: float, half_height: float,
+		pre_ms: float, lut_m1: int) -> float:
+	var spawn_time_ms := judge_time_ms - pre_ms
+	
+	var scaled : float = 0.0
+	var idx : int = 0
+	if render_time_ms <= judge_time_ms:
+		if render_time_ms < spawn_time_ms:
+			return _judge_line_y - _note_fall_distance - (spawn_time_ms - render_time_ms) * _note_fall_speed
+		var progress := clampf((render_time_ms - spawn_time_ms) / pre_ms, 0.0, 1.0)
+		scaled = progress * float(lut_m1)
+		idx = int(scaled)
+		if idx >= lut_m1:
+			return _judge_line_y - _note_fall_distance + _curve_lut_before[lut_m1] * _note_fall_distance
+		var eased := _curve_lut_before[idx] + (_curve_lut_before[idx + 1] - _curve_lut_before[idx]) * (scaled - float(idx))
+		return _judge_line_y - _note_fall_distance + eased * _note_fall_distance
+	var after_distance := maxf(_cached_viewport_height - _judge_line_y + half_height, 1.0)
+	var after_time_ms := maxf(after_distance * _after_speed_px_per_ms_inv, 1.0)
+	var after_progress := clampf((render_time_ms - judge_time_ms) / after_time_ms, 0.0, 1.0)
+	scaled = after_progress * float(lut_m1)
+	idx = int(scaled)
+	var eased_after: float
+	if idx >= lut_m1:
+		eased_after = _curve_lut_after[lut_m1]
+	else:
+		eased_after = _curve_lut_after[idx] + (_curve_lut_after[idx + 1] - _curve_lut_after[idx]) * (scaled - float(idx))
+	return _judge_line_y + eased_after * after_distance
 
 var _auto_hold_idx: int = 0
 ## AUTO 模式自动判定：
 ## - 点块/长条：按自然类型计分；
 ## - 滑块：完美滑块判定(only_perfect_slides)开启时按滑动触发（Slide，进入滑块衰减链）计分；
 ##   关闭时与手动点击滑块一致，按点块(Block)计分（固定倍率并重置滑块衰减链）。
+## 传入 _synced_current_time 作为 input_time_ms：跳过 _get_realtime_position_ms 实时查询，
+## 与 _update_block_note_fall 触发本函数的判定时钟一致（auto 模式无需音频钟精确同步）
 func _auto_click(note: FlowNote):
 	if parent_node.play_mode and note.game_sequence_ref:
 		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
 	if note.type == FlowNote.NoteType.Long:
-		_judge_note(note)
+		_judge_note(note, false, _synced_current_time)
 		_hold_long_note(_auto_hold_idx + 666, note)
 		_auto_hold_idx += 1
 	elif note.type == FlowNote.NoteType.Slide and not only_perfect_slides:
-		_judge_note(note, false, -1.0, FlowNote.NoteType.Block)
+		_judge_note(note, false, _synced_current_time, FlowNote.NoteType.Block)
 	else:
-		_judge_note(note)
+		_judge_note(note, false, _synced_current_time)
 
 # 因为在for循环遍历时erase会导致漏元素，所以推迟元素的移除
 func _delay_free(list, item_to_free):
-	list.erase(item_to_free)
+	if list != null:
+		list.erase(item_to_free)
+
+# ========== 颜色分桶维护 ==========
+
+## 把音符加入其 (type, color) 对应的颜色桶，并记录桶引用（_remove_note 延迟删除用）
+func _add_to_bucket(note: FlowNote) -> void:
+	var type_bucket: Dictionary = _note_buckets[note.type]
+	var color_key: Color = note.cached_color
+	if not type_bucket.has(color_key):
+		type_bucket[color_key] = []
+	var bucket: Array = type_bucket[color_key]
+	bucket.append(note)
+	note.bucket_ref = bucket
+	_active_note_count += 1
+
+## 预构建该音符合成贴图（spawn/换色时调用；成本落在主线程生成阶段而非 _draw）
+func _prewarm_composite(note: FlowNote) -> void:
+	if _note_drawer == null:
+		return
+	if note.type == FlowNote.NoteType.Long:
+		_note_drawer.get_composite(FlowNote.NoteType.Long, note.cached_color, "head")
+		_note_drawer.get_composite(FlowNote.NoteType.Long, note.cached_color, "tail")
+		_note_drawer.get_composite(FlowNote.NoteType.Long, note.cached_color, "body")
+	else:
+		_note_drawer.get_composite(note.type, note.cached_color)
+
+## 换色：从旧颜色桶移除并加入新颜色桶（refresh_note_colors 用）
+func _move_note_to_bucket(note: FlowNote, new_color: Color) -> void:
+	if not note.bucket_ref.is_empty():
+		note.bucket_ref.erase(note)
+		note.bucket_ref = []
+		_active_note_count -= 1  # 平衡 _add_to_bucket 的 +1（换色净计数不变）
+	note.cached_color = new_color
+	_prewarm_composite(note)
+	_add_to_bucket(note)
 
 func set_glow_params(intensity: float, size_val: float) -> void:
 	glow_intensity = clampf(intensity, 0.0, 2.0)
@@ -746,15 +835,19 @@ func _init_note_pool() -> void:
 
 func _remove_note(note: FlowNote) -> void:
 	note.is_removed = true
-	# 单一数组模型：drawer 遍历的就是 active_notes，此处只触发重绘立即清除画面
-	# 从 active_notes 的移除推迟到帧末执行：
-	# AUTO 模式下过线判定在 _process 遍历 active_notes 的循环体内触发 _remove_note，
+	# 分桶模型：drawer 遍历的就是 _note_buckets（同引用），此处只触发重绘立即清除画面
+	# 从颜色桶的移除推迟到帧末执行：
+	# AUTO 模式下过线判定在 _process 遍历桶的循环体内触发 _remove_note，
 	# 若此处同步 erase，GDScript 数组迭代器（idx++ 后取 arr.get(idx)）会因元素前移跳过
 	# 下一个音符，使其一帧不更新位置/不判定，在判定线附近停滞一帧。
 	# 延迟删除后遍历期间数组不再变化；期间 drawer 按 note.is_removed 跳过绘制，画面不会残留。
 	if _note_drawer:
 		_note_drawer.request_redraw()
-	call_deferred("_delay_free", active_notes, note)
+	if not note.bucket_ref.is_empty():
+		var bucket: Array = note.bucket_ref
+		note.bucket_ref = []
+		_active_note_count -= 1  # bucket_ref 清空后重复调用不会二次递减（幂等）
+		call_deferred("_delay_free", bucket, note)
 
 	_remove_note_from_lane_index(note)
 
@@ -1074,11 +1167,9 @@ func _note_center_x_for_lane(lane: int) -> float:
 	return center
 
 ## 滑键到达判定线的瞬间回调（rule 2 hold-catch）：手指/键盘键覆盖其轨道即接住
+## 返回是否被判定
 ## 由 _update_block_note_fall 过线分支调用，每音符仅触发一次
-func _check_slide_stat(note: FlowNote):
-	if note.is_judged or note.is_removed or note.is_held:
-		return
-
+func _check_slide_stat(note: FlowNote) -> bool:
 	# 键盘：对应轨道有按键被按住 → 过线接住（键盘点击滑块已即时判定，此处兜底）
 	for keycode in pressed_keys:
 		if pressed_keys[keycode] == note.lane:
@@ -1088,7 +1179,7 @@ func _check_slide_stat(note: FlowNote):
 				_judge_note(note, false, note.start_time, -1, "Perfect")
 			else:
 				_judge_note(note)
-			return
+			return true
 
 	# 触摸 hold-catch（rule 2）：手指覆盖音符所在轨道即接住
 	for candidate_touch_id in touch_positions:
@@ -1097,7 +1188,8 @@ func _check_slide_stat(note: FlowNote):
 		if not note.lane in _finger_lanes(touch_positions[candidate_touch_id].x):
 			continue
 		_judge_slide_as_slide(note, _synced_current_time)
-		return
+		return true
+	return false
 
 ## rule 5（抬手=滑出轨道）：位移 ≥ 一个音符宽度即视为滑出，判定当前所在轨道
 ## 未过线但在 perfect 窗口内的滑键
@@ -1275,15 +1367,15 @@ func _generate_particle(type: String, pos: Vector2) -> void:
 ## 供 init_flow_area 初始化与 config_changed 热更新共用
 func _reload_spark_config() -> void:
 	for judge in _JUDGE_TYPES:
-		var jl := judge.to_lower()
+		var jl_str := judge.to_lower()
 		spark_presets[judge] = ParticleMGR.get_particle_pack_by_name(
-			ConfigManager.instance.get_string("Lane", jl + "_spark_preset", ""))
+			ConfigManager.instance.get_string("Lane", jl_str + "_spark_preset", ""))
 		spark_emitters[judge] = ParticleMGR.get_particle_pack_by_name(
-			ConfigManager.instance.get_string("Lane", jl + "_spark_emitter", ""))
+			ConfigManager.instance.get_string("Lane", jl_str + "_spark_emitter", ""))
 		# 配置存百分比，预换算为倍率/不透明度（0-1），spawn 热路径直接取用免除法
-		spark_scalings[judge] = ConfigManager.instance.get_float("Lane", jl + "_spark_scaling", 100) / 100.0
-		spark_alphas[judge] = ConfigManager.instance.get_float("Lane", jl + "_spark_alpha", 100) / 100.0
-		spark_emitter_scales[judge] = ConfigManager.instance.get_float("Lane", jl + "_spark_emitter_scaling", 150) / 100.0
+		spark_scalings[judge] = ConfigManager.instance.get_float("Lane", jl_str + "_spark_scaling", 100) / 100.0
+		spark_alphas[judge] = ConfigManager.instance.get_float("Lane", jl_str + "_spark_alpha", 100) / 100.0
+		spark_emitter_scales[judge] = ConfigManager.instance.get_float("Lane", jl_str + "_spark_emitter_scaling", 150) / 100.0
 	
 ## 【方案C】同步当前播放时间（毫秒）
 ## 由 PlayView._process() 每帧调用，确保 FlowArea 的时间与 MIDI 播放位置完全同步。
@@ -1315,14 +1407,19 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	var result: String = result_override
 
 	if result.is_empty():
-		result = "Bad"
-		if abs_diff <= judge_windows["perfect"]:
+		# 缓存 judge_windows 阈值到局部变量，避免 4 次字典查找
+		# judge_windows 仅在声明处初始化、从不被外部修改，缓存安全
+		var jw := judge_windows
+		var perfect_thr := float(jw["perfect"])
+		if abs_diff <= perfect_thr:
 			result = "Perfect"
-		elif abs_diff <= judge_windows["great"]:
+		elif abs_diff <= float(jw["great"]):
 			result = "Great"
-		elif abs_diff <= judge_windows["good"]:
+		elif abs_diff <= float(jw["good"]):
 			result = "Good"
-		elif abs_diff <= judge_windows["bad"]:
+		elif abs_diff <= float(jw["bad"]):
+			result = "Bad"
+		else:
 			result = "Bad"
 
 	# 转换为秒，传递给 ScoreCalculator 所需的数据
@@ -1336,7 +1433,7 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	judge_note.is_judged = true
 	# 走 Node2D 批量绘制，Long 与 Block/Slide 统一用 cached 字段（cached_center_y = head 中心）
 	var hit_pos := Vector2(judge_note.cached_center_x, judge_note.cached_center_y)
-	
+
 	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff],
 		block_type, timing_sec, signed_offset_sec)
 	if trigger_vibration:
@@ -1345,8 +1442,9 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 		_remove_note(judge_note)
 
 	# 特效（轨道光束颜色与音符一致：交替轨道颜色开启时按轨道色点亮）
-	var light_color = _get_note_color(judge_note.type, judge_note.lane)
-	get_parent().lane_area.light_lane(judge_note.lane, light_color)
+	# 直接复用 spawn 时已缓存的 cached_color（refresh_note_colors 在主题/轨道色变化时同步刷新），
+	# 免去 _get_note_color → get_lane_color + _get_resolved_color_for_type 的查找开销
+	get_parent().lane_area.light_lane(judge_note.lane, judge_note.cached_color)
 	
 	var preset = spark_presets.get(result, "")
 	var emitter = spark_emitters.get(result, "")
@@ -1379,27 +1477,23 @@ func _process(delta: float) -> void:
 
 	# 每帧更新所有活跃音符位置
 	# Block/Slide/Long 统一写入 cached_* 字段，drawer 在 _draw 中批量绘制（Long 由 _update_long_note_fall 维护）
-	for note in active_notes:
-		if note.type == FlowNote.NoteType.Long:
+	# 按类型分桶遍历：免逐音符类型分发；同步/渲染时间提升为局部变量，免每音符重复读成员
+	for type_key in _BLOCK_SLIDE_TYPES:
+		for color_key in _note_buckets[type_key]:
+			for note in _note_buckets[type_key][color_key]:
+				_update_block_note_fall(note, _synced_current_time, _render_time_ms)
+	for color_key in _note_buckets[FlowNote.NoteType.Long]:
+		for note in _note_buckets[FlowNote.NoteType.Long][color_key]:
+			# 自动模式
+			if auto_mode and not note.is_held:
+				if _synced_current_time + 5 >= note.start_time:
+					_auto_click(note)
+
 			_update_long_note_fall(note, _synced_current_time, _render_time_ms)
-		else:
-			_update_block_note_fall(note, _synced_current_time, _render_time_ms)
 
 	# 位置已更新，通知 Node2D 批量绘制器重绘
-	if _note_drawer and not active_notes.is_empty():
+	if _note_drawer and has_active_notes():
 		_note_drawer.request_redraw()
-
-	# 自动按长条：
-	# - 视觉窗口：head 中心距判定线 < 12px（正常帧下与画面精确对齐）
-	# - 音频钟兜底：_synced_current_time 已过 start_time 即接（与 Block/Slide 过线回调一致）
-	#   防止开局卡顿/跳帧/迟到生成导致 head 一帧越过 12px 窗口而漏接
-	if auto_mode:
-		for long in active_notes.filter(func(nt):
-			if nt.type == FlowNote.NoteType.Long and not nt.is_held:
-				return abs(nt.cached_head_center_y - _judge_line_y) < 12 \
-					or _synced_current_time >= nt.start_time
-			return false):
-			_auto_click(long)
 
 	# 更新长条音符的按住进度和显示（Long 与 Block/Slide 统一走 cached 字段）
 	for touch_id in active_holds.keys():
@@ -1409,9 +1503,7 @@ func _process(delta: float) -> void:
 
 		var long_end_time = note.start_time + max(0.0, note.duration)
 		if _synced_current_time >= long_end_time:
-			var preset = spark_presets.get("Perfect", "")
-			var emitter = spark_emitters.get("Perfect", "")
-			if not preset.is_empty() or not emitter.is_empty():
+			if not spark_presets.get("Perfect", "").is_empty() or not spark_emitters.get("Perfect", "").is_empty():
 				_generate_particle("Perfect", Vector2(note.cached_center_x, note.cached_tail_center_y))
 			_remove_note(note)
 			active_holds.erase(touch_id)

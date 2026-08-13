@@ -55,6 +55,11 @@ theme/custom_font="uid://drybvx6hogl55"
 sensors/enable_gravity=true
 pointing/emulate_touch_from_mouse=true
 
+[physics]
+
+2d/physics_engine="Dummy"
+3d/physics_engine="Dummy"
+
 [rendering]
 
 rendering_device/driver.windows="d3d12"

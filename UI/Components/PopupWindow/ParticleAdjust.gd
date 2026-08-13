@@ -145,9 +145,12 @@ func start_preview() -> void:
 	_play_preview_particle()
 
 ## 停止粒子预览循环
+## 同时清空残留粒子：弹窗关闭后无需继续推进/绘制预览粒子，避免空跑 _process 直到自然衰减
 func stop_preview() -> void:
 	if _particle_preview_timer and not _particle_preview_timer.is_stopped():
 		_particle_preview_timer.stop()
+	if _particle_drawer:
+		_particle_drawer.clear()
 
 ## 将当前所有控件值写入对应判定类型的配置字段（set_value_and_notify 即时应用 + 热更新）
 func _save_current() -> void:
