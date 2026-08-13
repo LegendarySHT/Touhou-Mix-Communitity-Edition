@@ -652,6 +652,10 @@ func _update_long_note_fall(note: FlowNote, current_time_ms: float, render_time_
 			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
 
 var _auto_hold_idx: int = 0
+## AUTO 模式自动判定：
+## - 点块/长条：按自然类型计分；
+## - 滑块：完美滑块判定(only_perfect_slides)开启时按滑动触发（Slide，进入滑块衰减链）计分；
+##   关闭时与手动点击滑块一致，按点块(Block)计分（固定倍率并重置滑块衰减链）。
 func _auto_click(note: FlowNote):
 	if parent_node.play_mode and note.game_sequence_ref:
 		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
@@ -659,6 +663,8 @@ func _auto_click(note: FlowNote):
 		_judge_note(note)
 		_hold_long_note(_auto_hold_idx + 666, note)
 		_auto_hold_idx += 1
+	elif note.type == FlowNote.NoteType.Slide and not only_perfect_slides:
+		_judge_note(note, false, -1.0, FlowNote.NoteType.Block)
 	else:
 		_judge_note(note)
 
