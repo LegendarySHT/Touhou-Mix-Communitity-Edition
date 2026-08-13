@@ -5,11 +5,11 @@ extends Node
 
 class_name KeySequenceManager
 
-## 块类型枚举
+## 块类型枚举（与 ScoreCalculator.BlockType / FlowNote.NoteType 保持同名同值）
 enum BlockType {
-	INSTANT = 0,  # 滑块（duration <= instant_block_threshold）
-	SHORT = 1,    # 点块（duration <= short_block_threshold）
-	LONG = 2      # 长条（duration > short_block_threshold，需按住）
+	Block = 0,  # 点块（duration <= short_block_threshold）
+	Slide = 1,  # 滑块（duration <= instant_block_threshold）
+	Long = 2    # 长条（duration > short_block_threshold，需按住）
 }
 
 ## 单例实例
@@ -24,7 +24,7 @@ class GameSequence:
 	var screen_x: float         # 屏幕X位置（键盘映射）
 	var octave: int             # 八度
 	var velocity: int           # 力度
-	var block_type: int = BlockType.INSTANT  # 块类型（INSTANT/SHORT/LONG）
+	var block_type: int = BlockType.Block  # 块类型（Block/Slide/Long）
 	var pitch_list: Array[int] = []  # 同lane合并的所有pitch列表（便于同时发出多个音）
 	var connected_prev: bool = false  # 是否与前一块连接
 	var original_notes: Array[MidiParser.NoteEvent] = []  # 保留该块包含的原始 NoteEvent 列表
@@ -60,7 +60,7 @@ class BlockInfo:
 	var start_time_ms: float = 0.0  # 块的起始时间
 	var end_time_ms: float = 0.0    # 块的结束时间（多个Note时取最大）
 	var duration_ms: float = 0.0    # 块的显示持续时间
-	var type: int = BlockType.INSTANT  # 判定后的块类型
+	var type: int = BlockType.Block  # 判定后的块类型
 	var touch_index: int = -1   # 分配的虚拟触点ID (-1表示未分配)
 	var prev_block: BlockInfo = null  # 指向前一个块（用于连块判定）
 	var pitch_list: Array[int] = []  # 合并块的所有pitch值
@@ -149,15 +149,15 @@ var key_width: float = 40.0
 ## ========== 键生成配置参数 ==========
 var lane_count: int = 12  # 轨道数量
 var block_coalesce_seconds: float = 0.25  # 批次合并时间窗口（秒）
-var instant_block_threshold: float = 0.2  # INSTANT块时长阈值（秒）
-var short_block_threshold: float = 1.0  # SHORT块时长阈值（秒）
+var instant_block_threshold: float = 0.2  # 滑块(Slide)时长阈值（秒）；配置键保持旧名 instant_block_max_time
+var short_block_threshold: float = 1.0  # 点块(Block)时长阈值（秒）；配置键保持旧名 short_block_max_time
 var min_tap_interval: float = 1.0  # 最小敲击间隔（秒）
 var cooldown_seconds: float = 2.0  # 触点冷却时间（秒）
 var max_touch_move_velocity: float = 300.0  # 最大触点移动速度（像素/秒）
 var max_touch_count: int = 2  # 最大同时活跃键数
-var generate_instant_connect: bool = true  # 是否生成INSTANT连块
-var generate_short_connect: bool = true  # 是否生成SHORT连块
-var max_instant_connect_seconds: float = 1.0  # INSTANT连块最大间隔（秒）
+var generate_instant_connect: bool = true  # 是否生成滑块(Slide)连块；配置键保持旧名
+var generate_short_connect: bool = true  # 是否生成点块(Block)连块；配置键保持旧名
+var max_instant_connect_seconds: float = 1.0  # 滑块(Slide)连块最大间隔（秒）；配置键保持旧名
 var min_block_spacing: int = 1  # 并排音符最小横向间距（轨道数，0=关闭）
 
 # ========== 手部模型常量 ==========
@@ -315,7 +315,7 @@ func _load_config_parameters() -> void:
 		)
 	
 	GLogger.info(
-		"KeyGeneration config loaded: block_coalesce=%.2fs, instant=%.2fs, short=%.2fs, maxTouch=%d, max_touch_velocity=%.1f, min_block_spacing=%d" %
+		"KeyGeneration config loaded: block_coalesce=%.2fs, slide=%.2fs, block=%.2fs, maxTouch=%d, max_touch_velocity=%.1f, min_block_spacing=%d" %
 		[block_coalesce_seconds, instant_block_threshold, short_block_threshold, max_touch_count, max_touch_move_velocity, min_block_spacing],
 		"KeySequenceManager"
 	)
@@ -989,11 +989,11 @@ func _judge_block_type(block: BlockInfo, touches: Array[VirtualTouch]) -> void:
 	
 	# ========== 第1步：按duration判定基础类型 ==========
 	if duration_sec <= instant_block_threshold:
-		block.type = BlockType.INSTANT
+		block.type = BlockType.Slide
 	elif duration_sec <= short_block_threshold:
-		block.type = BlockType.SHORT
+		block.type = BlockType.Block
 	else:
-		block.type = BlockType.LONG
+		block.type = BlockType.Long
 	
 	# ========== 第2步：检查冷却期（触点可用性） ==========
 	if not touch.is_free:
@@ -1028,8 +1028,8 @@ func _judge_block_type(block: BlockInfo, touches: Array[VirtualTouch]) -> void:
 	# ========== 第3步：检查是否在LONG块内 ==========
 	if touch.holding_block != null:
 		if block.start_time_ms < touch.holding_block.end_time_ms:
-			# ✅ 修正：强制为INSTANT
-			block.type = BlockType.INSTANT
+			# ✅ 修正：强制为Slide（滑块）
+			block.type = BlockType.Slide
 		else:
 			# LONG块结束
 			touch.holding_block = null
@@ -1038,11 +1038,11 @@ func _judge_block_type(block: BlockInfo, touches: Array[VirtualTouch]) -> void:
 	if touch.last_press_time_ms >= 0:
 		var gap = (block.start_time_ms - touch.last_press_time_ms) / 1000.0
 		if gap < min_tap_interval:
-			# ✅ 修正：强制为INSTANT
-			block.type = BlockType.INSTANT
+			# ✅ 修正：强制为Slide（滑块）
+			block.type = BlockType.Slide
 	
 	# ========== 第5步：更新触点状态 ==========
-	if block.type == BlockType.LONG:
+	if block.type == BlockType.Long:
 		touch.holding_block = block
 	
 	touch.is_free = false
@@ -1059,16 +1059,16 @@ func _generate_connects(blocks: Array[BlockInfo]) -> void:
 	for block in blocks:
 		block.connected_prev = false
 
-	# InstantConnect 对齐 Unity：基于触点前驱 prev_block 判定
+	# SlideConnect 对齐 Unity：基于触点前驱 prev_block 判定
 	if generate_instant_connect:
 		for block in blocks:
 			var prev = block.prev_block
-			if block.type == BlockType.INSTANT and prev != null and prev.type == BlockType.INSTANT:
+			if block.type == BlockType.Slide and prev != null and prev.type == BlockType.Slide:
 				var gap = (block.start_time_ms - prev.start_time_ms) / 1000.0
 				if gap <= max_instant_connect_seconds:
 					block.connected_prev = true
 
-	# ShortConnect 对齐 Unity：每个批次仅连接最左与最右块
+	# BlockConnect 对齐 Unity：每个批次仅连接最左与最右块
 	if generate_short_connect:
 		var blocks_by_batch: Dictionary = {}
 		for block in blocks:

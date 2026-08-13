@@ -431,6 +431,7 @@ func _regenerate_random_note_colors() -> void:
 
 	var random_colors: Dictionary = {}
 	for key in ["short", "instant", "long"]:
+		# skin/粒子键名保持旧格式：short=点块(Block)、instant=滑块(Slide)、long=长条
 		if not skin_config.has(key):
 			continue
 		var sec: Dictionary = skin_config[key]
@@ -638,16 +639,16 @@ func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowNote]:
 		else:
 			lane = seq.pitch % lc
 		
-		# BlockType 与 NoteType 语义不同，需要转换
-		# BlockType: INSTANT=滑块, SHORT=点块, LONG=长条
-		# NoteType: Block=点块, Slide=滑块, Long=长条
+		# 三种枚举已统一：Block=0=点块、Slide=1=滑块、Long=2=长条，同名同值直接对应
 		var note_type: int
 		match seq.block_type:
-			0:  # INSTANT = 滑块 → Slide
-				note_type = FlowNote.NoteType.Slide
-			1:  # SHORT = 点块 → Block
+			KeySequenceManager.BlockType.Block:
 				note_type = FlowNote.NoteType.Block
-			2:  # LONG = 长条 → Long
+			KeySequenceManager.BlockType.Slide:
+				note_type = FlowNote.NoteType.Slide
+			KeySequenceManager.BlockType.Long:
+				note_type = FlowNote.NoteType.Long
+			_:
 				note_type = FlowNote.NoteType.Long
 		
 		# 创建FlowArea的Note对象

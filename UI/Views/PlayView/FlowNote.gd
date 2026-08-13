@@ -1,10 +1,11 @@
 class_name FlowNote
 extends RefCounted
 
+## 音符类型（与 KeySequenceManager.BlockType / ScoreCalculator.BlockType 保持同名同值）
 enum NoteType {
-	Block = 0,
-	Slide,
-	Long
+	Block = 0,  # 点块
+	Slide = 1,  # 滑块
+	Long = 2    # 长条
 }
 
 var start_time: float    		# 生成note时的时间

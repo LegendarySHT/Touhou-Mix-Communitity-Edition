@@ -33,7 +33,7 @@ var note_color_slide: Color = Color.CYAN
 var note_color_long: Color = Color.DARK_ORANGE
 
 # 当前皮肤的完整配置（来自 skin.ini 新结构）
-# {general:{enable_glow,custom_color}, short:{enable_color,color,random_color}, instant:{...}, long:{...,long_connect_mode,long_f_mode}}
+# {general:{enable_glow,custom_color}, short:{...}, instant:{...}, long:{...}}（skin 键名保持旧格式：short=点块 Block、instant=滑块 Slide）
 var _skin_config: Dictionary = {}
 
 # 光效总开关（来自 [general] enable_glow）
@@ -50,7 +50,7 @@ var _long_connect_mode: String = "edge"
 var _random_colors: Dictionary = {}
 
 # 最终解析出的音符颜色（结合 custom_color 主开关 + enable_color + random_color）
-# 结构: {note_type_key: Color}，键为 "short"/"instant"/"long"
+# 结构: {note_type_key: Color}，键为 "short"/"instant"/"long"（short=点块 Block、instant=滑块 Slide）
 var _resolved_colors: Dictionary = {}
 
 # 判定参数（毫秒）- 与 ScoreCalculator.JUDGE_WINDOWS（秒）对应
@@ -75,7 +75,8 @@ var spark_scalings: Dictionary = {}
 ###################################
 
 ## note_judged(result: String, offset: String, block_type: int, timing_sec: float, signed_offset_sec: float)
-## block_type: KeySequenceManager.BlockType 值 (0=INSTANT,1=SHORT,2=LONG)
+## block_type: KeySequenceManager.BlockType 值 (0=Block=点块,1=Slide=滑块,2=Long=长条)
+## 与 FlowNote.NoteType / ScoreCalculator.BlockType 同名同值，可直接透传
 ## timing_sec: 偏差绝对值(秒)  signed_offset_sec: 带符号偏差(秒)
 signal note_judged(result: String, offset: String, block_type: int, timing_sec: float, signed_offset_sec: float)
 ## long_holding(long_instance_id: int) - 长条持续加分 tick
@@ -374,7 +375,7 @@ func load_note_skin(skin_name: String = "旧版2 [内置]") -> void:
 		_is_glow_enabled = SkinMGR.is_glow_enabled(skin_name)
 		_long_connect_mode = SkinMGR.get_long_connect_mode(skin_name)
 
-	# 构建纹理数组，按顺序: short, short_core, instant, instant_core, long_b, long_b_core, long_f, long_f_core, long_t, long_t_core
+	# 构建纹理数组，按顺序: short(点块Block), short_core, instant(滑块Slide), instant_core, long_b, long_b_core, long_f, long_f_core, long_t, long_t_core
 	var texture_array = [
 		skin_textures.get("short"),
 		skin_textures.get("short_core"),
@@ -495,8 +496,10 @@ var _note_fall_distance: float = 0
 func _get_resolved_color_for_type(tp: FlowNote.NoteType) -> Color:
 	match tp:
 		FlowNote.NoteType.Block:
+			# skin 键名保持旧格式：short=点块(Block)
 			return _resolved_colors.get("short", Color.WHITE)
 		FlowNote.NoteType.Slide:
+			# skin 键名保持旧格式：instant=滑块(Slide)
 			return _resolved_colors.get("instant", Color.WHITE)
 		FlowNote.NoteType.Long:
 			return _resolved_colors.get("long", Color.WHITE)
@@ -858,7 +861,7 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	if parent_node.play_mode and note.game_sequence_ref:
 		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
 	if note.type == FlowNote.NoteType.Slide:
-		# 点击滑块按点块计分（INSTANT）；一次按下只判定这一个音符，后续滑块由过线/滑过接住
+		# 点击滑块按点块(Block)计分（固定倍率并重置滑块衰减链）；一次按下只判定这一个音符，后续滑块由过线/滑过接住
 		_judge_note(note, true, judge_time_ms, FlowNote.NoteType.Block)
 	else:
 		_judge_note(note, true, judge_time_ms)
@@ -961,7 +964,8 @@ func _release_slide_claim(note: FlowNote, touch_id: int = -1) -> void:
 
 ## 判定一个滑块（滑过退出/hold-through/抬手统一入口）
 ## result_override 非空时强制该结果（如 "Perfect"）；否则按 judge_time_ms 自然计算
-## 滑块接滑按自然类型（SHORT）计分；点击滑块按点块（INSTANT）计分由 _handle_press 单独处理
+## 滑块接滑按自然类型（Slide）计分（进入滑块衰减链）；
+## 点击滑块按点块（Block）计分（固定倍率并重置滑块衰减链）由 _handle_press 单独处理
 func _judge_claimed_slide(touch_id: int, note: FlowNote, judge_time_ms: float,
 		result_override: String = "") -> void:
 	if note == null or note.is_judged or note.is_removed:
@@ -1127,7 +1131,7 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 		if parent_node.play_mode and best_note.game_sequence_ref:
 			_trigger_midi_notes_from_sequence(best_note.game_sequence_ref)
 		if best_note.type == FlowNote.NoteType.Slide:
-			# 键盘点击滑块按点块计分；与按住触发（滑块计分）路径互斥
+			# 键盘点击滑块按点块(Block)计分（重置滑块衰减链）；与滑过接住（Slide 计分：进入衰减链）路径互斥
 			_judge_note(best_note, true, input_time_ms, FlowNote.NoteType.Block)
 		else:
 			_judge_note(best_note, true, input_time_ms)
@@ -1298,7 +1302,8 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	# 转换为秒，传递给 ScoreCalculator 所需的数据
 	var timing_sec: float = abs_diff / 1000.0
 	var signed_offset_sec: float = time_diff / 1000.0
-	# 默认将 NoteType 映射到 BlockType；点击滑块时可覆盖为 INSTANT
+	# NoteType 与 BlockType 已统一同名同值（Block=0/Slide=1/Long=2），直接透传；
+	# 点击滑块时 override 为 Block（按点块计分）
 	var block_type: int = block_type_override if block_type_override >= 0 else judge_note.type
 
 	# 标记该note已被判定，防止重复

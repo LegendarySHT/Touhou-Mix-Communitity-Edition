@@ -12,8 +12,8 @@ class_name ScoreCalculator
 ## 判定等级
 enum Judgment { PERFECT, GREAT, GOOD, BAD, MISS }
 
-## 键型（与 KeySequenceManager.BlockType 数值对齐）
-enum BlockType { INSTANT = 0, SHORT = 1, LONG = 2 }
+## 键型（与 KeySequenceManager.BlockType / FlowNote.NoteType 保持同名同值）
+enum BlockType { Block = 0, Slide = 1, Long = 2 }
 
 ## 判定窗口（秒）
 const JUDGE_WINDOWS: Dictionary = {
@@ -55,11 +55,11 @@ const RANK_THRESHOLDS: Array = [
 ## 基础分
 const SCORE_BASE: float = 100.0
 
-## SHORT 初始衰减系数 & 衰减因子
-const SHORT_INITIAL_MULTIPLIER: float = 0.5
-const SHORT_DECAY_FACTOR: float = 0.6
+## 滑块(Slide) 初始衰减系数 & 衰减因子
+const SLIDE_INITIAL_MULTIPLIER: float = 0.5
+const SLIDE_DECAY_FACTOR: float = 0.6
 
-## LONG 首判 → 续判 → 衰减
+## 长条(Long) 首判 → 续判 → 衰减
 const LONG_FIRST_MULTIPLIER: float = 1.0
 const LONG_SECOND_MULTIPLIER: float = 0.2
 const LONG_DECAY_FACTOR: float = 0.6
@@ -101,10 +101,10 @@ var late_count: int = 0
 ## 总音符数（由 PlayView 在开局时设置）
 var total_notes: int = 0
 
-## SHORT 衰减追踪：当前 SHORT 乘数
-var _short_current_multiplier: float = SHORT_INITIAL_MULTIPLIER
+## 滑块(Slide) 衰减追踪：当前 SLIDE 乘数
+var _slide_current_multiplier: float = SLIDE_INITIAL_MULTIPLIER
 
-## LONG 衰减追踪：long_instance_id → 当前乘数
+## 长条(Long) 衰减追踪：long_instance_id → 当前乘数
 var _long_multipliers: Dictionary = {}
 
 # ============================================================
@@ -183,12 +183,12 @@ func record_judgment(judgment: Judgment, block_type: int, timing_sec: float,
 
 ## 记录 Miss（未击打，简化入口）
 func record_miss() -> Dictionary:
-	return record_judgment(Judgment.MISS, BlockType.INSTANT, 1.0)
+	return record_judgment(Judgment.MISS, BlockType.Block, 1.0)
 
 ## 记录 LONG 持续 tick（简化入口）
 ## judgment: 持续 tick 的判定等级（通常为 PERFECT）
 func record_long_sustain(judgment: Judgment, long_instance_id: int) -> Dictionary:
-	return record_judgment(judgment, BlockType.LONG, 0.0, 0.0, true, long_instance_id)
+	return record_judgment(judgment, BlockType.Long, 0.0, 0.0, true, long_instance_id)
 
 ## 获取当前准度（0.0 ~ 1.0）
 func get_accuracy() -> float:
@@ -251,7 +251,7 @@ func reset() -> void:
 	early_count = 0
 	late_count = 0
 	total_notes = 0
-	_short_current_multiplier = SHORT_INITIAL_MULTIPLIER
+	_slide_current_multiplier = SLIDE_INITIAL_MULTIPLIER
 	_long_multipliers.clear()
 
 # ============================================================
@@ -273,18 +273,18 @@ func _calculate_note_score(judgment: Judgment, block_type: int, timing_sec: floa
 ## blockTypeMultiplier
 func _get_block_type_multiplier(block_type: int, _is_long_sustain: bool, long_instance_id: int) -> float:
 	match block_type:
-		BlockType.INSTANT:
-			# 命中 INSTANT 时重置 SHORT 衰减
-			_short_current_multiplier = SHORT_INITIAL_MULTIPLIER
+		BlockType.Block:
+			# 命中点块(Block)时重置滑块(Slide)衰减
+			_slide_current_multiplier = SLIDE_INITIAL_MULTIPLIER
 			return 1.0
 
-		BlockType.SHORT:
-			var mult = _short_current_multiplier
-			# 后续 SHORT 递减
-			_short_current_multiplier *= SHORT_DECAY_FACTOR
+		BlockType.Slide:
+			var mult = _slide_current_multiplier
+			# 后续滑块(Slide)递减
+			_slide_current_multiplier *= SLIDE_DECAY_FACTOR
 			return mult
 
-		BlockType.LONG:
+		BlockType.Long:
 			if long_instance_id < 0:
 				return LONG_FIRST_MULTIPLIER
 
@@ -311,6 +311,6 @@ func _get_combo_multiplier() -> float:
 		return 1.0  # combo=0/1 时给基础值，避免 ln(0) 问题
 	return 0.0809 + 0.199 * log(combo)
 
-## 清理已结束的 LONG 实例追踪（可在长条结束时调用）
+## 清理已结束的长条(Long)实例追踪（可在长条结束时调用）
 func clear_long_instance(long_instance_id: int) -> void:
 	_long_multipliers.erase(long_instance_id)
