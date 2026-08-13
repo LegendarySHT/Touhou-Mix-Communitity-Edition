@@ -1385,6 +1385,8 @@ func _init_lane_display():
 	if keyboard_mode:
 		lane_area.init_key_display(key_map, key_display_names)
 
+const PROGRESS_BAR_IDLE_COLOR: Color = Color.BLACK
+
 const color_map = {
 	"Perfect": Color.PURPLE,
 	"Great": Color.ORANGE,
@@ -1527,7 +1529,7 @@ func _on_top_progress_bar_value_changed(value: float):
 		_current_rect = ColorRect.new()
 
 		_current_rect.anchor_left = anchor_l if anchor_l < 0.002 else anchor_l - 0.001
-		_current_rect.color = color_map["Miss"] if not _last_rect else _last_rect.color
+		_current_rect.color = PROGRESS_BAR_IDLE_COLOR if not _last_rect else _last_rect.color
 		_current_rect.size.y = progress_bar.size.y
 
 		_last_rect = _current_rect
