@@ -27,10 +27,10 @@ var INDICATOR = PathRegistry.MIDI_VIEW_INDICATOR
 ## note_str / mpp_str 键缺席 → 需（重新）计算 Note 数量
 static var _info_cache: Dictionary = {}
 
-## MIDI 解析后台线程（每实例独立）
-var _compute_thread: Thread = null
-## 线程解析的目标 midi_data（用于回调时校验）
-var _thread_target_midi: MidiData = null
+## 正在等待/计算的 midi_data（用于防止同一项重复触发计算）
+## 解析本身统一走 MidiPlaybackManager.preparse_midi_async（同一 MIDI 多请求方去重共享），
+## 本处不再自起 Thread，避免与 PlayView/TrackView 的 preparse 并发解析同一文件
+var _computing_midi: MidiData = null
 
 func _ready() -> void:
 	# MidiListItem 不使用封面视差滚动（封面静态显示，与 SongListItem 一致）
@@ -49,8 +49,8 @@ func _notification(what: int) -> void:
 			EvtBus.config_changed.disconnect(_on_config_changed)
 		if UiStatMGR and UiStatMGR.state_changed.is_connected(_on_ui_state_changed):
 			UiStatMGR.state_changed.disconnect(_on_ui_state_changed)
-		if _compute_thread != null and _compute_thread.is_alive():
-			_compute_thread.wait_to_finish()
+		# 解析统一走 MidiPlaybackManager（WorkerThreadPool），无本实例 Thread 需要 join；
+		# 协程继续持有 midi（RefCounted）安全，_apply_display 以 is_inside_tree 守卫
 
 func _update_display() -> void:
 	# 初始化显示
@@ -215,88 +215,38 @@ func _start_midi_compute() -> void:
 		_compute_and_cache_notes(midi)
 		return
 
-	# 需要解析 MIDI 文件 ─ 避免对同一文件重复启动线程
-	# （线程已启动但 _on_parse_done 尚未 deferred 执行时也命中）
-	if _thread_target_midi == midi:
+	# 需要解析 MIDI 文件 ─ 交给 MidiPlaybackManager 统一解析：
+	# preparse_midi_async 对同一 MIDI 的多请求方去重（MidiView 统计 / TrackView / PlayView 共享一次解析），
+	# 若 PlayView/TrackView 已发起解析，本处直接等待其完成，绝不重复解析
+	if _computing_midi == midi:
 		return
 
-	# 在主线程取文件路径（FileSystemManager 不是线程安全的）
+	_computing_midi = midi
+	_compute_async(midi)
+
+
+## 等待 MidiPlaybackManager 的共享解析完成，然后补全信息缓存（fire-and-forget 协程）
+func _compute_async(midi: MidiData) -> void:
 	var pm := MidiPlaybackManager.instance
 	if pm == null:
+		_computing_midi = null
 		return
-	var path: String = pm._locate_midi_file(midi)
-	if path.is_empty():
+
+	var ok := await pm.preparse_midi_async(midi)
+
+	# 期间可能已切换选中项/退出列表：结果仍写入 _info_cache（供下次使用），
+	# 仅 _apply_display / _compute_and_cache_notes 内部以 is_inside_tree / selected_item 守卫刷新
+	if not ok:
 		_info_cache[midi.id] = {"time_str": "—", "bpm_str": "—", "note_str": "—", "mpp_str": "—"}
 		_apply_display()
+		if _computing_midi == midi:
+			_computing_midi = null
 		return
 
-	# 等待旧线程退出
-	if _compute_thread != null:
-		_compute_thread.wait_to_finish()
+	if _computing_midi == midi:
+		_computing_midi = null
 
-	_thread_target_midi = midi
-	_compute_thread = Thread.new()
-	_compute_thread.start(_parse_thread_func.bind(path))
-
-
-## 在后台线程中解析 MIDI 文件（仅读文件 + C# 解析，无 Godot RefCounted 创建）
-## NoteEvent 重建与 track_channel_notes 分组在主线程 _on_parse_done 完成（避免 worker 创建 66k RefCounted）
-func _parse_thread_func(path: String) -> void:
-	var result: Dictionary = MidiParser.load_and_parse_midi(path)
-	call_deferred("_on_parse_done", result)
-
-
-## 解析完成回调（主线程，call_deferred 保证）
-func _on_parse_done(result: Dictionary) -> void:
-	if _compute_thread != null:
-		_compute_thread.wait_to_finish()
-		_compute_thread = null
-
-	var midi := _thread_target_midi
-	_thread_target_midi = null
-
-	if midi == null:
-		return
-
-	if not result.get("success", false):
-		_info_cache[midi.id] = {"time_str": "—", "bpm_str": "—", "note_str": "—", "mpp_str": "—"}
-		_apply_display()
-		return
-
-	# 主线程从 SOA 重建 NoteEvent（避免 worker 线程批量创建 66k RefCounted 导致 Android ARM 引用计数损坏）
-	# worker 只返回 SOA 紧凑数组（PackedInt32Array，值类型 marshalling 安全），NoteEvent 重建在此完成
-	if result.get("notes", []).is_empty() and result.has("soa") and not result["soa"].is_empty():
-		result["notes"] = MidiParser.build_notes_from_soa(result["soa"])
-		result.erase("soa")  # 释放 SOA 的 PackedInt32Array 内存
-	# 主线程构建 track_channel_notes（依赖 NoteEvent，必须在 NoteEvent 重建后）
-	if not result.has("track_channel_notes") and not result.get("notes", []).is_empty():
-		result["track_channel_notes"] = MidiParser.build_track_channel_notes(result["notes"])
-
-	# 将解析结果回填到 MidiData（若 MidiPlaybackManager 尚未填入）
-	if midi.duration_ms <= 0:
-		midi.duration_ms = result.get("duration_ms", 0.0)
-	if midi.bpm <= 0.0 or midi.bpm == 120.0:
-		midi.bpm = result.get("bpm", 120.0)
-	if midi.parsed_notes.is_empty():
-		midi.parsed_notes = result.get("notes", [])
-	if midi.bpm_timeline.is_empty():
-		midi.bpm_timeline = result.get("bpm_timeline", [])
-		midi.midi_timebase = result.get("timebase", 480)
-	if midi.max_end_tick <= 0:
-		midi.max_end_tick = float(result.get("max_end_tick", 0))
-	# 同步回填 _runtime_track_infos，使 MidiPlaybackManager.preparse_midi_async 缓存命中
-	# （命中条件：parsed_notes + _runtime_track_infos 同时非空，见 MidiPlaybackManager.gd:431）
-	# 缺失此行会导致进入 TrackView 时 worker 线程重新解析整个 MIDI，造成 ~18MB 临时峰值
-	if midi._runtime_track_infos.is_empty():
-		midi._runtime_track_infos = result.get("track_infos", [])
-	# 回填 track_channel_instruments（C# MidiParserNative 一次性提取，load_midi 直接复用）
-	if midi.track_channel_instruments.is_empty():
-		midi.track_channel_instruments = result.get("track_instruments", {})
-	# 回填 runtime_track_channel_notes（worker 线程已构建，TrackView._build_buckets 直接复用）
-	if midi.runtime_track_channel_notes.is_empty():
-		midi.runtime_track_channel_notes = result.get("track_channel_notes", {})
-
-	# 构建并缓存 Time / BPM 字段
+	# 构建并缓存 Time / BPM 字段（preparse_midi_async 已回填 duration_ms/bpm_timeline 等）
 	var entry: Dictionary = _info_cache.get(midi.id, {})
 	_fill_time_bpm_cache(midi, entry)
 	_info_cache[midi.id] = entry
@@ -417,24 +367,11 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 		_apply_display()
 		return
 
-	# 若 MidiPlaybackManager 当前加载的不是本 midi，暂时注入 bpm 参数供 generate_keys 使用
-	var saved_timeline: Array = []
-	var saved_timebase: int = 480
-	var need_restore := false
-	if pm != null and pm.current_midi_data != midi:
-		saved_timeline = pm.bpm_timeline.duplicate()
-		saved_timebase = pm.midi_timebase
-		pm.bpm_timeline = entry.get("bpm_timeline", midi.bpm_timeline)
-		pm.midi_timebase = entry.get("timebase", midi.midi_timebase)
-		need_restore = true
-
 	# 异步生成（WorkerThreadPool 后台线程），避免 6 万音符时主线程阻塞 200-800ms
-	# worker 期间主线程 await 让出，pm.bpm_timeline 不会被其他地方修改（本函数是 MidiView 选中项触发的）
-	await ksm.generate_keys_async(filtered, midi.id, enabled_pairs)
-
-	if need_restore:
-		pm.bpm_timeline = saved_timeline
-		pm.midi_timebase = saved_timebase
+	# 显式传入 midi 自己的 timebase/bpm_timeline：
+	# 旧实现靠临时改写 pm.bpm_timeline/midi_timebase 全局字段喂参，await 恢复时若
+	# PlayView.load_midi 已写入自己的时间线，会被误恢复 clobber 掉 → 生成用错时间线（音符缺失）
+	await ksm.generate_keys_async(filtered, midi.id, enabled_pairs, midi.midi_timebase, midi.bpm_timeline)
 
 	# 切换项守卫：await 期间用户可能已切到其他 MIDI 项，本 item 不再是选中项
 	# 仍写入 _info_cache（缓存供下次使用），但 _apply_display 会自行判断是否刷新共享面板

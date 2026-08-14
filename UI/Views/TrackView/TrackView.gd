@@ -738,13 +738,13 @@ func _init_master_note_displayer() -> void:
 		master_note_displayer.sync_from_midi_data(current_midi_data)
 
 ## 按 (track, channel) 分组构建 TrackNoteBucket
-## 直接复用 MidiListItem worker 线程预构建的 runtime_track_channel_notes（主线程仅 O(Buckets)）
+## 直接复用 MidiPlaybackManager.preparse_midi_async 预构建的 runtime_track_channel_notes（主线程仅 O(Buckets)）
 ## worker 遍历已排序的 parsed_notes 构建 grouping，每 bucket 内天然按 start_time 升序
-## 数据来源保证：MidiListItem._parse_thread_func 构建 → preparse_midi_async 缓存命中时已存在
+## 数据来源保证：preparse_midi_async 构建（MidiView 统计 / TrackView / PlayView 共享同一解析）
 func _build_buckets() -> void:
 	_all_buckets.clear()
 	# 直接从 worker 预构建的 (track, channel) → notes 分组构建
-	# MidiListItem._parse_thread_func 在解析 MIDI 时顺便构建，preparse_midi_async 命中缓存时已就绪
+	# preparse_midi_async 在解析 MIDI 时顺便构建，TrackView._load_midi 已 await 其完成
 	# assign() 把 untyped Array 的 NoteEvent 引用复制到 typed Array[MidiParser.NoteEvent]
 	# NoteEvent 是 RefCounted，只复制引用（8 字节/项），不复制对象本身
 	for key in current_midi_data.runtime_track_channel_notes:

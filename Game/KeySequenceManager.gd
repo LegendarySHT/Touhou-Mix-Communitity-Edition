@@ -352,7 +352,7 @@ func classify_sequences(midi_data: MidiData, all_midi_notes: Array) -> bool:
 ## PlayView会根据TrackView中的selected_track_configs筛选出启用的音轨，然后传入这里
 ## 线程安全：本方法可在 WorkerThreadPool 后台线程执行（仅访问 self 字段与 MidiPlaybackManager.instance 静态字段，
 ## 不访问场景树）。调用期间主线程不得读写 KeySequenceManager 的任何字段。
-func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> bool:
+func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}, timebase: int = -1, bpm_timeline_data: Array = []) -> bool:
 	# 构造缓存键（midi_id + 启用轨道对哈希）
 	# 注意：screen_width 不进 cache_key。它只影响 _judge_block_type 速度限制里极少数音符的
 	# lane 钳制，且防窗口变化的设计实际没生效（PlayView 的 size_changed 不重算 generate_keys）。
@@ -379,10 +379,15 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	background_sequences.clear()
 	next_key_id = 0
 
-	# 从MidiPlaybackManager获取时间参数
+	# 获取时间参数：显式传入（midi 自己的 timebase/bpm_timeline）优先，否则回退读 MidiPlaybackManager
+	# 旧实现 MidiListItem 靠临时改写 pm.bpm_timeline/midi_timebase 全局字段喂参，
+	# 与 PlayView.load_midi 的写入交错会产生竞态（生成用错时间线 → 音符缺失/错位）
 	var midi_mgr = MidiPlaybackManager.instance
-	if midi_mgr != null:
-		set_midi_time_parameters(midi_mgr.midi_timebase, midi_mgr.bpm_timeline)
+	if timebase <= 0:
+		timebase = midi_mgr.midi_timebase if midi_mgr != null else 480
+	if bpm_timeline_data.is_empty() and midi_mgr != null:
+		bpm_timeline_data = midi_mgr.bpm_timeline
+	set_midi_time_parameters(timebase, bpm_timeline_data)
 
 	# Step 1: 转换Note对象为统一格式（确保start_time_ms和duration_ms为毫秒）
 	var converted_notes = _convert_notes_to_internal_format(game_notes)
@@ -496,77 +501,79 @@ func _clone_background_sequences(src: Array[BackgroundSequence]) -> Array[Backgr
 
 ## 单任务模式：同一时间只允许一个 generate_keys worker 运行
 ## 新任务启动前必须等待旧任务完成（防止并发写入 game_sequences 等共享字段）
+## ⚠️ WorkerThreadPool 语义（Godot 引擎 worker_thread_pool.cpp）：
+##   - wait_for_task_completion() 会在任务完成后把该任务从线程池移除，之后同一 task_id
+##     立即失效，再调 is_task_completed()/wait_for_task_completion() 会报 "Invalid Task ID"。
+##   - 因此约定：① join 恰好一次，且全文件唯一 join 点是 _finalize_task；
+##     ② 等待方只轮询"任务槽 _generate_task_id 是否清空"，绝不轮询旧任务 id；
+##     ③ is_task_completed() 只能用于"尚未 join、仍在自己手上的任务 id"。
+##   - 旧版共享 "_done" 标志会被多个等待方（MidiListItem 统计 + PlayView 生成）同时消费，
+##     各自清标志/各自起新任务 → 两个 worker 并发写 game_sequences/_cached_sequences（数据竞争）
 var _generate_task_id: int = -1
-var _generate_done_flag: Dictionary = {}  # worker 写 "done":true，主线程读
-var _generate_task_waited: bool = false   # wait_for_task_completion 是否已调（幂等保护）
 
-## 清理当前 task（幂等：多处调用安全，wait_for_task_completion 只调一次）
-func _wait_and_cleanup_current_task() -> void:
-	if _generate_task_id == -1:
+## join 指定任务并清空任务槽（幂等：仅当该任务仍是当前槽任务时才 join + 清槽；
+## 避免旧等待方 join 到他人新启动的任务，或对已移除的任务重复 join）
+func _finalize_task(task_id: int) -> void:
+	if task_id == -1:
 		return
-	if not _generate_task_waited:
-		WorkerThreadPool.wait_for_task_completion(_generate_task_id)
-		_generate_task_waited = true
-	_generate_task_id = -1
-	_generate_task_waited = false
+	if _generate_task_id == task_id:
+		WorkerThreadPool.wait_for_task_completion(task_id)
+		_generate_task_id = -1
+
+## 串行启动一个 generate_keys worker：等待任务槽清空
+## （旧任务由它的 join 方清理后 _generate_task_id 才回到 -1，因此这里只轮询槽、不碰任务 id）
+## 返回新任务 task_id
+func _launch_generate_task(run: Callable) -> int:
+	while _generate_task_id != -1:
+		await Engine.get_main_loop().process_frame
+	var task_id := WorkerThreadPool.add_task(run, false, "KSM generate_keys")
+	_generate_task_id = task_id
+	return task_id
 
 ## 启动 generate_keys（WorkerThreadPool 后台线程执行，保留 async 签名以兼容调用方 await）
 ## 线程安全：generate_keys 仅访问 self 字段与 MidiPlaybackManager.instance 静态字段，不访问场景树
 ## RefCounted 对象（TempNote/BlockInfo/GameSequence）在 worker 创建/析构安全：
 ##   - prev_block 链在 Step 7.5 已断开，避免级联析构栈溢出
 ##   - GLogger 已用 call_deferred 保护，无 StringName 引用计数竞态
+## timebase/bpm_timeline_data：显式时间参数（调用方直接给 midi 自己的值），
+## 避免依赖/改写 MidiPlaybackManager 的全局时间线字段（见 generate_keys）
 ## 返回值：task_id（-1 表示未启动，如 game_notes 为空）
-func start_generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> int:
-	# 若有旧 worker 任务在跑，先等它完成（避免并发写入 game_sequences 等共享字段）
-	if _generate_task_id != -1:
-		while not _generate_done_flag.get("done", false):
-			await Engine.get_main_loop().process_frame
-		_wait_and_cleanup_current_task()
+func start_generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}, timebase: int = -1, bpm_timeline_data: Array = []) -> int:
+	# 空数组时主线程同步清理 game_sequences（与 generate_keys_async 行为一致）
 	if game_notes.is_empty():
-		# 空数组时主线程同步清理 game_sequences（与 generate_keys_async 行为一致）
-		generate_keys(game_notes, midi_id, enabled_pairs)
+		generate_keys(game_notes, midi_id, enabled_pairs, timebase, bpm_timeline_data)
 		return -1
-	# 启动 worker 线程
-	_generate_done_flag.clear()
-	_generate_task_waited = false
-	_generate_task_id = WorkerThreadPool.add_task(func():
-		generate_keys(game_notes, midi_id, enabled_pairs)
-		_generate_done_flag["done"] = true
-	, false, "KSM generate_keys")
-	return _generate_task_id
+	# 启动 worker 线程（_launch_generate_task 内部串行等待旧任务，避免并发写入共享字段）
+	return await _launch_generate_task(func():
+		generate_keys(game_notes, midi_id, enabled_pairs, timebase, bpm_timeline_data)
+	)
 
 ## 等待 generate_keys 完成（每帧让出主线程，动画继续推进）
+## 按任务 id 精确等待：该 id 在本函数 join 前不会被移除（同一任务只 await 一次）
 func await_generate_keys(task_id: int) -> void:
 	if task_id == -1:
 		return
-	while not _generate_done_flag.get("done", false):
+	while not WorkerThreadPool.is_task_completed(task_id):
 		await Engine.get_main_loop().process_frame
-	_wait_and_cleanup_current_task()
+	_finalize_task(task_id)
+	# 再等任务槽清空：若期间已有后续任务（如 MidiListItem 统计）开始重建共享
+	# game_sequences，调用方紧接着读共享结果时可能读到半个重建中的数组
+	while _generate_task_id != -1:
+		await Engine.get_main_loop().process_frame
 
 ## 异步生成游戏键（WorkerThreadPool 后台线程执行，保留 async 签名以兼容调用方 await）
 ## 线程安全：同 start_generate_keys_async
 ## 代价：66k 音符时 worker 约跑 200-800ms，主线程每帧让出不卡顿（命中缓存时 0ms）
-func generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}) -> bool:
-	# 若有旧 worker 任务在跑，先等它完成
-	if _generate_task_id != -1:
-		while not _generate_done_flag.get("done", false):
-			await Engine.get_main_loop().process_frame
-		_wait_and_cleanup_current_task()
+func generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs: Dictionary = {}, timebase: int = -1, bpm_timeline_data: Array = []) -> bool:
 	# 空数组快速路径：主线程直接执行（generate_keys 内部仅 clear）
 	if game_notes.is_empty():
-		generate_keys(game_notes, midi_id, enabled_pairs)
+		generate_keys(game_notes, midi_id, enabled_pairs, timebase, bpm_timeline_data)
 		return true
-	# 启动 worker 线程
-	_generate_done_flag.clear()
-	_generate_task_waited = false
-	_generate_task_id = WorkerThreadPool.add_task(func():
-		generate_keys(game_notes, midi_id, enabled_pairs)
-		_generate_done_flag["done"] = true
-	, false, "KSM generate_keys")
-	# 等待完成
-	while not _generate_done_flag.get("done", false):
-		await Engine.get_main_loop().process_frame
-	_wait_and_cleanup_current_task()
+	# 启动 worker 线程（内部串行等待旧任务）并等待完成
+	var task_id := await _launch_generate_task(func():
+		generate_keys(game_notes, midi_id, enabled_pairs, timebase, bpm_timeline_data)
+	)
+	await await_generate_keys(task_id)
 	return true
 
 ## 将 NoteEvent 对象转换为内部格式（确保使用毫秒单位）

@@ -446,19 +446,33 @@ func _save_runtime_config(midi_data: MidiData) -> void:
 	else:
 		push_error("[MidiPlaybackManager] ChartDB not open, cannot save runtime config for MIDI %s" % midi_data.id)
 
+## 解析中的 MIDI 去重表：midi 实例 -> {"done": bool}
+## MidiListItem 统计 / TrackView / PlayView 可能同时请求同一 MIDI 的解析；
+## 只允许第一个请求方启动 worker，其余请求方等待同一解析完成，
+## 避免对同一文件重复解析（浪费 I/O）或解析结果交错写入
+var _preparse_inflight: Dictionary = {}
+
 ## 在 worker 线程中预解析 MIDI，使后续 load_midi() 命中缓存跳过同步解析
 ## 同时在 worker 中完成 track_channel_instruments 复用 + runtime_track_channel_notes 分组构建
 ## 主线程在 await 期间可继续渲染转场动画，避免首次进入 TrackView 时的解析卡顿
+## 同一 MIDI 多请求方去重：若已有解析在进行（MidiView 统计或另一视图发起的），
+## 本函数直接等待其完成，绝不重复启动解析
 ## TrackView._load_midi 在调用 load_midi 之前 await 本方法
 func preparse_midi_async(midi_data: MidiData) -> bool:
 	# 缓存命中检查（与 load_midi 内部条件一致）
-	# MidiListItem._parse_thread_func 已在 worker 线程构建 runtime_track_channel_notes，
-	# 命中缓存时该字段已就绪，TrackView._build_buckets 可直接复用
+	# 命中缓存时 runtime_track_channel_notes 已由本函数构建，TrackView._build_buckets 可直接复用
 	if not midi_data.parsed_notes.is_empty() and not midi_data._runtime_track_infos.is_empty():
 		# 缓存命中时也复用已构建的 cached_track_channel_instruments（避免 load_midi 重新提取）
 		# 但 cached_track_channel_instruments 是 MidiPlaybackManager 单实例字段，切换 MIDI 时会被 clear
 		# 此处不做特殊处理：load_midi 内部会判断 cached_track_channel_instruments 是否为空决定是否调用提取
 		return true  # 已缓存，无需预解析
+
+	# 同一 MIDI 已有解析在进行：单纯等待其完成（MidiListItem 的统计解析 / TrackView / PlayView 共享一次解析）
+	if _preparse_inflight.has(midi_data):
+		while _preparse_inflight.has(midi_data) and not _preparse_inflight[midi_data].get("done", false):
+			await Engine.get_main_loop().process_frame
+		# 解析完成（成功或失败）；失败时字段仍为空，按失败处理
+		return (not midi_data.parsed_notes.is_empty() and not midi_data._runtime_track_infos.is_empty())
 
 	var midi_file_path := _locate_midi_file(midi_data)
 	if midi_file_path.is_empty():
@@ -467,6 +481,10 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 
 	# 预先写入路径，让 load_midi 内部的缓存检查 (midi_data.midi_file_path == midi_file_path) 命中
 	midi_data.midi_file_path = midi_file_path
+
+	# 注册本次解析，后续同 MIDI 请求方走等待分支
+	var inflight_entry := {"done": false}
+	_preparse_inflight[midi_data] = inflight_entry
 
 	# 在 worker 线程中执行 MIDI 解析（C# 纯 .NET + PackedArray marshalling，线程安全）
 	# NoteEvent 重建与 track_channel_notes 分组在主线程完成（避免 worker 创建 66k RefCounted）
@@ -488,6 +506,7 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 
 	var parse_result: Dictionary = result_wrapper["parse"]
 	if not parse_result.get("success", false):
+		_preparse_inflight.erase(midi_data)
 		push_error("[MidiPlaybackManager] Failed to parse MIDI file: %s" % midi_file_path)
 		return false
 
@@ -519,6 +538,10 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	midi_data.runtime_track_channel_notes = track_channel_notes
 
 	# build_notes_from_soa 已按 start_time 升序排序，无需重复排序
+
+	# 标记完成并移除在途记录（等待方在 while 循环里以 has() 守卫，erase 后立即退出循环）
+	inflight_entry["done"] = true
+	_preparse_inflight.erase(midi_data)
 
 	GLogger.info("MIDI preparse completed (threaded): %d notes, duration=%.0fms, %d (track,channel) groups" % [
 		midi_data.parsed_notes.size(),

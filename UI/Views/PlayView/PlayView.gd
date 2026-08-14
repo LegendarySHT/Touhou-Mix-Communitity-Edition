@@ -662,10 +662,12 @@ func _start_generate_game_sequences(midi_data: MidiData) -> int:
 	# 传入 midi_id 和 enabled_pairs 以启用缓存命中
 	# enabled_pairs 必须是扁平的 {"track:channel": true} 格式（MidiData.get_enabled_pairs_flat）
 	# 与 MidiListItem 一致，否则 cache_key 中的 pairs_hash 不同会导致缓存 miss
+	# 显式传入 midi 自己的 timebase/bpm_timeline，不依赖/改写 MidiPlaybackManager 全局时间线字段
+	# （MidiListItem 的统计生成也用同一 midi 的显式参数，二者 cache_key 一致可互相命中）
 	# await start_generate_keys_async：若 MidiView 的 worker 还在跑，这里会让出主线程等待
-	# 旧实现不 await 会导致 OS.delay_msec 同步 sleep 卡死转场动画
 	var task_id := await key_sequence_mgr.start_generate_keys_async(
-		enabled_notes, current_midi.id, midi_data.get_enabled_pairs_flat()
+		enabled_notes, current_midi.id, midi_data.get_enabled_pairs_flat(),
+		midi_data.midi_timebase, midi_data.bpm_timeline
 	)
 	return task_id
 
