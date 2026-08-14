@@ -124,7 +124,7 @@ func on_item_button_toggled(toggled_on: bool):
 		return
 	# 更新该项的指示器颜色（开=高亮，关=白色）
 	var indicator_node := get_node(INDICATOR)
-	var primary_dark := Color(0.129, 0.412, 0.702)
+	var primary_dark := Color(0.082, 0.306, 0.588)
 	if ThemeMGR:
 		primary_dark = ThemeMGR.get_color("primary_dark")
 	AniMGR.create_managed_tween(self).tween_property(indicator_node.get_child(item_index), "color", primary_dark if toggled_on else Color(1, 1, 1), 0.15)
@@ -158,7 +158,7 @@ func set_expanded(expanded: bool) -> void:
 	expand_tween.tween_property(midi_name_label, "theme_override_font_sizes/font_size", 30 + 10 * expa, 0.25)
 	# 指示器颜色
 	var indicator_node := get_node(INDICATOR)
-	var primary_dark := Color(0.129, 0.412, 0.702)
+	var primary_dark := Color(0.082, 0.306, 0.588)
 	if ThemeMGR:
 		primary_dark = ThemeMGR.get_color("primary_dark")
 	var highlight = expanded and (parent_node.selected_item == item_index)

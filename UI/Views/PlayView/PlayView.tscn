@@ -10,6 +10,7 @@
 [ext_resource type="Script" uid="uid://cekagah86op12" path="res://UI/Views/PlayView/PlayBackground.gd" id="6_bgctrl"]
 [ext_resource type="Script" uid="uid://c1jieae2d3edr" path="res://UI/Views/PlayView/PlayHud.gd" id="7_hud"]
 [ext_resource type="Script" uid="uid://cbp1sof2efk35" path="res://UI/Views/PlayView/GlowLayer.gd" id="8_glow"]
+[ext_resource type="Theme" uid="uid://clu7eeeh6aitj" path="res://UI/Theme/BtnTheme/R12NoBorder.tres" id="10_q4lmo"]
 
 [sub_resource type="Gradient" id="Gradient_7ak4s"]
 colors = PackedColorArray(0.3882353, 0.20392157, 0.654902, 1, 0.71, 0.355, 0.71, 1)
@@ -26,34 +27,6 @@ thickness = 2
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_glow"]
 blend_mode = 1
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kvdpo"]
-bg_color = Color(0.25336733, 0.36870298, 0.8464057, 1)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
-shadow_color = Color(0.8776157, 0.8776158, 0.8776157, 0.38039216)
-shadow_size = 15
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j150t"]
-bg_color = Color(0.20784314, 0.30980393, 0.77254903, 1)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_v16c5"]
-bg_color = Color(0.20784314, 0.30980393, 0.77254903, 1)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
-
-[sub_resource type="Theme" id="Theme_flcya"]
-Button/styles/hover = SubResource("StyleBoxFlat_kvdpo")
-Button/styles/normal = SubResource("StyleBoxFlat_j150t")
-Button/styles/pressed = SubResource("StyleBoxFlat_v16c5")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jlvmc"]
 bg_color = Color(0, 0, 0, 0)
@@ -379,7 +352,7 @@ offset_bottom = 200.0
 grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(750, 260)
-theme = SubResource("Theme_flcya")
+theme = ExtResource("10_q4lmo")
 theme_override_constants/separation = 60
 alignment = 1
 

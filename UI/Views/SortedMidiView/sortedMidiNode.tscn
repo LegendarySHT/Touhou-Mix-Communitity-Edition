@@ -1,61 +1,9 @@
 [gd_scene format=3 uid="uid://ddhnyragi1haf"]
 
+[ext_resource type="Theme" uid="uid://cm3mry6cxo28t" path="res://UI/Theme/BtnTheme/ListBtn-ColorBorder.tres" id="1_aaj07"]
 [ext_resource type="Script" uid="uid://c4gjvjg4gl57p" path="res://UI/Views/SortedMidiView/SortedMidiListItem.gd" id="1_sx7kd"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_aaj07"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_ex0j5"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_aaj07"]
-draw_center = false
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
-border_color = Color(0.41568628, 0.59607846, 1, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ex0j5"]
-bg_color = Color(0.18098986, 0.36878055, 0.8004749, 0.24705882)
-draw_center = false
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
-border_color = Color(0.41568628, 0.59607846, 1, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_www55"]
-bg_color = Color(0.28210002, 0.4809351, 0.91, 0.14509805)
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
-border_color = Color(0.41568628, 0.59607846, 1, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7gp3l"]
-draw_center = false
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
-border_color = Color(0.97, 0.97, 0.97, 0.6392157)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o5pup"]
 content_margin_left = 20.0
@@ -74,10 +22,7 @@ offset_transform_enabled = true
 focus_neighbor_right = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
 focus_next = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
 mouse_filter = 1
-theme_override_styles/normal = SubResource("StyleBoxFlat_aaj07")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_ex0j5")
-theme_override_styles/hover = SubResource("StyleBoxFlat_www55")
-theme_override_styles/focus = SubResource("StyleBoxFlat_7gp3l")
+theme = ExtResource("1_aaj07")
 toggle_mode = true
 script = ExtResource("1_sx7kd")
 metadata/_edit_use_anchors_ = true

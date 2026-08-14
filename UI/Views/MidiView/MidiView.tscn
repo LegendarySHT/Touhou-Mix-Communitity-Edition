@@ -17,6 +17,7 @@
 [ext_resource type="Texture2D" uid="uid://g4b8l2tie156" path="res://Resources/icon/midiInfoPage/status/playcount.png" id="14_jiooo"]
 [ext_resource type="Texture2D" uid="uid://yupw24rudalj" path="res://Resources/icon/midiInfoPage/status/upCount.png" id="15_27bbn"]
 [ext_resource type="Texture2D" uid="uid://dpwyd6fd4q7j7" path="res://Resources/icon/midiInfoPage/status/avgAcc.png" id="16_8spcd"]
+[ext_resource type="Theme" uid="uid://clu7eeeh6aitj" path="res://UI/Theme/BtnTheme/R12NoBorder.tres" id="16_qg2wq"]
 [ext_resource type="Texture2D" uid="uid://dw6l1r7cawiyj" path="res://Resources/icon/midiInfoPage/status/avgPP.png" id="17_8kmhx"]
 [ext_resource type="Script" uid="uid://du6e1o3nahcc1" path="res://UI/Views/MidiView/option_ui.gd" id="18_2bu1o"]
 [ext_resource type="Texture2D" uid="uid://cn6jximeoko1h" path="res://Resources/icon/midiInfoPage/rank.png" id="19_fx5ny"]
@@ -85,40 +86,6 @@ color = Color(1, 1, 1, 1)
 grow_begin = 10.0
 grow_end = 10.0
 thickness = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_n3ivs"]
-bg_color = Color(0.18431373, 0.58431375, 1, 1)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_goplo"]
-bg_color = Color(0, 0.4298774, 0.79658014, 1)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_340v8"]
-bg_color = Color(0, 0.47627723, 0.87807125, 1)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dnsld"]
-draw_center = false
-border_width_left = 12
-border_width_top = 12
-border_width_right = 12
-border_width_bottom = 12
-border_color = Color(1, 1, 1, 1)
-border_blend = true
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btcpj"]
 bg_color = Color(0.18431373, 0.58431375, 1, 1)
@@ -519,11 +486,8 @@ size_flags_horizontal = 4
 custom_minimum_size = Vector2(400, 120)
 layout_mode = 2
 size_flags_horizontal = 3
+theme = ExtResource("16_qg2wq")
 theme_override_font_sizes/font_size = 48
-theme_override_styles/normal = SubResource("StyleBoxFlat_n3ivs")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_goplo")
-theme_override_styles/hover = SubResource("StyleBoxFlat_340v8")
-theme_override_styles/focus = SubResource("StyleBoxFlat_dnsld")
 text = "跳转至浏览器"
 
 [node name="MainBtn" type="HBoxContainer" parent="LeftArea" unique_id=1543610834]

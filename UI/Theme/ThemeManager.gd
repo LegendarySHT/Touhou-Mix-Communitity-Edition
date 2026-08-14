@@ -34,6 +34,10 @@ func _ready() -> void:
 const DEFAULT_THEME_PATH := "res://Resources/Config/theme.ini"
 const DEFAULT_PRESET := "blue"
 
+# 共享按钮 Theme 资源（几何参数收在 .tres，颜色由本管理器按主题统一刷新）
+const SHARED_LIST_BTN_THEME_PATH := "res://UI/Theme/BtnTheme/ListBtn-ColorBorder.tres"
+const SHARED_R12_BTN_THEME_PATH := "res://UI/Theme/BtnTheme/R12NoBorder.tres"
+
 static var USER_THEME_PATH: String:
 	get: return PathHelper.get_files_dir() + "theme.ini"
 
@@ -367,72 +371,22 @@ func _modify_panel_color(node: Control, color_key: String) -> void:
 
 # ============ 列表项样式 ============
 
-## 修改按钮已有 StyleBoxFlat 的颜色属性（不新建 StyleBox，保留 tscn 预设的圆角/边框等配置）
-## fancy_focus: true=同时修改 focus 的 shadow_color (Album/Song)
-func _modify_button_colors(btn: Button, pri_light: Color, fancy_focus: bool) -> void:
-	var sb := btn.get_theme_stylebox("pressed")
-	if sb is StyleBoxFlat:
-		sb.bg_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.25)
-
-	sb = btn.get_theme_stylebox("hover")
-	if sb is StyleBoxFlat:
-		sb.bg_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.15)
-
-	if fancy_focus:
-		sb = btn.get_theme_stylebox("focus")
-		if sb is StyleBoxFlat:
-			sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.6)
-
-		# 边框颜色
-		for state in ["normal", "hover", "pressed"]:
-			sb = btn.get_theme_stylebox(state)
-			if sb is StyleBoxFlat:
-				sb.border_color = pri_light
-				sb.shadow_color = Color(pri_light.r, pri_light.g, pri_light.b, 0.4)
-
-## 修改 albumNode 的 item_instance 上的共享 StyleBoxFlat
-## AlbumButton 本身即根节点 Button（原 Panel + 子 Button 已合并）
+## 修改 albumNode 的 item_instance 上的 SongCount 圆形标签背景色
+## （按钮四态已由共享 theme ListBtn-ColorBorder.tres 统一处理，不再逐实例改色）
 func _style_album_instance(item: Control, pri_light: Color) -> void:
-	# AlbumButton — pressed/hover/focus 的颜色
-	var btn := item as Button
-	if btn:
-		_modify_button_colors(btn, pri_light, true)
-
-	# SongCount — normal StyleBoxFlat.bg_color（共享引用，duplicate 子项自动同步）
 	var song_count := item.get_node_or_null("SongCount") as Label
 	if song_count:
 		var sb := song_count.get_theme_stylebox("normal")
 		if sb is StyleBoxFlat:
 			sb.bg_color = pri_light
 
-## 修改 songNode 的 item_instance
-## SongButton 本身即根节点 Button（原 Panel + 子 Button 已合并）
+## 修改 songNode 的 item_instance 上的 SongCount 圆形标签背景色
 func _style_song_instance(item: Control, pri_light: Color) -> void:
-	# HBoxC/SongCount — normal StyleBoxFlat.bg_color（共享引用，duplicate 子项自动同步）
 	var song_count := item.get_node_or_null("HBoxC/SongCount") as Label
 	if song_count:
 		var sb := song_count.get_theme_stylebox("normal")
 		if sb is StyleBoxFlat:
 			sb.bg_color = pri_light
-
-	# SongButton
-	var btn := item as Button
-	if btn:
-		_modify_button_colors(btn, pri_light, true)
-
-## 修改 sortedMidiNode 的 item_instance
-## MidiNode 本身即 Button（原 Panel + 子 Button 已合并），直接对 item 应用样式
-func _style_sorted_midi_instance(item: Control, pri_light: Color) -> void:
-	var btn := item as Button
-	if not btn:
-		return
-	# 简洁焦点，不修改 shadow
-	_modify_button_colors(btn, pri_light, false)
-	# 边框颜色应用到 normal/pressed/hover（原 Border 节点的职责）
-	for state in ["normal", "hover", "pressed"]:
-		var sb := btn.get_theme_stylebox(state)
-		if sb is StyleBoxFlat:
-			sb.border_color = pri_light
 
 
 ## 统一设置按钮三种状态的 bg_color（通过 Theme 的 StyleBoxFlat 引用）
@@ -443,6 +397,60 @@ func _theme_button_set_color(theme: Theme, base_color: Color, type: String = "Bu
 	theme.get_stylebox("pressed", type).bg_color = base_color.darkened(0.25)
 	theme.get_stylebox("focus", type).bg_color = base_color.lightened(0.1)
 	theme.get_stylebox("disabled", type).bg_color = base_color.darkened(0.6)
+
+# ============ 共享按钮 Theme（几何 .tres，颜色随主题） ============
+
+## 刷新共享按钮 Theme 资源的四态颜色。
+## 几何参数（圆角/边框宽度/边距）收在 UI/Theme/BtnTheme/*.tres 里，颜色在此按当前主题统一写入。
+## 资源按 uid 单例缓存，改一次即同步所有引用场景（含 duplicate 的列表项）。
+func _refresh_shared_btn_themes() -> void:
+	# ListBtn-ColorBorder — 列表项按钮（album/song/sorted 共用）：与专辑节点同款（边框 pri_light + 半透明底 + focus 阴影）
+	var list_theme := load(SHARED_LIST_BTN_THEME_PATH) as Theme
+	if list_theme:
+		_style_shared_list_btn_theme(list_theme)
+	# R12NoBorder — 圆角12 无边框按钮（PopupWindow/KeySequenceItem/MidiView/PlayView/ValueButton 共用）：与主 Theme 按钮同款（primary 三阶）
+	var r12_theme := load(SHARED_R12_BTN_THEME_PATH) as Theme
+	if r12_theme:
+		_style_shared_flat_btn_theme(r12_theme)
+
+## 列表项按钮 Theme 四态颜色（fancy_focus 风格：normal 边框 pri_light + 半透明底 + focus 阴影）
+func _style_shared_list_btn_theme(theme: Theme) -> void:
+	var pl := get_color("primary_light")
+	# pressed/hover — 半透明底色
+	var sb := theme.get_stylebox("pressed", "Button")
+	if sb is StyleBoxFlat:
+		sb.bg_color = Color(pl.r, pl.g, pl.b, 0.25)
+	sb = theme.get_stylebox("hover", "Button")
+	if sb is StyleBoxFlat:
+		sb.bg_color = Color(pl.r, pl.g, pl.b, 0.15)
+	# focus — 阴影高亮
+	sb = theme.get_stylebox("focus", "Button")
+	if sb is StyleBoxFlat:
+		sb.shadow_color = Color(pl.r, pl.g, pl.b, 0.6)
+	# normal — 蓝色边框只加给 normal（与 tscn 原始设计一致）；hover/pressed 保持默认边框色
+	sb = theme.get_stylebox("normal", "Button")
+	if sb is StyleBoxFlat:
+		sb.border_color = pl
+		sb.shadow_color = Color(pl.r, pl.g, pl.b, 0.4)
+	for state in ["hover", "pressed"]:
+		sb = theme.get_stylebox(state, "Button")
+		if sb is StyleBoxFlat:
+			sb.shadow_color = Color(pl.r, pl.g, pl.b, 0.4)
+
+## 圆角12 无边框按钮 Theme 四态颜色（primary 三阶，与主 Theme 按钮逻辑一致）
+func _style_shared_flat_btn_theme(theme: Theme) -> void:
+	var base := get_color("primary")
+	var states := ["normal", "hover", "pressed", "focus"]
+	var colors := {
+		"normal": base,
+		"hover": base.lightened(0.15),
+		"pressed": base.darkened(0.25),
+		"focus": base.lightened(0.1),
+	}
+	for state in states:
+		var sb := theme.get_stylebox(state, "Button")
+		if sb is StyleBoxFlat:
+			sb.bg_color = colors[state]
 
 func _style_panel_set_bg_color(panel: Control, color: Color) -> void:
 	if not panel:
@@ -491,13 +499,9 @@ func _style_midi_individual_nodes(info_ui: Node) -> void:
 			sb.bg_color = Color(p.r, p.g, p.b, 0.5)
 			sb.border_color = Color(pd.r, pd.g, pd.b, 0.4)
 
-	# PlayBtn — 中间按钮比两边亮
+	# PlayBtn — 中间按钮比两边亮（内联 stylebox，不走共享 theme）
 	var play_btn := info_ui.get_node_or_null("LeftArea/MainBtn/PlayBtn") as Button
 	_style_button_set_bg_color(play_btn, pl)
-
-	# RedirectButtons/Button
-	var redirect_btn := info_ui.get_node_or_null("LeftArea/RedirectButtons/Button") as Button
-	_style_button_set_bg_color(redirect_btn, p)
 
 	# OptionPanel 背景 (和按钮按下状态同色)
 	var option_panel := info_ui.get_node_or_null("OptionPanel") as PanelContainer
@@ -535,6 +539,8 @@ func refresh_theme_only() -> void:
 	# 第一阶段：全局 Theme 资源（触发大面积重绘，单独一帧）
 	# 注意：切换主题色不再清空背景缓存，背景与主题色独立（避免 Image.load_from_file 同步阻塞）
 	_refresh_theme_colors(main.theme)
+	# 共享按钮 Theme（几何 .tres，颜色随主题）—— 资源单例，改一次即同步所有引用场景
+	_refresh_shared_btn_themes()
 	var skew_part: Control = main.get_node_or_null("skew/C")
 	if skew_part and skew_part.theme != main.theme:
 		skew_part.theme = main.theme  # 让子节点继承更新后的 Theme （因为skew会导致子节点不继承theme）

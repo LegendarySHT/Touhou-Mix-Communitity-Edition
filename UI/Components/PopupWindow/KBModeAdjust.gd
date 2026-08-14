@@ -40,7 +40,7 @@ const KEY_ITEM_SCENE := preload("res://UI/Components/PopupWindow/KeySequenceItem
 var _alt_colors_state: Array[Color] = []
 
 ## 共享模板（不进场景树），子项用 duplicate() 复用其 StyleBoxFlat 引用
-var _item_instance: KeySequenceItem = null
+@onready var _item_instance: KeySequenceItem = KEY_ITEM_SCENE.instantiate()
 
 # 数据：每个 item 为 {"key": Key, "display_name": String}
 var _items: Array = []
@@ -56,12 +56,6 @@ var _shared_button_group: ButtonGroup = ButtonGroup.new()
 
 # 标记 _display_name_edit 的文本由程序设置（避免触发 text_changed 死循环）
 var _suppress_display_name_signal: bool = false
-
-
-func _ready() -> void:
-	_item_instance = KEY_ITEM_SCENE.instantiate()
-	apply_button_theme(ThemeMGR.get_color("primary"))
-
 
 ## 由 PopupWindow.show_kb_mode_adjust 调用：解析配置字符串并重建 UI
 ## kb_mode：键盘模式开关（0/1）；gap：左右间距（偶数键位时中间额外间距，最低 0）
@@ -227,16 +221,6 @@ func _rebuild_items() -> void:
 	if _insert_place.get_parent() == _hbox:
 		_hbox.move_child(_insert_place, insert_idx)
 	_insert_place.visible = false
-
-
-## 只改 _item_instance 上的 StyleBoxFlat，duplicate 出的子项共享引用自动同步，无需遍历
-func apply_button_theme(color: Color) -> void:
-	if not _item_instance:
-		return
-	# 显式 cast 为 StyleBoxFlat：get_theme_stylebox 静态返回 StyleBox 基类，无 bg_color 属性
-	(_item_instance.get_theme_stylebox("normal") as StyleBoxFlat).bg_color = color
-	(_item_instance.get_theme_stylebox("pressed") as StyleBoxFlat).bg_color = color.darkened(0.25)
-	(_item_instance.get_theme_stylebox("hover") as StyleBoxFlat).bg_color = color.lightened(0.15)
 
 
 ## 将 Key 枚举转为可被 ConfigParser.parse_keyboard_keys 解析的字符串

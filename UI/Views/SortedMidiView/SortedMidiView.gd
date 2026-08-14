@@ -53,20 +53,6 @@ func _ready() -> void:
 
 	super._ready()
 
-	# 注册主题色应用器，由 ThemeManager 在主题切换时广播调用
-	if ThemeMGR:
-		ThemeMGR.register_theme_applier(self)
-		apply_theme()
-
-## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
-func apply_theme() -> void:
-	if item_instance:
-		ThemeMGR._style_sorted_midi_instance(item_instance, ThemeMGR.get_color("primary_light"))
-
-func _exit_tree() -> void:
-	if ThemeMGR:
-		ThemeMGR.unregister_theme_applier(self)
-
 ## 重写基类状态切换处理：退回 ALBUM_VIEW/SONG_VIEW 时清空列表节点
 ## 其它状态（如 MIDI_VIEW 点进 MIDI）保留列表，返回时无需重建
 func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:

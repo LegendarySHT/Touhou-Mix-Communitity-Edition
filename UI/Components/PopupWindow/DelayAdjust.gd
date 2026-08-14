@@ -10,7 +10,6 @@ signal finish_requested
 @onready var _adjust_line: PanelContainer = $DelayIndicator/AdjustLine
 @onready var _shadow_line: PanelContainer = $DelayIndicator/ShadowLine
 @onready var _delay_value: LineEdit = $HBoxC/Value
-# 主题管理器通过 PopupWindow.delay_btn getter 转发访问
 @onready var delay_btn: Button = $Button
 
 # ===== 延迟校准状态 =====

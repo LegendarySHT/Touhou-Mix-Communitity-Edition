@@ -22,14 +22,6 @@ static var instance: PopupWindow
 @onready var _kb_mode_adjust: KBModeAdjust = $TabC/KBModeAdjust
 @onready var _falling_adjust: FallingAdjust = $TabC/FallingAdjust
 
-## 主题管理器通过此 getter 访问 DelayAdjust 中的 delay_btn（保持外部 API 不变）
-var delay_btn: Button:
-	get:
-		# PopupWindow._ready 尚未执行时（如 ThemeManager 启动期间 refresh_theme_only 提前触发）_delay_adjust 为 null
-		if _delay_adjust == null:
-			return null
-		return _delay_adjust.delay_btn
-
 signal window_close
 
 var _confirm: bool = false
@@ -64,16 +56,17 @@ func _ready() -> void:
 
 ## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
 func apply_theme() -> void:
-	# DelayAdjust/Button — primary 色调
-	var delay_btn_node := delay_btn as Button
-	ThemeMGR._style_button_set_bg_color(delay_btn_node, ThemeMGR.get_color("primary"))
-	# KBModeAdjust/AddBtn — primary 色调（静态按钮）
+	# WindowBG — 主题深色（保留 tscn 预设的圆角/边框，alpha 固定 0.6）
+	var window_bg := get_node_or_null("WindowBG") as PanelContainer
+	if window_bg:
+		var sb := window_bg.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			var pd := ThemeMGR.get_color("primary_dark")
+			sb.bg_color = Color(pd.r, pd.g, pd.b, 0.6)
+	# KBModeAdjust/AddBtn — primary 色调（内联 stylebox，不走共享 theme）
 	var kb_add_btn := get_node_or_null("TabC/KBModeAdjust/KeySequence/VFlowC/AddBtn") as Button
 	if kb_add_btn:
 		ThemeMGR._style_button_set_bg_color(kb_add_btn, ThemeMGR.get_color("primary"))
-	# KBModeAdjust 中动态创建的 KeySequenceItem — 委托给 KBModeAdjust.apply_button_theme
-	if _kb_mode_adjust:
-		_kb_mode_adjust.apply_button_theme(ThemeMGR.get_color("primary"))
 
 func _exit_tree() -> void:
 	if ThemeMGR:

@@ -1,65 +1,9 @@
 [gd_scene format=3 uid="uid://cmg2kkhga3yj5"]
 
+[ext_resource type="Theme" uid="uid://cm3mry6cxo28t" path="res://UI/Theme/BtnTheme/ListBtn-ColorBorder.tres" id="1_fljdd"]
 [ext_resource type="Script" uid="uid://dye4gnjw1k7du" path="res://UI/Views/AlbumView/AlbumListItem.gd" id="1_pxpjj"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_wrosb"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_j1pth"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pxpjj"]
-draw_center = false
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
-border_color = Color(0.41568628, 0.59607846, 1, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-expand_margin_bottom = 1.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j1pth"]
-bg_color = Color(0.18098986, 0.36878055, 0.8004749, 0.24705882)
-draw_center = false
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-expand_margin_bottom = 1.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4cpa4"]
-bg_color = Color(0.28210002, 0.4809351, 0.91, 0.14509805)
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-expand_margin_bottom = 1.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xpu1h"]
-draw_center = false
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
-border_color = Color(0.97, 0.97, 0.97, 0.6392157)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-corner_detail = 5
-expand_margin_bottom = 1.0
-shadow_color = Color(0.31, 0.7354999, 1, 0.6)
-shadow_size = 10
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_wrosb"]
 content_margin_top = 15.0
@@ -84,10 +28,7 @@ size_flags_vertical = 0
 focus_neighbor_right = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
 focus_next = NodePath("/root/Main/skew/C/ShortCutMenu/Btns/Search")
 mouse_filter = 1
-theme_override_styles/normal = SubResource("StyleBoxFlat_pxpjj")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_j1pth")
-theme_override_styles/hover = SubResource("StyleBoxFlat_4cpa4")
-theme_override_styles/focus = SubResource("StyleBoxFlat_xpu1h")
+theme = ExtResource("1_fljdd")
 toggle_mode = true
 script = ExtResource("1_pxpjj")
 metadata/index = 0

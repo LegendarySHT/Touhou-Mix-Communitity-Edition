@@ -24,7 +24,7 @@ SortEngine="*res://Core/SortingEngine.gd"
 UiStatMGR="*res://Core/UIStateManager.gd"
 AniMGR="*res://UI/Animations/AnimationManager.gd"
 GLogger="*res://Utilities/Logger.gd"
-ThemeMGR="*res://UI/ThemeManager.gd"
+ThemeMGR="*res://UI/Theme/ThemeManager.gd"
 SkinMGR="*res://Core/SkinManager.gd"
 ParticleMGR="*res://Core/ParticleManager.gd"
 ChartDB="*res://CSharp/ChartDb/ChartDb.cs"
@@ -65,9 +65,4 @@ pointing/emulate_touch_from_mouse=true
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true
-# HDR 2D 关闭：项目 2D 特效（渐变/glow/flash shader）不依赖 HDR，
-# 移动端 HDR 目标使带宽/填充率翻倍级放大（音符+光效大量半透明叠加最吃亏）。
-# 注意：LDR 下 >1 的超亮色（如 Color(2,2,2) 底部高亮、AUTO 红色）会被 clamp 到 1，峰值亮度略降
-viewport/hdr_2d=false
-# 屏幕空间 AA 关闭：2D 音游全屏 SMAA pass 收益低、成本高，移动端省一个全屏 pass
 anti_aliasing/quality/screen_space_aa="Disabled"
