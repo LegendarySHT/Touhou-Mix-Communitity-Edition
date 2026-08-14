@@ -206,7 +206,6 @@ func set_view_background(view_name: String, config: Dictionary) -> void:
 	GLogger.info("背景设置已更新: %s" % view_name, "ThemeManager")
 	save_theme()
 	# 仅刷新背景（不 emit theme_changed，避免触发 refresh_theme_only 完整主题刷新导致卡顿）
-	# PlayView 的 cover 模式由 PlayView 自己在切回 PLAY_VIEW 时通过 _apply_play_background 处理
 	refresh_backgrounds()
 
 func apply_background(texture_rect: TextureRect, view_name: String) -> void:

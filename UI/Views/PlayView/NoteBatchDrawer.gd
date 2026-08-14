@@ -26,7 +26,8 @@ var _glow_tex: Texture2D = null       # 程序预烘焙的白色 glow 纹理
 var _glow_enabled: bool = false
 var _glow_intensity: float = 1.0
 var _glow_size: float = 20.0
-var _glow_layer: Node2D = null        # 加色混合子层
+# 加色混合子层（PlayView.tscn 预挂节点：GlowLayer.gd，z_index=-1 保证在音符之下、背景之上）
+@onready var _glow_layer: GlowLayer = $GlowLayer
 
 # 光效高斯峰值：加色混合逐通道相加，峰值 ≥0.5 时两个相同颜色的光效叠加就达 1.0（白）
 # 0.45 保证两个光效叠加不超过 0.9，不白但接近白；调高更亮更易白，调低更压白
@@ -270,20 +271,13 @@ func _bake_glow_texture() -> void:
 			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, clampf(glow, 0.0, 1.0)))
 	_glow_tex = ImageTexture.create_from_image(img)
 
+## 绑定 tscn 预挂的 GlowLayer 节点（节点结构在 PlayView.tscn 声明：z_index=-1、ADD 混合材质）
+## 此处只注入 _drawer 引用（GlowLayer._draw 直接读本节点字段，避免数据同步）并同步可见性
 func _setup_glow_layer() -> void:
-	if _glow_layer:
+	if _glow_layer == null:
 		return
-	_glow_layer = Node2D.new()
-	_glow_layer.name = "GlowLayer"
-	_glow_layer.z_index = -1
-	_glow_layer.visible = _glow_enabled
-	var mat = CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	_glow_layer.material = mat
-	# 用 script 注入 _draw 逻辑（直接读 parent 字段，避免数据同步）
-	_glow_layer.set_script(preload("res://UI/Views/PlayView/GlowLayer.gd"))
 	_glow_layer._drawer = self
-	add_child(_glow_layer)
+	_glow_layer.visible = _glow_enabled
 
 func _draw() -> void:
 	if _note_buckets.is_empty():

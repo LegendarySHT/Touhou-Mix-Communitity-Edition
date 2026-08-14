@@ -2,25 +2,10 @@ extends Control
 
 # 音符显示区
 @onready var flow_area: Panel = $FlowArea
-
-@onready var background: TextureRect = $Background
-@onready var dim_overlay: ColorRect = $DimOverlay
-@onready var menu_btn: TextureButton = $Layer/BackBtn
-@onready var progress_bar: ProgressBar = $Layer/TopProgressBar
-
-# 中间
-@onready var combo: Label = $Layer/Combo/count
-@onready var score: Label = $Layer/Score/count
-@onready var score_add: Label = $Layer/Score/add
-# 显示perfect的那个部分
-@onready var center: VBoxContainer = $Layer/Center
-@onready var center_text: Label = $Layer/Center/type
-@onready var early_text: Label = $Layer/Center/up
-@onready var late_text: Label = $Layer/Center/down
-
-# 底部
-@onready var pp_text: Label = $Layer/LeftBottom
-@onready var accuracy_text: Label = $Layer/RightBottom
+# 背景控制器（BackgroundControl 节点，封装封面/模糊/暗化/闪光）
+@onready var bg_ctrl: PlayBackground = $BackgroundControl
+# HUD 展示层（Layer 节点，封装判定 UI/进度条/调试悬浮）
+@onready var hud: PlayHud = $Layer
 
 # 菜单及歌曲信息的背景遮罩
 @onready var center_bg:ColorRect = $Layer/CenterBackGround
@@ -46,13 +31,8 @@ extends Control
 # 轨道光效及键位显示
 @onready var lane_area: Control = $Lane
 
-# 背景配置走 ThemeManager（theme.ini [backgrounds] 段），不再从 config.ini 读取
-const BG_BLUR_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundBlur.gdshader"
-const BG_FLASH_SHADER_PATH := "res://UI/Views/PlayView/Shaders/BackgroundFlash.gdshader"
-
 # auto标识
 @onready var auto_label: Label = $AutoLabel
-@onready var debug_info_label: Label = $Layer/DebugInfo
 
 var current_midi: MidiData = null
 ## play_result 仅作为传递给 ScoreView 的展示数据容器
@@ -86,10 +66,6 @@ var _last_playback_position: float = -1.0
 var _position_stall_frames: int = 0
 const _PLAYBACK_STALL_THRESHOLD := 30  # 30帧 ≈ 0.5秒
 
-var _blur_bake_viewport: SubViewport = null
-var _blur_bake_texture_rect: TextureRect = null
-var _blur_bake_id: int = 0
-
 ########## 配置参数 #############
 # 有一部分配置参数在flow_area里面
 var lane_count: int = 12
@@ -102,8 +78,6 @@ var judge_line_offset_y: int = 250
 
 # 光柱特效不透明度
 var beam_alpha: float = 0.5
-var flash_color: Color = Color.WHITE
-var _flash_tween: Tween = null
 # 交替轨道颜色（仅键盘模式生效，开启时覆盖音符颜色及轨道光效颜色）
 var keyboard_alt_color: bool = true
 var keyboard_alt_color_count: int = 2
@@ -112,10 +86,6 @@ var keyboard_alt_colors: Array[Color] = [Color.RED, Color.BLUE] # 交替颜色�
 var keyboard_mode_gap: int = 0
 # 轨道分隔线（仅键盘模式生效，相邻轨道之间与两端生成竖线）
 var keyboard_lane_separator: bool = false
-
-var show_debug_info: bool = false
-var debug_info_refresh_interval: float = 0.5
-var debug_info_elapsed: float = 0.0
 
 #################################
 
@@ -137,6 +107,10 @@ func _ready() -> void:
 	flow_area.note_judged.connect(_on_note_judged)
 	flow_area.long_holding.connect(_on_long_holding)
 	flow_area.parent_node = self
+
+	# HUD 展示层回调（结算检测 / 背景闪光请求）
+	hud.game_finished_requested.connect(_on_game_finished)
+	hud.flash_requested.connect(bg_ctrl.flash)
 
 	retry_btn.pressed.connect(func ():
 		_prepare_game()
@@ -160,7 +134,6 @@ func _ready() -> void:
 		EvtBus.config_changed.connect(_on_lane_config_changed)
 	if not EvtBus.config_changed.is_connected(_on_config_changed):
 		EvtBus.config_changed.connect(_on_config_changed)
-	_set_debug_overlay_visible(show_debug_info)
 
 	if ThemeMGR:
 		ThemeMGR.register_theme_applier(self)
@@ -218,17 +191,6 @@ const _VISUAL_ANCHOR_MAX_MS := 0.5
 var _visual_time_needs_anchor: bool = true
 
 func _process(delta: float) -> void:
-	if score_wait_to_add > 0:
-		var amount = int(sqrt(score_wait_to_add))
-		score.text = str(int(score.text) + amount)
-		score_wait_to_add -= amount
-
-	if show_debug_info and debug_info_label and debug_info_label.visible:
-		debug_info_elapsed += delta
-		if debug_info_elapsed >= debug_info_refresh_interval:
-			debug_info_elapsed = 0.0
-			_update_debug_overlay()
-
 	if not is_pause:
 		if _is_finishing_game:
 			# 游戏结束阶段：用delta模拟时间推进，让剩余音符自然下落
@@ -238,7 +200,7 @@ func _process(delta: float) -> void:
 		else:
 			# 如果正在播放MIDI，使用MIDI播放管理器的时间（判定时钟）
 			current_time = playback_mgr.get_position_ms()
-			progress_bar.value = current_time
+			hud.set_progress(current_time)
 			# 视觉时钟：墙钟累加 + 软锚定音频钟（渲染平滑，判定仍用音频钟）
 			if _visual_time_needs_anchor:
 				_visual_time_ms = current_time
@@ -314,7 +276,7 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 			playback_mgr.clear_manual_control_notes()
 		flow_area.clear_flow_area()
 		game_sequences.clear()
-		_teardown_blur_bake_viewport()
+		bg_ctrl.clear_blur_bake()
 		# 不 unload_midi / 不 clear_sequences / 不 clear_parsed_notes：
 		# 同一 MIDI 在 MidiView/TrackView/PlayView 间切换时复用解析数据与 GameSequence 缓存，
 		# 避免反复重解析/重生成。离开 MidiView 或切换 MidiList 项时才彻底清理
@@ -326,18 +288,16 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 		GLogger.info("Node: %s , ProcessMode: %s" % [self.name, enable], "PlayView")
 		# 从设置界面切回时，背景配置可能已变更，重新应用 play 背景（含 cover 模式烘焙）
 		if _oldState == UIStateManager.UIState.SETTINGS_VIEW and current_midi != null:
-			_apply_play_background()
+			bg_ctrl.apply_background(null, false, current_midi)
 
 ## 新增：配置变更回调
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	if section == "Appearance" and key == "background_dim_color":
-		_apply_background_dim()
+		bg_ctrl.apply_dim()
 		return
 
 	if section == "Appearance" and key == "background_image_flash_color":
-		var color_str = str(value)
-		if color_str.is_valid_html_color():
-			flash_color = Color(color_str)
+		bg_ctrl.apply_dim()
 		return
 
 	if section == "Appearance" and key in ["note_glow_intensity", "note_glow_size"]:
@@ -366,8 +326,7 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		return
 
 	if section == "General" and key == "display_debug_info":
-		show_debug_info = int(value) == 1
-		_set_debug_overlay_visible(show_debug_info)
+		hud.set_debug_enabled(int(value) == 1)
 		return
 
 	if section == "Playback" and key == "auto_mode":
@@ -401,7 +360,7 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 				GLogger.info("Performing mode OFF: cleared manual control notes", "PlayView")
 
 func _load_debug_display_setting() -> void:
-	show_debug_info = ConfigManager.instance.get_int("General", "display_debug_info", 0) == 1
+	hud.set_debug_enabled(ConfigManager.instance.get_int("General", "display_debug_info", 0) == 1)
 
 
 func _load_note_skin_setting() -> void:
@@ -441,7 +400,7 @@ func _regenerate_random_note_colors() -> void:
 		custom_color_on = bool(skin_config["general"].get("custom_color", false))
 	if not custom_color_on:
 		# 主开关关闭，清空随机颜色（_resolve_note_colors 会回退到 WHITE）
-		flow_area._random_colors = {}
+		flow_area.set_random_colors({}, false)
 		return
 
 	var random_colors: Dictionary = {}
@@ -454,7 +413,7 @@ func _regenerate_random_note_colors() -> void:
 			# 强制饱和度 1.0：纯色相至少一个通道恒为 0，加色同色叠加不会发白，颜色也不淡
 			# （饱和 <1 的粉彩色三个通道都 >0，同色光效叠加会往白里走）
 			random_colors[key] = Color.from_hsv(randf(), 1.0, 1.0)
-	flow_area._random_colors = random_colors
+	flow_area.set_random_colors(random_colors, false)
 	GLogger.info("Generated random note colors: %s" % str(random_colors.keys()), "PlayView")
 
 ## 根据全局设置（非键盘模式 + 皮肤 custom_color 关闭时生效）生成随机调色板并推送到 FlowArea
@@ -464,40 +423,12 @@ func _regenerate_global_random_colors() -> void:
 		return
 	var random_on := ConfigManager.instance.get_int("Appearance", "randomize_block_color", 0) == 1
 	if not random_on:
-		flow_area._global_random_colors = {}
+		flow_area.set_random_colors({}, true)
 		return
 	var unified := ConfigManager.instance.get_int("Appearance", "sync_color_across_block_type", 0) == 1
-	flow_area._global_random_colors = NoteColorPalette.generate(unified)
-	GLogger.info("Generated global random note colors: %s" % str(flow_area._global_random_colors.keys()), "PlayView")
-
-func _set_debug_overlay_visible(_is_visible: bool) -> void:
-	if debug_info_label == null:
-		return
-
-	debug_info_label.visible = _is_visible
-	debug_info_elapsed = debug_info_refresh_interval
-	if visible:
-		_update_debug_overlay()
-
-func _update_debug_overlay() -> void:
-	if debug_info_label == null:
-		return
-
-	var fps = Engine.get_frames_per_second()
-	var frame_ms = (1000.0 / max(1.0, float(fps)))
-	var draw_calls = int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
-	var objects_in_frame = int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))
-	var memory_static_mb = float(Performance.get_monitor(Performance.MEMORY_STATIC)) / (1024.0 * 1024.0)
-	var memory_static_max_mb = float(Performance.get_monitor(Performance.MEMORY_STATIC_MAX)) / (1024.0 * 1024.0)
-
-	debug_info_label.text = "FPS: %d (%.2f ms)\n渲染: DrawCalls %d | Objects %d\n内存: %.1f MB / 峰值 %.1f MB" % [
-		fps,
-		frame_ms,
-		draw_calls,
-		objects_in_frame,
-		memory_static_mb,
-		memory_static_max_mb
-	]
+	var palette := NoteColorPalette.generate(unified)
+	flow_area.set_random_colors(palette, true)
+	GLogger.info("Generated global random note colors: %s" % str(palette.keys()), "PlayView")
 
 var is_pause: bool = false:
 	set(v):
@@ -612,12 +543,6 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 将生成的游戏序列转换为FlowArea所需的音符格式
 	var flow_notes = _convert_game_sequences_to_flow_notes(game_sequences)
 	GLogger.info("After _convert_game_sequences_to_flow_notes, flow_notes.size() = %d" % flow_notes.size(), "PlayView")
-	# TEMP DIAG: 生成参数与首批音符时间（诊断后移除）
-	var first3: Array = []
-	for i in range(min(3, flow_notes.size())):
-		first3.append(flow_notes[i].start_time)
-	GLogger.info("DIAG gen: timebase=%d timeline=%d dur=%.0f first3=%s" % [
-		playback_mgr.midi_timebase, playback_mgr.bpm_timeline.size(), current_midi.duration_ms, first3], "PlayView")
 	flow_area.notes_list = flow_notes
 	# 告知 ScoreCalculator 总音符数(LONG的持续 tick 不计入)
 	if score_calc:
@@ -625,7 +550,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	play_result.total_notes = flow_notes.size()
 	GLogger.info("FlowArea initialized with %d game sequences" % flow_notes.size(), "PlayView")
 	# 设置进度条最大值
-	progress_bar.max_value = current_midi.duration_ms
+	hud.set_progress_max(current_midi.duration_ms)
 
 	# 歌曲信息面板显示期间预启动人声：加载 + play + 立即暂停
 	# 此处主线程可阻塞（有歌曲信息面板遮罩），消除 is_pause=false 时
@@ -1169,20 +1094,14 @@ func _upload_score_on_quit() -> void:
 # 初始化分数等内容的显示
 func _init_display(show_ready_animation: bool = true):
 	_is_finishing_game = false
-	score.text = "0"
-	combo.text = "0"
-	score_wait_to_add = 0
-	score_add.text = "+0"
-
-	pp_text.text = "0.00pp"
-	accuracy_text.text = "100.00%"
+	hud.init_display()
 
 	# 设置歌曲信息（封面只加载一次，同时传给信息面板和背景）
 	var cover_texture = FileSystemManager.instance.get_cover_by_midiData(current_midi)
-	var has_custom_cover := _has_cover_for_current_midi()
+	var has_custom_cover := bg_ctrl.has_cover_for_current_midi(current_midi)
 	if cover_texture:
 		cover.texture = cover_texture
-	_apply_play_background(cover_texture, has_custom_cover)
+	bg_ctrl.apply_background(cover_texture, has_custom_cover, current_midi)
 
 	if show_ready_animation:
 		ani.animate_fade_in(center_bg, 0.2, "_show_bg")
@@ -1198,222 +1117,16 @@ func _init_display(show_ready_animation: bool = true):
 	menu.visible = false
 	song_info.visible = show_ready_animation
 
-	center.modulate.a = 0
 	center_bg.visible = show_ready_animation
 	is_pause = true
 	
 	# 恢复flow_area显示
 	flow_area.visible = true
 
-	# 重置进度条
-	_current_rect = null
-	_last_rect = null
-
-	progress_bar.value = 0
-	for i in progress_bar.get_children():
-		i.queue_free()
-	
 	_init_lane_display()
 
 	auto_label.visible = flow_area.auto_mode
 
-
-func _apply_play_background(p_cover: Texture2D = null, p_has_custom_cover: bool = false) -> void:
-	if background == null:
-		return
-
-	_apply_background_dim()
-
-	# 背景配置统一从 ThemeManager 读取（theme.ini [backgrounds] 段）
-	var bg_config := ThemeMGR.get_view_background("play")
-	var bg_type: String = bg_config.get("type", "gradient")
-
-	if bg_type == "cover":
-		# 封面模式：PlayView 独有逻辑（曲包封面 + 模糊烘焙）
-		# ThemeManager 的 apply_background 对 cover 类型不实际应用，留给 PlayView 处理
-		var blur_strength := float(bg_config.get("cover_blur", 0.35))
-		# 优先使用调用方传入的封面（避免重复加载和 charts_index 扫描）
-		var cover_texture: Texture2D = p_cover
-		var has_custom: bool = p_has_custom_cover
-		if p_cover == null:
-			has_custom = _has_cover_for_current_midi()
-			if has_custom:
-				cover_texture = FileSystemManager.instance.get_cover_by_midiData(current_midi)
-		if has_custom and cover_texture:
-			background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-			background.texture = _prepare_background_texture(cover_texture)
-			background.modulate = Color.WHITE
-			background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-			_set_cover_blur_material(blur_strength)
-			return
-		# 无封面可用，降级到纯色（使用 play 段的 solid_color）
-		var fallback_color: String = bg_config.get("solid_color", "#10121AFF")
-		_apply_background_solid(fallback_color)
-		return
-
-	# image / solid / gradient 委托给 ThemeManager 统一应用
-	ThemeMGR.apply_background(background, "play")
-	_clear_cover_blur_material()
-
-
-func _apply_background_solid(color_html: String) -> void:
-	background.texture = null
-	background.modulate = Color(color_html) if color_html.is_valid_html_color() else Color("#10121AFF")
-	_clear_cover_blur_material()
-
-
-func _set_cover_blur_material(blur_strength: float) -> void:
-	background.material = null
-	var tex = background.texture
-	if tex == null:
-		return
-	_bake_blurred_background(tex, blur_strength)
-
-
-func _clear_cover_blur_material() -> void:
-	background.material = null
-	_teardown_blur_bake_viewport()
-
-
-func _bake_blurred_background(cover_texture: Texture2D, blur_strength: float) -> void:
-	_blur_bake_id += 1
-	var my_id = _blur_bake_id
-
-	if _blur_bake_viewport:
-		_blur_bake_viewport.queue_free()
-		_blur_bake_viewport = null
-		_blur_bake_texture_rect = null
-
-	if blur_strength <= 0.001:
-		background.material = null
-		return
-
-	var window_size = DisplayServer.window_get_size()
-	var bake_size := Vector2i(window_size)
-	if bake_size.x > 1920 or bake_size.y > 1080:
-		var s = min(1920.0 / bake_size.x, 1080.0 / bake_size.y)
-		bake_size = Vector2i(bake_size * s)
-
-	_blur_bake_viewport = SubViewport.new()
-	_blur_bake_viewport.size = bake_size
-	_blur_bake_viewport.transparent_bg = true
-	_blur_bake_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-	add_child(_blur_bake_viewport)
-
-	_blur_bake_texture_rect = TextureRect.new()
-	_blur_bake_texture_rect.texture = cover_texture
-	_blur_bake_texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	_blur_bake_texture_rect.stretch_mode = background.stretch_mode
-	_blur_bake_texture_rect.position = Vector2.ZERO
-	_blur_bake_texture_rect.size = bake_size
-	_blur_bake_texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_blur_bake_viewport.add_child(_blur_bake_texture_rect)
-
-	var shader = load(BG_BLUR_SHADER_PATH)
-	var mat := ShaderMaterial.new()
-	mat.shader = shader
-	mat.set_shader_parameter("blur_strength", clampf(blur_strength, 0.0, 1.0))
-	_blur_bake_texture_rect.material = mat
-
-	await RenderingServer.frame_post_draw
-
-	if my_id != _blur_bake_id or _blur_bake_viewport == null:
-		return
-
-	background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	background.texture = _blur_bake_viewport.get_texture()
-	background.material = null
-
-
-func _teardown_blur_bake_viewport() -> void:
-	if _blur_bake_viewport:
-		_blur_bake_viewport.queue_free()
-		_blur_bake_viewport = null
-		_blur_bake_texture_rect = null
-	_blur_bake_id += 1
-
-
-func _apply_background_dim() -> void:
-	if dim_overlay == null:
-		return
-	var dim_color_html = ConfigManager.instance.get_string("Appearance", "background_dim_color", "#0000007F")
-	if dim_color_html.is_valid_html_color():
-		dim_overlay.color = Color(dim_color_html)
-	else:
-		dim_overlay.color = Color(0, 0, 0, 0.5)
-	_setup_dim_overlay_shader()
-	var flash_color_html = ConfigManager.instance.get_string("Appearance", "background_image_flash_color", "#FFFFFF00")
-	if flash_color_html.is_valid_html_color():
-		flash_color = Color(flash_color_html)
-	else:
-		flash_color = Color(1, 1, 1, 0)
-	var mat := dim_overlay.material as ShaderMaterial
-	if mat:
-		mat.set_shader_parameter("flash_color", flash_color)
-
-func _setup_dim_overlay_shader() -> void:
-	if dim_overlay.material and dim_overlay.material is ShaderMaterial:
-		return
-	var shader := load(BG_FLASH_SHADER_PATH)
-	if shader == null:
-		return
-	var mat := ShaderMaterial.new()
-	mat.shader = shader
-	mat.set_shader_parameter("flash_color", flash_color)
-	mat.set_shader_parameter("flash_progress", 0.0)
-	dim_overlay.material = mat
-
-func _set_flash_progress(value: float, mat: ShaderMaterial) -> void:
-	mat.set_shader_parameter("flash_progress", value)
-
-
-func _flash_background() -> void:
-	if dim_overlay == null or flash_color.a <= 0:
-		return
-	var mat := dim_overlay.material as ShaderMaterial
-	if mat == null:
-		return
-	if _flash_tween and _flash_tween.is_valid():
-		_flash_tween.kill()
-	mat.set_shader_parameter("flash_progress", 1.0)
-	_flash_tween = AniMGR.create_managed_tween(self)
-	_flash_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	_flash_tween.tween_method(_set_flash_progress.bind(mat), 1.0, 0.0, 1)
-
-func _prepare_background_texture(source_texture: Texture2D) -> Texture2D:
-	if source_texture == null:
-		return null
-
-	var image := source_texture.get_image()
-	if image == null or image.is_empty():
-		return source_texture
-
-	if not image.has_mipmaps():
-		# 异步生成 mipmap：先返回原图避免阻塞当前帧，下一帧再替换为 mipmap 版本
-		_generate_mipmaps_deferred(image)
-		return source_texture
-
-	return source_texture
-
-func _generate_mipmaps_deferred(image: Image) -> void:
-	await RenderingServer.frame_post_draw
-	if is_instance_valid(self) and image != null and not image.is_empty():
-		image.generate_mipmaps()
-		background.texture = ImageTexture.create_from_image(image)
-
-
-func _has_cover_for_current_midi() -> bool:
-	if current_midi == null or FileSystemManager.instance == null:
-		return false
-
-	var result = FileSystemManager.instance.lookup_chart(
-		current_midi.chart_key if not current_midi.chart_key.is_empty() else current_midi.file_hash)
-	if result.is_empty():
-		result = FileSystemManager.instance.lookup_chart(current_midi.id)
-	if result.is_empty():
-		return false
-	var metadata: ChartMetadata = result["metadata"]
-	return not metadata.cover_path.is_empty() and FileAccess.file_exists(metadata.cover_path)
 
 func _init_lane_display():
 	# 窗口大小变化时重新计算音符尺寸
@@ -1424,31 +1137,10 @@ func _init_lane_display():
 	if keyboard_mode:
 		lane_area.init_key_display(key_map, key_display_names)
 
-const PROGRESS_BAR_IDLE_COLOR: Color = Color.BLACK
-
-const color_map = {
-	"Perfect": Color.PURPLE,
-	"Great": Color.ORANGE,
-	"Good": Color.DARK_OLIVE_GREEN,
-	"Bad": Color.ROYAL_BLUE,
-	"Miss": Color.RED
-}
-
-# ---- 帧内判定 UI 合并刷新 ----
-# 三押/多指同帧多次判定时，Label.set_text / add_theme_color_override / tween 创建 / 全屏闪光
-# 都是引擎 C++ 原生开销（GDScript profiler 不统计），同帧 ×N 会叠加成帧时间尖峰。
-# 策略：计分数据（record_judgment / score_wait_to_add）逐判定实时累加，展示部分攒到帧末
-# call_deferred 合并刷一次 —— 同帧 3 次判定只更新 1 次 UI。
-var _judge_ui_dirty: bool = false
-var _judge_ui_result: String = ""
-var _judge_ui_offset: String = ""
-var _judge_ui_cl: Color = Color.WHITE
-var _judge_ui_snap: Dictionary = {}
-# LONG 持续加分 tick：只刷数据类 UI，跳过 center 动画/偏移指示/背景闪光（保持旧轻量语义）
-var _judge_ui_hold_tick: bool = false
+# ---- 判定回调（计分数据源留在 PlayView，展示委托 HUD） ----
 
 func _on_note_judged(result: String, offset: String, block_type: int, timing_sec: float, signed_offset_sec: float):
-	# ---- 委托 ScoreCalculator 计算（数据源，逐判定实时） ----
+	# 委托 ScoreCalculator 计算（数据源，逐判定实时）
 	var judgment = ScoreCalculator.Judgment.MISS
 	match result:
 		"Perfect": judgment = ScoreCalculator.Judgment.PERFECT
@@ -1458,134 +1150,9 @@ func _on_note_judged(result: String, offset: String, block_type: int, timing_sec
 		"Miss":    judgment = ScoreCalculator.Judgment.MISS
 
 	var snap = score_calc.record_judgment(judgment, block_type, timing_sec, signed_offset_sec)
-
-	# 分数增量逐判定累加（_process 逐帧消化）
-	_score_add_accumulate(int(snap["last_score_add"]))
-
-	# 展示数据合并：用本帧最后一次判定的快照，帧末统一刷新一次
-	_queue_judge_ui(result, offset, color_map[result], snap)
+	hud.on_note_judged(result, offset, snap)
 
 ## LONG 持续 tick 加分（已委托 ScoreCalculator）
 func _on_long_holding(long_instance_id: int):
 	var snap = score_calc.record_long_sustain(ScoreCalculator.Judgment.PERFECT, long_instance_id)
-	_score_add_accumulate(int(snap["last_score_add"]))
-	_queue_judge_ui("Perfect", "", color_map["Perfect"], snap, true)
-
-## 存展示快照并排定帧末刷新；同帧后续判定只覆盖快照，不重复排队。
-## 用 call_deferred 而非 _process 做帧末 flush：PlayView._process 先于子节点 FlowArea._process
-## 执行，auto 判定发生在 FlowArea._process，若用 _process 刷会把反馈推迟一帧；call_deferred
-## 在整帧结束后统一 flush，覆盖 input / PlayView._process / FlowArea._process 所有来源的判定。
-func _queue_judge_ui(result: String, offset: String, cl: Color, snap: Dictionary, is_hold_tick: bool = false) -> void:
-	_judge_ui_result = result
-	_judge_ui_offset = offset
-	_judge_ui_cl = cl
-	_judge_ui_snap = snap
-	_judge_ui_hold_tick = is_hold_tick
-	if not _judge_ui_dirty:
-		_judge_ui_dirty = true
-		_apply_judge_ui.call_deferred()
-
-## 帧末统一应用判定 UI（Label/颜色/tween/闪光全部只执行一次）
-func _apply_judge_ui() -> void:
-	if not _judge_ui_dirty:
-		return
-	_judge_ui_dirty = false
-	var snap: Dictionary = _judge_ui_snap
-	var result: String = _judge_ui_result
-	var cl: Color = _judge_ui_cl
-	var offset: String = _judge_ui_offset
-	var is_hold_tick: bool = _judge_ui_hold_tick
-
-	center_text.text = result
-	center_text.add_theme_color_override("font_color", cl)
-
-	# combo显示
-	combo.text = str(snap["combo"])
-
-	# 增加分数（增量已逐判定累加到 score_wait_to_add，这里只刷展示）
-	var score_add_amount := int(snap["last_score_add"])
-	if score_add_amount != 0:
-		score_add.text = "+%d" % score_add_amount
-		score_add.modulate.a = 1
-		var tween = ani._create_tween("score_add_out")
-		tween.set_trans(Tween.TRANS_CUBIC)
-		tween.tween_property(score_add, "modulate:a", 0.0, 2)
-		ani.animate_pulse(score_add, 1, 1.1, 0.1, "score_pluse")
-
-	# 设置进度条颜色
-	_set_progress_bar_color(cl)
-
-	# pp和准度
-	pp_text.text = snap["pp_text"]
-	accuracy_text.text = snap["accuracy_text"]
-
-	# LONG hold tick：轻量路径，到这里就结束（不清偏移指示、不播 center 动画、不闪背景）
-	if is_hold_tick:
-		return
-
-	# 显示偏移
-	early_text.self_modulate.a = 0
-	late_text.self_modulate.a = 0
-	if result != "Miss" and offset != "":
-		if offset[0] == "+":
-			early_text.text = offset
-			early_text.self_modulate.a = 1
-		else:
-			late_text.text = offset
-			late_text.self_modulate.a = 1
-
-	# 动画
-	center.rotation_degrees = (randf()-0.5) * 5
-	var pulse: Tween = ani._create_tween("center pluse")
-	pulse.set_parallel(true)
-	center.scale = Vector2.ONE * 1.1
-	pulse.tween_property(center, "scale", Vector2.ONE, 0.1)
-	pulse.tween_property(center, "rotation_degrees", 0, 0.1)
-
-	var fade = ani._create_tween("center fade out")
-	center.modulate.a = 1
-	fade.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	fade.tween_property(center, "modulate:a", 0.0, 2)
-
-	if result != "Miss":
-		_flash_background()
-
-var score_wait_to_add = 0
-func _score_add_accumulate(amount: int) -> void:
-	if amount == 0:
-		return
-	score_wait_to_add += amount
-
-# 进度条颜色填充回调
-var _current_rect: ColorRect = null
-var _last_rect: ColorRect = null
-func _on_top_progress_bar_value_changed(value: float):
-	if is_pause:
-		return
-
-	var anchor_l = 0.0 if not _last_rect else _last_rect.anchor_right
-	if not _current_rect:
-		_current_rect = ColorRect.new()
-
-		_current_rect.anchor_left = anchor_l if anchor_l < 0.002 else anchor_l - 0.001
-		_current_rect.color = PROGRESS_BAR_IDLE_COLOR if not _last_rect else _last_rect.color
-		_current_rect.size.y = progress_bar.size.y
-
-		_last_rect = _current_rect
-		progress_bar.add_child(_current_rect)
-	
-	_current_rect.anchor_right = value / progress_bar.max_value
-
-	# 游戏结束
-	if value >= progress_bar.max_value:
-		_on_game_finished()
-
-func _set_progress_bar_color(cl: Color):
-	if not _current_rect or (_current_rect.size.x > 15 and cl != _current_rect.color):
-		_current_rect = null
-		_on_top_progress_bar_value_changed(progress_bar.value)
-		if _current_rect:
-			_current_rect.color = cl
-		return
-
-	_current_rect.color = cl
+	hud.on_note_judged("Perfect", "", snap, true)

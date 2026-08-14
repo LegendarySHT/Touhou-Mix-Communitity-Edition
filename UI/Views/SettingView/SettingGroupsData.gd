@@ -282,12 +282,12 @@ static func get_setting_groups() -> Array:
 				"id": "beam_width_mode",
 				"name_en": "Beam Width Mode",
 				"name_zh": "轨道光效宽度模式",
-				"description": "控制轨道光效的宽度依据：跟随音符宽度会在音符宽度基础上增加边距，跟随轨道间距会填满轨道间隔",
+				"description": "控制轨道光效的宽度依据：跟随音符宽度会在音符宽度基础上增加边距，跟随轨道宽度会占满整根轨道（无缝铺满）",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
 				"options": [
 					{"text_en": "Note Width", "text_zh": "跟随音符宽度"},
-					{"text_en": "Lane Spacing", "text_zh": "跟随轨道间距"}
+					{"text_en": "Lane Width", "text_zh": "跟随轨道宽度"}
 				]
 			},
 			{

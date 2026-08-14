@@ -7,6 +7,9 @@
 [ext_resource type="Script" uid="uid://da4iihe2e4ool" path="res://UI/Views/PlayView/LaneEffect.gd" id="3_kvdpo"]
 [ext_resource type="Script" uid="uid://b47npyuqw7acg" path="res://UI/Views/PlayView/NoteBatchDrawer.gd" id="4_8x7c2"]
 [ext_resource type="PackedScene" uid="uid://cx3nanq2v7dp1" path="res://UI/Views/PlayView/particle_player.tscn" id="5_ptcl"]
+[ext_resource type="Script" uid="uid://cekagah86op12" path="res://UI/Views/PlayView/PlayBackground.gd" id="6_bgctrl"]
+[ext_resource type="Script" uid="uid://c1jieae2d3edr" path="res://UI/Views/PlayView/PlayHud.gd" id="7_hud"]
+[ext_resource type="Script" uid="uid://cbp1sof2efk35" path="res://UI/Views/PlayView/GlowLayer.gd" id="8_glow"]
 
 [sub_resource type="Gradient" id="Gradient_7ak4s"]
 colors = PackedColorArray(0.3882353, 0.20392157, 0.654902, 1, 0.71, 0.355, 0.71, 1)
@@ -20,6 +23,9 @@ fill_to = Vector2(1, 1)
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_uj6qe"]
 color = Color(2, 2, 2, 1)
 thickness = 2
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_glow"]
+blend_mode = 1
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kvdpo"]
 bg_color = Color(0.25336733, 0.36870298, 0.8464057, 1)
@@ -84,6 +90,9 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("GradientTexture2D_uj6qe")
 
+[node name="BackgroundControl" type="Node" parent="." unique_id=1928374650]
+script = ExtResource("6_bgctrl")
+
 [node name="DimOverlay" type="ColorRect" parent="." unique_id=1016560862]
 layout_mode = 1
 anchors_preset = 15
@@ -95,31 +104,19 @@ mouse_filter = 2
 color = Color(0, 0, 0, 0.5)
 
 [node name="Lane" type="Control" parent="." unique_id=2025598350]
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
-pivot_offset = Vector2(78, 707)
-mouse_filter = 2
-script = ExtResource("3_kvdpo")
-
-[node name="AutoLabel" type="Label" parent="." unique_id=1190176837]
-visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(2.58, 0, 0, 0.729)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.4)
-theme_override_constants/shadow_outline_size = 20
-theme_override_font_sizes/font_size = 250
-text = "AUTO"
-horizontal_alignment = 1
-vertical_alignment = 1
+pivot_offset = Vector2(78, 707)
+mouse_filter = 2
+script = ExtResource("3_kvdpo")
 
 [node name="FlowArea" type="Panel" parent="." unique_id=14663010]
 self_modulate = Color(1, 1, 1, 0)
+z_index = 1
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -141,17 +138,46 @@ grow_vertical = 0
 mouse_filter = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_uj6qe")
 
-[node name="SVP" type="CanvasLayer" parent="FlowArea" unique_id=610203907]
-
-[node name="NoteBatchDrawer" type="Node2D" parent="FlowArea/SVP" unique_id=1935847162]
+[node name="NoteBatchDrawer" type="Node2D" parent="FlowArea" unique_id=1935847162]
 script = ExtResource("4_8x7c2")
 
-[node name="ParticleBatchDrawer" parent="FlowArea/SVP" unique_id=-936790854 instance=ExtResource("5_ptcl")]
+[node name="GlowLayer" type="Node2D" parent="FlowArea/NoteBatchDrawer" unique_id=1886617382]
+visible = false
+z_index = -1
+material = SubResource("CanvasItemMaterial_glow")
+script = ExtResource("8_glow")
 
-[node name="Layer" type="CanvasLayer" parent="." unique_id=1802311030]
-layer = 2
+[node name="ParticleBatchDrawer" parent="FlowArea" unique_id=-936790854 instance=ExtResource("5_ptcl")]
+
+[node name="AutoLabel" type="Label" parent="." unique_id=1190176837]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(2.58, 0, 0, 0.729)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.4)
+theme_override_constants/shadow_outline_size = 20
+theme_override_font_sizes/font_size = 250
+text = "AUTO"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Layer" type="Control" parent="." unique_id=601778136]
+z_index = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("7_hud")
 
 [node name="BackBtn" type="TextureButton" parent="Layer" unique_id=150258102]
+layout_mode = 0
 offset_left = 30.0
 offset_top = 30.0
 offset_right = 90.0
@@ -162,6 +188,7 @@ stretch_mode = 5
 
 [node name="DebugInfo" type="Label" parent="Layer" unique_id=2091083272]
 visible = false
+layout_mode = 0
 offset_left = 16.0
 offset_top = 100.0
 offset_right = 520.0
@@ -172,6 +199,7 @@ text = "调试信息"
 
 [node name="Center" type="VBoxContainer" parent="Layer" unique_id=823749499]
 custom_minimum_size = Vector2(450, 300)
+layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -213,6 +241,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="TopProgressBar" type="ProgressBar" parent="Layer" unique_id=975580623]
+layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 8.0
@@ -224,6 +253,7 @@ show_percentage = false
 
 [node name="LeftBottom" type="Label" parent="Layer" unique_id=2067637448]
 custom_minimum_size = Vector2(250, 100)
+layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -238,6 +268,7 @@ vertical_alignment = 2
 
 [node name="RightBottom" type="Label" parent="Layer" unique_id=157299669]
 custom_minimum_size = Vector2(250, 100)
+layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
@@ -256,6 +287,7 @@ vertical_alignment = 2
 
 [node name="Score" type="VBoxContainer" parent="Layer" unique_id=1590342882]
 custom_minimum_size = Vector2(450, 0)
+layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
@@ -293,6 +325,7 @@ vertical_alignment = 1
 
 [node name="Combo" type="VBoxContainer" parent="Layer" unique_id=850182523]
 custom_minimum_size = Vector2(450, 0)
+layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
@@ -320,6 +353,7 @@ vertical_alignment = 1
 [node name="CenterBackGround" type="ColorRect" parent="Layer" unique_id=1184293941]
 visible = false
 z_index = 2
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -524,6 +558,6 @@ vertical_alignment = 1
 autowrap_mode = 3
 
 [connection signal="pressed" from="Layer/BackBtn" to="." method="show_or_hide_menu"]
-[connection signal="value_changed" from="Layer/TopProgressBar" to="." method="_on_top_progress_bar_value_changed"]
+[connection signal="value_changed" from="Layer/TopProgressBar" to="Layer" method="_on_progress_bar_value_changed"]
 [connection signal="pressed" from="Layer/CenterBackGround/Menu/continue" to="." method="show_or_hide_menu"]
 [connection signal="pressed" from="Layer/CenterBackGround/Menu/quit" to="." method="_on_quit_pressed"]

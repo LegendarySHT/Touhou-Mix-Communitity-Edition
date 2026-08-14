@@ -1,3 +1,4 @@
+class_name GlowLayer
 extends Node2D
 
 ## NoteBatchDrawer 的光效子层

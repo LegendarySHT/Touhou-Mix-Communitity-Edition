@@ -5,7 +5,7 @@ class_name FlowArea
 # 判定线
 @onready var jl: HSeparator = $JudgeLine
 @onready var ui: UIStateManager = UiStatMGR
-@onready var _particle_drawer: ParticleBatchDrawer = $SVP/ParticleBatchDrawer
+@onready var _particle_drawer: ParticleBatchDrawer = $ParticleBatchDrawer
 
 ########## 配置参数 #############
 var auto_mode: bool = false
@@ -49,6 +49,14 @@ var _random_colors: Dictionary = {}
 # 全局随机颜色（非键盘模式 + 皮肤 custom_color 关闭时生效）
 # 由 PlayView 在 _prepare_game 时生成并传入，结构同 _random_colors
 var _global_random_colors: Dictionary = {}
+
+## 设置随机颜色（PlayView 在 _prepare_game 生成后调用，不再直接写内部字段）
+## is_global=true 写入全局随机调色板（非键盘模式），false 写入皮肤内随机颜色
+func set_random_colors(colors: Dictionary, is_global: bool) -> void:
+	if is_global:
+		_global_random_colors = colors
+	else:
+		_random_colors = colors
 
 # 最终解析出的音符颜色（结合 custom_color 主开关 + enable_color + random_color）
 # 结构: {note_type_key: Color}，键为 "short"/"instant"/"long"（short=点块 Block、instant=滑块 Slide）
@@ -105,7 +113,10 @@ var _notes_by_lane: Dictionary = {}  # 按轨道分组索引：{lane: Array[Flow
 
 
 # Block/Slide/Long 音符批量绘制器（PlayView.tscn 场景节点，Node2D _draw 替代 N 个 Control 节点）
-@onready var _note_drawer: NoteBatchDrawer = $SVP/NoteBatchDrawer
+@onready var _note_drawer: NoteBatchDrawer = $NoteBatchDrawer
+
+# 手动触发音符的 NoteOff 调度器（演奏模式，按播放位置驱动）
+var _manual_off_scheduler = ManualNoteOffScheduler.new()
 
 var _note_fall_calculator: NoteFallCalculator = NoteFallCalculator.new()
 
@@ -115,7 +126,6 @@ var parent_node: Node = null
 ## 这个时间来自 MidiPlaybackManager.get_position_ms()，已包含缓冲补偿
 ## 用于确保note判定与MIDI播放位置完全同步
 var _synced_current_time: float = 0.0
-var _diag_auto_log_count: int = 0  # TEMP DIAG: auto 判定采样计数（诊断后移除）
 
 # 渲染时钟（毫秒）：来自 PlayView 的平滑视觉墙钟，仅用于计算音符显示位置。
 # 判定（过线/Miss/长条结束/滑过认领）仍用 _synced_current_time（音频钟），保证判定与声音对齐。
@@ -164,9 +174,7 @@ func init_flow_area():
 	note_idx = 0
 
 	# 清空手动 NoteOff 挂起队列（上一局的定时器/代数不应残留到下一局）
-	_pending_manual_offs.clear()
-	_pending_manual_offs_min_end = INF
-	_manual_note_off_gens.clear()
+	_manual_off_scheduler.reset()
 
 	if EvtBus and not EvtBus.config_changed.is_connected(_on_config_changed):
 		EvtBus.config_changed.connect(_on_config_changed)
@@ -520,10 +528,8 @@ func clear_flow_area():
 	note_idx = 0
 
 	# 释放尚未触发的手动 NoteOff（游戏结束/清场时，避免音符一直挂在合成器上）
-	_process_manual_note_offs(true)
-	_pending_manual_offs.clear()
-	_pending_manual_offs_min_end = INF
-	_manual_note_off_gens.clear()
+	_manual_off_scheduler.process(_synced_current_time, true)
+	_manual_off_scheduler.reset()
 
 ## 检查是否还有活跃音符（用于游戏结束后等待音符自然消除）
 func has_active_notes() -> bool:
@@ -575,10 +581,12 @@ func _spawn_note(note_index: int) -> void:
 	nt.judge_line_passed = false
 	nt.is_removed = false
 
-	# 计算音符位置
-	var beam_node_for_note = parent_node.lane_area.get_lane_by_idx(nt.lane)
-	var beam_margin := maxf(0.0, (beam_node_for_note.beam_size.x - note_visual_width) / 2.0)
-	var start_x : float = beam_node_for_note.position.x + beam_margin
+	# 计算音符位置（轨道几何由 LaneEffect 提供：左缘 x + 光柱宽度）
+	# 音符始终以轨道中心为基准居中：margin 可为负（音符宽于光柱时两端对称溢出），
+	# 保证音符中心恒等于光柱中心/轨道中心（否则音符宽于光柱时左对齐会导致光效相对偏左）
+	var lane_area = parent_node.lane_area
+	var beam_margin : float= (lane_area.get_lane_width() - note_visual_width) / 2.0
+	var start_x : float = lane_area.get_lane_x(nt.lane) + beam_margin
 
 	nt.cached_x = start_x
 	nt.cached_center_x = start_x + note_visual_width * 0.5
@@ -769,7 +777,7 @@ var _auto_hold_idx: int = 0
 ## 与 _update_block_note_fall 触发本函数的判定时钟一致（auto 模式无需音频钟精确同步）
 func _auto_click(note: FlowNote):
 	if parent_node.play_mode and note.game_sequence_ref:
-		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
+		_manual_off_scheduler.trigger_from_sequence(note.game_sequence_ref)
 	if note.type == FlowNote.NoteType.Long:
 		_judge_note(note, false, _synced_current_time)
 		_hold_long_note(_auto_hold_idx + 666, note)
@@ -1005,7 +1013,7 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	if note == null:
 		return
 	if parent_node.play_mode and note.game_sequence_ref:
-		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
+		_manual_off_scheduler.trigger_from_sequence(note.game_sequence_ref)
 	if note.type == FlowNote.NoteType.Slide:
 		# 点击滑块按点块(Block)计分（固定倍率并重置滑块衰减链）
 		_judge_note(note, true, judge_time_ms, FlowNote.NoteType.Block)
@@ -1082,7 +1090,7 @@ func _judge_slide_as_slide(note: FlowNote, judge_time_ms: float) -> void:
 	if note == null or note.is_judged or note.is_removed or note.is_held:
 		return
 	if parent_node.play_mode and note.game_sequence_ref:
-		_trigger_midi_notes_from_sequence(note.game_sequence_ref)
+		_manual_off_scheduler.trigger_from_sequence(note.game_sequence_ref)
 	_judge_note(note, false, judge_time_ms)
 	GLogger.debug("[FlowArea] Slide catch: lane=%d start=%.0fms judge=%.0fms diff=%.0fms" \
 		% [note.lane, note.start_time, judge_time_ms, note.start_time - judge_time_ms], "FlowArea")
@@ -1155,16 +1163,11 @@ func _finger_lanes(x: float) -> Array:
 			lanes.append(lane)
 	return lanes
 
-## 轨道 lane 内音符的统一中心 X（与 cached_center_x 公式一致；窄轨音符左对齐 beam，勿用几何中心）
+## 轨道 lane 内音符的统一中心 X（与 cached_center_x 公式一致；音符始终以轨道中心为基准居中）
 func _note_center_x_for_lane(lane: int) -> float:
-	var beam = parent_node.lane_area.get_lane_by_idx(lane)
-	var center := float(parent_node.lane_padding) + (float(lane) + 0.5) * lane_width
-	var mid_gap: int = parent_node.get_mid_lane_gap()
-	if mid_gap > 0 and lane >= int(parent_node.get_lane_count() / 2):
-		center += float(mid_gap)
-	if beam != null:
-		center = beam.position.x + max(0.0, (beam.beam_size.x - note_visual_width) / 2.0) + note_visual_width * 0.5
-	return center
+	var lane_area = parent_node.lane_area
+	# 轨道左缘 + (轨道宽-音符宽)/2 + 音符宽/2 = 轨道中心，音符宽于轨道时两端对称溢出
+	return lane_area.get_lane_x(lane) + (lane_area.get_lane_width() - note_visual_width) / 2.0 + note_visual_width * 0.5
 
 ## 滑键到达判定线的瞬间回调（rule 2 hold-catch）：手指/键盘键覆盖其轨道即接住
 ## 返回是否被判定
@@ -1174,7 +1177,7 @@ func _check_slide_stat(note: FlowNote) -> bool:
 	for keycode in pressed_keys:
 		if pressed_keys[keycode] == note.lane:
 			if parent_node.play_mode and note.game_sequence_ref:
-				_trigger_midi_notes_from_sequence(note.game_sequence_ref)
+				_manual_off_scheduler.trigger_from_sequence(note.game_sequence_ref)
 			if only_perfect_slides:
 				_judge_note(note, false, note.start_time, -1, "Perfect")
 			else:
@@ -1205,10 +1208,6 @@ func _judge_slides_on_lift(touch_id: int, input_time_ms: float = -1.0) -> void:
 	for lane in _finger_lanes(g["last_pos"].x):
 		_judge_slides_exiting_lane(lane, g["last_pos"], judge_time_ms)
 
-## 获取音符的代表 Y 坐标（屏幕坐标；Long 与 Block/Slide 统一用 cached_center_y）
-func _get_note_center_y(note: FlowNote) -> float:
-	return note.cached_center_y
-
 ## 键盘模式专用：在指定轨道范围内查找最合适的音符并完成判定
 ## 触摸模式请使用 _handle_press()（通过 NoteJudger 实现）
 func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -> FlowNote:
@@ -1227,7 +1226,8 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 		if only_perfect_slides and note.type == FlowNote.NoteType.Slide:
 			continue
 
-		var note_y: float = _get_note_center_y(note)
+		# 代表 Y 坐标：Long 与 Block/Slide 统一用 cached_center_y
+		var note_y: float = note.cached_center_y
 
 		match judge_mode:
 			NoteJudger.JudgeMode.NEAREST, NoteJudger.JudgeMode.BEST_TIMING, NoteJudger.JudgeMode.NEAREST_JUDGE:
@@ -1245,7 +1245,7 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 
 	if best_note:
 		if parent_node.play_mode and best_note.game_sequence_ref:
-			_trigger_midi_notes_from_sequence(best_note.game_sequence_ref)
+			_manual_off_scheduler.trigger_from_sequence(best_note.game_sequence_ref)
 		if best_note.type == FlowNote.NoteType.Slide:
 			# 键盘点击滑块按点块(Block)计分（重置滑块衰减链）；与滑过接住（Slide 计分：进入衰减链）路径互斥
 			_judge_note(best_note, true, input_time_ms, FlowNote.NoteType.Block)
@@ -1253,95 +1253,6 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 			_judge_note(best_note, true, input_time_ms)
 		return best_note
 	return null
-
-## 待触发的手动 NoteOff（驱动源为播放位置 _synced_current_time，而非墙钟 Timer）
-## 每项: {abs_end_ms, track, channel, pitch, velocity, gen}
-## 用播放位置驱动可避免：
-## 1) 提前点击时 NoteOff 被"点击后 duration_ms"锚定而提前发出（音符没响够就停）
-## 2) 暂停菜单打开时墙钟 Timer 照走，把正在响的音符掐断
-## 3) 同键快速连打时旧音的 NoteOff 把新音掐断（MeltySynth NoteOff 会结束该键全部 voice）
-var _pending_manual_offs: Array = []
-## 待触发 NoteOff 的最小绝对结束时刻：绝大多数帧 t < min 直接跳过扫描（O(n)→O(1)）
-var _pending_manual_offs_min_end: float = INF
-## "track:channel:pitch" -> 单调递增代数，用于判定某次 NoteOff 是否已被更新的音符取代
-var _manual_note_off_gens: Dictionary = {}
-
-## 新增：从GameSequence触发MIDI音符（演奏模式）
-func _trigger_midi_notes_from_sequence(game_seq: Object) -> void:
-	# game_seq 是 KeySequenceManager.GameSequence 对象
-	if not game_seq or game_seq.original_notes.is_empty():
-		return
-
-	var midi_player = MidiPlaybackManager.instance.midi_player
-	if not midi_player:
-		return
-
-	# 触发原始notes中的所有MIDI音符
-	for note in game_seq.original_notes:
-		if note is MidiParser.NoteEvent:
-			var track_idx := int(note.track_index)
-
-			# 触发note_on（即时，保证点击反馈）
-			if midi_player.has_method("trigger_note_on"):
-				midi_player.call("trigger_note_on", note.pitch, note.velocity, note.channel, track_idx)
-			elif midi_player.has_method("note_on"):
-				midi_player.note_on(note.channel, note.pitch, note.velocity)
-
-			# NoteOff 锚定到音符的绝对结束时刻（原曲 NoteOff 位于 note_start + duration）。
-			# 乐器音色由 sustain/release 包络决定，只有在该绝对时刻发出 NoteOff，
-			# 音色才与原曲一致；按"点击后 duration_ms"调度会把提前点击的音符提前掐断。
-			var abs_end_ms := float(game_seq.start_time_ms + game_seq.duration_ms)
-			var gen := _bump_note_off_gen(track_idx, note.channel, note.pitch)
-			_pending_manual_offs.append({
-				"abs_end_ms": abs_end_ms,
-				"track": track_idx,
-				"channel": note.channel,
-				"pitch": note.pitch,
-				"velocity": note.velocity,
-				"gen": gen,
-			})
-			if abs_end_ms < _pending_manual_offs_min_end:
-				_pending_manual_offs_min_end = abs_end_ms
-
-## 每帧由 _process 调用，按播放位置触发到期的手动 NoteOff
-## force=true 时全部触发（游戏结束/清场时释放残留音符）
-func _process_manual_note_offs(force: bool = false) -> void:
-	if _pending_manual_offs.is_empty():
-		return
-	# 绝大多数帧没有 NoteOff 到期，直接跳过整轮扫描（最小到期时刻缓存）
-	if not force and _pending_manual_offs_min_end > _synced_current_time:
-		return
-	var midi_player = MidiPlaybackManager.instance.midi_player
-	var t := _synced_current_time
-	var remaining: Array = []
-	var new_min := INF
-	for entry in _pending_manual_offs:
-		if force or t >= entry["abs_end_ms"]:
-			# 代数守卫：同键已触发更新的音符则跳过本次 NoteOff（旧音交给新音一起结束）
-			if _is_note_off_gen_current(entry["track"], entry["channel"], entry["pitch"], entry["gen"]):
-				if midi_player and is_instance_valid(midi_player):
-					if midi_player.has_method("trigger_note_off"):
-						midi_player.call("trigger_note_off", entry["pitch"], entry["velocity"], entry["channel"], entry["track"])
-					elif midi_player.has_method("note_off"):
-						midi_player.note_off(entry["channel"], entry["pitch"])
-		else:
-			remaining.append(entry)
-			if entry["abs_end_ms"] < new_min:
-				new_min = entry["abs_end_ms"]
-	_pending_manual_offs = remaining
-	_pending_manual_offs_min_end = new_min
-
-## 递增某键的 NoteOff 代数，返回新代数（使旧的待触发 NoteOff 失效）
-func _bump_note_off_gen(track_index: int, channel: int, pitch: int) -> int:
-	var key := "%d:%d:%d" % [track_index, channel, pitch]
-	var gen: int = int(_manual_note_off_gens.get(key, 0)) + 1
-	_manual_note_off_gens[key] = gen
-	return gen
-
-## 校验某次 NoteOff 的代数是否仍是最新（未被更新的同键音符取代）
-func _is_note_off_gen_current(track_index: int, channel: int, pitch: int, gen: int) -> bool:
-	var key := "%d:%d:%d" % [track_index, channel, pitch]
-	return int(_manual_note_off_gens.get(key, 0)) == gen
 
 func _trigger_touch_vibration() -> void:
 	if not Input.has_method("vibrate_handheld"):
@@ -1400,10 +1311,6 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	var judge_time_ms := input_time_ms if input_time_ms >= 0.0 else _get_realtime_position_ms()
 	var time_diff = judge_note.start_time - judge_time_ms  # 毫秒，优先使用事件时刻的实时播放位置
 	var abs_diff = abs(time_diff)
-	if auto_mode and _diag_auto_log_count < 30:
-		_diag_auto_log_count += 1
-		GLogger.info("DIAG auto judge #%d: start=%.1f judge=%.1f diff=%.1f type=%d" % [
-			_diag_auto_log_count, judge_note.start_time, judge_time_ms, time_diff, judge_note.type], "FlowArea")
 	var result: String = result_override
 
 	if result.is_empty():
@@ -1417,8 +1324,6 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 			result = "Great"
 		elif abs_diff <= float(jw["good"]):
 			result = "Good"
-		elif abs_diff <= float(jw["bad"]):
-			result = "Bad"
 		else:
 			result = "Bad"
 
@@ -1453,8 +1358,15 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 
 var _is_pause: bool = false
 var _cached_viewport_height: float = 0.0
+
+func _notification(what: int) -> void:
+	# 视口尺寸变化时更新缓存（全屏锚定，size == 视口大小），_process 不再每帧查询
+	if what == NOTIFICATION_RESIZED:
+		_cached_viewport_height = size.y
+		if _note_drawer:
+			_note_drawer.set_viewport_height(_cached_viewport_height)
+
 func _process(delta: float) -> void:
-	_cached_viewport_height = get_viewport().get_visible_rect().size.y
 	if not parent_node:
 		return
 
@@ -1468,7 +1380,7 @@ func _process(delta: float) -> void:
 		return
 
 	# 驱动手动音符的 NoteOff（按播放位置触发，暂停时自动停）
-	_process_manual_note_offs()
+	_manual_off_scheduler.process(_synced_current_time)
 
 	# 生成音符
 	while note_idx < notes_list.size() and notes_list[note_idx].start_time < parent_node.current_time + note_generation_lead_time:

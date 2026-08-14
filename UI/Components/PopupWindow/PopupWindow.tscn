@@ -190,11 +190,10 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_qxcsx")
-current_tab = 3
+current_tab = 0
 tabs_visible = false
 
 [node name="Default" type="VBoxContainer" parent="." unique_id=1117546412]
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
@@ -751,6 +750,7 @@ icon_alignment = 1
 expand_icon = true
 
 [node name="ParticleAdjust" type="HBoxContainer" parent="." unique_id=392630132]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1

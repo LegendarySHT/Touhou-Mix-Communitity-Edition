@@ -473,7 +473,7 @@ func _popup_view_background_adjust(view_name: String) -> void:
 	if allow_cover:
 		config["cover_blur"] = str(result.get("cover_blur", 0.35))
 	# 即时保存到 theme.ini + 轻量刷新背景（refresh_backgrounds，不触发完整主题刷新）
-	# PlayView 的 cover 模式由 PlayView 在切回 PLAY_VIEW 时通过 _apply_play_background 处理
+	# PlayView 的 cover 模式由 PlayView 在切回 PLAY_VIEW 时通过 PlayBackground.apply_background 处理
 	ThemeMGR.set_view_background(view_name, config)
 	GLogger.info("%s background updated: type=%s" % [view_name, type_str], "SettingList")
 
