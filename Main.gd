@@ -486,5 +486,3 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			elif key == "vsync_enabled":
 				var is_vsync = ConfigManager.parse_bool(value)
 				DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if is_vsync else DisplayServer.VSYNC_DISABLED)
-	}
-}

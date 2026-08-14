@@ -871,7 +871,6 @@ vertical_alignment = 1
 [node name="BasicParticle" type="OptionButton" parent="ParticleAdjust/VBoxC/Options" unique_id=1398312008]
 custom_minimum_size = Vector2(400, 60)
 layout_mode = 2
-size_flags_horizontal = 4
 size_flags_vertical = 0
 theme_override_font_sizes/font_size = 32
 alignment = 1
@@ -887,7 +886,6 @@ vertical_alignment = 1
 [node name="ParticleEmitter" type="OptionButton" parent="ParticleAdjust/VBoxC/Options" unique_id=1256617099]
 custom_minimum_size = Vector2(400, 60)
 layout_mode = 2
-size_flags_horizontal = 4
 size_flags_vertical = 0
 theme_override_font_sizes/font_size = 32
 alignment = 1
