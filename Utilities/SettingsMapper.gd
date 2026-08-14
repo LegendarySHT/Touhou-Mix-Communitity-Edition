@@ -112,7 +112,6 @@ static var mappings: Dictionary = {
 	"generate_short_connect": {"section": "Appearance", "key": "generate_short_connect", "value_type": "int"},
 	"generate_instant_connect": {"section": "Appearance", "key": "generate_instant_connect", "value_type": "int"},
 	"instant_connect_max_time": {"section": "Appearance", "key": "instant_connect_max_time", "value_type": "float"},
-	"hdr_2d": {"section": "Appearance", "key": "hdr_2d", "value_type": "int"},
 }
 
 ## 将 INI 配置转换为 SettingList 格式的字典
