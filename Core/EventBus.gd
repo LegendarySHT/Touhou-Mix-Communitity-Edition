@@ -20,6 +20,8 @@ signal page_right
 ## ========== 排序和筛选事件 ==========
 signal sort_finished
 signal search_query_changed(query: String)
+## 当前生效的就地搜索词（Album/Song/Midi 就地筛选共享，跨视图导航保留；仅进入 SORTED_VIEW 时清空）
+var current_search_query: String = ""
 
 ## ========== 设置和配置事件 ==========
 signal settings_changed(setting_name: String, value: Variant)

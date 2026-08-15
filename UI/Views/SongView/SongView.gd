@@ -14,6 +14,9 @@ var current_album_id: String = ""
 ## （_load_songs 已创建列表项，lambda 再重建会导致封面加载被中断重发）
 var _load_songs_just_called: bool = false
 
+## 当前就地搜索词（非空时歌曲列表过滤）
+var _search_query: String = ""
+
 ## 管理器引用
 @onready var data_manager: DataManager = DataMGR
 @onready var event_bus: EventBus = EvtBus
@@ -44,8 +47,12 @@ func _ready() -> void:
 			if _load_songs_just_called:
 				_load_songs_just_called = false
 				return  # _load_songs 已创建列表项,跳过冗余重建
+			# 进入歌曲视图：应用当前共享搜索词（跨视图就地筛选持久化，仅 SORTED_VIEW 清空）
+			_search_query = EvtBus.current_search_query
 			call_deferred("_refresh_from_data")
 	)
+	# 就地搜索：当前为歌曲视图时过滤当前列表
+	event_bus.search_query_changed.connect(_on_search_query_changed)
 
 	super._ready()
 
@@ -69,9 +76,13 @@ func _exit_tree() -> void:
 func _load_songs(album_id: String) -> void:
 	if not data_manager:
 		return
+	_search_query = EvtBus.current_search_query
 	_load_songs_just_called = true  # 标记,供 state_changed lambda 跳过冗余重建
 	current_album_id = album_id
 	current_songs = data_manager.get_songs_by_album(album_id)
+	# 就地搜索：命中歌曲 id 集合与当前列表取交集，保留原顺序
+	if not _search_query.is_empty():
+		_apply_song_search_filter()
 	_refresh_display()
 
 	_connect_head_and_tail()
@@ -86,6 +97,20 @@ func _load_songs(album_id: String) -> void:
 		if ChartDB.GetAlbum(current_album_id).is_empty():
 			# Album 也被删除，安全退回
 			call_deferred("_deferred_go_back")
+
+## 就地搜索词变化：当前为歌曲视图时才过滤当前列表
+func _on_search_query_changed(query: String) -> void:
+	if state_manager.current_state != UIStateManager.UIState.SONG_VIEW:
+		return
+	_search_query = query
+	_refresh_from_data()
+
+## 按 _search_query 过滤歌曲（任一谱面全文命中含简介即算命中，复用 ChartDB 检索）
+func _apply_song_search_filter() -> void:
+	var ids := {}
+	for id in ChartDB.GetMatchingSongIds(_search_query):
+		ids[id] = true
+	current_songs = current_songs.filter(func(s): return ids.has(String(s.get("id", ""))))
 
 ## 刷新显示
 func _refresh_display() -> void:
@@ -127,6 +152,9 @@ func _refresh_from_data() -> void:
 	if current_album_id.is_empty():
 		return
 	current_songs = data_manager.get_songs_by_album(current_album_id)
+	# 就地搜索：命中歌曲 id 集合与当前列表取交集，保留原顺序
+	if not _search_query.is_empty():
+		_apply_song_search_filter()
 	_refresh_display()
 	_connect_head_and_tail()
 	_update_ss_count()

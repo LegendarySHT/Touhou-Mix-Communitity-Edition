@@ -63,6 +63,12 @@ func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateMana
 	if new_state != UIStateManager.UIState.SORTED_VIEW and not (old_state in valid_state and new_state in valid_state):
 		sort_button.button_pressed = false
 		favor_list_button.button_pressed = false
+	# 仅进入排序筛选页（SORTED_VIEW）或进出 MidiView 时清空搜索词；Album/Song 之间导航保留就地搜索
+	if new_state == UIStateManager.UIState.SORTED_VIEW or new_state == UIStateManager.UIState.MIDI_VIEW or old_state == UIStateManager.UIState.MIDI_VIEW:
+		search_lineedit.text = ""
+		if EvtBus.current_search_query != "":
+			EvtBus.current_search_query = ""
+			EvtBus.search_query_changed.emit("")
 
 func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
 	var tween = AniMGR.create_managed_tween(self)
@@ -77,7 +83,6 @@ func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
 		page_container.set_offset_transform_visual_only(true)
 		tween.tween_property(page_container, "offset_transform_scale:y", 0.0, 0.5)
 		ani.animate_fade_out(page_container, 0.6, "menu_fade")
-		search_lineedit.text = ""
 	else:
 		# 变大:关闭 visual_only;若起始 scale 为 0,先设为极小值避免 scale=0 + visual_only=false 触发报错
 		page_container.set_offset_transform_visual_only(false)
@@ -167,10 +172,9 @@ func _on_ordering_pressed() -> void:
 
 
 func _on_search_query(query: String = "") -> void:
-	EvtBus.search_query_changed.emit(query if query else search_lineedit.text)
-
-	if ui.current_state!=ui.UIState.SORTED_VIEW:
-		ui.change_state(ui.UIState.SORTED_VIEW)
+	var q := query if query else search_lineedit.text
+	EvtBus.current_search_query = q
+	EvtBus.search_query_changed.emit(q)
 
 
 # ========== 收藏夹相关 ==========

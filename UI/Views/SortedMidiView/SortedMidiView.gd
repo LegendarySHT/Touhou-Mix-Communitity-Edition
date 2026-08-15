@@ -155,6 +155,10 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 func _on_search_query_changed(query: String) -> void:
 	if not se:
 		return
+	# 就地搜索已接管 AlbumView/SongView/MidiView：仅当本视图激活时才处理搜索
+	# （搜索不再自动跳转 SORTED_VIEW，避免后台误改排序状态）
+	if sm.current_state != UIStateManager.UIState.SORTED_VIEW:
+		return
 
 	if query.is_empty():
 		if _favorites_mode:

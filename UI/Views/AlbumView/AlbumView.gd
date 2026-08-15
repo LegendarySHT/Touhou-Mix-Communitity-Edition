@@ -18,6 +18,9 @@ var _last_opened_album_id: String = ""
 var _load_generation: int = 0
 var _album_build_bg: ButtonGroup
 
+## 当前就地搜索词（非空时 _load_albums 过滤专辑）
+var _search_query: String = ""
+
 func _ready() -> void:
 	if not data_manager or not event_bus:
 		push_error("AlbumView: Missing manager instances")
@@ -43,8 +46,12 @@ func _ready() -> void:
 	# 回到 AlbumView 时补检空列表（midi_deleted 在不活跃时触发刷新，不会显示 NoItems）
 	UiStatMGR.state_changed.connect(func(_old, new):
 		if new == UIStateManager.UIState.ALBUM_VIEW:
-			call_deferred("_check_empty_display")
+			# 进入专辑视图：应用当前共享搜索词（跨视图就地筛选持久化，仅 SORTED_VIEW 清空）
+			_search_query = EvtBus.current_search_query
+			call_deferred("_load_albums")
 	)
+	# 就地搜索：当前为专辑视图时过滤当前列表
+	event_bus.search_query_changed.connect(_on_search_query_changed)
 	# AlbumView 入场动画播完后恢复选中：此时视图已完全可见、列表已就绪，
 	# 避免在出场动画期间（视图隐藏、布局未就绪）尝试吸附而落空
 	AniMGR.scene_transition_fin.connect(func():
@@ -76,11 +83,29 @@ func _load_albums() -> void:
 	if not data_manager:
 		return
 
+	_search_query = EvtBus.current_search_query
 	# 递增 generation，使之前在途的加载循环自动失效（旧循环检测到不匹配后 return）
 	_load_generation += 1
 	current_albums = data_manager.get_sorted_albums()
+	# 就地搜索：命中专辑 id 集合与当前列表取交集，保留原排序
+	if not _search_query.is_empty():
+		_apply_album_search_filter()
 
 	await _refresh_display_async(_load_generation)
+
+## 就地搜索词变化：当前为专辑视图时才过滤当前列表
+func _on_search_query_changed(query: String) -> void:
+	if UiStatMGR.current_state != UIStateManager.UIState.ALBUM_VIEW:
+		return
+	_search_query = query
+	_load_albums()
+
+## 按 _search_query 过滤专辑（任一谱面全文命中含简介即算命中，复用 ChartDB 检索）
+func _apply_album_search_filter() -> void:
+	var ids := {}
+	for id in ChartDB.GetMatchingAlbumIds(_search_query):
+		ids[id] = true
+	current_albums = current_albums.filter(func(a): return ids.has(String(a.get("id", ""))))
 
 ## 配置变更时重新排序（deferred，避免阻塞 save 流程）
 func _on_config_changed(_key: String, section: String, _value: Variant) -> void:
@@ -185,16 +210,6 @@ func _process(delta):
 func _gui_input(event: InputEvent) -> void:
 	super._gui_input(event)
 
-## 状态变化时补检空列表显示（由 state_changed call_deferred 调用）
-func _check_empty_display() -> void:
-	var no_items := get_node_or_null(PathRegistry.NO_ITEMS)
-	if not current_albums.is_empty():
-		if no_items:
-			no_items.visible = false
-		return
-	if no_items:
-		no_items.visible = true
-
 func reset_selection():
 	if selected_item == -1:
 		return
@@ -212,16 +227,16 @@ func _restore_selection_on_return() -> void:
 		wait += 1
 	if list_items.is_empty():
 		return
-	# 优先：吸附回 SongView 选择的专辑
+	# 优先：已有选中项则吸附到它（可能在长列表底部、屏幕外）
+	if selected_item != -1 and selected_item < list_items.size():
+		force_snap_to(selected_item)
+		return
+	# 其次：吸附回 SongView 选择的专辑
 	if not _last_opened_album_id.is_empty():
 		for i in current_albums.size():
 			if String(current_albums[i].get("id", "")) == _last_opened_album_id:
 				force_snap_to(i)
 				return
-	# 其次：已有选中项则吸附到它（可能在长列表底部、屏幕外）
-	if selected_item != -1 and selected_item < list_items.size():
-		force_snap_to(selected_item)
-		return
 	# 兜底：吸附第一项
 	force_snap_to(0)
 

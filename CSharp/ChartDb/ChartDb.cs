@@ -697,6 +697,48 @@ public partial class ChartDb : Node
     }
 
     /// <summary>
+    /// 返回 query 命中的专辑 id 集合（任一谱面全文命中含简介即算命中，简繁日规范化）。
+    /// 就地过滤 AlbumView：命中集与当前专辑列表取交集，保留原有排序。
+    /// </summary>
+    public Godot.Collections.Array<string> GetMatchingAlbumIds(string query)
+    {
+        var arr = new Godot.Collections.Array<string>();
+        if (!IsOpen() || string.IsNullOrEmpty(query)) return arr;
+        lock (_lock)
+        {
+            var set = new HashSet<string>();
+            foreach (var d in FilterSearch(_charts.FindAll().ToList(), query))
+            {
+                var aid = BsonConvert.GetStr(d, "album_id");
+                if (aid.Length > 0) set.Add(aid);
+            }
+            foreach (var id in set) arr.Add(id);
+            return arr;
+        }
+    }
+
+    /// <summary>
+    /// 返回 query 命中的歌曲 id 集合（任一谱面全文命中含简介即算命中，简繁日规范化）。
+    /// 就地过滤 SongView：命中集与当前歌曲列表取交集，保留原有顺序。
+    /// </summary>
+    public Godot.Collections.Array<string> GetMatchingSongIds(string query)
+    {
+        var arr = new Godot.Collections.Array<string>();
+        if (!IsOpen() || string.IsNullOrEmpty(query)) return arr;
+        lock (_lock)
+        {
+            var set = new HashSet<string>();
+            foreach (var d in FilterSearch(_charts.FindAll().ToList(), query))
+            {
+                var sid = BsonConvert.GetStr(d, "song_id");
+                if (sid.Length > 0) set.Add(sid);
+            }
+            foreach (var id in set) arr.Add(id);
+            return arr;
+        }
+    }
+
+    /// <summary>
     /// chart 文档 → 列表项轻量投影字典（SortedMidiView 直接消费）。
     /// id = midi_id（点击水合用，可经 LookupChartKey 解析回 folder_name）。
     /// </summary>
