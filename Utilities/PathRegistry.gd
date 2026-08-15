@@ -11,6 +11,8 @@ const MAIN := "/root/Main"
 const SKEW := "/root/Main/skew"
 const SKEW_C := "/root/Main/skew/C"
 const SKEW_SS := "/root/Main/skew/SS"
+## 静态"选中专辑"头部卡片（SongView 页展示，替代原运行时复制的 SS 节点；隐藏于 AlbumView，转场时显示）
+const SELECTED_ALBUM := "/root/Main/skew/C/SelectedAlbum"
 
 ## 静态导航按钮
 const LT_BTN := "/root/Main/LT_Btn"

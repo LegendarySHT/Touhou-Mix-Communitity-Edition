@@ -95,6 +95,10 @@ func _exit_tree() -> void:
 
 # MIDI 选择变化：加载列表，若收藏夹面板可见则同步刷新
 func _on_midi_selected(_midi_id: String, midi: MidiData) -> void:
+	# 记录导航位置：直达路径（排序/搜索/收藏夹浏览/商店等非 Album→Song 入口）进入 MidiView 时，
+	# 从 MIDI 反查 album/song 补全记录，下次启动当作从 AlbumView 一路点入恢复
+	# （不会恢复到 SortedMidiList/商店等直达页面；Album→Song→Midi 正常路径走 song_selected，不经此处）
+	NavigationState.save(midi.album_id, midi.song_id, midi.id)
 	midi_list.load_midi([midi])
 	if _favor_panel_visible and favor_panel:
 		favor_panel.show_with_midi(midi)
@@ -105,7 +109,10 @@ func _on_midi_selected(_midi_id: String, midi: MidiData) -> void:
 
 # 歌曲选择：加载该歌曲的 midi 列表，加载完成后若 FavorPanel 可见则刷新
 func _on_song_selected(song_id: String) -> void:
-	await midi_list.load_midi(data_manager.get_midis_by_song(song_id))
+	# 导航恢复/预选：若记录中的歌曲就是本歌曲且记录了 midi，进入时选中对应 midi（默认第一项）
+	# 正常导航时 SongView 进入已清空 midi_id，preferred 为空 → 默认选中第一项，行为不变
+	var preferred_id := NavigationState.get_midi_id() if NavigationState.get_song_id() == song_id else ""
+	await midi_list.load_midi(data_manager.get_midis_by_song(song_id), preferred_id)
 	if _favor_panel_visible and favor_panel:
 		var midi: MidiData = midi_list.get_selection()
 		if midi:
@@ -167,6 +174,10 @@ func _process(_delta: float) -> void:
 		_last_midi_selection = cur_sel
 		var midi: MidiData = midi_list.get_selection()
 		if midi:
+			# 记录导航位置：切换 midi 时记录具体选中项（仅在有 album/song 上下文的导航链内，
+			# 收藏夹直达等路径不写，避免残缺记录干扰恢复）
+			if NavigationState.get_song_id() != "":
+				NavigationState.update({"midi_id": midi.id})
 			if _favor_panel_visible and favor_panel:
 				favor_panel.show_with_midi(midi)
 			# 同步刷新排行榜
@@ -373,10 +384,11 @@ func _on_del_btn_pressed():
 				UiStatMGR.go_back()
 			else:
 				# Song 和 Album 都被删除，直接跳回 AlbumView
-				# 确保 SS 节点被清理（直接跳转时可能跳过 SongView 的退出流程）
-				var ss_node = get_node_or_null(PathRegistry.SKEW_SS)
-				if is_instance_valid(ss_node):
-					ss_node.queue_free()
+				# 确保静态 SelectedAlbum 头部卡片隐藏复位（直接跳转时可能跳过 SongView 的退出流程）
+				var sa_node = get_node_or_null(PathRegistry.SELECTED_ALBUM)
+				if is_instance_valid(sa_node):
+					sa_node.visible = false
+					sa_node.modulate.a = 1.0
 				UiStatMGR.go_back_to(UIStateManager.UIState.ALBUM_VIEW)
 			EvtBus.midi_deleted.emit(deleted_id)
 			GLogger.info("已删除曲包: %s" % midi_to_del.name, "MidiView")

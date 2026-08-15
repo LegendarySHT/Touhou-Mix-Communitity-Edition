@@ -81,8 +81,11 @@ func _on_config_changed(_key: String, section: String, _value: Variant) -> void:
 		call_deferred("_load_albums")
 
 
-## 异步刷新显示：复用现有列表项，只同步数量差（多余项尾部清理、不足项新建）
-## 与 SortedMidiView 一致，避免 clear_items 全清重建造成的闪烁 + 封面重载
+## 异步刷新显示：两阶段构建
+## Phase A（同步、无 await）：裁剪多余项 + 一帧内建满全部节点，仅绑定身份（bind_with_dict）
+##   —— 项高固定（tscn custom_minimum_size），滚动条长度只由 add_child 时机决定，一帧完成即立即稳定
+## Phase B（异步）：每帧分批填充显示（fill_display：标签/封面/名称滚动），ChartDB 封面查询摊到帧间
+## generation 守卫与复用逻辑保持不变（避免 clear_items 全清重建造成的闪烁 + 封面重载）
 func _refresh_display_async(my_generation: int) -> void:
 	var is_active := UiStatMGR.current_state == UIStateManager.UIState.ALBUM_VIEW
 	var no_items := get_node_or_null(PathRegistry.NO_ITEMS)
@@ -101,18 +104,19 @@ func _refresh_display_async(my_generation: int) -> void:
 
 	var had_items: bool = not list_items.is_empty()
 
-	# 同步项数：多余的从尾部清理
+	# ===== Phase A：同步建足节点（滚动条立即稳定） =====
+	# 同步项数：多余的从尾部清理（释放封面使在途回调失效）
 	var target_count: int = current_albums.size()
 	var existing_count: int = list_items.size()
 	if existing_count > target_count:
 		for i in range(existing_count - 1, target_count - 1, -1):
 			var extra_item: ListItemBase = list_items[i]
 			if is_instance_valid(extra_item):
-				# 先释放封面：清空 _loading_path 使在途回调失效，避免帧末 free 前回调浪费 CPU
 				if extra_item is CoverListItemBase:
 					(extra_item as CoverListItemBase).release_cover()
 				extra_item.queue_free()
 			list_items.remove_at(i)
+		# 裁剪后等待一帧：让 queue_free 的节点从容器移除，再继续建新项/连头尾
 		await get_tree().process_frame
 		# await 后校验:若期间被新调用取代,静默退出
 		if my_generation != _load_generation:
@@ -132,24 +136,33 @@ func _refresh_display_async(my_generation: int) -> void:
 
 	var counter := 0
 	for album in current_albums:
-		# generation 校验:若期间被新调用取代,静默退出（新调用会自行构建列表）
-		if my_generation != _load_generation:
-			return
-
 		var item
 		if counter < existing_count:
-			# 复用现有项：setup_with_dict 内部走 _refresh_display 刷新数据
+			# 复用现有项：仅绑定新身份（显示在 Phase B 填充）
 			item = list_items[counter]
 		else:
 			# 新建项；空列表重建的首项触发停止 Loading + fade-in
 			item = create_and_add_item(String(album.get("id", "")), "album")
 			if not had_items and counter == 0:
 				_on_album_first_step()
-		item.setup_with_dict(self, album, counter, _album_build_bg)
+		item.bind_with_dict(self, album, counter, _album_build_bg)
 		counter += 1
 
-		if counter % 3 == 0:
-			await get_tree().process_frame
+	# ===== Phase B：异步分批填充显示 =====
+	const FILL_BATCH_SIZE := 6
+	var filled := 0
+	for item in list_items:
+		# generation 校验:若期间被新调用取代,静默退出（新调用会自行构建列表）
+		if my_generation != _load_generation:
+			return
+		if is_instance_valid(item):
+			(item as AlbumListItem).fill_display()
+			filled += 1
+			if filled % FILL_BATCH_SIZE == 0:
+				await get_tree().process_frame
+				# await 后校验:若期间被新调用取代,静默退出
+				if my_generation != _load_generation:
+					return
 
 	# 最终校验:仅当本次 generation 仍最新时连接头尾 + 触发未加载项封面加载
 	if my_generation == _load_generation:
@@ -196,6 +209,8 @@ func on_item_button_confirmed(index: int):
 	var album_id: String = String(current_albums[index].get("id", ""))
 	if container.get_child(index).expand_tween:
 		await container.get_child(index).expand_tween.finished
+	# 记录导航位置：进入 SongView 时记录所选专辑（清空更深的 song/midi 记录）
+	NavigationState.save(album_id, "", "")
 	event_bus.album_selected.emit(album_id)
 	UiStatMGR.change_state(UiStatMGR.UIState.SONG_VIEW)
 

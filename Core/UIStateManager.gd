@@ -71,9 +71,58 @@ func _ready() -> void:
 	# 防止 data_loaded 在 _ready 之前已发射：一次性检查
 	if not DataMGR.is_loading:
 		_data_ready = true
+		_restore_saved_navigation()
+	# 导航记录清除钩子：退回 AlbumView 时清空记录
+	# （启动时 current 已是 ALBUM_VIEW 无 transition，不会误清；go_back/go_back_to 均会 emit state_changed）
+	state_changed.connect(func(old_state: UIState, new_state: UIState):
+		if new_state == UIState.ALBUM_VIEW and old_state != UIState.ALBUM_VIEW:
+			NavigationState.clear()
+	)
 
 func _on_data_loaded() -> void:
 	_data_ready = true
+	_restore_saved_navigation()
+
+## 启动时恢复上次导航位置（一次性，仅两种深度：仅 album → SongView；有 song → MidiView）
+var _nav_restore_started: bool = false
+
+func _restore_saved_navigation() -> void:
+	if _nav_restore_started:
+		return
+	if ChartDB == null or not ChartDB.IsOpen():
+		return  # DB 未就绪：不消费标志，等 data_loaded 触发时重试
+	_nav_restore_started = true
+	_restore_saved_navigation_impl()
+
+func _restore_saved_navigation_impl() -> void:
+	var album_id := NavigationState.get_album_id()
+	if album_id.is_empty():
+		return
+	# 校验专辑仍存在（DB 权威；已删则清记录，防止反复恢复失败）
+	if ChartDB == null or not ChartDB.IsOpen() or ChartDB.GetAlbum(album_id).is_empty():
+		NavigationState.clear()
+		return
+	# 等一帧：让 data_loaded 信号分发完成后 AlbumView 至少开始构建列表，
+	# 再走正常导航路径，避免在空壳上播退出动画
+	await get_tree().process_frame
+	# 进入 SongView（复刻 AlbumView.on_item_button_confirmed 次序：先 emit 再 change_state，
+	# 使 SongView._load_songs_just_called 的跳重逻辑生效；stash=true 让返回键回 AlbumView）
+	EvtBus.album_selected.emit(album_id)
+	change_state(UIState.SONG_VIEW, true)
+
+	var song_id := NavigationState.get_song_id()
+	if song_id.is_empty():
+		return  # 仅专辑：停在 SongView
+
+	# 校验歌曲仍存在
+	if not ChartDB.SongExists(song_id):
+		NavigationState.clear()
+		return
+
+	# 进入 MidiView（复刻 SongView.on_item_button_confirmed 次序：先 change_state 再 emit）
+	# midi 预选由 MidiView._on_song_selected 通过 NavigationState 的 midi_id 完成
+	change_state(UIState.MIDI_VIEW, true)
+	EvtBus.emit_song_selected(song_id)
 
 ## 确保懒加载视图已实例化（首次进入对应 state 时调用）
 ## 返回实例化的节点，失败返回 null

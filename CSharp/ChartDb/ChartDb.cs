@@ -806,6 +806,48 @@ public partial class ChartDb : Node
         }
     }
 
+    // ============ 导航位置记录（meta 集合，随 DB 读取，与谱面数据同源同生命周期） ============
+    private const string NavMetaId = "navigation";
+
+    /// 保存导航位置记录（全量写 {album_id, song_id, midi_id}；空串 = 未设置）
+    /// 记录不参与 schema 迁移（meta 集合不被 drop），专辑/歌曲被删后由恢复方校验并清除
+    public void SaveNavigation(Godot.Collections.Dictionary nav)
+    {
+        if (!IsOpen()) return;
+        lock (_lock)
+        {
+            var bd = new BsonDocument
+            {
+                ["_id"] = NavMetaId,
+                ["album_id"] = nav.TryGetValue("album_id", out var a) ? a.AsString() : "",
+                ["song_id"] = nav.TryGetValue("song_id", out var s) ? s.AsString() : "",
+                ["midi_id"] = nav.TryGetValue("midi_id", out var m) ? m.AsString() : "",
+            };
+            _meta.Upsert(bd);
+        }
+    }
+
+    /// 读取导航位置记录；无记录时返回 {album_id:"", song_id:"", midi_id:""}
+    public Godot.Collections.Dictionary GetNavigation()
+    {
+        var result = new Godot.Collections.Dictionary
+        {
+            ["album_id"] = "",
+            ["song_id"] = "",
+            ["midi_id"] = "",
+        };
+        if (!IsOpen()) return result;
+        lock (_lock)
+        {
+            var d = _meta.FindById(NavMetaId);
+            if (d == null) return result;
+            result["album_id"] = d.TryGetValue("album_id", out var a) && a.IsString ? a.AsString : "";
+            result["song_id"] = d.TryGetValue("song_id", out var s) && s.IsString ? s.AsString : "";
+            result["midi_id"] = d.TryGetValue("midi_id", out var m) && m.IsString ? m.AsString : "";
+            return result;
+        }
+    }
+
     /// <summary>
     /// 把任意别名（folder_name / folder_hash / json _id / file_hash / hash）解析为
     /// chart_runtime 的规范主键 folder_name（真正唯一，避免 hash 撞车互相覆盖配置）。

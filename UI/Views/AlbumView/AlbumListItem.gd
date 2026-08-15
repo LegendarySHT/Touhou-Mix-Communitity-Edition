@@ -1,5 +1,7 @@
 ## 专辑列表项组件
 ## 继承自 CoverListItemBase，显示专辑信息
+## 两阶段构建：bind_with_dict（Phase A 绑定身份，不查 ChartDB/不刷新显示）→ fill_display（Phase B 填内容）
+class_name AlbumListItem
 extends CoverListItemBase
 
 const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
@@ -22,28 +24,17 @@ var expand_tween: Tween:
 		expand_tween = t
 		_extra_motion_tween = t
 
-## 是否已 ready（复用时直接刷新显示，不再 emit _init_fin 等 _ready 续跑）
+## 是否已 ready 且填充过显示（fill_display 后置 true；bind 阶段保持 false 等待 Phase B）
 var _has_ready: bool = false
-
-signal _init_fin
 
 func _ready() -> void:
 	cover_texture = $cover
-	await _init_fin
+	# 显示填充由 fill_display() 统一驱动（Phase B），_ready 不再阻塞等待信号
+	if name == "SelectedAlbum" and self.button_pressed:
+		on_item_button_toggled(true)
 
-	_refresh_labels()
-	# 直接开始加载封面（不等列表构建完毕）
-	# 命中 WeakRef 缓存时零开销同步应用；未命中则入 CoverLoader 异步队列，不阻塞主线程
-	# 列表的 trigger_cover_chain 仍处理"释放后重载"场景（状态切换回视图时）与 path 暂不可用的重试
-	start_cover_load()
-	# 启动文字滚动动画（如名称过长）
-	call_deferred("setup_name_scroll")
-	_has_ready = true
-
-## 从专辑轻量投影字典初始化显示（DB 返回，无完整 AlbumData）
-## 新建节点（_has_ready=false）：emit _init_fin 触发 _ready 中的 await 继续
-## 复用节点（_has_ready=true）：直接 _refresh_display 刷新数据
-func setup_with_dict(parent: AlbumView, d: Dictionary, index:int, bg: ButtonGroup) -> void:
+## 绑定专辑身份（两阶段构建 Phase A：仅设身份字段与按钮装配，不查 ChartDB、不刷新显示）
+func bind_with_dict(parent: AlbumView, d: Dictionary, index: int, bg: ButtonGroup) -> void:
 	item_dict = d
 	item_id = String(d.get("id", ""))
 	item_type = "album"
@@ -54,10 +45,27 @@ func setup_with_dict(parent: AlbumView, d: Dictionary, index:int, bg: ButtonGrou
 
 	enable_selected_animation(button, parent)
 
-	if _has_ready:
-		_refresh_display()
-	else:
-		_init_fin.emit()
+## 填充显示（两阶段构建 Phase B：标签/封面/名称滚动；复用项同时复位展开/选中动画态）
+func fill_display() -> void:
+	_refresh_display()
+	_has_ready = true
+
+## 兼容入口：bind + fill 一次完成（外部调用方仍可用；AlbumView 两阶段构建分开调用）
+func setup_with_dict(parent: AlbumView, d: Dictionary, index: int, bg: ButtonGroup) -> void:
+	bind_with_dict(parent, d, index, bg)
+	fill_display()
+
+## 设置显示的专辑内容（静态 SelectedAlbum 头部卡片用：不接按钮组、不绑定列表，仅填充显示）
+## 头部卡片恒为展开态：若处于收起态（点击返回 AlbumView 后）先复位展开再刷内容
+func set_display_album(d: Dictionary) -> void:
+	item_dict = d
+	item_id = String(d.get("id", ""))
+	if not is_inside_tree() or album_name_label == null:
+		return
+	_refresh_labels()
+	switch_cover_data()
+	start_cover_load()
+	call_deferred("setup_name_scroll")
 
 ## 更新名称/计数标签（新建与复用共用）
 func _refresh_labels() -> void:
@@ -128,7 +136,7 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 	expand_tween.tween_property(album_name_label,"theme_override_font_sizes/font_size",25 + 20*expa,0.15)
 	expand_tween.tween_property(name_box, "self_modulate:a", float(expa), 0.15)
 
-	if toggled_on:
+	if toggled_on and parent_node:
 		parent_node.selected_item = item_index
 	
 	expand_tween.finished.connect(func ():
@@ -140,7 +148,7 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 
 	# 因为塞在tween里的话，节点在屏幕外似乎无法触发，所以就成下面这样了
 	await get_tree().create_timer(0.15).timeout
-	if toggled_on and parent_node.selected_item == item_index:
+	if toggled_on and parent_node and parent_node.selected_item == item_index:
 		parent_node.need_snap = true
 
 
@@ -156,3 +164,6 @@ func setup_name_scroll() -> void:
 	_name_scroll_state = TextScrollHelper.setup(
 		album_name_label, name_box, album_name_label.text, _name_scroll_state
 	)
+
+func _on_selected_album_pressed() -> void:
+	UiStatMGR.change_state(UiStatMGR.UIState.ALBUM_VIEW)

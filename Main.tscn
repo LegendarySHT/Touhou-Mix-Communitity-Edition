@@ -16,6 +16,7 @@
 [ext_resource type="Texture2D" uid="uid://c8twb3tyhwm1t" path="res://Resources/icon/Sort/Data/Played.png" id="14_sph85"]
 [ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="16_vi5kq"]
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
+[ext_resource type="PackedScene" uid="uid://cmg2kkhga3yj5" path="res://UI/Views/AlbumView/albumNode.tscn" id="17_5mvff"]
 [ext_resource type="Texture2D" uid="uid://cctd38so3swat" path="res://Resources/icon/random.png" id="17_oye8v"]
 [ext_resource type="Texture2D" uid="uid://boaosvxm4ii76" path="res://Resources/icon/TrackView/reset.png" id="18_sqvbp"]
 [ext_resource type="Script" uid="uid://papxqcjsxm8u" path="res://UI/Components/LoadingCircle.gd" id="19_hri7i"]
@@ -875,6 +876,17 @@ flat = true
 icon_alignment = 1
 expand_icon = true
 
+[node name="SelectedAlbum" parent="skew/C" unique_id=1523238690 instance=ExtResource("17_5mvff")]
+visible = false
+layout_mode = 0
+offset_top = 40.0
+offset_bottom = 190.0
+offset_transform_enabled = true
+focus_neighbor_right = NodePath("")
+focus_next = NodePath("")
+focus_mode = 0
+button_pressed = true
+
 [node name="LT_Btn" type="Panel" parent="." unique_id=1967536020]
 layout_mode = 0
 offset_left = 25.999996
@@ -1171,7 +1183,8 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 20.0
-offset_right = -20.0
+offset_right = 830.0
+offset_bottom = 600.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_3y6u5")
@@ -1179,8 +1192,8 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_3y6u5")
 [node name="TabC" parent="PopupWindow" unique_id=1542807723 instance=ExtResource("28_hri7i")]
 offset_left = 20.0
 offset_top = 0.0
-offset_right = -20.0
-offset_bottom = 0.0
+offset_right = 830.0
+offset_bottom = 600.0
 offset_transform_enabled = true
 
 [connection signal="text_submitted" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox/TextEdit" to="skew/C/ShortCutMenu" method="_on_search_query"]
@@ -1189,6 +1202,7 @@ offset_transform_enabled = true
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Data" to="skew/C/ShortCutMenu" method="_on_data_pressed"]
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Ordering" to="skew/C/ShortCutMenu" method="_on_ordering_pressed"]
 [connection signal="pressed" from="skew/C/RandomSelectBtn" to="skew/C/AlbumList" method="_on_random_select_btn_pressed"]
+[connection signal="pressed" from="skew/C/SelectedAlbum" to="skew/C/SelectedAlbum" method="_on_selected_album_pressed"]
 [connection signal="pressed" from="LT_Btn/Button" to="LT_Btn" method="_on_button_pressed"]
 [connection signal="gui_input" from="PlayerInfo/ExpandPanelShader" to="PlayerInfo" method="_on_shader_overlay_gui_input"]
 [connection signal="pressed" from="PlayerInfo/InfoPanelBtn" to="PlayerInfo" method="_on_expand_panel_pressed"]

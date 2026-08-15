@@ -690,12 +690,24 @@ func _apply_advanced_visibility() -> void:
 ## ========== 主题化 ==========
 
 ## 通过 StyleBoxFlat 共享引用自动同步，无需遍历 setting_items
+## 注意：必须直接操作按钮自带 Theme 资源的 StyleBox（而非 Control.get_theme_stylebox）——
+## 临时刻件未入树时 get_theme_stylebox 会沿引擎默认主题链解析，既不生效也触发
+## "Viewport Texture must be set to use it" 报错；theme.get_stylebox 才是共享引用改色的正确入口
 func apply_button_theme(color: Color) -> void:
 	if not _value_button_instance:
 		return
-	(_value_button_instance.get_theme_stylebox("normal") as StyleBoxFlat).bg_color = color
-	(_value_button_instance.get_theme_stylebox("pressed") as StyleBoxFlat).bg_color = color.darkened(0.25)
-	(_value_button_instance.get_theme_stylebox("hover") as StyleBoxFlat).bg_color = color.lightened(0.15)
+	var theme: Theme = _value_button_instance.theme
+	if theme == null:
+		return
+	var sb_normal: StyleBoxFlat = theme.get_stylebox("normal", "Button") as StyleBoxFlat
+	var sb_pressed: StyleBoxFlat = theme.get_stylebox("pressed", "Button") as StyleBoxFlat
+	var sb_hover: StyleBoxFlat = theme.get_stylebox("hover", "Button") as StyleBoxFlat
+	if sb_normal:
+		sb_normal.bg_color = color
+	if sb_pressed:
+		sb_pressed.bg_color = color.darkened(0.25)
+	if sb_hover:
+		sb_hover.bg_color = color.lightened(0.15)
 
 ## 供 SettingListItem.setup_item 调用：duplicate 出共享 instance 的副本作为 TYPE_BUTTON 的 value_node
 func make_value_button() -> Button:

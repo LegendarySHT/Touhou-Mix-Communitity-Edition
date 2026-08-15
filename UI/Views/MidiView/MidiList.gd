@@ -34,7 +34,8 @@ func _ready() -> void:
 	super._ready()
 
 # 加载midi
-func load_midi(midis:Array[MidiData]) -> void:
+## preferred_id 非空时（导航恢复预选），构建完成后选中对应 midi；找不到或为空则默认选中第一项
+func load_midi(midis: Array[MidiData], preferred_id: String = "") -> void:
 	current_midis = midis
 	_refresh_display()
 	_setup_focus_neighbor()
@@ -42,7 +43,15 @@ func load_midi(midis:Array[MidiData]) -> void:
 	await get_tree().process_frame
 	_collapsed = false
 	_prev_scroll = scroll_vertical  # 重置滚动追踪
-	select_item(0)
+	if preferred_id != "":
+		var target := -1
+		for i in current_midis.size():
+			if current_midis[i].id == preferred_id:
+				target = i
+				break
+		select_item(target if target >= 0 else 0)
+	else:
+		select_item(0)
 	for item in list_items:
 		item.set_expanded(true)
 	need_snap = true

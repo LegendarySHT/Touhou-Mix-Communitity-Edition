@@ -45,32 +45,22 @@ func animate_position(target: Node, to_pos: Vector2, duration: float = DURATION_
 
 ## 列表项水平滑动动画
 var out_item_idx: int = -1
-func animate_list_item_horizontal(target: BaseScrollList, center_index: int, excluded_index: int, horizon_delta: int, tween_id: String = "") -> Tween:
+func animate_list_item_horizontal(target: BaseScrollList, center_index: int, horizon_delta: int, tween_id: String = "") -> Tween:
 	var tween = _create_tween(tween_id)
 	tween.set_ease(EASING_STANDARD)
 	tween.set_trans(Tween.TRANS_CUBIC)
 
 	var screen_rect = get_viewport().get_visible_rect()
-	var ctn:int = floori(screen_rect.size.y / 175) +2
 	var container: Container = target.container
 
-	var range_left = center_index - ctn
-	var range_right = center_index + ctn
-	range_left = range_left if range_left >= 0 else 0
-	range_right = range_right if range_right <= container.get_child_count() else container.get_child_count()
+	var range_left = maxi(center_index - 3, 0)
+	var range_right = mini(center_index + 10, container.get_child_count())
 
-	var time=0.08
-	tween.set_parallel(true)
 	for i in range(range_left, range_right):
-		if i == excluded_index:
-			continue
-
 		var tag = container.get_child(i)
 		if not tag.get_global_rect().intersects(screen_rect):
 			pass
-		time = time + 0.08 if time < 0.7 else 0.7
-		tween.tween_property(tag,"offset_transform_position:x",horizon_delta,time).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-
+		tween.tween_property(tag,"offset_transform_position:x",horizon_delta,0.05)
 	return tween
 
 ## 创建透明度动画
@@ -370,9 +360,26 @@ func get_comp(ui_part_name: String) -> Node:
 		GLogger.debug("[AniMGR] COMP %s Not Found" % ui_part_name, "AniMGR")
 		return null
 
-var _SS = PathRegistry.SKEW_SS
-
 var tan15 = tan(deg_to_rad(15))
+
+## 当前要展示在 SelectedAlbum 头部卡片上的专辑数据（选中项优先；恢复/直达路径回退到 SongView 当前专辑）
+func _get_selected_album_data() -> Dictionary:
+	var album_list: AlbumView = get_comp("Album_List")
+	if album_list == null or album_list.current_albums.is_empty():
+		return {}
+	var idx := album_list.selected_item
+	if idx < 0 or idx >= album_list.current_albums.size():
+		idx = out_item_idx
+	if idx >= 0 and idx < album_list.current_albums.size():
+		return album_list.current_albums[idx]
+	# 回退：按 SongView 当前专辑 id 在专辑投影中查找（导航恢复等直达路径 selected_item 为 -1）
+	var song_list_ref: SongView = get_comp("Song_List")
+	var target_id := song_list_ref.current_album_id if song_list_ref else ""
+	if target_id != "":
+		for d in album_list.current_albums:
+			if str(d.get("id", "")) == target_id:
+				return d
+	return {}
 
 ## 页面组件退出动画
 func _scene_transition_exit(old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
@@ -427,52 +434,42 @@ func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_sta
 	var tween : Tween
 	
 	# 播放动画的组件
-	var SS = get_node_or_null(_SS)
 	var album_list:AlbumView = get_comp("Album_List")
 	var song_list:SongView = get_comp("Song_List")
-	var skew = get_node_or_null(PathRegistry.SKEW)
 	var ani_comp = get_comp(ui_name)
 
 	match ui_name:
 		"Album_List":
 			var sIndex = album_list.selected_item
-			var tIndex = -1
 
-			if sIndex >= 0 and new_state == UIStateManager.UIState.SONG_VIEW:
-				var sItem = album_list.container.get_child(sIndex)
-				var old_SS := get_node_or_null(_SS)
-				if is_instance_valid(old_SS):
-					old_SS.queue_free()
-				var copy=sItem.duplicate()
-				copy.name="SS"
+			# 静态 SelectedAlbum 头部卡片：退出时只设置展示内容（可见与右移入场在 Song_List 入场时处理，
+			# 避免恢复/直达路径下直接 visible 导致的突兀出现）
+			if new_state == UIStateManager.UIState.SONG_VIEW:
+				var album_data := _get_selected_album_data()
+				if not album_data.is_empty():
+					var sa := get_node_or_null(PathRegistry.SELECTED_ALBUM)
+					if sa:
+						sa.set_display_album(album_data)
 
-				copy.position = skew.to_local(sItem.global_position)
+			# 列表项左移退出
+			animate_list_item_horizontal(album_list, sIndex, -1200, tween_id)
 
-				# 设置节点（AlbumButton 即根节点本身，原 Panel + 子 Button 已合并）
-				var button := copy as Button
-				button.button_group=null
-				button.toggle_mode=false
-
-				var sc = Shortcut.new()
-				var event = InputEventKey.new()
-				event.keycode = KEY_ESCAPE
-				sc.events = [event]
-				button.shortcut = sc
-
-				tIndex = sIndex
-				skew.add_child(copy)
-				copy.setup_name_scroll()
-
-			animate_list_item_horizontal(album_list, sIndex, tIndex, -1200, tween_id)
 			out_item_idx = sIndex
 			tween = animate_fade_out(album_list, 0.7, "AlbumListFadeOut")
 			tween = animate_fade_out(get_node(PathRegistry.RANDOM_SELECT_BTN), 0.7, "RandomSelectFadeOut")
 		"Song_List":
-			if new_state == UIStateManager.UIState.ALBUM_VIEW and out_item_idx >= 0:
-				animate_position(SS, skew.to_local(album_list.container.get_child(out_item_idx).global_position), 0.25, "SSPosition")
-			else:
-				animate_fade_out(SS, 0.15, "SSPosition")
-			
+			# 静态 SelectedAlbum：离开 SongView 时左移退出，结束后隐藏并复位（去向一致）
+			var sa := get_node_or_null(PathRegistry.SELECTED_ALBUM)
+			if sa:
+				sa.offset_transform_enabled = true
+				var sa_tween := animate_offset_to(sa, Vector2(-1200, 0), 0.25, "SSPosition")
+				sa.modulate.a = 1.0
+				sa_tween.finished.connect(func() -> void:
+					if is_instance_valid(sa):
+						sa.visible = false
+						sa.offset_transform_position = Vector2.ZERO
+				)
+
 			# 歌曲列表收起
 			animate_fade_out(song_list, 0.25, "SongListFadeOut")
 			tween = animate_offset_to(song_list, Vector2(0, song_list.size.y), 0.25, tween_id)
@@ -546,16 +543,14 @@ func _save_settings_on_exit(setting_view: Control) -> void:
 	else:
 		push_warning("[AnimationManager] Failed to save settings")
 
-func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> Tween:
+func animate_ui_in(ui_name: String, _old_state: UIStateManager.UIState) -> Tween:
 	GLogger.info("组件进入动画: %s" % ui_name, "AnimationManager")
 	var tween_id = "%s_in" % ui_name
 	var tween : Tween
 
 	# 播放动画的组件
-	var SS = get_node_or_null(_SS)
 	var album_list:AlbumView = get_comp("Album_List")
 	var song_list:SongView = get_comp("Song_List")
-	var skew = get_node_or_null(PathRegistry.SKEW)
 	var ani_comp = get_comp(ui_name)
 	if is_instance_valid(ani_comp) and ani_comp is CanvasItem:
 		ani_comp.visible = true
@@ -566,38 +561,40 @@ func animate_ui_in(ui_name: String, old_state: UIStateManager.UIState) -> Tween:
 			animate_fade_in(album_list, 0.35, "AlbumListFadeIn")
 			song_list.visible=false
 			
+			# 静态 SelectedAlbum 常驻：回到 AlbumView 时确保隐藏复位（原 SS 为临时节点此处 queue_free）
+			var sa := get_node_or_null(PathRegistry.SELECTED_ALBUM)
+			if sa:
+				sa.visible = false
+				sa.modulate.a = 1.0
+				sa.offset_transform_position = Vector2.ZERO
+			
 			var sIndex = out_item_idx
 			var vbox := album_list.container
-			if sIndex >= vbox.get_child_count() or sIndex < 0:
-				return
+			# 选中项退出时左移过，返回时先复位其 modulate（索引无效时跳过，不阻断滑回）
+			if sIndex >= 0 and sIndex < vbox.get_child_count():
+				vbox.get_child(sIndex).modulate = Color(1, 1, 1, 1)
 			
-			vbox.get_child(sIndex).modulate = Color(1, 1, 1, 1)
-			var tindex = sIndex if old_state == UIStateManager.UIState.SONG_VIEW else -1
-			tween = animate_list_item_horizontal(album_list, sIndex, tindex, 0, tween_id)
-			
-			# 从Song_List回来时会触发下面的
-			if SS:
-				SS.queue_free()
+			tween = animate_list_item_horizontal(album_list, sIndex, 0, tween_id)
 			
 			song_list.clear_items.call_deferred()
 			tween = animate_fade_in(get_node(PathRegistry.RANDOM_SELECT_BTN), 0.35, "RandomSelectFadeIn")
 		"Song_List":
-			if old_state == UIStateManager.UIState.ALBUM_VIEW:
-				animate_position(SS, skew.to_local(Vector2(280, 40)), 0.15, "SSPosition")
-			elif SS:
-				animate_fade_in(SS, 0.15, "SSPosition")
+			var sa := get_node_or_null(PathRegistry.SELECTED_ALBUM)
+			# 进入 SongView：头部卡片从左侧起步、右移滑入到位（内容在退出时已设置，此处兜底覆盖恢复/直达路径）
+			if sa:
+				var album_data := _get_selected_album_data()
+				if not album_data.is_empty():
+					sa.set_display_album(album_data)
+				sa.visible = true
+				sa.modulate.a = 1.0
+				sa.offset_transform_enabled = true
+				sa.offset_transform_position = Vector2(-1200, 0)
+				animate_offset_back(sa, 0.35, "SSPosition")
 
 			song_list.visible=true
 			song_list.offset_transform_position = Vector2(0, -1150)
 			animate_offset_back(song_list, 0.15, tween_id)
 			tween = animate_fade_in(song_list, 0.4, "SongListFadeIn")
-
-			# 不要问为什么在播放动画的地方做初始化
-			if SS:
-				var button := SS as Button
-				var ui: UIStateManager = UiStatMGR
-				button.pressed.connect(func() -> void:
-					ui.change_state(ui.UIState.ALBUM_VIEW))
 		"Sorted_List":
 			ani_comp.visible = true
 

@@ -133,12 +133,12 @@ func _refresh_from_data() -> void:
 		if ChartDB.GetAlbum(current_album_id).is_empty():
 			_deferred_go_back()
 
-## 同步更新 SS 节点（AnimationManager 在 SongView 过渡时从专辑列表复制的快照）的歌曲计数
+## 同步更新 SelectedAlbum 头部卡片（SongView 过渡时展示的选中专辑）的歌曲计数
 func _update_ss_count() -> void:
 	var album: Dictionary = ChartDB.GetAlbum(current_album_id)
 	if album.is_empty():
 		return
-	var ss_node = get_node_or_null(PathRegistry.SKEW_SS)
+	var ss_node = get_node_or_null(PathRegistry.SELECTED_ALBUM)
 	if not is_instance_valid(ss_node):
 		return
 	var count_label = ss_node.get_node_or_null("SongCount")
@@ -151,6 +151,8 @@ func on_item_button_confirmed(index: int):
 		return
 	var song: Dictionary = current_songs[index]
 	GLogger.info("Select Song: %s" % song.get("name", ""), "SongView")
+	# 记录导航位置：进入 MidiView 时记录歌曲（保留 album；midi 由 MidiList 选中变化记录）
+	NavigationState.save(current_album_id, String(song.get("id", "")), "")
 	# 切换到MIDI视图
 	state_manager.change_state(state_manager.UIState.MIDI_VIEW)
 	event_bus.emit_song_selected(String(song.get("id", "")))
