@@ -1,17 +1,11 @@
 ## 音频管理器
-## 负责人声播放（BGM/SFX/MIDI 转发已移除，MIDI 由 MidiPlaybackManager 直接管理）
+## 负责人声播放的门面层：所有 vocal 控制转发到 MidiPlaybackManager 的 miniaudio 后端
 extends Node
 
 class_name AudioManager
 
 ## 单例实例
 static var instance: AudioManager
-
-## 人声播放器
-var vocal_player: AudioStreamPlayer
-
-## 人声播放状态标志
-var vocal_is_playing: bool = false
 
 func _ready() -> void:
 	if instance == null:
@@ -20,51 +14,56 @@ func _ready() -> void:
 		queue_free()
 	add_to_group("singleton")
 
-	# 初始化人声播放器
-	vocal_player = AudioStreamPlayer.new()
-	vocal_player.bus = "Music"
-	add_child(vocal_player)
+## ========== 人声相关方法（miniaudio 统一输出链路） ==========
 
-## ========== 人声相关方法 ==========
-
-## 播放人声音频，支持毫秒偏移
-func play_vocal(audio_stream: AudioStream, offset_ms: float = 0.0) -> void:
-	if audio_stream == null or vocal_player == null:
+## 播放人声文件（path 支持 user:// / res:// / 绝对路径，offset_ms 为毫秒）
+func play_vocal_file(path: String, offset_ms: float = 0.0) -> void:
+	var mgr = MidiPlaybackManager.instance
+	if mgr == null or path.is_empty():
 		return
+	mgr.play_vocal_file(path, offset_ms)
 
-	vocal_player.stream = audio_stream
-	vocal_player.play(offset_ms / 1000.0)  # 转换为秒
-	vocal_is_playing = true
-
-## 停止人声播放
+## 停止人声（保留已加载文件）
 func stop_vocal() -> void:
-	if vocal_player != null:
-		vocal_player.stop()
-		vocal_is_playing = false
+	var mgr = MidiPlaybackManager.instance
+	if mgr != null:
+		mgr.stop_vocal_file()
 
-## 通过设置stream_paused来暂停/恢复人声
+## 卸载人声资源
+func unload_vocal() -> void:
+	var mgr = MidiPlaybackManager.instance
+	if mgr != null:
+		mgr.unload_vocal()
+
+## 暂停 / 恢复人声
 func set_vocal_playing(is_playing: bool) -> void:
-	if vocal_player != null:
-		vocal_player.stream_paused = not is_playing
-		vocal_is_playing = is_playing
+	var mgr = MidiPlaybackManager.instance
+	if mgr != null:
+		mgr.set_vocal_playing(is_playing)
 
 ## 获取人声播放进度（毫秒）
 func get_vocal_position() -> float:
-	if vocal_player != null and vocal_player.playing:
-		return vocal_player.get_playback_position() * 1000.0  # 转换为毫秒
-	return 0.0
+	var mgr = MidiPlaybackManager.instance
+	return mgr.get_vocal_position() if mgr != null else 0.0
 
 ## 跳转人声播放进度（毫秒）
 func seek_vocal(position_ms: float) -> void:
-	if vocal_player != null and vocal_player.stream != null:
-		var position_sec = clamp(position_ms / 1000.0, 0.0, vocal_player.stream.get_length())
-		vocal_player.seek(position_sec)
+	var mgr = MidiPlaybackManager.instance
+	if mgr != null:
+		mgr.seek_vocal(position_ms)
 
 ## 设置人声音量（dB）
 func set_vocal_volume_db(volume_db: float) -> void:
-	if vocal_player != null:
-		vocal_player.volume_db = volume_db
+	var mgr = MidiPlaybackManager.instance
+	if mgr != null:
+		mgr.set_vocal_volume_db(volume_db)
 
 ## 检查人声是否正在播放
 func is_vocal_playing() -> bool:
-	return vocal_is_playing and vocal_player != null and vocal_player.playing
+	var mgr = MidiPlaybackManager.instance
+	return mgr != null and mgr.is_vocal_playing()
+
+## 检查人声是否已自然结束
+func is_vocal_finished() -> bool:
+	var mgr = MidiPlaybackManager.instance
+	return mgr != null and mgr.is_vocal_finished()

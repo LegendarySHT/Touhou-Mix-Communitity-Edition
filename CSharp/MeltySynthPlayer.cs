@@ -34,9 +34,25 @@ public partial class MeltySynthPlayer : Node
 		int PostSeekSilenceFrames { get; set; }
 		/// <summary>获取当前音频输出延迟(毫秒), 包含设备内部延迟 + RingBuffer 延迟.</summary>
 		float GetLatencyMs();
+		bool LoadVocalFile(string path);
+		void UnloadVocal();
+		void PlayVocal();
+		void PauseVocal();
+		void ResumeVocal();
+		void StopVocal();
+		void SeekVocal(double positionMs);
+		void SetVocalVolume(float volumeLinear);
+		double GetVocalPositionMs();
+		double GetVocalLengthMs();
+		bool IsVocalPlaying();
+		bool IsVocalFinished();
+		uint GetVocalUnderrunCount();
 	}
 	[Signal]
 	public delegate void finishedEventHandler();
+
+	[Signal]
+	public delegate void vocal_finishedEventHandler();
 
 	[Signal]
 	public delegate void soundfont_changedEventHandler(string soundfont_path);
@@ -89,6 +105,7 @@ public partial class MeltySynthPlayer : Node
 
 	private readonly ManualNoteFilterRegistry _manualFilterRegistry = new ManualNoteFilterRegistry();
 	private readonly ConcurrentDictionary<int, byte> _mutedVirtualChannels = new ConcurrentDictionary<int, byte>();
+	private bool _vocalFinishedSignaled = false;
 
 	// ============ 选项 A：独立合成器用于低延迟手动音符 ============
 	private Synthesizer _manualSynth;      // 专用于手动触发的音符
@@ -384,6 +401,15 @@ public partial class MeltySynthPlayer : Node
 	{
 		_audioOutput?.Update();
 
+		if (_audioOutput is MiniaudioAudioOutputBridge maBridge && maBridge.IsVocalFinished())
+		{
+			if (!_vocalFinishedSignaled)
+			{
+				_vocalFinishedSignaled = true;
+				EmitSignal(SignalName.vocal_finished);
+			}
+		}
+
 		// 【修复D-1】记录播放开始的时刻（用于系统时钟模式）
 		if (playing && !_previousPlaying)
 		{
@@ -665,6 +691,88 @@ public partial class MeltySynthPlayer : Node
 		_volumeLinear = Mathf.DbToLinear(volumeDb);
 		
 		_audioOutput?.SetVolume(_volumeLinear);
+	}
+
+	// ============ Vocal control (miniaudio unified output chain) ============
+	public bool load_vocal_file(string path)
+	{
+		EnsureAudioInitialized();
+		if (_audioOutput == null) return false;
+		_vocalFinishedSignaled = false;
+		return _audioOutput.LoadVocalFile(path);
+	}
+
+	public void unload_vocal()
+	{
+		_vocalFinishedSignaled = false;
+		_audioOutput?.UnloadVocal();
+	}
+
+	public void play_vocal()
+	{
+		_vocalFinishedSignaled = false;
+		if (_audioOutput != null && !_audioOutput.IsPlaying)
+		{
+			_audioOutput.Play();
+		}
+		_audioOutput?.PlayVocal();
+	}
+
+	public void pause_vocal()
+	{
+		_audioOutput?.PauseVocal();
+	}
+
+	public void resume_vocal()
+	{
+		_vocalFinishedSignaled = false;
+		if (_audioOutput != null && !_audioOutput.IsPlaying)
+		{
+			_audioOutput.Play();
+		}
+		_audioOutput?.ResumeVocal();
+	}
+
+	public void stop_vocal()
+	{
+		_vocalFinishedSignaled = false;
+		_audioOutput?.StopVocal();
+	}
+
+	public void seek_vocal(double positionMs)
+	{
+		_vocalFinishedSignaled = false;
+		_audioOutput?.SeekVocal(positionMs);
+	}
+
+	public void set_vocal_volume(double volumeLinear)
+	{
+		_audioOutput?.SetVocalVolume((float)volumeLinear);
+	}
+
+	public double get_vocal_position_ms()
+	{
+		return _audioOutput?.GetVocalPositionMs() ?? 0.0;
+	}
+
+	public double get_vocal_length_ms()
+	{
+		return _audioOutput?.GetVocalLengthMs() ?? -1.0;
+	}
+
+	public bool is_vocal_playing()
+	{
+		return _audioOutput?.IsVocalPlaying() ?? false;
+	}
+
+	public bool is_vocal_finished()
+	{
+		return _audioOutput?.IsVocalFinished() ?? false;
+	}
+
+	public uint get_vocal_underrun_count()
+	{
+		return _audioOutput?.GetVocalUnderrunCount() ?? 0u;
 	}
 
 	public void set_bus(StringName targetBus)

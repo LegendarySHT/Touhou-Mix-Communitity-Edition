@@ -145,6 +145,54 @@ MA_BRIDGE_API ma_bridge_result ma_bridge_set_volume(void* pBridge, float volume)
 
 // 销毁设备并释放资源 (从音频线程外调用)
 MA_BRIDGE_API void ma_bridge_uninit(void* pBridge);
+// ---------------------------------------------------------------------------
+// Vocal playback (single non-looping track, mixed in the same output callback)
+// ---------------------------------------------------------------------------
+// Loads a WAV/MP3/OGG/FLAC file through ma_decoder, decodes it on a producer
+// thread into a bounded ring buffer (~1 second), and mixes it into pOutput in
+// ma_device_callback right after the C# data callback. The vocal clock is the
+// same device callback clock as MIDI, so the two streams stay sample-aligned.
+
+// Load vocal file (UTF-8 path). Previous vocal state is unloaded first.
+MA_BRIDGE_API ma_bridge_result ma_bridge_vocal_load(void* pBridge, const char* pFilePath);
+
+// Unload vocal file and release decoder/ring resources.
+MA_BRIDGE_API void ma_bridge_vocal_unload(void* pBridge);
+
+// Start or resume vocal mixing. If the previous playback reached the natural
+// end, playback restarts from frame 0.
+MA_BRIDGE_API ma_bridge_result ma_bridge_vocal_play(void* pBridge);
+
+// Pause vocal mixing (ring position is retained).
+MA_BRIDGE_API ma_bridge_result ma_bridge_vocal_pause(void* pBridge);
+
+// Stop vocal and rewind to frame 0.
+MA_BRIDGE_API ma_bridge_result ma_bridge_vocal_stop(void* pBridge);
+
+// Seek to an exact PCM frame index (clamped to the known length).
+MA_BRIDGE_API ma_bridge_result ma_bridge_vocal_seek(void* pBridge, uint64_t frameIndex);
+
+// Set vocal volume (linear, 0.0 ~ 4.0). Thread-safe.
+MA_BRIDGE_API ma_bridge_result ma_bridge_vocal_set_volume(void* pBridge, float volume);
+
+// Current consumed position in milliseconds (same clock as the output device).
+MA_BRIDGE_API double ma_bridge_vocal_get_position_ms(void* pBridge);
+
+// Total length in milliseconds, or -1 when the decoder cannot report it.
+MA_BRIDGE_API int64_t ma_bridge_vocal_get_length_ms(void* pBridge);
+
+// 1 while vocal mixing is active and not at its natural end.
+MA_BRIDGE_API int ma_bridge_vocal_is_playing(void* pBridge);
+
+// 1 after the vocal has reached its natural end (sticky until seek/stop/unload).
+MA_BRIDGE_API int ma_bridge_vocal_is_finished(void* pBridge);
+
+// Number of callback underruns (diagnostics; 0 is healthy).
+MA_BRIDGE_API uint32_t ma_bridge_vocal_get_underrun_count(void* pBridge);
+
+// Discard the next N frames from the ring without mixing them. Used to keep
+// vocal aligned with MIDI post-seek silence.
+MA_BRIDGE_API ma_bridge_result ma_bridge_vocal_skip_frames(void* pBridge, uint32_t frames);
 
 // 获取 miniaudio 版本字符串 (用于日志)
 MA_BRIDGE_API const char* ma_bridge_get_version(void);

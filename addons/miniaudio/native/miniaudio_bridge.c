@@ -16,6 +16,19 @@
 //   xcrun -sdk iphoneos clang -arch arm64 -O2 -fPIC \
 //     -shared miniaudio_bridge.c -o libminiaudio_bridge.dylib
 
+// Enable OGG/Vorbis support: miniaudio only exposes Vorbis when stb_vorbis is
+// compiled in first. stb_vorbis.c is the upstream single-file decoder
+// (public domain / MIT, see file header).
+#define STB_VORBIS_IMPLEMENTATION
+#include "thirdparty/stb_vorbis/stb_vorbis.c"
+/* stb_vorbis leaks these channel-map macros; clear them before Windows headers. */
+#undef L
+#undef C
+#undef R
+#undef PLAYBACK_MONO
+#undef PLAYBACK_LEFT
+#undef PLAYBACK_RIGHT
+
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
@@ -34,6 +47,29 @@ typedef struct {
     int            started;
     int            hasDeviceId;    // 1=指定了具体设备, 0=用默认设备 (诊断用)
     char           backendName[64];
+
+    // ---- vocal playback state (miniaudio decoder + ring buffer) ----
+    ma_decoder     vocalDecoder;
+    int            vocalDecoderValid;
+    volatile int   vocalDecoderEof;
+    ma_uint64      vocalDecoderTotalFrames; /* 0 = unknown */
+    float*         vocalRing;
+    ma_uint32      vocalRingCapacity;       /* power of two slots (one reserved) */
+    ma_uint32      vocalRingMask;
+    ma_uint32      vocalReadIndex;
+    ma_uint32      vocalWriteIndex;
+    volatile ma_uint64 vocalConsumedFrames; /* frames consumed by device callback */
+    volatile ma_uint32 vocalSkipFrames;     /* frames to discard before mixing */
+    volatile int   vocalPlaying;
+    volatile int   vocalLoaded;
+    volatile int   vocalEndReached;
+    volatile int   vocalProducerStop;
+    volatile float vocalVolume;
+    ma_uint32      vocalUnderrunCount;
+    ma_spinlock    vocalLock;
+    ma_thread      vocalProducerThread;
+    int            vocalProducerRunning;
+    uint32_t       vocalSampleRate;
 } ma_bridge;
 
 // 全局设备名称 (由 ma_bridge_set_device_name 设置, ma_bridge_init 读取)
@@ -140,6 +176,239 @@ static ma_backend to_ma_backend(ma_bridge_backend b)
 // 转换为本桥的 ma_bridge_data_proc 签名:
 //   void(void* pUserData, float* pOutput, uint32_t frameCount)
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Vocal playback helpers
+// ---------------------------------------------------------------------------
+#define MA_BRIDGE_VOCAL_CHANNELS 2
+#define MA_BRIDGE_VOCAL_CHUNK_FRAMES 2048
+
+static ma_uint32 vocal_next_pow2(ma_uint32 v)
+{
+    if (v < 2) return 2;
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    return v + 1;
+}
+
+static void vocal_start_producer(ma_bridge* p);
+static void vocal_stop_producer(ma_bridge* p);
+
+static ma_uint32 vocal_ring_used(ma_bridge* p)
+{
+    ma_uint32 r, w;
+    if (p->vocalRing == NULL || p->vocalRingCapacity == 0) return 0;
+    ma_spinlock_lock(&p->vocalLock);
+    r = p->vocalReadIndex;
+    w = p->vocalWriteIndex;
+    ma_spinlock_unlock(&p->vocalLock);
+    return (w - r) & p->vocalRingMask;
+}
+
+static int vocal_has_ogg_extension(const char* pFilePath)
+{
+    const char* dot = strrchr(pFilePath, '.');
+    if (dot == NULL || dot[1] == '\0' || dot[2] == '\0' || dot[3] == '\0') {
+        return 0;
+    }
+    char c1 = dot[1] | 0x20;
+    char c2 = dot[2] | 0x20;
+    char c3 = dot[3] | 0x20;
+    return c1 == 'o' && c2 == 'g' && c3 == 'g' && dot[4] == '\0';
+}
+
+static ma_result vocal_init_decoder_file(ma_decoder* pDecoder,
+                                         const char* pFilePath,
+                                         const ma_decoder_config* pConfig)
+{
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    int wideLen = MultiByteToWideChar(CP_UTF8, 0, pFilePath, -1, NULL, 0);
+    if (wideLen <= 0) {
+        return MA_INVALID_ARGS;
+    }
+    wchar_t* pWide = (wchar_t*)malloc((size_t)wideLen * sizeof(wchar_t));
+    if (pWide == NULL) {
+        return MA_OUT_OF_MEMORY;
+    }
+    MultiByteToWideChar(CP_UTF8, 0, pFilePath, -1, pWide, wideLen);
+    ma_result mr = ma_decoder_init_file_w(pWide, pConfig, pDecoder);
+    free(pWide);
+    return mr;
+#else
+    return ma_decoder_init_file(pFilePath, pConfig, pDecoder);
+#endif
+}
+
+static ma_thread_result MA_THREADCALL vocal_producer_entry(void* pData)
+{
+    ma_bridge* p = (ma_bridge*)pData;
+    if (p == NULL) {
+        return (ma_thread_result)0;
+    }
+
+    while (!p->vocalProducerStop) {
+        if (!p->vocalLoaded || !p->vocalDecoderValid || p->vocalEndReached) {
+            ma_sleep(2);
+            continue;
+        }
+
+        if (p->vocalDecoderEof) {
+            ma_uint32 used = vocal_ring_used(p);
+            if (used == 0) {
+                ma_spinlock_lock(&p->vocalLock);
+                if (p->vocalDecoderEof && p->vocalReadIndex == p->vocalWriteIndex) {
+                    p->vocalEndReached = 1;
+                    p->vocalPlaying = 0;
+                }
+                ma_spinlock_unlock(&p->vocalLock);
+            } else {
+                ma_sleep(2);
+            }
+            continue;
+        }
+
+        ma_uint32 used = vocal_ring_used(p);
+        if (p->vocalRingCapacity == 0 ||
+            (p->vocalRingCapacity - 1 - used) < MA_BRIDGE_VOCAL_CHUNK_FRAMES) {
+            ma_sleep(2);
+            continue;
+        }
+
+        float chunk[MA_BRIDGE_VOCAL_CHUNK_FRAMES * MA_BRIDGE_VOCAL_CHANNELS];
+        ma_uint64 framesRead = 0;
+        ma_result readResult = ma_decoder_read_pcm_frames(&p->vocalDecoder, chunk,
+                                                          MA_BRIDGE_VOCAL_CHUNK_FRAMES,
+                                                          &framesRead);
+        if (readResult != MA_SUCCESS || framesRead == 0) {
+            p->vocalDecoderEof = 1;
+            continue;
+        }
+
+        ma_spinlock_lock(&p->vocalLock);
+        ma_uint32 idx = p->vocalWriteIndex;
+        ma_uint64 i;
+        for (i = 0; i < framesRead; ++i) {
+            p->vocalRing[idx * MA_BRIDGE_VOCAL_CHANNELS + 0] =
+                chunk[i * MA_BRIDGE_VOCAL_CHANNELS + 0];
+            p->vocalRing[idx * MA_BRIDGE_VOCAL_CHANNELS + 1] =
+                chunk[i * MA_BRIDGE_VOCAL_CHANNELS + 1];
+            idx = (idx + 1) & p->vocalRingMask;
+        }
+        p->vocalWriteIndex = idx;
+        ma_spinlock_unlock(&p->vocalLock);
+    }
+
+    return (ma_thread_result)0;
+}
+
+static void vocal_start_producer(ma_bridge* p)
+{
+    if (p == NULL || p->vocalProducerRunning || !p->vocalLoaded) {
+        return;
+    }
+    p->vocalProducerStop = 0;
+    if (ma_thread_create(&p->vocalProducerThread, ma_thread_priority_normal, 0,
+                         vocal_producer_entry, p, NULL) != MA_SUCCESS) {
+        p->vocalProducerRunning = 0;
+        return;
+    }
+    p->vocalProducerRunning = 1;
+}
+
+static void vocal_stop_producer(ma_bridge* p)
+{
+    if (p == NULL || !p->vocalProducerRunning) {
+        return;
+    }
+    p->vocalProducerStop = 1;
+    ma_thread_wait(&p->vocalProducerThread);
+    p->vocalProducerRunning = 0;
+}
+
+static void vocal_mix(ma_bridge* p, float* pOutput, ma_uint32 frameCount)
+{
+    if (!p->vocalLoaded || !p->vocalDecoderValid || !p->vocalPlaying || p->vocalEndReached) {
+        return;
+    }
+
+    float volume = p->vocalVolume;
+    ma_uint32 outPos = 0;
+
+    /* Phase 1: discard frames that belong to MIDI post-seek silence. */
+    while (outPos < frameCount && p->vocalSkipFrames > 0) {
+        ma_uint32 r, w, avail, n;
+        ma_spinlock_lock(&p->vocalLock);
+        r = p->vocalReadIndex;
+        w = p->vocalWriteIndex;
+        ma_spinlock_unlock(&p->vocalLock);
+
+        avail = (w - r) & p->vocalRingMask;
+        if (avail == 0) {
+            p->vocalUnderrunCount++;
+            break;
+        }
+        n = avail;
+        if (n > p->vocalSkipFrames) n = p->vocalSkipFrames;
+        if (n > frameCount - outPos) n = frameCount - outPos;
+
+        ma_spinlock_lock(&p->vocalLock);
+        p->vocalReadIndex = (r + n) & p->vocalRingMask;
+        p->vocalSkipFrames -= n;
+        p->vocalConsumedFrames += n;
+        ma_spinlock_unlock(&p->vocalLock);
+        outPos += n;
+    }
+
+    /* If skip frames are still pending (ring underrun), do not mix yet. */
+    if (p->vocalSkipFrames > 0) {
+        return;
+    }
+
+    /* Phase 2: mix vocal into the same output buffer as MIDI. */
+    while (outPos < frameCount) {
+        ma_uint32 r, w, avail, n, i;
+        ma_spinlock_lock(&p->vocalLock);
+        r = p->vocalReadIndex;
+        w = p->vocalWriteIndex;
+        ma_spinlock_unlock(&p->vocalLock);
+
+        avail = (w - r) & p->vocalRingMask;
+        if (avail == 0) {
+            p->vocalUnderrunCount++;
+            break;
+        }
+        n = avail;
+        if (n > frameCount - outPos) n = frameCount - outPos;
+
+        for (i = 0; i < n; ++i) {
+            ma_uint32 idx = (r + i) & p->vocalRingMask;
+            pOutput[(outPos + i) * MA_BRIDGE_VOCAL_CHANNELS + 0] +=
+                p->vocalRing[idx * MA_BRIDGE_VOCAL_CHANNELS + 0] * volume;
+            pOutput[(outPos + i) * MA_BRIDGE_VOCAL_CHANNELS + 1] +=
+                p->vocalRing[idx * MA_BRIDGE_VOCAL_CHANNELS + 1] * volume;
+        }
+
+        ma_spinlock_lock(&p->vocalLock);
+        p->vocalReadIndex = (r + n) & p->vocalRingMask;
+        p->vocalConsumedFrames += n;
+        ma_spinlock_unlock(&p->vocalLock);
+        outPos += n;
+    }
+
+    /* Natural end: only when the decoder is done and the ring is drained. */
+    if (p->vocalDecoderEof) {
+        ma_spinlock_lock(&p->vocalLock);
+        if (p->vocalDecoderEof && p->vocalReadIndex == p->vocalWriteIndex && p->vocalPlaying) {
+            p->vocalEndReached = 1;
+            p->vocalPlaying = 0;
+        }
+        ma_spinlock_unlock(&p->vocalLock);
+    }
+}
+
 static void ma_device_callback(ma_device* pDevice,
                                 void* pOutput,
                                 const void* pInput,
@@ -154,6 +423,7 @@ static void ma_device_callback(ma_device* pDevice,
         return;
     }
     pBridge->dataCallback(pBridge->pUserData, (float*)pOutput, (uint32_t)frameCount);
+    vocal_mix(pBridge, (float*)pOutput, (uint32_t)frameCount);
 }
 
 // ---------------------------------------------------------------------------
@@ -499,6 +769,284 @@ ma_bridge_result ma_bridge_set_volume(void* pBridge, float volume)
 }
 
 // ---------------------------------------------------------------------------
+// Vocal control API
+// ---------------------------------------------------------------------------
+void ma_bridge_vocal_unload(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL) {
+        return;
+    }
+    vocal_stop_producer(p);
+    if (p->vocalDecoderValid) {
+        ma_decoder_uninit(&p->vocalDecoder);
+    }
+    if (p->vocalRing != NULL) {
+        free(p->vocalRing);
+    }
+    p->vocalRing = NULL;
+    p->vocalRingCapacity = 0;
+    p->vocalRingMask = 0;
+    p->vocalReadIndex = 0;
+    p->vocalWriteIndex = 0;
+    p->vocalConsumedFrames = 0;
+    p->vocalSkipFrames = 0;
+    p->vocalPlaying = 0;
+    p->vocalEndReached = 0;
+    p->vocalDecoderEof = 0;
+    p->vocalDecoderValid = 0;
+    p->vocalDecoderTotalFrames = 0;
+    p->vocalLoaded = 0;
+}
+
+ma_bridge_result ma_bridge_vocal_load(void* pBridge, const char* pFilePath)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return MA_BRIDGE_ERR_NOT_INITIALIZED;
+    }
+    if (pFilePath == NULL || pFilePath[0] == '\0') {
+        return MA_BRIDGE_ERR_INVALID_ARG;
+    }
+
+    ma_bridge_vocal_unload(p);
+
+    ma_decoder_config cfg = ma_decoder_config_init(ma_format_f32,
+                                                   MA_BRIDGE_VOCAL_CHANNELS,
+                                                   p->device.sampleRate);
+    ma_result mr = vocal_init_decoder_file(&p->vocalDecoder, pFilePath, &cfg);
+    if (mr != MA_SUCCESS) {
+        fprintf(stderr, "[miniaudio_bridge] vocal load failed: %d (%s)\n", (int)mr, pFilePath);
+        fflush(stderr);
+        return MA_BRIDGE_ERR_INIT;
+    }
+
+    p->vocalDecoderValid = 1;
+    p->vocalDecoderEof = 0;
+    p->vocalDecoderTotalFrames = 0;
+    ma_uint64 totalFrames = 0;
+    if (ma_decoder_get_length_in_pcm_frames(&p->vocalDecoder, &totalFrames) == MA_SUCCESS) {
+        if (vocal_has_ogg_extension(pFilePath)) {
+            /* stb_vorbis reports the length in source frames; after resampling
+             * to the device rate this value is wrong. Treat OGG length as
+             * unknown so callers skip seek clamping. */
+            p->vocalDecoderTotalFrames = 0;
+        } else {
+            p->vocalDecoderTotalFrames = totalFrames;
+        }
+    }
+
+    ma_uint32 capacity = vocal_next_pow2(p->device.sampleRate);
+    if (capacity < 4096) {
+        capacity = 4096;
+    }
+    float* ring = (float*)malloc((size_t)capacity * MA_BRIDGE_VOCAL_CHANNELS * sizeof(float));
+    if (ring == NULL) {
+        ma_decoder_uninit(&p->vocalDecoder);
+        p->vocalDecoderValid = 0;
+        return MA_BRIDGE_ERR_INIT;
+    }
+    memset(ring, 0, (size_t)capacity * MA_BRIDGE_VOCAL_CHANNELS * sizeof(float));
+
+    p->vocalRing = ring;
+    p->vocalRingCapacity = capacity;
+    p->vocalRingMask = capacity - 1;
+    p->vocalReadIndex = 0;
+    p->vocalWriteIndex = 0;
+    p->vocalConsumedFrames = 0;
+    p->vocalSkipFrames = 0;
+    p->vocalPlaying = 0;
+    p->vocalEndReached = 0;
+    p->vocalUnderrunCount = 0;
+    p->vocalVolume = 1.0f;
+    p->vocalSampleRate = p->device.sampleRate;
+    p->vocalLoaded = 1;
+
+    vocal_start_producer(p);
+    fprintf(stderr, "[miniaudio_bridge] vocal loaded: sr=%u totalFrames=%llu\n",
+            p->vocalSampleRate, (unsigned long long)p->vocalDecoderTotalFrames);
+    fflush(stderr);
+    return MA_BRIDGE_OK;
+}
+
+ma_bridge_result ma_bridge_vocal_play(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return MA_BRIDGE_ERR_NOT_INITIALIZED;
+    }
+    if (!p->vocalLoaded || !p->vocalDecoderValid) {
+        return MA_BRIDGE_ERR_UNSUPPORTED;
+    }
+    if (p->vocalEndReached) {
+        ma_bridge_result seekResult = ma_bridge_vocal_seek(p, 0);
+        if (seekResult != MA_BRIDGE_OK) {
+            return seekResult;
+        }
+    }
+    p->vocalPlaying = 1;
+    vocal_start_producer(p);
+    return MA_BRIDGE_OK;
+}
+
+ma_bridge_result ma_bridge_vocal_pause(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return MA_BRIDGE_ERR_NOT_INITIALIZED;
+    }
+    if (!p->vocalLoaded) {
+        return MA_BRIDGE_ERR_UNSUPPORTED;
+    }
+    p->vocalPlaying = 0;
+    return MA_BRIDGE_OK;
+}
+
+ma_bridge_result ma_bridge_vocal_stop(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return MA_BRIDGE_ERR_NOT_INITIALIZED;
+    }
+    if (!p->vocalLoaded) {
+        return MA_BRIDGE_ERR_UNSUPPORTED;
+    }
+
+    vocal_stop_producer(p);
+    p->vocalPlaying = 0;
+    ma_spinlock_lock(&p->vocalLock);
+    p->vocalReadIndex = 0;
+    p->vocalWriteIndex = 0;
+    p->vocalConsumedFrames = 0;
+    p->vocalSkipFrames = 0;
+    p->vocalEndReached = 0;
+    p->vocalDecoderEof = 0;
+    ma_spinlock_unlock(&p->vocalLock);
+
+    if (ma_decoder_seek_to_pcm_frame(&p->vocalDecoder, 0) != MA_SUCCESS) {
+        fprintf(stderr, "[miniaudio_bridge] vocal stop seek to 0 failed\n");
+        fflush(stderr);
+    }
+    vocal_start_producer(p);
+    return MA_BRIDGE_OK;
+}
+
+ma_bridge_result ma_bridge_vocal_seek(void* pBridge, uint64_t frameIndex)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return MA_BRIDGE_ERR_NOT_INITIALIZED;
+    }
+    if (!p->vocalLoaded || !p->vocalDecoderValid) {
+        return MA_BRIDGE_ERR_UNSUPPORTED;
+    }
+    if (p->vocalDecoderTotalFrames > 0 && frameIndex > p->vocalDecoderTotalFrames) {
+        frameIndex = p->vocalDecoderTotalFrames;
+    }
+
+    int wasPlaying = p->vocalPlaying;
+    vocal_stop_producer(p);
+    p->vocalPlaying = 0;
+
+    ma_result mr = ma_decoder_seek_to_pcm_frame(&p->vocalDecoder, frameIndex);
+    if (mr != MA_SUCCESS) {
+        fprintf(stderr, "[miniaudio_bridge] vocal seek failed: %d (frame=%llu)\n",
+                (int)mr, (unsigned long long)frameIndex);
+        fflush(stderr);
+        p->vocalPlaying = wasPlaying;
+        vocal_start_producer(p);
+        return MA_BRIDGE_ERR_DEVICE;
+    }
+
+    ma_spinlock_lock(&p->vocalLock);
+    p->vocalReadIndex = 0;
+    p->vocalWriteIndex = 0;
+    p->vocalConsumedFrames = frameIndex;
+    p->vocalSkipFrames = 0;
+    p->vocalEndReached = 0;
+    p->vocalDecoderEof = 0;
+    ma_spinlock_unlock(&p->vocalLock);
+
+    p->vocalPlaying = wasPlaying;
+    vocal_start_producer(p);
+    return MA_BRIDGE_OK;
+}
+
+ma_bridge_result ma_bridge_vocal_set_volume(void* pBridge, float volume)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return MA_BRIDGE_ERR_NOT_INITIALIZED;
+    }
+    if (!p->vocalLoaded) {
+        return MA_BRIDGE_ERR_UNSUPPORTED;
+    }
+    if (volume < 0.0f) volume = 0.0f;
+    if (volume > 4.0f) volume = 4.0f;
+    p->vocalVolume = volume;
+    return MA_BRIDGE_OK;
+}
+
+double ma_bridge_vocal_get_position_ms(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->vocalLoaded || p->vocalSampleRate == 0) {
+        return 0.0;
+    }
+    return (double)p->vocalConsumedFrames * 1000.0 / (double)p->vocalSampleRate;
+}
+
+int64_t ma_bridge_vocal_get_length_ms(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->vocalLoaded || p->vocalDecoderTotalFrames == 0 ||
+        p->vocalSampleRate == 0) {
+        return -1;
+    }
+    return (int64_t)(p->vocalDecoderTotalFrames * 1000 / p->vocalSampleRate);
+}
+
+int ma_bridge_vocal_is_playing(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->vocalLoaded) {
+        return 0;
+    }
+    return (p->vocalPlaying && !p->vocalEndReached) ? 1 : 0;
+}
+
+int ma_bridge_vocal_is_finished(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->vocalLoaded) {
+        return 0;
+    }
+    return p->vocalEndReached ? 1 : 0;
+}
+
+uint32_t ma_bridge_vocal_get_underrun_count(void* pBridge)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->vocalLoaded) {
+        return 0;
+    }
+    return p->vocalUnderrunCount;
+}
+
+ma_bridge_result ma_bridge_vocal_skip_frames(void* pBridge, uint32_t frames)
+{
+    ma_bridge* p = (ma_bridge*)pBridge;
+    if (p == NULL || !p->initialized) {
+        return MA_BRIDGE_ERR_NOT_INITIALIZED;
+    }
+    if (!p->vocalLoaded) {
+        return MA_BRIDGE_ERR_UNSUPPORTED;
+    }
+    p->vocalSkipFrames += frames;
+    return MA_BRIDGE_OK;
+}
+
+// ---------------------------------------------------------------------------
 // 销毁
 // ---------------------------------------------------------------------------
 void ma_bridge_uninit(void* pBridge)
@@ -512,6 +1060,7 @@ void ma_bridge_uninit(void* pBridge)
             ma_device_stop(&p->device);
             p->started = 0;
         }
+        ma_bridge_vocal_unload(p);
         ma_device_uninit(&p->device);
         if (p->config.backend != MA_BRIDGE_BACKEND_DEFAULT) {
             ma_context_uninit(&p->context);

@@ -54,19 +54,8 @@ var vocal_offset_ms: float = 0.0
 
 ## 人声是否已初始化（预卷支持）
 var _vocal_initialized: bool = false
-
-## 人声文件预加载缓存（在 load_midi 后异步预载，消除 is_pause=false 时的解码卡顿）
-var _preloaded_vocal_stream: AudioStream = null
-var _vocal_preload_path: String = ""
-
-## 人声预加载 worker 任务 ID（-1 表示无任务）
-## _preload_vocal_async 入队，await_vocal_preload 出队并收集结果
-var _vocal_preload_task_id: int = -1
-## 正在加载的任务对应的文件路径（用于判断是否需要为新路径启动新任务）
-var _vocal_preload_task_path: String = ""
-## 每个任务独立的结果 holder（Dictionary），避免旧任务竞争写入共享变量
-## 启动新任务时替换此引用，旧任务的 holder 自然被 GC
-var _vocal_preload_result_holder: Dictionary = {}
+## 已加载到原生后端的 vocal 文件路径（避免重复 load）
+var _vocal_loaded_path: String = ""
 
 ## 音频不同步阈值（毫秒）
 var sync_threshold_ms: float = 200.0
@@ -255,17 +244,12 @@ func load_midi(midi_data: MidiData) -> bool:
 	stop()
 
 	# 清理上一首歌的人声预加载资源（若新歌无人声或路径不同，旧 stream 会一直驻留）
-	if current_midi_data != null and _vocal_preload_path != "":
-		if current_midi_data.vocal_file_path != midi_data.vocal_file_path:
-			_preloaded_vocal_stream = null
-			_vocal_preload_path = ""
-			_vocal_initialized = false
-			var am := AudioManager.instance
-			if am != null and am.vocal_player != null:
-				am.vocal_player.stream = null
-	# 注意：不在此清理 _vocal_preload_task_id / _vocal_preload_task_path / _vocal_preload_result_holder
-	# _preload_vocal_async 会根据新路径判断是否启动新任务，旧任务结果通过 holder 替换自然丢弃
-
+	if current_midi_data != null and current_midi_data.vocal_file_path != midi_data.vocal_file_path:
+		_vocal_initialized = false
+		_vocal_loaded_path = ""
+		var am := AudioManager.instance
+		if am != null:
+			am.unload_vocal()
 	# 保存当前MIDI数据
 	current_midi_data = midi_data
 	
@@ -398,27 +382,19 @@ func load_midi(midi_data: MidiData) -> bool:
 	
 	# 发出信号
 
-	# 预载人声文件（利用 PlayView 后续 0.8s+1s await 的空闲时间，消除 is_pause=false 时的解码卡顿）
-	_preload_vocal_async()
+	# 预载人声到 miniaudio 后端（原生解码线程异步填充环形缓冲，消除 is_pause=false 时的解码卡顿）
+	_preload_vocal_native()
 
 	return true
 
-## 显式卸载当前 MIDI 资源（释放人声 stream、停止后端、清理引用）
+## 显式卸载当前 MIDI 资源（释放原生人声、停止后端、清理引用）
 ## MidiData.parsed_notes 保留（由 DataManager 管理生命周期，用于 retry 跳过重复解析）
 func unload_midi() -> void:
-	# join 并清理运行中的 vocal 预加载任务，避免 Task 结构体泄漏
-	if _vocal_preload_task_id != -1:
-		WorkerThreadPool.wait_for_task_completion(_vocal_preload_task_id)
-		_vocal_preload_task_id = -1
-		_vocal_preload_task_path = ""
-	# 释放人声
-	_preloaded_vocal_stream = null
-	_vocal_preload_path = ""
-	_vocal_preload_result_holder = {}
 	_vocal_initialized = false
+	_vocal_loaded_path = ""
 	var am := AudioManager.instance
-	if am != null and am.vocal_player != null:
-		am.vocal_player.stream = null
+	if am != null:
+		am.unload_vocal()
 	# 停止后端
 	var backend := _get_active_backend()
 	if backend != null:
@@ -550,69 +526,41 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	], "MidiPlaybackManager")
 	return true
 
-## 异步预载人声文件（线程化，避免主线程解码卡顿）
-## AudioStream 的静态工厂方法（load_from_file）是线程安全的，可在 worker 中调用
+## 预载人声到 miniaudio 后端（原生解码线程异步填充环形缓冲，不阻塞主线程）
 func _preload_vocal_async() -> void:
+	_preload_vocal_native()
+
+## 原生预载：仅打开解码器并启动生产者线程，不开始播放
+func _preload_vocal_native() -> void:
 	if current_midi_data == null or current_midi_data.vocal_file_path.is_empty():
 		return
 	if not current_midi_data.vocal_enabled:
 		return
 	var path = current_midi_data.vocal_file_path
-	if path == _vocal_preload_path and _preloaded_vocal_stream != null:
-		return  # 已预加载完成
-	# 同路径任务已在跑则不重复入队
-	if _vocal_preload_task_id != -1 and _vocal_preload_task_path == path:
-		return
-	# 旧任务（不同路径）仍在跑：必须先 join 旧任务，否则 Godot 4.7 的 Task 结构体会泄漏
-	# 旧任务通常已完成（vocal 文件加载很快），wait_for_task_completion 瞬时返回
-	# 极端情况下旧任务未完成会短暂阻塞主线程，但优于内存泄漏
-	if _vocal_preload_task_id != -1:
-		WorkerThreadPool.wait_for_task_completion(_vocal_preload_task_id)
-		_vocal_preload_task_id = -1
-		_vocal_preload_task_path = ""
-
-	_vocal_preload_path = path
-	_preloaded_vocal_stream = null
-	_vocal_preload_task_path = path
-
-	# 每个任务使用独立的 holder，避免旧任务竞争写入共享变量
-	var result_holder: Dictionary = {"stream": null}
-	_vocal_preload_result_holder = result_holder
-	# 在 worker 线程中加载人声文件，主线程不阻塞
-	_vocal_preload_task_id = WorkerThreadPool.add_task(func():
-		result_holder["stream"] = _do_load_vocal_sync(path)
-	, false, "VocalPreload")
-
-## 同步加载人声文件（可在 worker 线程中调用，返回 AudioStream 或 null）
-func _do_load_vocal_sync(path: String) -> AudioStream:
 	if not FileAccess.file_exists(path):
-		return null
-	var ext = path.get_extension().to_lower()
-	match ext:
-		"mp3":
-			return AudioStreamMP3.load_from_file(path)
-		"ogg":
-			return AudioStreamOggVorbis.load_from_file(path)
-		"wav":
-			return AudioStreamWAV.load_from_file(path)
-	return null
+		GLogger.warning("Vocal file does not exist, skip native preload: %s" % path, "MidiPlaybackMGR")
+		return
+	var backend = _get_active_backend()
+	if backend == null or not backend.has_method("load_vocal_file"):
+		return
+	if path != _vocal_loaded_path:
+		var ok: bool = backend.call("load_vocal_file", _globalize_vocal_path(path))
+		if ok:
+			_vocal_loaded_path = path
+			_vocal_initialized = false
+			GLogger.info("Vocal preloaded to miniaudio backend: %s" % path, "MidiPlaybackManager")
+		else:
+			GLogger.warning("Vocal native preload failed: %s" % path, "MidiPlaybackMGR")
 
-## 等待人声预加载完成（非阻塞，每帧检查一次）
-## TrackView._load_midi 在 play() 之前 await 本方法，确保 start_vocal_playback
-## 不会回退到同步加载导致 MIDI/人声不同步
+## 将 user:// / res:// 路径转换为原生文件系统路径（miniaudio C 解码器需要）
+func _globalize_vocal_path(path: String) -> String:
+	if path.begins_with("user://") or path.begins_with("res://"):
+		return ProjectSettings.globalize_path(path)
+	return path
+
+## 兼容性空流程：原生解码已在 load_midi 预载，无需等待 worker
 func await_vocal_preload() -> void:
-	if _vocal_preload_task_id == -1:
-		return  # 无预加载任务（可能无人声或已加载）
-	# 轮询任务完成状态，期间主线程继续渲染
-	while not WorkerThreadPool.is_task_completed(_vocal_preload_task_id):
-		await Engine.get_main_loop().process_frame
-	# 收集结果并清理任务 ID
-	WorkerThreadPool.wait_for_task_completion(_vocal_preload_task_id)
-	_vocal_preload_task_id = -1
-	_vocal_preload_task_path = ""
-	# 从本任务独立的 holder 读取结果
-	_preloaded_vocal_stream = _vocal_preload_result_holder.get("stream", null)
-	_vocal_preload_result_holder = {}
+	pass
 
 ## 播放MIDI
 func play() -> void:
@@ -1010,6 +958,9 @@ func _initialize_meltysynth_backend() -> bool:
 	if wrapper.has_signal("finished"):
 		wrapper.finished.connect(_on_midi_finished)
 		GLogger.info("Connected finished signal", "MidiPlaybackManager")
+	if wrapper.has_signal("vocal_finished"):
+		wrapper.vocal_finished.connect(_on_vocal_finished)
+		GLogger.info("Connected vocal_finished signal", "MidiPlaybackManager")
 
 	# 保存引用
 	midi_player = wrapper
@@ -1130,9 +1081,9 @@ func get_track_channel_volume(track_index: int, channel: int) -> float:
 
 ## 设置人声音量
 func set_vocal_volume_db(volume_db: float) -> void:
-	var audio_manager = AudioManager.instance
-	if audio_manager != null:
-		audio_manager.set_vocal_volume_db(volume_db)
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("set_vocal_volume"):
+		backend.call("set_vocal_volume", db_to_linear(volume_db))
 		GLogger.info("Set vocal volume to %.2f dB" % volume_db, "MidiPlaybackManager")
 	else:
 		push_error("[MidiPlaybackManager] AudioManager not available")
@@ -1325,6 +1276,11 @@ func _on_midi_finished() -> void:
 	stop_vocal_playback()
 	midi_finished.emit()
 
+## 回调：人声自然结束
+func _on_vocal_finished() -> void:
+	_vocal_initialized = false
+	GLogger.info("Vocal playback finished naturally", "MidiPlaybackManager")
+
 ## 获取当前MIDI的轨道信息列表
 func get_track_infos() -> Array:
 	if current_midi_data == null or current_notes.is_empty():
@@ -1507,12 +1463,10 @@ func apply_vocal_offset() -> void:
 		return
 
 	# 计算新的人声播放位置：MIDI当前位置 - 偏移量
-	var new_position_ms = position_ms - vocal_offset_ms
-	# 确保不是负数
-	new_position_ms = max(0.0, new_position_ms)
+	var new_position_ms = max(0.0, position_ms - vocal_offset_ms)
 	audio_manager.seek_vocal(new_position_ms)
 
-## 启动人声播放并同步
+## 启动人声播放并同步（原生 miniaudio 统一输出链路）
 func start_vocal_playback() -> void:
 	if current_midi_data == null or current_midi_data.vocal_file_path.is_empty():
 		return
@@ -1523,54 +1477,12 @@ func start_vocal_playback() -> void:
 	if audio_manager == null:
 		return
 
-	# 加载人声音频文件
 	var vocal_file_path = current_midi_data.vocal_file_path
-	var vocal_stream: AudioStream = null
-
-	# 优先使用预加载的 stream（消除 is_pause=false 时的解码卡顿）
-	if _preloaded_vocal_stream != null and _vocal_preload_path == vocal_file_path:
-		vocal_stream = _preloaded_vocal_stream
-		GLogger.info("Using preloaded vocal file: %s" % vocal_file_path, "MidiPlaybackManager")
-	else:
-		# 预加载未完成或路径不匹配，回退到同步加载
-		# 首先检查文件是否存在（使用FileAccess，支持user://目录）
-		if not FileAccess.file_exists(vocal_file_path):
-			GLogger.warning("Vocal file does not exist, skipping vocal playback: %s" % vocal_file_path, "MidiPlaybackMGR")
-			return
-
-		# 根据文件扩展名加载对应的AudioStream类型
-		var file_ext = vocal_file_path.get_extension().to_lower()
-
-		match file_ext:
-			"ogg":
-				vocal_stream = AudioStreamOggVorbis.load_from_file(vocal_file_path)
-				GLogger.info("Loading OGG vocal file: %s" % vocal_file_path, "MidiPlaybackManager")
-			"mp3":
-				vocal_stream = AudioStreamMP3.load_from_file(vocal_file_path)
-				GLogger.info("Loading MP3 vocal file: %s" % vocal_file_path, "MidiPlaybackManager")
-			"wav":
-				vocal_stream = AudioStreamWAV.load_from_file(vocal_file_path)
-				GLogger.info("Loading WAV vocal file: %s" % vocal_file_path, "MidiPlaybackManager")
-			_:
-				push_error("Unsupported audio format: %s (file: %s)" % [file_ext, vocal_file_path])
-				return
-
-		# 检查加载结果
-		if vocal_stream == null:
-			push_error("Failed to load vocal file: %s" % vocal_file_path)
-			return
-
-	GLogger.info("Successfully loaded vocal file: %s" % vocal_file_path, "MidiPlaybackManager")
-
-	# 播放人声，使用当前的MIDI位置作为起始位置
 	var expected_vocal_position = position_ms - vocal_offset_ms
 	var start_position_ms = max(0.0, expected_vocal_position)
 
-	# 设置人声声音
 	audio_manager.set_vocal_volume_db(linear_to_db(current_midi_data.vocal_volume))
-	# 先 play 触发解码器预热（即使马上要暂停），恢复时只需取消 stream_paused，
-	# 避免 seek_vocal 造成的解码卡顿
-	audio_manager.play_vocal(vocal_stream, start_position_ms)
+	audio_manager.play_vocal_file(vocal_file_path, start_position_ms)
 	_vocal_initialized = true
 
 	# 如果 MIDI 还没到人声起点（预卷阶段或 midi_position < vocal_offset_ms），
@@ -1578,28 +1490,106 @@ func start_vocal_playback() -> void:
 	if expected_vocal_position < 0.0:
 		audio_manager.set_vocal_playing(false)
 
-## 预启动人声播放（在主线程可阻塞的阶段调用，如 PlayView 歌曲信息面板显示期间）
-## await 人声预加载 worker 完成 → start_vocal_playback（play + 立即暂停）
-## 确保 is_pause=false 时 resume() 不再触发 start_vocal_playback 的同步加载卡顿
+## 预启动人声播放（兼容接口：原生解码在 load_midi 时已预载，无需 worker）
 func prepare_vocal_playback() -> void:
 	if current_midi_data == null:
 		return
 	if current_midi_data.vocal_file_path.is_empty() or not current_midi_data.vocal_enabled:
 		return
-	await await_vocal_preload()
 	start_vocal_playback()
 
-## 停止人声播放
+## 停止人声播放（保留已加载文件，便于快速重播）
 func stop_vocal_playback() -> void:
 	_vocal_initialized = false
 	var audio_manager = AudioManager.instance
 	if audio_manager != null:
 		audio_manager.stop_vocal()
 
+## ========== 人声门面方法（AudioManager 转发到本管理器，再调用后端） ==========
+
+## 加载并播放人声文件（offset_ms 为人声自身起始位置）
+func play_vocal_file(path: String, offset_ms: float) -> void:
+	if path.is_empty():
+		return
+	var backend = _get_active_backend()
+	if backend == null or not backend.has_method("load_vocal_file"):
+		return
+
+	if path != _vocal_loaded_path:
+		if not FileAccess.file_exists(path):
+			GLogger.warning("Vocal file does not exist, skipping vocal playback: %s" % path, "MidiPlaybackMGR")
+			return
+		var ok: bool = backend.call("load_vocal_file", _globalize_vocal_path(path))
+		if not ok:
+			GLogger.warning("Vocal native load failed: %s" % path, "MidiPlaybackMGR")
+			return
+		_vocal_loaded_path = path
+
+	if offset_ms > 0.0:
+		backend.call("seek_vocal", offset_ms)
+	backend.call("resume_vocal")
+	_vocal_initialized = true
+
+## 停止人声（保持文件已加载，位置归零）
+func stop_vocal_file() -> void:
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("stop_vocal"):
+		backend.call("stop_vocal")
+
+## 卸载人声资源（释放原生 decoder/ring buffer）
+func unload_vocal() -> void:
+	_vocal_loaded_path = ""
+	_vocal_initialized = false
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("unload_vocal"):
+		backend.call("unload_vocal")
+
+## 暂停 / 恢复人声
+func set_vocal_playing(playing: bool) -> void:
+	var backend = _get_active_backend()
+	if backend == null:
+		return
+	if playing and backend.has_method("resume_vocal"):
+		backend.call("resume_vocal")
+	elif not playing and backend.has_method("pause_vocal"):
+		backend.call("pause_vocal")
+
+## 获取人声播放进度（毫秒，与 MIDI 同一输出时钟）
+func get_vocal_position() -> float:
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("get_vocal_position_ms"):
+		return backend.call("get_vocal_position_ms")
+	return 0.0
+
+## 跳转人声播放进度（毫秒）
+func seek_vocal(position_ms: float) -> void:
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("seek_vocal"):
+		backend.call("seek_vocal", position_ms)
+
+## 人声是否正在播放（自然结束返回 false）
+func is_vocal_playing() -> bool:
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("is_vocal_playing"):
+		return backend.call("is_vocal_playing")
+	return false
+
+## 人声是否已自然结束
+func is_vocal_finished() -> bool:
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("is_vocal_finished"):
+		return backend.call("is_vocal_finished")
+	return false
+
 ## 自动同步人声与MIDI（在_process中每帧调用）
 func _sync_vocal_with_midi() -> void:
 	var audio_manager = AudioManager.instance
 	if audio_manager == null:
+		return
+
+	# 自然结束后不再尝试恢复，等待下次 start_vocal_playback
+	if _vocal_initialized and audio_manager.is_vocal_finished():
+		_vocal_initialized = false
 		return
 
 	# 计算人声应该的位置（考虑 vocal_offset_ms）
@@ -1608,12 +1598,7 @@ func _sync_vocal_with_midi() -> void:
 	# 如果人声已初始化但未播放（预卷期间被暂停，或刚 start_vocal_playback）
 	if _vocal_initialized and not audio_manager.is_vocal_playing():
 		# 只有当 MIDI 已跨越人声起点（vocal_offset_ms）才恢复播放
-		# 预卷期间（position_ms < 0）或 midi_position < vocal_offset_ms 时保持暂停，
-		# 避免人声在 MIDI 还没到对应位置时提前播放导致后续反复 seek
 		if expected_vocal_position >= 0.0:
-			# 仅取消 stream_paused，不 seek：
-			# start_vocal_playback 已从正确位置 play 并暂停，暂停期间位置不推进，
-			# 恢复时人声位置与 expected 对齐，seek 反而会造成解码卡顿
 			audio_manager.set_vocal_playing(true)
 			last_sync_check_pos_ms = position_ms
 		return

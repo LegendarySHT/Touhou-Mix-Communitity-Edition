@@ -16,6 +16,16 @@
 当前仅使用 MeltySynth（C#）后端，由 `MidiPlaybackManager._initialize_backend()` 在启动时初始化。
 历史上曾存在的 `addons`（GDScript MidiPlayer）后端已下线，不再支持运行时切换。
 
+## 人声统一输出链路（2026-08-15）
+
+人声不再走 Godot `AudioStreamPlayer`，而是与 MIDI 共用 miniaudio 同一条设备回调：
+
+- C 桥（`addons/miniaudio/native/miniaudio_bridge.c`）：内置 `ma_decoder` 解码 WAV/MP3/OGG/FLAC（OGG/Vorbis 通过捆绑的 `thirdparty/stb_vorbis/stb_vorbis.c` 启用），生产者线程按 2048 帧块填充约 1 秒环形缓冲，`ma_device_callback` 在 C# 数据回调后把人声混入 `pOutput`。
+- C#（`MiniaudioNative.cs` / `MeltySynthPlayer.MiniaudioBridge.cs`）：暴露 `load/play/pause/stop/seek/set_volume/get_position/get_length/is_playing/is_finished` 等 vocal API；自然结束时发 `vocal_finished` 信号。
+- GDScript（`AudioManager.gd` + `MidiPlaybackManager.gd`）：`AudioManager` 成为纯门面层，转发到 `MidiPlaybackManager` 的 `play_vocal_file / stop_vocal_file / unload_vocal / seek_vocal / set_vocal_playing` 等；`vocal_offset_ms` 语义不变。
+- 时间语义：人声位置取原生“已消耗帧”换算毫秒，与 MIDI 使用同一设备时钟，天然同步；`skip_frames` 用于 MIDI post-seek 静音期间同步丢弃人声帧。
+- 已知限制：部分格式（如 OGG）可能无法报告总长度，`get_vocal_length_ms()` 返回 `-1`，此时 GDScript 跳过 seek 上限钳制。
+
 ## 设置变更联动
 
 `MidiPlaybackManager` 监听 `EventBus.settings_changed`，响应以下设置变更：

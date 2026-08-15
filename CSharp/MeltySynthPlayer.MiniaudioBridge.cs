@@ -203,6 +203,124 @@ public partial class MeltySynthPlayer
 			}
 
 			// ====================================================================
+			// Vocal control (native decoder + ring buffer, mixed by the C bridge)
+			// ====================================================================
+			public bool LoadVocalFile(string path)
+			{
+				if (_bridgeHandle == IntPtr.Zero || string.IsNullOrEmpty(path))
+				{
+					return false;
+				}
+				var utf8Path = MiniaudioNative.StringToUtf8NullTerminated(path);
+				var r = MiniaudioNative.ma_bridge_vocal_load(_bridgeHandle, utf8Path);
+				if (r != MiniaudioNative.Result.Ok)
+				{
+					GD.PrintErr($"[MeltySynthPlayer][miniaudio] ma_bridge_vocal_load failed: {r} ({path})");
+					return false;
+				}
+				GD.Print($"[MeltySynthPlayer][miniaudio] Vocal loaded: {path}");
+				return true;
+			}
+
+			public void UnloadVocal()
+			{
+				if (_bridgeHandle != IntPtr.Zero)
+				{
+					MiniaudioNative.ma_bridge_vocal_unload(_bridgeHandle);
+				}
+			}
+
+			public void PlayVocal()
+			{
+				if (_bridgeHandle == IntPtr.Zero) return;
+				var r = MiniaudioNative.ma_bridge_vocal_play(_bridgeHandle);
+				if (r != MiniaudioNative.Result.Ok)
+				{
+					GD.PushWarning($"[MeltySynthPlayer][miniaudio] ma_bridge_vocal_play failed: {r}");
+				}
+			}
+
+			public void PauseVocal()
+			{
+				if (_bridgeHandle == IntPtr.Zero) return;
+				var r = MiniaudioNative.ma_bridge_vocal_pause(_bridgeHandle);
+				if (r != MiniaudioNative.Result.Ok)
+				{
+					GD.PushWarning($"[MeltySynthPlayer][miniaudio] ma_bridge_vocal_pause failed: {r}");
+				}
+			}
+
+			public void ResumeVocal()
+			{
+				PlayVocal();
+			}
+
+			public void StopVocal()
+			{
+				if (_bridgeHandle == IntPtr.Zero) return;
+				var r = MiniaudioNative.ma_bridge_vocal_stop(_bridgeHandle);
+				if (r != MiniaudioNative.Result.Ok)
+				{
+					GD.PushWarning($"[MeltySynthPlayer][miniaudio] ma_bridge_vocal_stop failed: {r}");
+				}
+			}
+
+			public void SeekVocal(double positionMs)
+			{
+				if (_bridgeHandle == IntPtr.Zero) return;
+				double frames = positionMs / 1000.0 * _sampleRate;
+				if (frames < 0.0) frames = 0.0;
+				var r = MiniaudioNative.ma_bridge_vocal_seek(_bridgeHandle, (ulong)Math.Round(frames));
+				if (r != MiniaudioNative.Result.Ok)
+				{
+					GD.PushWarning($"[MeltySynthPlayer][miniaudio] ma_bridge_vocal_seek failed: {r} ({positionMs}ms)");
+				}
+			}
+
+			public void SetVocalVolume(float volumeLinear)
+			{
+				if (_bridgeHandle == IntPtr.Zero) return;
+				var r = MiniaudioNative.ma_bridge_vocal_set_volume(_bridgeHandle, volumeLinear);
+				if (r != MiniaudioNative.Result.Ok)
+				{
+					GD.PushWarning($"[MeltySynthPlayer][miniaudio] ma_bridge_vocal_set_volume failed: {r}");
+				}
+			}
+
+			public double GetVocalPositionMs()
+			{
+				return _bridgeHandle != IntPtr.Zero
+					? MiniaudioNative.ma_bridge_vocal_get_position_ms(_bridgeHandle)
+					: 0.0;
+			}
+
+			public double GetVocalLengthMs()
+			{
+				return _bridgeHandle != IntPtr.Zero
+					? MiniaudioNative.ma_bridge_vocal_get_length_ms(_bridgeHandle)
+					: -1.0;
+			}
+
+			public bool IsVocalPlaying()
+			{
+				return _bridgeHandle != IntPtr.Zero &&
+					MiniaudioNative.ma_bridge_vocal_is_playing(_bridgeHandle) != 0;
+			}
+
+			public bool IsVocalFinished()
+			{
+				return _bridgeHandle != IntPtr.Zero &&
+					MiniaudioNative.ma_bridge_vocal_is_finished(_bridgeHandle) != 0;
+			}
+
+			public uint GetVocalUnderrunCount()
+			{
+				return _bridgeHandle != IntPtr.Zero
+					? MiniaudioNative.ma_bridge_vocal_get_underrun_count(_bridgeHandle)
+					: 0u;
+			}
+
+			// ====================================================================
 			// Initialize
 			// ====================================================================
 			public bool Initialize(Node owner, StringName bus, int sampleRate)
@@ -591,6 +709,10 @@ public partial class MeltySynthPlayer
 							_postSeekSilenceFrames -= silence;
 							FillRemainderWithDecay(0, framesRequested);
 							_lastRenderTimestampTicks = Stopwatch.GetTimestamp();
+							if (IsVocalPlaying())
+							{
+								MiniaudioNative.ma_bridge_vocal_skip_frames(_bridgeHandle, (uint)silence);
+							}
 							Marshal.Copy(_outputBuffer, 0, pOutput, framesRequested * 2);
 							return;
 						}

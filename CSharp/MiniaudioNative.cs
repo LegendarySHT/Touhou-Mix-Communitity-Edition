@@ -270,6 +270,46 @@ namespace TouhouMix.Midi
         [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
         internal static extern Result ma_bridge_set_volume(IntPtr pBridge, float volume);
 
+        // ---- Vocal control (miniaudio decoder + ring buffer mixed in callback) ----
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern Result ma_bridge_vocal_load(IntPtr pBridge, byte[] pFilePath);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ma_bridge_vocal_unload(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern Result ma_bridge_vocal_play(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern Result ma_bridge_vocal_pause(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern Result ma_bridge_vocal_stop(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern Result ma_bridge_vocal_seek(IntPtr pBridge, ulong frameIndex);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern Result ma_bridge_vocal_set_volume(IntPtr pBridge, float volume);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern double ma_bridge_vocal_get_position_ms(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern long ma_bridge_vocal_get_length_ms(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ma_bridge_vocal_is_playing(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ma_bridge_vocal_is_finished(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern uint ma_bridge_vocal_get_underrun_count(IntPtr pBridge);
+
+        [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern Result ma_bridge_vocal_skip_frames(IntPtr pBridge, uint frames);
+
         [DllImport("miniaudio_bridge", CallingConvention = CallingConvention.Cdecl)]
         internal static extern void ma_bridge_uninit(IntPtr pBridge);
 

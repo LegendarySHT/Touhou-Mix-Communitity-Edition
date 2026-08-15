@@ -3,6 +3,8 @@
 extends MidiPlaybackInterface
 class_name MeltySynthPlayerWrapper
 
+signal vocal_finished
+
 @export var meltysynth_player: Node
 
 # 最大复音数
@@ -13,6 +15,11 @@ var max_polyphony: int = 96:
 			meltysynth_player.call("set_max_polyphony", value)
 
 func _ready() -> void:
+	if meltysynth_player != null and meltysynth_player.has_signal("vocal_finished"):
+		meltysynth_player.connect("vocal_finished", Callable(self, "_on_vocal_finished"))
+
+func _on_vocal_finished() -> void:
+	vocal_finished.emit()
 	# 尽管 meltysynth_player 是 C# 对象，我们可以通过 call() 和方法名称与之交互
 	pass
 
@@ -211,3 +218,75 @@ func set_audio_buffer_frames(frames: int) -> void:
 	if meltysynth_player == null:
 		return
 	meltysynth_player.call("set_audio_buffer_frames", frames)
+
+## 人声文件加载 (miniaudio 统一输出链路)
+func load_vocal_file(path: String) -> bool:
+	if meltysynth_player == null:
+		return false
+	var result = meltysynth_player.call("load_vocal_file", path)
+	return result if result is bool else false
+
+func unload_vocal() -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("unload_vocal")
+
+func play_vocal() -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("play_vocal")
+
+func pause_vocal() -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("pause_vocal")
+
+func resume_vocal() -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("resume_vocal")
+
+func stop_vocal() -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("stop_vocal")
+
+func seek_vocal(position_ms: float) -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("seek_vocal", position_ms)
+
+func set_vocal_volume(volume_linear: float) -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("set_vocal_volume", volume_linear)
+
+func get_vocal_position_ms() -> float:
+	if meltysynth_player == null:
+		return 0.0
+	var result = meltysynth_player.call("get_vocal_position_ms")
+	return result if result is float else 0.0
+
+func get_vocal_length_ms() -> float:
+	if meltysynth_player == null:
+		return -1.0
+	var result = meltysynth_player.call("get_vocal_length_ms")
+	return result if result is float else -1.0
+
+func is_vocal_playing() -> bool:
+	if meltysynth_player == null:
+		return false
+	var result = meltysynth_player.call("is_vocal_playing")
+	return result if result is bool else false
+
+func is_vocal_finished() -> bool:
+	if meltysynth_player == null:
+		return false
+	var result = meltysynth_player.call("is_vocal_finished")
+	return result if result is bool else false
+
+func get_vocal_underrun_count() -> int:
+	if meltysynth_player == null:
+		return 0
+	var result = meltysynth_player.call("get_vocal_underrun_count")
+	return result if result is int else 0
