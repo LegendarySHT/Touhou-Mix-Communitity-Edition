@@ -162,10 +162,6 @@ func _process(_delta: float) -> void:
 	if not is_playing or backend == null:
 		return
 
-	# TEMP DIAG: 缓存时钟 vs 实时时钟是否发散（诊断后移除）
-	if Engine.get_process_frames() % 60 == 0:
-		GLogger.info("DIAG clock: cached=%.1f live=%.1f" % [position_ms, backend.get_position_ms()], "MidiPlaybackManager")
-
 	# MeltySynth 后端：使用毫秒位置
 	position_ms = backend.get_position_ms()
 	# 将毫秒转为tick（使用BPM时间线）
