@@ -807,14 +807,52 @@ func _add_to_bucket(note: FlowNote) -> void:
 
 ## 预构建该音符合成贴图（spawn/换色时调用；成本落在主线程生成阶段而非 _draw）
 func _prewarm_composite(note: FlowNote) -> void:
+	_prewarm_composite_color(note.type, note.cached_color)
+
+## 预构建 (type, color) 组合的合成贴图（Long 含 head/tail/body 三部分）
+func _prewarm_composite_color(type_key: int, color: Color) -> void:
 	if _note_drawer == null:
 		return
-	if note.type == FlowNote.NoteType.Long:
-		_note_drawer.get_composite(FlowNote.NoteType.Long, note.cached_color, "head")
-		_note_drawer.get_composite(FlowNote.NoteType.Long, note.cached_color, "tail")
-		_note_drawer.get_composite(FlowNote.NoteType.Long, note.cached_color, "body")
+	if type_key == FlowNote.NoteType.Long:
+		_note_drawer.get_composite(FlowNote.NoteType.Long, color, "head")
+		_note_drawer.get_composite(FlowNote.NoteType.Long, color, "tail")
+		_note_drawer.get_composite(FlowNote.NoteType.Long, color, "body")
 	else:
-		_note_drawer.get_composite(note.type, note.cached_color)
+		_note_drawer.get_composite(type_key, color)
+
+## 全量预热：把本局可能出现的全部 (类型, 颜色) 组合的合成贴图在开局前构建好，
+## 避免游戏开始后前几个音符 spawn 时现合成 + GPU 上传造成帧尖峰（脚本耗时低但渲染侧卡帧）。
+## 颜色来源：
+##   非键盘模式 = _resolved_colors（short/instant/long 三色，含随机色，每局不同需重预热）；
+##   键盘模式 + 交替轨道色 = 全部交替色 × 全部类型（任意轨道色都可能出现在任意音符上）。
+## 必须在 init_flow_area()（颜色已 resolve）之后、音符 spawn（is_pause=false）之前调用。
+func prewarm_all_composites() -> void:
+	if _note_drawer == null or parent_node == null:
+		return
+	var alt_colors: Array = []
+	if parent_node.keyboard_mode and parent_node.keyboard_alt_color \
+			and not parent_node.keyboard_alt_colors.is_empty():
+		alt_colors = parent_node.keyboard_alt_colors
+	if not alt_colors.is_empty():
+		for type_key in _TYPE_ORDER:
+			for cl in alt_colors:
+				_prewarm_composite_color(type_key, cl)
+	else:
+		_prewarm_composite_color(FlowNote.NoteType.Block, _get_resolved_color_for_type(FlowNote.NoteType.Block))
+		_prewarm_composite_color(FlowNote.NoteType.Slide, _get_resolved_color_for_type(FlowNote.NoteType.Slide))
+		_prewarm_composite_color(FlowNote.NoteType.Long, _get_resolved_color_for_type(FlowNote.NoteType.Long))
+
+## 全量预热：把本局判定特效引用的粒子包精灵图在开局前加载（ParticleMGR 模板/纹理缓存），
+## 首次判定 spawn 粒子时的同步 load() + GPU 上传前移到面板遮罩期。
+## spark_presets/spark_emitters 已由 init_flow_area → _reload_spark_config 解析，本方法直接取用。
+func prewarm_spark_packs() -> void:
+	for judge in _JUDGE_TYPES:
+		var preset: String = spark_presets.get(judge, "")
+		var emitter: String = spark_emitters.get(judge, "")
+		if not preset.is_empty():
+			ParticleMGR.get_layer_template(preset, ParticleMGR.ROLE_BASE)
+		if not emitter.is_empty():
+			ParticleMGR.get_layer_template(emitter, ParticleMGR.ROLE_EMITTER)
 
 ## 换色：从旧颜色桶移除并加入新颜色桶（refresh_note_colors 用）
 func _move_note_to_bucket(note: FlowNote, new_color: Color) -> void:
@@ -993,6 +1031,9 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	}
 	_gestures[touch_id] = g
 
+	# 【TEMP DIAG】首触卡顿定位（验证后移除）
+	var _diag_press_t0 := Time.get_ticks_usec()
+
 	var estimated_lane := _estimate_lane_from_x(pos.x)
 	var candidate_notes: Array = _get_notes_near_lane(estimated_lane)
 	candidate_notes = candidate_notes.filter(func(n):
@@ -1026,6 +1067,14 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	if not only_perfect_slides:
 		for lane in g["lanes"]:
 			_judge_slides_entering_lane(lane, pos, judge_time_ms)
+
+	# 【TEMP DIAG】首触卡顿定位（验证后移除）
+	_diag_press_count += 1
+	if _diag_press_count <= 5 and note != null:
+		GLogger.info("[TapDiag] press#%d lane=%d 处理耗时 %.2fms" % [_diag_press_count, note.lane, (Time.get_ticks_usec() - _diag_press_t0) / 1000.0], "FlowArea")
+
+## 【TEMP DIAG】首触卡顿定位（验证后移除）
+var _diag_press_count: int = 0
 
 # 处理触摸松开 释放长条音符
 func _handle_release(touch_id: int, input_time_ms: float = -1.0, released_lane: int = -1) -> void:

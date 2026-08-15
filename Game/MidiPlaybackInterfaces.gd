@@ -91,6 +91,14 @@ func set_track_channel_mute(_track_index: int, _channel: int, _muted: bool) -> v
 func trigger_note_on(_pitch: int, _velocity: int, _channel: int, _track_index: int = 0) -> void:
 	push_error("trigger_note_on not implemented")
 
+## 批量触发Note On（演奏模式一次判定单次跨语言调用）
+func trigger_notes_on(_events: Array) -> void:
+	push_error("trigger_notes_on not implemented")
+
+## 预热手动音符触发路径（无声音；可选传入 (track,channel) 乐器表）
+func warmup_manual_path(_track_channel_instruments: Dictionary = {}) -> void:
+	push_error("warmup_manual_path not implemented")
+
 ## 手动触发Note Off
 func trigger_note_off(_pitch: int, _velocity: int, _channel: int, _track_index: int = 0) -> void:
 	push_error("trigger_note_off not implemented")

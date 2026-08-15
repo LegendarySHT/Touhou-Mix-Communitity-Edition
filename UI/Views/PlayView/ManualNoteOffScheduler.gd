@@ -23,36 +23,62 @@ func trigger_from_sequence(game_seq: Object) -> void:
 	if not game_seq or game_seq.original_notes.is_empty():
 		return
 
+	# 【TEMP DIAG】首触卡顿定位（验证后移除）
+	var _diag_t0 := Time.get_ticks_usec()
+
 	var midi_player = MidiPlaybackManager.instance.midi_player
 	if not midi_player:
 		return
 
-	# 触发原始notes中的所有MIDI音符
+	# 收集 original notes 的触发数据 + 登记 NoteOff 调度
+	var events: Array = []
 	for note in game_seq.original_notes:
 		if note is MidiParser.NoteEvent:
 			var track_idx := int(note.track_index)
 
-			# 触发note_on（即时，保证点击反馈）
-			if midi_player.has_method("trigger_note_on"):
-				midi_player.call("trigger_note_on", note.pitch, note.velocity, note.channel, track_idx)
-			elif midi_player.has_method("note_on"):
-				midi_player.note_on(note.channel, note.pitch, note.velocity)
+			events.append({
+				"pitch": int(note.pitch),
+				"velocity": int(note.velocity),
+				"channel": int(note.channel),
+				"track_index": track_idx,
+			})
 
 			# NoteOff 锚定到音符的绝对结束时刻（原曲 NoteOff 位于 note_start + duration）。
 			# 乐器音色由 sustain/release 包络决定，只有在该绝对时刻发出 NoteOff，
 			# 音色才与原曲一致；按"点击后 duration_ms"调度会把提前点击的音符提前掐断。
 			var abs_end_ms := float(game_seq.start_time_ms + game_seq.duration_ms)
-			var gen := _bump_note_off_gen(track_idx, note.channel, note.pitch)
+			var gen := _bump_note_off_gen(track_idx, int(note.channel), int(note.pitch))
 			_pending_manual_offs.append({
 				"abs_end_ms": abs_end_ms,
 				"track": track_idx,
-				"channel": note.channel,
-				"pitch": note.pitch,
-				"velocity": note.velocity,
+				"channel": int(note.channel),
+				"pitch": int(note.pitch),
+				"velocity": int(note.velocity),
 				"gen": gen,
 			})
 			if abs_end_ms < _pending_manual_offs_min_end:
 				_pending_manual_offs_min_end = abs_end_ms
+
+	if events.is_empty():
+		return
+
+	# 批量触发（单次跨语言调用，替代逐音符 call 的 N 次开销；旧后端回退逐音符）
+	if midi_player.has_method("trigger_notes_on"):
+		midi_player.trigger_notes_on(events)
+	else:
+		for entry in events:
+			if midi_player.has_method("trigger_note_on"):
+				midi_player.call("trigger_note_on", entry["pitch"], entry["velocity"], entry["channel"], entry["track_index"])
+			elif midi_player.has_method("note_on"):
+				midi_player.note_on(entry["channel"], entry["pitch"], entry["velocity"])
+
+	# 【TEMP DIAG】首触卡顿定位（验证后移除）
+	_diag_trigger_count += 1
+	if _diag_trigger_count <= 5:
+		GLogger.info("[TapDiag] trigger_from_sequence#%d notes=%d 耗时 %.2fms" % [_diag_trigger_count, events.size(), (Time.get_ticks_usec() - _diag_t0) / 1000.0], "ManualNoteOffScheduler")
+
+## 【TEMP DIAG】首触卡顿定位（验证后移除）
+var _diag_trigger_count: int = 0
 
 
 ## 每帧由 FlowArea 调用，按播放位置触发到期的手动 NoteOff

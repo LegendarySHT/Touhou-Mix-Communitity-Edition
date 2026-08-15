@@ -440,6 +440,8 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 读取“播放准备动画”设置（0=关闭, 1=开启）
 	var play_ready_animation: bool = ConfigManager.instance.get_int("Playback", "play_ready_animation", 1) == 1
 	GLogger.info("Play ready animation: %s" % ("ON" if play_ready_animation else "OFF"), "PlayView")
+	# 歌曲信息面板开始显示的时刻（遮罩期起点，用于动态计算剩余等待时长）
+	var panel_start_ms := Time.get_ticks_msec()
 	# 初始化显示；开启准备动画时显示歌曲信息面板
 	_init_display(play_ready_animation)
 
@@ -514,11 +516,23 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 歌曲信息面板显示期间预启动人声：加载 + play + 立即暂停
 	# 此处主线程可阻塞（有歌曲信息面板遮罩），消除 is_pause=false 时
 	# resume() 触发 start_vocal_playback 的同步加载/解码卡顿
+	# 同时预热演奏模式手动音符触发路径（首次点击的一次性 JIT/通道分配成本移到开局前）
+	playback_mgr.warmup_manual_path()
+	# 【预热】音符预合成贴图：覆盖本局全部 (类型,颜色) 组合（含随机色/键盘交替色），
+	# 使逐像素合成 + GPU 上传发生在面板遮罩期，避免游戏开始后前几个音符 spawn 帧尖峰
+	var _prewarm_t0 := Time.get_ticks_usec()
+	flow_area.prewarm_all_composites()
+	# 【预热】粒子精灵图：首次判定 spawn 粒子时的同步 load() + GPU 上传前移到面板遮罩期
+	flow_area.prewarm_spark_packs()
+	GLogger.info("Prewarm done: composites+sparks in %.2fms" % [(Time.get_ticks_usec() - _prewarm_t0) / 1000.0], "PlayView")
 	await playback_mgr.prepare_vocal_playback()
 
 	if play_ready_animation:
-		# 歌曲信息面板已显示足够时间（所有加载时会造成卡顿的部分已处理完毕），现在淡出
-		await get_tree().create_timer(1).timeout
+		# 面板总显示时长动态补偿：固定等 1s 改为 3s - 遮罩期内耗时操作已用时，
+		# 操作耗时 ≥3s 则不再额外等待（遮罩至少已覆盖 0.2s 淡入，不会闪现即没）
+		var remain_ms := 3000 - (Time.get_ticks_msec() - panel_start_ms)
+		if remain_ms > 0:
+			await get_tree().create_timer(remain_ms / 1000.0).timeout
 		await AniMGR.animate_fade_out(center_bg, 1).finished
 
 	# 记录游玩开始时间（用于统计游玩时长）

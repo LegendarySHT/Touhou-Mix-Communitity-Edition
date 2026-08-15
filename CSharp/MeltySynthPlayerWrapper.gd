@@ -129,6 +129,18 @@ func trigger_note_on(pitch: int, velocity: int, channel: int, track_index: int =
 		return
 	meltysynth_player.call("trigger_note_on", pitch, velocity, channel, track_index)
 
+## 批量触发按键（Note On，演奏模式一次判定单次跨语言调用）
+func trigger_notes_on(events: Array) -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("trigger_notes_on", events)
+
+## 预热手动音符触发路径（无声音，消除首次点击的一次性 JIT/通道分配成本）
+func warmup_manual_path(track_channel_instruments: Dictionary = {}) -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("warmup_manual_path", track_channel_instruments)
+
 ## 释放按键（Note Off）
 func trigger_note_off(pitch: int, velocity: int, channel: int, track_index: int = 0) -> void:
 	if meltysynth_player == null:

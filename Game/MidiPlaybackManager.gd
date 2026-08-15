@@ -873,6 +873,15 @@ func _preload_soundfont_to_backend() -> void:
 func ensure_soundfont_loaded() -> void:
 	_preload_soundfont_to_backend()
 
+## 预热手动音符触发路径（演奏模式首次点击的一次性 JIT/通道分配成本移到开局准备期）
+## 无声音、无副作用；后端不支持时静默跳过
+func warmup_manual_path() -> void:
+	var backend = _get_active_backend()
+	if backend == null or not backend.has_method("warmup_manual_path"):
+		return
+	backend.warmup_manual_path(cached_track_channel_instruments)
+	GLogger.info("Manual trigger path warmed up (%d tracks)" % cached_track_channel_instruments.size(), "MidiPlaybackManager")
+
 ## 设置音源文件
 func set_soundfont(soundfont_name: String) -> bool:
 	"""

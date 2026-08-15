@@ -1129,14 +1129,20 @@ public partial class MeltySynthPlayer : Node
 		trigger_note_on(pitch, velocity, channel, 0);
 	}
 
+	// 【TEMP DIAG】首触卡顿定位：前 5 次 trigger_note_on 耗时（验证后移除）
+	private int _diag_trigger_count = 0;
+
 	public void trigger_note_on(int pitch, int velocity, int channel, int trackIndex)
 	{
+		// 【TEMP DIAG】首触卡顿定位（验证后移除）
+		var diagSw = System.Diagnostics.Stopwatch.StartNew();
 		var virtualId = trackIndex * 16 + channel;
 		var volume = _virtualChannelVolumes.TryGetValue(virtualId, out var vol) ? vol : 1.0f;
 		var scaledVelocity = Math.Clamp((int)Math.Round(velocity * volume), 0, 127);
 
 		if (_mutedVirtualChannels.ContainsKey(virtualId) || scaledVelocity == 0)
 		{
+			diagSw.Stop();
 			return;
 		}
 
@@ -1156,6 +1162,96 @@ public partial class MeltySynthPlayer : Node
 			// 回退路径：音频输出未就绪，直接调用合成器
 			var synth = (_useSeparateSynthForManual && _manualSynth != null) ? _manualSynth : _synth;
 			synth?.NoteOn(virtualId, pitch, scaledVelocity);
+		}
+
+		diagSw.Stop();
+		if (_diag_trigger_count < 5)
+		{
+			_diag_trigger_count++;
+			GD.Print($"[TapDiag] trigger_note_on#{_diag_trigger_count} pitch={pitch} vel={scaledVelocity} ch={virtualId} elapsed={diagSw.Elapsed.TotalMilliseconds:F3}ms");
+		}
+	}
+
+	/// <summary>
+	/// 批量触发手动音符（演奏模式一次判定只做一次跨语言调用，避免逐 original note 的 GDScript→C# 开销）。
+	/// events: Array[Dictionary]，每项 {pitch:int, velocity:int, channel:int, track_index:int}。
+	/// 语义与 trigger_note_on 完全一致（音量/静音过滤、通道状态应用、无锁入队）。
+	/// </summary>
+	public void trigger_notes_on(Godot.Collections.Array events)
+	{
+		foreach (var ev in events)
+		{
+			if (ev.VariantType != Variant.Type.Dictionary)
+			{
+				continue;
+			}
+			var dict = ev.AsGodotDictionary();
+			var pitch = dict.TryGetValue("pitch", out var p) && p.VariantType == Variant.Type.Int ? (int)p.AsInt64() : 0;
+			var velocity = dict.TryGetValue("velocity", out var v) && v.VariantType == Variant.Type.Int ? (int)v.AsInt64() : 0;
+			var channel = dict.TryGetValue("channel", out var c) && c.VariantType == Variant.Type.Int ? (int)c.AsInt64() : 0;
+			var track = dict.TryGetValue("track_index", out var t) && t.VariantType == Variant.Type.Int ? (int)t.AsInt64() : 0;
+			trigger_note_on(pitch, velocity, channel, track);
+		}
+	}
+
+	/// <summary>
+	/// 预热手动音符触发路径（无声音、无副作用）。
+	/// 对每个 (track, channel) 在独立手动合成器上预建通道并走一遍 ProcessMidiMessage + NoteOn(velocity=1)+NoteOff：
+	/// - 预热 JIT：Synthesizer.NoteOn/NoteOff、Voice.Start、preset 查找、通道分配
+	/// - 不写任何共享状态（_virtualChannelInstruments/镜像字典等），不触碰音频输出，
+	///   手动合成器仅在 _manualActiveVoiceCount > 0（经 EnqueueNoteOn 入队）时才被音频回调渲染，直接调用必然静音。
+	/// 由 PlayView 在歌曲信息面板展示期（主线程本就可阻塞）调用，把首次点击的一次性成本移到开局前。
+	/// trackChannelInstruments: {track_index: {channel: {bank:int, program:int}}}（可选，用于预建歌曲实际用到的通道）
+	/// </summary>
+	public void warmup_manual_path(Godot.Collections.Dictionary trackChannelInstruments)
+	{
+		// 单独合成器模式才预热：若手动与自动共用同一合成器，直接 NoteOn 会在自动合成器上
+		// 产生会被音频回调渲染的残余 voice（即使立即 NoteOff 也可能留下短暂声音）
+		if (_manualSynth == null || _synth == null || _manualSynth == _synth)
+		{
+			return;
+		}
+
+		if (trackChannelInstruments.Count == 0)
+		{
+			// 无乐器表：预热默认钢琴通道（JIT + 通道分配，兜底）
+			_manualSynth.NoteOn(0, 60, 1);
+			_manualSynth.NoteOff(0, 60);
+			return;
+		}
+
+		foreach (var trackKey in trackChannelInstruments.Keys)
+		{
+			if (!TryConvertToInt(trackKey, out var track))
+			{
+				continue;
+			}
+			var channelsVariant = (Variant)trackChannelInstruments[trackKey];
+			if (channelsVariant.VariantType != Variant.Type.Dictionary)
+			{
+				continue;
+			}
+			var channels = channelsVariant.AsGodotDictionary();
+			foreach (var chKey in channels.Keys)
+			{
+				if (!TryConvertToInt(chKey, out var channel))
+				{
+					continue;
+				}
+				var infoVariant = (Variant)channels[chKey];
+				if (infoVariant.VariantType != Variant.Type.Dictionary)
+				{
+					continue;
+				}
+				var info = infoVariant.AsGodotDictionary();
+				var bank = info.TryGetValue("bank", out var b) && b.VariantType == Variant.Type.Int ? (int)b.AsInt64() : 0;
+				var program = info.TryGetValue("program", out var pr) && pr.VariantType == Variant.Type.Int ? (int)pr.AsInt64() : 0;
+				var virtualId = track * 16 + channel;
+				_manualSynth.ProcessMidiMessage(virtualId, 0xB0, 0x00, bank);
+				_manualSynth.ProcessMidiMessage(virtualId, 0xC0, program, 0);
+				_manualSynth.NoteOn(virtualId, 60, 1);
+				_manualSynth.NoteOff(virtualId, 60);
+			}
 		}
 	}
 
