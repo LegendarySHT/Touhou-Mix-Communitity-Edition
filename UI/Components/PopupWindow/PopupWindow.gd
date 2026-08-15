@@ -30,6 +30,26 @@ var _confirm: bool = false
 ## ParticleAdjust 等子脚本不需要此常量，仅在 PopupWindow 内使用；show_particle_adjust 用它等待动画完成
 const _POPUP_ANIM_DURATION: float = 0.4
 
+func _pop_up_window(page: int) -> void:
+	_tab_c.current_tab = page
+	match page:
+		1:
+			size = Vector2(850, 600)
+		2:
+			size = Vector2(1500, 700)
+		3:
+			size = Vector2(1500, 700)
+		4:
+			size = Vector2(1500, 700)
+		5:
+			size = Vector2(1500, 800)
+		6:
+			size = Vector2(1300, 950)
+		_:
+			size = Vector2(850, 600)
+	await get_tree().create_timer(0.1).timeout
+	popup()
+
 func _ready() -> void:
 	instance = self
 	# 默认窗口按钮
@@ -114,23 +134,19 @@ func get_selected() -> String:
 
 # 用默认窗口显示消息，要获取确认状态需await
 func show_message(message: String, cancel_visible: bool = false, options: Array = []) -> bool:
-	_tab_c.current_tab = 0
-	size = Vector2(850, 600)
 	_message.text = message
 	_cancel_btn.modulate.a = 0 if not cancel_visible else 1
 	_set_option(options)
-	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
-
+	
+	_pop_up_window(0)
 	await window_close
 	return _confirm
 
 # 弹出延迟校准窗口
 func show_delay_adjust(current_delay: int = 0) -> int:
-	_tab_c.current_tab = 1
-	size = Vector2(850, 600)
 	_delay_adjust.start_calibration(current_delay)
-	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
-
+	
+	_pop_up_window(1)
 	await window_close
 	# 兜底停止（popup_hide 已会调用，此处再保险一次）
 	_delay_adjust.stop_calibration()
@@ -138,10 +154,9 @@ func show_delay_adjust(current_delay: int = 0) -> int:
 
 # 弹出皮肤修改窗口
 func show_note_skin_adjust() -> String:
-	_tab_c.current_tab = 2
-	size = Vector2(1500, 700)
 	_note_skin_adjust.init_adjust()
-	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
+	
+	_pop_up_window(2)
 	await window_close
 	# 关闭时持久化皮肤配置（颜色/光效/长条模式等）并触发 FlowArea 重载
 	_note_skin_adjust.save_config()
@@ -151,11 +166,9 @@ func show_note_skin_adjust() -> String:
 # judge_type: Perfect / Great / Good / Bad，决定编辑哪个判定类型的特效
 # 返回 Dictionary 字段见 ParticleAdjust.get_result
 func show_particle_adjust(judge_type: String = "Perfect") -> Dictionary:
-	_tab_c.current_tab = 3
-	size = Vector2(1500, 700)
 	_particle_adjust.init_adjust(judge_type)
-	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
-	# 等待窗口进入动画完成，避免 ParticlePreview 在 scale 0→1 过程中粒子位置错位
+	
+	_pop_up_window(3)
 	await get_tree().create_timer(_POPUP_ANIM_DURATION).timeout
 	_particle_adjust.start_preview()
 	await window_close
@@ -167,10 +180,9 @@ func show_particle_adjust(judge_type: String = "Perfect") -> Dictionary:
 ## allow_cover: 是否允许选择"封面"类型（仅 play 视图为 true）
 ## 返回 Dictionary 字段见 ImageAdjust.get_result
 func show_image_adjust(view_name: String = "", allow_cover: bool = false) -> Dictionary:
-	_tab_c.current_tab = 4
-	size = Vector2(1500, 700)
 	_image_adjust.init_adjust(view_name, allow_cover)
-	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
+	
+	_pop_up_window(4)
 	await window_close
 	return _image_adjust.get_result()
 
@@ -187,15 +199,14 @@ func show_kb_mode_adjust(current_keys: String = "", current_display_names: Strin
 		current_kb_mode: Variant = 1, current_alt_color: Variant = 1, current_alt_count: Variant = 2,
 		current_alt_colors: String = "#ff0000,#0000ff", current_gap: Variant = 0,
 		current_lane_sep: Variant = 0) -> Dictionary:
-	_tab_c.current_tab = 5
-	size = Vector2(1500, 1000)
 	# 优先使用传入的 pending 值；为空时回退到配置文件（兼容直接调用）
 	var keys_str := current_keys if not current_keys.is_empty() else \
 		ConfigManager.instance.get_string("Lane", "keyboard_mode_keys", "A,S,D,F,J,K,L,;")
 	var names_str := current_display_names if not current_display_names.is_empty() else \
 		ConfigManager.instance.get_string("Lane", "keyboard_mode_display_names", "")
 	_kb_mode_adjust.init_adjust(keys_str, names_str, current_kb_mode, current_alt_color, current_alt_count, current_alt_colors, current_gap, current_lane_sep)
-	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
+	
+	_pop_up_window(5)
 	await window_close
 	# 兜底取消录入状态（popup_hide 已调用，此处再保险一次）
 	_kb_mode_adjust._cancel_recording()
@@ -205,10 +216,7 @@ func show_kb_mode_adjust(current_keys: String = "", current_display_names: Strin
 ## 关闭时由 FallingAdjust 内部 save_config 即时写入 ConfigManager 并触发 config_changed
 ## 返回 Dictionary 字段见 FallingAdjust.get_result（供 SettingList 同步 _pending_config）
 func show_falling_adjust() -> Dictionary:
-	_tab_c.current_tab = 6
-	size = Vector2(1300, 950)
-	_falling_adjust.init_adjust()
-	popup()  # 内置 popup() → 触发 about_to_popup → 播放进入动画
+	_pop_up_window(6)
 	await window_close
 	# 兜底停止预览（popup_hide 已调用，此处再保险一次）
 	_falling_adjust.stop_preview()
