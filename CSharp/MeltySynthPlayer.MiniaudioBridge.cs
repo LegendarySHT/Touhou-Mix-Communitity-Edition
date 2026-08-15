@@ -62,6 +62,7 @@ public partial class MeltySynthPlayer
 			private MiniaudioNative.Backend _backend = MiniaudioNative.Backend.Default;
 			private bool _wasapiExclusive = false;
 			private bool _aaudioExclusive = false;
+			private bool _useDeviceNativeSampleRate = false;  // 方向 1: sampleRate=0 请求设备原生率
 
 			private bool _initialized = false;
 			private bool _playing = false;
@@ -75,12 +76,15 @@ public partial class MeltySynthPlayer
 			// ---- 延迟查询 ----
 			private uint _actualPeriod = 0;       // 设备实际 period (TryCreateDevice 后填充)
 			private uint _actualPeriodCount = 0;  // 设备实际 period 数量
+			private uint _actualSampleRate = 0;   // 设备实际采样率 (TryCreateDevice 后填充)
 			private bool _nativeGetLatencyAvailable = true;  // 旧 DLL 无此导出时设为 false
 
 			/// <summary>设备实际 period (帧数), 供外部诊断用</summary>
 			internal uint ActualPeriod => _actualPeriod;
 			/// <summary>设备实际 period 数量, 供外部诊断用</summary>
 			internal uint ActualPeriodCount => _actualPeriodCount;
+			/// <summary>设备实际采样率 (Hz), 0 表示查询失败/未初始化</summary>
+			internal uint ActualSampleRate => _actualSampleRate;
 
 			// ---- 线程同步 ----
 			internal readonly object _synthLock = new object();
@@ -158,6 +162,13 @@ public partial class MeltySynthPlayer
 			public void SetAAudioExclusive(bool exclusive)
 			{
 				_aaudioExclusive = exclusive;
+			}
+
+			/// <summary>启用设备原生采样率模式 (sampleRate=0), 必须在 Initialize 之前调用</summary>
+			public void UseDeviceNativeSampleRate(bool useNative)
+			{
+				_useDeviceNativeSampleRate = useNative;
+				GD.Print($"[MeltySynthPlayer][miniaudio] Device native sample rate mode: {(useNative ? "enabled (sampleRate=0)" : "disabled")}");
 			}
 
 			public void SetSynthesizers(MidiFileSequencer sequencer, Synthesizer autoSynth, Synthesizer manualSynth, bool useSeparateSynth)
@@ -262,7 +273,9 @@ public partial class MeltySynthPlayer
 			private bool TryCreateDevice()
 			{
 				var cfg = MiniaudioNative.ConfigInitDefault();
-				cfg.SampleRate = (uint)_sampleRate;
+				// 【方向 1】Android 使用设备原生采样率：sampleRate=0 时 AAudio 不指定采样率，
+				// 由系统选择原生率（通常 48000Hz），避免显式请求 44100 触发 SRC/高延迟路径。
+				cfg.SampleRate = _useDeviceNativeSampleRate ? 0 : (uint)_sampleRate;
 				cfg.PeriodSizeInFrames = _periodSizeInFrames;
 				cfg.PeriodCount = _periodCount;
 				cfg.Channels = 2;
@@ -330,7 +343,37 @@ public partial class MeltySynthPlayer
 					}
 				}
 
-				// 查询实际参数 (驱动可能调整请求值)
+				// 【方向 1】优先回读设备实际采样率：
+				// 原生模式下请求 sampleRate=0，AAudio 会使用设备原生率（通常 48000Hz）。
+				// 延迟/外推换算必须用真实率，合成器也须由上层按此重建，否则音高/时长/延迟估算全错。
+				var qSr = MiniaudioNative.ma_bridge_get_sample_rate(_bridgeHandle, out uint actualSr);
+				if (qSr == MiniaudioNative.Result.Ok)
+				{
+					_actualSampleRate = actualSr;
+					GD.Print($"[MeltySynthPlayer][miniaudio] Actual sample rate: {actualSr}Hz");
+					if (_useDeviceNativeSampleRate && actualSr > 0)
+					{
+						if (actualSr != (uint)_sampleRate)
+						{
+							GD.Print($"[MeltySynthPlayer][miniaudio] Device native rate {actualSr}Hz differs from requested {_sampleRate}Hz; using native rate");
+						}
+						_sampleRate = (int)actualSr;
+					}
+					else if (_wasapiExclusive && actualSr != (uint)_sampleRate)
+					{
+						// 独占模式: 设备使用原生采样率 (可能是 48000Hz), 而合成器用 _sampleRate (44100Hz).
+						// 如果两者不匹配, 会导致音高偏高/偏低.
+						GD.PushWarning($"[MeltySynthPlayer][miniaudio] Sample rate mismatch in exclusive mode: " +
+							$"synth={_sampleRate}Hz, device={actualSr}Hz. " +
+							$"Pitch will be off. Need to recreate synthesizer at device sample rate.");
+					}
+				}
+				else if (_useDeviceNativeSampleRate)
+				{
+					GD.PushWarning($"[MeltySynthPlayer][miniaudio] Failed to query actual sample rate ({qSr}); synthesizer may not match device");
+				}
+
+				// 查询实际参数 (驱动可能调整请求值); 此时 _sampleRate 已更新为设备真实率
 				var qResult = MiniaudioNative.ma_bridge_get_period_size(_bridgeHandle, out uint actualPeriod, out uint actualCount);
 				if (qResult == MiniaudioNative.Result.Ok)
 				{
@@ -339,21 +382,6 @@ public partial class MeltySynthPlayer
 					GD.Print($"[MeltySynthPlayer][miniaudio] Actual period: {actualPeriod}×{actualCount} " +
 						$"(≈{actualPeriod * actualCount / (double)_sampleRate * 1000:F1}ms total, " +
 						$"≈{actualPeriod * (actualCount - 0.5) / _sampleRate * 1000:F1}ms avg latency)");
-				}
-
-				var qSr = MiniaudioNative.ma_bridge_get_sample_rate(_bridgeHandle, out uint actualSr);
-				if (qSr == MiniaudioNative.Result.Ok)
-				{
-					GD.Print($"[MeltySynthPlayer][miniaudio] Actual sample rate: {actualSr}Hz");
-					// 独占模式: 设备使用原生采样率 (可能是 48000Hz), 而合成器用 _sampleRate (44100Hz).
-					// 如果两者不匹配, 会导致音高偏高/偏低.
-					// 此处记录实际采样率, 供上层决定是否重建合成器.
-					if (_wasapiExclusive && actualSr != (uint)_sampleRate)
-					{
-						GD.PushWarning($"[MeltySynthPlayer][miniaudio] Sample rate mismatch in exclusive mode: " +
-							$"synth={_sampleRate}Hz, device={actualSr}Hz. " +
-							$"Pitch will be off. Need to recreate synthesizer at device sample rate.");
-					}
 				}
 
 				IntPtr namePtr = MiniaudioNative.ma_bridge_get_backend_name(_bridgeHandle);

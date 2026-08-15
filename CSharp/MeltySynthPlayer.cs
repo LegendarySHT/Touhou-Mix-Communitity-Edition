@@ -117,6 +117,9 @@ public partial class MeltySynthPlayer : Node
 
 	private void EnsureAudioInitialized()
 	{
+		if (_audioOutput != null)
+			return;
+
 		// WASAPI 采样率策略 (借鉴 TouhouMix Unity 项目技巧, 仅 Windows 适用):
 		// Realtek 驱动限制 WASAPI 共享模式 min period=480 帧.
 		// - 480 帧 @ 48000Hz = 10ms (不达标)
@@ -130,7 +133,8 @@ public partial class MeltySynthPlayer : Node
 		// 无需高采样率技巧. 强制 96000Hz 会导致:
 		//   - Android: AAudio 后端初始化失败 (noAutoConvertSRC 是 WASAPI 专用)
 		//   - iOS: 类似不兼容
-		// 因此非 Windows 平台直接使用 AudioServer.GetMixRate() (通常 48000Hz).
+		// 【方向 1】Android 改为请求设备原生采样率 (cfg.SampleRate=0, 见下方 useDeviceNativeRate)，
+		// 不再跟随 AudioServer.GetMixRate()；iOS 仍使用系统 mix rate。
 		//
 		// 环境变量 MINIAUDIO_SAMPLE_RATE 可覆盖默认采样率 (方便测试).
 		// 独占模式必须用设备原生采样率 (通常 48000Hz), 不能强制 96000Hz.
@@ -138,15 +142,25 @@ public partial class MeltySynthPlayer : Node
 		_sampleRate = (int)AudioServer.GetMixRate();  // 重新读取 (可能 44100)
 		int targetRate = _sampleRate;  // 默认使用系统采样率
 		// 仅 Windows 需要高采样率技巧突破 WASAPI period 限制
-		if (OS.GetName() == "Windows")
+		var envRate = System.Environment.GetEnvironmentVariable("MINIAUDIO_SAMPLE_RATE");
+		int envRateVal = 0;
+		if (!string.IsNullOrEmpty(envRate) && int.TryParse(envRate, out envRateVal) && envRateVal > 0)
+		{
+			targetRate = envRateVal;
+		}
+
+		// 【方向 1】Android 默认用设备原生采样率初始化 miniaudio：
+		// 显式请求 AudioServer.GetMixRate()（默认 44100）会让 AAudio 走系统 SRC/非原生路径，
+		// Oboe 官方实测该路径往返延迟最坏可达 ~160ms；sampleRate=0 则由系统选择原生率（通常 48000）。
+		// 设置 MINIAUDIO_NATIVE_SAMPLE_RATE=1 可在其他平台强制开启（用于验证重建路径）。
+		bool useDeviceNativeRate = envRateVal <= 0 &&
+			(OS.GetName() == "Android" ||
+			 System.Environment.GetEnvironmentVariable("MINIAUDIO_NATIVE_SAMPLE_RATE") == "1");
+
+		if (OS.GetName() == "Windows" && !useDeviceNativeRate)
 		{
 			// 独占模式必须用设备原生采样率 (通常 48000Hz), 共享模式用 96000Hz 突破 period 限制
 			targetRate = (System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1") ? 48000 : 96000;
-		}
-		var envRate = System.Environment.GetEnvironmentVariable("MINIAUDIO_SAMPLE_RATE");
-		if (!string.IsNullOrEmpty(envRate) && int.TryParse(envRate, out int envRateVal) && envRateVal > 0)
-		{
-			targetRate = envRateVal;
 		}
 		if (_sampleRate != targetRate)
 		{
@@ -159,16 +173,15 @@ public partial class MeltySynthPlayer : Node
 		// 例: 合成器 44100Hz + 设备 96000Hz → 音高偏高 2.18x (尖锐声) + 序列器加速
 		//     → 音符触发频率翻倍 → CPU 过载 → 大量 underrun.
 		// _midiFile 对象独立于合成器, 重建后 play() 会用新 sequencer 重新加载它.
-		if (_sampleRate != oldSampleRate && _autoSynth != null && !string.IsNullOrEmpty(_soundfont))
+		// 原生采样率模式下跳过此处的提前重建：设备实际率在 Initialize 之后才可知，
+		// 统一由"设备初始化后同步"块重建，避免先用旧率重建一次。
+		if (_sampleRate != oldSampleRate && !useDeviceNativeRate && _autoSynth != null && !string.IsNullOrEmpty(_soundfont))
 		{
 			GD.Print($"[MeltySynthPlayer] Sample rate changed {oldSampleRate}→{_sampleRate}, rebuilding synthesizers");
 			LoadSoundfont(_soundfont);
 		}
 
-		if (_audioOutput != null)
-			return;
-
-		var bridge = CreateAudioOutputBridge();
+		var bridge = CreateAudioOutputBridge(useDeviceNativeRate);
 
 		// 【关键】在 Initialize() 创建音频流之前先设置合成器引用
 		// 否则 Initialize() 一触发 PCM 回调，合成器还来不及设置就会报 null 错误
@@ -184,11 +197,25 @@ public partial class MeltySynthPlayer : Node
 			return;
 		}
 
+		// 【方向 1】设备已按原生采样率初始化：回读实际率，并与合成器/序列器对齐。
+		if (useDeviceNativeRate && bridge is MiniaudioAudioOutputBridge maBridge && maBridge.ActualSampleRate > 0 && maBridge.ActualSampleRate != (uint)_sampleRate)
+		{
+			GD.Print($"[MeltySynthPlayer] Device native sample rate: {maBridge.ActualSampleRate}Hz (synth was {_sampleRate}Hz), rebuilding synthesizers");
+			_sampleRate = (int)maBridge.ActualSampleRate;
+			if (_autoSynth != null && !string.IsNullOrEmpty(_soundfont))
+			{
+				LoadSoundfont(_soundfont);
+			}
+			// LoadSoundfont 内部绑定合成器时 _audioOutput 尚未赋值，这里须显式重新绑定到新桥
+			maBridge.SetSynthesizers(_sequencer, _autoSynth, _manualSynth, _useSeparateSynthForManual);
+			maBridge.SetVolume(_volumeLinear);
+		}
+
 		_audioOutput = bridge;
 		GD.Print("[MeltySynthPlayer] Audio bridge initialized with synthesizers preset");
 	}
 
-	private IAudioOutputBridge CreateAudioOutputBridge()
+	private IAudioOutputBridge CreateAudioOutputBridge(bool useDeviceNativeRate)
 	{
 		// 使用 miniaudio 后端: 优先低延迟, RingBuffer 容量 ×3
 		var maBridge = new MiniaudioAudioOutputBridge(0);
@@ -224,6 +251,11 @@ public partial class MeltySynthPlayer : Node
 		else
 		{
 			maPeriod = (uint)Math.Min(_desiredBufferFrames, 256);
+		}
+
+		if (useDeviceNativeRate)
+		{
+			maBridge.UseDeviceNativeSampleRate(true);
 		}
 
 		// _decodeFrames 初始设为 period, Initialize 后会根据 actualPeriod 上调
@@ -323,6 +355,8 @@ public partial class MeltySynthPlayer : Node
 			result["total_ms"] = deviceMs + ringMs;
 			result["actual_period"] = (int)maBridge.ActualPeriod;
 			result["actual_period_count"] = (int)maBridge.ActualPeriodCount;
+			result["sample_rate"] = _sampleRate;
+			result["actual_sample_rate"] = (int)maBridge.ActualSampleRate;
 		}
 		else
 		{
@@ -331,6 +365,8 @@ public partial class MeltySynthPlayer : Node
 			result["total_ms"] = 0f;
 			result["actual_period"] = 0;
 			result["actual_period_count"] = 0;
+			result["sample_rate"] = _sampleRate;
+			result["actual_sample_rate"] = 0;
 		}
 		return result;
 	}
