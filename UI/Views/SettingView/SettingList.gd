@@ -709,6 +709,6 @@ func apply_button_theme(color: Color) -> void:
 	if sb_hover:
 		sb_hover.bg_color = color.lightened(0.15)
 
-## 供 SettingListItem.setup_item 调用：duplicate 出共享 instance 的副本作为 TYPE_BUTTON 的 value_node
+## 供 SettingListItem.setup_item 调用：从场景直接 instantiate 出 TYPE_BUTTON 的 value_node
 func make_value_button() -> Button:
-	return _value_button_instance.duplicate() as Button
+	return VALUE_BUTTON_SCENE.instantiate() as Button

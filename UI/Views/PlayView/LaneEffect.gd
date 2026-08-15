@@ -214,15 +214,14 @@ func init_key_display(key_map: Array[Key], display_names: Array[String] = []) ->
 		return
 
 	var beam_width: float = _beam_note_width + 20.0
-	var label := Label.new()
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 42)
-	label.custom_minimum_size  = Vector2(beam_width, 100)
-	label.size = Vector2(beam_width, 100)
 
 	for i in range(key_map.size()):
-		var nl: Label = label if i == key_map.size() - 1 else label.duplicate()
+		var nl := Label.new()
+		nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		nl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		nl.add_theme_font_size_override("font_size", 42)
+		nl.custom_minimum_size  = Vector2(beam_width, 100)
+		nl.size = Vector2(beam_width, 100)
 		# 优先使用自定义显示名，为空则回退到按键默认名
 		var custom_name := display_names[i] if i < display_names.size() else ""
 		nl.text = custom_name if not custom_name.is_empty() else OS.get_keycode_string(key_map[i])

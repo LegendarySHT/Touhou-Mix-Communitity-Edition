@@ -16,9 +16,18 @@ enum ScrollControlState {
 @export var container_path: NodePath
 @onready var container: Container = get_node(container_path) if container_path else null
 
-## 列表项场景或预制体
+## 列表项场景（create_and_add_item 逐个 instantiate）
 @export var list_item_class: Variant
-@onready var item_instance = load(list_item_class).instantiate()
+@onready var item_scene: PackedScene = load(list_item_class)
+
+## 主题样式句柄（惰性创建）：仅需定位列表项共享内联样式时使用。
+## tscn 内联子资源默认跨实例共享（非 resource_local_to_scene），改一句柄即同步所有列表项，
+## 无需逐项上色（替代旧"模板实例 + duplicate 继承样式"方案）
+var _theme_handle: Control = null
+func get_theme_handle() -> Control:
+	if _theme_handle == null and item_scene:
+		_theme_handle = item_scene.instantiate() as Control
+	return _theme_handle
 
 ## 工作状态，当不处于该状态时停止处理操作
 var work_state: UIStateManager.UIState = UIStateManager.UIState.NONE
@@ -523,8 +532,8 @@ func add_list_item(item: ListItemBase) -> void:
 func create_and_add_item(item_id: String, item_type: String = "") -> ListItemBase:
 	var item: ListItemBase = null
 
-	if list_item_class:
-		item = item_instance.duplicate()
+	if item_scene:
+		item = item_scene.instantiate()
 
 		item.initialize(item_id, item_type)
 		add_list_item(item)

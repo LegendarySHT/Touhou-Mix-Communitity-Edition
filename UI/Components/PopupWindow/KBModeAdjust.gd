@@ -39,9 +39,6 @@ const KEY_ITEM_SCENE := preload("res://UI/Components/PopupWindow/KeySequenceItem
 # 交替颜色序列按钮颜色（按索引保存，重建时保留）
 var _alt_colors_state: Array[Color] = []
 
-## 共享模板（不进场景树），子项用 duplicate() 复用其 StyleBoxFlat 引用
-@onready var _item_instance: KeySequenceItem = KEY_ITEM_SCENE.instantiate()
-
 # 数据：每个 item 为 {"key": Key, "display_name": String}
 var _items: Array = []
 var _selected_index: int = -1
@@ -203,7 +200,7 @@ func _rebuild_items() -> void:
 
 	# 实例化新的 KeySequenceItem
 	for i in _items.size():
-		var item: KeySequenceItem = _item_instance.duplicate() as KeySequenceItem
+		var item: KeySequenceItem = KEY_ITEM_SCENE.instantiate()
 		_hbox.add_child(item)
 		_hbox.move_child(item, i)  # 插入到 InsertPlace 之前
 		item.button_group = _shared_button_group

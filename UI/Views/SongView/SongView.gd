@@ -55,9 +55,11 @@ func _ready() -> void:
 		apply_theme()
 
 ## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
+## 内联样式跨列表项共享，通过主题句柄定位并上色即可同步全部列表项
 func apply_theme() -> void:
-	if item_instance:
-		ThemeMGR._style_song_instance(item_instance, ThemeMGR.get_color("primary_light"))
+	var handle := get_theme_handle()
+	if handle:
+		ThemeMGR._style_song_instance(handle, ThemeMGR.get_color("primary_light"))
 
 func _exit_tree() -> void:
 	if ThemeMGR:

@@ -371,7 +371,7 @@ func _modify_panel_color(node: Control, color_key: String) -> void:
 
 # ============ 列表项样式 ============
 
-## 修改 albumNode 的 item_instance 上的 SongCount 圆形标签背景色
+## 修改 albumNode 列表项上的 SongCount 圆形标签背景色
 ## （按钮四态已由共享 theme ListBtn-ColorBorder.tres 统一处理，不再逐实例改色）
 func _style_album_instance(item: Control, pri_light: Color) -> void:
 	var song_count := item.get_node_or_null("SongCount") as Label
@@ -380,7 +380,7 @@ func _style_album_instance(item: Control, pri_light: Color) -> void:
 		if sb is StyleBoxFlat:
 			sb.bg_color = pri_light
 
-## 修改 songNode 的 item_instance 上的 SongCount 圆形标签背景色
+## 修改 songNode 列表项上的 SongCount 圆形标签背景色
 func _style_song_instance(item: Control, pri_light: Color) -> void:
 	var song_count := item.get_node_or_null("HBoxC/SongCount") as Label
 	if song_count:
