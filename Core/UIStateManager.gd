@@ -18,11 +18,11 @@ enum UIState {
 	SCORE_VIEW = 61,	 # 结算界面
 }
 
-## 当前UI状态
-var current_state: UIState = UIState.ALBUM_VIEW
+## 当前UI状态（启动时为 NONE，数据就绪后通过 change_state 进入真实视图）
+var current_state: UIState = UIState.NONE
 
 ## 上一个UI状态（用于返回）
-var previous_state: UIState = UIState.ALBUM_VIEW
+var previous_state: UIState = UIState.NONE
 
 ## 状态历史栈
 var state_history: Array[UIState] = []
@@ -95,16 +95,19 @@ func _restore_saved_navigation() -> void:
 	_restore_saved_navigation_impl()
 
 func _restore_saved_navigation_impl() -> void:
+	# 等一帧：让 data_loaded 信号分发完成后 AlbumView 至少开始构建列表（Phase A 同步建节点），
+	# 再走正常导航/入场路径，避免在空壳上播动画
+	await get_tree().process_frame
 	var album_id := NavigationState.get_album_id()
 	if album_id.is_empty():
+		# 无待恢复导航：触发当前状态（ALBUM_VIEW）入场，使默认隐藏的组件入场动画播出
+		_enter_initial_view(UIState.ALBUM_VIEW)
 		return
-	# 校验专辑仍存在（DB 权威；已删则清记录，防止反复恢复失败）
+	# 校验专辑仍存在（DB 权威；已删则清记录，并回落到 AlbumView 入场）
 	if ChartDB == null or not ChartDB.IsOpen() or ChartDB.GetAlbum(album_id).is_empty():
 		NavigationState.clear()
+		_enter_initial_view(UIState.ALBUM_VIEW)
 		return
-	# 等一帧：让 data_loaded 信号分发完成后 AlbumView 至少开始构建列表，
-	# 再走正常导航路径，避免在空壳上播退出动画
-	await get_tree().process_frame
 	# 进入 SongView（复刻 AlbumView.on_item_button_confirmed 次序：先 emit 再 change_state，
 	# 使 SongView._load_songs_just_called 的跳重逻辑生效；stash=true 让返回键回 AlbumView）
 	EvtBus.album_selected.emit(album_id)
@@ -123,6 +126,12 @@ func _restore_saved_navigation_impl() -> void:
 	# midi 预选由 MidiView._on_song_selected 通过 NavigationState 的 midi_id 完成
 	change_state(UIState.MIDI_VIEW, true)
 	EvtBus.emit_song_selected(song_id)
+
+## 无待恢复导航（或恢复目标已失效）时，触发初始视图入场（stash=false 保持历史栈为空）
+func _enter_initial_view(state: UIState) -> void:
+	if current_state == state:
+		return
+	change_state(state, false)
 
 ## 确保懒加载视图已实例化（首次进入对应 state 时调用）
 ## 返回实例化的节点，失败返回 null

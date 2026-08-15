@@ -117,10 +117,9 @@ func _disconnect_stats_refreshed() -> void:
 
 ## 获取 PlayerInfoContent 节点（可能在不同路径下）
 func _get_player_info_content() -> PlayerInfoContent:
-	for path in [PathRegistry.PLAYER_INFO_TAB_C_LEGACY, PathRegistry.PLAYER_INFO_TAB_C]:
-		var node = get_node_or_null(path)
-		if node and node is PlayerInfoContent:
-			return node as PlayerInfoContent
+	var node = get_node_or_null(PathRegistry.PLAYER_INFO_TAB_C)
+	if node:
+		return node as PlayerInfoContent
 	return null
 
 ## 统计刷新回调：重新同步玩家信息（头像、名称、等级、进度条）

@@ -19,7 +19,6 @@
 [ext_resource type="PackedScene" uid="uid://cmg2kkhga3yj5" path="res://UI/Views/AlbumView/albumNode.tscn" id="17_5mvff"]
 [ext_resource type="Texture2D" uid="uid://cctd38so3swat" path="res://Resources/icon/random.png" id="17_oye8v"]
 [ext_resource type="Texture2D" uid="uid://boaosvxm4ii76" path="res://Resources/icon/TrackView/reset.png" id="18_sqvbp"]
-[ext_resource type="Script" uid="uid://papxqcjsxm8u" path="res://UI/Components/LoadingCircle.gd" id="19_hri7i"]
 [ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
 [ext_resource type="PackedScene" uid="uid://xgcfhg1x2v6p" path="res://UI/Components/ShortCutMenu/favorListItem.tscn" id="20_devvj"]
 [ext_resource type="Texture2D" uid="uid://h6i2ju0tpkvl" path="res://Resources/icon/arrow-right.png" id="21_hhcpw"]
@@ -523,6 +522,7 @@ script = ExtResource("8_3b0ty")
 metadata/_edit_lock_ = true
 
 [node name="ShortCutMenu" type="VBoxContainer" parent="skew/C" unique_id=22779074]
+visible = false
 z_index = 1
 layout_mode = 1
 anchors_preset = -1
@@ -534,6 +534,8 @@ offset_right = 20.0
 offset_bottom = 899.0
 grow_horizontal = 0
 size_flags_horizontal = 4
+offset_transform_enabled = true
+offset_transform_position = Vector2(134, -500)
 script = ExtResource("11_oye8v")
 
 [node name="Btns" type="HBoxContainer" parent="skew/C/ShortCutMenu" unique_id=403981443]
@@ -738,6 +740,7 @@ expand_icon = true
 
 [node name="AlbumList" type="ScrollContainer" parent="skew/C" unique_id=257977288]
 physics_interpolation_mode = 1
+visible = false
 layout_mode = 1
 anchors_preset = -1
 anchor_bottom = 1.0
@@ -830,19 +833,6 @@ theme_override_constants/separation = 29
 layout_mode = 2
 theme_override_constants/margin_bottom = 900
 
-[node name="Loading" type="TextureRect" parent="skew/C" unique_id=759121335]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 0
-offset_left = 350.0
-offset_top = 400.0
-offset_right = 550.0
-offset_bottom = 600.0
-pivot_offset_ratio = Vector2(0.5, 0.5)
-texture = ExtResource("18_sqvbp")
-expand_mode = 1
-stretch_mode = 5
-script = ExtResource("19_hri7i")
-
 [node name="NoItems" type="Label" parent="skew/C" unique_id=756567896]
 visible = false
 layout_mode = 0
@@ -856,6 +846,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="RandomSelectBtn" type="Button" parent="skew/C" unique_id=80715155]
+visible = false
 custom_minimum_size = Vector2(110, 110)
 layout_mode = 1
 anchors_preset = -1
@@ -965,12 +956,15 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="PlayerInfo" type="Control" parent="." unique_id=1824700435]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+offset_transform_enabled = true
+offset_transform_position = Vector2(900, 200)
 mouse_filter = 2
 script = ExtResource("2_w3rk5")
 
@@ -1021,16 +1015,17 @@ color = Color(0, 0, 0, 0.84313726)
 z_index = 22
 propagate_maximum_size = true
 layout_mode = 1
-anchors_preset = 3
+anchors_preset = -1
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -850.0
+offset_left = -370.0
 offset_top = -200.0
 grow_horizontal = 0
 grow_vertical = 0
 offset_transform_enabled = true
+offset_transform_position = Vector2(55, 0)
 offset_transform_visual_only = false
 focus_mode = 0
 theme_override_styles/normal = SubResource("StyleBoxFlat_3ccbu")
@@ -1040,6 +1035,10 @@ script = ExtResource("22_5mvff")
 
 [node name="TabC" parent="PlayerInfo/InfoPanelBtn" unique_id=1269850014 instance=ExtResource("23_oye8v")]
 layout_mode = 1
+anchors_preset = -1
+offset_left = 55.0
+offset_top = 10.0
+offset_right = -205.0
 
 [node name="RB_Btn" type="Panel" parent="." unique_id=334519352]
 z_index = 23
@@ -1141,8 +1140,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.84313726)
 
-[node name="ImportTip" type="Label" parent="PopupWindowShader" unique_id=1974055026]
-visible = false
+[node name="ProcessTip" type="Label" parent="." unique_id=1974055026]
 layout_mode = 1
 anchors_preset = 14
 anchor_top = 0.5
@@ -1152,11 +1150,12 @@ offset_top = 60.0
 offset_bottom = 93.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "正在导入数据，请稍后"
+theme_override_font_sizes/font_size = 36
+text = "加载中，请稍后"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ImportProgress" type="ProgressBar" parent="PopupWindowShader" unique_id=300482769]
+[node name="ProcessProgress" type="ProgressBar" parent="ProcessTip" unique_id=300482769]
 visible = false
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 1
@@ -1165,8 +1164,8 @@ anchor_left = 0.15
 anchor_top = 0.5
 anchor_right = 0.85
 anchor_bottom = 0.5
-offset_top = 110.0
-offset_bottom = 150.0
+offset_top = 33.5
+offset_bottom = 73.5
 grow_horizontal = 2
 grow_vertical = 2
 

@@ -21,11 +21,11 @@ const RB_BTN := "/root/Main/RB_Btn"
 ## 常驻 UI
 const PLAYER_INFO := "/root/Main/PlayerInfo"
 const PLAYER_INFO_TAB_C := "/root/Main/PlayerInfo/InfoPanelBtn/TabC"
-## 旧版结构遗留路径（当前 Main.tscn 无 TopLayer，保留供兼容回退）
-const PLAYER_INFO_TAB_C_LEGACY := "/root/Main/TopLayer/PlayerInfo/InfoPanelBtn/TabC"
+
 const POPUP_WINDOW_SHADER := "/root/Main/PopupWindowShader"
-const POPUP_WINDOW_IMPORT_TIP := "/root/Main/PopupWindowShader/ImportTip"
-const POPUP_WINDOW_IMPORT_PROGRESS := "/root/Main/PopupWindowShader/ImportProgress"
+## 通用加载/导入提示（根节点下，ProgressBar 为 ProcessTip 子节点）
+const PROCESS_TIP := "/root/Main/ProcessTip"
+const PROCESS_PROGRESS := "/root/Main/ProcessTip/ProcessProgress"
 
 ## 常驻列表（skew/C 下）
 const ALBUM_LIST := "/root/Main/skew/C/AlbumList"

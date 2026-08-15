@@ -87,7 +87,8 @@ func _animate_to_state(s: State) -> void:
 
 	match s:
 		State.LOGGED_OUT, State.LOGGED_IN:
-			_play_shortcut_menu_enter()
+			if UiStatMGR.current_state != UIStateManager.UIState.NONE:
+				_play_shortcut_menu_enter()
 			_setup_rb_btn_for_state(s)
 		State.EXPANDED, State.LOGGED_IN_EXPANDED, State.FULL_EXPANDED:
 			_play_shortcut_menu_exit()

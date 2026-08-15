@@ -308,14 +308,14 @@ func _exit_tree() -> void:
 
 ## 记录所有组件的状态
 var ui_exist = {
-	"Album_List" : true, 		# 程序启动时专辑列表存在
-	"Player_Info": true,
-	"Shortcut_Menu" : true, 
-	"Song_List" : false, 		# 程序启动时歌曲列表不存在
-	"Sorted_List" : false,  	# 程序启动时排序列表不存在
-	"Midi_Info_View" : false, 	# 程序启动时MIDI信息视图不存在
+	"Album_List" : false,
+	"Player_Info": false,
+	"Shortcut_Menu" : false,
+	"Song_List" : false,
+	"Sorted_List" : false,
+	"Midi_Info_View" : false,
 	"Store_View": false,
-	"Track_List": false, 		# 音轨界面的那个列表
+	"Track_List": false,
 	"Play_View": false,
 	"Setting_View": false,
 	"Score_View": false,
@@ -323,6 +323,7 @@ var ui_exist = {
 
 ## 记录每个页面存在哪些组件
 var ui_part = {
+	UIStateManager.UIState.NONE: [],  # 启动初始态：无组件，避免 _scene_transition_exit 对 NONE 键取空
 	UIStateManager.UIState.ALBUM_VIEW: ["Album_List", "Player_Info", "Shortcut_Menu"],
 	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Player_Info", "Shortcut_Menu"],
 	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Player_Info", "Shortcut_Menu"],
@@ -491,13 +492,7 @@ func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_sta
 			animate_offset_to(ani_comp, Vector2(900, 200), 0.55, "PlayerInfoPosition")
 			
 		"Shortcut_Menu":
-			if ani_comp.has_method("play_transition_animation"):
-				ani_comp.play_transition_animation(true)
-			else:
-				var t = animate_offset_to(ani_comp, Vector2(500*tan15, -500), 0.25, "MenuBarPosition")
-				t.finished.connect(func() -> void:
-					ani_comp.visible = false
-				)
+			ani_comp.play_transition_animation(true)
 		"Store_View":
 			tween = animate_fade_out(ani_comp, 0.35, tween_id)
 		"Track_List":
@@ -612,12 +607,7 @@ func animate_ui_in(ui_name: String, _old_state: UIStateManager.UIState) -> Tween
 			if chara: animate_offset_back(chara, 0.55, "CharactorPosition")
 		
 		"Shortcut_Menu":
-			if ani_comp.has_method("play_transition_animation"):
-				tween = ani_comp.play_transition_animation(false)
-			else:
-				ani_comp.visible = true
-				ani_comp.offset_transform_position = Vector2(500*tan15, -500)
-				tween = animate_offset_back(ani_comp, 0.25, "MenuBarPosition")
+			tween = ani_comp.play_transition_animation(false)
 		"Store_View":
 			var top_bar = ani_comp.get_node("TopBar")
 			top_bar.offset_transform_position = Vector2(0, -500)

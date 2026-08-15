@@ -117,6 +117,11 @@ func _handle_back_request() -> void:
 func _initialize_core_systems() -> void:
 	GLogger.info("Initializing Core Systems", "Main")
 
+	# 启动阶段显示通用加载提示（ProcessTip 默认可见，「加载中，请稍后」；数据就绪后由 _on_data_loaded 隐藏）
+	var process_tip := get_node_or_null("ProcessTip")
+	if process_tip:
+		process_tip.visible = true
+
 	# 1. 初始化日志系统（单例，已自动管理）
 	logger = GLogger
 	if logger:
@@ -383,6 +388,11 @@ func _load_midi_data() -> void:
 ## 数据加载完成回调
 func _on_data_loaded() -> void:
 	logger.info("MIDI data loaded successfully", "Main")
+
+	# 数据就绪、首个视图即将入场：隐藏通用加载提示
+	var process_tip := get_node_or_null("ProcessTip")
+	if process_tip:
+		process_tip.visible = false
 
 	# 发送数据就绪事件
 	event_bus.data_loaded_complete.emit()

@@ -7,6 +7,9 @@ class_name AlbumView
 ## 当前显示的专辑列表
 var current_albums: Array = []
 
+## 上次点进 SongView 的专辑 id（退回 AlbumView 时用于吸附回该专辑）
+var _last_opened_album_id: String = ""
+
 ## 排序引擎引用
 @onready var data_manager: DataManager = DataMGR
 @onready var event_bus: EventBus = EvtBus
@@ -14,7 +17,6 @@ var current_albums: Array = []
 ## 加载 generation（单调递增，使在途加载循环自动失效；替代 LazyListLoader 取消机制）
 var _load_generation: int = 0
 var _album_build_bg: ButtonGroup
-@onready var _loading_node: Control = get_parent().get_node("Loading") if get_parent() else null
 
 func _ready() -> void:
 	if not data_manager or not event_bus:
@@ -37,10 +39,17 @@ func _ready() -> void:
 	event_bus.midi_deleted.connect(func(_id): _load_albums())
 	event_bus.midis_deleted.connect(func(_ids): _load_albums())
 	event_bus.config_changed.connect(_on_config_changed)
+	event_bus.album_selected.connect(func(album_id): _last_opened_album_id = String(album_id))
 	# 回到 AlbumView 时补检空列表（midi_deleted 在不活跃时触发刷新，不会显示 NoItems）
 	UiStatMGR.state_changed.connect(func(_old, new):
 		if new == UIStateManager.UIState.ALBUM_VIEW:
 			call_deferred("_check_empty_display")
+	)
+	# AlbumView 入场动画播完后恢复选中：此时视图已完全可见、列表已就绪，
+	# 避免在出场动画期间（视图隐藏、布局未就绪）尝试吸附而落空
+	AniMGR.scene_transition_fin.connect(func():
+		if UiStatMGR.current_state == UIStateManager.UIState.ALBUM_VIEW:
+			_restore_selection_on_return()
 	)
 	modulate.a = 0.0
 
@@ -69,10 +78,6 @@ func _load_albums() -> void:
 	_load_generation += 1
 	current_albums = data_manager.get_sorted_albums()
 
-	# 启动 Loading 动画（复用已有项时下面立即停止；空列表重建才保留到首项出现）
-	if _loading_node:
-		_loading_node.start_rotation()
-
 	await _refresh_display_async(_load_generation)
 
 ## 配置变更时重新排序（deferred，避免阻塞 save 流程）
@@ -92,8 +97,6 @@ func _refresh_display_async(my_generation: int) -> void:
 
 	if current_albums.is_empty():
 		clear_items()
-		if _loading_node:
-			_loading_node.stop_rotation()
 		if no_items and is_active:
 			no_items.visible = true
 		return
@@ -126,10 +129,6 @@ func _refresh_display_async(my_generation: int) -> void:
 	selected_item = -1
 	need_snap = false
 	_snap_active = false
-
-	# 有复用项（列表本就可见）时立即停止 Loading，无需 fade-in
-	if had_items and _loading_node:
-		_loading_node.stop_rotation()
 
 	_album_build_bg = ButtonGroup.new()
 	existing_count = list_items.size()
@@ -173,8 +172,6 @@ func _refresh_display_async(my_generation: int) -> void:
 
 ## 首个专辑项出现时：停止 Loading + fade-in
 func _on_album_first_step() -> void:
-	if _loading_node:
-		_loading_node.stop_rotation()
 	AniMGR.create_managed_tween(self).tween_property(self, "modulate:a", 1.0, 0.3)
 
 func _process(delta):
@@ -193,8 +190,6 @@ func _check_empty_display() -> void:
 		if no_items:
 			no_items.visible = false
 		return
-	if _loading_node:
-		_loading_node.stop_rotation()
 	if no_items:
 		no_items.visible = true
 
@@ -204,6 +199,29 @@ func reset_selection():
 	get_selected_node().button.button_pressed = false
 
 	selected_item= -1
+
+## 从 SongView 退回时恢复选中
+## 优先吸附回 SongView 选择的专辑（album_selected 记录），其次已有选中项，兜底第一项；绝不吸附到 -1
+func _restore_selection_on_return() -> void:
+	# 等待列表构建完成（最多若干帧），避免列表尚未加载完就尝试吸附而落空
+	var wait := 0
+	while list_items.is_empty() and wait < 10:
+		await get_tree().process_frame
+		wait += 1
+	if list_items.is_empty():
+		return
+	# 优先：吸附回 SongView 选择的专辑
+	if not _last_opened_album_id.is_empty():
+		for i in current_albums.size():
+			if String(current_albums[i].get("id", "")) == _last_opened_album_id:
+				force_snap_to(i)
+				return
+	# 其次：已有选中项则吸附到它（可能在长列表底部、屏幕外）
+	if selected_item != -1 and selected_item < list_items.size():
+		force_snap_to(selected_item)
+		return
+	# 兜底：吸附第一项
+	force_snap_to(0)
 
 func on_item_button_confirmed(index: int):
 	var album_id: String = String(current_albums[index].get("id", ""))

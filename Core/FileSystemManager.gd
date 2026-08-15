@@ -33,6 +33,10 @@ const DEFAULT_CHARTS_SRC = "res://Resources/Charts/"
 const DEFAULT_SOUNDFONT_SRC = "res://Resources/Soundfont/"
 const DEFAULT_BACKGROUND_SRC = "res://Resources/BackgroundImage/"
 
+## 通用加载/导入提示文案（ProcessTip，与 Main.tscn 默认文案一致）
+const LOADING_TIP_TEXT := "加载中，请稍后"
+const IMPORT_TIP_TEXT := "正在导入数据，请稍后"
+
 ## 图片文件扩展名列表（Godot 导出时会被转换为 .ctex，无法通过 FileAccess 直接读取）
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 
@@ -222,17 +226,17 @@ func _import_external_charts_async() -> void:
 	var pending: int = int(task_info.get("ui_pending", 0))
 	var show_ui: bool = pending > 0
 
-	# 显示导入遮罩 + 提示 + 进度条（仅 THMIX_Import 待导入时显示）
-	# get_node_or_null 返回 Node，需要显式类型才能访问 Control 属性
+	# 显示导入提示 + 进度条（仅 THMIX_Import 待导入时显示；ProcessTip 通用提示在启动时已可见）
 	var overlay: Control = get_node_or_null(PathRegistry.POPUP_WINDOW_SHADER)
-	var tip: Control = get_node_or_null(PathRegistry.POPUP_WINDOW_IMPORT_TIP) if overlay else null
-	var bar: ProgressBar = get_node_or_null(PathRegistry.POPUP_WINDOW_IMPORT_PROGRESS) if overlay else null
+	var tip: Label = get_node_or_null(PathRegistry.PROCESS_TIP)
+	var bar: ProgressBar = get_node_or_null(PathRegistry.PROCESS_PROGRESS)
 	if show_ui:
 		if overlay:
 			overlay.modulate.a = 1.0  # 复位透明度（与 PopupWindow 的 fade 共享此节点，防御残留 0）
 			overlay.visible = true
 		if tip:
 			tip.visible = true
+			tip.text = IMPORT_TIP_TEXT
 		if bar:
 			bar.visible = true
 			bar.min_value = 0
@@ -282,7 +286,7 @@ func _hide_import_ui(overlay: Control, tip: Control, bar: ProgressBar) -> void:
 	if bar:
 		bar.visible = false
 	if tip:
-		tip.visible = false
+		tip.text = LOADING_TIP_TEXT
 	if overlay:
 		overlay.visible = false
 

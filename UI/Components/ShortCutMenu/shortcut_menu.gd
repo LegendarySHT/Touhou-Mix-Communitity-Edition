@@ -35,8 +35,6 @@ func _ready() -> void:
 	sort_button.toggled.connect(_on_menu_tab_btn_toggled.bind(sort_button))
 	favor_list_button.toggled.connect(_on_menu_tab_btn_toggled.bind(favor_list_button))
 
-	_on_menu_tab_btn_toggled(false, sort_button)
-
 	# 按键退出事件
 	ui.state_changed.connect(_on_state_changed)
 
