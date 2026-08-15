@@ -148,6 +148,10 @@ const _VISUAL_ANCHOR_RATE := 0.02
 const _VISUAL_ANCHOR_MAX_MS := 0.5
 # 需要硬锚定（开始播放/暂停恢复时对齐音频钟，避免大跳）
 var _visual_time_needs_anchor: bool = true
+# 方向 3（输入及时性）：演奏视图内关闭 Input 事件累积，触摸事件立即派发，
+# 可减少 Godot 输入按帧合并带来的 0~16.7ms 延迟；退出播放视图时恢复原值。
+var _saved_accumulated_input: bool = true
+var _accumulated_input_override_active: bool = false
 
 func _process(delta: float) -> void:
 	if not is_pause:
@@ -183,6 +187,18 @@ func _process(delta: float) -> void:
 				_position_stall_frames = 0
 			_last_playback_position = current_time
 	
+## 演奏视图专用：关闭/恢复 Input 事件累积（低延迟输入路径）
+func _apply_input_low_latency(enable: bool) -> void:
+	if enable and not _accumulated_input_override_active:
+		_saved_accumulated_input = Input.use_accumulated_input
+		Input.use_accumulated_input = false
+		_accumulated_input_override_active = true
+		GLogger.info("Input accumulation disabled for low-latency touch", "PlayView")
+	elif not enable and _accumulated_input_override_active:
+		Input.use_accumulated_input = _saved_accumulated_input
+		_accumulated_input_override_active = false
+		GLogger.info("Input accumulation restored to %s" % _saved_accumulated_input, "PlayView")
+
 func get_lane_count() -> int:
 	return lane_count if not keyboard_mode else key_map.size()
 
@@ -225,6 +241,7 @@ func get_lane_separator_enabled() -> bool:
 
 func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.UIState) -> void:
 	var enable:bool = state == UIStateManager.UIState.PLAY_VIEW
+	_apply_input_low_latency(enable)
 	set_process(enable)
 	get_node("Layer").visible = enable
 
