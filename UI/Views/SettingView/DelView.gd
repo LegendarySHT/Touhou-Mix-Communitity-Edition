@@ -5,7 +5,6 @@ enum Tab {MIDI = 0, AUDIO = 1, SF2 = 2, SKIN = 3, BG = 4}
 
 const TREE_ROOT_SCENE := preload("res://UI/Views/SettingView/TreeRoot.tscn")
 const TREE_ITEM_SCENE := preload("res://UI/Views/SettingView/TreeItem.tscn")
-const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 
 # ── Sidebar ──
 @onready var _tab_buttons: Array[Button] = [
@@ -19,7 +18,6 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 # ── TopBar ──
 @onready var _tab_title := $Content/PC/TopBar/TabTitle as Label
 @onready var _item_sum := $Content/PC/TopBar/ItemSum/Text as Label
-var _item_sum_scroll_state: TextScrollHelper.State = null
 
 # ── PageContainer ──
 @onready var _page_container := $Content/PageContainer as TabContainer
@@ -1677,15 +1675,14 @@ func _reset_flat_visibility(nodes: Dictionary) -> void:
 
 func _update_item_sum(text: String) -> void:
 	_item_sum.text = text
-	_item_sum_scroll_state = TextScrollHelper.setup(_item_sum, _item_sum.get_parent(), text, _item_sum_scroll_state)
 
 
 func _create_tree_root(left_text: String, right_text: String, group_id: String) -> HBoxContainer:
 	var node := TREE_ROOT_SCENE.instantiate() as HBoxContainer
-	var left_label := node.get_node("LeftLabel/label") as Label
-	var right_label := node.get_node("RightLabel/label") as Label
-	left_label.text = left_text
-	right_label.text = right_text
+	var left_label := node.get_node("LeftLabel") as Label
+	var right_label := node.get_node("RightLabel") as Label
+	left_label.set_scroll_text(left_text)
+	right_label.set_scroll_text(right_text)
 	node.set_meta("group_id", group_id)
 	node.set_meta("collapsed", false)
 	# 点击 TreeRoot 的非 CheckBox 区域 → 折叠/展开
@@ -1695,12 +1692,11 @@ func _create_tree_root(left_text: String, right_text: String, group_id: String) 
 
 func _create_tree_item(left_text: String, right_text: String) -> HBoxContainer:
 	var node := TREE_ITEM_SCENE.instantiate() as HBoxContainer
-	var left_label := node.get_node("LeftLabel/label") as Label
-	var right_label := node.get_node("RightLabel/label") as Label
-	left_label.text = left_text
-	right_label.text = right_text
+	var left_label := node.get_node("LeftLabel") as Label
+	var right_label := node.get_node("RightLabel") as Label
+	left_label.set_scroll_text(left_text)
+	right_label.set_scroll_text(right_text)
 	return node
-
 
 func _apply_scrolls_to_container(container: VBoxContainer) -> void:
 	if container.get_child_count() == 0:
@@ -1713,14 +1709,6 @@ func _apply_scrolls_to_container(container: VBoxContainer) -> void:
 	for child in container.get_children():
 		if not is_instance_valid(child):
 			continue
-		var left_label := child.get_node_or_null("LeftLabel/label") as Label
-		var left_clip := child.get_node_or_null("LeftLabel") as Control
-		if left_label and left_clip:
-			TextScrollHelper.setup(left_label, left_clip, left_label.text)
-		var right_label := child.get_node_or_null("RightLabel/label") as Label
-		var right_clip := child.get_node_or_null("RightLabel") as Control
-		if right_label and right_clip:
-			TextScrollHelper.setup(right_label, right_clip, right_label.text)
 		processed += 1
 		if processed % 30 == 0:
 			await get_tree().process_frame

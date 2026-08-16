@@ -2,11 +2,8 @@
 ## 继承自 CoverListItemBase，显示歌曲信息（含封面视差）
 extends CoverListItemBase
 
-const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
-
 ## 引用节点（需要根据实际场景结构调整）
-@onready var song_name_label: Label = $HBoxC/PN/NameBox/SongName
-@onready var name_box: Control = $HBoxC/PN/NameBox
+@onready var song_name_label: Label = $HBoxC/PN/SongName
 @onready var midi_count_label: Label = $HBoxC/SongCount
 @onready var cover: TextureRect = $HBoxC/PN/cover
 
@@ -14,9 +11,6 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 
 ## 歌曲轻量投影数据（ChartDB.GetSongItemsByAlbum 返回的字典）
 var item_dict: Dictionary = {}
-
-## 文字滚动状态
-var _name_scroll_state: TextScrollHelper.State = null
 
 signal _init_fin
 
@@ -27,29 +21,13 @@ func _ready() -> void:
 	cover_texture = $HBoxC/PN/cover
 	await _init_fin
 
-	song_name_label.text = " %s" % String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown"
+	song_name_label.set_scroll_text(" %s" % String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown")
 	midi_count_label.text = "%d" % item_dict.get("midi_count", 0)
 
 	# 直接开始加载封面（不等列表构建完毕）
 	# 命中 WeakRef 缓存时零开销同步应用；未命中则入 CoverLoader 异步队列，不阻塞主线程
 	# 列表的 trigger_cover_chain 仍处理"释放后重载"场景（状态切换回视图时）与 path 暂不可用的重试
 	start_cover_load()
-	# 启动文字滚动动画（如名称过长）
-	call_deferred("_setup_name_scroll")
-
-
-## 启动/重算歌曲名称滚动动画
-func _setup_name_scroll() -> void:
-	if not is_instance_valid(song_name_label) or not is_instance_valid(name_box):
-		return
-	# 循环等待 NameBox 布局完成（最多 5 帧），确保 size 正确
-	var max_wait := 5
-	while name_box.size.y <= 10.0 and max_wait > 0:
-		await get_tree().process_frame
-		max_wait -= 1
-	_name_scroll_state = TextScrollHelper.setup(
-		song_name_label, name_box, song_name_label.text, _name_scroll_state
-	)
 
 ## 从歌曲轻量投影字典初始化显示（DB 返回，无完整 SongData）
 func setup_with_dict(parent: SongView, d: Dictionary, index: int, bg: ButtonGroup) -> void:

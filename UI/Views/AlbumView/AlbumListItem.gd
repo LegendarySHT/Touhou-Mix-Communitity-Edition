@@ -4,19 +4,14 @@
 class_name AlbumListItem
 extends CoverListItemBase
 
-const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
-
 ## 引用节点路径
-@onready var album_name_label: Label = $NameBox/AlbumName
-@onready var name_box: Control = $NameBox
+@onready var album_name_label: Label = $AlbumName
+@onready var line: Control = $Line
 @onready var song_count_label: Label = $SongCount
 # cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
 
 ## 专辑轻量投影数据（ChartDB.GetSortedAlbumItems 返回的字典）
 var item_dict: Dictionary = {}
-
-## 文字滚动状态
-var _name_scroll_state: TextScrollHelper.State = null
 
 ## 展开动画补间
 var expand_tween: Tween:
@@ -65,14 +60,13 @@ func set_display_album(d: Dictionary) -> void:
 	_refresh_labels()
 	switch_cover_data()
 	start_cover_load()
-	call_deferred("setup_name_scroll")
 
 ## 更新名称/计数标签（新建与复用共用）
 func _refresh_labels() -> void:
 	if item_dict.is_empty():
 		push_error("AlbumListItem: Missing album data")
 		return
-	album_name_label.text = " %s" % String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown"
+	album_name_label.set_scroll_text(" %s" % String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown")
 	song_count_label.text = "%d" % item_dict.get("song_count", 0)
 
 ## 复用刷新：重置展开/选中动画态 + 更新显示 + 重新加载封面
@@ -99,19 +93,18 @@ func _refresh_display() -> void:
 	if keep_expanded:
 		custom_minimum_size = Vector2(950, 400)
 		album_name_label.add_theme_font_size_override("font_size", 45)
-		name_box.self_modulate.a = 1.0
+		line.self_modulate.a = 1.0
 		button.set_pressed_no_signal(true)
 		is_selected = true
 	else:
 		custom_minimum_size = Vector2(600, 150)
 		album_name_label.add_theme_font_size_override("font_size", 25)
-		name_box.self_modulate.a = 0.0
+		line.self_modulate.a = 0.0
 		button.set_pressed_no_signal(false)
 		is_selected = false
 
 	switch_cover_data()
 	start_cover_load()
-	call_deferred("setup_name_scroll")
 
 ## 重写基类虚函数：返回专辑封面 Texture2D
 ## 选择专辑下首个歌曲的首个 MIDI 的封面，否则由 FileSystemManager 返回默认封面
@@ -146,7 +139,7 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 	var expa: int = 1 if toggled_on else 0
 	expand_tween.tween_property(self,"custom_minimum_size",Vector2(600 + expa*350, 150 + 250*expa),0.15)
 	expand_tween.tween_property(album_name_label,"theme_override_font_sizes/font_size",25 + 20*expa,0.15)
-	expand_tween.tween_property(name_box, "self_modulate:a", float(expa), 0.15)
+	expand_tween.tween_property(line, "self_modulate:a", float(expa), 0.15)
 
 	if toggled_on and parent_node:
 		parent_node.selected_item = item_index
@@ -155,7 +148,7 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 		expand_tween.kill()
 		expand_tween = null
 		# 字号变化后重算滚动布局
-		call_deferred("setup_name_scroll")
+		album_name_label.refresh()
 	)
 
 	# 因为塞在tween里的话，节点在屏幕外似乎无法触发，所以就成下面这样了
@@ -163,19 +156,6 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 	if toggled_on and parent_node and parent_node.selected_item == item_index:
 		parent_node.need_snap = true
 
-
-## 启动/重算专辑名称滚动动画
-func setup_name_scroll() -> void:
-	if not is_instance_valid(album_name_label) or not is_instance_valid(name_box):
-		return
-	# 循环等待 NameBox 布局完成（最多 5 帧），确保 size 正确
-	var max_wait := 5
-	while name_box.size.y <= 10.0 and max_wait > 0:
-		await get_tree().process_frame
-		max_wait -= 1
-	_name_scroll_state = TextScrollHelper.setup(
-		album_name_label, name_box, album_name_label.text, _name_scroll_state
-	)
 
 func _on_selected_album_pressed() -> void:
 	UiStatMGR.change_state(UiStatMGR.UIState.ALBUM_VIEW)

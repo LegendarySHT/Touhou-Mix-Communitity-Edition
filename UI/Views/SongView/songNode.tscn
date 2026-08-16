@@ -3,7 +3,7 @@
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="1_0asqb"]
 [ext_resource type="Script" uid="uid://bt0e0os76bnfm" path="res://UI/Views/SongView/SongListItem.gd" id="1_5wnnw"]
 [ext_resource type="Theme" uid="uid://cm3mry6cxo28t" path="res://UI/Theme/BtnTheme/ListBtn-ColorBorder.tres" id="1_krpnw"]
-[ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="2_5wnnw"]
+[ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="5_3ky2n"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xw3gp"]
 bg_color = Color(0.42352942, 0.72156864, 1, 1)
@@ -58,6 +58,24 @@ expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true
 
+[node name="SongName" type="Label" parent="HBoxC/PN" unique_id=22989094]
+custom_minimum_size = Vector2(600, 45)
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -46.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 40
+text = "Test Title"
+vertical_alignment = 2
+clip_text = true
+script = ExtResource("5_3ky2n")
+outline_size = 8
+metadata/_edit_use_anchors_ = true
+
 [node name="NameBox" type="Control" parent="HBoxC/PN" unique_id=22989093]
 custom_minimum_size = Vector2(600, 45)
 clip_contents = true
@@ -69,23 +87,6 @@ offset_top = 78.0
 offset_bottom = 123.0
 grow_horizontal = 2
 mouse_filter = 2
-
-[node name="SongName" type="Label" parent="HBoxC/PN/NameBox" unique_id=22989094]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-offset_transform_enabled = true
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
-theme_override_constants/shadow_outline_size = 5
-theme_override_fonts/font = ExtResource("2_5wnnw")
-theme_override_font_sizes/font_size = 40
-text = "Test Title"
-vertical_alignment = 2
-metadata/_edit_use_anchors_ = true
 
 [node name="SongCount" type="Label" parent="HBoxC" unique_id=1861393487]
 custom_minimum_size = Vector2(160, 0)

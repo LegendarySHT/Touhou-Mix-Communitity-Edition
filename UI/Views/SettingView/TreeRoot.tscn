@@ -1,5 +1,7 @@
 [gd_scene format=3 uid="uid://bwd8r30welw1r"]
 
+[ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="1_vkwkn"]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_i6pqd"]
 draw_center = false
 border_width_bottom = 5
@@ -18,45 +20,24 @@ custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 size_flags_vertical = 4
 
-[node name="LeftLabel" type="Control" parent="." unique_id=1354136005]
-clip_contents = true
+[node name="LeftLabel" type="Label" parent="." unique_id=576632211]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 8.0
-mouse_filter = 1
-
-[node name="label" type="Label" parent="LeftLabel" unique_id=576632211]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 1
 size_flags_stretch_ratio = 8.0
-offset_transform_enabled = true
 theme_override_font_sizes/font_size = 42
 theme_override_styles/normal = SubResource("StyleBoxFlat_i6pqd")
 text = "TreeRoot"
 vertical_alignment = 1
+clip_text = true
+script = ExtResource("1_vkwkn")
 
-[node name="RightLabel" type="Control" parent="." unique_id=1261428863]
+[node name="RightLabel" type="Label" parent="." unique_id=161587948]
 custom_minimum_size = Vector2(180, 0)
-clip_contents = true
 layout_mode = 2
-mouse_filter = 1
-
-[node name="label" type="Label" parent="RightLabel" unique_id=161587948]
-custom_minimum_size = Vector2(180, 0)
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 size_flags_vertical = 1
-offset_transform_enabled = true
 theme_override_font_sizes/font_size = 40
 text = "Num"
 vertical_alignment = 1
+clip_text = true
+script = ExtResource("1_vkwkn")

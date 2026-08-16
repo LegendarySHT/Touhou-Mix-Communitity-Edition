@@ -1,113 +1,183 @@
-## 文字滚动工具
-## 用于长文本超出显示区域时的来回滚动效果（marquee）。
+## 文字滚动工具（自绘版）
+## 附加到 Label 节点上即可自动启用超长单行文本的来回滚动效果（marquee）。
 ##
-## 用法（在消费方脚本顶部声明）：
-##   const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
-##   var state: TextScrollHelper.State = null
-##   state = TextScrollHelper.setup(label, clip_container, full_text, state)
-##   # 尺寸/字体变化后再次调用 setup 即可重算
-##   # 退出/隐藏时调用 TextScrollHelper.stop(state)
+## 原理：
+##   继承 Label，把引擎绘制的文字颜色改为透明（引擎 C++ 绘制无法拦截，
+##   故用 theme override 让引擎文本不可见），自己用 draw_string 绘制文本。
+##   裁剪窗口 = 节点自身矩形（静止），滚动偏移作用在文本绘制坐标上，
+##   因此滚动时能看到被裁剪掉的内容，无需外层 clip Control，单节点即可。
 ##
-## 结构要求：Label 必须作为某个 clip_contents=true 的 Control 子节点, 布局使用锚点布局并选择整个矩形的锚点预设即可
-extends RefCounted
+## 用法：
+##   将本脚本挂到 Label 的 "script" 属性即可，无需任何额外调用：
+##     - 用 set_scroll_text() 设置文本（不要直接赋 label.text，否则不会触发滚动重算）
+##     - 复用 Label 的 font / font_size 等 theme override；文字颜色用 _text_color
+##     - 尺寸变化时自动重算
+##     - 节点退出场景树时自动清理滚动
+##
+## 注意：
+##   - 仅支持单行文本（不处理 autowrap / 富文本 / 省略号 / RTL）
+##   - 需在场景中给 Label 固定宽度或 expand（本脚本不因文本撑大节点）
+extends Label
 
-## 滚动一段的时长
-const SCROLL_DURATION := 3.0
 ## 滚动到端点后的停留时长
 const PAUSE_DURATION := 1.0
 
+## 滚动速度（像素/秒）：长文本与短文本统一像素速度，单程时长按滚动距离换算
+@export var scroll_speed := 60.0
+## 滚动缓动曲线：SINE 端点减速最温和，QUAD/CUBIC/QUART 端点减速逐级更明显
+@export var transition: Tween.TransitionType = Tween.TRANS_QUAD
 
-## 滚动状态（RefCounted，随持有者释放）
-class State extends RefCounted:
-	var tween: Tween = null
-	var label: Label = null
-	var clip: Control = null
-	var full_text: String = ""
-	var _resized_callable: Callable
+## 自绘文字颜色（默认取 theme 的 font_color，可被场景 theme override 覆盖）
+@export var text_color: Color = Color(1, 1, 1, 1)
+## 描边宽度（0 = 不描边）
+@export var outline_size := 0
+## 描边颜色
+@export var outline_color := Color(0, 0, 0, 1)
+## 阴影颜色（alpha 为 0 时不画阴影）
+@export var shadow_color := Color(0, 0, 0, 0)
+## 阴影偏移
+@export var shadow_offset := Vector2(1, 1)
+## 滚动两端留出的空隙（像素）：起始文本左边、终点文本右边各留 end_padding，避免贴边界
+@export var end_padding := 20.0
+
+## 当前滚动偏移（像素，负值向左）
+var _scroll_offset := 0.0
+## 实际文本宽度（get_string_size），用于判断是否溢出
+var _text_width := 0.0
+var _tween: Tween = null
+var _resized_callable: Callable
 
 
-## 启动或重新计算滚动。
-## - 传入 prev_state 可复用并清理旧动画
-## - 不修改 Label 的 horizontal_alignment / vertical_alignment，保留 tscn 原值
-## - 溢出时通过 position:x 实现来回滚动；非溢出时仅 kill 旧 tween
-static func setup(label: Label, clip_container: Control, full_text: String,
-		prev_state: State = null) -> State:
-	var state: State = prev_state if prev_state != null else State.new()
-	if state.tween != null and is_instance_valid(state.tween):
-		state.tween.kill()
-	state.label = label
-	state.clip = clip_container
-	state.full_text = full_text
-	state.tween = null
+## 设置滚动文本并自动重算（外部必须用此函数，勿直接赋 label.text）
+func set_scroll_text(v: String) -> void:
+	super.set_text(v)
+	_measure_and_scroll()
 
-	# 重置 Label 位置
-	label.offset_transform_position.x = 0.0
 
-	# 可见区域宽度 = 从 Label 左边到容器右边
-	# Label clip_text=false 时文本可溢出 Label 自身边界、被父容器裁剪，
-	# 故可见区域左边 = label.position.x（含 offset_left 留白），右边 = 容器右边
-	# 减去 label.position.x 排除左侧留白，避免"看着溢出却不滚动"的判定偏差
-	var label_left := label.position.x
-	var box_width := clip_container.size.x - label_left
-	if box_width <= 10.0:
-		# 容器未布局完成时回退到 custom_minimum_size
-		var clip_min := clip_container.custom_minimum_size.x
-		if clip_min > 10.0:
-			box_width = max(clip_min - label_left, 200.0)
-		else:
-			box_width = 200.0
+## 重算滚动（字号/尺寸变化后调用，重新测宽并启停滚动）
+func refresh() -> void:
+	_measure_and_scroll()
 
-	# 文字高度：用字体实际行高，避免垂直裁剪
-	var font := label.get_theme_font("font")
-	var font_size := label.get_theme_font_size("font_size")
 
-	# 测量文字宽度
-	var text_width := font.get_string_size(
-		full_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-	).x
+func _ready() -> void:
+	# 让引擎 get_minimum_size 返回宽度 1（不因文本撑大节点），高度取字体高度
+	clip_text = true
+	# 记录主题文字颜色，再让引擎文字透明（引擎绘制无法拦截，靠透明隐藏）
+	text_color = get_theme_color("font_color")
+	add_theme_color_override("font_color", Color(0, 0, 0, 0))
+	if not _resized_callable.is_valid():
+		_resized_callable = _on_resized
+		resized.connect(_resized_callable)
+	call_deferred("_measure_and_scroll")
 
-	# 容器尺寸变化时重新计算滚动（仅首次连接，防止重复累积）
-	if not (state._resized_callable.is_valid() and clip_container.resized.is_connected(state._resized_callable)):
-		var _cb := func():
-			refresh(state)
-		state._resized_callable = _cb
-		clip_container.resized.connect(_cb)
 
-	# 文字未溢出：不滚动
-	if text_width <= box_width:
-		return state
+func _exit_tree() -> void:
+	if _resized_callable.is_valid() and resized.is_connected(_resized_callable):
+		resized.disconnect(_resized_callable)
+	_kill_tween()
 
-	# 启用 offset_transform 并左对齐
-	label.offset_transform_enabled = true
-	label.grow_horizontal = Control.GROW_DIRECTION_END
+
+## 尺寸变化时重算滚动
+func _on_resized() -> void:
+	_measure_and_scroll()
+
+
+## 引擎绘制通知：追加自绘文本（引擎文字已透明，不会叠加显示）
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAW:
+		# 静止裁剪窗口 = 节点自身矩形
+		RenderingServer.canvas_item_set_clip(get_canvas_item(), true)
+		_draw_scroll_text()
+
+
+## 测量文本宽度并启动/停止滚动
+func _measure_and_scroll() -> void:
+	_kill_tween()
+	_scroll_offset = 0.0
+
+	var font := get_theme_font("font")
+	var font_size := get_theme_font_size("font_size")
+	_text_width = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+
+	# 文字未溢出（含两端填充）：不滚动，避免刚好能塞下却顶着左边
+	if _text_width + 2 * end_padding <= size.x:
+		queue_redraw()
+		return
 
 	# 文字溢出：来回滚动
-	var max_offset := text_width - box_width + 20.0  # 额外留点空隙
-	var tween := AniMGR.create_managed_tween(label).set_loops()
-	tween.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(label, "offset_transform_position:x", -max_offset, SCROLL_DURATION)
+	# 滚动范围含 2*end_padding：起始文本左边留 end_padding，终点文本右边留 end_padding，两端对称
+	var max_offset := _text_width - size.x + 2 * end_padding
+	# 单程时长按滚动距离换算，保证不同长度文本像素速度一致
+	var duration := max_offset / scroll_speed
+	var tween := AniMGR.create_managed_tween(self).set_loops()
+	tween.set_ease(Tween.EASE_IN_OUT).set_trans(transition)
+	tween.tween_method(_set_scroll_offset, 0.0, -max_offset, duration)
 	tween.tween_interval(PAUSE_DURATION)
-	tween.tween_property(label, "offset_transform_position:x", 0.0, SCROLL_DURATION)
+	tween.tween_method(_set_scroll_offset, -max_offset, 0.0, duration)
 	tween.tween_interval(PAUSE_DURATION)
-	state.tween = tween
-	return state
+	_tween = tween
 
 
-## 停止滚动并重置 Label 位置
-static func stop(state: State) -> void:
-	if state == null:
-		return
-	if state._resized_callable.is_valid() and is_instance_valid(state.clip) and state.clip.resized.is_connected(state._resized_callable):
-		state.clip.resized.disconnect(state._resized_callable)
-	if state.tween != null and is_instance_valid(state.tween):
-		state.tween.kill()
-		state.tween = null
-	if state.label != null and is_instance_valid(state.label):
-		state.label.offset_transform_position.x = 0.0
+## tween 回调：更新滚动偏移并重绘（仅当本节点位于视口内才重绘，视口外节点省去绘制开销）
+func _set_scroll_offset(offset: float) -> void:
+	_scroll_offset = offset
+	if _is_in_viewport():
+		queue_redraw()
 
 
-## 使用 state 中缓存的 full_text 重新计算并启动
-static func refresh(state: State) -> State:
-	if state == null or state.label == null or state.clip == null:
-		return state
-	return setup(state.label, state.clip, state.full_text, state)
+## 自身矩形是否与视口可见区域相交（视口外不可见，跳过绘制）
+func _is_in_viewport() -> bool:
+	if not is_visible_in_tree():
+		return false
+	return get_global_rect().intersects(Rect2(Vector2.ZERO, get_viewport_rect().size))
+
+
+## 自绘单行文本（含滚动偏移、阴影、描边）
+func _draw_scroll_text() -> void:
+	var font := get_theme_font("font")
+	var font_size := get_theme_font_size("font_size")
+
+	# 垂直对齐：按 vertical_alignment 计算基线 y
+	var font_h := font.get_height(font_size)
+	var ascent := font.get_ascent(font_size)
+	var top := (size.y - font_h) * 0.5
+	match vertical_alignment:
+		VERTICAL_ALIGNMENT_TOP:
+			top = 0.0
+		VERTICAL_ALIGNMENT_BOTTOM:
+			top = size.y - font_h
+	var base_y := top + ascent
+
+	# 水平起点：滚动时左对齐 + 起始留空隙（默认左对齐会贴左边，这里空出左侧）；
+	# 非滚动时按 horizontal_alignment 对齐
+	var x := 0.0
+	if _tween != null and _tween.is_valid():
+		x = end_padding
+	else:
+		match horizontal_alignment:
+			HORIZONTAL_ALIGNMENT_CENTER:
+				x = (size.x - _text_width) * 0.5
+			HORIZONTAL_ALIGNMENT_RIGHT:
+				x = size.x - _text_width
+			_:
+				x = end_padding
+	x += _scroll_offset
+	var pos := Vector2(x, base_y)
+
+	# 先画阴影（偏移重绘一层）
+	if shadow_color.a > 0.0:
+		draw_string(font, pos + shadow_offset, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, shadow_color)
+
+	# 再画描边
+	if outline_size > 0:
+		draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, outline_size, outline_color)
+
+	# 最后画主文本
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color)
+
+
+## 清理当前滚动 tween 并复位
+func _kill_tween() -> void:
+	if _tween != null and _tween.is_valid():
+		_tween.kill()
+	_tween = null

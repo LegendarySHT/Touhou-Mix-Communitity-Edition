@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://cl2ypj2kc15am" path="res://UI/Components/ShortCutMenu/favorListItem.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="2_add"]
 [ext_resource type="Texture2D" uid="uid://bqehp2aavod7n" path="res://Resources/icon/midiInfoPage/delete.png" id="3_delete"]
+[ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="4_0mqhb"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sohxy"]
 bg_color = Color(0, 0, 0, 0.2)
@@ -133,36 +134,26 @@ mouse_filter = 2
 theme_override_constants/separation = 15
 alignment = 1
 
-[node name="NameBox" type="Control" parent="HBox/Detail" unique_id=644110351]
+[node name="nameEdit" type="LineEdit" parent="HBox/Detail" unique_id=1039444612]
+visible = false
 custom_minimum_size = Vector2(0, 50)
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="nameEdit" type="LineEdit" parent="HBox/Detail/NameBox" unique_id=1039444612]
-visible = false
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 30
 placeholder_text = "输入新名称"
 
-[node name="name" type="Label" parent="HBox/Detail/NameBox" unique_id=1870450257]
-layout_mode = 1
-anchors_preset = 9
-anchor_bottom = 1.0
-offset_right = 58.0
-grow_vertical = 2
+[node name="name" type="Label" parent="HBox/Detail" unique_id=1870450257]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
 mouse_filter = 0
 theme_override_font_sizes/font_size = 30
-text = "Test"
+text = "ListName"
 vertical_alignment = 1
+script = ExtResource("4_0mqhb")
+end_padding = 0.0
 
 [node name="midiCount" type="Label" parent="HBox/Detail" unique_id=1996047377]
 custom_minimum_size = Vector2(0, 40)
@@ -188,7 +179,7 @@ icon_alignment = 1
 expand_icon = true
 
 [connection signal="pressed" from="." to="." method="_on_favor_list_item_pressed"]
-[connection signal="focus_exited" from="HBox/Detail/NameBox/nameEdit" to="." method="_on_rename_focus_exited"]
-[connection signal="text_submitted" from="HBox/Detail/NameBox/nameEdit" to="." method="_on_rename_submitted"]
-[connection signal="gui_input" from="HBox/Detail/NameBox/name" to="." method="_on_name_label_gui_input"]
+[connection signal="focus_exited" from="HBox/Detail/nameEdit" to="." method="_on_rename_focus_exited"]
+[connection signal="text_submitted" from="HBox/Detail/nameEdit" to="." method="_on_rename_submitted"]
+[connection signal="gui_input" from="HBox/Detail/name" to="." method="_on_name_label_gui_input"]
 [connection signal="pressed" from="HBox/DeleteBtn" to="." method="_on_delete_pressed"]

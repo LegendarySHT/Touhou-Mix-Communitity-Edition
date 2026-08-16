@@ -1,8 +1,6 @@
 extends CoverListItemBase
 class_name StoreMidiListItem
 
-const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
-
 # cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
 # MidiName / Author 在 CoverPanel/Panel 下；Uploader / AlbumName / SongName 在 InfoPanel 下
 @onready var title_text:Label = $CoverPanel/Panel/MidiName
@@ -10,13 +8,6 @@ const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
 @onready var uploader:Label = $InfoPanel/Uploader
 @onready var album_name:Label = $InfoPanel/AlbumName
 @onready var song_name:Label = $InfoPanel/SongName
-
-# 文字滚动状态（每 Label 独立）
-var _title_scroll_state: TextScrollHelper.State = null
-var _author_scroll_state: TextScrollHelper.State = null
-var _uploader_scroll_state: TextScrollHelper.State = null
-var _album_scroll_state: TextScrollHelper.State = null
-var _song_scroll_state: TextScrollHelper.State = null
 
 signal init_finished
 
@@ -63,11 +54,11 @@ func set_display(midi: MidiData = null) -> void:
 	get_node("CoverPanel").visible = enable
 	get_node("InfoPanel").visible = enable
 	if enable:
-		title_text.text = midi.name
+		title_text.set_scroll_text(midi.name)
 		author_text.text = midi.artist_name
 		uploader.text = midi.uploader_name
-		album_name.text = midi.album_name if not midi.album_name.is_empty() else "null"
-		song_name.text = midi.song_name if not midi.song_name.is_empty() else "null"
+		album_name.set_scroll_text(midi.album_name if not midi.album_name.is_empty() else "null")
+		song_name.set_scroll_text(midi.song_name if not midi.song_name.is_empty() else "null")
 	# midi 变化（含从 null 切到非 null）时刷新封面
 	if midi_changed:
 		if enable:
@@ -77,22 +68,7 @@ func set_display(midi: MidiData = null) -> void:
 		else:
 			# 切到 null：彻底释放封面 texture，避免不可见项持有 Texture 引用阻止 GC
 			release_cover()
-	# 文本变化后重算滚动（仅在有数据时）
-	if enable:
-		call_deferred("_setup_text_scrolls")
 	init_finished.emit()
-
-## 启动/重算所有标签的文字滚动
-## await 一帧让布局稳定，确保 clip 容器 size 正确
-func _setup_text_scrolls() -> void:
-	if not is_inside_tree():
-		return
-	await get_tree().process_frame
-	_title_scroll_state = TextScrollHelper.setup(title_text, title_text.get_parent(), title_text.text, _title_scroll_state)
-	_author_scroll_state = TextScrollHelper.setup(author_text, author_text.get_parent(), author_text.text, _author_scroll_state)
-	_uploader_scroll_state = TextScrollHelper.setup(uploader, uploader.get_parent(), uploader.text, _uploader_scroll_state)
-	_album_scroll_state = TextScrollHelper.setup(album_name, album_name.get_parent(), album_name.text, _album_scroll_state)
-	_song_scroll_state = TextScrollHelper.setup(song_name, song_name.get_parent(), song_name.text, _song_scroll_state)
 
 ## 重写基类虚函数：返回 MIDI 封面 Texture2D
 func _get_cover_texture() -> Texture2D:
@@ -116,12 +92,12 @@ func set_remote_display(chart_data: Dictionary) -> void:
 	download_state = ResMGR.get_download_state(chart_hash)
 
 	# 填充显示字段
-	title_text.text = str(chart_data.get("title", "Unknown"))
+	title_text.set_scroll_text(str(chart_data.get("title", "Unknown")))
 	author_text.text = str(chart_data.get("artistName", ""))
 	uploader.text = "Upload by " + str(chart_data.get("uploaderName", ""))
-	album_name.text = str(chart_data.get("albumName", "null"))
+	album_name.set_scroll_text(str(chart_data.get("albumName", "null")))
 	_original_song_name = str(chart_data.get("songName", "null"))
-	song_name.text = _original_song_name
+	song_name.set_scroll_text(_original_song_name)
 
 	get_node("CoverPanel").visible = true
 	get_node("InfoPanel").visible = true
@@ -132,7 +108,6 @@ func set_remote_display(chart_data: Dictionary) -> void:
 	# 加载远程封面
 	_load_remote_cover(chart_hash)
 
-	call_deferred("_setup_text_scrolls")
 	init_finished.emit()
 
 ## 更新下载状态的 UI 显示
@@ -148,16 +123,16 @@ func _update_download_state_ui() -> void:
 			# 显示播放图标前缀，提示可点击游玩
 			# 保留 set_remote_display 中设置的原始歌曲名
 			if not _original_song_name.is_empty():
-				song_name.text = "▶ " + _original_song_name
+				song_name.set_scroll_text("▶ " + _original_song_name)
 		ResourceManager.DownloadState.DOWNLOADING:
-			song_name.text = "下载中..."
+			song_name.set_scroll_text("下载中...")
 			_start_pulse_animation()
 		ResourceManager.DownloadState.NOT_DOWNLOADED:
 			_stop_pulse_animation()
-			song_name.text = "点击下载"
+			song_name.set_scroll_text("点击下载")
 		ResourceManager.DownloadState.FAILED:
 			_stop_pulse_animation()
-			song_name.text = "下载失败，点击重试"
+			song_name.set_scroll_text("下载失败，点击重试")
 
 ## 启动脉冲动画（下载中提示）
 func _start_pulse_animation() -> void:

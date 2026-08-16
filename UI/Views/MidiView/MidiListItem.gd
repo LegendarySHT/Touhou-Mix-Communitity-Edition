@@ -2,19 +2,13 @@
 ## 继承自 CoverListItemBase，显示MIDI谱面信息（封面走 CoverLoader 异步加载）
 extends CoverListItemBase
 
-const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
-
 ## 引用节点
 @onready var status_label: Label = $VBoxC/HBoxC/status
-@onready var midi_name_label: Label = $VBoxC/NameBox/MidiName
-@onready var name_box: Control = $VBoxC/NameBox
+@onready var midi_name_label: Label = $VBoxC/MidiName
 @onready var author_label: Label = $VBoxC/HBoxC/Author
 
 ## MIDI数据
 var midi_data: MidiData
-
-## 文字滚动状态
-var _name_scroll_state: TextScrollHelper.State = null
 
 ## 展开动画补间
 var expand_tween: Tween
@@ -57,30 +51,13 @@ func _update_display() -> void:
 	if not status_label:
 		status_label = get_node("VBoxC/HBoxC/status")
 	if not midi_name_label:
-		midi_name_label = get_node("VBoxC/NameBox/MidiName")
-	if not name_box:
-		name_box = get_node("VBoxC/NameBox")
+		midi_name_label = get_node("VBoxC/MidiName")
 	if not author_label:
 		author_label = get_node("VBoxC/HBoxC/Author")
 	status_label.text = midi_data.status
-	midi_name_label.text = midi_data.name
+	midi_name_label.set_scroll_text(midi_data.name)
 	author_label.text = midi_data.artist_name if not midi_data.artist_name.is_empty() else "Unknown"
-	# 启动/重算名称滚动动画（如名称过长）
-	call_deferred("_setup_name_scroll")
 
-
-## 启动/重算 MIDI 名称滚动动画
-func _setup_name_scroll() -> void:
-	if not is_instance_valid(midi_name_label) or not is_instance_valid(name_box):
-		return
-	# 循环等待 NameBox 布局完成（最多 5 帧），确保 size 正确
-	var max_wait := 5
-	while name_box.size.y <= 10.0 and max_wait > 0:
-		await get_tree().process_frame
-		max_wait -= 1
-	_name_scroll_state = TextScrollHelper.setup(
-		midi_name_label, name_box, midi_name_label.text, _name_scroll_state
-	)
 
 ## 从MidiData初始化显示
 func setup_with_midi(parent: MidiView, midi: MidiData, index: int, bg: ButtonGroup) -> void:
@@ -166,7 +143,6 @@ func set_expanded(expanded: bool) -> void:
 	expand_tween.finished.connect(func():
 		expand_tween.kill()
 		expand_tween = null
-		call_deferred("_setup_name_scroll")
 	)
 
 

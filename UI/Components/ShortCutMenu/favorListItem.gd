@@ -7,8 +7,6 @@ extends Button
 
 class_name FavorListItem
 
-const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
-
 enum Mode { BROWSE, MANAGE }
 
 ## 列表项点击（BROWSE 模式）
@@ -25,10 +23,9 @@ var favorite_id: String = ""
 var current_midi: MidiData = null
 
 @onready var cover: TextureRect = $HBox/Cover
-@onready var name_label: Label = $HBox/Detail/NameBox/name
-@onready var name_box: Control = $HBox/Detail/NameBox
+@onready var name_label: Label = $HBox/Detail/name
 @onready var midi_count_label: Label = $HBox/Detail/midiCount
-@onready var name_edit: LineEdit = $HBox/Detail/NameBox/nameEdit
+@onready var name_edit: LineEdit = $HBox/Detail/nameEdit
 @onready var action_icon_wrap: Control = $HBox/Cover/ActionIconWrap
 @onready var action_icon: TextureRect = $HBox/Cover/ActionIconWrap/ActionIcon
 @onready var delete_btn: Button = $HBox/DeleteBtn
@@ -40,8 +37,7 @@ const ICON_DELETE := "res://Resources/icon/minus.png"
 # 移动距离超过此值视为滚动（非点击），用于避免滚动收藏夹时误触
 const TAP_MOVE_THRESHOLD := 15.0
 
-# 文字滚动状态
-var _name_scroll_state: TextScrollHelper.State = null
+# 名称完整文本（用于重命名交互）
 var _name_full_text: String = ""
 
 # 名称触摸追踪状态：用于区分“点击重命名”与“滚动拖拽”
@@ -102,14 +98,12 @@ func setup(fav: FavoriteListData, p_mode: Mode, p_midi: MidiData = null) -> void
 	if not is_node_ready():
 		await ready
 	_name_full_text = fav.name
-	name_label.text = fav.name
+	name_label.set_scroll_text(fav.name)
 	midi_count_label.text = "%d midis" % fav.midi_ids.size()
 	# 封面：最近添加的 midi（midi_ids 末尾）
 	_load_cover(fav)
 	# 模式切换
 	_apply_mode()
-	# 启动文字滚动动画（如果文字过长）
-	call_deferred("_setup_name_scroll")
 
 
 func _load_cover(fav: FavoriteListData) -> void:
@@ -135,21 +129,13 @@ func _apply_mode() -> void:
 
 # ========== 文字滚动动画 ==========
 
-## 启动/重算名称滚动动画（委托给 TextScrollHelper）
+## 重命名时文本不滚动（由脚本自动滚动，此处仅保持左对齐约定）
 ## 视觉规范：名称始终左对齐（与协作者微调一致）
-func _setup_name_scroll() -> void:
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_name_scroll_state = TextScrollHelper.setup(
-		name_label, name_box, _name_full_text, _name_scroll_state
-	)
 
 
 # ========== 重命名交互 ==========
 
 func _enter_rename_mode() -> void:
-	# 暂停滚动动画并重置位置
-	TextScrollHelper.stop(_name_scroll_state)
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_edit.text = _name_full_text
 	name_label.visible = false
 	name_edit.visible = true
@@ -187,7 +173,7 @@ func _confirm_rename() -> void:
 	else:
 		# 恢复显示并重启滚动
 		_name_full_text = name_label.text
-		_setup_name_scroll()
+		name_label.set_scroll_text(name_label.text)
 	_finalizing_rename = false
 
 

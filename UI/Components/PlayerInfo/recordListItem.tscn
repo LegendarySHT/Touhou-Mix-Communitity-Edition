@@ -2,6 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="1_8a5ju"]
 [ext_resource type="Script" uid="uid://bnunrurnc8gvb" path="res://UI/Components/PlayerInfo/recordListItem.gd" id="1_v8uxu"]
+[ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="3_e3e5v"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ng81m"]
 bg_color = Color(0.12941177, 0.14509805, 0.16078432, 1)
@@ -46,18 +47,18 @@ alignment = 1
 
 [node name="MidiName" type="Label" parent="HBox/Info" unique_id=747897909]
 layout_mode = 2
-offset_transform_enabled = true
 theme_override_font_sizes/font_size = 36
 text = "Midi Name"
 vertical_alignment = 1
+script = ExtResource("3_e3e5v")
 
 [node name="MidiAuthor" type="Label" parent="HBox/Info" unique_id=165219667]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-offset_transform_enabled = true
 theme_override_font_sizes/font_size = 24
 text = "Midi Author"
 vertical_alignment = 1
+script = ExtResource("3_e3e5v")
 
 [node name="Date" type="Label" parent="HBox/Info" unique_id=924962951]
 layout_mode = 2

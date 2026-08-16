@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://ds2byracy7vto" path="res://UI/Views/StoreView/StoreMidiListItem.gd" id="1_j6ifx"]
 [ext_resource type="Texture2D" uid="uid://c1weed4a7xiuj" path="res://Resources/song_cover/2.jpg" id="2_jmah3"]
+[ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="3_p8evh"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jmah3"]
 bg_color = Color(0, 0, 0, 0.39215687)
@@ -134,6 +135,7 @@ offset_top = 45.0
 offset_bottom = 78.0
 theme_override_font_sizes/font_size = 28
 text = "Midi Name"
+script = ExtResource("3_p8evh")
 
 [node name="Author" type="Label" parent="CoverPanel/Panel" unique_id=1170704587]
 layout_mode = 1
@@ -181,6 +183,8 @@ offset_bottom = 85.0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_font_sizes/font_size = 28
 text = "Album Name"
+script = ExtResource("3_p8evh")
+text_color = Color(0, 0, 0, 1)
 
 [node name="SongName" type="Label" parent="InfoPanel" unique_id=1023909378]
 layout_mode = 1
@@ -192,3 +196,5 @@ offset_bottom = 130.0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_font_sizes/font_size = 24
 text = "Album Name"
+script = ExtResource("3_p8evh")
+text_color = Color(0, 0, 0, 1)

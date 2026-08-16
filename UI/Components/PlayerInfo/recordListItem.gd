@@ -1,8 +1,6 @@
 extends ListItemBase
 class_name RecordListItem
 
-const TextScrollHelper = preload("res://UI/Components/TextScrollHelper.gd")
-
 ## 记录列表项（ProfilePage History 页三个 tab 共用）
 ## 按 RecordMode 自动调整 MainInfo 显示内容与分数旁 PP 标签的可见性
 
@@ -29,10 +27,6 @@ var record_mode: int = RecordMode.RECENT
 ## 当前记录的 MidiHash（用于下载封面）
 var _midi_hash: String = ""
 
-## 文字滚动状态（MidiName / MidiAuthor 各一，TextScrollHelper）
-var _midi_name_scroll_state: TextScrollHelper.State = null
-var _midi_author_scroll_state: TextScrollHelper.State = null
-
 ## 设置列表类型（列表加载器在 setup_record 前调用，或直接传给 setup_record 的 mode）
 func set_mode(mode: int) -> void:
 	record_mode = mode
@@ -55,8 +49,8 @@ func setup_record(data: Dictionary, mode: int = -1) -> void:
 
 	_midi_hash = str(data.get("midiHash", ""))
 
-	midi_name_label.text = _pick_str(data, ["midiName", "songName"], "—")
-	midi_author_label.text = _pick_str(data, ["authorName"], "—")
+	midi_name_label.set_scroll_text(_pick_str(data, ["midiName", "songName"], "—"))
+	midi_author_label.set_scroll_text(_pick_str(data, ["authorName"], "—"))
 	date_label.text = _format_played_at(_pick_str(data, ["playedAt"], ""))
 
 	score_label.text = _format_number(int(_pick(data, ["totalScore", "score"], 0)))
@@ -79,9 +73,6 @@ func setup_record(data: Dictionary, mode: int = -1) -> void:
 	if bool(data.get("hasCover", false)) and not _midi_hash.is_empty():
 		_load_remote_cover(_midi_hash)
 
-	# 文本变化后重算滚动（名称/作者过长时来回滚动）
-	call_deferred("_setup_text_scrolls")
-
 ## 设置中途退出（W 评级）状态：整体半透明以区分正常完成记录
 func set_withdraw_state(withdraw: bool) -> void:
 	modulate.a = 0.4 if withdraw else 1.0
@@ -99,31 +90,6 @@ func _load_remote_cover(hash: String) -> void:
 		if tex:
 			cover_rect.texture = tex
 	)
-
-# ========== 文字滚动（TextScrollHelper） ==========
-
-## 启动/重算 MidiName、MidiAuthor 的滚动动画
-## 等 Info 布局完成（最多 5 帧）确保 size 正确后交给 TextScrollHelper
-func _setup_text_scrolls() -> void:
-	if not is_inside_tree():
-		return
-	var clip := midi_name_label.get_parent() as Control
-	if clip == null:
-		return
-	var max_wait := 5
-	while clip.size.x <= 10.0 and max_wait > 0:
-		await get_tree().process_frame
-		max_wait -= 1
-		# 等待期间可能被移除出树（列表重建），直接退出
-		if not is_inside_tree() or not is_instance_valid(clip):
-			return
-	_midi_name_scroll_state = TextScrollHelper.setup(midi_name_label, clip, midi_name_label.text, _midi_name_scroll_state)
-	_midi_author_scroll_state = TextScrollHelper.setup(midi_author_label, clip, midi_author_label.text, _midi_author_scroll_state)
-
-## 退出场景树时停止滚动并释放状态（防 resized 回调残留）
-func _exit_tree() -> void:
-	TextScrollHelper.stop(_midi_name_scroll_state)
-	TextScrollHelper.stop(_midi_author_scroll_state)
 
 ## 按 RecordMode 调整 MainInfo 显示内容与 PP 标签可见性
 func _update_main_info(pp: float, play_count: int) -> void:

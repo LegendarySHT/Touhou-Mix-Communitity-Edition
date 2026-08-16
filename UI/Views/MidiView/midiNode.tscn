@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://cax20p7g1wjmk" path="res://UI/Views/MidiView/MidiListItem.gd" id="1_t5w3i"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_jdrqc"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_jdrqc"]
+[ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="4_u2pgb"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yxlt8"]
 draw_center = false
@@ -54,27 +55,17 @@ grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
 
-[node name="NameBox" type="Control" parent="VBoxC" unique_id=2113026605]
+[node name="MidiName" type="Label" parent="VBoxC" unique_id=2113026606]
 custom_minimum_size = Vector2(700, 45)
-clip_contents = true
 layout_mode = 2
-size_flags_horizontal = 4
 size_flags_vertical = 8
-mouse_filter = 2
-
-[node name="MidiName" type="Label" parent="VBoxC/NameBox" unique_id=2113026606]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
-theme_override_constants/shadow_outline_size = 5
-theme_override_fonts/font = ExtResource("3_jdrqc")
+offset_transform_enabled = true
+offset_transform_position = Vector2(12, 0)
 theme_override_font_sizes/font_size = 30
 text = "Midi Name"
 vertical_alignment = 1
+script = ExtResource("4_u2pgb")
+outline_size = 8
 
 [node name="Line" type="Panel" parent="VBoxC" unique_id=2102406377]
 custom_minimum_size = Vector2(0, 6)
