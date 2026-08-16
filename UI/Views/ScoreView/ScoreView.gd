@@ -78,9 +78,6 @@ class ScoreData:
 		return "%0.2fpp" % performance_point
 
 func _ready() -> void:
-	get_window().size_changed.connect(func():
-		c.size.x = get_viewport().get_visible_rect().size.x
-	)
 	UiStatMGR.state_changed.connect(_on_state_changed)
 	animate(false)
 

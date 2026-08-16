@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://bf7nd5qojdcla" path="res://Resources/icon/lily-white.png" id="2_iqsw5"]
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="3_y1cb1"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="4_kq2mn"]
+[ext_resource type="Script" uid="uid://dpn6fchjbt3b8" path="res://UI/Components/SkewArea.gd" id="5_skew"]
 
 [sub_resource type="Gradient" id="Gradient_01xql"]
 interpolation_mode = 2
@@ -264,6 +265,9 @@ anchors_preset = 0
 offset_right = 1920.0
 offset_bottom = 420.0
 pivot_offset = Vector2(596.2745, 275.38348)
+script = ExtResource("5_skew")
+sync_height = false
+skew_compensate = false
 
 [node name="SongInfo" type="HBoxContainer" parent="Bottom/skew/C" unique_id=40191358]
 custom_minimum_size = Vector2(800, 250)
@@ -514,7 +518,6 @@ text = "Miss"
 
 [node name="HBox1" type="HBoxContainer" parent="Bottom/skew/C/Data" unique_id=165446906]
 layout_mode = 2
-size_flags_horizontal = 0
 theme_override_constants/separation = 0
 
 [node name="EarlyCtn" type="Label" parent="Bottom/skew/C/Data/HBox1" unique_id=499340368]
@@ -567,6 +570,7 @@ text = "Late"
 custom_minimum_size = Vector2(150, 50)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
 theme_override_font_sizes/font_size = 32
 text = "1000000/1000000"
 vertical_alignment = 2
