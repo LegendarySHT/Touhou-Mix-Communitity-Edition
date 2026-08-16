@@ -281,6 +281,7 @@ theme_override_constants/separation = 50
 
 [node name="PanelContainer" type="PanelContainer" parent="Bottom/skew/C/SongInfo" unique_id=2037160204]
 custom_minimum_size = Vector2(250, 250)
+clip_contents = true
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_0sw27")
@@ -289,7 +290,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_0sw27")
 layout_mode = 2
 texture = ExtResource("4_kq2mn")
 expand_mode = 5
-stretch_mode = 5
+stretch_mode = 6
 
 [node name="Info" type="VBoxContainer" parent="Bottom/skew/C/SongInfo" unique_id=1352108271]
 custom_minimum_size = Vector2(490, 0)

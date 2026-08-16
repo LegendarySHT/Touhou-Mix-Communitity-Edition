@@ -54,6 +54,10 @@ var game_sequences: Array[KeySequenceManager.GameSequence] = []
 
 var _is_finishing_game: bool = false
 
+## 游戏代次：每次 _prepare_game 自增，用于让已启动的 _on_game_finished 协程在
+## 用户重试（仍停留在 PLAY_VIEW）时失效，避免等待结束后被强切回 ScoreView
+var _game_generation: int = 0
+
 ## 本次游玩是否开启 AUTO 模式（开局时快照，AUTO 模式成绩不上传）
 var _is_auto_mode_play: bool = false
 
@@ -252,7 +256,10 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 			playback_mgr.clear_manual_control_notes()
 		flow_area.clear_flow_area()
 		game_sequences.clear()
-		bg_ctrl.clear_blur_bake()
+		# 结算页(from SCORE_VIEW 重试)与播放页同 MIDI，保留已烘焙的模糊背景以便重试复用；
+		# 仅离开播放到其它视图时才清理，避免重试触发重新烘焙、闪现清晰原图
+		if state != UIStateManager.UIState.SCORE_VIEW:
+			bg_ctrl.clear_blur_bake()
 		# 不 unload_midi / 不 clear_sequences / 不 clear_parsed_notes：
 		# 同一 MIDI 在 MidiView/TrackView/PlayView 间切换时复用解析数据与 GameSequence 缓存，
 		# 避免反复重解析/重生成。离开 MidiView 或切换 MidiList 项时才彻底清理
@@ -447,6 +454,7 @@ func _auto_pause_on_background(reason: String) -> void:
 	GLogger.info("Auto pause triggered by background event: %s" % reason, "PlayView")
 
 func _prepare_game(midi:MidiData = current_midi) -> void:
+	_game_generation += 1
 	current_midi = midi
 	play_result = ScoreView.ScoreData.new()
 	_is_finishing_game = false
@@ -518,6 +526,11 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	await _finish_generate_game_sequences(midi, gen_task_id)
 	GLogger.info("After _finish_generate_game_sequences, game_sequences.size() = %d" % game_sequences.size(), "PlayView")
 
+	# 解析/生成序列期间若用户已退出播放视图，立即中止后续启动流程，
+	if UiStatMGR.current_state != UIStateManager.UIState.PLAY_VIEW:
+		GLogger.info("Prepare aborted: left PLAY_VIEW during note generation", "PlayView")
+		return
+
 	# 将生成的游戏序列转换为FlowArea所需的音符格式
 	var flow_notes = _convert_game_sequences_to_flow_notes(game_sequences)
 	GLogger.info("After _convert_game_sequences_to_flow_notes, flow_notes.size() = %d" % flow_notes.size(), "PlayView")
@@ -542,7 +555,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 【预热】粒子精灵图：首次判定 spawn 粒子时的同步 load() + GPU 上传前移到面板遮罩期
 	flow_area.prewarm_spark_packs()
 	GLogger.info("Prewarm done: composites+sparks in %.2fms" % [(Time.get_ticks_usec() - _prewarm_t0) / 1000.0], "PlayView")
-	await playback_mgr.prepare_vocal_playback()
+	playback_mgr.prepare_vocal_playback()
 
 	if play_ready_animation:
 		# 面板总显示时长动态补偿：固定等 1s 改为 3s - 遮罩期内耗时操作已用时，
@@ -551,6 +564,11 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 		if remain_ms > 0:
 			await get_tree().create_timer(remain_ms / 1000.0).timeout
 		await AniMGR.animate_fade_out(center_bg, 1).finished
+
+	# 准备阶段若用户已退出播放视图（打开菜单后强退/返回），不再启动播放：
+	if UiStatMGR.current_state != UIStateManager.UIState.PLAY_VIEW:
+		GLogger.info("Prepare aborted: left PLAY_VIEW during ready phase", "PlayView")
+		return
 
 	# 记录游玩开始时间（用于统计游玩时长）
 	_play_start_time = Time.get_ticks_msec()
@@ -998,6 +1016,8 @@ func _on_game_finished() -> void:
 	if _is_finishing_game:
 		return
 	_is_finishing_game = true
+	# 记录本次游戏结束开始时的代次，等待期间若用户重试（ _prepare_game 自增代次）则本协程作废
+	var start_generation := _game_generation
 
 	GLogger.info("Game finished!", "PlayView")
 
@@ -1030,6 +1050,8 @@ func _on_game_finished() -> void:
 
 	# 进入结算界面（资源清理已统一由 _on_state_changed 处理）
 	await get_tree().create_timer(1).timeout
+	if UiStatMGR.current_state != UIStateManager.UIState.PLAY_VIEW or _game_generation != start_generation:
+		return
 	UiStatMGR.change_state(UIStateManager.UIState.SCORE_VIEW, false)
 	get_node(PathRegistry.SCORE_VIEW).set_display(play_result, current_midi, _is_auto_mode_play)
 	# 异步上传成绩（不阻塞结算界面）

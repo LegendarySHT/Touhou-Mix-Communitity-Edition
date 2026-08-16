@@ -17,6 +17,9 @@ var _flash_tween: Tween = null
 var _blur_bake_viewport: SubViewport = null
 var _blur_bake_texture_rect: TextureRect = null
 var _blur_bake_id: int = 0
+## 已成功烘焙的谱面标识 + 模糊强度（重试/同谱面时复用，避免重新烘焙闪现清晰原图）
+var _baked_midi_key: String = ""
+var _baked_blur_strength: float = -1.0
 
 ## 应用背景（PlayView 在 _init_display / 从设置页返回时调用）
 ## cover 模式：曲包封面 + 模糊烘焙；image/solid/gradient 委托 ThemeManager 统一应用
@@ -44,10 +47,17 @@ func apply_background(p_cover: Texture2D = null, p_has_custom_cover: bool = fals
 				cover_texture = FileSystemManager.instance.get_cover_by_midiData(midi)
 		if has_custom and cover_texture:
 			background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			# 重试/同谱面：若已为此 midi+blur 烘焙且 SubViewport 仍有效，直接复用，
+			# 避免重新 _prepare_background_texture / _bake 导致闪现清晰原图
+			if _can_reuse_bake(midi, blur_strength):
+				background.texture = _blur_bake_viewport.get_texture()
+				background.modulate = Color.WHITE
+				background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+				return
 			background.texture = _prepare_background_texture(cover_texture)
 			background.modulate = Color.WHITE
 			background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-			_set_cover_blur_material(blur_strength)
+			_set_cover_blur_material(blur_strength, _midi_key(midi))
 			return
 		# 无封面可用，降级到纯色（使用 play 段的 solid_color）
 		var fallback_color: String = bg_config.get("solid_color", "#10121AFF")
@@ -95,12 +105,12 @@ func _apply_background_solid(color_html: String) -> void:
 	_clear_cover_blur_material()
 
 
-func _set_cover_blur_material(blur_strength: float) -> void:
+func _set_cover_blur_material(blur_strength: float, midi_key: String) -> void:
 	background.material = null
 	var tex = background.texture
 	if tex == null:
 		return
-	_bake_blurred_background(tex, blur_strength)
+	_bake_blurred_background(tex, blur_strength, midi_key)
 
 
 func _clear_cover_blur_material() -> void:
@@ -108,7 +118,7 @@ func _clear_cover_blur_material() -> void:
 	_teardown_blur_bake_viewport()
 
 
-func _bake_blurred_background(cover_texture: Texture2D, blur_strength: float) -> void:
+func _bake_blurred_background(cover_texture: Texture2D, blur_strength: float, midi_key: String) -> void:
 	_blur_bake_id += 1
 	var my_id = _blur_bake_id
 
@@ -156,6 +166,9 @@ func _bake_blurred_background(cover_texture: Texture2D, blur_strength: float) ->
 	background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	background.texture = _blur_bake_viewport.get_texture()
 	background.material = null
+	# 记录本次烘焙结果，供后续同谱面复用
+	_baked_midi_key = midi_key
+	_baked_blur_strength = blur_strength
 
 
 func _teardown_blur_bake_viewport() -> void:
@@ -164,6 +177,24 @@ func _teardown_blur_bake_viewport() -> void:
 		_blur_bake_viewport = null
 		_blur_bake_texture_rect = null
 	_blur_bake_id += 1
+	# SubViewport 释放后 ViewportTexture 失效，不再可复用
+	_baked_midi_key = ""
+	_baked_blur_strength = -1.0
+
+
+## 谱面标识（复用判断用）
+func _midi_key(midi: MidiData) -> String:
+	if midi == null:
+		return ""
+	return midi.chart_key if not midi.chart_key.is_empty() else midi.file_hash
+
+
+## 是否可复用已烘焙结果：同谱面 + 同 blur 强度 + SubViewport 仍有效
+func _can_reuse_bake(midi: MidiData, blur_strength: float) -> bool:
+	if _blur_bake_viewport == null or _baked_midi_key.is_empty():
+		return false
+	return _baked_midi_key == _midi_key(midi) \
+		and absf(_baked_blur_strength - blur_strength) < 0.001
 
 
 func _apply_background_dim() -> void:

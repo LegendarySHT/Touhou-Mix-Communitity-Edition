@@ -407,7 +407,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_jlvmc")
 layout_mode = 2
 texture = ExtResource("2_7ak4s")
 expand_mode = 5
-stretch_mode = 5
+stretch_mode = 6
 
 [node name="GridContainer" type="GridContainer" parent="Layer/CenterBackGround/SongInfo" unique_id=536004679]
 custom_minimum_size = Vector2(490, 0)
