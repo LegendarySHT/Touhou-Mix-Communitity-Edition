@@ -10,6 +10,11 @@ var current_albums: Array = []
 ## 上次点进 SongView 的专辑 id（退回 AlbumView 时用于吸附回该专辑）
 var _last_opened_album_id: String = ""
 
+## 本次进入 AlbumView 前的旧状态（state_changed 的 old 记录）
+## 用于区分"从专辑子视图（Song/Midi/Track）退回"与"从设置等平行视图退回"：
+## 前者 _last_opened_album_id 权威，后者应保持当前位置、忽略陈旧专辑
+var _prev_state_on_return: UIStateManager.UIState = UIStateManager.UIState.NONE
+
 ## 排序引擎引用
 @onready var data_manager: DataManager = DataMGR
 @onready var event_bus: EventBus = EvtBus
@@ -44,8 +49,10 @@ func _ready() -> void:
 	event_bus.config_changed.connect(_on_config_changed)
 	event_bus.album_selected.connect(func(album_id): _last_opened_album_id = String(album_id))
 	# 回到 AlbumView 时补检空列表（midi_deleted 在不活跃时触发刷新，不会显示 NoItems）
-	UiStatMGR.state_changed.connect(func(_old, new):
+	UiStatMGR.state_changed.connect(func(old, new):
 		if new == UIStateManager.UIState.ALBUM_VIEW:
+			# 记录返回前状态：区分"从专辑子视图退回"与"从平行视图退回"
+			_prev_state_on_return = old
 			# 进入专辑视图：应用当前共享搜索词（跨视图就地筛选持久化，仅 SORTED_VIEW 清空）
 			_search_query = EvtBus.current_search_query
 			call_deferred("_load_albums")
@@ -217,8 +224,13 @@ func reset_selection():
 
 	selected_item= -1
 
-## 从 SongView 退回时恢复选中
-## 优先吸附回 SongView 选择的专辑（album_selected 记录），其次已有选中项，兜底第一项；绝不吸附到 -1
+## 从浅层视图退回 AlbumView 时恢复选中
+## 关键：进入视图时 _process 逐帧自动吸附会抢先 select_item（布局未稳时可能误踩最后一项），
+## 因此这里必须区分返回来源再决定优先级：
+##  - 从专辑子视图（Song/Midi/Track）返回：真正的恢复目标是刚打开的专辑，_last_opened_album_id 权威，
+##    此刻 selected_item 已被自动吸附抢先置值，不能再信它（否则会吸附到错误的可见项/最后一项）。
+##  - 从设置等平行视图返回：应保持当前可见位置，自动吸附已正确地停在当前位置，
+##    _last_opened_album_id 是陈旧的旧专辑，必须忽略（否则会跳去旧专辑）。
 func _restore_selection_on_return() -> void:
 	# 等待列表构建完成（最多若干帧），避免列表尚未加载完就尝试吸附而落空
 	var wait := 0
@@ -227,20 +239,25 @@ func _restore_selection_on_return() -> void:
 		wait += 1
 	if list_items.is_empty():
 		return
-	# 优先：吸附回 SongView/MidiView 选择的专辑（真正的恢复目标）。
-	# 不能先信 selected_item——进入视图时 FocusManager 可能已把 -1 兜底成 0，
-	# 若先按 selected_item 吸附会抢走真正的恢复目标，表现为"吸附到第一项而非回退项"
-	if not _last_opened_album_id.is_empty():
-		for i in current_albums.size():
-			if String(current_albums[i].get("id", "")) == _last_opened_album_id:
-				force_snap_to(i)
-				return
-	# 其次：已有选中项则吸附到它（可能在长列表底部、屏幕外）
+	var ui := UIStateManager.UIState
+	var from_drill := _prev_state_on_return in [ui.SONG_VIEW, ui.MIDI_VIEW, ui.TRACK_VIEW]
+	if from_drill:
+		# 吸附回 SongView/MidiView 选择的专辑（真正的恢复目标），覆盖被抢占的错误选中项
+		if not _last_opened_album_id.is_empty():
+			for i in current_albums.size():
+				if String(current_albums[i].get("id", "")) == _last_opened_album_id:
+					force_snap_to(i)
+					return
+		# 目标专辑可能已被删：回落已有选中项，再兜底第一项
+		if selected_item != -1 and selected_item < list_items.size():
+			force_snap_to(selected_item)
+			return
+		force_snap_to(0)
+		return
+	# 平行视图返回：尊重当前选中/当前位置，不跳去陈旧专辑
 	if selected_item != -1 and selected_item < list_items.size():
 		force_snap_to(selected_item)
-		return
-	# 兜底：吸附第一项
-	force_snap_to(0)
+	# selected_item == -1（自动吸附尚未选定）时不动，交由 _process 吸附到当前可见项，避免矫位到第一项
 
 func on_item_button_confirmed(index: int):
 	var album_id: String = String(current_albums[index].get("id", ""))
