@@ -404,7 +404,6 @@ size_flags_vertical = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_jlvmc")
 
 [node name="TextureRect" type="TextureRect" parent="Layer/CenterBackGround/SongInfo/PanelContainer" unique_id=1401711672]
-custom_minimum_size = Vector2(400, 400)
 layout_mode = 2
 texture = ExtResource("2_7ak4s")
 expand_mode = 5
@@ -414,6 +413,7 @@ stretch_mode = 5
 custom_minimum_size = Vector2(490, 0)
 layout_mode = 2
 size_flags_vertical = 4
+theme_override_constants/h_separation = 15
 columns = 2
 
 [node name="Label1" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1262238620]

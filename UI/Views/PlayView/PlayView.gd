@@ -1031,7 +1031,7 @@ func _on_game_finished() -> void:
 	# 进入结算界面（资源清理已统一由 _on_state_changed 处理）
 	await get_tree().create_timer(1).timeout
 	UiStatMGR.change_state(UIStateManager.UIState.SCORE_VIEW, false)
-	get_node(PathRegistry.SCORE_VIEW).set_display(play_result)
+	get_node(PathRegistry.SCORE_VIEW).set_display(play_result, current_midi, _is_auto_mode_play)
 	# 异步上传成绩（不阻塞结算界面）
 	_upload_score_async(current_midi, snap)
 

@@ -3,9 +3,20 @@ extends Control
 class_name ScoreView
 
 # 数据区
-@onready var flags_area: GridContainer = $Bottom/skew/C/Flags/GridC
-@onready var data_area: GridContainer = $Bottom/skew/C/Data/GridC
 @onready var c: Control = $Bottom/skew/C
+@onready var data_box: VBoxContainer = $Bottom/skew/C/Data
+
+# 歌曲信息区
+@onready var cover: TextureRect = $Bottom/skew/C/SongInfo/PanelContainer/TextureRect
+@onready var album_label: Label = $Bottom/skew/C/SongInfo/Info/album
+@onready var song_label: Label = $Bottom/skew/C/SongInfo/Info/song
+@onready var midi_name_label: Label = $Bottom/skew/C/SongInfo/Info/midiName
+@onready var midi_author_label: Label = $Bottom/skew/C/SongInfo/Info/midiAuthor
+
+# 标志区
+@onready var auto_mode_flag: Label = $Bottom/skew/C/Flags/AutoMode
+@onready var all_perfect_flag: Label = $Bottom/skew/C/Flags/AllPerfect
+@onready var full_combo_flag: Label = $Bottom/skew/C/Flags/FullCombo
 
 @onready var rank: Label = $Rank
 @onready var accuracy: Label = $Accuracy
@@ -23,7 +34,6 @@ class_name ScoreView
 @onready var chara: TextureRect = $Chara
 
 # 动画相关
-@onready var btns: Panel = $Btns
 @onready var bottom: Panel = $Bottom
 @onready var info: Panel = $LevelingProgress
 @onready var score_panel: Panel = $Score
@@ -90,13 +100,6 @@ func apply_theme() -> void:
 			var a = sb.bg_color.a
 			var pd := ThemeMGR.get_color("primary_dark")
 			sb.bg_color = Color(pd.r, pd.g, pd.b, a)
-	# Btns — 透明 primary_light
-	if btns:
-		var sb := btns.get_theme_stylebox("panel")
-		if sb is StyleBoxFlat:
-			var a = sb.bg_color.a
-			var pl := ThemeMGR.get_color("primary_light")
-			sb.bg_color = Color(pl.r, pl.g, pl.b, a)
 
 func _exit_tree() -> void:
 	if ThemeMGR:
@@ -135,26 +138,53 @@ func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateMana
 func _cleanup() -> void:
 	_kill_loop_ani()
 
-func set_display(result: ScoreData):
-	data_area.get_node("PerfectCtn").text = str(result.count.Perfect)
-	data_area.get_node("GreatCtn").text = str(result.count.Great)
-	data_area.get_node("GoodCtn").text = str(result.count.Good)
-	data_area.get_node("BadCtn").text = str(result.count.Bad)
-	data_area.get_node("MissCtn").text = str(result.count.Miss)
+func set_display(result: ScoreData, midi: MidiData = null, is_auto: bool = false):
+	# 判定数据
+	data_box.get_node("Hbox/PerfectCtn").text = str(result.count.Perfect)
+	data_box.get_node("Hbox/GreatCtn").text = str(result.count.Great)
+	data_box.get_node("Hbox/GoodCtn").text = str(result.count.Good)
+	data_box.get_node("Hbox/BadCtn").text = str(result.count.Bad)
+	data_box.get_node("Hbox/MissCtn").text = str(result.count.Miss)
 
-	data_area.get_node("EarlyCtn").text = str(result.early_count)
-	data_area.get_node("LateCtn").text = str(result.late_count)
-	data_area.get_node("MaxCombo").text = "%d/%d" % [result.max_combo, result.total_notes]
+	data_box.get_node("HBox1/EarlyCtn").text = str(result.early_count)
+	data_box.get_node("HBox1/LateCtn").text = str(result.late_count)
+	data_box.get_node("HBox1/MaxCombo").text = "%d/%d" % [result.max_combo, result.total_notes]
 
 	rank.text = result.get_rank()
 	accuracy.text = result.get_accuracy()
 	score.text = result.get_formated_score()
 	pp.text = result.get_pp()
 
+	# 歌曲信息（专辑/歌名/Midi名/Midi作者/难度）
+	_update_song_info(midi)
+
+	# 旗帜（AUTO / AP / FC）
+	_update_flags(result, is_auto)
+
 	# 确保统计刷新信号已连接（_ready 时可能 PlayerInfoContent 尚未就绪）
 	_connect_stats_refreshed()
 	# 同步玩家信息（头像、名称、等级、进度条）
 	_update_player_info()
+
+## 填充歌曲信息（来自本次游玩的 MidiData，与 PlayView 信息面板保持一致）
+func _update_song_info(midi: MidiData) -> void:
+	if midi == null:
+		return
+	cover.texture = FileSystemManager.instance.get_cover_by_midiData(midi)
+	album_label.text = midi.artist_name
+	song_label.text = midi.song_name
+	midi_name_label.text = midi.name
+	midi_author_label.text = midi.artist_name
+
+## 根据 AP / FC / AUTO 设置旗帜节点可见性
+func _update_flags(result: ScoreData, is_auto: bool) -> void:
+	auto_mode_flag.visible = is_auto
+	# AP：所有音符均为 Perfect（其余判定计数为零）
+	var is_all_perfect : bool = result.count.Great == 0 and result.count.Good == 0 \
+		and result.count.Bad == 0 and result.count.Miss == 0
+	all_perfect_flag.visible = is_all_perfect
+	# FC：无 Miss（连击无断）
+	full_combo_flag.visible = result.count.Miss == 0
 
 ## 从 PlayerInfoContent 同步玩家信息（头像、名称、等级、进度条）
 ## 在 set_display 后调用，确保结算界面显示最新玩家状态
@@ -221,14 +251,12 @@ func animate(ani_in: bool = true):
 		ani.animate_scale(bg, Vector2.ONE, 0.5, "sv_bg")
 		ani.animate_offset_back(info, 0.5, "sv_info")
 
-		ani.animate_offset_back(btns, 0.8, "sv_btns")
 		ani.animate_offset_back(chara, 0.8, "sv_chara")
 		ani.animate_offset_back(bottom, 0.8, "sv_bottom")
 	else:
 		ani.animate_scale(bg, Vector2.ZERO, 0.25, "sv_bg")
 		ani.animate_offset_to(info, Vector2(- info.size.x, 0), 0.25, "sv_info")
 
-		ani.animate_offset_to(btns, Vector2(btns.size.x + 100, 0), 0.5, "sv_btns")
 		ani.animate_offset_to(chara, Vector2(0, wh), 0.5, "sv_chara")
 		ani.animate_offset_to(bottom, Vector2(0, wh), 0.5, "sv_bottom")
 	

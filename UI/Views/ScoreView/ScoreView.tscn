@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://sdxdtvdsllvp" path="res://UI/Views/ScoreView/ScoreView.gd" id="1_xn8wu"]
 [ext_resource type="Texture2D" uid="uid://bf7nd5qojdcla" path="res://Resources/icon/lily-white.png" id="2_iqsw5"]
 [ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="3_y1cb1"]
+[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="4_kq2mn"]
 
 [sub_resource type="Gradient" id="Gradient_01xql"]
 interpolation_mode = 2
@@ -13,7 +14,7 @@ gradient = SubResource("Gradient_01xql")
 fill_to = Vector2(1, 0.64529914)
 
 [sub_resource type="Gradient" id="Gradient_vfrgv"]
-colors = PackedColorArray(0, 0, 0, 1, 0.18431373, 0.18431373, 0.18431373, 0.5921569)
+colors = PackedColorArray(0.07350468, 0.07350608, 0.06614408, 1, 0, 0, 0, 0)
 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_45gh0"]
 gradient = SubResource("Gradient_vfrgv")
@@ -30,59 +31,74 @@ gradient = SubResource("Gradient_0sw27")
 fill_to = Vector2(1, 0.517094)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wu7dc"]
-bg_color = Color(0.078431375, 0.078431375, 0.078431375, 0.88235295)
+bg_color = Color(0.09023667, 0.0858, 0.11, 0.6862745)
 shadow_color = Color(0.078431375, 0.078431375, 0.078431375, 0.8666667)
 shadow_size = 50
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_36qmp"]
-bg_color = Color(0, 0, 0, 1)
-draw_center = false
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_blend = true
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-expand_margin_left = 15.0
-expand_margin_top = 15.0
-expand_margin_right = 15.0
-expand_margin_bottom = 15.0
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0sw27"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(0, 0, 0, 0.21176471)
+shadow_size = 15
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xjj1m"]
-bg_color = Color(1, 1, 1, 0.011764706)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(0.96474224, 0.96474224, 0.9647421, 1)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kq2mn"]
+bg_color = Color(0.9143316, 0.26513988, 0.45739597, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0, 0, 0, 0)
 border_blend = true
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+corner_radius_top_left = 30
+corner_radius_top_right = 5
+corner_radius_bottom_right = 30
+corner_radius_bottom_left = 5
 corner_detail = 1
+shadow_color = Color(1, 0.28707156, 0.45533067, 0.6)
+shadow_size = 5
+shadow_offset = Vector2(5, 2)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_42kvg"]
-bg_color = Color(0.5449745, 0.5449742, 0.54497427, 0.007843138)
-border_width_left = 12
-border_width_top = 12
-border_width_right = 12
-border_width_bottom = 12
-border_color = Color(0, 0, 0, 0.8156863)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3y6u5"]
+bg_color = Color(0.60971165, 0.28493494, 0.98669523, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0, 0, 0, 0)
 border_blend = true
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+corner_radius_top_left = 30
+corner_radius_top_right = 5
+corner_radius_bottom_right = 30
+corner_radius_bottom_left = 5
+corner_detail = 1
+shadow_color = Color(0.8649391, 0.34942698, 0.92447096, 0.6)
+shadow_size = 5
+shadow_offset = Vector2(5, 2)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_y1cb1"]
-bg_color = Color(0.48570347, 0.48570353, 0.48570347, 0.15294118)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_a5lqd"]
-bg_color = Color(0.12941177, 0.5372549, 0.83137256, 0.59607846)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_iqsw5"]
+bg_color = Color(0.41687015, 0.5220287, 0.86981654, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0, 0, 0, 0)
+border_blend = true
+corner_radius_top_left = 30
+corner_radius_top_right = 5
+corner_radius_bottom_right = 30
+corner_radius_bottom_left = 5
+corner_detail = 1
+shadow_color = Color(0.46963003, 0.59608823, 0.9246135, 0.6)
+shadow_size = 5
+shadow_offset = Vector2(5, 2)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1u62t"]
 bg_color = Color(0.011764706, 0.34901962, 0.6784314, 0.6901961)
@@ -212,15 +228,15 @@ texture = SubResource("GradientTexture2D_iqsw5")
 [node name="Chara" type="TextureRect" parent="." unique_id=802525350]
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
+anchors_preset = -1
+anchor_left = 0.7
 anchor_top = 1.0
-anchor_right = 0.5
+anchor_right = 0.7
 anchor_bottom = 1.0
-offset_left = -10.0
-offset_top = -930.0
-offset_right = 637.5
-offset_bottom = 38.16504
+offset_left = -323.75
+offset_top = -970.0
+offset_right = 323.75
+offset_bottom = -1.8349609
 grow_horizontal = 2
 grow_vertical = 0
 texture = ExtResource("2_iqsw5")
@@ -249,346 +265,326 @@ offset_right = 1920.0
 offset_bottom = 420.0
 pivot_offset = Vector2(596.2745, 275.38348)
 
-[node name="Flags" type="PanelContainer" parent="Bottom/skew/C" unique_id=221026628]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -560.0
-offset_top = -250.0
-offset_right = -210.0
-offset_bottom = -120.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_36qmp")
-
-[node name="GridC" type="GridContainer" parent="Bottom/skew/C/Flags" unique_id=923633598]
-layout_mode = 2
-theme_override_constants/h_separation = 20
-theme_override_constants/v_separation = 8
-columns = 2
-
-[node name="Difficulty" type="Label" parent="Bottom/skew/C/Flags/GridC" unique_id=1557428720]
-custom_minimum_size = Vector2(0, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Custom"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Border" type="PanelContainer" parent="Bottom/skew/C/Flags/GridC/Difficulty" unique_id=1109072693]
-show_behind_parent = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_xjj1m")
-
-[node name="AutoMode" type="Label" parent="Bottom/skew/C/Flags/GridC" unique_id=453618684]
-custom_minimum_size = Vector2(0, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Auto Mode"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Border" type="PanelContainer" parent="Bottom/skew/C/Flags/GridC/AutoMode" unique_id=580839687]
-show_behind_parent = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_xjj1m")
-
-[node name="FullCombo" type="Label" parent="Bottom/skew/C/Flags/GridC" unique_id=2144928654]
-custom_minimum_size = Vector2(0, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Full Combo"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Border" type="PanelContainer" parent="Bottom/skew/C/Flags/GridC/FullCombo" unique_id=268662764]
-show_behind_parent = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_xjj1m")
-
-[node name="AllPerfect" type="Label" parent="Bottom/skew/C/Flags/GridC" unique_id=1734123743]
-custom_minimum_size = Vector2(0, 30)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "All Perfect"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Border" type="PanelContainer" parent="Bottom/skew/C/Flags/GridC/AllPerfect" unique_id=397891693]
-show_behind_parent = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_xjj1m")
-
-[node name="Data" type="Panel" parent="Bottom/skew/C" unique_id=2126929165]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -80.0
-offset_top = -370.0
-offset_right = 729.0
-offset_bottom = -93.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_42kvg")
-
-[node name="GridC" type="GridContainer" parent="Bottom/skew/C/Data" unique_id=497439932]
+[node name="SongInfo" type="HBoxContainer" parent="Bottom/skew/C" unique_id=40191358]
+custom_minimum_size = Vector2(800, 250)
 layout_mode = 1
 anchors_preset = -1
-anchor_right = 1.0
+anchor_right = 0.4
 anchor_bottom = 1.0
-offset_left = 15.0
-offset_top = 20.0
-offset_right = -15.0
-offset_bottom = -20.0
-grow_horizontal = 2
+offset_left = 200.0
 grow_vertical = 2
-theme_override_constants/h_separation = 0
-columns = 5
+theme_override_constants/separation = 50
 
-[node name="Label" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=2043875143]
-custom_minimum_size = Vector2(0, 50)
+[node name="PanelContainer" type="PanelContainer" parent="Bottom/skew/C/SongInfo" unique_id=2037160204]
+custom_minimum_size = Vector2(250, 250)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_0sw27")
+
+[node name="TextureRect" type="TextureRect" parent="Bottom/skew/C/SongInfo/PanelContainer" unique_id=226451417]
+layout_mode = 2
+texture = ExtResource("4_kq2mn")
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Info" type="VBoxContainer" parent="Bottom/skew/C/SongInfo" unique_id=1352108271]
+custom_minimum_size = Vector2(490, 0)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="album" type="Label" parent="Bottom/skew/C/SongInfo/Info" unique_id=1795148437]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_y1cb1")
-text = "Perfect"
-horizontal_alignment = 1
+text = "AlbumName"
 vertical_alignment = 1
+autowrap_mode = 3
 
-[node name="Label2" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=1428246906]
-custom_minimum_size = Vector2(0, 50)
+[node name="song" type="Label" parent="Bottom/skew/C/SongInfo/Info" unique_id=639353669]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_y1cb1")
-text = "Great"
-horizontal_alignment = 1
+text = "SongName"
 vertical_alignment = 1
+autowrap_mode = 3
 
-[node name="Label3" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=1538563833]
+[node name="HSeparator" type="HSeparator" parent="Bottom/skew/C/SongInfo/Info" unique_id=1746048499]
+modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+
+[node name="midiName" type="Label" parent="Bottom/skew/C/SongInfo/Info" unique_id=203874956]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_y1cb1")
-text = "Good"
-horizontal_alignment = 1
+text = "MidiName"
 vertical_alignment = 1
+autowrap_mode = 3
 
-[node name="Label4" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=175487585]
-custom_minimum_size = Vector2(0, 50)
+[node name="midiAuthor" type="Label" parent="Bottom/skew/C/SongInfo/Info" unique_id=1530134955]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_y1cb1")
-text = "Bad"
-horizontal_alignment = 1
+text = "MidiAuthor"
 vertical_alignment = 1
+autowrap_mode = 3
 
-[node name="Label5" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=612375162]
-custom_minimum_size = Vector2(0, 50)
+[node name="difficulty" type="Label" parent="Bottom/skew/C/SongInfo/Info" unique_id=1623047885]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_y1cb1")
-text = "Miss"
-horizontal_alignment = 1
+text = "Lunatic"
 vertical_alignment = 1
+autowrap_mode = 3
 
-[node name="PerfectCtn" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=1700789026]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="GreatCtn" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=2010235240]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="GoodCtn" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=806650545]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="BadCtn" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=985791868]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="MissCtn" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=918746073]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label6" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=1039571725]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_y1cb1")
-text = "Early"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label7" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=1164035922]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_y1cb1")
-text = "Late"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label8" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=862610255]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_y1cb1")
-text = "MaxCombo"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label9" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=575691994]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_y1cb1")
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label10" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=781381717]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("StyleBoxFlat_y1cb1")
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="EarlyCtn" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=499340368]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="LateCtn" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=874334327]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="MaxCombo" type="Label" parent="Bottom/skew/C/Data/GridC" unique_id=1699546943]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Btns" type="Panel" parent="." unique_id=110488193]
-layout_mode = 1
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -199.0
-grow_horizontal = 0
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_a5lqd")
-
-[node name="VBoxC" type="VBoxContainer" parent="Btns" unique_id=2017097158]
+[node name="Flags" type="HBoxContainer" parent="Bottom/skew/C" unique_id=845442104]
 layout_mode = 1
 anchors_preset = -1
-anchor_right = 1.0
+anchor_left = 0.5
+anchor_right = 0.9
+anchor_bottom = 0.5
+grow_vertical = 0
+theme_override_constants/separation = 50
+
+[node name="AutoMode" type="Label" parent="Bottom/skew/C/Flags" unique_id=1848675266]
+custom_minimum_size = Vector2(150, 90)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxFlat_kq2mn")
+text = "AUTO"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AllPerfect" type="Label" parent="Bottom/skew/C/Flags" unique_id=608060386]
+custom_minimum_size = Vector2(150, 90)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxFlat_3y6u5")
+text = "AP"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="FullCombo" type="Label" parent="Bottom/skew/C/Flags" unique_id=1938791138]
+custom_minimum_size = Vector2(150, 90)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxFlat_iqsw5")
+text = "FC"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Data" type="VBoxContainer" parent="Bottom/skew/C" unique_id=1444019217]
+custom_minimum_size = Vector2(800, 200)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.9
 anchor_bottom = 1.0
-offset_top = 20.0
-offset_bottom = -20.0
-grow_horizontal = 2
-grow_vertical = 2
+offset_left = 20.0
+grow_vertical = 0
 theme_override_constants/separation = 20
 
-[node name="LikeBtn" type="Button" parent="Btns/VBoxC" unique_id=685902462]
-custom_minimum_size = Vector2(150, 150)
+[node name="Hbox" type="HBoxContainer" parent="Bottom/skew/C/Data" unique_id=888847882]
 layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-focus_mode = 0
-theme_override_font_sizes/font_size = 48
-text = "点赞"
+theme_override_constants/separation = 0
 
-[node name="DislikeBtn" type="Button" parent="Btns/VBoxC" unique_id=953137541]
-custom_minimum_size = Vector2(150, 150)
+[node name="PerfectCtn" type="Label" parent="Bottom/skew/C/Data/Hbox" unique_id=1700789026]
+custom_minimum_size = Vector2(170, 50)
 layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-focus_mode = 0
-theme_override_font_sizes/font_size = 48
-text = "点踩"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "0"
+vertical_alignment = 2
 
-[node name="LoveBtn" type="Button" parent="Btns/VBoxC" unique_id=287940730]
-custom_minimum_size = Vector2(150, 150)
+[node name="Label" type="Label" parent="Bottom/skew/C/Data/Hbox/PerfectCtn" unique_id=2043875143]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -10)
+theme_override_colors/font_color = Color(1, 0, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "Perfect"
+
+[node name="GreatCtn" type="Label" parent="Bottom/skew/C/Data/Hbox" unique_id=2010235240]
+custom_minimum_size = Vector2(170, 50)
 layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-focus_mode = 0
-theme_override_font_sizes/font_size = 48
-text = "收藏"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "0"
+vertical_alignment = 2
+
+[node name="Label2" type="Label" parent="Bottom/skew/C/Data/Hbox/GreatCtn" unique_id=1428246906]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -10)
+theme_override_colors/font_color = Color(1, 0.4627451, 0, 1)
+theme_override_font_sizes/font_size = 20
+text = "Great"
+
+[node name="GoodCtn" type="Label" parent="Bottom/skew/C/Data/Hbox" unique_id=806650545]
+custom_minimum_size = Vector2(170, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "0"
+vertical_alignment = 2
+
+[node name="Label3" type="Label" parent="Bottom/skew/C/Data/Hbox/GoodCtn" unique_id=1538563833]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -10)
+theme_override_colors/font_color = Color(0.10980392, 0.6901961, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "Good"
+
+[node name="BadCtn" type="Label" parent="Bottom/skew/C/Data/Hbox" unique_id=985791868]
+custom_minimum_size = Vector2(170, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "0"
+vertical_alignment = 2
+
+[node name="Label4" type="Label" parent="Bottom/skew/C/Data/Hbox/BadCtn" unique_id=175487585]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -10)
+theme_override_colors/font_color = Color(0.4, 1, 0.3647059, 1)
+theme_override_font_sizes/font_size = 20
+text = "Bad"
+
+[node name="MissCtn" type="Label" parent="Bottom/skew/C/Data/Hbox" unique_id=918746073]
+custom_minimum_size = Vector2(170, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "0"
+vertical_alignment = 2
+
+[node name="Label5" type="Label" parent="Bottom/skew/C/Data/Hbox/MissCtn" unique_id=612375162]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -10)
+theme_override_colors/font_color = Color(1, 0, 0, 1)
+theme_override_font_sizes/font_size = 20
+text = "Miss"
+
+[node name="HBox1" type="HBoxContainer" parent="Bottom/skew/C/Data" unique_id=165446906]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/separation = 0
+
+[node name="EarlyCtn" type="Label" parent="Bottom/skew/C/Data/HBox1" unique_id=499340368]
+custom_minimum_size = Vector2(170, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "0"
+vertical_alignment = 2
+
+[node name="Label6" type="Label" parent="Bottom/skew/C/Data/HBox1/EarlyCtn" unique_id=1039571725]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -10)
+theme_override_colors/font_color = Color(0.1680183, 1, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "Early"
+
+[node name="LateCtn" type="Label" parent="Bottom/skew/C/Data/HBox1" unique_id=874334327]
+custom_minimum_size = Vector2(170, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "0"
+vertical_alignment = 2
+
+[node name="Label7" type="Label" parent="Bottom/skew/C/Data/HBox1/LateCtn" unique_id=1164035922]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -10)
+theme_override_colors/font_color = Color(1, 0.30943933, 0.34409294, 1)
+theme_override_font_sizes/font_size = 20
+text = "Late"
+
+[node name="MaxCombo" type="Label" parent="Bottom/skew/C/Data/HBox1" unique_id=1699546943]
+custom_minimum_size = Vector2(150, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "1000000/1000000"
+vertical_alignment = 2
+
+[node name="Label8" type="Label" parent="Bottom/skew/C/Data/HBox1/MaxCombo" unique_id=862610255]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -10)
+theme_override_colors/font_color = Color(1, 1, 0, 1)
+theme_override_font_sizes/font_size = 20
+text = "MaxCombo"
 
 [node name="Rank" type="Label" parent="." unique_id=1315821145]
 layout_mode = 1
@@ -605,9 +601,9 @@ grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(232, 197)
 offset_transform_enabled = true
-theme_override_colors/font_shadow_color = Color(0.49411765, 0.49411765, 0.49411765, 0.7058824)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.49400002)
 theme_override_constants/shadow_offset_x = 5
-theme_override_constants/shadow_offset_y = -1
+theme_override_constants/shadow_offset_y = 2
 theme_override_constants/shadow_outline_size = 10
 theme_override_font_sizes/font_size = 350
 text = "SS"
@@ -666,7 +662,3 @@ vertical_alignment = 2
 
 [node name="ProgressBar" type="ProgressBar" parent="LevelingProgress/Data" unique_id=103941392]
 layout_mode = 2
-
-[connection signal="pressed" from="Btns/VBoxC/LikeBtn" to="." method="_on_like_btn_pressed"]
-[connection signal="pressed" from="Btns/VBoxC/DislikeBtn" to="." method="_on_dislike_btn_pressed"]
-[connection signal="pressed" from="Btns/VBoxC/LoveBtn" to="." method="_on_love_btn_pressed"]
