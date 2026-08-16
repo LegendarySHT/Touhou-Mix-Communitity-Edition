@@ -109,9 +109,15 @@ func _restore_saved_navigation_impl() -> void:
 		_enter_initial_view(UIState.ALBUM_VIEW)
 		return
 	# 进入 SongView（复刻 AlbumView.on_item_button_confirmed 次序：先 emit 再 change_state，
-	# 使 SongView._load_songs_just_called 的跳重逻辑生效；stash=true 让返回键回 AlbumView）
+	# 使 SongView._load_songs_just_called 的跳重逻辑生效）
+	# 历史栈基座 = ALBUM_VIEW：启动态为 NONE，不能作为返回目标。若直接 change_state(SONG_VIEW, true)
+	# 会把 NONE 压栈，导致从恢复的 MidiView 按返回键链式退回时最终落到 NONE（非真实视图）。
+	# 这里手动把 ALBUM_VIEW 压入栈底，再以 stash=false 进入 SongView，返回键链条即为
+	# MIDI_VIEW → SONG_VIEW → ALBUM_VIEW。
+	state_history.clear()
+	state_history.append(UIState.ALBUM_VIEW)
 	EvtBus.album_selected.emit(album_id)
-	change_state(UIState.SONG_VIEW, true)
+	change_state(UIState.SONG_VIEW, false)
 
 	var song_id := NavigationState.get_song_id()
 	if song_id.is_empty():

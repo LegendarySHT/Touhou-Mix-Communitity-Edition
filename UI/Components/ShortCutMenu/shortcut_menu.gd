@@ -54,6 +54,11 @@ func _ready() -> void:
 func _on_focus_enter(btn: Button):
 	if btn.button_pressed:
 		return
+	# 鼠标点击场景：按下按钮会先 grab focus 触发本回调，若此刻自动按下，
+	# 会在鼠标松开时被按钮自身的 toggle 再翻转一次，导致面板展开又立刻收起。
+	# 鼠标正按住按钮时跳过自动按下（点击释放自会 toggle），仅对键盘导航（Tab/方向键）生效。
+	if btn.is_hovered() and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		return
 	await get_tree().create_timer(0.1).timeout
 	if not btn.button_pressed:
 		btn.button_pressed = true

@@ -43,6 +43,13 @@ func show_with_midi(midi: MidiData) -> void:
 func _refresh(_arg1 = null, _arg2 = null, _arg3 = null) -> void:
 	if not current_midi or not FavoriteManager.instance:
 		return
+	# 记录当前持有焦点的收藏夹项，重建后恢复焦点（避免点击切换后焦点丢失）
+	var focused_fav_id := ""
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	if focus_owner:
+		var item := _find_favor_item(focus_owner)
+		if item:
+			focused_fav_id = item.favorite_id
 	# 清空现有列表项
 	for child in favor_list_container.get_children():
 		child.queue_free()
@@ -54,6 +61,19 @@ func _refresh(_arg1 = null, _arg2 = null, _arg3 = null) -> void:
 		item.favor_midi_toggled.connect(_on_favor_midi_toggled)
 		item.favor_item_renamed.connect(_on_favor_item_renamed)
 		item.favor_item_deleted.connect(_on_favor_item_deleted)
+		if fav.id == focused_fav_id:
+			# 等旧节点释放、新节点就绪后再恢复焦点
+			item.grab_focus.call_deferred()
+
+
+## 从焦点控件向上查找其所属的收藏夹列表项
+func _find_favor_item(node: Node) -> FavorListItem:
+	var cur: Node = node
+	while cur:
+		if cur is FavorListItem:
+			return cur
+		cur = cur.get_parent()
+	return null
 
 
 ## 切换当前 MIDI 在收藏夹中的状态

@@ -227,16 +227,18 @@ func _restore_selection_on_return() -> void:
 		wait += 1
 	if list_items.is_empty():
 		return
-	# 优先：已有选中项则吸附到它（可能在长列表底部、屏幕外）
-	if selected_item != -1 and selected_item < list_items.size():
-		force_snap_to(selected_item)
-		return
-	# 其次：吸附回 SongView 选择的专辑
+	# 优先：吸附回 SongView/MidiView 选择的专辑（真正的恢复目标）。
+	# 不能先信 selected_item——进入视图时 FocusManager 可能已把 -1 兜底成 0，
+	# 若先按 selected_item 吸附会抢走真正的恢复目标，表现为"吸附到第一项而非回退项"
 	if not _last_opened_album_id.is_empty():
 		for i in current_albums.size():
 			if String(current_albums[i].get("id", "")) == _last_opened_album_id:
 				force_snap_to(i)
 				return
+	# 其次：已有选中项则吸附到它（可能在长列表底部、屏幕外）
+	if selected_item != -1 and selected_item < list_items.size():
+		force_snap_to(selected_item)
+		return
 	# 兜底：吸附第一项
 	force_snap_to(0)
 

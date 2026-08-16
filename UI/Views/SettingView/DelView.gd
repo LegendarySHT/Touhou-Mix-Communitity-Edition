@@ -108,10 +108,15 @@ func _ready() -> void:
 
 	for i in _tab_buttons.size():
 		_tab_buttons[i].pressed.connect(_on_tab_button_pressed.bind(i))
+		_tab_buttons[i].focus_entered.connect(_on_tab_focus_entered.bind(i))
 
 	_select_toggle.toggled.connect(_on_select_toggled)
 	_delete_btn.pressed.connect(_on_delete_pressed)
 	_collapse_toggle.toggled.connect(_on_collapse_toggled)
+	# 底部按钮聚焦时刷新正向循环下一项为当前标签页按钮（切 tab/重建后焦点落在底部时，
+	# focus_next 可能是旧 tab 的按钮，聚焦时统一刷新避免 Tab 走错）
+	for b in [_select_toggle, _collapse_toggle, _delete_btn]:
+		b.focus_entered.connect(_on_bottom_btn_focus_entered)
 
 	DataMGR.data_loaded.connect(_on_data_loaded)
 
@@ -141,16 +146,103 @@ func _ready() -> void:
 ## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
 func apply_theme() -> void:
 	var sidebar := get_node_or_null("SideBar") as VBoxContainer
+	var pressed_color := ThemeMGR.get_color("primary_dark").darkened(0.5)
 	if sidebar:
 		ThemeMGR._theme_button_set_color(sidebar.theme, ThemeMGR.get_color("primary"))
 		var pressed := sidebar.theme.get_stylebox("pressed", "Button")
 		if pressed:
-			pressed.bg_color = ThemeMGR.get_color("primary_dark").darkened(0.5)
+			pressed.bg_color = pressed_color
+		# 标签页按钮 focus 样式：按下效果 + 白色边框（参考 SettingView 快捷按钮）
+		for b in _tab_buttons:
+			_apply_tab_focus_style(b, pressed_color)
 	var top_panel := get_node_or_null("Content/PC") as PanelContainer
 	if top_panel:
 		var sb := top_panel.get_theme_stylebox("panel")
 		if sb is StyleBoxFlat:
 			sb.bg_color = ThemeMGR.get_color("primary_dark")
+
+## 给标签页按钮设置 focus 样式：复制 pressed 样式 + 白色边框
+## 通过 theme_override_styles/focus 独立覆盖，不影响共享 Theme 资源
+func _apply_tab_focus_style(btn: Button, pressed_color: Color) -> void:
+	var sb := btn.get_theme_stylebox("pressed")
+	if sb is StyleBoxFlat:
+		var dup := (sb as StyleBoxFlat).duplicate() as StyleBoxFlat
+		dup.bg_color = pressed_color
+		dup.border_color = Color.WHITE
+		dup.border_width_left = 4
+		dup.border_width_right = 4
+		dup.border_width_top = 4
+		dup.border_width_bottom = 4
+		btn.add_theme_stylebox_override("focus", dup)
+
+## 标签页按钮聚焦时自动切换（与 SettingView 快捷按钮聚焦自动按下一致）
+func _on_tab_focus_entered(idx: int) -> void:
+	if idx != _current_tab:
+		_switch_tab(idx as Tab)
+
+## 聚焦首个标签按钮（MIDI 管理），由 FocusManager 在进入 DelView 时调用
+func focus_first_tab() -> void:
+	_tab_buttons[Tab.MIDI].grab_focus()
+
+## 更新 DelView 区域间焦点关系
+## - Tab 循环：标签页按钮 → 搜索栏 → 底部按钮（正向/反向）
+## - 标签页按钮右进：当前标签页内容的第一个可聚焦项；内容项左退回标签页按钮
+## 依赖当前 tab 与内容项，需在 tab 切换、内容构建后调用
+func _update_focus_relations() -> void:
+	var tab_btn := _tab_buttons[_current_tab]
+	var tab_path := tab_btn.get_path()
+	# 反向循环：搜索栏 ← 当前标签页按钮；标签页按钮 ← 底部末尾按钮
+	_search_box.focus_previous = tab_path
+	for b in _tab_buttons:
+		b.focus_previous = _delete_btn.get_path()
+	# 正向循环：底部三个按钮 → 当前标签页按钮（搜索栏→底部已在 tscn 配置）
+	for b in [_select_toggle, _collapse_toggle, _delete_btn]:
+		b.focus_next = tab_path
+	# 标签页按钮右进当前内容首项；内容各可聚焦项左退回到标签页按钮
+	var list := _get_current_tab_list()
+	var first_in_content := _get_first_focusable(list)
+	var right_path := first_in_content.get_path() if first_in_content else NodePath("")
+	for b in _tab_buttons:
+		b.focus_neighbor_right = right_path
+	if list:
+		_set_list_left_neighbor(list, tab_path)
+
+
+## 底部按钮聚焦时刷新三个按钮的正向循环下一项为当前标签页按钮
+## 仅当焦点落在底部时刷新（避免每次可见性变化全量重算），Tab 从底部按钮即可回到当前标签页
+func _on_bottom_btn_focus_entered() -> void:
+	var tab_path := _tab_buttons[_current_tab].get_path()
+	for b in [_select_toggle, _collapse_toggle, _delete_btn]:
+		b.focus_next = tab_path
+
+
+func _get_current_tab_list() -> VBoxContainer:
+	match _current_tab:
+		Tab.MIDI: return _midi_list
+		Tab.AUDIO: return _audio_list
+		Tab.SF2: return _sf2_list
+		Tab.SKIN: return _skin_list
+		Tab.BG: return _bg_list
+	return null
+
+
+## 列表中第一个可聚焦控件（TreeRoot/TreeItem 的 CheckBox）
+func _get_first_focusable(root: Node) -> Control:
+	if root is Control and root.focus_mode != Control.FOCUS_NONE and root.is_visible_in_tree():
+		return root
+	for child in root.get_children():
+		var r := _get_first_focusable(child)
+		if r:
+			return r
+	return null
+
+
+## 给列表内所有可聚焦控件设置左邻居为标签页按钮（左方向键退回标签页）
+func _set_list_left_neighbor(root: Node, tab_path: NodePath) -> void:
+	if root is Control and root.focus_mode != Control.FOCUS_NONE:
+		root.focus_neighbor_left = tab_path
+	for child in root.get_children():
+		_set_list_left_neighbor(child, tab_path)
 
 func _exit_tree() -> void:
 	if ThemeMGR:
@@ -165,6 +257,7 @@ func _exit_tree() -> void:
 func on_entered() -> void:
 	_delview_entered = true
 	_ensure_tab_built(_current_tab)
+	_update_focus_relations()
 
 
 ## 返回设置主页（SettingView.switch_page(1) 调用）：保留节点，再进入立即可见
@@ -251,11 +344,13 @@ func _switch_tab(tab: Tab) -> void:
 	if tab == _current_tab:
 		return
 	# 取消旧 tab 的 in-flight build
-	var old_loader := _get_loader(_current_tab)
+	var old_tab := _current_tab
+	var old_loader := _get_loader(old_tab)
 	if old_loader:
 		old_loader.cancel()
 	_current_tab = tab
-	_tab_buttons[tab].set_pressed_no_signal(true)
+	# set_pressed 经按钮组互斥，自动取消其它标签按钮的按下状态
+	_tab_buttons[tab].set_pressed(true)
 	_page_container.current_tab = tab
 
 	_search_box.text = ""
@@ -277,6 +372,7 @@ func _switch_tab(tab: Tab) -> void:
 		# 已缓存：仅更新 header + 搜索
 		_update_tab_header(tab)
 		_apply_search_filter()
+		_update_focus_relations()
 		return
 
 	# 未构建：显示"加载中"，若已进入 DelView 则触发构建
@@ -421,6 +517,7 @@ func _build_midi_page() -> void:
 	# 构建期间用户输入了搜索词，build 完成后补一次过滤
 	if not _search_query.is_empty():
 		_apply_search_filter()
+	_update_focus_relations()
 
 
 ## MIDI 工厂（专辑层）：只创建 TreeRoot（折叠态），不创建子项
@@ -519,6 +616,7 @@ func _build_albums_children(album_ids: Array) -> void:
 		if album_done:
 			_midi_album_loaded[album_id] = true
 	await _apply_scrolls_to_container(_midi_list)
+	_update_focus_relations()
 
 
 ## 展开单个专辑：开始构建其子项（fire-and-forget）
@@ -737,6 +835,7 @@ func _build_audio_page() -> void:
 	_update_tab_header(Tab.AUDIO)
 	if not _search_query.is_empty():
 		_apply_search_filter()
+	_update_focus_relations()
 
 
 ## Audio 工厂：创建一个 song_name 分组（TreeRoot + 该组所有音频 TreeItem）
@@ -956,6 +1055,7 @@ func _build_sf2_page() -> void:
 	_update_tab_header(Tab.SF2)
 	if not _search_query.is_empty():
 		_apply_search_filter()
+	_update_focus_relations()
 
 
 ## SF2 工厂：创建一个扁平 TreeRoot
@@ -1143,6 +1243,7 @@ func _build_skin_page() -> void:
 	_update_tab_header(Tab.SKIN)
 	if not _search_query.is_empty():
 		_apply_search_filter()
+	_update_focus_relations()
 
 
 ## 皮肤工厂：创建一个扁平 TreeRoot
@@ -1245,6 +1346,7 @@ func _build_bg_page() -> void:
 	_update_tab_header(Tab.BG)
 	if not _search_query.is_empty():
 		_apply_search_filter()
+	_update_focus_relations()
 
 
 ## 背景工厂：创建一个扁平 TreeRoot
@@ -1480,6 +1582,7 @@ func _search_midi_flat() -> void:
 	await _apply_scrolls_to_container(_midi_list)
 	_tab_data_built[Tab.MIDI] = true
 	_update_tab_header(Tab.MIDI)
+	_update_focus_relations()
 
 
 ## MIDI 扁平工厂：创建一个 TreeItem（单层布局，无 TreeRoot）

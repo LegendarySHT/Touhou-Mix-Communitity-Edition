@@ -179,6 +179,7 @@ theme = SubResource("Theme_07r5k")
 [node name="TabBtn0" type="Button" parent="DelView/SideBar" unique_id=1370265103]
 custom_minimum_size = Vector2(260, 80)
 layout_mode = 2
+focus_next = NodePath("../../Content/PC/TopBar/SearchBox")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_delview")
 text = "MIDI 管理"
@@ -186,6 +187,7 @@ text = "MIDI 管理"
 [node name="TabBtn1" type="Button" parent="DelView/SideBar" unique_id=1954873307]
 custom_minimum_size = Vector2(260, 80)
 layout_mode = 2
+focus_next = NodePath("../../Content/PC/TopBar/SearchBox")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_delview")
 text = "音频管理"
@@ -193,6 +195,7 @@ text = "音频管理"
 [node name="TabBtn2" type="Button" parent="DelView/SideBar" unique_id=1090196020]
 custom_minimum_size = Vector2(260, 80)
 layout_mode = 2
+focus_next = NodePath("../../Content/PC/TopBar/SearchBox")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_delview")
 text = "SF2 管理"
@@ -200,6 +203,7 @@ text = "SF2 管理"
 [node name="TabBtn3" type="Button" parent="DelView/SideBar" unique_id=1968696469]
 custom_minimum_size = Vector2(260, 80)
 layout_mode = 2
+focus_next = NodePath("../../Content/PC/TopBar/SearchBox")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_delview")
 text = "皮肤管理"
@@ -207,6 +211,7 @@ text = "皮肤管理"
 [node name="TabBtn4" type="Button" parent="DelView/SideBar" unique_id=683723141]
 custom_minimum_size = Vector2(260, 80)
 layout_mode = 2
+focus_next = NodePath("../../Content/PC/TopBar/SearchBox")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_delview")
 text = "背景管理"
@@ -256,6 +261,7 @@ vertical_alignment = 2
 [node name="SearchBox" type="LineEdit" parent="DelView/Content/PC/TopBar" unique_id=454943439]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
+focus_next = NodePath("../../../BottomBarPC/BottomBar/SelectToggle")
 
 [node name="SearchIcon" type="TextureRect" parent="DelView/Content/PC/TopBar" unique_id=195135877]
 custom_minimum_size = Vector2(100, 100)
@@ -350,6 +356,7 @@ alignment = 1
 custom_minimum_size = Vector2(200, 60)
 layout_mode = 2
 size_flags_vertical = 4
+focus_previous = NodePath("../../../PC/TopBar/SearchBox")
 toggle_mode = true
 text = "全选"
 
@@ -357,6 +364,7 @@ text = "全选"
 custom_minimum_size = Vector2(200, 60)
 layout_mode = 2
 size_flags_vertical = 4
+focus_previous = NodePath("../../../PC/TopBar/SearchBox")
 toggle_mode = true
 text = "收起全部"
 
@@ -368,6 +376,7 @@ size_flags_horizontal = 3
 custom_minimum_size = Vector2(200, 60)
 layout_mode = 2
 size_flags_vertical = 4
+focus_previous = NodePath("../../../PC/TopBar/SearchBox")
 text = "删除选中项"
 
 [node name="Spacer" type="Control" parent="DelView" unique_id=1505839759]

@@ -91,11 +91,23 @@ func _refresh_display() -> void:
 		press_tween.kill()
 		press_tween = null
 	offset_transform_scale = Vector2.ONE
-	custom_minimum_size = Vector2(600, 150)
-	album_name_label.add_theme_font_size_override("font_size", 25)
-	name_box.self_modulate.a = 0.0
-	button.set_pressed_no_signal(false)
-	is_selected = false
+	# 两阶段构建中，当前选中项可能已被 toggle 展开（select_item 置位 selected_item）。
+	# Phase B 分批填充走到该项时需保留展开态，否则会被复位成折叠（表现为"展开后自动收起"）。
+	var keep_expanded: bool = parent_node != null \
+		and parent_node.selected_item == item_index \
+		and button.button_pressed
+	if keep_expanded:
+		custom_minimum_size = Vector2(950, 400)
+		album_name_label.add_theme_font_size_override("font_size", 45)
+		name_box.self_modulate.a = 1.0
+		button.set_pressed_no_signal(true)
+		is_selected = true
+	else:
+		custom_minimum_size = Vector2(600, 150)
+		album_name_label.add_theme_font_size_override("font_size", 25)
+		name_box.self_modulate.a = 0.0
+		button.set_pressed_no_signal(false)
+		is_selected = false
 
 	switch_cover_data()
 	start_cover_load()

@@ -394,6 +394,15 @@ corner_radius_bottom_left = 24
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_40n85"]
 
+[sub_resource type="InputEventKey" id="InputEventKey_w3rk5"]
+device = -1
+pressed = true
+keycode = 82
+unicode = 114
+
+[sub_resource type="Shortcut" id="Shortcut_fcfq2"]
+events = [SubResource("InputEventKey_w3rk5")]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mxvw5"]
 bg_color = Color(0.050980393, 0.5294118, 1, 1)
 border_width_right = 8
@@ -845,7 +854,7 @@ text = "列表为空"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="RandomSelectBtn" type="Button" parent="skew/C" unique_id=80715155]
+[node name="RandomSelectBtn" type="Button" parent="skew/C" unique_id=80715155 node_paths=PackedStringArray("shortcut_context")]
 visible = false
 custom_minimum_size = Vector2(110, 110)
 layout_mode = 1
@@ -860,8 +869,10 @@ offset_right = 172.5
 grow_horizontal = 2
 grow_vertical = 0
 focus_mode = 0
+shortcut_context = NodePath("../AlbumList")
 theme_override_colors/icon_pressed_color = Color(0.74978, 0.74978, 0.74977994, 1)
 theme_override_colors/icon_hover_color = Color(0.8992584, 0.8992584, 0.8992584, 1)
+shortcut = SubResource("Shortcut_fcfq2")
 icon = ExtResource("17_oye8v")
 flat = true
 icon_alignment = 1

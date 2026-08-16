@@ -80,6 +80,12 @@ func _ready() -> void:
 			b.z_index += 1).bind(btn)
 			)
 
+	# 右面板 tab 切换时刷新 Tab 循环焦点
+	for b in tab_btn.get_children():
+		if b is Button:
+			b.toggled.connect(func(_on: bool): _update_focus_neighbors())
+	_update_focus_neighbors()
+
 	# 注册主题应用者并首次着色
 	if ThemeMGR:
 		ThemeMGR.register_theme_applier(self)
@@ -92,6 +98,42 @@ func apply_theme() -> void:
 func _exit_tree() -> void:
 	if ThemeMGR:
 		ThemeMGR.unregister_theme_applier(self)
+
+## 更新 Midi 视图 Tab 循环焦点 + InfoBtn 左邻居
+## 左区（MidiList 项 + HBoxC 四周按钮）Tab → PlayBtn → 右面板选中 tab → MidiList 选中项，三者循环
+## InfoBtn 左邻居总指向 MidiList 当前选中项（修复其自动按几何指到选中项上一节点）
+## 由 _ready / MidiList 选中变化（_process 轮询）/ 右面板 tab 切换 触发
+func _update_focus_neighbors() -> void:
+	if not is_inside_tree():
+		return
+	var play_path := play_btn.get_path()
+	# 1) 左区四周按钮 Tab → PlayBtn
+	for btn in left_btns:
+		btn.focus_next = play_path
+	info_btn.focus_next = play_path
+	delete_btn.focus_next = play_path
+	# 2) MidiList 项 Tab → PlayBtn
+	for item in midi_list.list_items:
+		if is_instance_valid(item) and item.button:
+			item.button.focus_next = play_path
+	# 3) 选中项路径（InfoBtn 左邻居 / 右 tab 返回共用）
+	var sel_path := midi_list.get_focus_node_path()
+	# 4) PlayBtn Tab → 右面板当前选中的可见 tab；该 tab Tab → MidiList 选中项
+	var tab := _get_selected_visible_tab_btn()
+	if tab:
+		play_btn.focus_next = tab.get_path()
+		if not sel_path.is_empty():
+			tab.focus_next = sel_path
+	# 5) InfoBtn 左邻居 → MidiList 选中项
+	if not sel_path.is_empty():
+		info_btn.focus_neighbor_left = sel_path
+
+## 右面板当前选中的可见 tab 按钮（Rank/Mode/Comment 三选一）
+func _get_selected_visible_tab_btn() -> Button:
+	for b in tab_btn.get_children():
+		if b is Button and b.button_pressed and b.is_visible_in_tree():
+			return b
+	return null
 
 # MIDI 选择变化：加载列表，若收藏夹面板可见则同步刷新
 func _on_midi_selected(_midi_id: String, midi: MidiData) -> void:
@@ -172,6 +214,7 @@ func _process(_delta: float) -> void:
 	var cur_sel: int = midi_list.selected_item
 	if cur_sel != _last_midi_selection and cur_sel != -1:
 		_last_midi_selection = cur_sel
+		_update_focus_neighbors()
 		var midi: MidiData = midi_list.get_selection()
 		if midi:
 			# 记录导航位置：切换 midi 时记录具体选中项（仅在有 album/song 上下文的导航链内，

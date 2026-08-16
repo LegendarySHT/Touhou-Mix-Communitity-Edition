@@ -187,8 +187,9 @@ func is_item_visible(index: int) -> bool:
 ## 吸附飞行中（目标还没滚进视口）Godot 自动焦点导航（钳制在 ScrollContainer 可见区域，
 ## 见引擎 control.cpp 的 _window_find_focus_neighbor）会把焦点丢到屏幕内任意可见项；
 ## 此时 grab_focus 会触发 ScrollContainer 滚动与吸附打架，故仅当吸附目标已进入视口时才拉回。
-## 焦点本就在吸附项上、或焦点在这张列表之外（搜索框/按钮等）时不打扰。
-## 效果：吸附目标一在屏幕内可见，按键即可从吸附项继续正常导航（无需等吸附完全结束）。
+## 焦点本就在吸附项上时不打扰；焦点在文本输入框（搜索框/输入框，用户在打字）时也不抢。
+## 其余情况（焦点漂移到列表内其它项、或停留在其它视图/导航按钮上）都拉回吸附项，
+## 保证吸附结束后焦点落在吸附目标上、按键可从吸附项继续导航。
 func _grab_focus_to_selected() -> void:
 	if selected_item < 0 or selected_item >= list_items.size():
 		return
@@ -203,8 +204,9 @@ func _grab_focus_to_selected() -> void:
 	var focus_owner := get_viewport().gui_get_focus_owner()
 	if focus_owner == btn:
 		return
-	if focus_owner != null and container.is_ancestor_of(focus_owner):
-		btn.grab_focus()
+	if focus_owner is LineEdit or focus_owner is TextEdit:
+		return  # 用户在搜索框/输入框打字，不抢焦点
+	btn.grab_focus()
 
 # 滚动条值变化（scrollbar 自身拖拽时）
 func _on_v_scrollbar_changed(_value: float):
