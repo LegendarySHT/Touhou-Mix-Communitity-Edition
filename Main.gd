@@ -29,45 +29,14 @@ var _is_reloading_settings: bool = false
 @export var score_view_path: String
 @export var setting_view_path: String
 
-@onready var _orientation_reverse: bool = Input.get_gravity().y > 0
-
-func _ready():	
+func _ready():
 	# Android 平台：请求存储权限（fire-and-forget，外部私有目录实际不需要运行时权限）
 	if PathHelper.is_android():
 		GLogger.info("Android platform detected", "Main")
 		GLogger.info("Base dir: %s" % PathHelper.get_base_dir(), "Main")
 		OS.request_permissions()
-	
-	# 桌面端：无重力传感器，立即关闭自动旋转 _process，避免 2 秒无意义等待
-	if not PathHelper.is_android():
-		if Input.get_gravity() == Vector3.ZERO:
-			GLogger.info("自动旋转屏幕方向功能已关闭", "Main")
-			set_process(false)
-		# 桌面端无需等待，直接开始初始化
-		_initialize_core_systems()
-		return
-	
-	# Android 平台：先初始化核心系统，再等待传感器就绪
-	_initialize_core_systems()
-	
-	# 短暂等待传感器数据可用（远少于 2 秒，传感器通常 100ms 内就绪）
-	await get_tree().create_timer(0.3).timeout
-	if Input.get_gravity() == Vector3.ZERO:
-		GLogger.info("自动旋转屏幕方向功能已关闭", "Main")
-		set_process(false)
 
-var timer = 0
-# 如果需要在这个_process里处理其它东西，请先改关闭自动旋转屏幕功能的逻辑
-func _process(_delta: float) -> void:
-	timer += 1
-	if timer > 60:
-		timer = 0
-		if abs(Input.get_gravity().y) < 4:
-			return
-		var _now_rot = Input.get_gravity().y > 0
-		if _now_rot != _orientation_reverse:
-			_orientation_reverse = _now_rot
-			DisplayServer.screen_set_orientation(DisplayServer.SCREEN_REVERSE_LANDSCAPE if _orientation_reverse else DisplayServer.SCREEN_LANDSCAPE)
+	_initialize_core_systems()
 
 ## Android 系统返回键
 func _notification(what: int) -> void:
