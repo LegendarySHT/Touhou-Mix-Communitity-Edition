@@ -259,8 +259,9 @@ grow_vertical = 2
 vertical_alignment = 2
 
 [node name="SearchBox" type="LineEdit" parent="DelView/Content/PC/TopBar" unique_id=454943439]
-custom_minimum_size = Vector2(400, 0)
+custom_minimum_size = Vector2(400, 80)
 layout_mode = 2
+size_flags_vertical = 4
 focus_next = NodePath("../../../BottomBarPC/BottomBar/SelectToggle")
 
 [node name="SearchIcon" type="TextureRect" parent="DelView/Content/PC/TopBar" unique_id=195135877]

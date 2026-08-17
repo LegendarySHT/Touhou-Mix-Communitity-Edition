@@ -91,9 +91,9 @@ var _midi_build_total: int = 0
 var _midi_album_loaded: Dictionary = {}
 var _midi_children_gen: int = 0
 
-# MIDI 扁平搜索模式（搜索词非空时切换为单层 TreeItem 列表，沿用 SortEngine.search_midis）
-var _midi_search_flat: bool = false
-var _midi_build_flat_items: Array[MidiData] = []
+# MIDI 就地搜索（双层级）：搜索词非空时缓存命中的 folder_name 集合（零水合），
+# 供可见性过滤 + 懒加载子项匹配复用；空词时清空并恢复全部可见
+var _midi_search_matched_keys: Dictionary = {}
 
 
 func _ready() -> void:
@@ -258,9 +258,14 @@ func on_entered() -> void:
 	_update_focus_relations()
 
 
-## 返回设置主页（SettingView.switch_page(1) 调用）：保留节点，再进入立即可见
+## 返回设置主页（SettingView.switch_page(1) 调用）：保留节点，再进入立即可见。
+## 离开 DelView 时重置页面搜索状态，再进入展示干净的两层级列表（不触发重建）
 func on_exited_to_setting_list() -> void:
-	pass
+	if not _search_box.text.is_empty():
+		_search_box.text = ""
+	_search_query = ""
+	_midi_search_matched_keys.clear()
+	_apply_search_filter()
 
 
 ## 离开 SETTINGS_VIEW 时释放全部节点
@@ -282,7 +287,7 @@ func _release_all_loaders() -> void:
 	_clear_page(_bg_list, [_bg_nodes, _bg_items])
 	_tab_data_built = [false, false, false, false, false]
 	_delview_entered = false
-	_midi_search_flat = false
+	_midi_search_matched_keys.clear()
 	if _search_box:
 		_search_box.text = ""
 	_search_query = ""
@@ -353,9 +358,6 @@ func _switch_tab(tab: Tab) -> void:
 
 	_search_box.text = ""
 	_search_query = ""
-	# 切走 MIDI tab 时重置扁平搜索模式（再切回时按两层构建）
-	if tab != Tab.MIDI:
-		_midi_search_flat = false
 
 	_collapse_toggle.visible = (tab == Tab.MIDI or tab == Tab.AUDIO)
 
@@ -574,6 +576,9 @@ func _create_midi_album_child(slot_index: int, album_id: String) -> Variant:
 	# 插到专辑根之后（add_sibling = 紧随其后），折叠态时隐藏
 	root_node.add_sibling(item_node)
 	item_node.visible = not bool(root_node.get_meta("collapsed", false))
+	# 就地搜索激活时：新构建的子项按命中集过滤（专辑根已命中才可能被展开）
+	if not _search_query.is_empty():
+		item_node.visible = item_node.visible and _midi_search_matched_keys.has(midi_key)
 	_midi_item_map[midi_key] = item_node
 
 	var item_cb := item_node.get_node("CheckBox") as CheckBox
@@ -697,16 +702,6 @@ func _update_root_check_state(album_id: String) -> void:
 
 func _on_midi_select_toggled(toggled: bool) -> void:
 	_select_toggle.text = "取消全选" if toggled else "全选"
-	if _midi_search_flat:
-		# 扁平模式：直接遍历 _midi_item_map（无 root 节点）
-		for midi_id in _midi_selected:
-			_midi_selected[midi_id] = toggled
-			if _midi_item_map.has(midi_id):
-				var item_node: HBoxContainer = _midi_item_map[midi_id]
-				var cb := item_node.get_node("CheckBox") as CheckBox
-				cb.set_pressed_no_signal(toggled)
-		_update_midi_toggle_state()
-		return
 	# 两层模式：按专辑分组更新（含 root checkbox）
 	for album_id in _midi_root_map:
 		var midi_ids: Array = _midi_album_midi_map.get(album_id, [])
@@ -771,7 +766,7 @@ func _on_midi_delete_selected() -> void:
 	# 清除搜索状态，确保重建后显示全部内容
 	_search_box.text = ""
 	_search_query = ""
-	_midi_search_flat = false
+	_midi_search_matched_keys.clear()
 
 	# 批量删除：文件逐个删（每 3 个让一帧），DB 一次性提交（单锁 + 单次聚合重建）
 	var removed := await FileSystemManager.instance.delete_charts_batch(to_delete)
@@ -1414,6 +1409,9 @@ func _on_collapse_toggled(toggled: bool) -> void:
 				# 展开全部：加载所有未加载的专辑子项（fire-and-forget）
 				_load_all_midi_children()
 			_apply_collapse_visibility(_midi_list)
+			# 就地搜索激活时：折叠/展开后按命中集重刷可见性（含根 + 子项）
+			if not _search_query.is_empty():
+				_apply_midi_search_filter()
 		Tab.AUDIO:
 			for song_name in _audio_root_map:
 				var root_node: HBoxContainer = _audio_root_map[song_name]
@@ -1469,6 +1467,10 @@ func _toggle_root_collapse(root_node: HBoxContainer) -> void:
 		if not album_id.is_empty() and not _midi_album_loaded.get(album_id, false):
 			_start_load_album_children(album_id)
 
+	# 就地搜索激活时（MIDI 层）：折叠/展开后按命中集重刷可见性（含根 + 子项）
+	if not _search_query.is_empty() and _midi_root_map.has(String(root_node.get_meta("group_id", ""))):
+		_apply_midi_search_filter()
+
 
 func _apply_collapse_visibility(list_container: VBoxContainer) -> void:
 	var children := list_container.get_children()
@@ -1492,8 +1494,7 @@ func _on_search_text_changed(new_text: String) -> void:
 
 
 func _apply_search_filter() -> void:
-	# MIDI 页走独立的扁平搜索逻辑（沿用 SortEngine.search_midis）
-	# _search_midi_flat / _build_midi_page 内部会主动 cancel 当前 build 并重建
+	# MIDI 页走独立的就地搜索（双层级可见性过滤，不重建列表）
 	if _current_tab == Tab.MIDI:
 		_apply_midi_search_filter()
 		return
@@ -1531,74 +1532,41 @@ func _apply_search_filter() -> void:
 			_apply_flat_search(_bg_nodes, _bg_items, "name", "张背景")
 
 
-## MIDI 搜索专属逻辑：
-## - 非空 query → 切换到扁平模式，用 SortEngine.search_midis 搜索后构建单层 TreeItem 列表
-## - 空 query + 原本是扁平 → 切回两层布局（重建）
-## - 空 query + 原本是两层 → 仅恢复可见性（不重建）
+## MIDI 就地搜索（双层级，与 AlbumView 一致的原地过滤语义）：
+## - 非空 query → 仅切可见性：专辑名命中或含命中谱面的专辑根显示，
+##   命中谱面的 TreeItem 显示（折叠态不展开）；不重建列表、不水合数据
+## - 空 query → 清空命中集，恢复全部可见（保留折叠态）
+## 命中集缓存于 _midi_search_matched_keys，懒加载子项在工厂里按它匹配
 func _apply_midi_search_filter() -> void:
-	if not _search_query.is_empty():
-		_midi_search_flat = true
-		_search_midi_flat()
-		return
-	# query 空
-	if _midi_search_flat:
-		# 从扁平切回两层
-		_midi_search_flat = false
-		_build_midi_page()
-	else:
-		# 已是两层，仅恢复可见性
+	if _search_query.is_empty():
+		_midi_search_matched_keys.clear()
 		_reset_midi_visibility()
 		_update_item_sum("共 %d 首谱面" % _midi_selected.size())
-
-
-## 扁平搜索模式：清空两层布局，用 SortEngine.search_midis 搜索后构建单层 TreeItem 列表
-## 沿用 SortedMidiView 的搜索引擎（按 name/artist/uploader/description 多关键字匹配）
-func _search_midi_flat() -> void:
-	_tab_data_built[Tab.MIDI] = false
-	_midi_loader.cancel()
-	_cancel_all_expand_loaders()
-	_clear_page(_midi_list, [_midi_root_map, _midi_item_map, _midi_album_order, _midi_album_midi_map, _midi_selected, _midi_album_loaded])
-	_update_item_sum("搜索中...")
-	_update_midi_toggle_state()
-
-	# 全库搜索（DB 驱动，name/artist/uploader/desc 多关键字 AND 匹配），只水合命中
-	var matched: Array[MidiData] = DataMGR.search_all_midis(_search_query)
-	# 扁平模式下按 midi.name 升序
-	matched.sort_custom(func(a: MidiData, b: MidiData) -> bool:
-		return a.name < b.name
-	)
-
-	_midi_build_flat_items = matched
-	_midi_build_total = 0
-	var completed: bool = await _midi_loader.build(matched.size(), _create_midi_flat_item)
-	if not completed:
 		return
-	if _current_tab != Tab.MIDI:
+	# 专辑层未构建（构建中/空页）：交给 build 完成后补过滤，不覆写"加载中"文案
+	if _midi_root_map.is_empty():
 		return
-	_update_item_sum("匹配 %d 首谱面" % _midi_build_total)
-	_update_midi_toggle_state()
-	await _apply_scrolls_to_container(_midi_list)
-	_tab_data_built[Tab.MIDI] = true
-	_update_tab_header(Tab.MIDI)
-	_update_focus_relations()
+	# DB 驱动命中集（零水合）：专辑级 + 谱面级（folder_name），与 AlbumView 同源 FilterSearch
+	var matched_albums := {}
+	for aid in ChartDB.GetMatchingAlbumIds(_search_query):
+		matched_albums[aid] = true
+	_midi_search_matched_keys.clear()
+	for key in ChartDB.SearchMidiKeys(_search_query):
+		_midi_search_matched_keys[key] = true
 
-
-## MIDI 扁平工厂：创建一个 TreeItem（单层布局，无 TreeRoot）
-## 返回 Array[Node]（已 add_child）；返回 null 请求中止构建
-func _create_midi_flat_item(index: int) -> Variant:
-	if _current_tab != Tab.MIDI:
-		return null
-	var midi: MidiData = _midi_build_flat_items[index]
-	var author := midi.artist_name if not midi.artist_name.is_empty() else "-"
-	var item_node := _create_tree_item("    %s" % midi.name, author)
-	_midi_list.add_child(item_node)
-	_midi_item_map[midi.id] = item_node
-	_midi_selected[midi.id] = false
-	var item_cb := item_node.get_node("CheckBox") as CheckBox
-	# album_id 传空字符串：_update_root_check_state 在扁平模式下会直接 return
-	item_cb.toggled.connect(_on_midi_item_checkbox_toggled.bind(midi.id, ""))
-	_midi_build_total += 1
-	return [item_node]
+	var visible_count := 0
+	for album_id in _midi_root_map:
+		var root: HBoxContainer = _midi_root_map[album_id]
+		var album_match := matched_albums.has(album_id)
+		root.visible = album_match
+		var collapsed := bool(root.get_meta("collapsed", false))
+		var slots: Array = _midi_album_midi_map.get(album_id, [])
+		for midi_key in slots:
+			if _midi_search_matched_keys.has(midi_key):
+				visible_count += 1
+			if _midi_item_map.has(midi_key):
+				_midi_item_map[midi_key].visible = _midi_search_matched_keys.has(midi_key) and not collapsed
+	_update_item_sum("匹配 %d 首谱面" % visible_count)
 
 
 func _get_album_name(album_id: String) -> String:
