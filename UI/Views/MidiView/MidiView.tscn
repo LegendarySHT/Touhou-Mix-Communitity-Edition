@@ -766,3 +766,4 @@ expand_icon = true
 [connection signal="pressed" from="LeftArea/MainBtn/TrackViewBtn" to="." method="_on_click_track_btn"]
 [connection signal="pressed" from="LeftArea/MainBtn/PlayBtn" to="." method="_on_click_start_btn"]
 [connection signal="pressed" from="LeftArea/MainBtn/FavorListBtn" to="." method="_on_click_favor_list_btn"]
+[connection signal="selection_changed" from="LeftArea/InfoWindow/HBoxC/MidiList" to="." method="_on_selection_changed"]

@@ -69,7 +69,18 @@ var scroll_control_state: ScrollControlState:
 
 ## 所有列表项
 var list_items: Array[ListItemBase] = []
-var selected_item: int = -1 # 选中的项，或者snap的目标项
+
+## 选中项变化信号（new_index = -1 表示取消选中/清空）
+## 由 selected_item 属性 setter 统一发出，覆盖 select_item / 列表项按钮直改 / 展开收起等所有路径
+signal selection_changed(new_index: int)
+
+## 选中的项，或者snap的目标项
+var selected_item: int = -1:
+	set(v):
+		if selected_item == v:
+			return
+		selected_item = v
+		selection_changed.emit(v)
 
 ## 本列表"工作状态"对应的"直接相邻状态"集合
 ## 切到不在此集合的状态时，释放所有列表项封面

@@ -29,8 +29,6 @@ const _MidiListItem = preload("res://UI/Views/MidiView/MidiListItem.gd")
 var _favor_panel_visible: bool = false
 var _prev_tab_idx: int = 0
 var _is_animating: bool = false
-# 上一次 midi_list 选中索引，用于检测内部切换
-var _last_midi_selection: int = -1
 # 退回 SongView 时标记，等退出动画完毕后由 restore_panel_state() 执行清理
 # 避免动画播放过程中列表已被清空
 var _pending_cleanup: bool = false
@@ -102,7 +100,7 @@ func _exit_tree() -> void:
 ## 更新 Midi 视图 Tab 循环焦点 + InfoBtn 左邻居
 ## 左区（MidiList 项 + HBoxC 四周按钮）Tab → PlayBtn → 右面板选中 tab → MidiList 选中项，三者循环
 ## InfoBtn 左邻居总指向 MidiList 当前选中项（修复其自动按几何指到选中项上一节点）
-## 由 _ready / MidiList 选中变化（_process 轮询）/ 右面板 tab 切换 触发
+## 由 _ready / MidiList 选中变化（selection_changed 信号）/ 右面板 tab 切换 触发
 func _update_focus_neighbors() -> void:
 	if not is_inside_tree():
 		return
@@ -135,35 +133,21 @@ func _get_selected_visible_tab_btn() -> Button:
 			return b
 	return null
 
-# MIDI 选择变化：加载列表，若收藏夹面板可见则同步刷新
+# MIDI 选择变化：加载列表（收藏夹面板/排行榜由 selection_changed 信号统一刷新）
 func _on_midi_selected(_midi_id: String, midi: MidiData) -> void:
 	# 记录导航位置：直达路径（排序/搜索/收藏夹浏览/商店等非 Album→Song 入口）进入 MidiView 时，
 	# 从 MIDI 反查 album/song 补全记录，下次启动当作从 AlbumView 一路点入恢复
 	# （不会恢复到 SortedMidiList/商店等直达页面；Album→Song→Midi 正常路径走 song_selected，不经此处）
 	NavigationState.save(midi.album_id, midi.song_id, midi.id)
 	midi_list.load_midi([midi])
-	if _favor_panel_visible and favor_panel:
-		favor_panel.show_with_midi(midi)
-	# 加载排行榜
-	if score_list:
-		score_list.load_scores(midi)
 
 
-# 歌曲选择：加载该歌曲的 midi 列表，加载完成后若 FavorPanel 可见则刷新
+# 歌曲选择：加载该歌曲的 midi 列表（选中项刷新由 selection_changed 信号处理）
 func _on_song_selected(song_id: String) -> void:
 	# 导航恢复/预选：若记录中的歌曲就是本歌曲且记录了 midi，进入时选中对应 midi（默认第一项）
 	# 正常导航时 SongView 进入已清空 midi_id，preferred 为空 → 默认选中第一项，行为不变
 	var preferred_id := NavigationState.get_midi_id() if NavigationState.get_song_id() == song_id else ""
 	await midi_list.load_midi(data_manager.get_midis_by_song(song_id), preferred_id)
-	if _favor_panel_visible and favor_panel:
-		var midi: MidiData = midi_list.get_selection()
-		if midi:
-			favor_panel.show_with_midi(midi)
-	# 加载排行榜
-	if score_list:
-		var midi: MidiData = midi_list.get_selection()
-		if midi:
-			score_list.load_scores(midi)
 
 
 # UI 状态变化：进入 MIDI_VIEW 时若 FavorPanel 可见，用当前选中 midi 刷新
@@ -172,7 +156,6 @@ func _on_state_changed(old_state: int, new_state: int) -> void:
 		var midi: MidiData = midi_list.get_selection()
 		if midi:
 			favor_panel.show_with_midi(midi)
-		_last_midi_selection = midi_list.selected_item
 	# 离开 MidiView 去 SONG_VIEW/ALBUM_VIEW/SORTED_VIEW 时标记清理
 	# （去 TrackView/PlayView/ScoreView/SettingsView 不清理，同一 MIDI 复用解析数据）
 	# 实际清理延迟到退出动画完毕后由 restore_panel_state() 执行，避免动画播放过程中列表已被清空
@@ -205,27 +188,24 @@ func _cleanup() -> void:
 	_MidiListItem._info_cache.clear()
 
 
-# 轮询检测 midi_list 内部切换（prev/next/list 展开按钮不发出信号）
-# FavorPanel 可见时，若选中项变化则同步刷新操作对象
-func _process(_delta: float) -> void:
-	if not _favor_panel_visible or not favor_panel:
-		# favor_panel 不可见时仍需检测 midi_list 切换以刷新排行榜
-		pass
-	var cur_sel: int = midi_list.selected_item
-	if cur_sel != _last_midi_selection and cur_sel != -1:
-		_last_midi_selection = cur_sel
-		_update_focus_neighbors()
-		var midi: MidiData = midi_list.get_selection()
-		if midi:
-			# 记录导航位置：切换 midi 时记录具体选中项（仅在有 album/song 上下文的导航链内，
-			# 收藏夹直达等路径不写，避免残缺记录干扰恢复）
-			if NavigationState.get_song_id() != "":
-				NavigationState.update({"midi_id": midi.id})
-			if _favor_panel_visible and favor_panel:
-				favor_panel.show_with_midi(midi)
-			# 同步刷新排行榜
-			if score_list:
-				score_list.load_scores(midi)
+# midi_list 内部切换检测（prev/next/list 展开/列表项点击均直接改 selected_item，
+# 由 BaseScrollList 的 selection_changed 信号统一通知，替代原先 _process 逐帧轮询）
+# 选中项变化时刷新焦点循环 + 导航位置 + 收藏夹面板 + 排行榜
+func _on_selection_changed(index: int) -> void:
+	if index == -1:
+		return
+	_update_focus_neighbors()
+	var midi: MidiData = midi_list.get_selection()
+	if midi:
+		# 记录导航位置：切换 midi 时记录具体选中项（仅在有 album/song 上下文的导航链内，
+		# 收藏夹直达等路径不写，避免残缺记录干扰恢复）
+		if NavigationState.get_song_id() != "":
+			NavigationState.update({"midi_id": midi.id})
+		if _favor_panel_visible and favor_panel:
+			favor_panel.show_with_midi(midi)
+		# 同步刷新排行榜
+		if score_list:
+			score_list.load_scores(midi)
 
 # 点击开始游戏的事件
 func _on_click_start_btn() -> void:
@@ -265,7 +245,6 @@ func _on_click_favor_list_btn() -> void:
 func _show_favor_panel() -> void:
 	_is_animating = true
 	_favor_panel_visible = true
-	_last_midi_selection = midi_list.selected_item
 	favor_list_btn.icon = load(ICON_BACK)
 	_prev_tab_idx = tab_container.current_tab
 	var current_page := tab_container.get_tab_control(_prev_tab_idx) if _prev_tab_idx >= 0 else null
