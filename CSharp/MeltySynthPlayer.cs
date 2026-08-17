@@ -895,6 +895,31 @@ public partial class MeltySynthPlayer : Node
 		return sequencerMs;
 	}
 
+	/// <summary>
+	/// 获取音频回调已渲染的 MIDI 原始位置（毫秒）。
+	/// 不做设备延迟补偿，也不使用系统墙钟；该位置与 miniaudio 回调中
+	/// 人声消费帧使用相同的音频回调时钟，仅用于人声同步比较。
+	/// </summary>
+	public double get_raw_position_ms()
+	{
+		if (!double.IsNaN(_pendingSeekMs))
+		{
+			return _pendingSeekMs;
+		}
+
+		if (_currentOffsetMs < 0.0)
+		{
+			return _currentOffsetMs;
+		}
+
+		if (!playing || _sequencer == null || !_sequencerStarted)
+		{
+			return _lastPositionMs;
+		}
+
+		return _sequencer.RenderedPosition.TotalMilliseconds;
+	}
+
 	public void set_track_channel_volume(int trackIndex, int channel, float volumeLinear)
 	{
 		var virtualId = trackIndex * 16 + channel;

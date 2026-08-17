@@ -293,7 +293,12 @@ namespace MeltySynth
 
             pausePosition = Position;
             currentTime = pausePosition;
-            renderedTime = pausePosition;
+            // Keep the raw callback clock at the last rendered sample. In system-clock
+            // mode Position may be ahead of the device callback by output latency.
+            if (!useSystemClock)
+            {
+                renderedTime = pausePosition;
+            }
             isPaused = true;
         }
 
@@ -512,6 +517,12 @@ namespace MeltySynth
                 return currentTime;
             }
         }
+
+        /// <summary>
+        /// Gets the position of the audio samples rendered by the audio callback.
+        /// Unlike Position, this never uses the system stopwatch.
+        /// </summary>
+        public TimeSpan RenderedPosition => renderedTime;
 
         /// <summary>
         /// Gets a value that indicates whether the current playback position is at the end of the sequence.

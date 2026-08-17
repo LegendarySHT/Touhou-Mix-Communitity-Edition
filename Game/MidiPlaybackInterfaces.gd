@@ -71,6 +71,12 @@ func get_position_ms() -> float:
 	push_error("get_position_ms not implemented")
 	return 0.0
 
+## 获取音频回调已渲染的原始播放位置（毫秒）
+## 与 get_position_ms() 不同，此时钟不做设备延迟补偿
+func get_raw_position_ms() -> float:
+	push_error("get_raw_position_ms not implemented")
+	return get_position_ms()
+
 ## 获取总时长（毫秒）
 func get_duration_ms() -> float:
 	push_error("get_duration_ms not implemented")

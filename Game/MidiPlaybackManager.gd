@@ -1406,6 +1406,14 @@ func tick_to_ms(tick: float) -> float:
 func get_position_ms() -> float:
 	return position_ms
 
+## 获取音频回调已渲染的 MIDI 原始位置（毫秒）
+## 人声同步必须使用该时钟，避免与 get_position_ms() 的设备延迟补偿混用
+func get_raw_position_ms() -> float:
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("get_raw_position_ms"):
+		return float(backend.call("get_raw_position_ms"))
+	return position_ms
+
 ## 实时获取当前播放位置（毫秒），绕过 _process 缓存
 ## 用于触摸判定等对时效性敏感的场景，消除帧级输入延迟
 ## 同帧缓存: 同一帧内多次调用返回相同值, 避免 GetLatencyMs() 动态波动
@@ -1588,15 +1596,17 @@ func _sync_vocal_with_midi() -> void:
 		_vocal_initialized = false
 		return
 
-	# 计算人声应该的位置（考虑 vocal_offset_ms）
-	var expected_vocal_position = position_ms - vocal_offset_ms
+	# 使用已渲染的原始音频回调时钟：人声位置由同一个 miniaudio 设备回调消费。
+	# 不要使用 position_ms，它已经包含设备延迟补偿，和人声消费帧不在同一坐标系。
+	var raw_midi_position_ms: float = get_raw_position_ms()
+	var expected_vocal_position = raw_midi_position_ms - vocal_offset_ms
 
 	# 如果人声已初始化但未播放（预卷期间被暂停，或刚 start_vocal_playback）
 	if _vocal_initialized and not audio_manager.is_vocal_playing():
 		# 只有当 MIDI 已跨越人声起点（vocal_offset_ms）才恢复播放
 		if expected_vocal_position >= 0.0:
 			audio_manager.set_vocal_playing(true)
-			last_sync_check_pos_ms = position_ms
+			last_sync_check_pos_ms = raw_midi_position_ms
 		return
 
 	if not audio_manager.is_vocal_playing():
@@ -1609,7 +1619,7 @@ func _sync_vocal_with_midi() -> void:
 		return
 
 	# 检查是否需要同步（时间间隔 > 100ms）
-	if abs(position_ms - last_sync_check_pos_ms) < 100.0:
+	if abs(raw_midi_position_ms - last_sync_check_pos_ms) < 100.0:
 		return
 
 	# 获取人声当前播放进度
@@ -1622,7 +1632,7 @@ func _sync_vocal_with_midi() -> void:
 		GLogger.info("Vocal sync adjusted: diff=%.0f ms, target=%.0f ms" % [diff, expected_vocal_position], "MidiPlaybackManager")
 
 	# 更新上次同步检查的位置
-	last_sync_check_pos_ms = position_ms
+	last_sync_check_pos_ms = raw_midi_position_ms
 
 ## 设置音频同步阈值（毫秒）
 func set_sync_threshold(threshold_ms: float) -> void:

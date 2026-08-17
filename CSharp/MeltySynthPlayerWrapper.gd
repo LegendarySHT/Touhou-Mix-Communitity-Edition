@@ -65,6 +65,16 @@ func get_position_ms() -> float:
 		return 0.0
 	return meltysynth_player.call("get_position_ms")
 
+## 获取音频回调已渲染的 MIDI 原始位置（毫秒）
+## 该时钟不做设备延迟补偿，用于与人声消费帧直接比较
+func get_raw_position_ms() -> float:
+	if meltysynth_player == null:
+		return 0.0
+	if not meltysynth_player.has_method("get_raw_position_ms"):
+		return get_position_ms()
+	var result = meltysynth_player.call("get_raw_position_ms")
+	return float(result) if result is float or result is int else get_position_ms()
+
 ## 获取总长度（毫秒）
 func get_duration_ms() -> float:
 	if meltysynth_player == null:
