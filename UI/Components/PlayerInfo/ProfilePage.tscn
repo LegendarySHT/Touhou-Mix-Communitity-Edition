@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://bt37v73uu1f0n"]
 
-[ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_ag846"]
 [ext_resource type="Texture2D" uid="uid://4nsc0p2ia3q" path="res://Resources/icon/ProfilePage/Profile.png" id="1_b1c4s"]
 [ext_resource type="Script" uid="uid://c5j3sx2nby3nl" path="res://UI/Components/PlayerInfo/ProfilePage.gd" id="1_ft172"]
 [ext_resource type="Texture2D" uid="uid://bwjbi8wqeiifi" path="res://Resources/icon/ProfilePage/History.png" id="2_ag846"]
+[ext_resource type="Texture2D" uid="uid://cpog56bd63i4e" path="res://Resources/icon/NoAvatar.jpg" id="2_ft172"]
 [ext_resource type="Texture2D" uid="uid://dhekqkeoopvvf" path="res://Resources/icon/ProfilePage/Edit.png" id="4_j7lut"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_j02sm"]
@@ -356,11 +356,10 @@ theme_override_styles/panel = SubResource("StyleBoxEmpty_j02sm")
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxEmpty_3y6u5")
-current_tab = 1
+current_tab = 0
 tabs_visible = false
 
 [node name="Profile" type="HBoxContainer" parent="PC/PageContent" unique_id=572518356]
-visible = false
 layout_mode = 2
 metadata/_tab_index = 0
 
@@ -449,7 +448,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-texture = ExtResource("1_ag846")
+texture = ExtResource("2_ft172")
 expand_mode = 3
 stretch_mode = 5
 
@@ -641,6 +640,7 @@ size_flags_vertical = 3
 layout_mode = 2
 
 [node name="History" type="VBoxContainer" parent="PC/PageContent" unique_id=1290400202]
+visible = false
 layout_mode = 2
 metadata/_tab_index = 1
 

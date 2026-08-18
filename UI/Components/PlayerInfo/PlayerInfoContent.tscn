@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://ck0ou0rxonnto"]
 
 [ext_resource type="Script" uid="uid://c24k3xb5msmbw" path="res://UI/Components/PlayerInfo/PlayerInfoContent.gd" id="1_5k12w"]
-[ext_resource type="Texture2D" uid="uid://bhmcyk6v5v0at" path="res://Resources/icon/avator.jpg" id="1_shxvi"]
+[ext_resource type="Texture2D" uid="uid://cpog56bd63i4e" path="res://Resources/icon/NoAvatar.jpg" id="2_1nkbp"]
 [ext_resource type="PackedScene" uid="uid://bt37v73uu1f0n" path="res://UI/Components/PlayerInfo/ProfilePage.tscn" id="3_nu1yf"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3y6u5"]
@@ -93,7 +93,7 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 8
 mouse_filter = 2
-texture = ExtResource("1_shxvi")
+texture = ExtResource("2_1nkbp")
 expand_mode = 3
 stretch_mode = 5
 
@@ -249,7 +249,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-texture = ExtResource("1_shxvi")
+texture = ExtResource("2_1nkbp")
 expand_mode = 3
 stretch_mode = 5
 

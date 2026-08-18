@@ -14,8 +14,11 @@ var _loading: bool = false
 ## 请求版本号：快速切换 MIDI 时丢弃过期响应
 var _request_version: int = 0
 
-## 提示信息 Label（无数据/加载中/错误时显示在列表中央）
-var _message_label: Label = null
+## FailMessage 显示前的标签页索引（隐藏时恢复，见 _hide_message）
+var _fail_prev_tab: int = -1
+
+## 待显示的提示信息：排行榜标签页未激活时先缓存，切回时经 FailMessage 展示
+var _pending_message: String = ""
 
 ## 「在线模式已开启但尚未连上服务器」的等待标记
 ## 连接成功（online_status_changed 为 true）后据此自动刷新排行榜
@@ -24,6 +27,12 @@ var _waiting_online: bool = false
 func _ready() -> void:
 	super._ready()
 	EvtBus.online_status_changed.connect(_on_online_status_changed)
+
+## 可见性变化：排行榜标签页切回时把缓存的消息经 FailMessage 展示
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree() \
+			and not _pending_message.is_empty():
+		_apply_message()
 
 ## 在线状态变化：初次连接成功（或重连成功）时，若正停在「在线模式未开启」提示上则自动刷新
 func _on_online_status_changed(online: bool, _message: String) -> void:
@@ -151,21 +160,40 @@ func _show_local_best(midi: MidiData) -> void:
 		name_label.text = "Offline Score"
 	# 本地成绩无头像，保持默认头像占位
 
-## 在列表区域中央显示提示文字
+## 显示提示信息（经 TabView 下 FailMessage 节点，作为独立页展示）
+## 排行榜标签页未激活时仅缓存，切回时再展示，避免抢占其它标签页
 func _show_message(msg: String) -> void:
 	clear_items()
-	if _message_label == null:
-		_message_label = Label.new()
-		_message_label.name = "MessageLabel"
-		_message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_message_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_message_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		container.add_child(_message_label)
-	_message_label.text = msg
-	_message_label.visible = true
+	_pending_message = msg
+	if is_visible_in_tree():
+		_apply_message()
 
-## 隐藏并移除提示 Label
+## 把待显示消息写入 FailMessage（显示时 TabContainer 会切到该页）
+func _apply_message() -> void:
+	var fail := get_node_or_null("../../FailMessage") as Label
+	if fail == null:
+		return
+	if not fail.visible:
+		var tab_view := get_parent().get_parent()
+		if tab_view is TabContainer:
+			_fail_prev_tab = tab_view.current_tab
+	fail.text = _pending_message
+	fail.visible = true
+
+## 隐藏 FailMessage 并恢复到显示前的标签页
+## 仅当排行榜标签页可见且 FailMessage 由本列表显示时操作，避免干预其它标签页
 func _hide_message() -> void:
-	if _message_label != null:
-		_message_label.queue_free()
-		_message_label = null
+	_pending_message = ""
+	if not is_visible_in_tree():
+		return
+	if _fail_prev_tab < 0:
+		return  # FailMessage 非本列表显示，不干预
+	var fail := get_node_or_null("../../FailMessage") as Label
+	if fail == null or not fail.visible:
+		_fail_prev_tab = -1
+		return
+	fail.visible = false
+	var tab_view := get_parent().get_parent()
+	if tab_view is TabContainer:
+		tab_view.current_tab = _fail_prev_tab
+	_fail_prev_tab = -1

@@ -142,7 +142,7 @@ func _sync_from_auth() -> void:
 		_player_data.play_duration_ms = 0
 		_player_data.grades = {"S": 0, "A": 0, "B": 0, "C": 0, "D": 0, "F": 0}
 		# 重置头像为默认
-		var default_tex := load("res://Resources/icon/avator.jpg")
+		var default_tex := load("res://Resources/icon/NoAvatar.jpg")
 		if mini_avatar_rect:
 			mini_avatar_rect.texture = default_tex
 		if profile_avatar_rect:

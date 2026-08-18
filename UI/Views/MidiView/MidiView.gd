@@ -15,6 +15,7 @@ extends HBoxContainer
 @onready var option_panel: PanelContainer = $OptionPanel
 @onready var favor_panel: PanelContainer = $OptionPanel/VBoxC/TabView/FavorPanel
 @onready var score_list: ScoreList = $OptionPanel/VBoxC/TabView/Rank/ScoreList
+@onready var comment_area: VBoxContainer = $OptionPanel/VBoxC/TabView/Comment
 @onready var tab_container: TabContainer = $OptionPanel/VBoxC/TabView
 @onready var tab_btn: HBoxContainer = $OptionPanel/VBoxC/TabBtn
 
@@ -168,10 +169,10 @@ func _on_state_changed(old_state: int, new_state: int) -> void:
 	# 重新进入 MidiView 时：清除残留 pending 标志 + 刷新排行榜（打歌结束后数据可能已更新）
 	elif new_state == UIStateManager.UIState.MIDI_VIEW:
 		_pending_cleanup = false
-		if score_list:
-			var midi: MidiData = midi_list.get_selection()
-			if midi:
-				score_list.load_scores(midi)
+		var midi: MidiData = midi_list.get_selection()
+		if midi:
+			score_list.load_scores(midi)
+			comment_area.load_comments(midi)
 
 ## 释放视图内部资源（midi 列表项 + 当前 MIDI 运行时缓存），保留节点壳和信号连接
 ## 重新进入时由 song_selected 信号重新加载
@@ -206,6 +207,9 @@ func _on_selection_changed(index: int) -> void:
 		# 同步刷新排行榜
 		if score_list:
 			score_list.load_scores(midi)
+		# 同步刷新评论区
+		if comment_area:
+			comment_area.load_comments(midi)
 
 # 点击开始游戏的事件
 func _on_click_start_btn() -> void:
