@@ -33,6 +33,7 @@ public partial class ChartDb : Node
     private ILiteCollection<BsonDocument> _songs;
     private ILiteCollection<BsonDocument> _runtime;
     private ILiteCollection<BsonDocument> _meta;
+    private ILiteCollection<BsonDocument> _localScores;
 
     private readonly object _lock = new();
     private bool _isOpen;
@@ -890,6 +891,37 @@ public partial class ChartDb : Node
         }
     }
 
+    // ========== 本地最佳成绩（local_scores 集合） ==========
+    // 每首 MIDI（_id = midi_hash）只保留一条 pp 最高的记录，供离线排行榜使用。
+    // 该集合不参与 schema 迁移（不随 charts/albums/songs 一起 drop），跨版本保留。
+
+    /// 保存本地最佳成绩（全量覆盖该 midi 的记录）
+    public void SaveLocalScore(string midiHash, Godot.Collections.Dictionary record)
+    {
+        if (!IsOpen() || string.IsNullOrEmpty(midiHash)) return;
+        lock (_lock)
+        {
+            var bd = (BsonDocument)BsonConvert.VariantToBson(record);
+            bd["_id"] = midiHash;
+            _localScores.Upsert(bd);
+        }
+    }
+
+    /// 读取某 MIDI 的本地最佳成绩；无记录返回空字典
+    public Godot.Collections.Dictionary GetLocalBest(string midiHash)
+    {
+        var result = new Godot.Collections.Dictionary();
+        if (!IsOpen() || string.IsNullOrEmpty(midiHash)) return result;
+        lock (_lock)
+        {
+            var d = _localScores.FindById(midiHash);
+            if (d == null) return result;
+            result = BsonConvert.BsonToGodotDict(d);
+            result.Remove("_id");
+            return result;
+        }
+    }
+
     /// <summary>
     /// 把任意别名（folder_name / folder_hash / json _id / file_hash / hash）解析为
     /// chart_runtime 的规范主键 folder_name（真正唯一，避免 hash 撞车互相覆盖配置）。
@@ -997,6 +1029,7 @@ public partial class ChartDb : Node
         _songs = _db.GetCollection("songs");
         _runtime = _db.GetCollection("chart_runtime");
         _meta = _db.GetCollection("meta");
+        _localScores = _db.GetCollection("local_scores");
     }
 
     private void EnsureIndexes()

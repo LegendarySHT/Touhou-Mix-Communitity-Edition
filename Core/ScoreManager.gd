@@ -59,6 +59,34 @@ func _generate_uuid_v4() -> String:
 	return "%s-%s-%s-%s-%s" % [hex.substr(0, 8), hex.substr(8, 4), hex.substr(12, 4), hex.substr(16, 4), hex.substr(20, 12)]
 
 
+## 保存本地最佳成绩：打歌完成后调用，无论在线与否都写入
+## 每首 MIDI 只保留 pp 最高的一条记录；中途退出（W 评级）不计入
+func save_local_score(midi: MidiData, snapshot: Dictionary) -> void:
+	if midi == null or midi.file_hash.is_empty():
+		return
+	var rank := str(snapshot.get("rank", "F"))
+	if rank == "W":
+		return
+	if ChartDB == null or not ChartDB.IsOpen():
+		GLogger.warning("Local score save skipped: ChartDB not ready", "ScoreMGR")
+		return
+	var hash := midi.file_hash
+	var cur: Dictionary = ChartDB.GetLocalBest(hash)
+	if not cur.is_empty() and float(cur.get("pp", 0.0)) >= float(snapshot.get("pp", 0.0)):
+		return  # 已有更高或相同 pp，不覆盖
+	var record: Dictionary = _extract_payload(midi, snapshot)
+	record["timestamp"] = Time.get_unix_time_from_system()
+	ChartDB.SaveLocalScore(hash, record)
+	GLogger.info("Local score saved: midi=%s pp=%s" % [hash, str(record.get("pp", 0))], "ScoreMGR")
+
+
+## 读取某 MIDI 的本地最佳成绩（无记录返回空字典）
+func get_local_best(midi_hash: String) -> Dictionary:
+	if ChartDB == null or not ChartDB.IsOpen():
+		return {}
+	return ChartDB.GetLocalBest(midi_hash)
+
+
 ## 从 ScoreCalculator.get_snapshot() 和 MidiData 提取上传载荷
 ## 注意：键名使用 camelCase，与服务端 ASP.NET Core DTO 反序列化默认格式匹配
 func _extract_payload(midi: MidiData, snapshot: Dictionary) -> Dictionary:

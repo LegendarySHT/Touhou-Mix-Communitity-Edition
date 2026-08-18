@@ -1065,6 +1065,9 @@ func _upload_score_async(midi: MidiData, snapshot: Dictionary) -> void:
 	if _is_auto_mode_play:
 		GLogger.info("Score upload skipped: auto mode enabled (midi=%s)" % midi.file_hash, "PlayView")
 		return
+	# 本地成绩：无论在线与否都记录（中途退出 W 由 save_local_score 内部过滤）
+	if ScoreManager.instance:
+		ScoreManager.instance.save_local_score(midi, snapshot)
 	if NetManager.instance == null or not NetManager.instance.is_online:
 		GLogger.warning("Score upload skipped: offline (NetManager=%s is_online=%s)" % [str(NetManager.instance), str(NetManager.instance.is_online) if NetManager.instance else "null"], "PlayView")
 		return
