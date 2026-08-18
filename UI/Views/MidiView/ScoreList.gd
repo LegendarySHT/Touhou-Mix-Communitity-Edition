@@ -17,6 +17,22 @@ var _request_version: int = 0
 ## 提示信息 Label（无数据/加载中/错误时显示在列表中央）
 var _message_label: Label = null
 
+## 「在线模式已开启但尚未连上服务器」的等待标记
+## 连接成功（online_status_changed 为 true）后据此自动刷新排行榜
+var _waiting_online: bool = false
+
+func _ready() -> void:
+	super._ready()
+	EvtBus.online_status_changed.connect(_on_online_status_changed)
+
+## 在线状态变化：初次连接成功（或重连成功）时，若正停在「在线模式未开启」提示上则自动刷新
+func _on_online_status_changed(online: bool, _message: String) -> void:
+	if not online or not _waiting_online or _current_midi == null:
+		return
+	if not is_visible_in_tree():
+		return
+	load_scores(_current_midi)
+
 ## 加载排行榜数据
 ## midi: 要查询的 MidiData（使用 file_hash 作为 key）
 func load_scores(midi: MidiData) -> void:
@@ -25,9 +41,17 @@ func load_scores(midi: MidiData) -> void:
 	var request_version := _request_version
 	_hide_message()
 	clear_items()
+	_loading = false
+	_waiting_online = false
 
-	# 在线模式关闭或未连接时，不加载
-	if NetManager.instance == null or not NetManager.instance.is_online:
+	# 在线模式关闭：显示本地最佳成绩（离线排行榜），无论服务器是否可达
+	if NetManager.instance == null or NetManager.instance.connect_state == NetManager.ConnectState.OFFLINE_MODE:
+		_show_local_best(midi)
+		return
+
+	# 在线模式开启但未连接上服务器：不显示离线成绩，保留原有提示
+	if not NetManager.instance.is_online:
+		_waiting_online = true
 		_show_message("在线模式未开启")
 		return
 
@@ -92,6 +116,40 @@ func load_scores(midi: MidiData) -> void:
 		var avatar_url = s.get("avatarUrl")
 		var avatar_url_str := str(avatar_url) if avatar_url != null else ""
 		node.setup_avatar(avatar_url_str)
+
+## 显示本地最佳成绩（单条，离线排行榜）
+## 未登录/在线模式关闭时使用，仅展示本机每首 pp 最高的记录
+func _show_local_best(midi: MidiData) -> void:
+	if midi == null or midi.file_hash.is_empty():
+		_show_message("无法获取 MIDI 信息")
+		return
+	if ScoreManager.instance == null:
+		_show_message("成绩服务未就绪")
+		return
+	var local := ScoreManager.instance.get_local_best(midi.file_hash)
+	if local.is_empty():
+		_show_message("暂无本地成绩")
+		return
+	_hide_message()
+	clear_items()
+	var node := create_and_add_item("local_best", "score")
+	# 本地最佳固定排名第 1
+	node.setup_score(
+		1,
+		int(local.get("totalScore", 0)),
+		str(local.get("rank", "F")),
+		float(local.get("accuracy", 0.0)) * 100.0,
+		float(local.get("pp", 0.0)),
+		int(local.get("perfectCount", 0)),
+		int(local.get("greatCount", 0)),
+		int(local.get("goodCount", 0)),
+		int(local.get("badCount", 0)),
+		int(local.get("missCount", 0))
+	)
+	var name_label := node.get_node_or_null("Name")
+	if name_label:
+		name_label.text = "Offline Score"
+	# 本地成绩无头像，保持默认头像占位
 
 ## 在列表区域中央显示提示文字
 func _show_message(msg: String) -> void:

@@ -101,6 +101,7 @@ stretch_mode = 5
 visible = false
 custom_minimum_size = Vector2(0, 160)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 2
 alignment = 1
 

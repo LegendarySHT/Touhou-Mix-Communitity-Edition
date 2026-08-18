@@ -27,6 +27,7 @@ class_name ScoreView
 @onready var avator: TextureRect = $LevelingProgress/Panel/TextureRect
 @onready var name_label: Label = $LevelingProgress/Data/name
 @onready var lvl_label: Label = $LevelingProgress/Data/level
+@onready var pp_label: Label = $LevelingProgress/Data/level/pp
 @onready var lvl_exp_progress: ProgressBar = $LevelingProgress/Data/ProgressBar
 
 # 图片
@@ -134,6 +135,7 @@ func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateMana
 ## 释放视图内部资源（循环动画 Tween），保留节点壳
 func _cleanup() -> void:
 	_kill_loop_ani()
+	_kill_pp_tween()
 
 func set_display(result: ScoreData, midi: MidiData = null, is_auto: bool = false):
 	# 判定数据
@@ -168,7 +170,7 @@ func _update_song_info(midi: MidiData) -> void:
 	if midi == null:
 		return
 	cover.texture = FileSystemManager.instance.get_cover_by_midiData(midi)
-	album_label.text = midi.artist_name
+	album_label.text = midi.album_name if not midi.album_name.is_empty() else midi.artist_name
 	song_label.text = midi.song_name
 	midi_name_label.text = midi.name
 	midi_author_label.text = midi.artist_name
@@ -185,22 +187,18 @@ func _update_flags(result: ScoreData, is_auto: bool) -> void:
 
 ## 从 PlayerInfoContent 同步玩家信息（头像、名称、等级、进度条）
 ## 在 set_display 后调用，确保结算界面显示最新玩家状态
-## 也在 stats_refreshed 信号回调中调用，成绩上传后自动刷新
+## 也在 stats_refreshed 信号回调中调用，成绩上传后自动刷新（此时 pp 变化触发上涨动画）
 func _update_player_info() -> void:
-	var pic := _get_player_info_content()
-	if pic == null:
+	_pic = _get_player_info_content()
+	if _pic == null:
 		return
 	# 头像
-	avator.texture = pic.mini_avatar_rect.texture
+	avator.texture = _pic.mini_avatar_rect.texture
 	# 名称
-	var player_data: Dictionary = pic.get_player_data()
+	var player_data: Dictionary = _pic.get_player_data()
 	name_label.text = player_data.display_name if not player_data.display_name.is_empty() else player_data.name
-	# 等级 = floor(sqrt(pp))
-	var pp_val = player_data.pp
-	var lvl = pic.calc_level(pp_val)
-	lvl_label.text = "Lv%d" % lvl
-	# 升级进度 = (pp - level²) / ((level+1)² - level²)
-	lvl_exp_progress.value = pic.calc_level_progress(pp_val, lvl) * 100.0
+	# PP 上涨动画：进度条/等级/PP 标签随数值变化实时更新
+	_animate_pp_to(player_data.pp)
 
 func _on_like_btn_pressed():
 	pass
@@ -216,6 +214,20 @@ func _on_love_btn_pressed():
 var _loop_ani_chara: Tween = null
 var _loop_ani_rank: Tween = null
 
+# PP 上涨动画状态
+var _pic: PlayerInfoContent = null
+var _pp_displayed: float = -1.0  # 当前已显示的 pp（-1 表示尚未初始化）
+var _pp_tween: Tween = null
+
+## 是否已登录（未登录或在线模式关闭时不播放 LevelingProgress 出现动画，也不做上涨动画）
+func _is_logged_in() -> bool:
+	if AuthManager.instance == null or not AuthManager.instance.is_logged_in:
+		return false
+	# 在线模式关闭时视为未登录（临时关闭后不展示玩家等级面板）
+	if NetManager.instance == null or NetManager.instance.connect_state == NetManager.ConnectState.OFFLINE_MODE:
+		return false
+	return true
+
 func _kill_loop_ani():
 	if _loop_ani_chara:
 		_loop_ani_chara.kill()
@@ -223,6 +235,39 @@ func _kill_loop_ani():
 	if _loop_ani_rank:
 		_loop_ani_rank.kill()
 		_loop_ani_rank = null
+
+## 终止 PP 上涨动画
+func _kill_pp_tween() -> void:
+	if _pp_tween:
+		_pp_tween.kill()
+		_pp_tween = null
+
+## PP 数值上涨动画：把当前显示的 pp 缓动到目标值，期间实时更新等级/进度条/PP 标签
+func _animate_pp_to(target_pp: float) -> void:
+	if _pp_tween:
+		_pp_tween.kill()
+		_pp_tween = null
+	var from_pp := _pp_displayed if _pp_displayed >= 0.0 else target_pp
+	if absf(from_pp - target_pp) < 0.001:
+		_set_pp_display(target_pp)
+		return
+	await get_tree().create_timer(1).timeout
+	_pp_tween = create_tween()
+	_pp_tween.set_trans(Tween.TRANS_CUBIC)
+	_pp_tween.set_ease(Tween.EASE_OUT)
+	_pp_tween.tween_method(_set_pp_display, from_pp, target_pp, 1.5)
+
+## 按指定 pp 同步刷新等级/进度条/PP 标签（供上涨动画逐帧调用，也可直接设置）
+func _set_pp_display(pp: float) -> void:
+	_pp_displayed = pp
+	var lvl := 0
+	var lvl_progress := 0.0
+	if _pic:
+		lvl = _pic.calc_level(pp)
+		lvl_progress = _pic.calc_level_progress(pp, lvl) * 100.0
+	lvl_label.text = "Lv%d" % lvl
+	lvl_exp_progress.value = lvl_progress
+	pp_label.text = "%.2fpp" % pp
 
 func _play_loop_ani():
 	_kill_loop_ani()
@@ -246,7 +291,13 @@ func animate(ani_in: bool = true):
 	# 外围组件
 	if ani_in:
 		ani.animate_scale(bg, Vector2.ONE, 0.5, "sv_bg")
-		ani.animate_offset_back(info, 0.5, "sv_info")
+		if _is_logged_in():
+			info.visible = true
+			ani.animate_offset_back(info, 0.5, "sv_info")
+		else:
+			# 未登录：不播放 LevelingProgress 出现动画，直接隐藏
+			info.visible = false
+			info.offset_transform_position = Vector2(- info.size.x, 0)
 
 		ani.animate_offset_back(chara, 0.8, "sv_chara")
 		ani.animate_offset_back(bottom, 0.8, "sv_bottom")

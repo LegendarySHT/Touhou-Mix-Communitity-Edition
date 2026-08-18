@@ -1119,7 +1119,7 @@ func _init_display(show_ready_animation: bool = true):
 
 	if show_ready_animation:
 		ani.animate_fade_in(center_bg, 0.2, "_show_bg")
-	album.text = current_midi.artist_name
+	album.text = current_midi.album_name if not current_midi.album_name.is_empty() else current_midi.artist_name
 	song.text = current_midi.song_name
 	artist.text = current_midi.author_name if current_midi.author_name else "Unknow"
 	var s := int(current_midi.duration_ms / 1000.0)

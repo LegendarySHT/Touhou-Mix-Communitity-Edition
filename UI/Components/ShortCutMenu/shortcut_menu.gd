@@ -125,6 +125,14 @@ func play_transition_animation(exit: bool) -> Tween:
 	offset_transform_position = target_offset
 	return ani.animate_offset_back(self, 0.25, "MenuBarPosition")
 
+## 收起已展开的快捷面板（排序/收藏页），供 PlayerInfo 展开等外部场景调用
+## 通过复位 toggle 按钮触发 _on_menu_tab_btn_toggled 的既有收起动画
+func collapse_panel() -> void:
+	if sort_button.button_pressed:
+		sort_button.button_pressed = false
+	if favor_list_button.button_pressed:
+		favor_list_button.button_pressed = false
+
 # 筛选按钮部分
 var sortByStatus: SortEngine.SortStatField = 0 as SortEngine.SortStatField
 var sortByData: SortEngine.SortDataField = 0 as SortEngine.SortDataField

@@ -199,10 +199,19 @@ func _animate_overlay(s: State, t: Tween) -> void:
 # ========== ShortCutMenu 联动 ==========
 
 func _play_shortcut_menu_exit() -> void:
+	# 若快捷菜单内部面板（排序/收藏页）已展开，先自动收起再整体退场
+	if shortcut_menu and shortcut_menu.has_method("collapse_panel"):
+		shortcut_menu.collapse_panel()
 	if shortcut_menu and shortcut_menu.visible and shortcut_menu.has_method("play_transition_animation"):
 		shortcut_menu.play_transition_animation(true)
 
 func _play_shortcut_menu_enter() -> void:
+	# 仅当前视图确实挂载快捷菜单（Album/Song/Sorted）时才入场。
+	# 导航恢复到 MidiView 等无菜单视图后，迟到的登录态变化（如在线模式连接成功
+	# 触发的 token 续期 → auth_changed）不应再把已隐藏的菜单拉出来。
+	var st := UiStatMGR.current_state
+	if st != UIStateManager.UIState.ALBUM_VIEW and st != UIStateManager.UIState.SONG_VIEW and st != UIStateManager.UIState.SORTED_VIEW:
+		return
 	if shortcut_menu and not shortcut_menu.visible and shortcut_menu.has_method("play_transition_animation"):
 		shortcut_menu.play_transition_animation(false)
 
