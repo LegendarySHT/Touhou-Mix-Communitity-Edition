@@ -278,7 +278,11 @@ func _setup_submenu_scroll(submenu: PopupMenu) -> void:
 	submenu.popup_hide.connect(_on_menu_hide.bind(submenu, scroll))
 
 func _on_menu_scroll_gui_input(event: InputEvent, popup: PopupMenu) -> void:
-	if event is InputEventScreenDrag:
+	# 新一轮按下开始时重置拖拽标志：上一次"拖拽滚动但未选中项"的标记不应残留到后续点击，
+	# 否则后续点击都会被误判成拖拽松手而无法选中（表现为按钮无效但 hover 正常）。
+	if (event is InputEventMouseButton or event is InputEventScreenTouch) and event.pressed:
+		_drag_flags[popup] = false
+	elif event is InputEventScreenDrag:
 		_drag_flags[popup] = true
 	elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT):
 		_drag_flags[popup] = true
