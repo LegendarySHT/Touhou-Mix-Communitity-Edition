@@ -30,9 +30,6 @@ var current_midi: MidiData = null
 @onready var action_icon: TextureRect = $HBox/Cover/ActionIconWrap/ActionIcon
 @onready var delete_btn: Button = $HBox/DeleteBtn
 
-const ICON_ADD := "res://Resources/icon/add.png"
-const ICON_DELETE := "res://Resources/icon/minus.png"
-
 # 点击 vs 滚动 判定阈值
 # 移动距离超过此值视为滚动（非点击），用于避免滚动收藏夹时误触
 const TAP_MOVE_THRESHOLD := 15.0
@@ -124,7 +121,7 @@ func _apply_mode() -> void:
 	action_icon_wrap.visible = show_action
 	if show_action:
 		var in_fav := FavoriteManager.instance.is_midi_in_favorite(favorite_id, current_midi)
-		action_icon.texture = load(ICON_DELETE if in_fav else ICON_ADD)
+		action_icon.texture.region = (Rect2(240, 80, 80, 80) if in_fav else Rect2(160, 80, 80, 80))
 
 
 # ========== 文字滚动动画 ==========

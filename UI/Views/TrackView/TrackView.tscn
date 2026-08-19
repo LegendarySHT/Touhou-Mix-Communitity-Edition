@@ -1,10 +1,8 @@
 [gd_scene format=3 uid="uid://dqo15t7ofwbtb"]
 
-[ext_resource type="Texture2D" uid="uid://b6ypeml7dno8b" path="res://Resources/icon/TrackView/import.png" id="1_3id1m"]
 [ext_resource type="Script" uid="uid://ca1rxwt3t1wel" path="res://UI/Views/TrackView/TrackView.gd" id="1_7vp1s"]
 [ext_resource type="Script" uid="uid://bnt65j78d2po7" path="res://UI/Views/TrackView/noteDisplayer.gd" id="2_8bk0u"]
-[ext_resource type="Texture2D" uid="uid://balwiilkbpuhy" path="res://Resources/icon/TrackView/note.png" id="2_xcqgn"]
-[ext_resource type="Texture2D" uid="uid://bvpw7fu0xco14" path="res://Resources/icon/TrackView/volume.png" id="3_7vp1s"]
+[ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="3_3id1m"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_31lmn"]
 bg_color = Color(0.23490001, 0.50328004, 0.81, 1)
@@ -54,6 +52,10 @@ shadow_offset = Vector2(5, 0)
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_7vp1s"]
 color = Color(1, 1, 1, 1)
 thickness = 4
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kpleu"]
+atlas = ExtResource("3_3id1m")
+region = Rect2(240, 320, 80, 80)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mvguw"]
 bg_color = Color(0.2364918, 0.50436205, 0.8133945, 1)
@@ -112,6 +114,14 @@ corner_radius_bottom_left = 24
 shadow_color = Color(0, 0, 0, 0.24705882)
 shadow_size = 10
 shadow_offset = Vector2(5, 5)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_r0ui6"]
+atlas = ExtResource("3_3id1m")
+region = Rect2(0, 80, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kgiiq"]
+atlas = ExtResource("3_3id1m")
+region = Rect2(0, 160, 80, 80)
 
 [node name="TrackView" type="ScrollContainer" unique_id=1056782616]
 custom_minimum_size = Vector2(1500, 1120)
@@ -316,7 +326,7 @@ alignment = 1
 visible = false
 custom_minimum_size = Vector2(150, 150)
 layout_mode = 2
-texture_normal = ExtResource("1_3id1m")
+texture_normal = SubResource("AtlasTexture_kpleu")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -361,7 +371,7 @@ columns = 3
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 toggle_mode = true
-texture_normal = ExtResource("2_xcqgn")
+texture_normal = SubResource("AtlasTexture_r0ui6")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -384,7 +394,7 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 toggle_mode = true
-texture_normal = ExtResource("3_7vp1s")
+texture_normal = SubResource("AtlasTexture_kgiiq")
 ignore_texture_size = true
 stretch_mode = 5
 

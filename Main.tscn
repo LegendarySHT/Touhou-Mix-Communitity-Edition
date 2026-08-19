@@ -6,22 +6,15 @@
 [ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/RightBottomBtn.gd" id="7_sqvbp"]
 [ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView/AlbumView.gd" id="7_w3rk5"]
 [ext_resource type="Script" uid="uid://dpn6fchjbt3b8" path="res://UI/Components/SkewArea.gd" id="8_3b0ty"]
-[ext_resource type="Texture2D" uid="uid://bq58thu46jvsq" path="res://Resources/icon/midi_store.png" id="8_hri7i"]
 [ext_resource type="Script" uid="uid://cka36xm3jh6b" path="res://UI/Views/SongView/SongView.gd" id="8_w3rk5"]
-[ext_resource type="Texture2D" uid="uid://bgvtr3nkhfcdr" path="res://Resources/icon/midiInfoPage/back.png" id="9_w3rk5"]
-[ext_resource type="Texture2D" uid="uid://dj5o6emlgvdmo" path="res://Resources/icon/setting.png" id="10_5mvff"]
 [ext_resource type="Script" uid="uid://cohp1v184ht7q" path="res://UI/Components/ShortCutMenu/shortcut_menu.gd" id="11_oye8v"]
-[ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="12_40n85"]
+[ext_resource type="Texture2D" uid="uid://68fry5jr6m8l" path="res://Resources/icon/icon_set2.png" id="13_bg4s2"]
 [ext_resource type="Texture2D" uid="uid://b4rxi3wio8sjy" path="res://Resources/icon/Sort/Status/All.png" id="14_3b0ty"]
 [ext_resource type="Texture2D" uid="uid://c8twb3tyhwm1t" path="res://Resources/icon/Sort/Data/Played.png" id="14_sph85"]
 [ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="16_vi5kq"]
-[ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="17_5mkgo"]
 [ext_resource type="PackedScene" uid="uid://cmg2kkhga3yj5" path="res://UI/Views/AlbumView/albumNode.tscn" id="17_5mvff"]
-[ext_resource type="Texture2D" uid="uid://cctd38so3swat" path="res://Resources/icon/random.png" id="17_oye8v"]
-[ext_resource type="Texture2D" uid="uid://boaosvxm4ii76" path="res://Resources/icon/TrackView/reset.png" id="18_sqvbp"]
-[ext_resource type="Texture2D" uid="uid://ktcxivxw6t0r" path="res://Resources/icon/songlist.png" id="19_ny7u2"]
+[ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="17_xrxkg"]
 [ext_resource type="PackedScene" uid="uid://xgcfhg1x2v6p" path="res://UI/Components/ShortCutMenu/favorListItem.tscn" id="20_devvj"]
-[ext_resource type="Texture2D" uid="uid://h6i2ju0tpkvl" path="res://Resources/icon/arrow-right.png" id="21_hhcpw"]
 [ext_resource type="Script" uid="uid://b5d8tybu8al2f" path="res://UI/Components/PlayerInfo/SkewButton.gd" id="22_5mvff"]
 [ext_resource type="Script" uid="uid://dly3k36hy880k" path="res://UI/Components/PopupWindow/PopupWindow.gd" id="23_bg4s2"]
 [ext_resource type="Script" uid="uid://bb04m122u3fvm" path="res://UI/Components/LeftTopBtn.gd" id="23_mxvw5"]
@@ -355,6 +348,10 @@ border_color = Color(1, 1, 1, 1)
 [sub_resource type="ButtonGroup" id="ButtonGroup_3b0ty"]
 allow_unpress = true
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_phpps"]
+atlas = ExtResource("17_xrxkg")
+region = Rect2(320, 240, 80, 80)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hri7i"]
 draw_center = false
 border_width_left = 3
@@ -363,6 +360,11 @@ border_width_right = 3
 border_width_bottom = 3
 shadow_color = Color(0, 0, 0, 0.19900002)
 shadow_size = 15
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7rc5s"]
+atlas = ExtResource("17_xrxkg")
+region = Rect2(240, 0, 80, 80)
+margin = Rect2(2, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sqvbp"]
 bg_color = Color(0.050708726, 0.53013366, 1, 1)
@@ -386,6 +388,10 @@ corner_radius_top_right = 24
 corner_radius_bottom_right = 24
 corner_radius_bottom_left = 24
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_ck4ec"]
+atlas = ExtResource("17_xrxkg")
+region = Rect2(320, 240, 80, 80)
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_iygje"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_j02sm"]
@@ -393,6 +399,10 @@ corner_radius_bottom_left = 24
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_2xvos"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_40n85"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5h6qm"]
+atlas = ExtResource("13_bg4s2")
+region = Rect2(160, 80, 80, 80)
 
 [sub_resource type="InputEventKey" id="InputEventKey_w3rk5"]
 device = -1
@@ -402,6 +412,10 @@ unicode = 114
 
 [sub_resource type="Shortcut" id="Shortcut_fcfq2"]
 events = [SubResource("InputEventKey_w3rk5")]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_yjioo"]
+atlas = ExtResource("13_bg4s2")
+region = Rect2(240, 0, 80, 80)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mxvw5"]
 bg_color = Color(0.050980393, 0.5294118, 1, 1)
@@ -416,6 +430,18 @@ keycode = 85
 
 [sub_resource type="Shortcut" id="Shortcut_3b0ty"]
 events = [SubResource("InputEventKey_devvj")]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_s6epo"]
+atlas = ExtResource("17_xrxkg")
+region = Rect2(320, 320, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_s2knr"]
+atlas = ExtResource("17_xrxkg")
+region = Rect2(320, 160, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2qp01"]
+atlas = ExtResource("17_xrxkg")
+region = Rect2(240, 160, 80, 80)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3ccbu"]
 skew = Vector2(0.268, 0)
@@ -450,6 +476,14 @@ unicode = 111
 
 [sub_resource type="Shortcut" id="Shortcut_bg4s2"]
 events = [SubResource("InputEventKey_3b0ty")]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pumof"]
+atlas = ExtResource("13_bg4s2")
+region = Rect2(160, 0, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_d4kk1"]
+atlas = ExtResource("17_xrxkg")
+region = Rect2(160, 160, 80, 80)
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6vipk"]
 content_margin_left = 20.0
@@ -564,7 +598,7 @@ focus_next = NodePath("../FavorList")
 theme_override_styles/focus = SubResource("StyleBoxFlat_5mvff")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_3b0ty")
-icon = ExtResource("12_40n85")
+icon = SubResource("AtlasTexture_phpps")
 icon_alignment = 1
 
 [node name="Border" type="PanelContainer" parent="skew/C/ShortCutMenu/Btns/Search" unique_id=1530113959]
@@ -583,10 +617,11 @@ layout_mode = 2
 focus_neighbor_left = NodePath("../Search")
 focus_neighbor_bottom = NodePath("../../Panel/Page/FavorPage/FavorList/VBoxC/FavorListItem")
 focus_next = NodePath("../Search")
+theme_override_constants/icon_max_width = 95
 theme_override_styles/focus = SubResource("StyleBoxFlat_5mvff")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_3b0ty")
-icon = ExtResource("19_ny7u2")
+icon = SubResource("AtlasTexture_7rc5s")
 icon_alignment = 1
 expand_icon = true
 
@@ -649,7 +684,7 @@ caret_blink = true
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 focus_next = NodePath("../../../../../Btns/FavorList")
-icon = ExtResource("12_40n85")
+icon = SubResource("AtlasTexture_ck4ec")
 icon_alignment = 1
 expand_icon = true
 
@@ -744,7 +779,7 @@ size_flags_horizontal = 4
 size_flags_vertical = 8
 theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
 theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
-icon = ExtResource("17_5mkgo")
+icon = SubResource("AtlasTexture_5h6qm")
 icon_alignment = 1
 expand_icon = true
 
@@ -874,7 +909,7 @@ shortcut_context = NodePath("../AlbumList")
 theme_override_colors/icon_pressed_color = Color(0.74978, 0.74978, 0.74977994, 1)
 theme_override_colors/icon_hover_color = Color(0.8992584, 0.8992584, 0.8992584, 1)
 shortcut = SubResource("Shortcut_fcfq2")
-icon = ExtResource("17_oye8v")
+icon = SubResource("AtlasTexture_yjioo")
 flat = true
 icon_alignment = 1
 expand_icon = true
@@ -935,7 +970,7 @@ grow_horizontal = 2
 grow_vertical = 2
 offset_transform_enabled = true
 mouse_filter = 2
-theme_override_constants/separation = 300
+theme_override_constants/separation = 315
 
 [node name="Retry" type="TextureRect" parent="LT_Btn/VBoxC" unique_id=1400113552]
 custom_minimum_size = Vector2(140, 140)
@@ -943,7 +978,7 @@ layout_mode = 2
 offset_transform_enabled = true
 offset_transform_rotation = -0.34906584
 mouse_filter = 2
-texture = ExtResource("18_sqvbp")
+texture = SubResource("AtlasTexture_s6epo")
 stretch_mode = 5
 
 [node name="Setting" type="TextureRect" parent="LT_Btn/VBoxC" unique_id=1593430758]
@@ -952,18 +987,18 @@ layout_mode = 2
 offset_transform_enabled = true
 offset_transform_rotation = -0.34906584
 mouse_filter = 2
-texture = ExtResource("10_5mvff")
+texture = SubResource("AtlasTexture_s2knr")
 expand_mode = 1
 stretch_mode = 5
 metadata/_edit_lock_ = true
 
-[node name="Arrow" type="TextureRect" parent="LT_Btn/VBoxC" unique_id=771736228]
+[node name="Res" type="TextureRect" parent="LT_Btn/VBoxC" unique_id=771736228]
 custom_minimum_size = Vector2(140, 140)
 layout_mode = 2
 offset_transform_enabled = true
 offset_transform_rotation = -0.34906584
 mouse_filter = 2
-texture = ExtResource("21_hhcpw")
+texture = SubResource("AtlasTexture_2qp01")
 expand_mode = 1
 stretch_mode = 5
 
@@ -1106,7 +1141,7 @@ layout_mode = 2
 offset_transform_enabled = true
 offset_transform_rotation = -0.5235988
 mouse_filter = 2
-texture = ExtResource("8_hri7i")
+texture = SubResource("AtlasTexture_pumof")
 expand_mode = 1
 stretch_mode = 5
 
@@ -1116,17 +1151,7 @@ layout_mode = 2
 offset_transform_enabled = true
 offset_transform_rotation = -0.5235988
 mouse_filter = 2
-texture = ExtResource("9_w3rk5")
-expand_mode = 1
-stretch_mode = 5
-
-[node name="Arrow" type="TextureRect" parent="RB_Btn/VBoxC" unique_id=1638160062]
-custom_minimum_size = Vector2(180, 180)
-layout_mode = 2
-offset_transform_enabled = true
-offset_transform_rotation = -0.5235988
-mouse_filter = 2
-texture = ExtResource("21_hhcpw")
+texture = SubResource("AtlasTexture_d4kk1")
 expand_mode = 1
 stretch_mode = 5
 

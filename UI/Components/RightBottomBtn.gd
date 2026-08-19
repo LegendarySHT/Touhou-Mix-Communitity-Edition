@@ -7,7 +7,7 @@ enum ShowStat {
 	NONE = 0,
 	BACK_BTN,
 	STORE_BTN,
-	ARROW_RIGHT,
+	DELVIEW_BACK,
 }
 
 @onready var ani:AnimationManager = AniMGR
@@ -32,7 +32,7 @@ func _ready():
 	)
 	eb.page_left.connect(func ():
 		if ui.current_state == ui.UIState.SETTINGS_VIEW:
-			switch_display(ShowStat.ARROW_RIGHT)
+			switch_display(ShowStat.DELVIEW_BACK)
 	)
 
 ## 后备点击处理：Button 旋转后部分可见图标落在 Button 本地 rect 外，
@@ -100,8 +100,8 @@ func switch_display(content_to_show: ShowStat = ShowStat.NONE):
 		ShowStat.STORE_BTN:
 			ani.animate_offset_to(vboxc, Vector2(0, 0))
 			event.keycode = KEY_O
-		ShowStat.ARROW_RIGHT:
-			ani.animate_offset_to(vboxc, Vector2(0, -860))
+		ShowStat.DELVIEW_BACK:
+			ani.animate_offset_to(vboxc, Vector2(0, -430))
 			event.keycode = KEY_RIGHT
 	
 	# 快捷键：shortcut 被禁用时更新到 _saved_shortcut，恢复后即生效
@@ -122,5 +122,5 @@ func _on_button_pressed() -> void:
 			UiStatMGR.go_back()
 		ShowStat.STORE_BTN:
 			UiStatMGR.change_state(UiStatMGR.UIState.STORE_VIEW)
-		ShowStat.ARROW_RIGHT:
+		ShowStat.DELVIEW_BACK:
 			eb.page_right.emit()

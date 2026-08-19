@@ -6,8 +6,6 @@ extends PanelContainer
 class_name MidiFavorPanel
 
 const FAVOR_ITEM_SCENE := preload("res://UI/Components/ShortCutMenu/favorListItem.tscn")
-const ICON_ADD := "res://Resources/icon/add.png"
-const ICON_CONFIRM := "res://Resources/icon/comfirm.png"
 
 var current_midi: MidiData = null
 var _is_creating: bool = false
@@ -120,7 +118,7 @@ func _enter_create_mode() -> void:
 	# 插入到 CreateList 内部 AddBtn 上方
 	create_list.add_child(_create_edit)
 	create_list.move_child(_create_edit, 0)
-	add_btn.icon = load(ICON_CONFIRM)
+	add_btn.icon.region = Rect2(0, 80, 80, 80)
 	_create_edit.grab_focus()
 
 
@@ -133,7 +131,7 @@ func _confirm_create() -> void:
 	_create_edit = null
 	# 恢复 FavorList 高度
 	favor_list.custom_minimum_size.y = FAVOR_LIST_DEFAULT_HEIGHT
-	add_btn.icon = load(ICON_ADD)
+	add_btn.icon.region = Rect2(160, 80, 80, 80)
 	if not fav_name.is_empty():
 		FavoriteManager.instance.create_favorite(fav_name)
 
@@ -147,4 +145,4 @@ func cancel_create() -> void:
 		_create_edit = null
 	# 恢复 FavorList 高度
 	favor_list.custom_minimum_size.y = FAVOR_LIST_DEFAULT_HEIGHT
-	add_btn.icon = load(ICON_ADD)
+	add_btn.icon.region = Rect2(160, 80, 80, 80)

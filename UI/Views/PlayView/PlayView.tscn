@@ -1,6 +1,5 @@
 [gd_scene format=3 uid="uid://dufml4k4gftxf"]
 
-[ext_resource type="Texture2D" uid="uid://baootjbuf8yhl" path="res://Resources/icon/pause.png" id="1_8cbrq"]
 [ext_resource type="Script" uid="uid://biwqlg4kwm815" path="res://UI/Views/PlayView/PlayView.gd" id="1_uj6qe"]
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_7ak4s"]
 [ext_resource type="Script" uid="uid://d1iexilqlavwd" path="res://UI/Views/PlayView/FlowArea.gd" id="2_jlvmc"]
@@ -10,6 +9,7 @@
 [ext_resource type="Script" uid="uid://cekagah86op12" path="res://UI/Views/PlayView/PlayBackground.gd" id="6_bgctrl"]
 [ext_resource type="Script" uid="uid://c1jieae2d3edr" path="res://UI/Views/PlayView/PlayHud.gd" id="7_hud"]
 [ext_resource type="Script" uid="uid://cbp1sof2efk35" path="res://UI/Views/PlayView/GlowLayer.gd" id="8_glow"]
+[ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="9_q4lmo"]
 [ext_resource type="Theme" uid="uid://clu7eeeh6aitj" path="res://UI/Theme/BtnTheme/R12NoBorder.tres" id="10_q4lmo"]
 
 [sub_resource type="Gradient" id="Gradient_7ak4s"]
@@ -27,6 +27,10 @@ thickness = 2
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_glow"]
 blend_mode = 1
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_fx5ny"]
+atlas = ExtResource("9_q4lmo")
+region = Rect2(160, 240, 80, 80)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jlvmc"]
 bg_color = Color(0, 0, 0, 0)
@@ -155,7 +159,7 @@ offset_left = 30.0
 offset_top = 30.0
 offset_right = 90.0
 offset_bottom = 90.0
-texture_normal = ExtResource("1_8cbrq")
+texture_normal = SubResource("AtlasTexture_fx5ny")
 ignore_texture_size = true
 stretch_mode = 5
 

@@ -1,11 +1,8 @@
 [gd_scene format=3 uid="uid://ttmjc3cbi1bi"]
 
 [ext_resource type="Script" uid="uid://bh655hfw6k0q2" path="res://UI/Views/TrackView/midiTrack.gd" id="1_7rc5s"]
-[ext_resource type="Texture2D" uid="uid://balwiilkbpuhy" path="res://Resources/icon/TrackView/note.png" id="1_ni118"]
 [ext_resource type="Script" uid="uid://bnt65j78d2po7" path="res://UI/Views/TrackView/noteDisplayer.gd" id="2_7rc5s"]
-[ext_resource type="Texture2D" uid="uid://bvpw7fu0xco14" path="res://Resources/icon/TrackView/volume.png" id="2_phpps"]
-[ext_resource type="Texture2D" uid="uid://df7u4t3bhlafy" path="res://Resources/icon/TrackView/microphone.png" id="3_7rc5s"]
-[ext_resource type="Texture2D" uid="uid://boaosvxm4ii76" path="res://Resources/icon/TrackView/reset.png" id="6_r0ui6"]
+[ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="2_phpps"]
 [ext_resource type="Script" uid="uid://c2ylo07cj00rw" path="res://UI/Components/TouchScrollOptionButton.gd" id="7_r0ui6"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_31lmn"]
@@ -103,6 +100,10 @@ shadow_color = Color(0, 0, 0, 0.1882353)
 shadow_size = 5
 shadow_offset = Vector2(-3, 0)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_7rc5s"]
+atlas = ExtResource("2_phpps")
+region = Rect2(0, 80, 80, 80)
+
 [sub_resource type="Gradient" id="Gradient_7rc5s"]
 colors = PackedColorArray(0, 0, 0, 0.41568628, 0, 0, 0, 0.16470589)
 
@@ -155,6 +156,36 @@ corner_radius_bottom_left = 8
 OptionButton/styles/hover = SubResource("StyleBoxFlat_kpleu")
 OptionButton/styles/normal = SubResource("StyleBoxFlat_ewgot")
 OptionButton/styles/pressed = SubResource("StyleBoxFlat_j6yb4")
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0arlv"]
+resource_local_to_scene = true
+atlas = ExtResource("2_phpps")
+region = Rect2(0, 160, 80, 80)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_phpps"]
+load_path = "res://.godot/imported/icon_set.png-96c5ab029ee097edb55aef049d22d02c.ctex"
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_r0ui6"]
+resource_local_to_scene = true
+atlas = SubResource("CompressedTexture2D_phpps")
+region = Rect2(0, 240, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gihxt"]
+resource_local_to_scene = true
+atlas = ExtResource("2_phpps")
+region = Rect2(80, 240, 80, 80)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_kgiiq"]
+load_path = "res://.godot/imported/icon_set.png-96c5ab029ee097edb55aef049d22d02c.ctex"
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kpleu"]
+resource_local_to_scene = true
+atlas = SubResource("CompressedTexture2D_kgiiq")
+region = Rect2(80, 160, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_oqd7d"]
+atlas = ExtResource("2_phpps")
+region = Rect2(320, 320, 80, 80)
 
 [node name="MidiTrack" type="Panel" unique_id=1103190500]
 custom_minimum_size = Vector2(1600, 220)
@@ -301,7 +332,7 @@ alignment = 1
 [node name="Icon" type="TextureRect" parent="HBoxC/MC/HBoxC/enableBtn/HBoxC" unique_id=1705559011]
 layout_mode = 2
 mouse_filter = 2
-texture = ExtResource("1_ni118")
+texture = SubResource("AtlasTexture_7rc5s")
 expand_mode = 3
 
 [node name="Text" type="Label" parent="HBoxC/MC/HBoxC/enableBtn/HBoxC" unique_id=1745489155]
@@ -428,7 +459,8 @@ custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 focus_mode = 0
 toggle_mode = true
-texture_normal = ExtResource("2_phpps")
+texture_normal = SubResource("AtlasTexture_0arlv")
+texture_pressed = SubResource("AtlasTexture_r0ui6")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -460,7 +492,8 @@ custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 focus_mode = 0
 toggle_mode = true
-texture_normal = ExtResource("3_7rc5s")
+texture_normal = SubResource("AtlasTexture_gihxt")
+texture_pressed = SubResource("AtlasTexture_kpleu")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -482,6 +515,6 @@ script = ExtResource("7_r0ui6")
 [node name="ResetBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=955571887]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
-texture_normal = ExtResource("6_r0ui6")
+texture_normal = SubResource("AtlasTexture_oqd7d")
 ignore_texture_size = true
 stretch_mode = 5

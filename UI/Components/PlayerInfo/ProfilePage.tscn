@@ -1,10 +1,8 @@
 [gd_scene format=3 uid="uid://bt37v73uu1f0n"]
 
-[ext_resource type="Texture2D" uid="uid://4nsc0p2ia3q" path="res://Resources/icon/ProfilePage/Profile.png" id="1_b1c4s"]
 [ext_resource type="Script" uid="uid://c5j3sx2nby3nl" path="res://UI/Components/PlayerInfo/ProfilePage.gd" id="1_ft172"]
-[ext_resource type="Texture2D" uid="uid://bwjbi8wqeiifi" path="res://Resources/icon/ProfilePage/History.png" id="2_ag846"]
 [ext_resource type="Texture2D" uid="uid://cpog56bd63i4e" path="res://Resources/icon/NoAvatar.jpg" id="2_ft172"]
-[ext_resource type="Texture2D" uid="uid://dhekqkeoopvvf" path="res://Resources/icon/ProfilePage/Edit.png" id="4_j7lut"]
+[ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="3_5hycm"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_j02sm"]
 content_margin_left = 50.0
@@ -333,6 +331,18 @@ border_width_right = 6
 border_color = Color(0, 0.34274265, 0.6441993, 1)
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_ag846"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_i1we6"]
+atlas = ExtResource("3_5hycm")
+region = Rect2(0, 320, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_q71vh"]
+atlas = ExtResource("3_5hycm")
+region = Rect2(80, 320, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_p7r7c"]
+atlas = ExtResource("3_5hycm")
+region = Rect2(160, 320, 80, 80)
 
 [node name="ProfilePage" type="VBoxContainer" unique_id=1127151803]
 anchors_preset = 15
@@ -1030,7 +1040,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_js0an")
 theme_override_styles/focus = SubResource("StyleBoxFlat_aeku2")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_ag846")
-icon = ExtResource("1_b1c4s")
+icon = SubResource("AtlasTexture_i1we6")
 icon_alignment = 1
 
 [node name="History" type="Button" parent="Navi/Btns" unique_id=413016997]
@@ -1042,7 +1052,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_js0an")
 theme_override_styles/focus = SubResource("StyleBoxFlat_aeku2")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_ag846")
-icon = ExtResource("2_ag846")
+icon = SubResource("AtlasTexture_q71vh")
 icon_alignment = 1
 
 [node name="Edit" type="Button" parent="Navi/Btns" unique_id=328915796]
@@ -1054,7 +1064,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_js0an")
 theme_override_styles/focus = SubResource("StyleBoxFlat_aeku2")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_ag846")
-icon = ExtResource("4_j7lut")
+icon = SubResource("AtlasTexture_p7r7c")
 icon_alignment = 1
 
 [connection signal="pressed" from="PC/PageContent/Edit/HBox/ProfileEdit/Nickname/ConfirmBtn" to="." method="_on_save_nickname_btn_pressed"]

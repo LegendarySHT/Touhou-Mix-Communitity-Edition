@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://bhrv8p4ecl6nw" path="res://UI/Views/SettingView/SettingView.gd" id="1_4walt"]
 [ext_resource type="Script" uid="uid://cgxt234w25s7r" path="res://UI/Views/SettingView/SettingList.gd" id="2_3x48f"]
 [ext_resource type="Script" uid="uid://dt5lx4f8bkgl0" path="res://UI/Views/SettingView/DelView.gd" id="3_delview"]
-[ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="5_s2knr"]
+[ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="4_fcfq2"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_tf36t"]
 
@@ -52,6 +52,10 @@ content_margin_top = 10.0
 content_margin_right = 40.0
 content_margin_bottom = 10.0
 bg_color = Color(0.33288068, 0.3328807, 0.33288056, 1)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xcqgn"]
+atlas = ExtResource("4_fcfq2")
+region = Rect2(320, 240, 80, 80)
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_3y6u5"]
 content_margin_left = 30.0
@@ -259,15 +263,23 @@ grow_vertical = 2
 vertical_alignment = 2
 
 [node name="SearchBox" type="LineEdit" parent="DelView/Content/PC/TopBar" unique_id=454943439]
-custom_minimum_size = Vector2(400, 80)
+custom_minimum_size = Vector2(500, 80)
 layout_mode = 2
 size_flags_vertical = 4
 focus_next = NodePath("../../../BottomBarPC/BottomBar/SelectToggle")
 
-[node name="SearchIcon" type="TextureRect" parent="DelView/Content/PC/TopBar" unique_id=195135877]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-texture = ExtResource("5_s2knr")
+[node name="SearchIcon" type="TextureRect" parent="DelView/Content/PC/TopBar/SearchBox" unique_id=195135877]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -10.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_xcqgn")
 expand_mode = 1
 stretch_mode = 5
 
@@ -358,6 +370,7 @@ custom_minimum_size = Vector2(200, 60)
 layout_mode = 2
 size_flags_vertical = 4
 focus_previous = NodePath("../../../PC/TopBar/SearchBox")
+theme_override_font_sizes/font_size = 24
 toggle_mode = true
 text = "全选"
 
@@ -366,6 +379,7 @@ custom_minimum_size = Vector2(200, 60)
 layout_mode = 2
 size_flags_vertical = 4
 focus_previous = NodePath("../../../PC/TopBar/SearchBox")
+theme_override_font_sizes/font_size = 24
 toggle_mode = true
 text = "收起全部"
 
@@ -378,6 +392,7 @@ custom_minimum_size = Vector2(200, 60)
 layout_mode = 2
 size_flags_vertical = 4
 focus_previous = NodePath("../../../PC/TopBar/SearchBox")
+theme_override_font_sizes/font_size = 24
 text = "删除选中项"
 
 [node name="Spacer" type="Control" parent="DelView" unique_id=1505839759]

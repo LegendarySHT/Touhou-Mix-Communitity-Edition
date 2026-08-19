@@ -2,9 +2,9 @@
 
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="1_2ct6a"]
 [ext_resource type="Script" uid="uid://cl2ypj2kc15am" path="res://UI/Components/ShortCutMenu/favorListItem.gd" id="1_script"]
-[ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="2_add"]
-[ext_resource type="Texture2D" uid="uid://bqehp2aavod7n" path="res://Resources/icon/midiInfoPage/delete.png" id="3_delete"]
+[ext_resource type="Texture2D" uid="uid://68fry5jr6m8l" path="res://Resources/icon/icon_set2.png" id="3_0mqhb"]
 [ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="4_0mqhb"]
+[ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="5_0mqhb"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sohxy"]
 bg_color = Color(0, 0, 0, 0.2)
@@ -42,6 +42,11 @@ border_blend = true
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3y6u5"]
 bg_color = Color(0, 0, 0, 0.5019608)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_hhcpw"]
+resource_local_to_scene = true
+atlas = ExtResource("3_0mqhb")
+region = Rect2(160, 80, 80, 80)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w3rk5"]
 draw_center = false
 border_width_left = 3
@@ -59,6 +64,10 @@ corner_radius_bottom_left = 2
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_0mqhb"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_sohxy"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t7rtt"]
+atlas = ExtResource("5_0mqhb")
+region = Rect2(0, 0, 80, 80)
 
 [node name="FavorListItem" type="Button" unique_id=250478025]
 custom_minimum_size = Vector2(500, 130)
@@ -112,7 +121,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_3y6u5")
 [node name="ActionIcon" type="TextureRect" parent="HBox/Cover/ActionIconWrap" unique_id=147255320]
 layout_mode = 2
 mouse_filter = 2
-texture = ExtResource("2_add")
+texture = SubResource("AtlasTexture_hhcpw")
 expand_mode = 3
 stretch_mode = 5
 
@@ -174,7 +183,7 @@ theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 
 theme_override_styles/normal = SubResource("StyleBoxEmpty_vqh6o")
 theme_override_styles/pressed = SubResource("StyleBoxEmpty_0mqhb")
 theme_override_styles/hover = SubResource("StyleBoxEmpty_sohxy")
-icon = ExtResource("3_delete")
+icon = SubResource("AtlasTexture_t7rtt")
 icon_alignment = 1
 expand_icon = true
 

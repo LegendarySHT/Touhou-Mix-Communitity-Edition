@@ -7,8 +7,8 @@ static var instance:LT_Btn
 enum ShowStat {
 	NONE = 0,
 	SETTING_BTN,
-	ARROW_LEFT,
-	ARROW_RIGHT,
+	TO_DELVIEW,
+	DELVIEW_BACK,
 	RETRY_BTN
 }
 
@@ -17,7 +17,7 @@ enum ShowStat {
 @onready var eb: EventBus = EvtBus
 
 @onready var vboxc: VBoxContainer = $VBoxC
-@onready var arrow: TextureRect = $VBoxC/Arrow
+@onready var arrow: TextureRect = $VBoxC/Res
 @onready var btn: Button = $Button
 @onready var lag_label: Label = $Lag
 
@@ -26,7 +26,7 @@ func _ready() -> void:
 	ui.state_changed.connect(_on_state_change)
 
 	# 右下角按钮点击事件
-	eb.page_right.connect(switch_display.bind(ShowStat.ARROW_LEFT))
+	eb.page_right.connect(switch_display.bind(ShowStat.TO_DELVIEW))
 
 	# 在线状态显示
 	eb.online_state_changed.connect(_on_online_state_changed)
@@ -63,7 +63,7 @@ func _update_lag_display(state: int = -1, latency_ms: int = -1) -> void:
 
 func _on_state_change(_old_state, new_state: UIStateManager.UIState):
 	if new_state in [ui.UIState.SETTINGS_VIEW]:
-		switch_display(ShowStat.ARROW_LEFT)
+		switch_display(ShowStat.TO_DELVIEW)
 	elif new_state in [ui.UIState.STORE_VIEW, ui.UIState.PLAY_VIEW]:
 		switch_display(ShowStat.NONE)
 	elif new_state in [ui.UIState.SCORE_VIEW]:
@@ -74,7 +74,6 @@ func _on_state_change(_old_state, new_state: UIStateManager.UIState):
 var _current_stat: ShowStat = ShowStat.SETTING_BTN
 var _visible: bool = true
 var _arrow_left: bool = false
-var _rot_tween: Tween = null
 
 # 文本输入时禁用快捷键，避免字母键触发跳转
 var _saved_shortcut: Shortcut = null
@@ -115,36 +114,24 @@ func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 		if not _visible:
 			ani.animate_offset_back(self, 0.5, "LT_VISBLE")
 	_visible = content_to_show != ShowStat.NONE
-	
-	if _rot_tween:
-		await _rot_tween.finished
 
 	var event = InputEventKey.new()
 	# 控制内容显示（用 offset_transform 位移，相对布局位置的偏移）
 	match content_to_show:
 		ShowStat.RETRY_BTN:
-			ani.animate_offset_to(vboxc, Vector2(0, 445), 0.35, "LT_ICON")
+			ani.animate_offset_to(vboxc, Vector2(0, 460), 0.35, "LT_ICON")
 			event.keycode = KEY_R
 		ShowStat.SETTING_BTN:
 			ani.animate_offset_back(vboxc, 0.35, "LT_ICON")
 			event.keycode = KEY_U
-		ShowStat.ARROW_RIGHT:
-			ani.animate_offset_to(vboxc, Vector2(0, -445), 0.35, "LT_ICON")
-			if _arrow_left:
-				_rot_tween = ani.animate_offset_rotation(arrow, deg_to_rad(-20), 0.2, "LT_ARROW_ROT")
-				_arrow_left = false
+		ShowStat.DELVIEW_BACK:
+			ani.animate_offset_back(vboxc, 0.35, "LT_ICON")
+			_arrow_left = false
 			event.keycode = KEY_E
-		ShowStat.ARROW_LEFT:
-			ani.animate_offset_to(vboxc, Vector2(0, -445), 0.35, "LT_ICON")
-			if not _arrow_left:
-				_rot_tween = ani.animate_offset_rotation(arrow, PI + deg_to_rad(-20), 0.2, "LT_ARROW_ROT")
-				_arrow_left = true
+		ShowStat.TO_DELVIEW:
+			ani.animate_offset_to(vboxc, Vector2(0, -460), 0.35, "LT_ICON")
+			_arrow_left = true
 			event.keycode = KEY_Q
-	
-	if _rot_tween:
-		_rot_tween.finished.connect(func ():
-			_rot_tween = null
-		)
 
 	# 快捷键：shortcut 被禁用时更新到 _saved_shortcut，恢复后即生效
 	var target := btn.shortcut if btn.shortcut else _saved_shortcut
@@ -160,12 +147,12 @@ func _on_button_pressed() -> void:
 		ui.UIState.SETTINGS_VIEW:
 			var rb: RB_Btn = RB_Btn.instance
 			if _arrow_left:
-				rb.switch_display(rb.ShowStat.ARROW_RIGHT)
-				switch_display(ShowStat.ARROW_RIGHT)
+				rb.switch_display(rb.ShowStat.DELVIEW_BACK)
+				switch_display(ShowStat.DELVIEW_BACK)
 				eb.page_left.emit()
 			else:
 				rb.switch_display(rb.ShowStat.BACK_BTN)
-				switch_display(ShowStat.ARROW_LEFT)
+				switch_display(ShowStat.TO_DELVIEW)
 				eb.page_right.emit()
 		ui.UIState.SCORE_VIEW:
 			ui.change_state(ui.UIState.PLAY_VIEW, false)

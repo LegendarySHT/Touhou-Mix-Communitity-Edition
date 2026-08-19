@@ -17,10 +17,10 @@
 [ext_resource type="Texture2D" uid="uid://cajl5tclnp81v" path="res://Resources/Skins/旧版2/long-f.png" id="11_52hqx"]
 [ext_resource type="Script" uid="uid://bybph8jhlvdlx" path="res://UI/Components/PopupWindow/KBModeAdjust.gd" id="11_krk8y"]
 [ext_resource type="Texture2D" uid="uid://cvvug867frcsn" path="res://Resources/Skins/旧版2/long-f-core.png" id="12_5sb8f"]
-[ext_resource type="Texture2D" uid="uid://0h005m5qo5mv" path="res://Resources/icon/add.png" id="13_ff7qk"]
 [ext_resource type="Texture2D" uid="uid://cmyfsfeqqdncw" path="res://Resources/Skins/旧版2/long-b.png" id="13_hty1c"]
 [ext_resource type="Script" uid="uid://drs7ctrsh2gjs" path="res://UI/Components/PopupWindow/FallingAdjust.gd" id="13_tewhg"]
 [ext_resource type="Texture2D" uid="uid://d1wixwjbj4pcj" path="res://Resources/Skins/旧版2/long-b-core.png" id="14_mv616"]
+[ext_resource type="Texture2D" uid="uid://68fry5jr6m8l" path="res://Resources/icon/icon_set2.png" id="20_4gkd0"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qxcsx"]
 content_margin_left = 50.0
@@ -137,6 +137,10 @@ corner_radius_bottom_left = 12
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2xvos"]
 bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3b0ty"]
+atlas = ExtResource("20_4gkd0")
+region = Rect2(160, 80, 80, 80)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j02sm"]
 bg_color = Color(1, 1, 1, 0.711)
@@ -1255,7 +1259,7 @@ size_flags_vertical = 4
 focus_mode = 0
 theme = ExtResource("4_4gkd0")
 theme_override_font_sizes/font_size = 32
-icon = ExtResource("13_ff7qk")
+icon = SubResource("AtlasTexture_3b0ty")
 text_overrun_behavior = 3
 icon_alignment = 1
 

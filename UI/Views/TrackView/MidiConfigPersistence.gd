@@ -178,7 +178,7 @@ func restore_midi_ui_config() -> void:
 				track_item.mute_btn.set_block_signals(true)
 				track_item.mute_btn.button_pressed = is_muted
 				track_item.mute_btn.set_block_signals(false)
-				track_item.mute_btn.modulate = Color(ThemeManager.DANGER_COLOR.r, ThemeManager.DANGER_COLOR.g, ThemeManager.DANGER_COLOR.b, 0.6) if is_muted else Color(1, 1, 1, 1)
+				track_item.mute_btn.texture_normal.region = Rect2(0, 240, 80, 80) if is_muted else Rect2(0, 160, 80, 80)
 
 			# 更新独奏按钮状态
 			var is_soloed = _track_view.solo_pairs.has("%d:%d" % [track_idx, channel])
@@ -186,7 +186,7 @@ func restore_midi_ui_config() -> void:
 				track_item.solo_btn.set_block_signals(true)
 				track_item.solo_btn.button_pressed = is_soloed
 				track_item.solo_btn.set_block_signals(false)
-				track_item.solo_btn.modulate = Color(ThemeManager.WARNING_COLOR.r, ThemeManager.WARNING_COLOR.g, ThemeManager.WARNING_COLOR.b, 0.7) if is_soloed else Color(1, 1, 1, 1)
+				track_item.solo_btn.texture_normal.region = Rect2(80, 160, 80, 80) if is_soloed else Rect2(80, 240, 80, 80)
 
 			# 更新音量滑块和标签
 			if track_item.volume_slider:

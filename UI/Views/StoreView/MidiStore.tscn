@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://dvvggbuqsfxbw"]
 
 [ext_resource type="Script" uid="uid://dbgwcersgki3c" path="res://UI/Views/StoreView/StoreView.gd" id="1_77ghf"]
-[ext_resource type="Texture2D" uid="uid://bd0g5wyxco4e3" path="res://Resources/icon/search.png" id="2_e4ark"]
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="3_u7c36"]
 [ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="4_6ial6"]
+[ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="4_t7rtt"]
 [ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="5_uoxjv"]
 [ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="6_f6x17"]
 
@@ -29,6 +29,10 @@ gradient = SubResource("Gradient_2hjjb")
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_77ghf"]
 texture = SubResource("GradientTexture2D_aexbj")
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hhcpw"]
+atlas = ExtResource("4_t7rtt")
+region = Rect2(320, 240, 80, 80)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_aexbj"]
 bg_color = Color(0.07058824, 0.49411765, 1, 1)
@@ -124,6 +128,8 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_top = 1.0
+offset_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_t7rtt")
@@ -206,7 +212,7 @@ size_flags_stretch_ratio = 8.0
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 size_flags_horizontal = 3
-texture_normal = ExtResource("2_e4ark")
+texture_normal = SubResource("AtlasTexture_hhcpw")
 ignore_texture_size = true
 stretch_mode = 5
 

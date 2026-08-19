@@ -19,10 +19,6 @@ extends HBoxContainer
 @onready var tab_container: TabContainer = $OptionPanel/VBoxC/TabView
 @onready var tab_btn: HBoxContainer = $OptionPanel/VBoxC/TabBtn
 
-# 收藏夹按钮图标
-const ICON_FAVOR_LIST := "res://Resources/icon/midiInfoPage/addToList.png"
-const ICON_BACK := "res://Resources/icon/midiInfoPage/back.png"
-
 # MidiListItem 脚本引用（用于访问其 static var _info_cache）
 const _MidiListItem = preload("res://UI/Views/MidiView/MidiListItem.gd")
 
@@ -249,7 +245,7 @@ func _on_click_favor_list_btn() -> void:
 func _show_favor_panel() -> void:
 	_is_animating = true
 	_favor_panel_visible = true
-	favor_list_btn.icon = load(ICON_BACK)
+	favor_list_btn.icon.region = Rect2(160, 160, 80, 80)
 	_prev_tab_idx = tab_container.current_tab
 	var current_page := tab_container.get_tab_control(_prev_tab_idx) if _prev_tab_idx >= 0 else null
 	# FavorPanel 提前就位（布局占位，视觉偏移到下方）
@@ -279,7 +275,7 @@ func _show_favor_panel() -> void:
 func _hide_favor_panel(exiting_page: bool = false) -> void:
 	_is_animating = true
 	_favor_panel_visible = false
-	favor_list_btn.icon = load(ICON_FAVOR_LIST)
+	favor_list_btn.icon.region = Rect2(320, 0, 80, 80)
 	favor_panel.cancel_create()
 	var target_page := tab_container.get_tab_control(_prev_tab_idx) if _prev_tab_idx >= 0 else null
 	if not target_page:
