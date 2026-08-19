@@ -469,28 +469,18 @@ func _on_track_volume_changed(value: float, track_index: int, channel: int ) -> 
 	
 	GLogger.info("Track %d Channel %d volume changed: %.1f%%" % [track_index, channel, value], "TrackView")
 	
-# 乐器选择
-func _on_track_instrument_changed(index: int, track_index: int, channel: int) -> void:
-	# 获取对应的轨道UI（需要同时匹配 track_index 和 channel）
+# 乐器选择（新签名：由 MidiTrack 子菜单直接传乐器数据）
+func _on_track_instrument_changed(track_index: int, channel: int, bank: int, program: int, preset_name: String) -> void:
+	var instr_data := {"bank": bank, "program": program, "name": preset_name}
+
+	# 获取对应的轨道UI并同步大类图标
 	var track_item: MidiTrack = null
 	for track in list_items:
 		if track.track_index == track_index and track.track_channel == channel:
 			track_item = track
 			break
-	
-	if track_item == null:
-		return
-	
-	var selected_text = track_item.instruments_option_btn.get_item_text(index)
-	
-	# 解析 "乐器名 (BX:PY)" 格式
-	var instr_data = _parse_instrument_string(selected_text)
-	if instr_data.is_empty():
-		push_error("无法解析乐器格式: %s" % selected_text)
-		return
-	
-	# 切换乐器后同步轨道大类图标
-	track_item.set_instrument_category(InstrumentCategory.get_category(instr_data["bank"], instr_data["program"]))
+	if track_item:
+		track_item.set_instrument_category(InstrumentCategory.get_category(bank, program))
 	
 	# 1. 保存到 MidiData
 	current_midi_data.set_track_channel_instrument_override(
@@ -1012,21 +1002,11 @@ func _set_track_instrument_from_midi_data(track_scene: MidiTrack, track_idx: int
 	# 根据初始乐器设置轨道大类图标（区域由 InstrumentCategory 计算）
 	track_scene.set_instrument_category(InstrumentCategory.get_category(bank, program))
 
-	# 在乐器选项中查找匹配项
-	if track_scene.instruments_option_btn:
-		var selected_index = 0  # 默认选择第一个
-		for i in range(track_scene.instruments_option_btn.item_count):
-			if track_scene.instruments_option_btn.get_item_text(i) == display_name:
-				selected_index = i
-				break
+	# 设置菜单按钮显示当前乐器并高亮对应大类（默认显示使用中的乐器）
+	track_scene.set_current_instrument(InstrumentCategory.get_category(bank, program), display_name)
 
-		# 设置下拉框选中项（阻止信号以避免不必要的回调）
-		track_scene.instruments_option_btn.set_block_signals(true)
-		track_scene.instruments_option_btn.select(selected_index)
-		track_scene.instruments_option_btn.set_block_signals(false)
-
-		GLogger.info("轨道 %d 通道 %d: 设置乐器为 '%s' (program: %d, bank: %d)" %
-			[track_idx, channel, preset_name, program, bank], "TrackView")
+	GLogger.info("轨道 %d 通道 %d: 设置乐器为 '%s' (program: %d, bank: %d)" %
+		[track_idx, channel, preset_name, program, bank], "TrackView")
 
 ## 当SoundFont变更时，重新提取乐器列表并更新UI
 func _on_soundfont_changed(soundfont_path: String) -> void:
@@ -1042,19 +1022,10 @@ func _on_soundfont_changed(soundfont_path: String) -> void:
 func _refresh_all_track_instruments() -> void:
 	GLogger.info("Refreshing all track instrument options", "TrackView")
 
-	if current_midi_data == null or not has_meta("list_items"):
+	if current_midi_data == null:
 		return
 
 	for item in list_items:
-		if item is MidiTrack and item.instruments_option_btn:
-			# 清空并重建选项列表
-			item.instruments_option_btn.clear()
-			for option_text in instrument_options:
-				item.instruments_option_btn.add_item(option_text)
-
-			# 重新设置默认选中项（使用MidiTrack的track_index和track_channel）
-			var track_idx = item.track_index
-			var channel = item.track_channel
-			_set_track_instrument_from_midi_data(item, track_idx, channel)
-
-			GLogger.info("Updated instrument options for track %d channel %d" % [track_idx, channel], "TrackView")
+		if item is MidiTrack:
+			item.refresh_instrument_options(regular_instruments, drum_instruments)
+			GLogger.info("Updated instrument options for track %d channel %d" % [item.track_index, item.track_channel], "TrackView")

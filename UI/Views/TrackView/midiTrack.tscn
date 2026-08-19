@@ -4,7 +4,6 @@
 [ext_resource type="Script" uid="uid://bnt65j78d2po7" path="res://UI/Views/TrackView/noteDisplayer.gd" id="2_7rc5s"]
 [ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="2_phpps"]
 [ext_resource type="Texture2D" uid="uid://cug51b3m7pnnr" path="res://Resources/icon/instruments_icon.png" id="2_r0ui6"]
-[ext_resource type="Script" uid="uid://c2ylo07cj00rw" path="res://UI/Components/TouchScrollOptionButton.gd" id="7_r0ui6"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_31lmn"]
 bg_color = Color(0.59, 0.59, 0.59, 0.54509807)
@@ -132,32 +131,6 @@ thickness = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3ket"]
 draw_center = false
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kpleu"]
-bg_color = Color(0.13725491, 0.13725491, 0.13725491, 0.21568628)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ewgot"]
-bg_color = Color(0.13725491, 0.13725491, 0.13725491, 0.3019608)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j6yb4"]
-bg_color = Color(0.13725491, 0.13725491, 0.13725491, 0.3019608)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="Theme" id="Theme_wvkbu"]
-OptionButton/styles/hover = SubResource("StyleBoxFlat_kpleu")
-OptionButton/styles/normal = SubResource("StyleBoxFlat_ewgot")
-OptionButton/styles/pressed = SubResource("StyleBoxFlat_j6yb4")
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_0arlv"]
 resource_local_to_scene = true
@@ -442,16 +415,14 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_c3ket")
 
 [node name="GridC" type="GridContainer" parent="HBoxC/MC/HBoxC/MC/ControlPanel" unique_id=761362062]
 layout_mode = 1
-anchors_preset = 15
+anchors_preset = -1
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 5.0
 offset_top = 15.0
 offset_right = 5.0
 offset_bottom = 15.0
-grow_horizontal = 2
 grow_vertical = 2
-theme = SubResource("Theme_wvkbu")
 theme_override_constants/h_separation = 40
 theme_override_constants/v_separation = 20
 columns = 3
@@ -459,6 +430,9 @@ columns = 3
 [node name="MuteBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=1626224669]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
+offset_transform_enabled = true
+offset_transform_position = Vector2(10, 0)
+offset_transform_visual_only = false
 focus_mode = 0
 toggle_mode = true
 texture_normal = SubResource("AtlasTexture_0arlv")
@@ -469,6 +443,7 @@ stretch_mode = 5
 [node name="Volume" type="HBoxContainer" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=34573128]
 custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="Slider" type="HSlider" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC/Volume" unique_id=1999306910]
 layout_mode = 2
@@ -479,8 +454,8 @@ max_value = 1.0
 step = 0.01
 
 [node name="Label" type="Label" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC/Volume" unique_id=592580644]
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
-size_flags_horizontal = 3
 text = "-1.00dB"
 horizontal_alignment = 2
 
@@ -492,6 +467,9 @@ disabled = true
 [node name="SoloBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=1461801783]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
+offset_transform_enabled = true
+offset_transform_position = Vector2(10, 0)
+offset_transform_visual_only = false
 focus_mode = 0
 toggle_mode = true
 texture_normal = SubResource("AtlasTexture_gihxt")
@@ -499,20 +477,14 @@ texture_pressed = SubResource("AtlasTexture_kpleu")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="InstrumentBtn" type="OptionButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=1017194372]
+[node name="InstrumentBtn" type="MenuButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=673420758]
 custom_minimum_size = Vector2(250, 50)
 layout_mode = 2
+size_flags_horizontal = 3
 focus_mode = 0
 mouse_filter = 1
-theme_override_font_sizes/font_size = 28
-theme_override_constants/arrow_margin = 10
-alignment = 1
-selected = 0
-fit_to_longest_item = false
-item_count = 1
-popup/item_0/text = "Grand Piano"
-popup/item_0/id = 0
-script = ExtResource("7_r0ui6")
+theme_override_font_sizes/font_size = 32
+switch_on_hover = true
 
 [node name="ResetBtn" type="TextureButton" parent="HBoxC/MC/HBoxC/MC/ControlPanel/GridC" unique_id=955571887]
 custom_minimum_size = Vector2(50, 50)

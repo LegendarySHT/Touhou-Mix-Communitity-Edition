@@ -53,7 +53,28 @@ static func get_icon_region(category: int) -> Rect2:
 	var cell: int = ATLAS_SIZE / COLUMNS
 	return Rect2(col * cell, row * cell, cell, cell)
 
-# 便捷获取大类名称（调试/日志用）
+# 快捷获取大类名称（调试/日志用）
 static func get_category_name(category: int) -> String:
 	var c: int = clampi(category, 0, CATEGORY_COUNT - 1)
 	return CATEGORY_NAMES[c]
+
+# 缓存 display 名解析正则（避免每次重建）
+static var _display_regex: RegEx = null
+
+## 解析 "乐器名 (BX:PY)" 显示名，返回 {name, bank, program}
+static func parse_display_name(display: String) -> Dictionary:
+	if _display_regex == null:
+		_display_regex = RegEx.create_from_string(r"^(.*)\(B(\d+):P(\d+)\)$")
+	var m := _display_regex.search(display)
+	if m:
+		return {
+			"name": m.get_string(1).strip_edges(),
+			"bank": int(m.get_string(2)),
+			"program": int(m.get_string(3)),
+		}
+	return {}
+
+# 从显示名直接查大类索引（解析失败归为 Piano）
+static func get_category_from_display(display: String) -> int:
+	var info := parse_display_name(display)
+	return get_category(info.get("bank", 0), info.get("program", 0))
