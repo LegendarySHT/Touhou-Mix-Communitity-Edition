@@ -111,6 +111,13 @@ func _init_track_color():
 
 	note_display.note_color = color_normal
 
+# 根据乐器大类索引设置图标区域（图标材质由外部 setup，此处仅改坐标）
+# enable_btn_icon.texture 须为 AtlasTexture 才会生效
+func set_instrument_category(category: int) -> void:
+	var tex := enable_btn_icon.texture as AtlasTexture
+	if tex:
+		tex.region = InstrumentCategory.get_icon_region(category)
+
 func _connect_signals():
 	enable_btn.toggled.connect(_on_enable_toggled)
 	mute_btn.toggled.connect(_on_mute_toggled)

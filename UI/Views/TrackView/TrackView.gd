@@ -302,7 +302,8 @@ func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
 	
 	# 执行跳转
 	midi_playback_manager.seek(target_ms)
-	
+	midi_playback_manager.apply_vocal_offset()
+
 	# 【关键】更新 last_position_ms 和 current_tick，防止下一帧循环检测误判
 	last_position_ms = target_ms
 	current_tick = int(midi_playback_manager.position)
@@ -487,6 +488,9 @@ func _on_track_instrument_changed(index: int, track_index: int, channel: int) ->
 	if instr_data.is_empty():
 		push_error("无法解析乐器格式: %s" % selected_text)
 		return
+	
+	# 切换乐器后同步轨道大类图标
+	track_item.set_instrument_category(InstrumentCategory.get_category(instr_data["bank"], instr_data["program"]))
 	
 	# 1. 保存到 MidiData
 	current_midi_data.set_track_channel_instrument_override(
@@ -931,6 +935,7 @@ func _extract_instruments_from_midi() -> void:
 	drum_instruments.clear()
 	
 	var seen_options = {}  # 用于去重
+	var entries: Array = []  # 收集 {display_name, bank, program}，填充前统一排序
 
 	for preset in presets_list:
 		var bank = preset["bank"]
@@ -947,17 +952,29 @@ func _extract_instruments_from_midi() -> void:
 		if seen_options.has(display_name):
 			continue
 		seen_options[display_name] = true
-		
+		entries.append({"display_name": display_name, "bank": bank, "program": program})
+
+	# 固定排序：按 16 乐器大类分组，同类内 program 升序，再按 bank 升序
+	entries.sort_custom(func(a, b):
+		var cat_a: int = InstrumentCategory.get_category(a["bank"], a["program"])
+		var cat_b: int = InstrumentCategory.get_category(b["bank"], b["program"])
+		if cat_a != cat_b:
+			return cat_a < cat_b
+		if a["program"] != b["program"]:
+			return a["program"] < b["program"]
+		return a["bank"] < b["bank"]
+	)
+
+	for entry in entries:
 		# 根据 bank 分类
-		if bank == 128:
+		if entry["bank"] == 128:
 			# 鼓组乐器
-			drum_instruments.append(display_name)
+			drum_instruments.append(entry["display_name"])
 		else:
 			# 常规乐器
-			regular_instruments.append(display_name)
-		
+			regular_instruments.append(entry["display_name"])
 		# 全局列表包含所有
-		instrument_options.append(display_name)
+		instrument_options.append(entry["display_name"])
 
 	GLogger.info("已提取 %d 个常规乐器, %d 个鼓组乐器" %
 		[regular_instruments.size(), drum_instruments.size()], "TrackView")
@@ -991,7 +1008,10 @@ func _set_track_instrument_from_midi_data(track_scene: MidiTrack, track_idx: int
 
 	# 构建显示名称
 	var display_name = "%s (B%d:P%d)" % [preset_name, bank, program]
-	
+
+	# 根据初始乐器设置轨道大类图标（区域由 InstrumentCategory 计算）
+	track_scene.set_instrument_category(InstrumentCategory.get_category(bank, program))
+
 	# 在乐器选项中查找匹配项
 	if track_scene.instruments_option_btn:
 		var selected_index = 0  # 默认选择第一个

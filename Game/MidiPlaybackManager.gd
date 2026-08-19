@@ -1163,19 +1163,17 @@ func get_preset_name(program: int, bank: int = 0) -> String:
 
 ## 获取指定 (track, channel) 的乐器信息
 func get_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
+	if cached_track_channel_instruments.has(track_index) and cached_track_channel_instruments[track_index].has(channel):
+		return cached_track_channel_instruments[track_index][channel]
+
+	# 缓存未命中（如 Addon 后端运行期才登记的新通道），回退到后端维护的信息
 	var backend = _get_active_backend()
-	if backend == null:
-		return _get_instrument_from_cache(track_index, channel)
-	
-	# 优先使用后端维护的信息（如 Addon 后端）
-	if backend.has_method("get_track_channel_instrument"):
+	if backend != null and backend.has_method("get_track_channel_instrument"):
 		var result = backend.get_track_channel_instrument(track_index, channel)
-		# 如果后端返回空字典（如 MeltySynth），使用缓存
 		if not result.is_empty():
 			return result
-	
-	# 使用缓存的信息（从 MIDI 文件中提取）
-	return _get_instrument_from_cache(track_index, channel)
+
+	return _get_default_instrument(channel)
 
 ## 获取 MIDI 文件中的原始乐器配置（不考虑用户覆盖）
 func get_original_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
