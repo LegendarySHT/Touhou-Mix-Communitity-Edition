@@ -119,9 +119,6 @@ var _runtime_track_infos: Array = []
 ## 格式：{ "track:channel": Array[MidiParser.NoteEvent], ... }
 var runtime_track_channel_notes: Dictionary = {}
 
-## MIDI每分钟节拍数（BPM）
-var bpm: float = 120.0
-
 ## MIDI总时长（毫秒）
 var duration_ms: float = 0.0
 
@@ -405,7 +402,7 @@ func set_soundfont(soundfont_name: String) -> void:
 	use_soundfont = soundfont_name
 
 ## 清空已解析的音符列表与轨道信息（释放内存）
-## 保留 bpm/bpm_timeline/duration_ms/midi_timebase 等轻量字段，下次 load_midi 时
+## 保留 bpm_timeline/duration_ms/midi_timebase 等轻量字段，下次 load_midi 时
 ## 仅需重新解析 MIDI 文件填充 parsed_notes + _runtime_track_infos（已通过 preparse_midi_async 线程化）
 ## 调用时机：TrackView/PlayView 退出后，且无人需要原始 Note 数据时
 func clear_parsed_notes() -> void:

@@ -636,6 +636,7 @@ mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_hri7i")
 
 [node name="Panel" type="Panel" parent="skew/C/ShortCutMenu" unique_id=1377748302]
+visible = false
 show_behind_parent = true
 clip_children = 2
 custom_minimum_size = Vector2(600, 700)

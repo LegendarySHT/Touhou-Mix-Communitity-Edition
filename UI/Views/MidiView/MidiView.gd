@@ -38,7 +38,7 @@ var _pending_cleanup: bool = false
 @onready var delete_btn: Button = $LeftArea/InfoWindow/HBoxC/Right/DelBtn
 
 # 显示midi的各种数值的地方，但是更新不在这个脚本进行
-@onready var detail_data_area: GridContainer = $LeftArea/DetailData
+@onready var detail_data_area: VBoxContainer = $LeftArea/DetailData
 # 点击info按钮后显示以下按钮组，用于跳转到浏览器
 @onready var redirect_btns: FlowContainer = $LeftArea/RedirectButtons
 

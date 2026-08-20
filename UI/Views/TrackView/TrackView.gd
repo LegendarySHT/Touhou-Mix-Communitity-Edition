@@ -155,8 +155,8 @@ func _load_midi(midi: MidiData) -> void:
 	container.custom_minimum_size.y = 0
 	container.size.y = 0
 
-# 【关键】在加载MIDI之前先检测人声文件，确保vocal_file_path已设置
-	_vocal_controller.detect_vocal_file(current_midi_data)
+# 人声文件检测已前移至 MidiView（选中谱面时解析），此处仅同步已解析的人声路径
+	_vocal_controller.vocal_file_path = current_midi_data.vocal_file_path
 	# 在执行同步耗时的 load_midi 之前先让 UI 渲染一帧
 	# （此时转场动画刚启动，避免被 MIDI 解析/JSON 写入阻塞导致首帧卡顿）
 	await get_tree().process_frame

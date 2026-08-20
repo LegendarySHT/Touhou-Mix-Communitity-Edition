@@ -202,21 +202,19 @@ func on_vocal_enable_btn_toggled(toggle_on: bool) -> void:
 				midi_playback_manager.stop_vocal_playback()
 
 
-## 检测并定位人声文件
+## 检测并定位人声文件（MidiView 显示 / TrackView 共用同一检测逻辑）
 ## 优先级：1. MidiData.vocal_file_path（已保存的路径）
 ##        2. FileSystemManager 扫描到的音频文件（.ogg/.mp3/.wav/.flac）
-func detect_vocal_file(midi_data: MidiData) -> void:
+## 返回解析到的人声路径（未找到返回空串），并回填 midi_data.vocal_file_path
+static func resolve_vocal_path(midi_data: MidiData) -> String:
 	if not midi_data:
-		return
-
-	vocal_file_path = ""
+		return ""
 
 	# 检查是否已有保存的人声文件路径
 	if not midi_data.vocal_file_path.is_empty():
 		if FileAccess.file_exists(midi_data.vocal_file_path):
-			vocal_file_path = midi_data.vocal_file_path
-			GLogger.info("Vocal file restored from saved config: %s" % vocal_file_path, "TrackView")
-			return
+			GLogger.info("Vocal file restored from saved config: %s" % midi_data.vocal_file_path, "TrackView")
+			return midi_data.vocal_file_path
 		# 如果保存的路径已不存在，继续扫描
 		GLogger.warning("Saved vocal file no longer exists: %s" % midi_data.vocal_file_path, "TrackView")
 		midi_data.vocal_file_path = ""
@@ -230,15 +228,15 @@ func detect_vocal_file(midi_data: MidiData) -> void:
 		var metadata: ChartMetadata = lookup["metadata"]
 		var audio_path = metadata.audio_path
 		if not audio_path.is_empty() and FileAccess.file_exists(audio_path):
-			vocal_file_path = audio_path
 			midi_data.vocal_file_path = audio_path
 			GLogger.info("Vocal file detected from chart metadata: %s" % audio_path, "TrackView")
-			return
+			return audio_path
 		elif not audio_path.is_empty():
 			GLogger.warning("Vocal file in chart metadata no longer exists: %s" % audio_path, "TrackView")
 
 	# 未找到人声文件
 	GLogger.info("No vocal file found for MIDI: %s" % chart_id, "TrackView")
+	return ""
 
 
 # 在这个函数执行前需要先检查有无人声音频

@@ -4,14 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://68fry5jr6m8l" path="res://Resources/icon/icon_set2.png" id="2_1rn3q"]
 [ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="3_qoscg"]
 [ext_resource type="Script" uid="uid://ddhvc24jriuwq" path="res://UI/Views/MidiView/MidiList.gd" id="5_u7brx"]
-[ext_resource type="Texture2D" uid="uid://hsnudy4qrca4" path="res://Resources/icon/midiInfoPage/status/time.png" id="10_mxrx3"]
-[ext_resource type="Texture2D" uid="uid://bjb7cd5wc7ybo" path="res://Resources/icon/midiInfoPage/status/bpm.png" id="11_sne8w"]
-[ext_resource type="Texture2D" uid="uid://c66nhxresaf43" path="res://Resources/icon/midiInfoPage/status/note.png" id="12_migpj"]
-[ext_resource type="Texture2D" uid="uid://dnxy735ve0pcy" path="res://Resources/icon/midiInfoPage/status/npm.png" id="13_mxrx3"]
-[ext_resource type="Texture2D" uid="uid://yupw24rudalj" path="res://Resources/icon/midiInfoPage/status/upCount.png" id="15_27bbn"]
-[ext_resource type="Texture2D" uid="uid://dpwyd6fd4q7j7" path="res://Resources/icon/midiInfoPage/status/avgAcc.png" id="16_8spcd"]
 [ext_resource type="Theme" uid="uid://clu7eeeh6aitj" path="res://UI/Theme/BtnTheme/R12NoBorder.tres" id="16_qg2wq"]
-[ext_resource type="Texture2D" uid="uid://dw6l1r7cawiyj" path="res://Resources/icon/midiInfoPage/status/avgPP.png" id="17_8kmhx"]
 [ext_resource type="Script" uid="uid://du6e1o3nahcc1" path="res://UI/Views/MidiView/option_ui.gd" id="18_2bu1o"]
 [ext_resource type="Texture2D" uid="uid://bs53ytf8e8r42" path="res://Resources/icon/midiInfoPage/RightWindow/Norm.png" id="20_fx5ny"]
 [ext_resource type="Texture2D" uid="uid://c0n6n42u3liyt" path="res://Resources/icon/midiInfoPage/RightWindow/Auto.png" id="21_2bu1o"]
@@ -88,15 +81,19 @@ region = Rect2(80, 0, 80, 80)
 atlas = ExtResource("3_qoscg")
 region = Rect2(0, 0, 80, 80)
 
-[sub_resource type="StyleBoxLine" id="StyleBoxLine_btcpj"]
-color = Color(1, 1, 1, 1)
-grow_begin = 10.0
-grow_end = 10.0
-thickness = 8
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_i6pqd"]
+bg_color = Color(0.18431373, 0.58431375, 1, 1)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_bavqp"]
-atlas = ExtResource("3_qoscg")
-region = Rect2(160, 0, 80, 80)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1vlqv"]
+draw_center = false
+border_width_left = 3
+border_width_right = 3
+border_color = Color(0.851769, 0.8517689, 0.85176885, 1)
+expand_margin_top = 15.0
+expand_margin_bottom = 15.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_iygje"]
+bg_color = Color(0.12941177, 0.4117647, 0.7058824, 1)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tn4wv"]
 atlas = ExtResource("3_qoscg")
@@ -114,6 +111,7 @@ bg_color = Color(3.0226112e-05, 0.49875212, 0.92237043, 1)
 [sub_resource type="AtlasTexture" id="AtlasTexture_ynlhr"]
 atlas = ExtResource("3_qoscg")
 region = Rect2(160, 0, 80, 80)
+margin = Rect2(5, 0, 0, 0)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ghrq3"]
 atlas = ExtResource("3_qoscg")
@@ -158,6 +156,7 @@ content_margin_left = 50.0
 content_margin_right = 50.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gjqh3"]
+content_margin_left = 25.0
 draw_center = false
 border_width_left = 2
 border_width_top = 2
@@ -171,6 +170,7 @@ corner_radius_bottom_left = 40
 corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s4c5m"]
+content_margin_left = 25.0
 draw_center = false
 border_width_left = 2
 border_width_top = 2
@@ -184,6 +184,7 @@ corner_radius_bottom_left = 40
 corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pj210"]
+content_margin_left = 25.0
 draw_center = false
 border_width_left = 2
 border_width_top = 2
@@ -202,7 +203,7 @@ corner_detail = 5
 atlas = ExtResource("2_1rn3q")
 region = Rect2(0, 0, 80, 80)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_fx5ny"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_1vlqv"]
 atlas = ExtResource("2_1rn3q")
 region = Rect2(80, 0, 80, 80)
 
@@ -243,7 +244,7 @@ script = ExtResource("1_mxrx3")
 [node name="LeftArea" type="VBoxContainer" parent="." unique_id=874660304]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 50
+theme_override_constants/separation = 0
 alignment = 1
 
 [node name="InfoWindow" type="PanelContainer" parent="LeftArea" unique_id=796666651]
@@ -370,6 +371,7 @@ size_flags_horizontal = 4
 size_flags_vertical = 0
 offset_transform_enabled = true
 theme_override_constants/separation = 9
+alignment = 1
 metadata/_edit_use_anchors_ = true
 
 [node name="DelBtn" type="Button" parent="LeftArea/InfoWindow/HBoxC/Right" unique_id=1190126601]
@@ -383,189 +385,145 @@ focus_previous = NodePath("../../../../../OptionPanel/VBoxC/TabBtn/Comment")
 icon = SubResource("AtlasTexture_na1rg")
 icon_alignment = 1
 
-[node name="DetailData" type="GridContainer" parent="LeftArea" unique_id=2026642641]
+[node name="DetailData" type="VBoxContainer" parent="LeftArea" unique_id=2074526545]
+custom_minimum_size = Vector2(900, 350)
 layout_mode = 2
 size_flags_horizontal = 4
-size_flags_vertical = 3
+size_flags_vertical = 6
 size_flags_stretch_ratio = 3.0
-theme_override_constants/v_separation = 30
-columns = 4
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 30)
+theme_override_constants/separation = -30
+alignment = 1
 
-[node name="Time" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=988527352]
-custom_minimum_size = Vector2(200, 120)
+[node name="PC1" type="PanelContainer" parent="LeftArea/DetailData" unique_id=46322881]
 layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
+size_flags_vertical = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 10)
+theme_override_styles/panel = SubResource("StyleBoxFlat_i6pqd")
 
-[node name="icon" type="TextureRect" parent="LeftArea/DetailData/Time" unique_id=1116322310]
-custom_minimum_size = Vector2(90, 50)
+[node name="BasicData" type="HBoxContainer" parent="LeftArea/DetailData/PC1" unique_id=239490255]
 layout_mode = 2
-texture = ExtResource("10_mxrx3")
-expand_mode = 5
-stretch_mode = 5
 
-[node name="Label" type="Label" parent="LeftArea/DetailData/Time" unique_id=32487240]
+[node name="Duration" type="Label" parent="LeftArea/DetailData/PC1/BasicData" unique_id=1508708840]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
-text = "114:51"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 48
+text = "99:00"
+horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="BPM" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1453914352]
-custom_minimum_size = Vector2(150, 120)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
+[node name="Label" type="Label" parent="LeftArea/DetailData/PC1/BasicData/Duration" unique_id=602933028]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -19.0
+offset_bottom = -25.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "时长"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="icon" type="TextureRect" parent="LeftArea/DetailData/BPM" unique_id=74843338]
-custom_minimum_size = Vector2(90, 0)
-layout_mode = 2
-texture = ExtResource("11_sne8w")
-expand_mode = 5
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="LeftArea/DetailData/BPM" unique_id=2003680533]
+[node name="Note" type="Label" parent="LeftArea/DetailData/PC1/BasicData" unique_id=330303031]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
-text = "114"
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = SubResource("StyleBoxFlat_1vlqv")
+text = "-"
+horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="Note" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1360586405]
-custom_minimum_size = Vector2(150, 120)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
+[node name="Label" type="Label" parent="LeftArea/DetailData/PC1/BasicData/Note" unique_id=1540367957]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -19.0
+offset_bottom = -25.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "总音符数"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="icon" type="TextureRect" parent="LeftArea/DetailData/Note" unique_id=1100259590]
-custom_minimum_size = Vector2(90, 0)
-layout_mode = 2
-texture = ExtResource("12_migpj")
-expand_mode = 5
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="LeftArea/DetailData/Note" unique_id=177195718]
+[node name="NotePerMinute" type="Label" parent="LeftArea/DetailData/PC1/BasicData" unique_id=1055450041]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
-text = "114"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 48
+text = "-"
+horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="MPP" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1008410678]
-custom_minimum_size = Vector2(150, 120)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
+[node name="Label" type="Label" parent="LeftArea/DetailData/PC1/BasicData/NotePerMinute" unique_id=1102626697]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -19.0
+offset_bottom = -25.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "每分钟音符数"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="icon" type="TextureRect" parent="LeftArea/DetailData/MPP" unique_id=669940350]
-custom_minimum_size = Vector2(90, 0)
+[node name="PC2" type="PanelContainer" parent="LeftArea/DetailData" unique_id=876880271]
+z_index = -1
 layout_mode = 2
-texture = ExtResource("13_mxrx3")
-expand_mode = 5
-stretch_mode = 5
+size_flags_vertical = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(20, -60)
+theme_override_styles/panel = SubResource("StyleBoxFlat_iygje")
 
-[node name="Label" type="Label" parent="LeftArea/DetailData/MPP" unique_id=1870074518]
+[node name="FileData" type="HBoxContainer" parent="LeftArea/DetailData/PC2" unique_id=682764807]
+layout_mode = 2
+offset_transform_enabled = true
+offset_transform_position_ratio = Vector2(0, 0.45)
+mouse_filter = 2
+
+[node name="TrackCtn" type="Label" parent="LeftArea/DetailData/PC2/FileData" unique_id=1737759448]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
-text = "114"
-vertical_alignment = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "1 TRACKS"
+horizontal_alignment = 1
 
-[node name="HSepa" type="HSeparator" parent="LeftArea/DetailData" unique_id=1593508892]
-layout_mode = 2
-theme_override_styles/separator = SubResource("StyleBoxLine_btcpj")
-
-[node name="HSepa2" type="HSeparator" parent="LeftArea/DetailData" unique_id=148939604]
-layout_mode = 2
-theme_override_styles/separator = SubResource("StyleBoxLine_btcpj")
-
-[node name="HSepa3" type="HSeparator" parent="LeftArea/DetailData" unique_id=1424263380]
-layout_mode = 2
-theme_override_styles/separator = SubResource("StyleBoxLine_btcpj")
-
-[node name="HSepa4" type="HSeparator" parent="LeftArea/DetailData" unique_id=1474752671]
-layout_mode = 2
-theme_override_styles/separator = SubResource("StyleBoxLine_btcpj")
-
-[node name="Play" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=484836799]
-custom_minimum_size = Vector2(200, 120)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
-
-[node name="icon" type="TextureRect" parent="LeftArea/DetailData/Play" unique_id=1399933230]
-custom_minimum_size = Vector2(90, 50)
-layout_mode = 2
-texture = SubResource("AtlasTexture_bavqp")
-expand_mode = 5
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="LeftArea/DetailData/Play" unique_id=1402941091]
+[node name="MidiHash" type="Label" parent="LeftArea/DetailData/PC2/FileData" unique_id=1331354349]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
-text = "114"
-vertical_alignment = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+theme_override_font_sizes/font_size = 24
+text = "thisisamidifilehash"
+horizontal_alignment = 1
 
-[node name="UpCount" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1809400482]
-custom_minimum_size = Vector2(200, 120)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
-
-[node name="icon" type="TextureRect" parent="LeftArea/DetailData/UpCount" unique_id=136853161]
-custom_minimum_size = Vector2(90, 50)
-layout_mode = 2
-texture = ExtResource("15_27bbn")
-expand_mode = 5
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="LeftArea/DetailData/UpCount" unique_id=1059989272]
+[node name="VocalState" type="Label" parent="LeftArea/DetailData/PC2/FileData" unique_id=1737877780]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
-text = "114"
-vertical_alignment = 2
-
-[node name="AvgAcc" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1145374602]
-custom_minimum_size = Vector2(200, 120)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
-
-[node name="icon" type="TextureRect" parent="LeftArea/DetailData/AvgAcc" unique_id=1720372278]
-custom_minimum_size = Vector2(90, 50)
-layout_mode = 2
-texture = ExtResource("16_8spcd")
-expand_mode = 5
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="LeftArea/DetailData/AvgAcc" unique_id=1788423285]
-custom_minimum_size = Vector2(0, 80)
-layout_mode = 2
-theme_override_font_sizes/font_size = 40
-text = "0.99"
-vertical_alignment = 2
-
-[node name="AvgPP" type="HBoxContainer" parent="LeftArea/DetailData" unique_id=1804367433]
-custom_minimum_size = Vector2(200, 120)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
-
-[node name="icon" type="TextureRect" parent="LeftArea/DetailData/AvgPP" unique_id=999930973]
-custom_minimum_size = Vector2(90, 50)
-layout_mode = 2
-texture = ExtResource("17_8kmhx")
-expand_mode = 5
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="LeftArea/DetailData/AvgPP" unique_id=1067534368]
-custom_minimum_size = Vector2(0, 80)
-layout_mode = 2
-theme_override_font_sizes/font_size = 40
-text = "9"
-vertical_alignment = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "No Vocal File"
+horizontal_alignment = 1
 
 [node name="RedirectButtons" type="HFlowContainer" parent="LeftArea" unique_id=1288892772]
 visible = false
@@ -684,15 +642,23 @@ custom_minimum_size = Vector2(600, 778)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxEmpty_dnql7")
-current_tab = 2
+current_tab = 0
 tabs_visible = false
 
 [node name="Rank" type="PanelContainer" parent="OptionPanel/VBoxC/TabView" unique_id=1031929289]
-visible = false
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 mouse_filter = 2
 metadata/_tab_index = 0
+
+[node name="Total" type="Label" parent="OptionPanel/VBoxC/TabView/Rank" unique_id=2038863637]
+layout_mode = 2
+size_flags_vertical = 0
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, -25)
+theme_override_font_sizes/font_size = 19
+text = "游玩次数 999 | 平均成绩 99999 | 平均PP 99.99 | 平均准度 99.99%"
+horizontal_alignment = 1
 
 [node name="ScoreList" type="ScrollContainer" parent="OptionPanel/VBoxC/TabView/Rank" unique_id=1921750512]
 layout_mode = 2
@@ -803,6 +769,7 @@ popup/item_1/icon = ExtResource("28_y3sh5")
 popup/item_1/id = 1
 
 [node name="Comment" type="VBoxContainer" parent="OptionPanel/VBoxC/TabView" unique_id=1141009423]
+visible = false
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 mouse_filter = 2
@@ -813,7 +780,7 @@ metadata/_tab_index = 2
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 offset_transform_enabled = true
-offset_transform_position = Vector2(0, -10)
+offset_transform_position = Vector2(-10, -10)
 offset_transform_visual_only = false
 theme_override_constants/separation = 10
 alignment = 1
@@ -821,57 +788,44 @@ alignment = 1
 [node name="Label" type="Label" parent="OptionPanel/VBoxC/TabView/Comment/Top" unique_id=472438170]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "是否推荐此歌曲"
 horizontal_alignment = 1
 
 [node name="Like" type="Button" parent="OptionPanel/VBoxC/TabView/Comment/Top" unique_id=431887046]
-custom_minimum_size = Vector2(100, 70)
+custom_minimum_size = Vector2(150, 70)
 layout_mode = 2
 size_flags_vertical = 4
 focus_mode = 0
 theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
 theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
 theme_override_constants/icon_max_width = 40
+theme_override_font_sizes/font_size = 25
 theme_override_styles/normal = SubResource("StyleBoxFlat_gjqh3")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_s4c5m")
 theme_override_styles/hover = SubResource("StyleBoxFlat_pj210")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_0wvp2")
+text = "9999+"
 icon = SubResource("AtlasTexture_qoscg")
-icon_alignment = 1
 expand_icon = true
 
-[node name="Love" type="Button" parent="OptionPanel/VBoxC/TabView/Comment/Top" unique_id=791476971]
-custom_minimum_size = Vector2(100, 70)
-layout_mode = 2
-size_flags_vertical = 4
-focus_mode = 0
-theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
-theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
-theme_override_constants/icon_max_width = 40
-theme_override_styles/normal = SubResource("StyleBoxFlat_gjqh3")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_s4c5m")
-theme_override_styles/hover = SubResource("StyleBoxFlat_pj210")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_0wvp2")
-icon = SubResource("AtlasTexture_fx5ny")
-icon_alignment = 1
-
 [node name="Dislike" type="Button" parent="OptionPanel/VBoxC/TabView/Comment/Top" unique_id=739043967]
-custom_minimum_size = Vector2(100, 70)
+custom_minimum_size = Vector2(150, 70)
 layout_mode = 2
 size_flags_vertical = 4
 offset_transform_enabled = true
-offset_transform_rotation = 3.1415927
 focus_mode = 0
 theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
 theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
 theme_override_constants/icon_max_width = 40
+theme_override_font_sizes/font_size = 24
 theme_override_styles/normal = SubResource("StyleBoxFlat_gjqh3")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_s4c5m")
 theme_override_styles/hover = SubResource("StyleBoxFlat_pj210")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_0wvp2")
-icon = SubResource("AtlasTexture_qoscg")
-icon_alignment = 1
+text = "9999+"
+icon = SubResource("AtlasTexture_1vlqv")
 expand_icon = true
 
 [node name="Comments" type="ScrollContainer" parent="OptionPanel/VBoxC/TabView/Comment" unique_id=245176123]
@@ -979,7 +933,6 @@ metadata/_tab_index = 4
 [connection signal="pressed" from="LeftArea/MainBtn/PlayBtn" to="." method="_on_click_start_btn"]
 [connection signal="pressed" from="LeftArea/MainBtn/FavorListBtn" to="." method="_on_click_favor_list_btn"]
 [connection signal="pressed" from="OptionPanel/VBoxC/TabView/Comment/Top/Like" to="OptionPanel/VBoxC/TabView/Comment" method="_on_like_pressed"]
-[connection signal="pressed" from="OptionPanel/VBoxC/TabView/Comment/Top/Love" to="OptionPanel/VBoxC/TabView/Comment" method="_on_love_pressed"]
 [connection signal="pressed" from="OptionPanel/VBoxC/TabView/Comment/Top/Dislike" to="OptionPanel/VBoxC/TabView/Comment" method="_on_dislike_pressed"]
 [connection signal="text_submitted" from="OptionPanel/VBoxC/TabView/Comment/Bottom/LineEdit" to="OptionPanel/VBoxC/TabView/Comment" method="_on_send_pressed"]
 [connection signal="pressed" from="OptionPanel/VBoxC/TabView/Comment/Bottom/Button" to="OptionPanel/VBoxC/TabView/Comment" method="_on_send_pressed"]

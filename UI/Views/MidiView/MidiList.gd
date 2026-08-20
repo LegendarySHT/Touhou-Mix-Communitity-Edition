@@ -33,6 +33,34 @@ func _ready() -> void:
 
 	super._ready()
 
+	# 注册主题应用者：指示点颜色随主题刷新（选中=暗色，未选中=亮色）
+	if ThemeMGR:
+		ThemeMGR.register_theme_applier(self)
+		apply_theme()
+
+func _exit_tree() -> void:
+	if ThemeMGR:
+		ThemeMGR.unregister_theme_applier(self)
+
+## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）：刷新全部指示点颜色
+func apply_theme() -> void:
+	_apply_indicator_colors()
+
+## 指示点颜色：active（选中）= 暗色，inactive = 亮色；均随主题（与 PC1 亮 / PC2 暗 对应）
+func get_indicator_color(active: bool) -> Color:
+	if ThemeMGR:
+		return ThemeMGR.get_color("primary_dark") if active else ThemeMGR.get_color("primary_light")
+	return Color.DARK_BLUE if active else Color.WHITE
+
+## 按选中态刷新全部指示点颜色
+func _apply_indicator_colors() -> void:
+	if not is_instance_valid(indicator):
+		return
+	for i in indicator.get_child_count():
+		var point := indicator.get_child(i) as ColorRect
+		if point:
+			point.color = get_indicator_color(i == selected_item)
+
 # 加载midi
 ## preferred_id 非空时（导航恢复预选），构建完成后选中对应 midi；找不到或为空则默认选中第一项
 func load_midi(midis: Array[MidiData], preferred_id: String = "") -> void:
@@ -147,7 +175,7 @@ func _show_midi_list(_index: int = -1) -> void:
 		need_snap = true
 		# 指示器移到选中项
 		if indicator and selected_item != -1:
-			AniMGR.create_managed_tween(self).tween_property(indicator, "offset_transform_position:y", 100 - selected_item * 24, 0.35)
+			AniMGR.create_managed_tween(self).tween_property(indicator, "offset_transform_position:y", _compute_indicator_offset(selected_item), 0.35)
 
 func _previous() -> void:
 	if current_midis.size() != 1:
@@ -156,6 +184,14 @@ func _previous() -> void:
 func _next() -> void:
 	if current_midis.size() != 1:
 		select_item(selected_item + 1)
+
+## 计算指示器偏移
+func _compute_indicator_offset(index: int) -> float:
+	var pitch: int = 29
+	var count: int = indicator.get_child_count()
+	if count <= 1:
+		return 0.0
+	return (int(count / 2) - index) * pitch + pitch / 2
 
 ## 刷新显示
 func _refresh_display() -> void:
@@ -175,12 +211,14 @@ func _refresh_display() -> void:
 			point.custom_minimum_size = Vector2(20, 20)
 			point.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			point.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			point.color = Color.WHITE
+			point.color = get_indicator_color(false)
 
 			indicator.add_child(point)
 
 			item.setup_with_midi(self, midi, counter, bg)
 			counter += 1
+	# 首次默认选第一项后，按选中态统一着色
+	_apply_indicator_colors()
 
 func remove_selected_midi():
 	var removed_index = selected_item
@@ -201,5 +239,5 @@ func remove_selected_midi():
 	for item in list_items:
 		item.set_expanded(true)
 	if indicator:
-		indicator.offset_transform_position.y = 100 - selected_item * 24
+		indicator.offset_transform_position.y = _compute_indicator_offset(selected_item)
 	need_snap = true

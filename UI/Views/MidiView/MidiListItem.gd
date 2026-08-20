@@ -16,7 +16,7 @@ var expand_tween: Tween
 var INDICATOR = PathRegistry.MIDI_VIEW_INDICATOR
 
 ## ========== 信息缓存（静态，跨实例共享）==========
-## schema: { midi_id: { "time_str", "bpm_str", "bpm_timeline", "timebase",
+## schema: { midi_id: { "time_str", "bpm_timeline", "timebase",
 ##                      "note_str"?, "mpp_str"? } }
 ## note_str / mpp_str 键缺席 → 需（重新）计算 Note 数量
 static var _info_cache: Dictionary = {}
@@ -99,12 +99,9 @@ func on_item_button_toggled(toggled_on: bool):
 	#（ButtonGroup 正常切项时按钮会变 unpressed，只有拖拽才会有 pressed + false 的状态矛盾）
 	if not toggled_on and not parent_node._collapsed and button.button_pressed:
 		return
-	# 更新该项的指示器颜色（开=高亮，关=白色）
+	# 更新该项的指示器颜色（开=高亮暗色，关=亮色，随主题）
 	var indicator_node := get_node(INDICATOR)
-	var primary_dark := Color(0.082, 0.306, 0.588)
-	if ThemeMGR:
-		primary_dark = ThemeMGR.get_color("primary_dark")
-	AniMGR.create_managed_tween(self).tween_property(indicator_node.get_child(item_index), "color", primary_dark if toggled_on else Color(1, 1, 1), 0.15)
+	AniMGR.create_managed_tween(self).tween_property(indicator_node.get_child(item_index), "color", parent_node.get_indicator_color(toggled_on), 0.15)
 	if toggled_on:
 		# 切换到新 MIDI 项时，清理上一个 MIDI 的运行时缓存（parsed_notes + GameSequence + 播放管理器）
 		# 避免浏览多个大 MIDI 后 parsed_notes 累积导致内存增长
@@ -118,8 +115,8 @@ func on_item_button_toggled(toggled_on: bool):
 			parent_node._show_midi_list(item_index)
 		else:
 			parent_node.need_snap = true
-			# 指示器移到新选中项
-			AniMGR.create_managed_tween(self).tween_property(indicator_node, "offset_transform_position:y", 100 - item_index * 24, 0.35)
+			# 指示器移到新选中项（统一走 MidiList 的偏移计算，避免两处写死值不一致）
+			AniMGR.create_managed_tween(self).tween_property(indicator_node, "offset_transform_position:y", parent_node._compute_indicator_offset(item_index), 0.35)
 		_update_data_display()
 
 ## 设置展开/收起（由 MidiList._show_midi_list 批量调用）
@@ -133,13 +130,10 @@ func set_expanded(expanded: bool) -> void:
 	expand_tween.set_parallel(true)
 	expand_tween.tween_property(self, "custom_minimum_size", Vector2(750, 150 + 240 * expa), 0.35)
 	expand_tween.tween_property(midi_name_label, "theme_override_font_sizes/font_size", 30 + 10 * expa, 0.25)
-	# 指示器颜色
+	# 指示器颜色（选中=高亮暗色，其余=亮色，随主题）
 	var indicator_node := get_node(INDICATOR)
-	var primary_dark := Color(0.082, 0.306, 0.588)
-	if ThemeMGR:
-		primary_dark = ThemeMGR.get_color("primary_dark")
 	var highlight = expanded and (parent_node.selected_item == item_index)
-	expand_tween.tween_property(indicator_node.get_child(item_index), "color", primary_dark if highlight else Color(1, 1, 1), 0.15)
+	expand_tween.tween_property(indicator_node.get_child(item_index), "color", parent_node.get_indicator_color(highlight), 0.15)
 	expand_tween.finished.connect(func():
 		expand_tween.kill()
 		expand_tween = null
@@ -148,30 +142,59 @@ func set_expanded(expanded: bool) -> void:
 
 ## 更新信息面板（入口）
 func _update_data_display() -> void:
-	var info_node: GridContainer = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
+	var info_node: Control = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
 	var description: RichTextLabel = get_node_or_null(PathRegistry.MIDI_VIEW_DESCRIPTION)
 	if not (info_node and description):
 		push_error("[MidiNode] Info Set Failed")
 		return
 
-	# --- 实时数据（无需缓存）---
-	info_node.get_node("Play/Label").text = "%d" % midi_data.trial_count
-	info_node.get_node("UpCount/Label").text = "%d" % midi_data.up_count
-	info_node.get_node("AvgAcc/Label").text = "%.2f" % midi_data.avg_accuracy
-	# info_node.get_node("AvgPP/Label") 暂未实现，留空
 	description.text = midi_data.description
+
+	# --- 文件状态（无需解析，选中即刷新）---
+	_refresh_file_data(info_node)
 
 	# --- 缓存/计算数据 ---
 	var entry: Dictionary = _info_cache.get(midi_data.id, {})
 
-	info_node.get_node("Time/Label").text = entry.get("time_str", "...")
-	info_node.get_node("BPM/Label").text = entry.get("bpm_str", "...")
-	info_node.get_node("Note/Label").text = entry.get("note_str", "...")
-	info_node.get_node("MPP/Label").text = entry.get("mpp_str", "...")
+	info_node.get_node("PC1/BasicData/Duration").text = entry.get("time_str", "...")
+	info_node.get_node("PC1/BasicData/Note").text = entry.get("note_str", "...")
+	info_node.get_node("PC1/BasicData/NotePerMinute").text = entry.get("mpp_str", "...")
 
 	# 如果缓存不完整，后台触发计算
 	if not entry.has("time_str") or not entry.has("note_str"):
 		_start_midi_compute()
+
+
+## 刷新文件状态：TrackCtn / MidiHash / VocalState
+func _refresh_file_data(info_node: Control) -> void:
+	if not midi_data:
+		return
+	# TrackCtn：解析完成前可能无数据，显示占位
+	info_node.get_node("PC2/FileData/TrackCtn").text = _format_track_count(midi_data)
+	# MidiHash：midi 文件 md5（与曲包目录 {hash}_ 一致）
+	info_node.get_node("PC2/FileData/MidiHash").text = midi_data.file_hash if not midi_data.file_hash.is_empty() else "—"
+	# VocalState：解析人声路径后按 无文件/禁用/启用 显示状态
+	info_node.get_node("PC2/FileData/VocalState").text = _get_vocal_state_text()
+
+
+## 统计当前 MIDI 的轨道数量（= TrackView 解析出的非空 (track, channel) 轨道数）
+func _format_track_count(midi: MidiData) -> String:
+	var count := 0
+	for key in midi.runtime_track_channel_notes:
+		if not midi.runtime_track_channel_notes[key].is_empty():
+			count += 1
+	if count <= 0:
+		return "—"
+	return "%d TRACK%s" % [count, "" if count == 1 else "S"]
+
+
+## 计算人声状态文案：No Vocal File / Vocal Disabled / Vocal Enabled
+func _get_vocal_state_text() -> String:
+	# 复用 TrackView 的人声路径检测逻辑（检测已移至 MidiView）
+	var resolved := VocalTrackController.resolve_vocal_path(midi_data)
+	if resolved.is_empty():
+		return "No Vocal File"
+	return "Vocal Enabled" if midi_data.vocal_enabled else "Vocal Disabled"
 
 
 ## 触发后台计算（若已有解析结果则仅重算 Note，否则先解析再算）
@@ -183,9 +206,9 @@ func _start_midi_compute() -> void:
 	# 若 parsed_notes 已有（之前解析过或 MidiPlaybackManager加载过），直接算 Note 数量
 	if midi.duration_ms > 0 and not midi.parsed_notes.is_empty():
 		var entry: Dictionary = _info_cache.get(midi.id, {})
-		# 补全 time / bpm 缓存（可能之前没建过）
+		# 补全 time 缓存（可能之前没建过）
 		if not entry.has("time_str"):
-			_fill_time_bpm_cache(midi, entry)
+			_fill_time_cache(midi, entry)
 			_info_cache[midi.id] = entry
 		# 重算 Note / MPP
 		_compute_and_cache_notes(midi)
@@ -213,7 +236,7 @@ func _compute_async(midi: MidiData) -> void:
 	# 期间可能已切换选中项/退出列表：结果仍写入 _info_cache（供下次使用），
 	# 仅 _apply_display / _compute_and_cache_notes 内部以 is_inside_tree / selected_item 守卫刷新
 	if not ok:
-		_info_cache[midi.id] = {"time_str": "—", "bpm_str": "—", "note_str": "—", "mpp_str": "—"}
+		_info_cache[midi.id] = {"time_str": "—", "note_str": "—", "mpp_str": "—"}
 		_apply_display()
 		if _computing_midi == midi:
 			_computing_midi = null
@@ -222,21 +245,21 @@ func _compute_async(midi: MidiData) -> void:
 	if _computing_midi == midi:
 		_computing_midi = null
 
-	# 构建并缓存 Time / BPM 字段（preparse_midi_async 已回填 duration_ms/bpm_timeline 等）
+	# 构建并缓存 Time 字段（preparse_midi_async 已回填 duration_ms/bpm_timeline 等）
 	var entry: Dictionary = _info_cache.get(midi.id, {})
-	_fill_time_bpm_cache(midi, entry)
+	_fill_time_cache(midi, entry)
 	_info_cache[midi.id] = entry
 
-	# 立即刷新 Time / BPM（Note 还没算完，先显示 ...）
+	# 立即刷新均衡数据（Note 还没算完，先显示 ...）
 	_apply_display()
 
 	# 计算 Note / MPP（主线程，同步执行，游戏未运行时安全）
 	_compute_and_cache_notes(midi)
 
 
-## 填写 time_str 和 bpm_str 到给定字典（不含 Note）
-func _fill_time_bpm_cache(midi: MidiData, entry: Dictionary) -> void:
-	# Time
+## 填写 time_str（时长）与 bpm_timeline/timebase 到给定字典（不含 Note）
+func _fill_time_cache(midi: MidiData, entry: Dictionary) -> void:
+	# 时长
 	if midi.duration_ms > 0:
 		var s := int(midi.duration_ms / 1000.0)
 		@warning_ignore("integer_division")
@@ -250,41 +273,6 @@ func _fill_time_bpm_cache(midi: MidiData, entry: Dictionary) -> void:
 		var pm := MidiPlaybackManager.instance
 		if pm and pm.current_midi_data == midi:
 			timeline = pm.bpm_timeline
-
-	# BPM
-	if timeline.is_empty():
-		entry["bpm_str"] = ("%.1f" % midi.bpm) if midi.bpm > 0 else "—"
-	elif timeline.size() <= 1:
-		entry["bpm_str"] = "%.1f" % timeline[0].get("bpm", midi.bpm)
-	else:
-		# 若所有 BPM 变化均发生在第一个音符开始之前，则游玩区间内 BPM 恒定，不加 "~"
-		var first_note_tick: float = INF
-		for note in midi.parsed_notes:
-			if note is MidiParser.NoteEvent:
-				first_note_tick = min(first_note_tick, float(note.start_time))
-
-		# 检查 index 1 起的所有变速点是否都早于第一个音符
-		var all_before_first_note := first_note_tick < INF
-		if all_before_first_note:
-			for i in range(1, timeline.size()):
-				if float(timeline[i].get("tick", 0)) > first_note_tick:
-					all_before_first_note = false
-					break
-
-		if all_before_first_note:
-			# 取第一个音符前最后一次 BPM 值（即实际游玩时的恒定 BPM）
-			entry["bpm_str"] = "%.1f" % timeline[-1].get("bpm", midi.bpm)
-		else:
-			# 变速 BPM：对时间段加权平均，加 "~" 前缀
-			var total_ms: float = midi.duration_ms if midi.duration_ms > 0 else 1.0
-			var weighted: float = 0.0
-			for i in range(timeline.size()):
-				var seg_bpm: float = timeline[i].get("bpm", 120.0)
-				var seg_start: float = timeline[i].get("time_ms", 0.0)
-				var seg_end: float = (timeline[i + 1].get("time_ms", total_ms)
-						if i + 1 < timeline.size() else total_ms)
-				weighted += seg_bpm * (seg_end - seg_start)
-			entry["bpm_str"] = "~%.1f" % (weighted / total_ms)
 
 	# 缓存时间轴以供 Note 计算时传参
 	entry["bpm_timeline"] = timeline
@@ -370,15 +358,17 @@ func _apply_display() -> void:
 	if parent_node == null or parent_node.selected_item != item_index:
 		return # 本 item 未展开，无需刷新共享面板
 
-	var info_node: GridContainer = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
+	var info_node: Control = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
 	if info_node == null:
 		return
 
+	# 文件状态（解析完成后 TrackCtn 等才有数据）
+	_refresh_file_data(info_node)
+
 	var entry: Dictionary = _info_cache.get(midi_data.id, {})
-	info_node.get_node("Time/Label").text = entry.get("time_str", "...")
-	info_node.get_node("BPM/Label").text = entry.get("bpm_str", "...")
-	info_node.get_node("Note/Label").text = entry.get("note_str", "...")
-	info_node.get_node("MPP/Label").text = entry.get("mpp_str", "...")
+	info_node.get_node("PC1/BasicData/Duration").text = entry.get("time_str", "...")
+	info_node.get_node("PC1/BasicData/Note").text = entry.get("note_str", "...")
+	info_node.get_node("PC1/BasicData/NotePerMinute").text = entry.get("mpp_str", "...")
 
 
 ## 配置变更：仅影响 Note 数量/连接关系的字段才清除缓存并重算
@@ -406,8 +396,8 @@ func _on_config_changed(key: String, section: String, _value: Variant) -> void:
 	if parent_node and parent_node.selected_item == item_index and midi_data != null:
 		var info_node = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
 		if info_node:
-			info_node.get_node("Note/Label").text = "..."
-			info_node.get_node("MPP/Label").text = "..."
+			info_node.get_node("PC1/BasicData/Note").text = "..."
+			info_node.get_node("PC1/BasicData/NotePerMinute").text = "..."
 		_start_midi_compute()
 
 
@@ -422,7 +412,9 @@ func _on_ui_state_changed(old_state: UIStateManager.UIState, new_state: UIStateM
 		if parent_node and parent_node.selected_item == item_index and midi_data != null:
 			var info_node = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
 			if info_node:
-				info_node.get_node("Note/Label").text = "..."
-				info_node.get_node("MPP/Label").text = "..."
+				info_node.get_node("PC1/BasicData/Note").text = "..."
+				info_node.get_node("PC1/BasicData/NotePerMinute").text = "..."
+				# 人声开关/导入可能已变，立即刷新文件状态
+				_refresh_file_data(info_node)
 			# parsed_notes 已有，直接重算（不用启线程）
 			_start_midi_compute()

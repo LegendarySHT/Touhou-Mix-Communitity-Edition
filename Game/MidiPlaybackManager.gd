@@ -289,7 +289,6 @@ func load_midi(midi_data: MidiData) -> bool:
 
 		current_midi_data.parsed_notes = current_notes
 		current_midi_data.track_count = track_infos.size()
-		current_midi_data.bpm = parse_result["bpm"]
 		current_midi_data.duration_ms = parse_result["duration_ms"]
 		current_midi_data.bpm_timeline = bpm_timeline.duplicate()
 		current_midi_data.midi_timebase = midi_timebase
@@ -497,7 +496,6 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	midi_data.midi_timebase = parse_result.get("timebase", 480)
 	midi_data._runtime_track_infos = parse_result["track_infos"]
 	midi_data.track_count = parse_result["track_infos"].size()
-	midi_data.bpm = parse_result["bpm"]
 	midi_data.duration_ms = parse_result["duration_ms"]
 	midi_data.max_end_tick = float(parse_result.get("max_end_tick", 0))
 

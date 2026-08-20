@@ -503,6 +503,19 @@ func _style_midi_individual_nodes(info_ui: Node) -> void:
 	var play_btn := info_ui.get_node_or_null("LeftArea/MainBtn/PlayBtn") as Button
 	_style_button_set_bg_color(play_btn, pl)
 
+	# DetailData 的 PC1 面板（亮色，取 TrackViewBtn Normal 色=primary，比 primary_light 深）/ PC2 面板（暗色）
+	var pc1 := info_ui.get_node_or_null("LeftArea/DetailData/PC1") as PanelContainer
+	if pc1:
+		var pc1_color := get_color("primary")
+		var tv_btn := info_ui.get_node_or_null("LeftArea/MainBtn/TrackViewBtn") as Button
+		if tv_btn:
+			var tv_sb := tv_btn.get_theme_stylebox("normal")
+			if tv_sb is StyleBoxFlat:
+				pc1_color = tv_sb.bg_color
+		_style_panel_set_bg_color(pc1, pc1_color)
+	var pc2 := info_ui.get_node_or_null("LeftArea/DetailData/PC2") as PanelContainer
+	_style_panel_set_bg_color(pc2, pd)
+
 	# OptionPanel 背景 (和按钮按下状态同色)
 	var option_panel := info_ui.get_node_or_null("OptionPanel") as PanelContainer
 	_style_panel_set_bg_color(option_panel, p.darkened(0.25))
