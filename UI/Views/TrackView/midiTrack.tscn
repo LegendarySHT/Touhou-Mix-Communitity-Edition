@@ -482,7 +482,6 @@ custom_minimum_size = Vector2(250, 50)
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
-mouse_filter = 1
 theme_override_font_sizes/font_size = 32
 switch_on_hover = true
 

@@ -216,6 +216,11 @@ func _build_instrument_menus() -> void:
 	# 大类主菜单滚动支持（16 类超出屏幕时可触摸拖动滚动）
 	_setup_main_menu_scroll(popup)
 
+	# 禁用 hover 自动展开子菜单：仅点击大类项时才打开子菜单。
+	# 默认 hover 0.3s 就切换子菜单，拖拽滚动经过各分类项时频繁切换会打断/卡顿拖动；
+	# 设大延迟后鼠标未 hover 触发也能流畅拖动（点击仍由引擎 _activate_submenu 原生展开）。
+	popup.submenu_popup_delay = 100.0
+
 	popup.set_block_signals(true)
 	var idx := 0
 	for cat in _category_items.keys():
@@ -287,12 +292,18 @@ func _on_menu_scroll_gui_input(event: InputEvent, popup: PopupMenu) -> void:
 	elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT):
 		_drag_flags[popup] = true
 
-# 主菜单拖拽检测：有拖拽位移时标记 _main_dragging，_on_submenu_about_to_popup 据此跳过复位
+# 主菜单拖拽检测：有拖拽位移时标记 _main_dragging，_on_submenu_about_to_popup 据此跳过复位；
+# 松手时清除标志并复位卡住的拖拽跟随（主菜单打开子菜单时自身不关闭，popup_hide 不会触发，
+# 只能靠松手事件里 set_v_scroll 内部 _cancel_drag() 停住"松手后还滚动"的残留跟随）
 func _on_main_scroll_gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenDrag:
 		_main_dragging = true
 	elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT):
 		_main_dragging = true
+	elif (event is InputEventMouseButton or event is InputEventScreenTouch) and not event.pressed:
+		_main_dragging = false
+		if _main_scroll:
+			_main_scroll.set_v_scroll(_main_scroll.get_v_scroll())
 
 # 子菜单弹出时复位大类菜单 ScrollContainer 的拖拽跟随状态。
 # 松手弹出子菜单后，主菜单可能收不到松开事件导致 drag_touching 卡住，一直跟随鼠标滚动；
