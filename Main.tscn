@@ -1185,6 +1185,8 @@ grow_vertical = 2
 color = Color(0, 0, 0, 0.84313726)
 
 [node name="ProcessTip" type="Label" parent="." unique_id=1974055026]
+visible = false
+z_index = 99
 layout_mode = 1
 anchors_preset = 14
 anchor_top = 0.5
