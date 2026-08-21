@@ -1814,22 +1814,26 @@ public partial class MeltySynthPlayer : Node
 			return;
 		}
 
-		if (_virtualChannelCurrentBank.TryGetValue(virtualChannel, out var bank))
-		{
-			_manualSynth.ProcessMidiMessage(virtualChannel, 0xB0, 0x00, bank);
-		}
-		else if (_virtualChannelInstruments.TryGetValue(virtualChannel, out var overrideInstrument))
+		// TrackView 的显式覆盖必须优先于 MIDI 事件镜像状态。
+		// 自动序列器收到原始 Bank/Program 事件时，ChannelStateMirrorHandler
+		// 会先更新 current 状态，再由 InstrumentOverrideHandler 修改实际输出；
+		// 若这里优先读取 current，演奏模式的独立手动合成器就会恢复为原始音色。
+		if (_virtualChannelInstruments.TryGetValue(virtualChannel, out var overrideInstrument))
 		{
 			_manualSynth.ProcessMidiMessage(virtualChannel, 0xB0, 0x00, overrideInstrument.bank);
+			_manualSynth.ProcessMidiMessage(virtualChannel, 0xC0, overrideInstrument.program, 0);
 		}
+		else
+		{
+			if (_virtualChannelCurrentBank.TryGetValue(virtualChannel, out var bank))
+			{
+				_manualSynth.ProcessMidiMessage(virtualChannel, 0xB0, 0x00, bank);
+			}
 
-		if (_virtualChannelCurrentProgram.TryGetValue(virtualChannel, out var program))
-		{
-			_manualSynth.ProcessMidiMessage(virtualChannel, 0xC0, program, 0);
-		}
-		else if (_virtualChannelInstruments.TryGetValue(virtualChannel, out var overrideProgram))
-		{
-			_manualSynth.ProcessMidiMessage(virtualChannel, 0xC0, overrideProgram.program, 0);
+			if (_virtualChannelCurrentProgram.TryGetValue(virtualChannel, out var program))
+			{
+				_manualSynth.ProcessMidiMessage(virtualChannel, 0xC0, program, 0);
+			}
 		}
 
 		if (_virtualChannelCc7.TryGetValue(virtualChannel, out var cc7))
