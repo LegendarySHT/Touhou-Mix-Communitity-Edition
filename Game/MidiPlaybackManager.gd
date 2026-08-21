@@ -78,6 +78,10 @@ var _is_android: bool = false
 var _realtime_pos_cache: float = 0.0
 var _realtime_pos_cache_frame: int = -1
 
+# 上一帧的 raw MIDI 音频位置，用于检测 TrackView 的循环回绕。
+# -1 表示尚未建立播放位置基线，避免加载新曲时把位置清零误判为循环。
+var _last_raw_midi_position_ms: float = -1.0
+
 ## 信号：MIDI播放完成
 signal midi_finished
 
@@ -167,6 +171,18 @@ func _process(_delta: float) -> void:
 	# 将毫秒转为tick（使用BPM时间线）
 	if midi_timebase > 0:
 		position = calculate_tick_from_position_with_bpm_timeline(position_ms, midi_timebase)
+
+	var raw_midi_position_ms: float = get_raw_position_ms()
+	if raw_midi_position_ms < 0.0:
+		_last_raw_midi_position_ms = -1.0
+	elif _last_raw_midi_position_ms >= 0.0 and raw_midi_position_ms < _last_raw_midi_position_ms - 100.0:
+		# MeltySynth 在 loop=true 时只回绕 sequencer，不发 finished 信号。
+		# 人声已自然结束时必须在这里显式重新定位并启动，否则只能靠 UI 开关恢复。
+		if get_loop():
+			_restart_vocal_for_current_position()
+		_last_raw_midi_position_ms = raw_midi_position_ms
+	else:
+		_last_raw_midi_position_ms = raw_midi_position_ms
 
 	# 调用自动同步逻辑
 	_sync_vocal_with_midi()
@@ -608,6 +624,7 @@ func play() -> void:
 
 ## 停止播放
 func stop() -> void:
+	_last_raw_midi_position_ms = -1.0
 	var backend = _get_active_backend()
 	if backend == null:
 		return
@@ -695,6 +712,13 @@ func seek(pos: float) -> void:
 	# 立即同步 position（从毫秒转 tick）
 	if midi_timebase > 0:
 		position = calculate_tick_from_position_with_bpm_timeline(pos, midi_timebase)
+
+	# seek_ms is queued in the C# backend and is applied on its next _Process.
+	# Submit the matching vocal target now instead of reading the still-old MIDI
+	# clock from the caller immediately after seek().
+	_last_raw_midi_position_ms = -1.0
+	last_sync_check_pos_ms = pos
+	_seek_vocal_to_midi_position(pos)
 
 ## 辅助函数：根据BPM时间线计算当前的实际播放时间（毫秒）
 func _calculate_position_with_bpm_timeline(current_tick: float, timebase: int) -> float:
@@ -1458,13 +1482,33 @@ func set_vocal_offset_ms(offset_ms: float) -> void:
 
 ## 应用人声偏移（重新调整人声播放位置）
 func apply_vocal_offset() -> void:
+	# Used when the latency setting changes while playback continues.
+	_seek_vocal_to_midi_position(get_raw_position_ms())
+
+## Seek vocal to a MIDI position without relying on a stale position_ms read.
+## The vocal decoder position is relative to the configured vocal offset.
+func _seek_vocal_to_midi_position(midi_position_ms: float) -> void:
+	if current_midi_data == null or current_midi_data.vocal_file_path.is_empty():
+		return
+	# _vocal_initialized is cleared on natural EOF. The native decoder remains
+	# loaded, so a later user seek must be allowed to re-arm it.
+	if _vocal_loaded_path != current_midi_data.vocal_file_path:
+		return
 	var audio_manager = AudioManager.instance
 	if audio_manager == null:
 		return
 
-	# 计算新的人声播放位置：MIDI当前位置 - 偏移量
-	var new_position_ms = max(0.0, position_ms - vocal_offset_ms)
-	audio_manager.seek_vocal(new_position_ms)
+	_vocal_initialized = true
+	var vocal_position_ms := midi_position_ms - vocal_offset_ms
+	if vocal_position_ms < 0.0:
+		audio_manager.set_vocal_playing(false)
+		audio_manager.seek_vocal(0.0)
+		return
+
+	audio_manager.seek_vocal(vocal_position_ms)
+	# Preserve the manager's paused state. When playing, explicitly resume so a
+	# seek from a stale/finished native state cannot leave vocal playback stopped.
+	audio_manager.set_vocal_playing(is_playing)
 
 ## 启动人声播放并同步（原生 miniaudio 统一输出链路）
 func start_vocal_playback() -> void:
@@ -1478,11 +1522,13 @@ func start_vocal_playback() -> void:
 		return
 
 	var vocal_file_path = current_midi_data.vocal_file_path
-	var expected_vocal_position = position_ms - vocal_offset_ms
+	var expected_vocal_position = get_raw_position_ms() - vocal_offset_ms
 	var start_position_ms = max(0.0, expected_vocal_position)
 
 	audio_manager.set_vocal_volume_db(linear_to_db(current_midi_data.vocal_volume))
-	audio_manager.play_vocal_file(vocal_file_path, start_position_ms)
+	if not audio_manager.play_vocal_file(vocal_file_path, start_position_ms):
+		_vocal_initialized = false
+		return
 	_vocal_initialized = true
 
 	# 如果 MIDI 还没到人声起点（预卷阶段或 midi_position < vocal_offset_ms），
@@ -1508,27 +1554,36 @@ func stop_vocal_playback() -> void:
 ## ========== 人声门面方法（AudioManager 转发到本管理器，再调用后端） ==========
 
 ## 加载并播放人声文件（offset_ms 为人声自身起始位置）
-func play_vocal_file(path: String, offset_ms: float) -> void:
+func play_vocal_file(path: String, offset_ms: float) -> bool:
 	if path.is_empty():
-		return
+		return false
 	var backend = _get_active_backend()
 	if backend == null or not backend.has_method("load_vocal_file"):
-		return
+		return false
 
 	if path != _vocal_loaded_path:
 		if not FileAccess.file_exists(path):
 			GLogger.warning("Vocal file does not exist, skipping vocal playback: %s" % path, "MidiPlaybackMGR")
-			return
+			return false
 		var ok: bool = backend.call("load_vocal_file", _globalize_vocal_path(path))
 		if not ok:
 			GLogger.warning("Vocal native load failed: %s" % path, "MidiPlaybackMGR")
-			return
+			return false
 		_vocal_loaded_path = path
 
-	if offset_ms > 0.0:
-		backend.call("seek_vocal", offset_ms)
+	# Always seek, including zero. Reusing a native decoder must not depend on the
+	# previous stop/EOF state; this also makes retry and loop restart deterministic.
+	backend.call("seek_vocal", max(0.0, offset_ms))
 	backend.call("resume_vocal")
 	_vocal_initialized = true
+	return true
+
+func _restart_vocal_for_current_position() -> void:
+	if current_midi_data == null or current_midi_data.vocal_file_path.is_empty():
+		return
+	if not current_midi_data.vocal_enabled:
+		return
+	start_vocal_playback()
 
 ## 停止人声（保持文件已加载，位置归零）
 func stop_vocal_file() -> void:
@@ -1644,6 +1699,13 @@ func reset_sync_state() -> void:
 func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	# 处理 Gameplay 部分的配置变更
 	if section == "Gameplay":
+		if key == "audio_sync_threshold":
+			# SettingView emits this after saving. Apply it to the live sync loop
+			# so returning from settings does not require starting another game.
+			set_sync_threshold(float(value))
+			GLogger.info("Audio sync threshold changed to %.0f ms" % sync_threshold_ms, "MidiPlaybackManager")
+			return
+
 		# 处理音源文件配置变更
 		if key == "soundfont_file":
 			var soundfont_name = str(value).replace(".sf2", "").strip_edges()

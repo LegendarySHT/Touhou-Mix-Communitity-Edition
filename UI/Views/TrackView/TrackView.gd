@@ -302,7 +302,6 @@ func _on_progress_bar_drag_ended(_value_changed: bool) -> void:
 	
 	# 执行跳转
 	midi_playback_manager.seek(target_ms)
-	midi_playback_manager.apply_vocal_offset()
 
 	# 【关键】更新 last_position_ms 和 current_tick，防止下一帧循环检测误判
 	last_position_ms = target_ms

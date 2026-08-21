@@ -151,6 +151,10 @@ namespace MeltySynth
             pausePosition = position;
             clockBasePosition = position;
             clockBaseTimestamp = Stopwatch.GetTimestamp();
+            // Keep the raw audio-callback clock at the seek target. Without
+            // this, get_raw_position_ms() briefly exposes the pre-seek clock
+            // after the queued seek is committed.
+            renderedTime = position;
 
             var nextIndex = 0;
             var latestLoopIndex = 0;
@@ -396,11 +400,16 @@ namespace MeltySynth
                         {
                             loopIndex = msgIndex;
                         }
-                        else if (msg.Type == MidiFile.MessageType.LoopEnd)
-                        {
-                            currentTime = midiFile.Times[loopIndex];
-                            msgIndex = loopIndex;
-                            synthesizer.NoteOffAll(false);
+						else if (msg.Type == MidiFile.MessageType.LoopEnd)
+						{
+							currentTime = midiFile.Times[loopIndex];
+							// RenderedPosition is the audio-callback clock consumed by
+							// vocal synchronization. Keep it loop-relative like currentTime;
+							// otherwise loop detection sees a monotonic clock and cannot
+							// restart a vocal track that reached EOF.
+							renderedTime = currentTime;
+							msgIndex = loopIndex;
+							synthesizer.NoteOffAll(false);
 
                             if (useSystemClock && !isPaused)
                             {
@@ -417,10 +426,12 @@ namespace MeltySynth
                 }
             }
 
-            if (msgIndex == midiFile.Messages.Length && loop)
-            {
-                currentTime = midiFile.Times[loopIndex];
-                msgIndex = loopIndex;
+			if (msgIndex == midiFile.Messages.Length && loop)
+			{
+				currentTime = midiFile.Times[loopIndex];
+				// See the LoopEnd path above: raw audio time must wrap with MIDI.
+				renderedTime = currentTime;
+				msgIndex = loopIndex;
                 synthesizer.NoteOffAll(false);
 
                 if (useSystemClock && !isPaused)

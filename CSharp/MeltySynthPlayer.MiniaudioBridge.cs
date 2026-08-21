@@ -268,7 +268,10 @@ public partial class MeltySynthPlayer
 			public void SeekVocal(double positionMs)
 			{
 				if (_bridgeHandle == IntPtr.Zero) return;
-				double frames = positionMs / 1000.0 * _sampleRate;
+				// The native decoder is configured with the device's actual rate. This can
+				// differ from the requested synth rate when WASAPI applies a device format.
+				int vocalSampleRate = _actualSampleRate > 0 ? (int)_actualSampleRate : _sampleRate;
+				double frames = positionMs / 1000.0 * vocalSampleRate;
 				if (frames < 0.0) frames = 0.0;
 				var r = MiniaudioNative.ma_bridge_vocal_seek(_bridgeHandle, (ulong)Math.Round(frames));
 				if (r != MiniaudioNative.Result.Ok)

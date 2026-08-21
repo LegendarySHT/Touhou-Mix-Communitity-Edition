@@ -17,11 +17,11 @@ func _ready() -> void:
 ## ========== 人声相关方法（miniaudio 统一输出链路） ==========
 
 ## 播放人声文件（path 支持 user:// / res:// / 绝对路径，offset_ms 为毫秒）
-func play_vocal_file(path: String, offset_ms: float = 0.0) -> void:
+func play_vocal_file(path: String, offset_ms: float = 0.0) -> bool:
 	var mgr = MidiPlaybackManager.instance
 	if mgr == null or path.is_empty():
-		return
-	mgr.play_vocal_file(path, offset_ms)
+		return false
+	return mgr.play_vocal_file(path, offset_ms)
 
 ## 停止人声（保留已加载文件）
 func stop_vocal() -> void:
