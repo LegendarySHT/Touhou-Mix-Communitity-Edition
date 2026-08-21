@@ -21,16 +21,16 @@
 [ext_resource type="Script" uid="uid://5bvwaglh3ekw" path="res://UI/Components/BaseScrollList.gd" id="36_gjqh3"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_srflm"]
-draw_center = false
-border_width_left = 8
-border_width_top = 8
+border_width_left = 6
+border_width_top = 6
 border_width_right = 8
-border_width_bottom = 8
+border_width_bottom = 10
 border_color = Color(0.45882353, 0.6313726, 1, 1)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
+corner_detail = 1
 shadow_color = Color(0, 0, 0, 0.21960784)
 shadow_size = 20
 
@@ -101,12 +101,21 @@ region = Rect2(80, 80, 80, 80)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btcpj"]
 bg_color = Color(0.18431373, 0.58431375, 1, 1)
+shadow_color = Color(0, 0, 0, 0.27450982)
+shadow_size = 5
+shadow_offset = Vector2(5, 2)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5hcss"]
 bg_color = Color(0, 0.38775006, 0.72357893, 1)
+shadow_color = Color(0, 0, 0, 0.27450982)
+shadow_size = 5
+shadow_offset = Vector2(5, 2)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wasq5"]
 bg_color = Color(3.0226112e-05, 0.49875212, 0.92237043, 1)
+shadow_color = Color(0, 0, 0, 0.27450982)
+shadow_size = 5
+shadow_offset = Vector2(5, 2)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ynlhr"]
 atlas = ExtResource("3_qoscg")
@@ -260,7 +269,7 @@ alignment = 1
 metadata/_edit_lock_ = true
 
 [node name="Left" type="VBoxContainer" parent="LeftArea/InfoWindow/HBoxC" unique_id=1246220916]
-custom_minimum_size = Vector2(110, 0)
+custom_minimum_size = Vector2(85, 0)
 layout_mode = 2
 theme_override_constants/separation = 0
 alignment = 1
@@ -272,6 +281,7 @@ focus_neighbor_left = NodePath("../../Right/InfoBtn")
 focus_neighbor_bottom = NodePath("../Fold/Btn")
 focus_next = NodePath("../../../../../OptionPanel/VBoxC/TabBtn/Rank")
 focus_previous = NodePath("../../../../../OptionPanel/VBoxC/TabBtn/Comment")
+theme_override_constants/icon_max_width = 60
 icon = SubResource("AtlasTexture_ewgot")
 icon_alignment = 1
 
@@ -287,6 +297,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/icon_max_width = 60
 theme_override_styles/normal = SubResource("StyleBoxFlat_2bu1o")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_f13vx")
 theme_override_styles/hover = SubResource("StyleBoxFlat_u7brx")
@@ -300,6 +311,7 @@ offset_transform_enabled = true
 offset_transform_rotation = 3.1415927
 focus_neighbor_bottom = NodePath("../../../../MainBtn/TrackViewBtn")
 focus_next = NodePath("../../../../../OptionPanel/VBoxC/TabBtn/Rank")
+theme_override_constants/icon_max_width = 60
 icon = SubResource("AtlasTexture_ewgot")
 icon_alignment = 1
 
@@ -335,7 +347,7 @@ theme_override_constants/separation = 0
 alignment = 1
 
 [node name="Right" type="VBoxContainer" parent="LeftArea/InfoWindow/HBoxC" unique_id=1009054736]
-custom_minimum_size = Vector2(110, 0)
+custom_minimum_size = Vector2(85, 0)
 layout_mode = 2
 theme_override_constants/separation = 0
 alignment = 1
@@ -348,6 +360,7 @@ focus_neighbor_right = NodePath("../../../../../OptionPanel/VBoxC/TabBtn/Rank")
 focus_neighbor_bottom = NodePath("../DelBtn")
 focus_next = NodePath("../../../../../OptionPanel/VBoxC/TabBtn/Rank")
 focus_previous = NodePath("../../../../../OptionPanel/VBoxC/TabBtn/Comment")
+theme_override_constants/icon_max_width = 60
 icon = SubResource("AtlasTexture_0jaji")
 icon_alignment = 1
 
@@ -382,6 +395,7 @@ focus_neighbor_right = NodePath("../../../../../OptionPanel/VBoxC/TabBtn/Rank")
 focus_neighbor_bottom = NodePath("../../../../MainBtn/FavorListBtn")
 focus_next = NodePath("../../../../../OptionPanel/VBoxC/TabBtn/Rank")
 focus_previous = NodePath("../../../../../OptionPanel/VBoxC/TabBtn/Comment")
+theme_override_constants/icon_max_width = 60
 icon = SubResource("AtlasTexture_na1rg")
 icon_alignment = 1
 
@@ -530,13 +544,18 @@ visible = false
 custom_minimum_size = Vector2(850, 120)
 layout_mode = 2
 size_flags_horizontal = 4
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 20)
+offset_transform_visual_only = false
+alignment = 1
 
 [node name="Button" type="Button" parent="LeftArea/RedirectButtons" unique_id=1143753694]
-custom_minimum_size = Vector2(400, 120)
+custom_minimum_size = Vector2(400, 80)
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 6
 theme = ExtResource("16_qg2wq")
-theme_override_font_sizes/font_size = 48
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 36
 text = "跳转至浏览器"
 
 [node name="MainBtn" type="HBoxContainer" parent="LeftArea" unique_id=1543610834]
@@ -546,10 +565,12 @@ theme_override_constants/separation = 0
 alignment = 1
 
 [node name="TrackViewBtn" type="Button" parent="LeftArea/MainBtn" unique_id=1234650860]
-z_index = 1
 custom_minimum_size = Vector2(250, 150)
 layout_mode = 2
 size_flags_vertical = 4
+offset_transform_enabled = true
+offset_transform_position = Vector2(5, 0)
+offset_transform_visual_only = false
 focus_neighbor_left = NodePath("../FavorListBtn")
 focus_neighbor_top = NodePath("../../InfoWindow/HBoxC/Left/NextBtn")
 focus_next = NodePath("../../../OptionPanel/VBoxC/TabBtn/Rank")
@@ -558,6 +579,7 @@ icon_alignment = 1
 expand_icon = true
 
 [node name="PlayBtn" type="Button" parent="LeftArea/MainBtn" unique_id=146335706]
+z_index = 1
 custom_minimum_size = Vector2(300, 200)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -574,6 +596,9 @@ custom_minimum_size = Vector2(250, 150)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+offset_transform_enabled = true
+offset_transform_position = Vector2(-5, 0)
+offset_transform_visual_only = false
 focus_neighbor_top = NodePath("../../InfoWindow/HBoxC/Right/DelBtn")
 focus_neighbor_right = NodePath("../../../OptionPanel/VBoxC/TabBtn/Rank")
 focus_next = NodePath("../../../OptionPanel/VBoxC/TabBtn/Rank")

@@ -17,12 +17,13 @@ border_blend = true
 bg_color = Color(1, 1, 1, 1)
 
 [node name="MidiNode" type="Button" unique_id=188973569]
-custom_minimum_size = Vector2(750, 150)
+custom_minimum_size = Vector2(765, 150)
 clip_contents = true
 anchors_preset = -1
 offset_right = 8.0
 offset_bottom = 8.0
 grow_vertical = 2
+size_flags_horizontal = 3
 mouse_filter = 1
 theme_override_styles/focus = SubResource("StyleBoxFlat_yxlt8")
 toggle_mode = true

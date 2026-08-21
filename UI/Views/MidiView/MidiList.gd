@@ -49,7 +49,7 @@ func apply_theme() -> void:
 ## 指示点颜色：active（选中）= 暗色，inactive = 亮色；均随主题（与 PC1 亮 / PC2 暗 对应）
 func get_indicator_color(active: bool) -> Color:
 	if ThemeMGR:
-		return ThemeMGR.get_color("primary_dark") if active else ThemeMGR.get_color("primary_light")
+		return ThemeMGR.get_color("primary_dark") if active else Color(0,0,0,0.15)
 	return Color.DARK_BLUE if active else Color.WHITE
 
 ## 按选中态刷新全部指示点颜色

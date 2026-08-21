@@ -143,16 +143,6 @@ func _ready() -> void:
 
 ## 应用主题色（由 ThemeManager 广播调用 + _ready 首次自调）
 func apply_theme() -> void:
-	var sidebar := get_node_or_null("SideBar") as VBoxContainer
-	var pressed_color := ThemeMGR.get_color("primary_dark").darkened(0.5)
-	if sidebar:
-		ThemeMGR._theme_button_set_color(sidebar.theme, ThemeMGR.get_color("primary"))
-		var pressed := sidebar.theme.get_stylebox("pressed", "Button")
-		if pressed:
-			pressed.bg_color = pressed_color
-		# 标签页按钮 focus 样式：按下效果 + 白色边框（参考 SettingView 快捷按钮）
-		for b in _tab_buttons:
-			_apply_tab_focus_style(b, pressed_color)
 	var top_panel := get_node_or_null("Content/PC") as PanelContainer
 	if top_panel:
 		var sb := top_panel.get_theme_stylebox("panel")

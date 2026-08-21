@@ -395,6 +395,9 @@ func _theme_button_set_color(theme: Theme, base_color: Color, type: String = "Bu
 	theme.get_stylebox("normal", type).bg_color = base_color
 	theme.get_stylebox("hover", type).bg_color = base_color.lightened(0.15)
 	theme.get_stylebox("pressed", type).bg_color = base_color.darkened(0.25)
+	if not theme.has_theme_item(Theme.DATA_TYPE_STYLEBOX, "hover_pressed", type):
+		theme.set_stylebox("hover_pressed", type, theme.get_stylebox("pressed", type).duplicate())
+	theme.get_stylebox("hover_pressed", type).bg_color = base_color.darkened(0.2)
 	theme.get_stylebox("focus", type).bg_color = base_color.lightened(0.1)
 	theme.get_stylebox("disabled", type).bg_color = base_color.darkened(0.6)
 

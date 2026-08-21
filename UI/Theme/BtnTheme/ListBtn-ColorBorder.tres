@@ -60,5 +60,6 @@ expand_margin_bottom = 1.0
 [resource]
 Button/styles/focus = SubResource("StyleBoxFlat_xpu1h")
 Button/styles/hover = SubResource("StyleBoxFlat_4cpa4")
+Button/styles/hover_pressed = SubResource("StyleBoxFlat_4cpa4")
 Button/styles/normal = SubResource("StyleBoxFlat_pxpjj")
 Button/styles/pressed = SubResource("StyleBoxFlat_j1pth")

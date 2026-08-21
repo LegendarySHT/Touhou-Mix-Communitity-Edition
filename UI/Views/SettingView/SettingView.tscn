@@ -7,43 +7,6 @@
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_tf36t"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fcfq2"]
-bg_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 16
-corner_radius_bottom_left = 16
-expand_margin_right = 6.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s6epo"]
-bg_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 16
-corner_radius_bottom_left = 16
-expand_margin_right = 6.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s2knr"]
-bg_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 16
-corner_radius_bottom_left = 16
-expand_margin_right = 6.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2qp01"]
-bg_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 16
-corner_radius_bottom_left = 16
-expand_margin_right = 6.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_d4kk1"]
-bg_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 16
-corner_radius_bottom_left = 16
-expand_margin_right = 6.0
-
-[sub_resource type="Theme" id="Theme_07r5k"]
-Button/styles/disabled = SubResource("StyleBoxFlat_fcfq2")
-Button/styles/focus = SubResource("StyleBoxFlat_s6epo")
-Button/styles/hover = SubResource("StyleBoxFlat_s2knr")
-Button/styles/normal = SubResource("StyleBoxFlat_2qp01")
-Button/styles/pressed = SubResource("StyleBoxFlat_d4kk1")
-
 [sub_resource type="ButtonGroup" id="ButtonGroup_delview"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_07r5k"]
@@ -178,7 +141,9 @@ script = ExtResource("3_delview")
 [node name="SideBar" type="VBoxContainer" parent="DelView" unique_id=-1190680135]
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
-theme = SubResource("Theme_07r5k")
+offset_transform_enabled = true
+offset_transform_position = Vector2(6, 0)
+offset_transform_visual_only = false
 
 [node name="TabBtn0" type="Button" parent="DelView/SideBar" unique_id=1370265103]
 custom_minimum_size = Vector2(260, 80)

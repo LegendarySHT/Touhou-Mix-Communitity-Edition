@@ -68,13 +68,6 @@ func _ready() -> void:
 		play_btn.focus_neighbor_top = midi_list.get_focus_node_path()
 	)
 
-	for btn in main_btns.get_children():
-		btn.focus_entered.connect((func (b):
-			for i in main_btns.get_children():
-				i.z_index = 0
-			b.z_index += 1).bind(btn)
-			)
-
 	# 右面板 tab 切换时刷新 Tab 循环焦点
 	for b in tab_btn.get_children():
 		if b is Button:
