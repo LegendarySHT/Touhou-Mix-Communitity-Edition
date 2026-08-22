@@ -30,17 +30,23 @@ const ATLAS_SIZE: int = 320
 const COLUMNS: int = 4
 const CATEGORY_COUNT: int = 16
 
-# 鼓组通道（MIDI Channel 9，SoundFont Bank 128）统一归入打击乐大类
+# GM/GS/GM2 鼓组 bank（包括 GeneralUser-GS 的 B120 与 B128）统一归入打击乐大类。
+# B120 的 kit 若按 program 分类，会被错误分散到 Piano、Organ 等普通乐器类别。
+const DRUM_BANK_MIN: int = 120
 const DRUM_CATEGORY: int = 14
 
 # 由泛用 MIDI（GM）的 bank / program 归入 16 大类，返回大类索引 0-15。
 # program 为 0 基（0=Acoustic Grand Piano），每 8 个程序一组对应一个大类。
 static func get_category(bank: int, program: int) -> int:
-	if bank == 128:
+	if is_drum_bank(bank):
 		return DRUM_CATEGORY
 	@warning_ignore("integer_division")
 	var idx: int = int(program) / 8
 	return clampi(idx, 0, CATEGORY_COUNT - 1)
+
+## 判断 SoundFont bank 是否属于 GM/GS/GM2 鼓组 bank。
+static func is_drum_bank(bank: int) -> bool:
+	return bank >= DRUM_BANK_MIN
 
 # 由大类索引计算图标 atlas 区域（坐标）。
 # 单格边长由 atlas 规格推导：ATLAS_SIZE / COLUMNS。

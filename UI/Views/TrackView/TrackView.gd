@@ -34,8 +34,8 @@ var last_position_ms: float = 0.0  # 用于检测循环播放重置
 
 # 给midi轨道访问的默认值，临时占位用。
 var instrument_options: Array = [] # 全局乐器列表（会被 _extract_instruments_from_midi() 填充）
-var regular_instruments: Array = []  # 常规乐器 (Bank 0)
-var drum_instruments: Array = []     # 鼓组乐器 (Bank 128)
+var regular_instruments: Array = []  # 常规乐器
+var drum_instruments: Array = []     # GM/GS/GM2 鼓组 bank（B120+）
 # 人声音频路径存在时相关组件会显示
 # vocal_file_path 现由 _vocal_controller 管理
 
@@ -950,8 +950,8 @@ func _extract_instruments_from_midi() -> void:
 	)
 
 	for entry in entries:
-		# 根据 bank 分类
-		if entry["bank"] == 128:
+		# 根据 GM/GS/GM2 bank 分类；部分 SoundFont 将 kit 放在 B120 而非 B128。
+		if InstrumentCategory.is_drum_bank(entry["bank"]):
 			# 鼓组乐器
 			drum_instruments.append(entry["display_name"])
 		else:
