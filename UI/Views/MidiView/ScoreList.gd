@@ -21,12 +21,17 @@ var _fail_prev_tab: int = -1
 var _pending_message: String = ""
 
 ## 「在线模式已开启但尚未连上服务器」的等待标记
-## 连接成功（online_status_changed 为 true）后据此自动刷新排行榜
+## 连接成功后据此自动刷新排行榜
 var _waiting_online: bool = false
+
+## 当前 MIDI 是否已经得到过一次有效的在线排行榜响应。
+## 空排行榜也是有效响应，不能再被后续连接状态提示覆盖。
+var _has_loaded_online_result: bool = false
 
 func _ready() -> void:
 	super._ready()
-	EvtBus.online_status_changed.connect(_on_online_status_changed)
+	EvtBus.online_state_changed.connect(_on_online_state_changed)
+	EvtBus.score_uploaded.connect(_on_score_uploaded)
 
 ## 可见性变化：排行榜标签页切回时把缓存的消息经 FailMessage 展示
 func _notification(what: int) -> void:
@@ -34,11 +39,36 @@ func _notification(what: int) -> void:
 			and not _pending_message.is_empty():
 		_apply_message()
 
-## 在线状态变化：初次连接成功（或重连成功）时，若正停在「在线模式未开启」提示上则自动刷新
-func _on_online_status_changed(online: bool, _message: String) -> void:
-	if not online or not _waiting_online or _current_midi == null:
+## 连接状态变化：区分在线模式关闭、连接中、连接失败，并在连接成功后补刷。
+## 不依赖 ScoreList 是否当前显示：排行榜页可能是 TabContainer 的非当前页，
+## 但仍应在进入 MidiView 后及时拿到已经建立的连接结果。
+func _on_online_state_changed(state: int, _latency_ms: int) -> void:
+	if _current_midi == null:
 		return
-	if not is_visible_in_tree():
+
+	match state:
+		NetManager.ConnectState.OFFLINE_MODE:
+			# 在线模式被关闭时切回本地最佳成绩。
+			load_scores(_current_midi)
+		NetManager.ConnectState.CONNECTING:
+			if _has_loaded_online_result:
+				return
+			_waiting_online = true
+			_show_message("正在连接在线服务...")
+		NetManager.ConnectState.FAILED:
+			if _has_loaded_online_result:
+				return
+			_waiting_online = true
+			_show_message("无法连接到在线服务器，请检查网络设置")
+		NetManager.ConnectState.ONLINE:
+			if _waiting_online:
+				load_scores(_current_midi)
+
+## 成绩上传完成后刷新当前 MIDI，覆盖用户快速返回 MidiView 时的竞态。
+func _on_score_uploaded(midi_hash: String) -> void:
+	if _current_midi == null or _current_midi.file_hash != midi_hash:
+		return
+	if NetManager.instance == null or NetManager.instance.connect_state != NetManager.ConnectState.ONLINE:
 		return
 	load_scores(_current_midi)
 
@@ -52,16 +82,29 @@ func load_scores(midi: MidiData) -> void:
 	clear_items()
 	_loading = false
 	_waiting_online = false
+	_has_loaded_online_result = false
+
+	if NetManager.instance == null:
+		_show_message("在线服务未就绪")
+		return
 
 	# 在线模式关闭：显示本地最佳成绩（离线排行榜），无论服务器是否可达
-	if NetManager.instance == null or NetManager.instance.connect_state == NetManager.ConnectState.OFFLINE_MODE:
+	if NetManager.instance.connect_state == NetManager.ConnectState.OFFLINE_MODE:
 		_show_local_best(midi)
 		return
 
-	# 在线模式开启但未连接上服务器：不显示离线成绩，保留原有提示
+	# 在线模式开启但尚未建立连接：按连接阶段显示具体状态，不伪装成未开启。
+	if NetManager.instance.connect_state == NetManager.ConnectState.CONNECTING:
+		_waiting_online = true
+		_show_message("正在连接在线服务...")
+		return
+	if NetManager.instance.connect_state == NetManager.ConnectState.FAILED:
+		_waiting_online = true
+		_show_message("无法连接到在线服务器，请检查网络设置")
+		return
 	if not NetManager.instance.is_online:
 		_waiting_online = true
-		_show_message("在线模式未开启")
+		_show_message("在线服务连接已失效，正在重试...")
 		return
 
 	if midi == null or midi.file_hash.is_empty():
@@ -90,6 +133,7 @@ func load_scores(midi: MidiData) -> void:
 		return
 
 	var scores = data.get("scores", [])
+	_has_loaded_online_result = true
 	if scores.is_empty():
 		_show_message("暂无成绩记录")
 		return
@@ -167,6 +211,9 @@ func _show_message(msg: String) -> void:
 	_pending_message = msg
 	if is_visible_in_tree():
 		_apply_message()
+	elif _fail_prev_tab >= 0:
+		# FailMessage 当前仍由本列表占用时，ScoreList 不可见也要立即更新文案。
+		_apply_message()
 
 ## 把待显示消息写入 FailMessage（显示时 TabContainer 会切到该页）
 func _apply_message() -> void:
@@ -180,12 +227,11 @@ func _apply_message() -> void:
 	fail.text = _pending_message
 	fail.visible = true
 
-## 隐藏 FailMessage 并恢复到显示前的标签页
-## 仅当排行榜标签页可见且 FailMessage 由本列表显示时操作，避免干预其它标签页
+## 隐藏 FailMessage 并恢复到显示前的标签页。
+## FailMessage 可使 ScoreList 暂时不可见，因此不能用 is_visible_in_tree() 作为前置条件。
+## _fail_prev_tab 只会在本列表显示消息时设置，可避免干预其它标签页的提示。
 func _hide_message() -> void:
 	_pending_message = ""
-	if not is_visible_in_tree():
-		return
 	if _fail_prev_tab < 0:
 		return  # FailMessage 非本列表显示，不干预
 	var fail := get_node_or_null("../../FailMessage") as Label
