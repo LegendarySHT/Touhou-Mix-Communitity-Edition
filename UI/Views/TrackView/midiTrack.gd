@@ -35,6 +35,14 @@ var _main_menu_hooked := false
 var _main_scroll: ScrollContainer = null
 # 主菜单拖拽中标志：区分"点击展开子菜单"与"拖拽滚动"，仅点击时才复位滚动，避免拖拽被中断
 var _main_dragging := false
+# 提前收起子菜单机制：子菜单打开后，主菜单（大类列表）失活收不到输入，
+# 点击只会被用于激活/收起子菜单而无法直接拖拽。因此当鼠标回到大类列表区域时
+# 主动收起子菜单，让主菜单恢复活性，下一次按下即可直接拖拽滚动。
+var _last_submenu_open_ms := 0      # 最近一次子菜单弹出的时间戳(ms)，防刚弹开就被悬停误关
+var _active_submenu: PopupMenu = null   # 当前打开的子菜单
+var _submenu_open := false          # 是否有任一子菜单打开
+# 子菜单弹出后停留的最短时长(ms)：此窗口期内即便鼠标在列表区域也不收起（防刚点开即关闭）
+const _SUBMENU_AUTOCLOSE_DELAY_MS := 200
 
 # 初始化时需要调节颜色的节点 除下面的之外还有self和enable_btn
 @onready var track_panel: Panel = $HBoxC/TR
@@ -234,7 +242,7 @@ func _build_instrument_menus() -> void:
 		var icon := _make_cat_icon(cat)
 		if icon:
 			popup.set_item_icon(idx, icon)
-		sub.about_to_popup.connect(_on_submenu_about_to_popup)
+		sub.about_to_popup.connect(_on_submenu_about_to_popup.bind(sub))
 		sub.id_pressed.connect(_on_submenu_item_selected.bind(cat))
 		# 一次性填充该类下的具体乐器项（不懒加载）
 		var list: Array = _category_items.get(cat, [])
@@ -309,16 +317,56 @@ func _on_main_scroll_gui_input(event: InputEvent) -> void:
 # 松手弹出子菜单后，主菜单可能收不到松开事件导致 drag_touching 卡住，一直跟随鼠标滚动；
 # set_v_scroll(get_v_scroll()) 内部会 _cancel_drag() 停止跟随。
 # 仅"点击展开子菜单"（非拖拽）时复位：拖拽滚动中悬浮切到其它大类也会触发弹出，此时复位会中断拖拽。
-func _on_submenu_about_to_popup() -> void:
+# 同时记录打开的子菜单并启用"提前收起"轮询：鼠标一回到大类列表区域就收起子菜单，主菜单即可直接拖拽。
+func _on_submenu_about_to_popup(sub: PopupMenu) -> void:
 	if _main_scroll and not _main_dragging:
 		_main_scroll.set_v_scroll(_main_scroll.get_v_scroll())
+	_active_submenu = sub
+	_submenu_open = true
+	_last_submenu_open_ms = Time.get_ticks_msec()
+	set_process(true)
 
 # 弹窗关闭时清除拖拽标志 + 重置 ScrollContainer 卡住的拖拽状态
 func _on_menu_hide(popup: PopupMenu, scroll: ScrollContainer) -> void:
 	_drag_flags.erase(popup)
 	if popup == instruments_btn.get_popup():
+		# 主菜单关闭必然同时收起所有子菜单
 		_main_dragging = false
+		if _active_submenu:
+			_active_submenu = null
+		_submenu_open = false
+		set_process(false)
+	else:
+		# 子菜单被收起
+		if _active_submenu == popup:
+			_active_submenu = null
+			_submenu_open = false
+			set_process(false)
 	scroll.set_v_scroll(scroll.get_v_scroll())
+
+# 提前收起子菜单轮询：仅当有子菜单打开时才运行（set_process 动态启停）。
+# 鼠标回到大类列表区域（主菜单窗口内、且不在子菜单窗口内）且超过最短停留时长后，
+# 主动收起子菜单，让主菜单恢复活性，下一次按下即可直接拖拽滚动。
+func _process(_delta: float) -> void:
+	if not _submenu_open or _active_submenu == null or _active_submenu.is_embedded():
+		set_process(false)
+		return
+	var now := Time.get_ticks_msec()
+	if now - _last_submenu_open_ms < _SUBMENU_AUTOCLOSE_DELAY_MS:
+		return
+	# 仍停留在"刚点开子菜单"所在行附近时不收起（避免误关）：用子菜单的纵向跨度作缓冲带
+	var popup := instruments_btn.get_popup()
+	var mouse := DisplayServer.mouse_get_position()
+	if not _window_contains(popup, mouse):
+		return
+	if _window_contains(_active_submenu, mouse):
+		return
+	# 鼠标已明确回到大类列表的其它区域 → 收起子菜单
+	_active_submenu.hide()
+
+# 判断某原生弹窗窗口是否包含某全局(OS)坐标点
+func _window_contains(win: Window, point: Vector2) -> bool:
+	return Rect2(Vector2(win.position), Vector2(win.size)).has_point(point)
 
 func _find_scroll_container(node: Node) -> ScrollContainer:
 	for child in node.get_children(true):
