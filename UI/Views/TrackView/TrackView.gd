@@ -625,11 +625,9 @@ func _apply_solo_state() -> void:
 # =============== MIDI播放器信号回调 ====================
 
 func _set_note_displayers_process(enable: bool) -> void:
+	# 仅 master 承载 _process；子 displayer 由 master 每帧派发重绘
 	if master_note_displayer:
 		master_note_displayer.set_process(enable)
-	for item in list_items:
-		if item is MidiTrack and item.note_display:
-			item.note_display.set_process(enable)
 
 # ============== UI 显示函数 ========================
 
@@ -750,6 +748,7 @@ func _build_buckets() -> void:
 		bucket.track_index = track_idx
 		bucket.channel = channel
 		bucket.hue = MidiTrack.colors_set[track_idx % MidiTrack.colors_set.size()].h
+		bucket.color = Color.from_hsv(bucket.hue, 1, 0.9, 0.8)
 		# assign() 复制元素到 bucket.notes 的内部 buffer（不与源 Dictionary 共享）
 		# 后续对 bucket.notes 的 sort 等修改不会污染 runtime_track_channel_notes
 		# NoteEvent 是 RefCounted，复制的是引用（8 字节/项），不复制对象本身
@@ -765,20 +764,16 @@ func _init_track_note_displayer(track_scene: MidiTrack, source_bucket: NoteDispl
 		push_warning("No notes found for track %d channel %d" % [source_bucket.track_index, source_bucket.channel])
 		return
 
-	# 子 displayer 创建独立 bucket（独立 cursor/is_enabled），共享 notes 数组（RefCounted 引用计数安全）
-	# 避免复制 NoteEvent 列表，节省内存
-	var bucket := NoteDisplayer.TrackNoteBucket.new()
-	bucket.track_index = source_bucket.track_index
-	bucket.channel = source_bucket.channel
-	bucket.hue = source_bucket.hue
-	bucket.notes = source_bucket.notes  # 共享数组引用
+	# 子 displayer 不再独立推算：生命周期/计数/计时统一由 master 推进，
+	# 共享 master 的 bucket + 活动音符数组，绘制时按自身几何换算
+	var child := track_scene.note_display
+	child.is_master = false
+	var max_end_tick := current_midi_data.max_end_tick if current_midi_data != null else 0.0
+	child.init_displayer_with_buckets(self, [source_bucket], max_end_tick)
+	master_note_displayer.register_child(child, source_bucket.track_index, source_bucket.channel)
 
 	GLogger.info("Track %d Channel %d: %d notes (time-sorted)" %
-		[bucket.track_index, bucket.channel, bucket.notes.size()], "TrackView")
-	# 初始化该(track, channel)的音符显示器
-	# max_end_tick 复用主显示器的全局值（子 displayer 的音符是全局子集，使用全局 max_end_tick 安全）
-	var max_end_tick := current_midi_data.max_end_tick if current_midi_data != null else 0.0
-	track_scene.note_display.init_displayer_with_buckets(self, [bucket], max_end_tick)
+		[source_bucket.track_index, source_bucket.channel, source_bucket.notes.size()], "TrackView")
 
 # 重置音符显示器索引
 func _reset_player() -> void:	
