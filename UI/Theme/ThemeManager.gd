@@ -720,14 +720,6 @@ func _refresh_theme_colors(thm: Theme) -> void:
 	# Button states
 	_theme_button_set_color(thm, p)
 
-	# CheckBox hover_pressed：已勾选 + hover 状态。
-	# 项目主 Theme 未定义 CheckBox/styles/hover_pressed，会按继承链回退到 default theme 的
-	# cbx_empty（空 stylebox），导致已勾选的 CheckBox 鼠标 hover 时背景消失。
-	# 这里复制 Button 的 pressed 样式作为 CheckBox 的 hover_pressed，并每次刷新同步颜色。
-	if not thm.has_theme_item(Theme.DATA_TYPE_STYLEBOX, "hover_pressed", "CheckBox"):
-		var btn_pressed := thm.get_stylebox("pressed", "Button")
-		if btn_pressed is StyleBoxFlat:
-			thm.set_stylebox("hover_pressed", "CheckBox", (btn_pressed as StyleBoxFlat).duplicate())
 	var cb_hp := thm.get_stylebox("hover_pressed", "CheckBox")
 	if cb_hp is StyleBoxFlat:
 		(cb_hp as StyleBoxFlat).bg_color = p.darkened(0.25)

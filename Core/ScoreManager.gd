@@ -122,12 +122,16 @@ func _extract_payload(midi: MidiData, snapshot: Dictionary) -> Dictionary:
 func upload_score(midi: MidiData, snapshot: Dictionary) -> Dictionary:
 	if midi.file_hash.is_empty():
 		return { "ok": false, "status": 0, "data": null, "error": "midi_hash_empty" }
-	var body := _extract_payload(midi, snapshot)
+	# 未登录时不提交到匿名账号，由上层提示用户先登录后再重试
+	if AuthManager.instance == null or not AuthManager.instance.is_logged_in:
+		return { "ok": false, "status": 0, "data": null, "error": "not_logged_in" }
 	var token := ""
-	if AuthManager.instance and AuthManager.instance.is_logged_in:
-		# 确保 access token 有效（过期则自动 refresh）
-		if await AuthManager.instance.ensure_valid_token():
-			token = AuthManager.instance.current_user.access_token
+	# 确保 access token 有效（过期则自动 refresh）
+	if await AuthManager.instance.ensure_valid_token():
+		token = AuthManager.instance.current_user.access_token
+	else:
+		return { "ok": false, "status": 0, "data": null, "error": "token_refresh_failed" }
+	var body := _extract_payload(midi, snapshot)
 	var url := "%s/api/scores" % NetManager.instance.server_url
 	return await NetManager.instance._request("POST", url, body, PackedStringArray(), token)
 

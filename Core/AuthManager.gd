@@ -91,7 +91,11 @@ func _try_refresh() -> bool:
 	)
 	if not result.ok or result.data == null or not result.data is Dictionary:
 		_is_refreshing = false
-		_clear_session()
+		# 网络/服务端临时故障（status==0 或 5xx）保留本地会话，待网络恢复后由后续请求重试续期；
+		# 仅当服务端明确拒绝凭证（401/400，如 refresh token 失效）时才清除会话，避免误登出
+		var status := int(result.get("status", 0))
+		if status == 401 or status == 400:
+			_clear_session()
 		return false
 	var data: Dictionary = result.data
 	var session := {

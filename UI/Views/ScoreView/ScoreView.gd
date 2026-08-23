@@ -39,6 +39,19 @@ class_name ScoreView
 @onready var info: Panel = $LevelingProgress
 @onready var score_panel: Panel = $Score
 
+# 成绩上传状态
+@onready var upload_state: Label = $UploadState
+@onready var retry_btn: Button = $UploadState/RetryBtn
+
+# 待上传/重试的成绩数据
+var _upload_midi: MidiData = null
+var _upload_snapshot: Dictionary = {}
+var _upload_tween: Tween = null
+# 是否已因上传成功弹出玩家等级面板（避免入场动画覆盖已弹出的面板）
+var _level_panel_shown: bool = false
+# 页面入场动画是否已播放完毕（上传成功后需等它播完再弹等级面板）
+var _entry_animation_done: bool = false
+
 class ScoreData:
 	## 由 ScoreCalculator 填充的最终数据（纯数据容器，不含计算逻辑）
 	var accuracy: float = 1.0
@@ -136,6 +149,9 @@ func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateMana
 func _cleanup() -> void:
 	_kill_loop_ani()
 	_kill_pp_tween()
+	if _upload_tween:
+		_upload_tween.kill()
+		_upload_tween = null
 
 func set_display(result: ScoreData, midi: MidiData = null, is_auto: bool = false):
 	# 判定数据
@@ -164,6 +180,12 @@ func set_display(result: ScoreData, midi: MidiData = null, is_auto: bool = false
 	_connect_stats_refreshed()
 	# 同步玩家信息（头像、名称、等级、进度条）
 	_update_player_info()
+
+	# 自动模式不尝试上传成绩，隐藏上传状态提示
+	upload_state.visible = not is_auto
+	# 新的一局，重置玩家等级面板弹出标志与入场动画状态
+	_level_panel_shown = false
+	_entry_animation_done = false
 
 ## 填充歌曲信息（来自本次游玩的 MidiData，与 PlayView 信息面板保持一致）
 func _update_song_info(midi: MidiData) -> void:
@@ -244,6 +266,7 @@ func _kill_pp_tween() -> void:
 
 ## PP 数值上涨动画：把当前显示的 pp 缓动到目标值，期间实时更新等级/进度条/PP 标签
 func _animate_pp_to(target_pp: float) -> void:
+	# 终止之前未完成的动画（含延迟期），避免并发调用/打断导致重播
 	if _pp_tween:
 		_pp_tween.kill()
 		_pp_tween = null
@@ -251,10 +274,11 @@ func _animate_pp_to(target_pp: float) -> void:
 	if absf(from_pp - target_pp) < 0.001:
 		_set_pp_display(target_pp)
 		return
-	await get_tree().create_timer(1).timeout
+	# 延迟并入 tween，立即赋值，重入时可取消掉未完成的延迟并从中断处续播
 	_pp_tween = create_tween()
 	_pp_tween.set_trans(Tween.TRANS_CUBIC)
 	_pp_tween.set_ease(Tween.EASE_OUT)
+	_pp_tween.tween_interval(1.0)
 	_pp_tween.tween_method(_set_pp_display, from_pp, target_pp, 1.5)
 
 ## 按指定 pp 同步刷新等级/进度条/PP 标签（供上涨动画逐帧调用，也可直接设置）
@@ -290,12 +314,11 @@ func animate(ani_in: bool = true):
 
 	# 外围组件
 	if ani_in:
+		_entry_animation_done = false
 		ani.animate_scale(bg, Vector2.ONE, 0.5, "sv_bg")
-		if _is_logged_in():
-			info.visible = true
-			ani.animate_offset_back(info, 0.5, "sv_info")
-		else:
-			# 未登录：不播放 LevelingProgress 出现动画，直接隐藏
+		# LevelingProgress 不在进入结算时弹出（上传成功后由 _show_level_panel_on_upload_success 触发）
+		# 若上传已成功弹出过，则入场动画不覆盖已弹出的面板
+		if not _level_panel_shown:
 			info.visible = false
 			info.offset_transform_position = Vector2(- info.size.x, 0)
 
@@ -328,4 +351,88 @@ func animate(ani_in: bool = true):
 		ani.animate_offset_to(accuracy, Vector2(0, wh), 1.5, "sv_acc")
 
 	await get_tree().create_timer(0.8).timeout
+	_entry_animation_done = true
 	_play_loop_ani()
+
+## 由 PlayView 在进入结算界面后调用，异步上传成绩并展示结果/重试按钮
+func request_upload(midi: MidiData, snapshot: Dictionary) -> void:
+	_upload_midi = midi
+	_upload_snapshot = snapshot
+	_do_upload_score()
+
+## 展示上传状态并从右侧滑入
+func _show_upload_slide() -> void:
+	upload_state.visible = true
+	if _upload_tween:
+		_upload_tween.kill()
+		_upload_tween = null
+	upload_state.offset_transform_enabled = true
+	# 起始位置移到右侧外侧，再滑入
+	var start_x := maxf(upload_state.size.x, 250.0) * 1.5
+	upload_state.offset_transform_position = Vector2(start_x, 0)
+	_upload_tween = AniMGR.create_managed_tween(upload_state, "sv_upload_state")
+	_upload_tween.set_trans(Tween.TRANS_CUBIC)
+	_upload_tween.set_ease(Tween.EASE_OUT)
+	_upload_tween.tween_property(upload_state, "offset_transform_position", Vector2.ZERO, 0.4)
+
+## 执行成绩上传并更新上传状态提示（支持重试复用）
+func _do_upload_score() -> void:
+	var midi := _upload_midi
+	if midi == null or midi.file_hash.is_empty():
+		# 无有效成绩，不展示上传状态
+		upload_state.visible = false
+		return
+	# 本地成绩记录（无论上传成败都保留）
+	if ScoreManager.instance:
+		ScoreManager.instance.save_local_score(midi, _upload_snapshot)
+	# 仅在线模式关闭时才不展示/不尝试上传
+	# （连接失败也尝试上传，从而展示失败提示与重试按钮）
+	if NetManager.instance == null or NetManager.instance.connect_state == NetManager.ConnectState.OFFLINE_MODE:
+		upload_state.visible = false
+		return
+	if ScoreManager.instance == null:
+		_show_upload_slide()
+		upload_state.text = "成绩上传失败"
+		retry_btn.visible = true
+		return
+	_show_upload_slide()
+	upload_state.text = "正在上传成绩..."
+	retry_btn.visible = false
+	var result = await ScoreManager.instance.upload_score(midi, _upload_snapshot)
+	if not is_inside_tree():
+		return
+	if result.get("ok", false):
+		# 通知个人信息页刷新统计
+		EvtBus.score_uploaded.emit(midi.file_hash)
+		upload_state.text = "成绩上传成功"
+		retry_btn.visible = false
+		# 上传成功后再弹出玩家等级面板
+		_show_level_panel_on_upload_success()
+	else:
+		var err := str(result.get("error", "上传异常"))
+		if err == "not_logged_in":
+			upload_state.text = "上传失败：请先登录账号后重试"
+		elif err == "token_refresh_failed":
+			upload_state.text = "上传失败：登录已过期，请重新登录后重试"
+		else:
+			upload_state.text = "成绩上传失败：%s" % err
+		retry_btn.visible = true
+
+func _on_score_sync_retry_btn_pressed() -> void:
+	_show_upload_slide()
+	_do_upload_score()
+
+## 成绩上传成功后弹出玩家等级面板，并同步最新玩家信息
+func _show_level_panel_on_upload_success() -> void:
+	if not _is_logged_in():
+		return
+	_level_panel_shown = true
+	# 等其它页面入场动画播放完毕再弹出，避免看起来像一进来面板就在
+	if not _entry_animation_done:
+		while not _entry_animation_done:
+			await get_tree().process_frame
+			if not is_inside_tree():
+				return
+	info.visible = true
+	ani.animate_offset_back(info, 0.5, "sv_info")
+	_update_player_info()

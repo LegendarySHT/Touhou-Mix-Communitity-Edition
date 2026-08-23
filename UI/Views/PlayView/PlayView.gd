@@ -1054,8 +1054,9 @@ func _on_game_finished() -> void:
 		return
 	UiStatMGR.change_state(UIStateManager.UIState.SCORE_VIEW, false)
 	get_node(PathRegistry.SCORE_VIEW).set_display(play_result, current_midi, _is_auto_mode_play)
-	# 异步上传成绩（不阻塞结算界面）
-	_upload_score_async(current_midi, snap)
+	# 异步上传成绩（由 ScoreView 展示结果与重试按钮，不阻塞结算界面）
+	if not _is_auto_mode_play:
+		get_node(PathRegistry.SCORE_VIEW).request_upload(current_midi, snap)
 
 ## 异步上传成绩（fire-and-forget，失败仅记日志）
 func _upload_score_async(midi: MidiData, snapshot: Dictionary) -> void:

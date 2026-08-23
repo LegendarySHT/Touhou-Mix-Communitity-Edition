@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="4_kq2mn"]
 [ext_resource type="Texture2D" uid="uid://cpog56bd63i4e" path="res://Resources/icon/NoAvatar.jpg" id="5_0sw27"]
 [ext_resource type="Script" uid="uid://dpn6fchjbt3b8" path="res://UI/Components/SkewArea.gd" id="5_skew"]
+[ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="6_iqsw5"]
 
 [sub_resource type="Gradient" id="Gradient_01xql"]
 interpolation_mode = 2
@@ -125,6 +126,10 @@ expand_margin_bottom = 6.0
 shadow_color = Color(0, 0, 0, 0.24313726)
 shadow_size = 12
 shadow_offset = Vector2(2, 2)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3y6u5"]
+atlas = ExtResource("6_iqsw5")
+region = Rect2(320, 320, 80, 80)
 
 [node name="ScoreView" type="Control" unique_id=1631264327]
 clip_contents = true
@@ -352,7 +357,7 @@ layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.5
 anchor_right = 0.9
-anchor_bottom = 0.5
+anchor_bottom = 0.35
 grow_vertical = 0
 theme_override_constants/separation = 50
 
@@ -391,22 +396,22 @@ custom_minimum_size = Vector2(800, 200)
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.5
-anchor_top = 0.5
+anchor_top = 0.42
 anchor_right = 0.9
 anchor_bottom = 1.0
 offset_left = 20.0
 grow_vertical = 0
-theme_override_constants/separation = 20
+theme_override_constants/separation = 40
 
 [node name="Hbox" type="HBoxContainer" parent="Bottom/skew/C/Data" unique_id=888847882]
 layout_mode = 2
 theme_override_constants/separation = 0
 
 [node name="PerfectCtn" type="Label" parent="Bottom/skew/C/Data/Hbox" unique_id=1700789026]
-custom_minimum_size = Vector2(170, 50)
+custom_minimum_size = Vector2(170, 60)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 42
 text = "0"
 vertical_alignment = 2
 
@@ -426,10 +431,10 @@ theme_override_font_sizes/font_size = 20
 text = "Perfect"
 
 [node name="GreatCtn" type="Label" parent="Bottom/skew/C/Data/Hbox" unique_id=2010235240]
-custom_minimum_size = Vector2(170, 50)
+custom_minimum_size = Vector2(170, 60)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 42
 text = "0"
 vertical_alignment = 2
 
@@ -449,10 +454,10 @@ theme_override_font_sizes/font_size = 20
 text = "Great"
 
 [node name="GoodCtn" type="Label" parent="Bottom/skew/C/Data/Hbox" unique_id=806650545]
-custom_minimum_size = Vector2(170, 50)
+custom_minimum_size = Vector2(170, 60)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 42
 text = "0"
 vertical_alignment = 2
 
@@ -472,10 +477,10 @@ theme_override_font_sizes/font_size = 20
 text = "Good"
 
 [node name="BadCtn" type="Label" parent="Bottom/skew/C/Data/Hbox" unique_id=985791868]
-custom_minimum_size = Vector2(170, 50)
+custom_minimum_size = Vector2(170, 60)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 42
 text = "0"
 vertical_alignment = 2
 
@@ -495,10 +500,10 @@ theme_override_font_sizes/font_size = 20
 text = "Bad"
 
 [node name="MissCtn" type="Label" parent="Bottom/skew/C/Data/Hbox" unique_id=918746073]
-custom_minimum_size = Vector2(170, 50)
+custom_minimum_size = Vector2(170, 60)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 42
 text = "0"
 vertical_alignment = 2
 
@@ -522,10 +527,10 @@ layout_mode = 2
 theme_override_constants/separation = 0
 
 [node name="EarlyCtn" type="Label" parent="Bottom/skew/C/Data/HBox1" unique_id=499340368]
-custom_minimum_size = Vector2(170, 50)
+custom_minimum_size = Vector2(170, 60)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 42
 text = "0"
 vertical_alignment = 2
 
@@ -545,10 +550,10 @@ theme_override_font_sizes/font_size = 20
 text = "Early"
 
 [node name="LateCtn" type="Label" parent="Bottom/skew/C/Data/HBox1" unique_id=874334327]
-custom_minimum_size = Vector2(170, 50)
+custom_minimum_size = Vector2(170, 60)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 42
 text = "0"
 vertical_alignment = 2
 
@@ -568,11 +573,11 @@ theme_override_font_sizes/font_size = 20
 text = "Late"
 
 [node name="MaxCombo" type="Label" parent="Bottom/skew/C/Data/HBox1" unique_id=1699546943]
-custom_minimum_size = Vector2(150, 50)
+custom_minimum_size = Vector2(150, 60)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 3.0
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 42
 text = "1000000/1000000"
 vertical_alignment = 2
 
@@ -617,6 +622,7 @@ text = "SS"
 layout_mode = 0
 offset_right = 939.0
 offset_bottom = 156.0
+offset_transform_enabled = true
 theme_override_styles/panel = SubResource("StyleBoxFlat_1u62t")
 
 [node name="Panel" type="Panel" parent="LevelingProgress" unique_id=425717518]
@@ -679,3 +685,42 @@ vertical_alignment = 2
 
 [node name="ProgressBar" type="ProgressBar" parent="LevelingProgress/Data" unique_id=103941392]
 layout_mode = 2
+
+[node name="UploadState" type="Label" parent="." unique_id=63887011]
+custom_minimum_size = Vector2(250, 60)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
+offset_top = 30.0
+offset_right = -70.0
+offset_bottom = 19.0
+grow_horizontal = 0
+offset_transform_enabled = true
+theme_override_font_sizes/font_size = 24
+text = "成绩上传成功"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="RetryBtn" type="Button" parent="UploadState" unique_id=972914527]
+visible = false
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 5.0
+offset_top = -30.0
+offset_right = 65.0
+offset_bottom = 30.0
+grow_horizontal = 0
+grow_vertical = 2
+icon = SubResource("AtlasTexture_3y6u5")
+flat = true
+icon_alignment = 1
+expand_icon = true
+
+[connection signal="pressed" from="UploadState/RetryBtn" to="." method="_on_score_sync_retry_btn_pressed"]

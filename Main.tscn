@@ -114,6 +114,10 @@ corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
+expand_margin_left = 5.0
+expand_margin_top = 2.0
+expand_margin_right = 5.0
+expand_margin_bottom = 2.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_grabber_hl"]
 bg_color = Color(1, 1, 1, 1)
@@ -121,9 +125,15 @@ corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
+expand_margin_left = 5.0
+expand_margin_top = 2.0
+expand_margin_right = 5.0
+expand_margin_bottom = 2.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scroll"]
 bg_color = Color(0, 0, 0, 0.15)
+expand_margin_left = 2.0
+expand_margin_right = 2.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_grabber"]
 bg_color = Color(1, 1, 1, 1)
@@ -262,16 +272,8 @@ _source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\">
 base_scale = 3.0
 
 [sub_resource type="Theme" id="Theme_5mvff"]
-Button/colors/font_color = Color(0.875, 0.875, 0.875, 1)
-Button/colors/font_disabled_color = Color(0.875, 0.875, 0.875, 0.5)
-Button/colors/font_focus_color = Color(0.95, 0.95, 0.95, 1)
-Button/colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
-Button/colors/font_pressed_color = Color(1, 1, 1, 1)
-Button/colors/icon_disabled_color = Color(1, 1, 1, 0.4)
-Button/colors/icon_focus_color = Color(1, 1, 1, 1)
-Button/colors/icon_hover_color = Color(1, 1, 1, 1)
-Button/colors/icon_normal_color = Color(1, 1, 1, 1)
-Button/colors/icon_pressed_color = Color(1, 1, 1, 1)
+Button/colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
+Button/colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
 Button/font_sizes/font_size = 48
 Button/styles/disabled = SubResource("StyleBoxFlat_w3rk5")
 Button/styles/focus = SubResource("StyleBoxFlat_oye8v")
@@ -287,6 +289,7 @@ CheckBox/icons/unchecked = SubResource("DPITexture_5mkgo")
 CheckBox/icons/unchecked_disabled = SubResource("DPITexture_3ccbu")
 HScrollBar/styles/grabber = SubResource("StyleBoxFlat_grabber")
 HScrollBar/styles/grabber_highlight = SubResource("StyleBoxFlat_grabber_hl")
+HScrollBar/styles/grabber_pressed = SubResource("StyleBoxFlat_grabber_hl")
 HScrollBar/styles/scroll = SubResource("StyleBoxFlat_scroll")
 HSlider/styles/grabber_area = SubResource("StyleBoxFlat_slider_grabber")
 HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_slider_grabber_hl")
@@ -335,6 +338,7 @@ Tree/icons/unchecked = SubResource("DPITexture_gb15f")
 Tree/icons/unchecked_disabled = SubResource("DPITexture_sph85")
 VScrollBar/styles/grabber = SubResource("StyleBoxFlat_grabber")
 VScrollBar/styles/grabber_highlight = SubResource("StyleBoxFlat_grabber_hl")
+VScrollBar/styles/grabber_pressed = SubResource("StyleBoxFlat_grabber_hl")
 VScrollBar/styles/scroll = SubResource("StyleBoxFlat_scroll")
 
 [sub_resource type="Gradient" id="Gradient_mxvw5"]
@@ -714,8 +718,6 @@ layout_mode = 2
 focus_neighbor_left = NodePath("../../../../../Btns/Search")
 focus_neighbor_right = NodePath("../Data")
 focus_next = NodePath("../../../../../Btns/FavorList")
-theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
-theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
 theme_override_styles/normal = SubResource("StyleBoxEmpty_iygje")
 theme_override_styles/pressed = SubResource("StyleBoxEmpty_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxEmpty_2xvos")
@@ -729,8 +731,6 @@ layout_mode = 2
 focus_neighbor_left = NodePath("../Status")
 focus_neighbor_right = NodePath("../Ordering")
 focus_next = NodePath("../../../../../Btns/FavorList")
-theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
-theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
 theme_override_styles/normal = SubResource("StyleBoxEmpty_iygje")
 theme_override_styles/pressed = SubResource("StyleBoxEmpty_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxEmpty_2xvos")
@@ -744,8 +744,6 @@ layout_mode = 2
 focus_neighbor_left = NodePath("../Data")
 focus_neighbor_right = NodePath("../../SearchBox/SearchBtn")
 focus_next = NodePath("../../../../../Btns/FavorList")
-theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
-theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
 theme_override_styles/normal = SubResource("StyleBoxEmpty_iygje")
 theme_override_styles/pressed = SubResource("StyleBoxEmpty_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxEmpty_2xvos")
@@ -786,8 +784,6 @@ custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 8
-theme_override_colors/icon_pressed_color = Color(0.7490196, 0.7490196, 0.7490196, 1)
-theme_override_colors/icon_hover_color = Color(0.8980392, 0.8980392, 0.8980392, 1)
 icon = SubResource("AtlasTexture_5h6qm")
 icon_alignment = 1
 expand_icon = true
@@ -915,8 +911,6 @@ grow_horizontal = 2
 grow_vertical = 0
 focus_mode = 0
 shortcut_context = NodePath("../AlbumList")
-theme_override_colors/icon_pressed_color = Color(0.74978, 0.74978, 0.74977994, 1)
-theme_override_colors/icon_hover_color = Color(0.8992584, 0.8992584, 0.8992584, 1)
 shortcut = SubResource("Shortcut_fcfq2")
 icon = SubResource("AtlasTexture_yjioo")
 flat = true
