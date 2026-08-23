@@ -335,6 +335,7 @@ border_color = Color(0, 0.34274265, 0.6441993, 1)
 [sub_resource type="AtlasTexture" id="AtlasTexture_i1we6"]
 atlas = ExtResource("3_5hycm")
 region = Rect2(0, 320, 80, 80)
+margin = Rect2(1, 0, 0, 0)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_q71vh"]
 atlas = ExtResource("3_5hycm")
@@ -366,10 +367,11 @@ theme_override_styles/panel = SubResource("StyleBoxEmpty_j02sm")
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxEmpty_3y6u5")
-current_tab = 0
+current_tab = 2
 tabs_visible = false
 
 [node name="Profile" type="HBoxContainer" parent="PC/PageContent" unique_id=572518356]
+visible = false
 layout_mode = 2
 metadata/_tab_index = 0
 
@@ -807,6 +809,7 @@ theme_override_font_sizes/font_size = 36
 theme_override_styles/normal = SubResource("StyleBoxEmpty_i6pqd")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hs1if")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_hs1if")
 toggle_mode = true
 button_pressed = true
 button_group = SubResource("ButtonGroup_3y6u5")
@@ -819,6 +822,7 @@ theme_override_font_sizes/font_size = 36
 theme_override_styles/normal = SubResource("StyleBoxEmpty_i6pqd")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hs1if")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_hs1if")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_3y6u5")
 text = "最佳记录"
@@ -830,6 +834,7 @@ theme_override_font_sizes/font_size = 36
 theme_override_styles/normal = SubResource("StyleBoxEmpty_i6pqd")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxFlat_665dv")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_hs1if")
 toggle_mode = true
 button_group = SubResource("ButtonGroup_3y6u5")
 text = "最多游玩"
@@ -854,6 +859,7 @@ metadata/_tab_index = 0
 [node name="VBox" type="VBoxContainer" parent="PC/PageContent/History/List/RecentPlay" unique_id=1646692693]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 15
 
 [node name="BestPlay" type="ScrollContainer" parent="PC/PageContent/History/List" unique_id=1054082970]
 visible = false
@@ -864,6 +870,7 @@ metadata/_tab_index = 1
 [node name="VBox" type="VBoxContainer" parent="PC/PageContent/History/List/BestPlay" unique_id=888654210]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 15
 
 [node name="MostPlay" type="ScrollContainer" parent="PC/PageContent/History/List" unique_id=1909620862]
 visible = false
@@ -874,9 +881,9 @@ metadata/_tab_index = 2
 [node name="VBox" type="VBoxContainer" parent="PC/PageContent/History/List/MostPlay" unique_id=2052768632]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 15
 
 [node name="Edit" type="PanelContainer" parent="PC/PageContent" unique_id=638331925]
-visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_ng81m")
 metadata/_tab_index = 2

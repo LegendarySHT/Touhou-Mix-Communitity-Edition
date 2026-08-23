@@ -69,6 +69,8 @@ vertical_alignment = 1
 [node name="VBox" type="VBoxContainer" parent="HBox" unique_id=1312746905]
 layout_mode = 2
 size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(-15, 0)
 mouse_filter = 2
 
 [node name="Score" type="HBoxContainer" parent="HBox/VBox" unique_id=552133520]
