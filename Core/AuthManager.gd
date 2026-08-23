@@ -19,6 +19,10 @@ var is_logged_in: bool:
 	get:
 		return current_user != null and not current_user.get("access_token", "").is_empty()
 
+## 本次启动是否曾处于登录态（用于区分「从未登录/已主动登出」与「登录后异常掉线」）
+## 匿名上传成绩时，仅从未登录或主动登出走匿名；曾登录但会话异常丢失则提示重新登录
+var ever_authenticated: bool = false
+
 ## 是否正在执行 refresh（防止重复续期）
 var _is_refreshing: bool = false
 
@@ -45,17 +49,20 @@ func _load_session() -> void:
 		if refresh_expires_at > 0 and now < refresh_expires_at:
 			# refresh token 仍有效，暂存 current_user 供 _try_refresh 使用，异步续期
 			current_user = data
+			ever_authenticated = true
 			_try_refresh()  # 不 await（_ready 中不能阻塞）
 			return
 		else:
 			_clear_session()
 			return
 	current_user = data
+	ever_authenticated = true
 	EvtBus.auth_changed.emit(current_user)
 
 ## 保存会话到本地
 func _save_session(data: Dictionary) -> void:
 	current_user = data
+	ever_authenticated = true
 	ConfigManager.instance.save_json_file(TOKEN_FILE, data, true)
 	EvtBus.auth_changed.emit(current_user)
 
@@ -163,6 +170,7 @@ func login(username: String, password: String) -> Dictionary:
 
 ## 登出
 func logout() -> void:
+	ever_authenticated = false
 	_clear_session()
 	GLogger.info("Logged out", "AuthMGR")
 

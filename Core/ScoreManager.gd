@@ -122,15 +122,19 @@ func _extract_payload(midi: MidiData, snapshot: Dictionary) -> Dictionary:
 func upload_score(midi: MidiData, snapshot: Dictionary) -> Dictionary:
 	if midi.file_hash.is_empty():
 		return { "ok": false, "status": 0, "data": null, "error": "midi_hash_empty" }
-	# 未登录时不提交到匿名账号，由上层提示用户先登录后再重试
-	if AuthManager.instance == null or not AuthManager.instance.is_logged_in:
-		return { "ok": false, "status": 0, "data": null, "error": "not_logged_in" }
+	# 已登录：确保 access token 有效（过期则自动 refresh）
 	var token := ""
-	# 确保 access token 有效（过期则自动 refresh）
-	if await AuthManager.instance.ensure_valid_token():
-		token = AuthManager.instance.current_user.access_token
-	else:
-		return { "ok": false, "status": 0, "data": null, "error": "token_refresh_failed" }
+	if AuthManager.instance != null and AuthManager.instance.is_logged_in:
+		if await AuthManager.instance.ensure_valid_token():
+			token = AuthManager.instance.current_user.access_token
+		elif AuthManager.instance.ever_authenticated:
+			# 曾登录过但续期失败（会话异常）→ 提示重新登录，不匿名上传
+			return { "ok": false, "status": 0, "data": null, "error": "token_refresh_failed" }
+		# 未真正登录却残留失效会话（异常边界），回退匿名上传
+	elif AuthManager.instance != null and AuthManager.instance.ever_authenticated:
+		# 曾登录过但会话已断 → 提示重新登录，不匿名上传
+		return { "ok": false, "status": 0, "data": null, "error": "not_logged_in" }
+	# 从未登录或已主动登出：保持匿名上传成绩
 	var body := _extract_payload(midi, snapshot)
 	var url := "%s/api/scores" % NetManager.instance.server_url
 	return await NetManager.instance._request("POST", url, body, PackedStringArray(), token)

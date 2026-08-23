@@ -77,6 +77,18 @@ static func get_setting_groups() -> Array:
 				{"text_en": "On", "text_zh": "开启"}
 			]
 		},
+		{
+			"id": "auto_upload_score",
+			"name_en": "Auto Upload Score",
+			"name_zh": "自动上传成绩",
+			"description": "开启后将自动在结算页面上传成绩，否则需手动上传",
+			"type": "TYPE_OPTION",
+			"default_value": "1",
+			"options": [
+				{"text_en": "Off", "text_zh": "关闭"},
+				{"text_en": "On", "text_zh": "开启"}
+			]
+		},
 			{
 				"id": "language",
 				"name_en": "Language",

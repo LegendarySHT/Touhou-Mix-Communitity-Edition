@@ -51,6 +51,10 @@ var _upload_tween: Tween = null
 var _level_panel_shown: bool = false
 # 页面入场动画是否已播放完毕（上传成功后需等它播完再弹等级面板）
 var _entry_animation_done: bool = false
+# 手动上传模式：是否正等待玩家点击上传
+var _manual_pending: bool = false
+# 上传代次：每次 set_display 递增，用于丢弃上一次未完成上传的回调结果
+var _upload_generation: int = 0
 
 class ScoreData:
 	## 由 ScoreCalculator 填充的最终数据（纯数据容器，不含计算逻辑）
@@ -97,6 +101,10 @@ func _ready() -> void:
 
 	# 监听 PlayerInfoContent 统计刷新信号，成绩上传后自动同步玩家信息
 	_connect_stats_refreshed()
+
+	# 手动上传模式下点击提示触发上传
+	upload_state.mouse_filter = Control.MOUSE_FILTER_STOP
+	upload_state.gui_input.connect(_on_upload_state_gui_input)
 
 	if ThemeMGR:
 		ThemeMGR.register_theme_applier(self)
@@ -186,6 +194,8 @@ func set_display(result: ScoreData, midi: MidiData = null, is_auto: bool = false
 	# 新的一局，重置玩家等级面板弹出标志与入场动画状态
 	_level_panel_shown = false
 	_entry_animation_done = false
+	# 新一局：递增上传代次，使上一次未完成上传的回调结果失效
+	_upload_generation += 1
 
 ## 填充歌曲信息（来自本次游玩的 MidiData，与 PlayView 信息面板保持一致）
 func _update_song_info(midi: MidiData) -> void:
@@ -358,7 +368,37 @@ func animate(ani_in: bool = true):
 func request_upload(midi: MidiData, snapshot: Dictionary) -> void:
 	_upload_midi = midi
 	_upload_snapshot = snapshot
-	_do_upload_score()
+	_manual_pending = false
+	if _is_auto_upload_enabled():
+		_do_upload_score()
+	else:
+		# 手动上传模式：仅在线时提示点击上传，点击后才触发上传
+		if NetManager.instance != null and NetManager.instance.connect_state != NetManager.ConnectState.OFFLINE_MODE:
+			_manual_pending = true
+			_show_upload_slide()
+			upload_state.text = "点击此处上传成绩"
+			retry_btn.visible = false
+		else:
+			upload_state.visible = false
+
+## 是否自动上传成绩（读配置，默认开启）
+func _is_auto_upload_enabled() -> bool:
+	if ConfigManager.instance == null:
+		return true
+	return ConfigManager.instance.get_int("General", "auto_upload_score", 1) == 1
+
+## 点击上传提示（手动上传模式）
+func _on_upload_state_gui_input(event: InputEvent) -> void:
+	if not _manual_pending:
+		return
+	var pressed := false
+	if event is InputEventMouseButton:
+		pressed = event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+	elif event is InputEventScreenTouch:
+		pressed = event.pressed
+	if pressed:
+		_manual_pending = false
+		_do_upload_score()
 
 ## 展示上传状态并从右侧滑入
 func _show_upload_slide() -> void:
@@ -377,6 +417,7 @@ func _show_upload_slide() -> void:
 
 ## 执行成绩上传并更新上传状态提示（支持重试复用）
 func _do_upload_score() -> void:
+	_manual_pending = false
 	var midi := _upload_midi
 	if midi == null or midi.file_hash.is_empty():
 		# 无有效成绩，不展示上传状态
@@ -398,8 +439,10 @@ func _do_upload_score() -> void:
 	_show_upload_slide()
 	upload_state.text = "正在上传成绩..."
 	retry_btn.visible = false
+	var gen := _upload_generation
 	var result = await ScoreManager.instance.upload_score(midi, _upload_snapshot)
-	if not is_inside_tree():
+	# 期间离开本页或已进入新一局，丢弃本次结果
+	if not is_inside_tree() or gen != _upload_generation:
 		return
 	if result.get("ok", false):
 		# 通知个人信息页刷新统计
@@ -411,9 +454,9 @@ func _do_upload_score() -> void:
 	else:
 		var err := str(result.get("error", "上传异常"))
 		if err == "not_logged_in":
-			upload_state.text = "上传失败：请先登录账号后重试"
+			upload_state.text = "登录已断开，请重新登录后再上传成绩"
 		elif err == "token_refresh_failed":
-			upload_state.text = "上传失败：登录已过期，请重新登录后重试"
+			upload_state.text = "登录已过期，请重新登录后再上传成绩"
 		else:
 			upload_state.text = "成绩上传失败：%s" % err
 		retry_btn.visible = true
