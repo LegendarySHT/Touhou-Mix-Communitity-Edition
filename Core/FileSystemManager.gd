@@ -1769,7 +1769,7 @@ func load_cover_with_cache(path: String) -> Texture2D:
 		if not FileAccess.file_exists(path):
 			GLogger.warning("Cover file not found: %s" % path, "FileSystemMGR")
 			return load_cover_with_cache(DEFAULT_COVER_PATH)
-		var image := Image.load_from_file(path)
+		var image := ImageUtil.load_image_file(path)
 		if image:
 			texture = ImageTexture.create_from_image(image)
 		else:

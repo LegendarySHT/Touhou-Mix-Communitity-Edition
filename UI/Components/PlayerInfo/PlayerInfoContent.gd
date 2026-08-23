@@ -149,7 +149,7 @@ func _sync_from_auth() -> void:
 			profile_avatar_rect.texture = default_tex
 		if profile_page:
 			profile_page.profile_avatar_rect.texture = default_tex
-			profile_page.avatar_preview_rect.texture = default_tex
+			profile_page.avatar_border.set_display_texture(default_tex)
 		populate_profile()
 		populate_mini_info()
 		profile_page.update_display(_player_data)

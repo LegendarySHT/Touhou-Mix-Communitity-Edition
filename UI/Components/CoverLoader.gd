@@ -187,7 +187,7 @@ func _load_image(path: String) -> Image:
 	if not FileAccess.file_exists(path):
 		call_deferred("_log_warning", "CoverLoader: Cover file not found: %s" % path)
 		return null
-	var img := Image.load_from_file(path)
+	var img := ImageUtil.load_image_file(path)
 	if img == null:
 		call_deferred("_log_warning", "CoverLoader: Failed to load cover image: %s" % path)
 	return img

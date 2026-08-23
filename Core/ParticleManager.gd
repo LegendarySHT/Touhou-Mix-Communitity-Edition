@@ -407,7 +407,7 @@ func _try_load_sprite(pack_path: String, file_name: String) -> Texture2D:
 			return load(file_path)
 		return null
 	if PathHelper.file_exists(file_path):
-		var image := Image.load_from_file(file_path)
+		var image := ImageUtil.load_image_file(file_path)
 		if image:
 			return ImageTexture.create_from_image(image)
 	return null

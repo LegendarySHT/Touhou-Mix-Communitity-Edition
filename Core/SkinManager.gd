@@ -489,7 +489,7 @@ func get_skin_textures(skin_name: String) -> Dictionary:
 		else:
 			# 用户目录资源动态加载 - 先检查文件是否存在
 			if PathHelper.file_exists(file_path):
-				var image = Image.load_from_file(file_path)
+				var image = ImageUtil.load_image_file(file_path)
 				if image:
 					var texture = ImageTexture.create_from_image(image)
 					result[texture_key] = texture

@@ -268,7 +268,7 @@ func load_background_image(file_name: String) -> Texture2D:
 	var full_path := PathHelper.get_background_dir().path_join(file_name)
 	if not FileAccess.file_exists(full_path):
 		return null
-	var img := Image.load_from_file(full_path)
+	var img := ImageUtil.load_image_file(full_path)
 	if img == null:
 		return null
 	var tex := ImageTexture.create_from_image(img)
@@ -307,7 +307,7 @@ func _bg_image_load_worker(file_name: String) -> void:
 	var full_path := PathHelper.get_background_dir().path_join(file_name)
 	var img: Image = null
 	if FileAccess.file_exists(full_path):
-		img = Image.load_from_file(full_path)
+		img = ImageUtil.load_image_file(full_path)
 	# call_deferred 跨线程投递到主线程是安全的
 	call_deferred("_on_bg_image_loaded", file_name, img)
 

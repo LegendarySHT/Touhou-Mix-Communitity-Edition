@@ -75,6 +75,9 @@ func _on_auth_changed(user_data: Variant) -> void:
 func _animate_to_state(s: State) -> void:
 	if _tween and _tween.is_valid():
 		_tween.kill()
+	# 离开 ProfilePage 详情页（FULL_EXPANDED）时复位头像调整区，恢复首次进入时的状态
+	if _state == State.FULL_EXPANDED and s != State.FULL_EXPANDED:
+		info_tab_c.profile_page._reset_avatar_adjust()
 	_tween = AniMGR.create_managed_tween(self)
 	_tween.set_parallel(true)
 	_tween.set_ease(Tween.EASE_OUT)

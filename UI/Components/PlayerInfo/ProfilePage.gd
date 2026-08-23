@@ -47,11 +47,13 @@ signal avatar_loaded(texture: Texture2D)
 @onready var desc_edit: LineEdit = $PC/PageContent/Edit/HBox/ProfileEdit/Desc/LineEdit
 @onready var old_pwd_edit: LineEdit = $PC/PageContent/Edit/HBox/OtherEdit/Password/LineEdit
 @onready var new_pwd_edit: LineEdit = $PC/PageContent/Edit/HBox/OtherEdit/NewPassword/LineEdit
-@onready var avatar_preview_rect: TextureRect = $PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit/Border/Avatar
+@onready var avatar_border: AvatarPreview = $PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit/Border
+@onready var avatar_scale_slider: HSlider = $PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit/AdjustBtns/ScaleSlider
+@onready var upload_avatar_btn: Button = $PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit/AdjustBtns/UploadBtn
+@onready var avatar_save_btn: Button = $PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit/AdjustBtns/SaveBtn
 @onready var nickname_confirm_btn: Button = $PC/PageContent/Edit/HBox/ProfileEdit/Nickname/ConfirmBtn
 @onready var desc_confirm_btn: Button = $PC/PageContent/Edit/HBox/ProfileEdit/Desc/ConfirmBtn
 @onready var pwd_confirm_btn: Button = $PC/PageContent/Edit/HBox/OtherEdit/NewPassword/ConfirmBtn
-@onready var upload_avatar_btn: Button = $PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit/UploadBtn
 
 # ========== 主题色引用节点（每个共享 StyleBox 取一个代表节点） ==========
 @onready var _info_panel: PanelContainer = $PC/PageContent/Profile/Main/PC/Displayer/Info
@@ -82,6 +84,8 @@ var _busy: bool = false
 var _avatar_file_dialog: FileDialog = null
 ## 头像图片 HTTP 加载请求（避免重复加载）
 var _avatar_load_token: int = 0
+## 待保存头像源图（本地选图解码后，保存时裁剪方形区域）
+var _pending_avatar: Image = null
 
 # 三个列表的懒加载状态标记
 var _recent_loaded: bool = false
@@ -104,6 +108,7 @@ func _ready() -> void:
 	# 密码输入框设为密文
 	old_pwd_edit.secret = true
 	new_pwd_edit.secret = true
+	_reset_avatar_adjust()
 	if ThemeMGR:
 		ThemeMGR.register_theme_applier(self)
 		apply_theme()
@@ -309,7 +314,7 @@ func _load_avatar_async(avatar_url: String) -> void:
 		return
 	var tex := ImageTexture.create_from_image(image)
 	profile_avatar_rect.texture = tex
-	avatar_preview_rect.texture = tex
+	avatar_border.set_display_texture(tex)
 	avatar_loaded.emit(tex)
 	GLogger.info("Avatar loaded: %s" % full_url, "ProfilePage")
 
@@ -398,40 +403,47 @@ func _on_upload_avatar_btn_pressed() -> void:
 		_avatar_file_dialog.file_selected.connect(_on_avatar_file_selected)
 	_avatar_file_dialog.popup_centered_clamped(Vector2i(800, 600))
 
-## FileDialog 选择图片后：读取 + base64 编码 + 上传
-func _on_avatar_file_selected(path: String) -> void:
-	if not FileAccess.file_exists(path):
+## 保存头像：裁剪预览方形区域 → PNG 编码 → 上传
+func _on_save_avatar_btn_pressed() -> void:
+	if _busy:
+		return
+	if _pending_avatar == null:
+		GLogger.info("No avatar selected to save", "ProfilePage")
+		return
+	if AuthManager.instance == null or not AuthManager.instance.is_logged_in:
+		return
+	if NetManager.instance == null or not NetManager.instance.is_online:
+		return
+	# 由预览偏移/缩放反推方形裁剪区（源图像素坐标），缩放以左上角为锚点
+	var img := _pending_avatar
+	var s := avatar_scale_slider.value
+	if s <= 0.0:
+		return
+	var view := avatar_border.get_box_size()
+	var off := avatar_border.offset
+	# STRETCH_KEEP + 左上角锚：off 即缩放后图片左上角，源图像素 q=(p-off)/s，
+	# 屏幕 [0, view] 对应源图区域 = -off/s + (view/s)
+	var crop_rect := Rect2(-off / s, view / s)
+	crop_rect = crop_rect.intersection(Rect2(0, 0, img.get_width(), img.get_height()))
+	if crop_rect.size.x < 1 or crop_rect.size.y < 1:
+		GLogger.warning("Avatar crop region empty", "ProfilePage")
+		return
+	var square := img.get_region(Rect2i(crop_rect))
+	# 限制输出最长边 <= 512，避免上传超大图
+	var max_side := maxi(square.get_width(), square.get_height())
+	if max_side > 512:
+		var ratio := 512.0 / max_side
+		square.resize(maxi(1, int(square.get_width() * ratio)), maxi(1, int(square.get_height() * ratio)))
+	var png := square.save_png_to_buffer()
+	if png.is_empty():
+		GLogger.warning("Avatar PNG encode failed", "ProfilePage")
 		return
 	_busy = true
-	upload_avatar_btn.disabled = true
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
-		_busy = false
-		upload_avatar_btn.disabled = false
-		return
-	var bytes := f.get_buffer(f.get_length())
-	f.close()
-	if bytes.size() == 0:
-		_busy = false
-		upload_avatar_btn.disabled = false
-		return
-	# 限制约 2MB
-	if bytes.size() > 2 * 1024 * 1024:
-		GLogger.warning("Avatar too large (>%d bytes), skipping" % (2 * 1024 * 1024), "ProfilePage")
-		_busy = false
-		upload_avatar_btn.disabled = false
-		return
-	var image_base64 := Marshalls.raw_to_base64(bytes)
-	# 推断 content type
-	var content_type := ""
-	var ext := path.get_extension().to_lower()
-	if ext == "png":
-		content_type = "image/png"
-	elif ext == "jpg" or ext == "jpeg":
-		content_type = "image/jpeg"
-	var result: Dictionary = await AuthManager.instance.upload_avatar(image_base64, content_type)
+	avatar_save_btn.disabled = true
+	var image_base64 := Marshalls.raw_to_base64(png)
+	var result: Dictionary = await AuthManager.instance.upload_avatar(image_base64, "image/png")
 	_busy = false
-	upload_avatar_btn.disabled = false
+	avatar_save_btn.disabled = false
 	if result.get("ok", false):
 		GLogger.info("Avatar uploaded", "ProfilePage")
 		# 直接从上传响应中提取 avatarUrl 并立即加载头像
@@ -441,8 +453,64 @@ func _on_avatar_file_selected(path: String) -> void:
 			if not av_url.is_empty():
 				_load_avatar_async(av_url)
 		profile_updated.emit()
+		# 保存成功：复位预览变换并隐藏调整控件（回到「仅显示当前头像」）
+		_reset_avatar_adjust()
 	else:
 		GLogger.warning("Avatar upload failed: %s" % str(result.get("error", "")), "ProfilePage")
+
+## FileDialog 选择图片后：解码载入预览（保存时再裁剪上传）
+func _on_avatar_file_selected(path: String) -> void:
+	if not FileAccess.file_exists(path):
+		return
+	var bytes := FileAccess.get_file_as_bytes(path)
+	if bytes.size() == 0:
+		return
+	# 源图过大时直接拒绝（解码占用内存）
+	if bytes.size() > 8 * 1024 * 1024:
+		GLogger.warning("Avatar too large (>%d bytes), skipping" % (8 * 1024 * 1024), "ProfilePage")
+		return
+	var img := Image.new()
+	var ext := path.get_extension().to_lower()
+	var err := OK
+	if ext == "jpg" or ext == "jpeg":
+		err = img.load_jpg_from_buffer(bytes)
+		if err != OK:
+			err = img.load_png_from_buffer(bytes)
+	else:
+		err = img.load_png_from_buffer(bytes)
+		if err != OK:
+			err = img.load_jpg_from_buffer(bytes)
+	if err != OK or img.get_width() <= 0 or img.get_height() <= 0:
+		GLogger.warning("Avatar image decode failed (not PNG/JPG): %s" % path, "ProfilePage")
+		return
+	# 过长边降到 2048 内，避免预览/记忆体浪费
+	var max_side := maxi(img.get_width(), img.get_height())
+	if max_side > 2048:
+		var ratio := 2048.0 / max_side
+		img.resize(maxi(1, int(img.get_width() * ratio)), maxi(1, int(img.get_height() * ratio)))
+	_show_avatar_preview(img)
+	GLogger.info("Avatar loaded for preview: %s" % path, "ProfilePage")
+
+## 载入源图到预览：交给 Border 自绘（可平移/缩放）
+func _show_avatar_preview(img: Image) -> void:
+	_pending_avatar = img
+	avatar_border.set_source_image(img)
+	avatar_scale_slider.value = 1.0
+	avatar_scale_slider.visible = true
+
+## 缩放滑条：更新缩放并保持位置边界
+func _on_avatar_scale_changed(value: float) -> void:
+	if _pending_avatar == null:
+		return
+	avatar_border.set_zoom(value)
+
+## 回到「仅显示当前头像」状态：清除待调整图、隐藏滑条
+## 拖拽/缩放/裁剪状态由 Border 内部持有，退出详情页时清空即可恢复显示当前头像
+func _reset_avatar_adjust() -> void:
+	_pending_avatar = null
+	avatar_border.clear_preview()
+	avatar_scale_slider.value = 1.0
+	avatar_scale_slider.visible = false
 
 # ========== History 页成绩列表加载 ==========
 
