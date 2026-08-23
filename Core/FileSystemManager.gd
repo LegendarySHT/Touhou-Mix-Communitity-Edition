@@ -36,6 +36,7 @@ const DEFAULT_BACKGROUND_SRC = "res://Resources/BackgroundImage/"
 ## 通用加载/导入提示文案（ProcessTip，与 Main.tscn 默认文案一致）
 const LOADING_TIP_TEXT := "加载中，请稍后"
 const IMPORT_TIP_TEXT := "正在导入数据，请稍后"
+const SCAN_TIP_TEXT := "正在扫描谱面，请稍后"
 
 ## 图片文件扩展名列表（Godot 导出时会被转换为 .ctex，无法通过 FileAccess 直接读取）
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
@@ -696,7 +697,35 @@ func _scan_all_resources() -> void:
 	if use_fast_path:
 		_start_charts_cache_validation(all_chart_folders, cached_charts)
 	else:
-		await _scan_charts_full_sync()
+		# 首次全量扫描复用加载进度条（遮罩 + 提示 + 进度条），扫完隐藏
+		var overlay: Control = get_node_or_null(PathRegistry.POPUP_WINDOW_SHADER)
+		var tip: Label = get_node_or_null(PathRegistry.PROCESS_TIP)
+		var bar: ProgressBar = get_node_or_null(PathRegistry.PROCESS_PROGRESS)
+		var total_folders: int = all_chart_folders.size()
+		if total_folders > 0:
+			if overlay:
+				overlay.modulate.a = 1.0
+				overlay.visible = true
+			if tip:
+				tip.visible = true
+				tip.text = SCAN_TIP_TEXT
+			if bar:
+				bar.visible = true
+				bar.min_value = 0
+				bar.max_value = total_folders
+				bar.value = 0
+				bar.show_percentage = true
+		var scan_progress := func(done: int, total: int) -> void:
+			if bar:
+				bar.max_value = maxf(total, 1)
+				bar.value = minf(done, total)
+		await _scan_charts_full_sync(scan_progress)
+		if bar:
+			bar.visible = false
+		if tip:
+			tip.text = LOADING_TIP_TEXT
+		if overlay:
+			overlay.visible = false
 
 	# === 阶段 A.6：等待 skins/sf/bg 完成 ===
 	# 快速路径：只等 skins/sf/bg（charts 已从缓存恢复）
@@ -828,7 +857,7 @@ func _await_cache_validation(task_id: int, rw: Dictionary, cached_charts: Dictio
 	audio_files_index.clear()
 	_build_charts_index_from_data(cached_charts, chart_tasks)
 
-	# 保存更新后的缓存（SaveChartsCache 只写带 data 的新增/变化条目，轻量投影条目自动跳过不覆盖）
+	# 保存更新后的缓存（SaveChartsCache 只写带 _is_full 标记的新增/变化条目，轻量投影条目自动跳过不覆盖）
 	_save_charts_cache(cached_charts)
 	# 已删除文件夹同步移除 DB 中的 chart（含 chart_runtime + 聚合重算）
 	if ChartDB and ChartDB.IsOpen() and not removed_folders.is_empty():
@@ -857,8 +886,9 @@ func scan_charts() -> void:
 ## 全量扫描 charts 并构建索引 + 保存缓存（公共逻辑）
 ## 内部：list folders → start chunk tasks → await → collect → clear+build index → save cache
 ## 由 scan_charts() 公共 API 和 _scan_all_resources() 全量路径复用
+## progress_cb（可选）：主线程逐帧回调(已扫描数, 总数)，供全量路径显示进度条
 ## 返回：扫描耗时（毫秒），用于调用方日志
-func _scan_charts_full_sync() -> float:
+func _scan_charts_full_sync(progress_cb: Callable = Callable()) -> float:
 	var t_start := Time.get_ticks_usec()
 
 	var all_chart_folders := _list_chart_folder_names()
@@ -871,10 +901,19 @@ func _scan_charts_full_sync() -> float:
 		return 0.0
 
 	var chart_tasks := _start_charts_scan_tasks(all_chart_folders)
+	var total_folders: int = all_chart_folders.size()
 
-	# 主线程轮询 await，保持 UI 响应
+	# 主线程轮询 await，保持 UI 响应；每帧累计已完成片数用于进度
 	while not _all_chart_tasks_completed(chart_tasks):
+		if progress_cb.is_valid():
+			var done: int = 0
+			for t in chart_tasks:
+				if WorkerThreadPool.is_task_completed(t.id):
+					done += int(t.get("count", 0))
+			progress_cb.call(done, total_folders)
 		await get_tree().process_frame
+	if progress_cb.is_valid():
+		progress_cb.call(total_folders, total_folders)
 
 	# wait_for_task_completion 仅做线程 join（瞬时）
 	for t in chart_tasks:
@@ -1077,7 +1116,7 @@ func _start_charts_scan_tasks(all_chart_folders: Array) -> Array:
 			func(): _scan_charts_chunk_worker(chunk, rw),
 			false, "ScanChartsChunk"
 		)
-		chart_tasks.append({"id": tid, "result": rw})
+		chart_tasks.append({"id": tid, "result": rw, "count": chunk.size()})
 	return chart_tasks
 
 ## 检查所有 charts task 是否全部完成
@@ -1317,18 +1356,57 @@ func _load_chart_from_json(json_path: String, chart_id: String, warnings: Array 
 		return {}
 	
 	# Normalize JSON format (merge song/album/author + source* into 3 fields)
+	# 仅在值有修改时写回磁盘（on-disk 仍存完整规范化 JSON，白名单只作用于提取路径）
 	if ChartNormalizer.normalize_chart_json(json):
 		var wf = FileAccess.open(json_path, FileAccess.WRITE)
 		if wf:
 			wf.store_string(JSON.stringify(json, "\t", false))
 			wf.close()
 	
-	return {
-		"id": chart_id,
-		"json_path": json_path,
-		"data": json,
-		"is_complete": false
-	}
+	var flat := _extract_chart_fields(json)
+	flat["id"] = chart_id
+	flat["json_path"] = json_path
+	flat["is_complete"] = false
+	# 标记该 dict 为「需 upsert 进 DB」的全量扫描结果（替代原 data 整块判据）
+	flat["_is_full"] = true
+	return flat
+
+## 从已规范化 chart JSON 提取白名单字段（扁平化到顶层，供内存 / DB 直接消费）。
+## 非白名单键一律忽略（loveCount/avgAccuracy/passCount/failCount/评级分布等实际 JSON 无源）。
+static func _extract_chart_fields(json: Dictionary) -> Dictionary:
+	var flat: Dictionary = {}
+	flat["midi_id"] = str(json.get("_id", ""))
+	flat["name"] = str(json.get("name", ""))
+	flat["description"] = str(json.get("desc", ""))
+	flat["status"] = str(json.get("status", "PENDING"))
+	flat["artist_name"] = str(json.get("artistName", ""))
+	flat["uploader_name"] = str(json.get("uploaderName", ""))
+	flat["uploader_id"] = str(json.get("uploaderId", ""))
+	flat["uploader_avatar_url"] = str(json.get("uploaderAvatarUrl", ""))
+	flat["artist_url"] = str(json.get("artistUrl", ""))
+	flat["coverPath"] = str(json.get("coverPath", ""))
+	flat["coverUrl"] = str(json.get("coverUrl", ""))
+	flat["uploaded_date"] = str(json.get("uploadedDate", ""))
+	flat["approved_date"] = str(json.get("approvedDate", ""))
+	flat["trial_count"] = int(json.get("trialCount", 0))
+	flat["download_count"] = int(json.get("downloadCount", 0))
+	flat["up_count"] = int(json.get("upCount", 0))
+	flat["down_count"] = int(json.get("downCount", 0))
+	flat["hash"] = str(json.get("hash", ""))
+	var fh: String = str(json.get("file_hash", ""))
+	flat["file_hash"] = fh if not fh.is_empty() else str(json.get("hash", ""))
+	# author 已由 ChartNormalizer 归一为字符串
+	var author_val: Variant = json.get("author", "")
+	flat["author_name"] = author_val if author_val is String else ""
+	# song / album 子文档原样保留（RebuildAlbumsSongs / GetChartJson 复用）
+	if json.has("song") and json["song"] is Dictionary:
+		flat["song"] = json["song"]
+	if json.has("album") and json["album"] is Dictionary:
+		flat["album"] = json["album"]
+	# 磁盘 JSON 内嵌的旧运行时配置（仅供 SaveChartsCache 播种 chart_runtime，非持久化字段）
+	if json.has("_runtime") and json["_runtime"] is Dictionary:
+		flat["_seed_runtime"] = json["_runtime"]
+	return flat
 
 ## 扫描音源目录（公共 API，worker 线程扫描）
 ## 在 worker 中扫描用户目录和内置目录，主线程合并到 soundfonts_index

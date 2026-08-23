@@ -95,68 +95,98 @@ public partial class ChartDb : Node
         lock (_lock)
         {
             _oldCachePath = oldCachePath ?? "";
-            try
+            // 最多重试 2 次：首次打开失败若是损坏（非占用），备份主库+清理残留日志后，
+            // 立即用干净库再开一次，避免「文件缺失/损坏 → 本次会话无库」导致后续空数据、无法入场
+            for (int attempt = 0; attempt < 2; attempt++)
             {
-                var dir = System.IO.Path.GetDirectoryName(dbPath);
-                if (!string.IsNullOrEmpty(dir))
-                    System.IO.Directory.CreateDirectory(dir);
-                _db = new LiteDatabase(dbPath);
-                BindCollections();
-                EnsureIndexes();
-
-                // schema 迁移：版本不符 → 重建 charts/albums/songs（chart_runtime 结构未变，保留避免丢配置）
-                var schemaDoc = _meta.FindById("schema");
-                int schema = schemaDoc != null ? (int)schemaDoc["version"].AsInt32 : 0;
-                if (schema != SchemaVersion)
+                try
                 {
-                    GD.Print($"[ChartDb] Schema v{schema} != v{SchemaVersion}, rebuilding...");
-                    _db.DropCollection("charts");
-                    _db.DropCollection("albums");
-                    _db.DropCollection("songs");
+                    var dir = System.IO.Path.GetDirectoryName(dbPath);
+                    if (!string.IsNullOrEmpty(dir))
+                        System.IO.Directory.CreateDirectory(dir);
+                    _db = new LiteDatabase(dbPath);
                     BindCollections();
                     EnsureIndexes();
-                    MigrateFromOldCache();
-                    _meta.Upsert(new BsonDocument { ["_id"] = "schema", ["version"] = SchemaVersion });
+
+                    // schema 迁移：版本不符 → 重建 charts/albums/songs（chart_runtime 结构未变，保留避免丢配置）
+                    var schemaDoc = _meta.FindById("schema");
+                    int schema = schemaDoc != null ? (int)schemaDoc["version"].AsInt32 : 0;
+                    if (schema != SchemaVersion)
+                    {
+                        GD.Print($"[ChartDb] Schema v{schema} != v{SchemaVersion}, rebuilding...");
+                        _db.DropCollection("charts");
+                        _db.DropCollection("albums");
+                        _db.DropCollection("songs");
+                        BindCollections();
+                        EnsureIndexes();
+                        MigrateFromOldCache();
+                        _meta.Upsert(new BsonDocument { ["_id"] = "schema", ["version"] = SchemaVersion });
+                    }
+                    // 一次性：把旧键（file_hash/midi_id）的 chart_runtime 文档重键为 folder_name
+                    MigrateRuntimeKeys();
+                    _isOpen = true;
+                    GD.Print($"[ChartDb] Opened, charts={CountCharts()} albums={CountAlbums()} songs={CountSongs()}");
+                    // 主线程解析 res:// zstd 路径；Opencc 静态构造强制从 BaseDirectory/dicts/ 加载默认词典，
+                    // 因此必须在主线程先把 zstd 就位（安卓从 res:// 抽取）再触碰 Opencc 类型。
+                    // 用 CallDeferred 延迟到下一帧初始化，避开启动主路径卡顿（~0.5s 一次）。
+                    _mainThreadId = System.Environment.CurrentManagedThreadId;
+                    try { _resZstdPath = ProjectSettings.GlobalizePath("res://CSharp/ChartDb/dicts/dictionary_maxlength.zstd"); } catch { }
+                    CallDeferred(nameof(_DeferredInitNormalizer));
+                    return true;
                 }
-                // 一次性：把旧键（file_hash/midi_id）的 chart_runtime 文档重键为 folder_name
-                MigrateRuntimeKeys();
-                _isOpen = true;
-                GD.Print($"[ChartDb] Opened, charts={CountCharts()} albums={CountAlbums()} songs={CountSongs()}");
-                // 主线程解析 res:// zstd 路径；Opencc 静态构造强制从 BaseDirectory/dicts/ 加载默认词典，
-                // 因此必须在主线程先把 zstd 就位（安卓从 res:// 抽取）再触碰 Opencc 类型。
-                // 用 CallDeferred 延迟到下一帧初始化，避开启动主路径卡顿（~0.5s 一次）。
-                _mainThreadId = System.Environment.CurrentManagedThreadId;
-                try { _resZstdPath = ProjectSettings.GlobalizePath("res://CSharp/ChartDb/dicts/dictionary_maxlength.zstd"); } catch { }
-                CallDeferred(nameof(_DeferredInitNormalizer));
-                return true;
-            }
-            catch (Exception e)
-            {
-                GD.PrintErr($"[ChartDb] Open failed: {e.Message}");
-                try { _db?.Dispose(); } catch { }
-                // 区分「占用」与「损坏」，避免误删用户数据（chart_runtime/收藏）：
-                // - 文件被占用（另一实例/杀软，Win32 ERROR_SHARING_VIOLATION = 32）→ 保留文件，
-                //   删除也大概率失败；占用是暂时的，下次启动重试即可。
-                // - 确认为损坏 → 先备份为 charts.ldb.corrupt.bak 再移除，给用户手动恢复留余地。
-                if (!IsSharingViolation(e) && System.IO.File.Exists(dbPath))
+                catch (Exception e)
                 {
-                    try
+                    GD.PrintErr($"[ChartDb] Open failed (attempt {attempt + 1}): {e.Message}");
+                    try { _db?.Dispose(); } catch { }
+                    _db = null;
+                    // 区分「占用」与「损坏」，避免误删用户数据（chart_runtime/收藏）：
+                    // - 文件被占用（另一实例/杀软，Win32 ERROR_SHARING_VIOLATION = 32）→ 保留文件，
+                    //   占用是暂时的，下次启动重试即可。
+                    // - 确认为损坏 → 备份后移除，尝试用干净库重开。
+                    if (IsSharingViolation(e))
                     {
-                        var bakPath = dbPath + ".corrupt.bak";
-                        if (!System.IO.File.Exists(bakPath))
-                            System.IO.File.Move(dbPath, bakPath);
-                        else
-                            System.IO.File.Delete(dbPath);
+                        _isOpen = false;
+                        return false;
                     }
-                    catch (Exception ex)
-                    {
-                        GD.PrintErr($"[ChartDb] Failed to back up corrupt db: {ex.Message}");
-                    }
+                    RemoveCorruptDb(dbPath);
+                    // 清理完毕后继续下一次循环重开干净库
                 }
-                _db = null;
-                _isOpen = false;
-                return false;
             }
+            _isOpen = false;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 损坏库清理：备份主库，并删除伴生的 LiteDB 日志(<name>-log.ldb)。
+    /// 仅删除主库会导致下次打开仍报 "page type must be collection page"（新库遇旧日志回放，页面类型不匹配）。
+    /// </summary>
+    private void RemoveCorruptDb(string dbPath)
+    {
+        try
+        {
+            if (System.IO.File.Exists(dbPath))
+            {
+                var bakPath = dbPath + ".corrupt.bak";
+                if (!System.IO.File.Exists(bakPath))
+                    System.IO.File.Move(dbPath, bakPath);
+                else
+                    System.IO.File.Delete(dbPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr($"[ChartDb] Failed to back up corrupt db: {ex.Message}");
+        }
+        try
+        {
+            var logPath = System.IO.Path.ChangeExtension(dbPath, null) + "-log.ldb";
+            if (System.IO.File.Exists(logPath))
+                System.IO.File.Delete(logPath);
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr($"[ChartDb] Failed to remove stale log file: {ex.Message}");
         }
     }
 
@@ -216,8 +246,8 @@ public partial class ChartDb : Node
     /// <summary>
     /// 批量 upsert（全量扫描 / 后台校验合并结果）。
     /// chartsData: { folder_name: metadata_dict }。
-    /// 只处理带 data 的条目（扫描结果）；轻量投影条目（无 data）跳过，避免覆盖 DB 已拆平数据。
-    /// 顺带从 data._runtime 为从未配置的 chart 播种 chart_runtime（磁盘 JSON 仅兜底，DB 权威）。
+    /// 只处理带 _is_full 标记的条目（扫描结果）；轻量投影条目（无标记）跳过，避免覆盖 DB 已拆平数据。
+    /// 顺带从 _seed_runtime 为从未配置的 chart 播种 chart_runtime（磁盘 JSON 仅兜底，DB 权威）。
     /// </summary>
     public void SaveChartsCache(Godot.Collections.Dictionary chartsData)
     {
@@ -232,7 +262,7 @@ public partial class ChartDb : Node
                     var md = chartsData[key];
                     if (md.VariantType != Godot.Variant.Type.Dictionary) continue;
                     var mdDict = md.AsGodotDictionary();
-                    if (!mdDict.ContainsKey("data")) continue; // 轻量投影跳过
+                    if (!mdDict.ContainsKey("_is_full")) continue; // 轻量投影跳过
                     var doc = MetadataDictToDoc(mdDict);
                     if (doc == null) continue;
 
@@ -240,18 +270,17 @@ public partial class ChartDb : Node
                     var chartKey = ComputeChartKey(doc);
                     if (!string.IsNullOrEmpty(chartKey) && !_runtime.Exists(Query.EQ("_id", chartKey)))
                     {
-                        if (doc.TryGetValue("data", out var dataV) && dataV.IsDocument)
+                        if (doc.TryGetValue("_seed_runtime", out var rtV) && rtV.IsDocument)
                         {
-                            var data = dataV.AsDocument;
-                            if (data.TryGetValue("_runtime", out var rtV) && rtV.IsDocument)
-                            {
-                                var rt = rtV.AsDocument;
-                                rt["_id"] = chartKey;
-                                _runtime.Upsert(rt);
-                            }
+                            var rt = rtV.AsDocument;
+                            rt["_id"] = chartKey;
+                            _runtime.Upsert(rt);
                         }
                     }
+                    // 防御：清残留旧 data 大块（迁移期旧缓存）与临时标记/播种字段
                     doc.Remove("data");
+                    doc.Remove("_seed_runtime");
+                    doc.Remove("_is_full");
                     _charts.Upsert(doc);
                 }
                 _db.Commit();
@@ -514,26 +543,66 @@ public partial class ChartDb : Node
         if (!IsOpen() || string.IsNullOrEmpty(albumId)) return arr;
         lock (_lock)
         {
-            var songs = new Dictionary<string, Godot.Collections.Dictionary>();
+            var items = new Dictionary<string, Godot.Collections.Dictionary>();
+            var tracks = new Dictionary<string, long>();
+            var dates = new Dictionary<string, string>();
             foreach (var d in _charts.Find(Query.EQ("album_id", albumId)).ToList())
             {
                 var sid = BsonConvert.GetStr(d, "song_id");
                 if (sid.Length == 0) continue;
-                if (!songs.TryGetValue(sid, out var item))
+
+                // track：取 chart.song.track，缺省 0（仅首个遇到的谱面记一次即可）
+                if (!items.ContainsKey(sid))
                 {
-                    var name = BsonConvert.GetStr(d, "song_name");
+                    long track = 0;
                     if (d.TryGetValue("song", out var sv) && sv.IsDocument)
-                        name = BsonConvert.GetStr(sv.AsDocument, "name");
-                    item = new Godot.Collections.Dictionary();
+                    {
+                        var s = sv.AsDocument;
+                        if (s.TryGetValue("track", out var tv) && tv.IsInt64)
+                            track = tv.AsInt64;
+                    }
+                    tracks[sid] = track;
+
+                    var name = BsonConvert.GetStr(d, "song_name");
+                    if (d.TryGetValue("song", out var sv2) && sv2.IsDocument)
+                        name = BsonConvert.GetStr(sv2.AsDocument, "name");
+                    var item = new Godot.Collections.Dictionary();
                     item["id"] = sid;
                     item["name"] = name;
                     item["midi_count"] = (long)0;
-                    songs[sid] = item;
+                    items[sid] = item;
+                    dates[sid] = BsonConvert.GetStr(d, "uploaded_date");
                 }
-                item["midi_count"] = (long)item["midi_count"] + 1;
+                else
+                {
+                    // 该 song 下属谱面的最早上传日期（track=0 组按从旧到新排序用）
+                    var cd = BsonConvert.GetStr(d, "uploaded_date");
+                    if (string.CompareOrdinal(cd, dates[sid]) < 0)
+                        dates[sid] = cd;
+                }
+
+                items[sid]["midi_count"] = (long)items[sid]["midi_count"] + 1;
             }
-            foreach (var kv in songs)
-                arr.Add(kv.Value);
+
+            // 排序：非 0 轨道按 track 升序在前；track=0（未分轨序号）按最早 uploaded_date 从旧到新排最后
+            var list = new List<string>(items.Keys);
+            list.Sort((a, b) =>
+            {
+                var ta = tracks[a];
+                var tb = tracks[b];
+                int zeroA = ta == 0 ? 1 : 0;
+                int zeroB = tb == 0 ? 1 : 0;
+                int c = zeroA.CompareTo(zeroB);
+                if (c != 0) return c;
+                if (zeroA == 0)
+                {
+                    c = ta.CompareTo(tb);
+                    if (c != 0) return c;
+                }
+                return string.CompareOrdinal(dates[a], dates[b]);
+            });
+            foreach (var sid in list)
+                arr.Add(items[sid]);
             return arr;
         }
     }
@@ -1185,8 +1254,7 @@ public partial class ChartDb : Node
     }
 
     /// <summary>
-    /// 从 chart 文档的 data 子文档拆平可排序/搜索/分组的字段到顶层。
-    /// 幂等：无 data（已拆平）时补齐缺省字段，不覆盖现有值。
+    /// 补齐 chart 文档顶层的拆平字段（扫描 dict 已白名单拆平，此处仅补缺省，不覆盖现有值）。
     /// song/album 子文档原样保留（RebuildAlbumsSongs 与 GetChartJson 复用）。
     /// </summary>
     private static void FlattenDoc(BsonDocument doc)
@@ -1195,77 +1263,27 @@ public partial class ChartDb : Node
         var idx = fn.IndexOf('_');
         doc["folder_hash"] = idx >= 0 ? fn.Substring(0, idx) : fn;
 
-        BsonDocument d = null;
-        if (doc.TryGetValue("data", out var dataV) && dataV.IsDocument)
-            d = dataV.AsDocument;
-
-        if (d != null)
-        {
-            doc["midi_id"] = BsonConvert.GetStr(d, "_id");
-            var hash = BsonConvert.GetStr(d, "hash");
-            var fileHash = BsonConvert.GetStr(d, "file_hash");
-            doc["hash"] = hash;
-            doc["file_hash"] = string.IsNullOrEmpty(fileHash) ? hash : fileHash;
-            doc["name"] = BsonConvert.GetStr(d, "name");
-            doc["description"] = BsonConvert.GetStr(d, "desc");
-            doc["status"] = BsonConvert.GetStr(d, "status", "PENDING");
-            doc["artist_name"] = BsonConvert.GetStr(d, "artistName");
-            doc["uploader_name"] = BsonConvert.GetStr(d, "uploaderName");
-
-            var author = d.TryGetValue("author", out var authorV) ? authorV : BsonValue.Null;
-            if (author.IsString) doc["author_name"] = author.AsString;
-            else if (author.IsDocument) doc["author_name"] = BsonConvert.GetStr(author.AsDocument, "name");
-            else doc["author_name"] = "";
-
-            doc["uploaded_date"] = BsonConvert.GetStr(d, "uploadedDate");
-            doc["trial_count"] = BsonConvert.GetLong(d, "trialCount");
-            doc["download_count"] = BsonConvert.GetLong(d, "downloadCount");
-            doc["love_count"] = BsonConvert.GetLong(d, "loveCount");
-            doc["up_count"] = BsonConvert.GetLong(d, "upCount");
-            doc["down_count"] = BsonConvert.GetLong(d, "downCount");
-            doc["pass_count"] = BsonConvert.GetLong(d, "passCount");
-            doc["fail_count"] = BsonConvert.GetLong(d, "failCount");
-            doc["avg_accuracy"] = BsonConvert.GetDouble(d, "avgAccuracy");
-            doc["s_count"] = BsonConvert.GetLong(d, "sCount");
-            doc["a_count"] = BsonConvert.GetLong(d, "aCount");
-            doc["b_count"] = BsonConvert.GetLong(d, "bCount");
-            doc["c_count"] = BsonConvert.GetLong(d, "cCount");
-            doc["d_count"] = BsonConvert.GetLong(d, "dCount");
-            doc["f_count"] = BsonConvert.GetLong(d, "fCount");
-
-            if (d.TryGetValue("song", out var songV) && songV.IsDocument)
-                doc["song"] = songV;
-            if (d.TryGetValue("album", out var albumV) && albumV.IsDocument)
-                doc["album"] = albumV;
-        }
-        else
-        {
-            // 已拆平文档：补齐缺省字段（不覆盖现有值）
-            if (!doc.ContainsKey("midi_id")) doc["midi_id"] = "";
-            if (!doc.ContainsKey("file_hash")) doc["file_hash"] = "";
-            if (!doc.ContainsKey("hash")) doc["hash"] = "";
-            if (!doc.ContainsKey("name")) doc["name"] = "";
-            if (!doc.ContainsKey("description")) doc["description"] = "";
-            if (!doc.ContainsKey("status")) doc["status"] = "PENDING";
-            if (!doc.ContainsKey("artist_name")) doc["artist_name"] = "";
-            if (!doc.ContainsKey("uploader_name")) doc["uploader_name"] = "";
-            if (!doc.ContainsKey("author_name")) doc["author_name"] = "";
-            if (!doc.ContainsKey("uploaded_date")) doc["uploaded_date"] = "";
-            if (!doc.ContainsKey("trial_count")) doc["trial_count"] = (long)0;
-            if (!doc.ContainsKey("download_count")) doc["download_count"] = (long)0;
-            if (!doc.ContainsKey("love_count")) doc["love_count"] = (long)0;
-            if (!doc.ContainsKey("up_count")) doc["up_count"] = (long)0;
-            if (!doc.ContainsKey("down_count")) doc["down_count"] = (long)0;
-            if (!doc.ContainsKey("pass_count")) doc["pass_count"] = (long)0;
-            if (!doc.ContainsKey("fail_count")) doc["fail_count"] = (long)0;
-            if (!doc.ContainsKey("avg_accuracy")) doc["avg_accuracy"] = 0.0;
-            if (!doc.ContainsKey("s_count")) doc["s_count"] = (long)0;
-            if (!doc.ContainsKey("a_count")) doc["a_count"] = (long)0;
-            if (!doc.ContainsKey("b_count")) doc["b_count"] = (long)0;
-            if (!doc.ContainsKey("c_count")) doc["c_count"] = (long)0;
-            if (!doc.ContainsKey("d_count")) doc["d_count"] = (long)0;
-            if (!doc.ContainsKey("f_count")) doc["f_count"] = (long)0;
-        }
+        // 已拆平文档：补齐缺省字段（不覆盖现有值）
+        if (!doc.ContainsKey("midi_id")) doc["midi_id"] = "";
+        if (!doc.ContainsKey("file_hash")) doc["file_hash"] = "";
+        if (!doc.ContainsKey("hash")) doc["hash"] = "";
+        if (!doc.ContainsKey("name")) doc["name"] = "";
+        if (!doc.ContainsKey("description")) doc["description"] = "";
+        if (!doc.ContainsKey("status")) doc["status"] = "PENDING";
+        if (!doc.ContainsKey("artist_name")) doc["artist_name"] = "";
+        if (!doc.ContainsKey("artist_url")) doc["artist_url"] = "";
+        if (!doc.ContainsKey("uploader_name")) doc["uploader_name"] = "";
+        if (!doc.ContainsKey("uploader_id")) doc["uploader_id"] = "";
+        if (!doc.ContainsKey("uploader_avatar_url")) doc["uploader_avatar_url"] = "";
+        if (!doc.ContainsKey("author_name")) doc["author_name"] = "";
+        if (!doc.ContainsKey("coverUrl")) doc["coverUrl"] = "";
+        if (!doc.ContainsKey("coverPath")) doc["coverPath"] = "";
+        if (!doc.ContainsKey("uploaded_date")) doc["uploaded_date"] = "";
+        if (!doc.ContainsKey("approved_date")) doc["approved_date"] = "";
+        if (!doc.ContainsKey("trial_count")) doc["trial_count"] = (long)0;
+        if (!doc.ContainsKey("download_count")) doc["download_count"] = (long)0;
+        if (!doc.ContainsKey("up_count")) doc["up_count"] = (long)0;
+        if (!doc.ContainsKey("down_count")) doc["down_count"] = (long)0;
 
         // 派生分组键：优先子文档，缺省保留现有值（孤儿由 RebuildAlbumsSongs 改写为 __unknown）
         string songId = BsonConvert.GetStr(doc, "song_id");
