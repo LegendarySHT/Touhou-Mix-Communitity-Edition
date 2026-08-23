@@ -254,13 +254,14 @@ func _show_favor_panel() -> void:
 		tween1.tween_property(current_page, "modulate:a", 0.0, 0.2)
 	await tween1.finished
 	tab_btn.visible = false
+	# 切换到 FavorPanel 标签页，使其成为当前可见标签后，再执行下方滑入 + 淡入
+	tab_container.current_tab = 3
 	# 第二阶段：FavorPanel 从下方滑入 + 淡入
 	var tween2 := AniMGR.create_managed_tween(self).set_parallel(true)
 	tween2.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 	tween2.tween_property(favor_panel, "modulate:a", 1.0, 0.3)
 	tween2.tween_property(favor_panel, "offset_transform_position:y", 0, 0.4)
 	await tween2.finished
-	tab_container.current_tab = 3
 	_is_animating = false
 
 
@@ -284,6 +285,10 @@ func _hide_favor_panel(exiting_page: bool = false) -> void:
 		favor_panel.modulate.a = 0.0
 		favor_panel.offset_transform_position.y = 800
 	tab_container.current_tab = _prev_tab_idx
+	# 显式隐藏并复位 FavorPanel：清掉下移偏移与透明度，避免残留 800 偏移 + 可见状态卡在下方
+	favor_panel.visible = false
+	favor_panel.offset_transform_position.y = 0
+	favor_panel.modulate.a = 1.0
 	# 第二阶段：TabBtn 高度恢复 + 淡入 + 目标标签页淡入
 	tab_btn.visible = true
 	tab_btn.modulate.a = 1.0 if exiting_page else 0.0
