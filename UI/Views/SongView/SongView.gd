@@ -14,6 +14,9 @@ var current_album_id: String = ""
 ## （_load_songs 已创建列表项，lambda 再重建会导致封面加载被中断重发）
 var _load_songs_just_called: bool = false
 
+## 从 MidiView 返回时待回选的歌曲 id（列表刷新完成后自动选中并滚动定位）
+var _pending_restore_song_id: String = ""
+
 ## 当前就地搜索词（非空时歌曲列表过滤）
 var _search_query: String = ""
 
@@ -42,11 +45,16 @@ func _ready() -> void:
 	# 回到 SongView 时自动刷新，确保删除等操作后数据最新
 	# 但 _load_songs 已处理首次进入和 album_selected 触发的场景，
 	# 需跳过冗余重建避免封面加载被中断
-	state_manager.state_changed.connect(func(_old, new):
+	state_manager.state_changed.connect(func(old, new):
 		if new == UIStateManager.UIState.SONG_VIEW and not current_album_id.is_empty():
 			if _load_songs_just_called:
 				_load_songs_just_called = false
 				return  # _load_songs 已创建列表项,跳过冗余重建
+			# 从 MidiView 返回：记录上次选中的歌曲，待列表刷新后自动选中并滚动定位
+			if old == UIStateManager.UIState.MIDI_VIEW:
+				_pending_restore_song_id = NavigationState.get_song_id()
+				# 清除持久化的 song/midi 选中（仅保留 album），避免下次启动误恢复到 MidiView
+				NavigationState.save(current_album_id, "", "")
 			# 进入歌曲视图：应用当前共享搜索词（跨视图就地筛选持久化，仅 SORTED_VIEW 清空）
 			_search_query = EvtBus.current_search_query
 			call_deferred("_refresh_from_data")
@@ -158,7 +166,13 @@ func _refresh_from_data() -> void:
 	_refresh_display()
 	_connect_head_and_tail_next_frame()
 	_update_ss_count()
+	# 先把容器高度按歌曲数撑开，确保 _restore_selected_song 等布局稳定时项位置已就绪
 	container.custom_minimum_size.y = (140 + 29) * (current_songs.size() + 1)
+	# 从 MidiView 返回：自动选中上次选中的歌曲并滚动定位
+	if not _pending_restore_song_id.is_empty():
+		var sid := _pending_restore_song_id
+		_pending_restore_song_id = ""
+		_restore_selected_song(sid)
 	if current_songs.is_empty():
 		if ChartDB.GetAlbum(current_album_id).is_empty():
 			_deferred_go_back()
@@ -199,3 +213,40 @@ func on_item_button_confirmed(index: int):
 	# 切换到MIDI视图
 	state_manager.change_state(state_manager.UIState.MIDI_VIEW)
 	event_bus.emit_song_selected(String(song.get("id", "")))
+
+## 从 MidiView 返回时自动选中上次选中的歌曲
+## 找到索引后先选中，等 Song_List 入场动画播完（布局已稳定）再平滑滚动到视口中部
+func _restore_selected_song(song_id: String) -> void:
+	if list_items.is_empty() or song_id.is_empty():
+		return
+	var idx := -1
+	for i in list_items.size():
+		var it: Control = list_items[i]
+		if is_instance_valid(it) and String(it.item_id) == song_id:
+			idx = i
+			break
+	if idx < 0:
+		GLogger.info("RestoreSong: id=%s not in list" % song_id, "SongView")
+		return
+	# 等 Song_List 入场动画播完（此时列表布局已稳定），避免过早定位把目标算成 0
+	await AniMGR.scene_transition_fin
+	await get_tree().process_frame
+	select_item(idx)
+	if not is_inside_tree() or idx >= list_items.size():
+		return
+	_center_snap_to(idx)
+
+## 平滑滚动到指定项，使其顶部对齐到本视图视口的中部高度
+## 项的局部 position.y 即内容坐标（与当前滚动位置无关），目标滚动值 = 内容坐标 - 视口一半
+func _center_snap_to(index: int) -> void:
+	var item: Control = container.get_child(index)
+	if item == null:
+		return
+	var center := maxf((size.y - item.size.y) / 2.0, 0.0)
+	var maxv := int(get_v_scroll_bar().max_value)
+	var target_scroll := clampi(int(item.position.y - center), 0, maxv)
+	GLogger.info("RestoreSong: target=%d max=%d" % [target_scroll, maxv], "SongView")
+	# 平滑吸附动画：直接补间 scroll_vertical 到位
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "scroll_vertical", float(target_scroll), 0.3)
