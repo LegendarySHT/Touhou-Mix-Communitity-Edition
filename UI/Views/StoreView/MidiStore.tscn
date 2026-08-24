@@ -4,8 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="3_u7c36"]
 [ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="4_6ial6"]
 [ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="4_t7rtt"]
-[ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="5_uoxjv"]
-[ext_resource type="Texture2D" uid="uid://fdoknbfhio7h" path="res://Resources/icon/Sort/Ordering/Ascent.png" id="6_f6x17"]
+[ext_resource type="Texture2D" uid="uid://68fry5jr6m8l" path="res://Resources/icon/icon_set2.png" id="5_7hdap"]
 
 [sub_resource type="Gradient" id="Gradient_t7rtt"]
 interpolation_mode = 2
@@ -33,6 +32,14 @@ texture = SubResource("GradientTexture2D_aexbj")
 [sub_resource type="AtlasTexture" id="AtlasTexture_hhcpw"]
 atlas = ExtResource("4_t7rtt")
 region = Rect2(320, 240, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5tuhn"]
+atlas = ExtResource("5_7hdap")
+region = Rect2(80, 240, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t7rtt"]
+atlas = ExtResource("5_7hdap")
+region = Rect2(0, 240, 80, 80)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_aexbj"]
 bg_color = Color(0.07058824, 0.49411765, 1, 1)
@@ -225,10 +232,10 @@ self_modulate = Color(1, 1, 1, 0.768627)
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 toggle_mode = true
-texture_normal = ExtResource("5_uoxjv")
-texture_pressed = ExtResource("6_f6x17")
+texture_normal = SubResource("AtlasTexture_5tuhn")
+texture_pressed = SubResource("AtlasTexture_t7rtt")
 ignore_texture_size = true
-stretch_mode = 5
+stretch_mode = 3
 
 [node name="Bottom" type="HBoxContainer" parent="." unique_id=518013240]
 layout_mode = 1

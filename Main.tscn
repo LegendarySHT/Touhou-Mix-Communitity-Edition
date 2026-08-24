@@ -9,9 +9,6 @@
 [ext_resource type="Script" uid="uid://cka36xm3jh6b" path="res://UI/Views/SongView/SongView.gd" id="8_w3rk5"]
 [ext_resource type="Script" uid="uid://cohp1v184ht7q" path="res://UI/Components/ShortCutMenu/shortcut_menu.gd" id="11_oye8v"]
 [ext_resource type="Texture2D" uid="uid://68fry5jr6m8l" path="res://Resources/icon/icon_set2.png" id="13_bg4s2"]
-[ext_resource type="Texture2D" uid="uid://b4rxi3wio8sjy" path="res://Resources/icon/Sort/Status/All.png" id="14_3b0ty"]
-[ext_resource type="Texture2D" uid="uid://c8twb3tyhwm1t" path="res://Resources/icon/Sort/Data/Played.png" id="14_sph85"]
-[ext_resource type="Texture2D" uid="uid://bldrwdrnf53ip" path="res://Resources/icon/Sort/Ordering/Descent.png" id="16_vi5kq"]
 [ext_resource type="PackedScene" uid="uid://cmg2kkhga3yj5" path="res://UI/Views/AlbumView/albumNode.tscn" id="17_5mvff"]
 [ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="17_xrxkg"]
 [ext_resource type="PackedScene" uid="uid://xgcfhg1x2v6p" path="res://UI/Components/ShortCutMenu/favorListItem.tscn" id="20_devvj"]
@@ -410,6 +407,18 @@ region = Rect2(320, 240, 80, 80)
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_2xvos"]
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_u2pgb"]
+atlas = ExtResource("13_bg4s2")
+region = Rect2(0, 160, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jttwt"]
+atlas = ExtResource("13_bg4s2")
+region = Rect2(0, 320, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_4ycmv"]
+atlas = ExtResource("13_bg4s2")
+region = Rect2(0, 240, 80, 80)
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_40n85"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_5h6qm"]
@@ -721,7 +730,7 @@ focus_next = NodePath("../../../../../Btns/FavorList")
 theme_override_styles/normal = SubResource("StyleBoxEmpty_iygje")
 theme_override_styles/pressed = SubResource("StyleBoxEmpty_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxEmpty_2xvos")
-icon = ExtResource("14_3b0ty")
+icon = SubResource("AtlasTexture_u2pgb")
 icon_alignment = 1
 expand_icon = true
 
@@ -734,7 +743,7 @@ focus_next = NodePath("../../../../../Btns/FavorList")
 theme_override_styles/normal = SubResource("StyleBoxEmpty_iygje")
 theme_override_styles/pressed = SubResource("StyleBoxEmpty_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxEmpty_2xvos")
-icon = ExtResource("14_sph85")
+icon = SubResource("AtlasTexture_jttwt")
 icon_alignment = 1
 expand_icon = true
 
@@ -747,7 +756,7 @@ focus_next = NodePath("../../../../../Btns/FavorList")
 theme_override_styles/normal = SubResource("StyleBoxEmpty_iygje")
 theme_override_styles/pressed = SubResource("StyleBoxEmpty_j02sm")
 theme_override_styles/hover = SubResource("StyleBoxEmpty_2xvos")
-icon = ExtResource("16_vi5kq")
+icon = SubResource("AtlasTexture_4ycmv")
 icon_alignment = 1
 expand_icon = true
 
@@ -1224,7 +1233,8 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 20.0
-offset_right = -20.0
+offset_right = 830.0
+offset_bottom = 600.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_3y6u5")
@@ -1232,8 +1242,8 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_3y6u5")
 [node name="TabC" parent="PopupWindow" unique_id=1542807723 instance=ExtResource("28_hri7i")]
 offset_left = 20.0
 offset_top = 0.0
-offset_right = -20.0
-offset_bottom = 0.0
+offset_right = 830.0
+offset_bottom = 600.0
 offset_transform_enabled = true
 
 [connection signal="text_submitted" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SearchBox/TextEdit" to="skew/C/ShortCutMenu" method="_on_search_query"]

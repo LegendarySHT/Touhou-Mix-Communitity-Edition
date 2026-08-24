@@ -132,54 +132,72 @@ func collapse_panel() -> void:
 		favor_list_button.button_pressed = false
 
 # 筛选按钮部分
-var sortByStatus: SortEngine.SortStatField = 0 as SortEngine.SortStatField
-var sortByData: SortEngine.SortDataField = 0 as SortEngine.SortDataField
-var sortDirection: SortEngine.SortDirection = 0 as SortEngine.SortDirection
+var sortByStatus: SortEngine.SortStatField = SortEngine.SortStatField.ALL
+var sortByData: SortEngine.SortDataField = SortEngine.SortDataField.DOWNLOAD_COUNT
+var sortDirection: SortEngine.SortDirection = SortEngine.SortDirection.ASCENDING
 
 @onready var sort_btns = $Panel/Page/SortPage/SortButton
 
-var _sort_stat_icon_map = {
-	SortEngine.SortStatField.ALL: "res://Resources/icon/Sort/Status/All.png",
-	SortEngine.SortStatField.PENDING: "res://Resources/icon/Sort/Status/pending.png",
-	SortEngine.SortStatField.APPROVED: "res://Resources/icon/Sort/Status/Approved.png",
-	SortEngine.SortStatField.INCLUDED: "res://Resources/icon/Sort/Status/Included.png",
-	SortEngine.SortStatField.DEAD: "res://Resources/icon/Sort/Status/Dead.png",
+# icon_set2.png 各筛选图标 region（80x80）：第三行状态 / 第四行升降序 / 第五行数据
+const _STATUS_REGION := {
+	SortEngine.SortStatField.ALL: Rect2(0, 160, 80, 80),
+	SortEngine.SortStatField.PENDING: Rect2(80, 160, 80, 80),
+	SortEngine.SortStatField.APPROVED: Rect2(160, 160, 80, 80),
+	SortEngine.SortStatField.INCLUDED: Rect2(240, 160, 80, 80),
+	SortEngine.SortStatField.DEAD: Rect2(320, 160, 80, 80),
 }
+const _ASC_REGION := Rect2(0, 240, 80, 80)
+const _DESC_REGION := Rect2(80, 240, 80, 80)
+const _DATA_REGION := {
+	SortEngine.SortDataField.DOWNLOAD_COUNT: Rect2(0, 320, 80, 80),
+	SortEngine.SortDataField.TRIAL_COUNT: Rect2(80, 320, 80, 80),
+	SortEngine.SortDataField.UP_COUNT: Rect2(160, 320, 80, 80),
+	SortEngine.SortDataField.UPLOADED_DATE: Rect2(240, 320, 80, 80),
+}
+# 数据可切换字段顺序（按第五行图标顺序，已移除收藏/默认排序）
+var _data_fields: Array = [
+	SortEngine.SortDataField.DOWNLOAD_COUNT,
+	SortEngine.SortDataField.TRIAL_COUNT,
+	SortEngine.SortDataField.UP_COUNT,
+	SortEngine.SortDataField.UPLOADED_DATE,
+]
+
 func _on_status_pressed() -> void:
-	# Midi状态筛选
+	# 未进入 SortedMidiView：本此点击仅进入视图并应用当前筛选状态，不切换字段
+	if ui.current_state != ui.UIState.SORTED_VIEW:
+		se.set_sort_mode(sortByStatus, sortByData, sortDirection)
+		ui.change_state(ui.UIState.SORTED_VIEW)
+		return
+	# 已进入：Midi状态循环切换（第三行图标）
 	sortByStatus=(sortByStatus+1)%5 as SortEngine.SortStatField
-
-	sort_btns.get_node("Status").icon=load(_sort_stat_icon_map[sortByStatus])
-	# 切换状态时保留当前字段/方向选择（否则 set_sort_mode 默认参数会把排序字段重置回默认）
+	(sort_btns.get_node("Status").icon as AtlasTexture).region = _STATUS_REGION[sortByStatus]
 	se.set_sort_mode(sortByStatus, sortByData, sortDirection)
 
-	if ui.current_state!=ui.UIState.SORTED_VIEW:
-		ui.change_state(ui.UIState.SORTED_VIEW)
-
-# 数据筛选
-var _sort_data_icon_map = {
-	SortEngine.SortDataField.DEFAULT: "res://Resources/icon/Sort/Status/All.png",
-	SortEngine.SortDataField.DOWNLOAD_COUNT: "res://Resources/icon/Sort/Data/Download.png",
-	SortEngine.SortDataField.LOVE_COUNT: "res://Resources/icon/Sort/Data/Favor.png",
-	SortEngine.SortDataField.UP_COUNT: "res://Resources/icon/Sort/Data/Up.png",
-	SortEngine.SortDataField.TRIAL_COUNT: "res://Resources/icon/Sort/Data/Played.png",
-	SortEngine.SortDataField.UPLOADED_DATE: "res://Resources/icon/Sort/Data/CreateTime.png",
-}
+# 数据筛选（第五行图标循环）
 func _on_data_pressed() -> void:
-	sortByData = (sortByData + 1) % 6 as SortEngine.SortDataField
-
-	sort_btns.get_node("Data").icon=load(_sort_data_icon_map[sortByData])
-	se.set_sort_mode(sortByStatus, sortByData, sortDirection)
-	if ui.current_state!=ui.UIState.SORTED_VIEW:
+	# 未进入 SortedMidiView：本此点击仅进入视图并应用当前筛选状态，不切换字段
+	if ui.current_state != ui.UIState.SORTED_VIEW:
+		se.set_sort_mode(sortByStatus, sortByData, sortDirection)
 		ui.change_state(ui.UIState.SORTED_VIEW)
+		return
+	# 已进入：在当前可用字段内循环
+	var cur := _data_fields.find(int(sortByData))
+	var next := (cur + 1) % _data_fields.size() if cur >= 0 else 0
+	sortByData = _data_fields[next] as SortEngine.SortDataField
+
+	(sort_btns.get_node("Data").icon as AtlasTexture).region = _DATA_REGION[sortByData]
+	se.set_sort_mode(sortByStatus, sortByData, sortDirection)
 
 func _on_ordering_pressed() -> void:
-	sortDirection = (sortDirection + 1) % 2 as SortEngine.SortDirection
-	sort_btns.get_node("Ordering").icon=load("res://Resources/icon/Sort/Ordering/Ascent.png" if sortDirection == SortEngine.SortDirection.ASCENDING else "res://Resources/icon/Sort/Ordering/Descent.png")
-	se.set_sort_mode(sortByStatus, sortByData, sortDirection)
-
-	if ui.current_state!=ui.UIState.SORTED_VIEW:
+	# 未进入 SortedMidiView：本此点击仅进入视图并应用当前筛选状态，不切换字段
+	if ui.current_state != ui.UIState.SORTED_VIEW:
+		se.set_sort_mode(sortByStatus, sortByData, sortDirection)
 		ui.change_state(ui.UIState.SORTED_VIEW)
+		return
+	# 已进入：升序/降序循环切换（第四行图标）
+	sortDirection = (sortDirection + 1) % 2 as SortEngine.SortDirection
+	(sort_btns.get_node("Ordering").icon as AtlasTexture).region = _ASC_REGION if sortDirection == SortEngine.SortDirection.ASCENDING else _DESC_REGION
+	se.set_sort_mode(sortByStatus, sortByData, sortDirection)
 
 
 func _on_search_query(query: String = "") -> void:
