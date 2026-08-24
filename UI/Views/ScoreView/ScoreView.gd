@@ -462,7 +462,9 @@ func _do_upload_score() -> void:
 		_show_level_panel_on_upload_success()
 	elif result.get("skipped", false):
 		GLogger.info("Score upload skipped: chart not found on server (midi=%s)" % midi.file_hash, "ScoreView")
-		_hide_upload_state()
+		# 谱面不在服务端收录范围，属于正常不收录，但仍给出提示避免手动上传时无声反馈
+		upload_state.text = "成绩上传失败：服务端未收录该谱面"
+		retry_btn.visible = false
 	else:
 		var err := str(result.get("error", "上传异常"))
 		if err == "not_logged_in":
