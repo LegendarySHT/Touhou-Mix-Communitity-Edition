@@ -5,6 +5,20 @@
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_jdrqc"]
 [ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="4_u2pgb"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pxpjj"]
+draw_center = false
+border_width_top = 50
+border_width_bottom = 50
+border_color = Color(0, 0, 0, 0.53333336)
+border_blend = true
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u2pgb"]
+draw_center = false
+border_width_top = 50
+border_width_bottom = 50
+border_color = Color(0, 0, 0, 0.46666667)
+border_blend = true
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yxlt8"]
 draw_center = false
 border_width_left = 5
@@ -25,13 +39,17 @@ offset_bottom = 8.0
 grow_vertical = 2
 size_flags_horizontal = 3
 mouse_filter = 1
+theme_override_styles/normal = SubResource("StyleBoxFlat_pxpjj")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_pxpjj")
+theme_override_styles/hover = SubResource("StyleBoxFlat_u2pgb")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_pxpjj")
 theme_override_styles/focus = SubResource("StyleBoxFlat_yxlt8")
 toggle_mode = true
-flat = true
 script = ExtResource("1_t5w3i")
 metadata/index = 0
 
 [node name="cover" type="TextureRect" parent="." unique_id=1008069035]
+show_behind_parent = true
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 1
 anchors_preset = 15
@@ -102,3 +120,16 @@ theme_override_constants/shadow_outline_size = 5
 theme_override_font_sizes/font_size = 30
 text = "Pending"
 horizontal_alignment = 2
+
+[node name="UploadInfo" type="Label" parent="." unique_id=1065861902]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 1
+anchors_preset = -1
+offset_left = 19.0
+offset_top = 22.0
+offset_right = 59.0
+offset_bottom = 62.0
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_outline_size = 2
+theme_override_font_sizes/font_size = 20
+text = "2026-01-01 ● uploader"

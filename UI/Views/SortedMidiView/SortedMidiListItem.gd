@@ -37,12 +37,12 @@ func _ready() -> void:
 ## 新建节点 _cover_loaded=false 无需 switch_cover_data（避免冗余操作）
 ## 注:新建项若 path 暂不可用,start_cover_load 直接 return,由列表 trigger_cover_chain 统一重试
 func _refresh_display() -> void:
-	# 显示MIDI信息
-	get_node("Data").text = "%d %d %d %d" % [
+	# 显示MIDI信息：下载/游玩/赞/踩，数字右对齐留六位
+	get_node("Data").text = "下载 %6d | 游玩 %6d | 赞 %6d | 踩 %6d" % [
 		item_dict.get("download_count", 0),
 		item_dict.get("trial_count", 0),
 		item_dict.get("up_count", 0),
-		item_dict.get("love_count", 0)]
+		item_dict.get("down_count", 0)]
 	status_label.text = String(item_dict.get("status", ""))
 	midi_name_label.text = String(item_dict.get("name", "")).strip_edges()
 	var artist := String(item_dict.get("artist_name", ""))

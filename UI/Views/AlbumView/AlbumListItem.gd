@@ -6,6 +6,7 @@ extends CoverListItemBase
 
 ## 引用节点路径
 @onready var album_name_label: Label = $AlbumName
+@onready var abbr_label: Label = $Abbr
 @onready var line: Control = $Line
 @onready var song_count_label: Label = $SongCount
 # cover_texture 继承自 CoverListItemBase，在 _ready() 中赋值
@@ -67,6 +68,13 @@ func _refresh_labels() -> void:
 		push_error("AlbumListItem: Missing album data")
 		return
 	album_name_label.set_scroll_text(" %s" % String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown")
+	# Abbr：专辑有 abbr 字段则显示，否则隐藏
+	var abbr := String(item_dict.get("abbr", ""))
+	if abbr.is_empty():
+		abbr_label.visible = false
+	else:
+		abbr_label.visible = true
+		abbr_label.text = abbr
 	song_count_label.text = "%d" % item_dict.get("song_count", 0)
 
 ## 复用刷新：重置展开/选中动画态 + 更新显示 + 重新加载封面
@@ -94,12 +102,14 @@ func _refresh_display() -> void:
 		custom_minimum_size = Vector2(950, 400)
 		album_name_label.add_theme_font_size_override("font_size", 45)
 		line.self_modulate.a = 1.0
+		abbr_label.offset_transform_scale = Vector2.ONE * 1.5
 		button.set_pressed_no_signal(true)
 		is_selected = true
 	else:
 		custom_minimum_size = Vector2(600, 150)
 		album_name_label.add_theme_font_size_override("font_size", 25)
 		line.self_modulate.a = 0.0
+		abbr_label.offset_transform_scale = Vector2.ONE
 		button.set_pressed_no_signal(false)
 		is_selected = false
 
@@ -140,6 +150,8 @@ func on_item_button_toggled(toggled_on: bool) -> void:
 	expand_tween.tween_property(self,"custom_minimum_size",Vector2(600 + expa*350, 150 + 250*expa),0.15)
 	expand_tween.tween_property(album_name_label,"theme_override_font_sizes/font_size",25 + 20*expa,0.15)
 	expand_tween.tween_property(line, "self_modulate:a", float(expa), 0.15)
+	# abbr 标签：展开放大到 1.5，收起还原 1
+	expand_tween.tween_property(abbr_label, "offset_transform_scale", Vector2.ONE * (1.0 + 0.5 * expa), 0.15)
 
 	if toggled_on and parent_node:
 		parent_node.selected_item = item_index

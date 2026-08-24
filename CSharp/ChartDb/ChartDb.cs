@@ -687,6 +687,7 @@ public partial class ChartDb : Node
         var item = new Godot.Collections.Dictionary();
         item["id"] = d.TryGetValue("_id", out var idV) && idV.IsString ? idV.AsString : "";
         item["name"] = BsonConvert.GetStr(d, "name");
+        item["abbr"] = BsonConvert.GetStr(d, "abbr");
         item["song_count"] = d.TryGetValue("song_ids", out var sv) && sv.IsArray ? sv.AsArray.Count : 0;
         item["total_midi_count"] = BsonConvert.GetLong(d, "total_midi_count");
         item["date"] = BsonConvert.GetStr(d, "date");
@@ -824,6 +825,7 @@ public partial class ChartDb : Node
         item["trial_count"] = BsonConvert.GetLong(d, "trial_count");
         item["up_count"] = BsonConvert.GetLong(d, "up_count");
         item["love_count"] = BsonConvert.GetLong(d, "love_count");
+        item["down_count"] = BsonConvert.GetLong(d, "down_count");
         item["file_hash"] = BsonConvert.GetStr(d, "file_hash");
         return item;
     }

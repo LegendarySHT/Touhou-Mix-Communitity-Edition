@@ -6,6 +6,7 @@ extends CoverListItemBase
 @onready var status_label: Label = $VBoxC/HBoxC/status
 @onready var midi_name_label: Label = $VBoxC/MidiName
 @onready var author_label: Label = $VBoxC/HBoxC/Author
+@onready var upload_info_label: Label = $UploadInfo
 
 ## MIDI数据
 var midi_data: MidiData
@@ -54,9 +55,51 @@ func _update_display() -> void:
 		midi_name_label = get_node("VBoxC/MidiName")
 	if not author_label:
 		author_label = get_node("VBoxC/HBoxC/Author")
+	if not upload_info_label:
+		upload_info_label = get_node("UploadInfo")
 	status_label.text = midi_data.status
 	midi_name_label.set_scroll_text(midi_data.name)
 	author_label.text = midi_data.artist_name if not midi_data.artist_name.is_empty() else "Unknown"
+	upload_info_label.text = "%s ● %s" % [_format_upload_date(midi_data.uploaded_date), midi_data.uploader_name]
+
+
+## 将上传时间（UTC）转为东八区日期 "YYYY-MM-DD"；无法解析时回退原字符串前 10 位
+func _format_upload_date(raw: String) -> String:
+	var s := raw.strip_edges().trim_suffix("Z")
+	if s.length() < 10:
+		return s
+	var ymd := s.substr(0, 10).split("-")
+	if ymd.size() != 3:
+		return s.substr(0, 10)
+	var year := int(ymd[0])
+	var month := int(ymd[1])
+	var day := int(ymd[2])
+	# 解析时分（兼容 "T" 或空格分隔，忽略秒/小数）
+	var hour := 0
+	var minute := 0
+	if s.length() >= 16:
+		var t := s.substr(11, 5).split(":")
+		if t.size() >= 2:
+			hour = int(t[0])
+			minute = int(t[1])
+	# UTC 加 8 小时 → 东八区墙钟
+	minute += 8 * 60 + hour * 60
+	day += minute / (24 * 60)
+	minute %= 60
+	while day > _days_in_month(year, month):
+		day -= _days_in_month(year, month)
+		month += 1
+		if month > 12:
+			month = 1
+			year += 1
+	return "%04d-%02d-%02d" % [year, month, day]
+
+
+func _days_in_month(year: int, month: int) -> int:
+	const DAYS := [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+	if month == 2 and (year % 400 == 0 or (year % 4 == 0 and year % 100 != 0)):
+		return 29
+	return DAYS[month - 1]
 
 
 ## 从MidiData初始化显示
@@ -123,6 +166,8 @@ func on_item_button_toggled(toggled_on: bool):
 func set_expanded(expanded: bool) -> void:
 	if expand_tween:
 		expand_tween.kill()
+	# UploadInfo 仅展开时显示
+	upload_info_label.visible = expanded
 	var expa := 1 if expanded else 0
 	expand_tween = AniMGR.create_managed_tween(self)
 	expand_tween.set_ease(Tween.EASE_OUT)

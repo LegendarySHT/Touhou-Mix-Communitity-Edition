@@ -5,6 +5,17 @@
 [ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_wrosb"]
 [ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="5_fljdd"]
 
+[sub_resource type="FontVariation" id="FontVariation_jttwt"]
+spacing_glyph = 3
+
+[sub_resource type="LabelSettings" id="LabelSettings_u2pgb"]
+font = SubResource("FontVariation_jttwt")
+font_size = 32
+stacked_outline_count = 2
+stacked_outline_0/size = 3
+stacked_outline_0/color = Color(1, 1, 1, 1)
+stacked_outline_1/size = 8
+
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_wrosb"]
 content_margin_top = 15.0
 color = Color(1, 1, 1, 1)
@@ -50,6 +61,19 @@ mouse_filter = 2
 texture = ExtResource("2_wrosb")
 expand_mode = 5
 stretch_mode = 6
+
+[node name="Abbr" type="Label" parent="." unique_id=1130162255]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 1
+anchors_preset = -1
+offset_left = 30.0
+offset_top = 25.0
+offset_right = 60.0
+offset_bottom = 65.0
+offset_transform_enabled = true
+offset_transform_pivot_ratio = Vector2(0, 0)
+text = "TH01"
+label_settings = SubResource("LabelSettings_u2pgb")
 
 [node name="Line" type="Panel" parent="." unique_id=1931946045]
 self_modulate = Color(1, 1, 1, 0)
