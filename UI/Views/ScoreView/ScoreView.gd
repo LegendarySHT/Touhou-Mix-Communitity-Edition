@@ -415,6 +415,15 @@ func _show_upload_slide() -> void:
 	_upload_tween.set_ease(Tween.EASE_OUT)
 	_upload_tween.tween_property(upload_state, "offset_transform_position", Vector2.ZERO, 0.4)
 
+## 服务端没有该 MIDI 时属于正常的在线不收录场景，不向玩家展示失败状态。
+func _hide_upload_state() -> void:
+	_manual_pending = false
+	retry_btn.visible = false
+	upload_state.visible = false
+	if _upload_tween:
+		_upload_tween.kill()
+		_upload_tween = null
+
 ## 执行成绩上传并更新上传状态提示（支持重试复用）
 func _do_upload_score() -> void:
 	_manual_pending = false
@@ -451,6 +460,9 @@ func _do_upload_score() -> void:
 		retry_btn.visible = false
 		# 上传成功后再弹出玩家等级面板
 		_show_level_panel_on_upload_success()
+	elif result.get("skipped", false):
+		GLogger.info("Score upload skipped: chart not found on server (midi=%s)" % midi.file_hash, "ScoreView")
+		_hide_upload_state()
 	else:
 		var err := str(result.get("error", "上传异常"))
 		if err == "not_logged_in":

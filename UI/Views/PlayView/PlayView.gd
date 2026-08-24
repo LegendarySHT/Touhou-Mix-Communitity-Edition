@@ -1085,6 +1085,8 @@ func _upload_score_async(midi: MidiData, snapshot: Dictionary) -> void:
 		GLogger.info("Score uploaded: midi=%s pp=%s" % [midi.file_hash, str(snapshot.get("pp", 0))], "PlayView")
 		# 通知个人信息页刷新统计
 		EvtBus.score_uploaded.emit(midi.file_hash)
+	elif result.get("skipped", false):
+		GLogger.info("Score upload skipped: chart not found on server (midi=%s)" % midi.file_hash, "PlayView")
 	else:
 		GLogger.warning("Score upload failed: %s (status=%s)" % [result.get("error", "unknown"), str(result.get("status", 0))], "PlayView")
 

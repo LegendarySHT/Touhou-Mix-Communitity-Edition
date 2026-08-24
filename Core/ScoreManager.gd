@@ -8,6 +8,7 @@ static var instance: ScoreManager = null
 
 ## 设备标识文件路径：user://files/device_id.txt
 const DEVICE_ID_FILE: String = "user://files/device_id.txt"
+const CHART_NOT_FOUND_ERROR: String = "chart_not_found"
 
 ## 当前设备标识（首次启动时生成，持久化存储）
 var _device_id: String = ""
@@ -117,11 +118,22 @@ func _extract_payload(midi: MidiData, snapshot: Dictionary) -> Dictionary:
 ## 上传成绩
 ## midi: MidiData 对象（需要 file_hash 非空）
 ## snapshot: ScoreCalculator.get_snapshot() 返回的字典
-## 返回 { ok, status, data, error }
+## 返回 { ok, status, data, error, skipped? }
 ## 去重逻辑由服务端处理：同设备/同用户 + 同 MIDI 只保留最高分
 func upload_score(midi: MidiData, snapshot: Dictionary) -> Dictionary:
 	if midi.file_hash.is_empty():
 		return { "ok": false, "status": 0, "data": null, "error": "midi_hash_empty" }
+	if NetManager.instance == null:
+		return { "ok": false, "status": 0, "data": null, "error": "network_not_ready" }
+
+	# 服务端谱面表是在线成绩的权威来源。本地存在但服务端不存在时静默跳过，
+	# 不进入鉴权和成绩 POST；服务端仍会在 POST 内重复校验以覆盖并发删除。
+	var chart_result: Dictionary = await _check_server_chart(midi.file_hash)
+	if not chart_result.get("ok", false):
+		if int(chart_result.get("status", 0)) == 404:
+			return _chart_not_found_result()
+		return chart_result
+
 	# 已登录：确保 access token 有效（过期则自动 refresh）
 	var token := ""
 	if AuthManager.instance != null and AuthManager.instance.is_logged_in:
@@ -137,7 +149,30 @@ func upload_score(midi: MidiData, snapshot: Dictionary) -> Dictionary:
 	# 从未登录或已主动登出：保持匿名上传成绩
 	var body := _extract_payload(midi, snapshot)
 	var url := "%s/api/scores" % NetManager.instance.server_url
-	return await NetManager.instance._request("POST", url, body, PackedStringArray(), token)
+	var result: Dictionary = await NetManager.instance._request("POST", url, body, PackedStringArray(), token)
+	# 预检通过后谱面仍可能被并发删除；统一按静默跳过处理。
+	if not result.get("ok", false) and int(result.get("status", 0)) == 404:
+		return _chart_not_found_result()
+	return result
+
+
+## 上传前确认服务端仍保存该 MIDI。404 由 upload_score 转换为 skipped，
+## 其他网络/协议错误原样返回，供结算页展示失败并允许重试。
+func _check_server_chart(midi_hash: String) -> Dictionary:
+	var url := "%s/api/charts/%s" % [
+		NetManager.instance.server_url, midi_hash.uri_encode()
+	]
+	return await NetManager.instance._request("GET", url, null)
+
+
+func _chart_not_found_result() -> Dictionary:
+	return {
+		"ok": false,
+		"status": 404,
+		"data": null,
+		"error": CHART_NOT_FOUND_ERROR,
+		"skipped": true,
+	}
 
 
 ## 获取排行榜
