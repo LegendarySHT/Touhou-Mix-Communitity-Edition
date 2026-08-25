@@ -32,9 +32,14 @@ static var SETTINGS_DIR: String:
 const DEFAULT_CHARTS_SRC = "res://Resources/Charts/"
 const DEFAULT_SOUNDFONT_SRC = "res://Resources/Soundfont/"
 const DEFAULT_BACKGROUND_SRC = "res://Resources/BackgroundImage/"
+## 中央封面目录：封面以 {coverHash}.{ext} 命名，由谱面 JSON 的 coverHash 引用
+const DEFAULT_COVERS_SRC = "res://Resources/Covers/"
+## 查找中央封面时尝试的扩展名（coverHash 纯哈希不带扩展名）
+const COVER_HASH_EXTS = ["jpg", "jpeg", "png", "webp"]
 
 ## 通用加载/导入提示文案（ProcessTip，与 Main.tscn 默认文案一致）
 const LOADING_TIP_TEXT := "加载中，请稍后"
+const COPY_TIP_TEXT := "正在初始化资源，请稍后"
 const IMPORT_TIP_TEXT := "正在导入数据，请稍后"
 const SCAN_TIP_TEXT := "正在扫描谱面，请稍后"
 
@@ -171,8 +176,10 @@ func initialize_directory_structure() -> void:
 	for dir_path in directories:
 		_ensure_directory_exists(dir_path)
 	
-	# 异步复制默认资源（改为协程，不再开线程）
-	await _check_and_copy_default_resources_async()
+	# 启动文件处理串行管线：先复制默认资源 → 再导入外部游戏数据 → 最后扫描并更新数据库缓存
+	await _copy_default_resources_async()
+	await _import_external_charts_async()
+	_scan_all_resources()
 
 ## 确保目录存在，不存在则创建
 ## 使用 make_dir_recursive_absolute 以兼容 Android 绝对路径
@@ -188,32 +195,50 @@ func _ensure_directory_exists(dir_path: String) -> bool:
 		GLogger.error("Failed to create directory: %s (Error: %d)" % [dir_path, error], "FileSystemMGR")
 		return false
 
-## 异步检查并复制默认资源
-func _check_and_copy_default_resources_async() -> void:
+## 异步复制默认资源（目录为空才复制；带统一进度条 UI）
+## 仅负责文件复制，导入与数据库扫描由 initialize_directory_structure 串行编排
+func _copy_default_resources_async() -> void:
+	# 统计本次需要执行的操作总数（复制谱面按谱面目录数计，皮肤/背景各计 1 步）
+	var total_steps := _count_default_chart_folders()
+	if _is_directory_empty(SKINS_DIR):
+		total_steps += 1
+	if _is_directory_empty(BACKGROUND_DIR):
+		total_steps += 1
+
+	var bar: ProgressBar = null
+	if total_steps > 0:
+		bar = _show_progress_ui(COPY_TIP_TEXT, total_steps)["bar"]
+
+	var done := 0
 	# 复制谱面（若目录为空）
 	if _is_directory_empty(CHARTS_DIR):
 		GLogger.info("Charts directory is empty, copying default charts...", "FileSystemMGR")
-		await _copy_default_charts_async()   # 改为异步版本
-	
+		done = await _copy_default_charts_async(bar)
+		if bar:
+			bar.value = minf(done, bar.max_value)
+
 	# 复制皮肤（若目录为空）
 	if _is_directory_empty(SKINS_DIR):
 		GLogger.info("Skins directory is empty, copying default skins...", "FileSystemMGR")
 		await _copy_directory_recursive_async(SkinManager.DEFAULT_SKINS_SRC, SKINS_DIR)
-	
+		done += 1
+		if bar:
+			bar.value = minf(done, bar.max_value)
+
 	# 音源目录：仅创建目录，不复制默认资源
 	_ensure_directory_exists(SOUNDFONT_DIR)
 	GLogger.info("Soundfont directory ready (no default resources copied)", "FileSystemMGR")
-	
+
 	# 复制背景图（若目录为空）
 	if _is_directory_empty(BACKGROUND_DIR):
 		GLogger.info("Background directory is empty, copying default backgrounds...", "FileSystemMGR")
 		await _copy_directory_contents_async(DEFAULT_BACKGROUND_SRC, BACKGROUND_DIR, "jpg,jpeg,png,webp")
-	
-	# 所有复制完成后扫描资源
-	# 异步导入外部游戏数据（THMIX），后台 worker 转换 + 主线程进度 UI，不阻塞界面
-	await _import_external_charts_async()
+		done += 1
+		if bar:
+			bar.value = minf(done, bar.max_value)
 
-	call_deferred("_scan_all_resources")
+	if total_steps > 0:
+		_hide_progress_ui()
 
 ## 异步导入外部游戏（THMIX）数据
 ## 主线程先快速检查导入任务（check_import_task，含诊断日志），决定是否显示导入 UI 并启动后台 worker
@@ -227,23 +252,12 @@ func _import_external_charts_async() -> void:
 	var pending: int = int(task_info.get("ui_pending", 0))
 	var show_ui: bool = pending > 0
 
-	# 显示导入提示 + 进度条（仅 THMIX_Import 待导入时显示；ProcessTip 通用提示在启动时已可见）
-	var overlay: Control = get_node_or_null(PathRegistry.POPUP_WINDOW_SHADER)
-	var tip: Label = get_node_or_null(PathRegistry.PROCESS_TIP)
-	var bar: ProgressBar = get_node_or_null(PathRegistry.PROCESS_PROGRESS)
+	# 显示统一进度 UI（遮罩 + 提示 + 进度条），仅当有待导入任务时
+	var ui := {}
+	var bar: ProgressBar = null
 	if show_ui:
-		if overlay:
-			overlay.modulate.a = 1.0  # 复位透明度（与 PopupWindow 的 fade 共享此节点，防御残留 0）
-			overlay.visible = true
-		if tip:
-			tip.visible = true
-			tip.text = IMPORT_TIP_TEXT
-		if bar:
-			bar.visible = true
-			bar.min_value = 0
-			bar.max_value = maxf(pending, 1)
-			bar.value = 0
-			bar.show_percentage = true
+		ui = _show_progress_ui(IMPORT_TIP_TEXT, pending)
+		bar = ui["bar"]
 
 	# 进度回调：worker 内 call_deferred 调用 → 主线程执行，更新进度条（与 Logger 的 worker 转主线程同模式）
 	var progress_cb := func(cur: int, total: int) -> void:
@@ -259,7 +273,8 @@ func _import_external_charts_async() -> void:
 	)
 	if task_id < 0:
 		GLogger.error("启动 THMIX 导入 worker 失败（task_id=%d）" % task_id, "FileSystemMGR")
-		_hide_import_ui(overlay, tip, bar)
+		if show_ui:
+			_hide_progress_ui()
 		return
 
 	while not WorkerThreadPool.is_task_completed(task_id):
@@ -280,10 +295,39 @@ func _import_external_charts_async() -> void:
 	if not imported_folders.is_empty() and ChartDB != null and ChartDB.IsOpen():
 		await _sync_imported_charts_to_db(imported_folders)
 
-	_hide_import_ui(overlay, tip, bar)
+	if show_ui:
+		_hide_progress_ui()
 
-## 隐藏导入 UI（遮罩 + 提示 + 进度条）
-func _hide_import_ui(overlay: Control, tip: Control, bar: ProgressBar) -> void:
+## 显示统一进度 UI（遮罩 + 提示 + 进度条），供启动期复制/导入/扫描复用
+## 返回值：{overlay, tip, bar} 字典，调用方在循环中推进 "bar".value 即可
+func _show_progress_ui(text: String, max_value: int) -> Dictionary:
+	var ui := {
+		"overlay": get_node_or_null(PathRegistry.POPUP_WINDOW_SHADER) as Control,
+		"tip": get_node_or_null(PathRegistry.PROCESS_TIP) as Label,
+		"bar": get_node_or_null(PathRegistry.PROCESS_PROGRESS) as ProgressBar,
+	}
+	var overlay: Control = ui["overlay"]
+	var tip: Label = ui["tip"]
+	var bar: ProgressBar = ui["bar"]
+	if overlay:
+		overlay.modulate.a = 1.0  # 复位透明度（与 PopupWindow 的 fade 共享此节点，防御残留 0）
+		overlay.visible = true
+	if tip:
+		tip.visible = true
+		tip.text = text
+	if bar:
+		bar.visible = true
+		bar.min_value = 0
+		bar.max_value = maxf(max_value, 1)
+		bar.value = 0
+		bar.show_percentage = true
+	return ui
+
+## 隐藏统一进度 UI 并复位提示文案
+func _hide_progress_ui() -> void:
+	var overlay: Control = get_node_or_null(PathRegistry.POPUP_WINDOW_SHADER)
+	var tip: Label = get_node_or_null(PathRegistry.PROCESS_TIP)
+	var bar: ProgressBar = get_node_or_null(PathRegistry.PROCESS_PROGRESS)
 	if bar:
 		bar.visible = false
 	if tip:
@@ -311,21 +355,37 @@ func _sync_imported_charts_to_db(imported_folders: Array) -> void:
 	_save_charts_cache(new_data)
 	GLogger.info("导入完成，已将 %d 个新谱面同步到 DB 缓存（无需等后台校验）" % new_data.size(), "FileSystemMGR")
 
+## 统计默认谱面源目录下的子目录数（供复制进度条 max 使用）
+func _count_default_chart_folders() -> int:
+	var source_dir := DirAccess.open(DEFAULT_CHARTS_SRC)
+	if source_dir == null:
+		return 0
+	var count := 0
+	source_dir.list_dir_begin()
+	var name := source_dir.get_next()
+	while name != "":
+		if source_dir.current_is_dir() and not name.begins_with("."):
+			count += 1
+		name = source_dir.get_next()
+	source_dir.list_dir_end()
+	return count
+
 ## 异步复制所有默认谱面（在每个文件夹复制后让步）
-func _copy_default_charts_async() -> void:
+## progress_bar: 非空则每复制完一个谱面目录推进一次进度；返回实际复制的目录数
+func _copy_default_charts_async(progress_bar: ProgressBar = null) -> int:
 	var source_base = DEFAULT_CHARTS_SRC
 	var dest_base = CHARTS_DIR
 	
 	if not DirAccess.dir_exists_absolute(source_base):
 		GLogger.warning("Charts source directory not found in PCK", "FileSystemMGR")
-		return
+		return 0
 	
 	GLogger.info("Starting to copy default charts from PCK...", "FileSystemMGR")
 	
 	var source_dir = DirAccess.open(source_base)
 	if not source_dir:
 		GLogger.error("Failed to open source charts directory", "FileSystemMGR")
-		return
+		return 0
 	
 	source_dir.list_dir_begin()
 	var chart_folder = source_dir.get_next()
@@ -342,6 +402,12 @@ func _copy_default_charts_async() -> void:
 			# 复制该文件夹内的所有文件（内部已改为可让步的版本）
 			if await _copy_chart_files_from_pck_async(source_chart_path, dest_chart_path):
 				copied_count += 1
+
+			# 依据 JSON coverHash 从中央封面目录复制封面（封面已移出曲包）
+			await _copy_default_cover_async(dest_chart_path)
+
+			if progress_bar:
+				progress_bar.value = minf(copied_count, progress_bar.max_value)
 			
 			# 每处理完一个 chart 文件夹，让出一帧，保持界面响应
 			await get_tree().process_frame
@@ -350,6 +416,7 @@ func _copy_default_charts_async() -> void:
 	
 	source_dir.list_dir_end()
 	GLogger.info("Copied %d chart folders from PCK" % copied_count, "FileSystemMGR")
+	return 1
 
 ## 异步复制单个 chart 文件夹的所有文件（内部处理图片时使用资源加载器）
 func _copy_chart_files_from_pck_async(source_path: String, dest_path: String) -> bool:
@@ -455,6 +522,44 @@ func _copy_image_via_resource_loader(src_path: String, dest_path: String) -> boo
 		#"Copied image via resource loader: %s" % dest_path.get_file(), "FileSystemMGR"
 	#)
 	return true
+
+## 依据谱面 JSON 的 coverHash，从中央封面目录复制封面到谱面文件夹（cover.jpg）
+## 封面已移出曲包，统一按 {coverHash}.{ext} 存于 res://Resources/Covers/
+## 与 _copy_image_via_resource_loader 一致，导出后经 ResourceLoader 解码回原始格式
+func _copy_default_cover_async(dest_chart_path: String) -> bool:
+	# 在目标（user://）谱面文件夹中定位元数据 JSON
+	var chart_id := dest_chart_path.get_file().split("_")[0]
+	var json_path := ""
+	var dir := DirAccess.open(dest_chart_path)
+	if dir == null:
+		return false
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while file_name != "" and json_path.is_empty():
+		if not dir.current_is_dir():
+			var lower := file_name.to_lower()
+			if lower == "info.json" or lower == (chart_id + ".json").to_lower():
+				json_path = dest_chart_path.path_join(file_name)
+		file_name = dir.get_next()
+	dir.list_dir_end()
+	if json_path.is_empty():
+		return false
+
+	var metadata := _load_chart_from_json(json_path, chart_id)
+	var cover_hash := str(metadata.get("coverHash", ""))
+	if cover_hash.is_empty():
+		return false
+
+	# 按扩展名候选从中央目录查找并复制为 cover.jpg
+	for ext in COVER_HASH_EXTS:
+		var src := "%s%s.%s" % [DEFAULT_COVERS_SRC, cover_hash, ext]
+		if ResourceLoader.exists(src):
+			return _copy_image_via_resource_loader(src, dest_chart_path.path_join("cover.jpg"))
+	GLogger.warning(
+		"Default cover not found for hash %s (%s)" % [cover_hash, dest_chart_path],
+		"FileSystemMGR"
+	)
+	return false
 
 ## 从 PCK 复制单个文件（关键方法）
 ## 注意：.import 图片文件应在目录遍历层处理，此方法作为防御性回退
@@ -697,35 +802,20 @@ func _scan_all_resources() -> void:
 	if use_fast_path:
 		_start_charts_cache_validation(all_chart_folders, cached_charts)
 	else:
-		# 首次全量扫描复用加载进度条（遮罩 + 提示 + 进度条），扫完隐藏
-		var overlay: Control = get_node_or_null(PathRegistry.POPUP_WINDOW_SHADER)
-		var tip: Label = get_node_or_null(PathRegistry.PROCESS_TIP)
-		var bar: ProgressBar = get_node_or_null(PathRegistry.PROCESS_PROGRESS)
+		# 首次全量扫描复用统一进度 UI（遮罩 + 提示 + 进度条），扫完隐藏
 		var total_folders: int = all_chart_folders.size()
+		var ui := {}
+		var bar: ProgressBar = null
 		if total_folders > 0:
-			if overlay:
-				overlay.modulate.a = 1.0
-				overlay.visible = true
-			if tip:
-				tip.visible = true
-				tip.text = SCAN_TIP_TEXT
-			if bar:
-				bar.visible = true
-				bar.min_value = 0
-				bar.max_value = total_folders
-				bar.value = 0
-				bar.show_percentage = true
+			ui = _show_progress_ui(SCAN_TIP_TEXT, total_folders)
+			bar = ui["bar"]
 		var scan_progress := func(done: int, total: int) -> void:
 			if bar:
 				bar.max_value = maxf(total, 1)
 				bar.value = minf(done, total)
 		await _scan_charts_full_sync(scan_progress)
-		if bar:
-			bar.visible = false
-		if tip:
-			tip.text = LOADING_TIP_TEXT
-		if overlay:
-			overlay.visible = false
+		if total_folders > 0:
+			_hide_progress_ui()
 
 	# === 阶段 A.6：等待 skins/sf/bg 完成 ===
 	# 快速路径：只等 skins/sf/bg（charts 已从缓存恢复）
@@ -1024,8 +1114,13 @@ func _validate_charts_cache_worker(cached_charts: Dictionary, current_folders: A
 		var meta: Dictionary = cached_charts[folder_name]
 		var chart_path = CHARTS_DIR.path_join(folder_name)
 		var chart_id = folder_name.split("_")[0]
-		var json_path = chart_path.path_join(chart_id + ".json")
-		var mid_path = chart_path.path_join(chart_id + ".mid")
+		# 标准命名优先，旧命名回退（json/mid 判存在，供增删/变更检测）
+		var json_path := chart_path.path_join("info.json")
+		if not FileAccess.file_exists(json_path):
+			json_path = chart_path.path_join(chart_id + ".json")
+		var mid_path := chart_path.path_join("song.mid")
+		if not FileAccess.file_exists(mid_path):
+			mid_path = chart_path.path_join(chart_id + ".mid")
 		# 检查 json/mid 是否存在
 		if not FileAccess.file_exists(json_path) or not FileAccess.file_exists(mid_path):
 			changed.append(folder_name)
@@ -1230,7 +1325,8 @@ func _build_charts_index_from_data(all_charts_data: Dictionary, chart_tasks: Arr
 
 ## 加载谱面元数据（从谱面文件夹）
 ## 文件夹命名格式：{hash}_{song_name}_{difficulty}/
-## 文件命名格式：{hash}.json, {hash}.mid, {hash}-cover.jpg
+## 文件标准命名：info.json / song.mid / cover.jpg / vocal.<ext>
+## 旧命名（{hash}.json / {hash}.mid / {hash}-cover.jpg / {hash}.<ext>）作为回退兼容扫描
 ## 纯函数：无全局副作用，错误信息通过返回字典的 _warnings 数组返回，audio 条目通过 audio_entries 字段返回
 ## 由调用方决定如何处理（写入 audio_files_index / 打印日志），便于在 worker 线程安全调用
 ##
@@ -1240,6 +1336,7 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 	var warnings: Array = []
 	# 从文件夹名称提取 chart_id（哈希值）
 	var chart_id = folder_name.split("_")[0]
+	# 旧命名回退候选（标准命名 info.json / song.mid 存在时优先使用）
 	var json_name = chart_id + ".json"
 	var mid_name = chart_id + ".mid"
 
@@ -1253,16 +1350,18 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 	var json_path: String = ""
 	var mid_path: String = ""
 	var cover_path: String = ""
-	var audio_entries: Array = []
 	var has_audio = false
+	# 音频按格式分组收集：标准命名 vocal.<ext> 优先，旧命名 {hash}.<ext> 回退
+	var std_audio: Dictionary = {}       # ext -> {file_name, path}
+	var fallback_audio: Dictionary = {}  # ext -> {file_name, path}
 
 	var dir = DirAccess.open(chart_path)
 	if dir == null:
 		warnings.append("Failed to open chart folder: %s" % chart_path)
 		return {"_warnings": warnings}
 
-	# 预期音频文件名（小写匹配，避免大小写问题）
-	var audio_ext_map = {
+	# 旧命名音频格式映射（小写匹配，避免大小写问题）
+	var fallback_ext_map = {
 		(chart_id + ".ogg").to_lower(): "ogg",
 		(chart_id + ".mp3").to_lower(): "mp3",
 		(chart_id + ".wav").to_lower(): "wav",
@@ -1273,32 +1372,53 @@ func _load_chart_metadata(chart_path: String, folder_name: String) -> Dictionary
 	var file_name = dir.get_next()
 	while file_name != "":
 		if not dir.current_is_dir():
-			if file_name == json_name:
+			var lower_name = file_name.to_lower()
+			# JSON：标准 info.json 优先，旧 {hash}.json 回退
+			if lower_name == "info.json":
 				json_path = chart_path.path_join(file_name)
-			elif file_name == mid_name:
+			elif lower_name == "song.mid":
 				mid_path = chart_path.path_join(file_name)
-			else:
-				var lower_name = file_name.to_lower()
-				# 音频文件匹配（chart_id.{ext}）
-				if audio_ext_map.has(lower_name):
-					var ext = audio_ext_map[lower_name]
-					audio_entries.append({
-						"file_name": file_name,
-						"path": chart_path.path_join(file_name),
-						"format": ext,
-						"chart_id": chart_id,
-						"song_name": _song_name,
-					})
-					if not has_audio:
-						has_audio = true
-				# 封面图匹配（包含 cover/thumbnail + 图片扩展）
-				elif cover_path.is_empty() and \
-				   (lower_name.contains("cover") or lower_name.contains("thumbnail")) and \
-				   (lower_name.ends_with(".jpg") or lower_name.ends_with(".jpeg") or \
-					lower_name.ends_with(".png") or lower_name.ends_with(".webp")):
-					cover_path = chart_path.path_join(file_name)
+			elif json_path.is_empty() and lower_name == json_name.to_lower():
+				json_path = chart_path.path_join(file_name)
+			elif mid_path.is_empty() and lower_name == mid_name.to_lower():
+				mid_path = chart_path.path_join(file_name)
+			elif cover_path.is_empty() and \
+				 (lower_name.contains("cover") or lower_name.contains("thumbnail")) and \
+				 (lower_name.ends_with(".jpg") or lower_name.ends_with(".jpeg") or \
+				  lower_name.ends_with(".png") or lower_name.ends_with(".webp")):
+				# 封面（标准 cover.jpg 与旧命名均含 cover/thumbnail 关键词）
+				cover_path = chart_path.path_join(file_name)
+			elif lower_name.begins_with("vocal."):
+				# 音频标准命名：vocal.<ext>
+				var vext := lower_name.substr("vocal.".length())
+				if ["ogg", "mp3", "wav", "flac"].has(vext):
+					std_audio[vext] = {"file_name": file_name, "path": chart_path.path_join(file_name)}
+			elif fallback_ext_map.has(lower_name):
+				# 音频旧命名：{hash}.<ext>
+				var fext: String = fallback_ext_map[lower_name]
+				if not fallback_audio.has(fext):
+					fallback_audio[fext] = {"file_name": file_name, "path": chart_path.path_join(file_name)}
 		file_name = dir.get_next()
 	dir.list_dir_end()
+
+	# 合并音频条目：标准命名优先，同格式旧命名忽略
+	var audio_entries: Array = []
+	for ext in std_audio.keys():
+		var e: Dictionary = std_audio[ext]
+		audio_entries.append({
+			"file_name": e["file_name"], "path": e["path"], "format": ext,
+			"chart_id": chart_id, "song_name": _song_name,
+		})
+	for ext in fallback_audio.keys():
+		if std_audio.has(ext):
+			continue
+		var e: Dictionary = fallback_audio[ext]
+		audio_entries.append({
+			"file_name": e["file_name"], "path": e["path"], "format": ext,
+			"chart_id": chart_id, "song_name": _song_name,
+		})
+	if not audio_entries.is_empty():
+		has_audio = true
 
 	# === 检查必需文件 ===
 	if json_path.is_empty():
@@ -1375,7 +1495,10 @@ func _load_chart_from_json(json_path: String, chart_id: String, warnings: Array 
 ## 非白名单键一律忽略（loveCount/avgAccuracy/passCount/failCount/评级分布等实际 JSON 无源）。
 static func _extract_chart_fields(json: Dictionary) -> Dictionary:
 	var flat: Dictionary = {}
-	flat["midi_id"] = str(json.get("_id", ""))
+	# midi_id 为谱面唯一标识：规范化/导入 JSON 只保留 hash（无 _id），故回落为 hash，
+	# 保证水合出的 MidiData.id 非空（否则 DataManager._ensure_midi 判空返回 null，midi 列表为空）
+	var midi_id_val := str(json.get("_id", ""))
+	flat["midi_id"] = midi_id_val if not midi_id_val.is_empty() else str(json.get("hash", ""))
 	flat["name"] = str(json.get("name", ""))
 	flat["description"] = str(json.get("desc", ""))
 	flat["status"] = str(json.get("status", "PENDING"))
@@ -1384,8 +1507,7 @@ static func _extract_chart_fields(json: Dictionary) -> Dictionary:
 	flat["uploader_id"] = str(json.get("uploaderId", ""))
 	flat["uploader_avatar_url"] = str(json.get("uploaderAvatarUrl", ""))
 	flat["artist_url"] = str(json.get("artistUrl", ""))
-	flat["coverPath"] = str(json.get("coverPath", ""))
-	flat["coverUrl"] = str(json.get("coverUrl", ""))
+	flat["coverHash"] = str(json.get("coverHash", ""))
 	flat["uploaded_date"] = str(json.get("uploadedDate", ""))
 	flat["approved_date"] = str(json.get("approvedDate", ""))
 	flat["trial_count"] = int(json.get("trialCount", 0))
@@ -1395,8 +1517,12 @@ static func _extract_chart_fields(json: Dictionary) -> Dictionary:
 	flat["hash"] = str(json.get("hash", ""))
 	var fh: String = str(json.get("file_hash", ""))
 	flat["file_hash"] = fh if not fh.is_empty() else str(json.get("hash", ""))
-	# author 已由 ChartNormalizer 归一为字符串
-	var author_val: Variant = json.get("author", "")
+	# author 优先 song.author（新白名单落位），回退顶层 author（兼容旧格式/过渡期目录）
+	var author_val: Variant = ""
+	if json.has("song") and json["song"] is Dictionary:
+		author_val = (json["song"] as Dictionary).get("author", "")
+	if author_val == "" and json.has("author"):
+		author_val = json.get("author", "")
 	flat["author_name"] = author_val if author_val is String else ""
 	# song / album 子文档原样保留（RebuildAlbumsSongs / GetChartJson 复用）
 	if json.has("song") and json["song"] is Dictionary:
@@ -1643,7 +1769,7 @@ func rescan_resources() -> void:
 	await _scan_all_resources()
 
 ## 重置内置资源：强制重新复制默认谱面、皮肤、背景图到 user:// 目录
-## 与 _check_and_copy_default_resources_async 不同，此方法不检查目录是否为空，强制覆盖
+## 与 _copy_default_resources_async 不同，此方法不检查目录是否为空，强制覆盖
 func reload_default_resources() -> void:
 	GLogger.info("Reloading built-in resources...", "FileSystemMGR")
 
@@ -1799,6 +1925,10 @@ func get_chart_json_path(chart_id: String) -> String:
 			return cached_json_path
 		var chart_path = meta.path
 		if not chart_path.is_empty():
+			# 优先标准命名 info.json，旧命名 {id}.json 回退
+			var info_path := chart_path.path_join("info.json")
+			if FileAccess.file_exists(info_path):
+				return info_path
 			return chart_path.path_join(meta.id + ".json")
 	GLogger.warning("Chart JSON path not found for ID: %s (charts_index has %d entries)" % [chart_id, charts_index.size()], "FileSystemMGR")
 	return ""

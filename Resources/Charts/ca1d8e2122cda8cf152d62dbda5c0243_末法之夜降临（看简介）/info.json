@@ -1,0 +1,30 @@
+{
+	"hash": "ca1d8e2122cda8cf152d62dbda5c0243",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "末法之夜降临（看简介）",
+	"desc": "游玩建议（重要）:\n普通版：\n开启Track2,4,5,14,15\n或开启Track1,2,4,5,14\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n=============================\n总时长2:06\n转载自：https://m.youtube.com/watch?v=3NIlcHY2N0Y\n原作者：Insignify Music         https://m.youtube.com/@InsignifyMusic\nMIDI修改：Legendary_SHT（已对原MIDI进行删除循环部分，分离Track处理）\n=============================\nMusic Room\n2面的主题曲。\n\n妖怪眼里的墓地，是很快活呢还是很热闹呢，\n经常听到那种风格做得明亮又向上的曲子。\n我不太喜欢恐怖风格的，就做成这种感觉了。",
+	"artistName": "Insignify Music",
+	"artistUrl": "https://m.youtube.com/@InsignifyMusic",
+	"song": {
+		"_id": "song_0407674c54521259",
+		"name": "末法の夜は来たれり",
+		"track": 0,
+		"author": "Wanwan"
+	},
+	"album": {
+		"_id": "album_6481c535f2cc0bab",
+		"name": "東方真珠島 ～ Hollow Song of Birds",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-12-06T06:11:57.517Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 119.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 11.0,
+	"coverHash": "1c970df0f66ec5ba3c880200928502ea"
+}

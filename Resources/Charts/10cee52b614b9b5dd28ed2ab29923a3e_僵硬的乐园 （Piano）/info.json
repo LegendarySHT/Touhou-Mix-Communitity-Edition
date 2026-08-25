@@ -1,0 +1,30 @@
+{
+	"hash": "10cee52b614b9b5dd28ed2ab29923a3e",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "僵硬的乐园 （Piano）",
+	"desc": "游玩建议：\nEasy：开启Track1,3.\nNormal：开启Track1,2.3\nHard:开启Track1,2,3,4.\nLunatic：开启Track1,2,3,4,5.\n════════════════\nhttp://pz.perfectpiano.cn/html/userDetail.html?picid=231764\n转载自完美钢琴\n该midi仅供游玩和欣赏\n⭐原作者已同意转载⭐\n原MIDI作者：旋律终音\nMIDI修改：Legendary_SHT\n════════════════\nMusic Room\n　宫古芳香的主题曲。\n\n　说起僵尸，基本来说都让人想到丧尸所以就试着加入了\n　异域风格的前奏。不过这曲子写到一半的时候我突然就\n　注意到一件事，这前奏给人一种金字塔风格的感觉呢。\n　那不就不是丧尸而变成了木乃伊了吗……\n════════════════\nTAG:\n#东方神灵庙 #神灵庙 #僵硬的乐园 #Rigid Paradise",
+	"artistName": "旋律终音",
+	"artistUrl": "http://pz.perfectpiano.cn/html/userDetail.html?picid=231764",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab535",
+		"name": "リジッドパラダイス",
+		"track": 7.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0094",
+		"name": "東方神霊廟　～ Ten Desires",
+		"abbr": "TH13",
+		"date": "2011-08-13T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-04-23T06:42:25.516Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 175.0,
+	"upCount": 0.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 13.0,
+	"coverHash": "4521910803028b07e68dd059c69b3051"
+}

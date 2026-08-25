@@ -1,0 +1,30 @@
+{
+	"hash": "fd5b4a8a0e54db8118048e55d4a1a86f",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "风神少女",
+	"desc": "风神少女\nhttp://pz.perfectpiano.cn/html/userDetail.html?picid=17202\n转载自完美钢琴\n该midi仅供游玩和欣赏\n⭐原作者已同意转载⭐",
+	"artistName": "旋律终音",
+	"artistUrl": "http://pz.perfectpiano.cn/html/userDetail.html?picid=17202",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4f0",
+		"name": "風神少女(Short Version)",
+		"track": 11.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0090",
+		"name": "東方花映塚　～ Phantasmagoria of Flower View",
+		"abbr": "TH09",
+		"date": "2005-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2020-05-22T22:50:08.231Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 754.0,
+	"upCount": 6.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 189.0,
+	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
+}

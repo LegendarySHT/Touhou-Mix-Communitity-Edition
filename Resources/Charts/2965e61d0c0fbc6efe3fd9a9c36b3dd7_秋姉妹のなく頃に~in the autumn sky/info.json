@@ -1,0 +1,30 @@
+{
+	"hash": "2965e61d0c0fbc6efe3fd9a9c36b3dd7",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "秋姉妹のなく頃に~in the autumn sky",
+	"desc": "秋姉妹のなく頃に~in the autumn sky\nMidi Length : 4:40\n转载自完美钢琴\n⭐作者已同意转载⭐\nhttp://pz.perfectpiano.cn/html/userDetail.html?picid=426766",
+	"artistName": "TL-开宇",
+	"artistUrl": "http://pz.perfectpiano.cn/html/userDetail.html?picid=426766",
+	"song": {
+		"_id": "song_813ff82af6b40728",
+		"name": "秋姉妹のなく頃に in the autumn sky",
+		"track": 0,
+		"author": "ばんばんし"
+	},
+	"album": {
+		"_id": "album_f7225b432cb64007",
+		"name": "秋満开の风に舞う",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2021-03-12T13:37:03.651Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 858.0,
+	"upCount": 40.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 512.0,
+	"coverHash": "05e65662b67c0dffad22ee2deefa1a6e"
+}

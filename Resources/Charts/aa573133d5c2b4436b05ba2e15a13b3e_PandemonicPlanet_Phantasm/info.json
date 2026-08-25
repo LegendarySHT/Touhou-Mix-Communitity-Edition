@@ -1,0 +1,30 @@
+{
+	"hash": "aa573133d5c2b4436b05ba2e15a13b3e",
+	"uploaderId": "64eca22e541cdc68ba121f9c",
+	"uploaderName": "Hakurei Reimu",
+	"name": "PandemonicPlanet_Phantasm",
+	"desc": "https://www.easypianoscore.jp/\n赫卡提亚·拉碧斯拉祖利的主题曲。\n\n　实在是恶魔一般的曲子。\n　实际上我是想用一些金属感觉的曲子的来着，但我没那方面的造诣，\n　而且感觉又不符合世界观，结果就这样子了。\n　地狱－＞死神－＞死亡－＞死亡金属，这种贫瘠的想法。",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab561",
+		"name": "パンデモニックプラネット",
+		"track": 15.0,
+		"author": "DMBN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0096",
+		"name": "東方紺珠伝　～ Legacy of Lunatic Kingdom",
+		"abbr": "TH15",
+		"date": "2015-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-04-10T11:59:59.108Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 175.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/69e0806e61d86346fe0ee48d07f40a2c.jpg",
+	"trialCount": 8.0,
+	"coverHash": "3a62a8fee980003c3f889e5070dd8eb8"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "cbaa09ab5fe002a53d712a9619ec4883",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "sci_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab674",
+		"name": "科学世紀の少年少女",
+		"track": 5.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b3",
+		"name": "夢違科学世紀　～ Changeability of Strange Dream",
+		"abbr": "CoSD",
+		"date": "2004-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2004-12-30T08:00:00.000Z",
+	"approvedDate": "2004-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 22.0,
+	"upCount": 11.0,
+	"downCount": 3.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 282.0,
+	"coverHash": "400f68e57ea1aee70e3adb9bebc3a299"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "18b24c805dc2e51508cb5424f42b185b",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "夏夜祭8分钟组曲（看简介）",
+	"desc": "游玩建议：将生成短块最大时间改为3秒或以上\n开启Track2\n想要更高难度可开启Track1\n原曲转载自：https://www.bilibili.com/video/BV1Ss411C7yy\nMIDI使用PianoTrans制作，并加以修正。\n======================\n《东方夏夜祭》BGM的纯钢琴组曲。\n包含标题曲、1面至ex的全部BGM，未包含ED曲和Staff曲。\n突发奇想就做出来了。感谢直播间观众们的陪伴（。\n时长总共8分钟，比较安静。祝各位催眠或者作业愉快（\n文件菊苣太触啦！",
+	"artistName": "Legendary_SHT",
+	"artistUrl": "https://thmix.org/users/639358aa4c2c822decc671e1",
+	"song": {
+		"_id": "song_a3c040fa518431cf",
+		"name": "夏夜祭组曲",
+		"track": 0,
+		"author": "Tokini11"
+	},
+	"album": {
+		"_id": "album_41af71792203995a",
+		"name": "东方夏夜祭 ～ Shining Shooting Star",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-07-16T02:51:38.696Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 281.0,
+	"upCount": 5.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 62.0,
+	"coverHash": "2c020e87fafb6afefd152812679840a0"
+}

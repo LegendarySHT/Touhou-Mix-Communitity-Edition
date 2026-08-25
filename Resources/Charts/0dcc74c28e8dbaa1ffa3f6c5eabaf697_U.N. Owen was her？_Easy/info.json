@@ -1,0 +1,30 @@
+{
+	"hash": "0dcc74c28e8dbaa1ffa3f6c5eabaf697",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "U.N. Owen was her？_Easy",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab4ba",
+		"name": "U.N.オーエンは彼女なのか？",
+		"track": 15.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008d",
+		"name": "東方紅魔郷　～ the Embodiment of Scarlet Devil",
+		"abbr": "TH06",
+		"date": "2002-08-11T07:00:00.000Z"
+	},
+	"uploadedDate": "2002-08-11T07:00:00.000Z",
+	"approvedDate": "2002-08-11T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 41.0,
+	"upCount": 250.0,
+	"downCount": 17.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 6930.0,
+	"coverHash": "5fd01a8f459718d93167137dca76efa5"
+}

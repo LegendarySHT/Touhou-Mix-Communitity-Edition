@@ -1,0 +1,30 @@
+{
+	"hash": "3baccfaef0b4ea7882a200dec65dd204",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "涼しげなカクテル～エメラルド・ミスト",
+	"desc": "游玩建议：\n普通版：开启Track1\n困难版：开启Track1,2.\n═══════════════════════\n自制MIDI\n有错漏请见谅\n原曲：ミストレイク（Mist Lake 东方辉针城一面道中曲）\nMIDI下载：https://www.midishow.com/midi/198764.html\n═══════════════════════\nTAG:\n#東方猫鍵盤 #东方猫键盘 #东方辉针城 #辉针城 #Mist Lake #涼しげなカクテル～エメラルド・ミスト",
+	"artistName": "Legendary_SHT",
+	"artistUrl": "https://space.bilibili.com/150497762",
+	"song": {
+		"_id": "song_47d4d8964836f5f9",
+		"name": "涼しげなカクテル～エメラルド・ミスト",
+		"track": 0,
+		"author": "豚乙女"
+	},
+	"album": {
+		"_id": "album_db0bab0aa44e8377",
+		"name": "東方猫鍵盤",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-07-27T14:13:56.806Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 116.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 16.0,
+	"coverHash": "2cce54ceaf8b32a9f759e849d922adfc"
+}

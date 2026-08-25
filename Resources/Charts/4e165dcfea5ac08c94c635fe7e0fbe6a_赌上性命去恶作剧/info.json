@@ -1,0 +1,30 @@
+{
+	"hash": "4e165dcfea5ac08c94c635fe7e0fbe6a",
+	"uploaderId": "5eb4295cc6ba816c345a47b1",
+	"uploaderName": "already to get",
+	"name": "赌上性命去恶作剧",
+	"desc": "stakingyourlifeonaprank.mid",
+	"artistName": "",
+	"artistUrl": "",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab5ea",
+		"name": "いたずらに命をかけて",
+		"track": 3.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed009e",
+		"name": "妖精大戦争　～ 東方三月精",
+		"abbr": "TH12.8",
+		"date": "2010-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2021-10-22T11:25:21.334Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 587.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/8a00cc4dea68389548649ef56920156a.jpg",
+	"trialCount": 15.0,
+	"coverHash": "9db88975759e326002d0615d2f7d5fd6"
+}

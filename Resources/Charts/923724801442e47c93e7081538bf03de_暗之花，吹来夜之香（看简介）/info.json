@@ -1,0 +1,30 @@
+{
+	"hash": "923724801442e47c93e7081538bf03de",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "暗之花，吹来夜之香（看简介）",
+	"desc": "已尝试将主旋律进行分离\n游玩建议：\n选用Lunatic 开启Track2,Track14,Track16,Track17,。\n最大并排下落音符：2音符\n连点最小时间间隔：0.3秒\n若想提高难度可开启其他音轨\n---------------------------------------\n转载并修改自：https://space.bilibili.com/1664494\n原作者已同意转载\n东方雪莲华steam:https://store.steampowered.com/app/1000440/__Abyss_Soul_Lotus/\n=======================\n这次投稿的是2boss的曲子（\n顺便提一下，这首曲子是整个雪莲华体验版7首曲子中唯一一首经过大改动重制的曲子（（（\n像2boss这种设定，对于我来说一直都不是很好把握，（就跟当年夏夜祭2面boss一样……\n不过最后总算是还有个比较满意的成品吧，高速钢琴玩的太畅快了（\n\n========Music Room========\n◇暗之花，吹来夜之香\n\n暗华 美夜香的主题曲。\n\n于激烈的战斗感中点缀着华丽和冷艳的曲子。\n掺进了交响乐队的铙钹，好像还是蛮有意思的。\n\n毕竟是来自地狱的使者，曲子也应该有点地狱的感觉了。",
+	"artistName": "Tokini11",
+	"artistUrl": "https://space.bilibili.com/1664494",
+	"song": {
+		"_id": "65a15d3404bfae42a36b4bc6",
+		"name": "暗之花，吹来夜之香",
+		"track": 5.0,
+		"author": "Tokini11"
+	},
+	"album": {
+		"_id": "64c924b6541cdc68ba11a3e7",
+		"name": "東方雪蓮華 ～ Abyss Soul Lotus.",
+		"abbr": null,
+		"date": "2023-08-01T15:28:54.263Z"
+	},
+	"uploadedDate": "2023-08-01T07:57:14.282Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 201.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 15.0,
+	"coverHash": "be37932ff783846b846cdd670814dd00"
+}

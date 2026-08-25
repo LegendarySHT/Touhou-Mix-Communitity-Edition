@@ -1,0 +1,30 @@
+{
+	"hash": "aa3f17f6d709ad5f95c29dc224576645",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "kuon_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab4a8",
+		"name": "久遠の楽園",
+		"track": 20.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008c",
+		"name": "東方怪綺談　～ Mystic Square",
+		"abbr": "TH05",
+		"date": "1998-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "1998-12-30T08:00:00.000Z",
+	"approvedDate": "1998-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 22.0,
+	"upCount": 3.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 259.0,
+	"coverHash": "8578b4eb27580acd4059b2855b988878"
+}

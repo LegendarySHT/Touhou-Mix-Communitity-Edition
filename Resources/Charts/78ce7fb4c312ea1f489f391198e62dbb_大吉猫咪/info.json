@@ -1,0 +1,30 @@
+{
+	"hash": "78ce7fb4c312ea1f489f391198e62dbb",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "大吉猫咪",
+	"desc": "【东方虹龙洞】大吉猫咪\nMidi Length : 1:30\n转载自完美钢琴\n⭐作者已同意转载⭐\nhttp://pz.perfectpiano.cn/html/userDetail.html?picid=1093858",
+	"artistName": "旋律终音",
+	"artistUrl": "http://pz.perfectpiano.cn/html/userDetail.html?picid=1093858",
+	"song": {
+		"_id": "65a114772460b9425d191d96",
+		"name": "大吉キトゥン",
+		"track": 3.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2021-03-28T11:29:23.156Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 1545.0,
+	"upCount": 30.0,
+	"downCount": 6.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 831.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

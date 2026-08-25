@@ -1,0 +1,30 @@
+{
+	"hash": "603042fe5d1f0cb62e29fede19029d71",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "最终鬼畜妹",
+	"desc": "最终鬼畜妹\nhttp://pz.perfectpiano.cn/html/userDetail.html?picid=15870\n转载自完美钢琴\n该midi仅供游玩和欣赏\n⭐原作者已同意转载⭐",
+	"artistName": "旋律终音",
+	"artistUrl": "http://pz.perfectpiano.cn/html/userDetail.html?picid=15870",
+	"song": {
+		"_id": "5e91635eef11ba26d503f6b2",
+		"name": "最終鬼畜妹フランドール・Ｓ",
+		"track": 11.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e9162e7ef11ba26d503f6b0",
+		"name": "東方ストライク",
+		"abbr": null,
+		"date": "2020-04-11T06:25:43.265Z"
+	},
+	"uploadedDate": "2020-05-22T22:32:54.582Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 1153.0,
+	"upCount": 24.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 554.0,
+	"coverHash": "8e7123fc9e38f6ddcaeb771d9553dd66"
+}

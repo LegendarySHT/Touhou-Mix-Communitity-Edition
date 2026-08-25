@@ -1,0 +1,30 @@
+{
+	"hash": "e190cb7fa12895bc09595df1d6444f2a",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Deaf to all but the Song ~ Flower Mix_Easy",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4ee",
+		"name": "もう歌しか聞こえない　～ Flower Mix",
+		"track": 9.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0090",
+		"name": "東方花映塚　～ Phantasmagoria of Flower View",
+		"abbr": "TH09",
+		"date": "2005-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2005-08-14T07:00:00.000Z",
+	"approvedDate": "2005-08-14T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 25.0,
+	"upCount": 12.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 303.0,
+	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "2a3e2f9feb5a5f19635168b49550ee4f",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "佐渡的二岩（Piano）",
+	"desc": "游玩建议：\n普通版：开启Track1,2.\n困难版：开启Track1,2,3\n======================\n时长2:11\n转载自：https://musescore.com/user/29625/scores/12732763\n此MIDI遵循CC BY-NC-SA 4.0 DEED协议\nMIDI裁剪：Legendary_SHT\n======================\n　二岩猯藏的主题曲。\n　\n　重编自神灵庙曲目。\n════════════════\nTAG:\n#东方兽王园 #兽王园 #东方 #UDoALG #東方獣王園 #東方 #佐渡的二岩 #佐渡の二ッ岩",
+	"artistName": "chronondecay",
+	"artistUrl": "https://musescore.com/user/29625",
+	"song": {
+		"_id": "65a114782460b9425d191db5",
+		"name": "佐渡の二ッ岩",
+		"track": 17.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d90",
+		"name": "東方獣王園　～ Unfinished Dream of All Living Ghost",
+		"abbr": "TH19",
+		"date": "2023-08-13T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-01-30T06:07:05.625Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 269.0,
+	"upCount": 4.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 59.0,
+	"coverHash": "3caeb2a039e159399504995880d87bb6"
+}

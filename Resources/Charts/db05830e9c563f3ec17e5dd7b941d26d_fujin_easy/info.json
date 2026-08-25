@@ -1,0 +1,30 @@
+{
+	"hash": "db05830e9c563f3ec17e5dd7b941d26d",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "fujin_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab5ae",
+		"name": "風神少女",
+		"track": 6.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed009a",
+		"name": "東方文花帖　～ Shoot the Bullet",
+		"abbr": "TH09.5",
+		"date": "2005-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2005-12-30T08:00:00.000Z",
+	"approvedDate": "2005-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 22.0,
+	"upCount": 44.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1552.0,
+	"coverHash": "33c3fbc1b9af64fc5c682a160808f4e4"
+}

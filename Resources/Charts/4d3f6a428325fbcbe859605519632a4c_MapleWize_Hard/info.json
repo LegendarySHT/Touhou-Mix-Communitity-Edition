@@ -1,0 +1,30 @@
+{
+	"hash": "4d3f6a428325fbcbe859605519632a4c",
+	"uploaderId": "64eca22e541cdc68ba121f9c",
+	"uploaderName": "Hakurei Reimu",
+	"name": "MapleWize_Hard",
+	"desc": "https://www.easypianoscore.jp/sheetList.php?titleid=kaiki\n４面主题曲\n　 与其它曲子相比，这首音乐似乎\n　一下子变得稳健起来了（是吗？）。\n　 创作这首曲子颇费心血，于是做\n　得很有气势（大概）。",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab49c",
+		"name": "メイプルワイズ",
+		"track": 8.0,
+		"author": "DMBN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008c",
+		"name": "東方怪綺談　～ Mystic Square",
+		"abbr": "TH05",
+		"date": "1998-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2024-04-19T12:24:10.757Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 149.0,
+	"upCount": 0.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/69e0806e61d86346fe0ee48d07f40a2c.jpg",
+	"trialCount": 0.0,
+	"coverHash": "8578b4eb27580acd4059b2855b988878"
+}

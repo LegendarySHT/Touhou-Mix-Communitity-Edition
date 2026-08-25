@@ -1,0 +1,30 @@
+{
+	"hash": "9fcb8c906cb7e8eab4e80ecfaf559b5f",
+	"uploaderId": "5eb4295cc6ba816c345a47b1",
+	"uploaderName": "already to get",
+	"name": "哈德曼的妖怪少女（深秘录ver.）",
+	"desc": "hartmann_s_youkai_girl_gm_ver1_.mid",
+	"artistName": "",
+	"artistUrl": "",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab616",
+		"name": "ハルトマンの妖怪少女",
+		"track": 8.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00a1",
+		"name": "東方深秘録　～ Urban Legend in Limbo",
+		"abbr": "TH14.5",
+		"date": "2015-05-10T07:00:00.000Z"
+	},
+	"uploadedDate": "2021-10-22T11:46:30.011Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 1035.0,
+	"upCount": 6.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/8a00cc4dea68389548649ef56920156a.jpg",
+	"trialCount": 82.0,
+	"coverHash": "54194280a05c93755d5829d36b7ade3f"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "63f61449dcdc20962fbce78d51fb3375",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "kappa_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4ff",
+		"name": "芥川龍之介の河童　～ Candid Friend",
+		"track": 7.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0091",
+		"name": "東方風神録　～ Mountain of Faith",
+		"abbr": "TH10",
+		"date": "2007-08-17T07:00:00.000Z"
+	},
+	"uploadedDate": "2007-08-17T07:00:00.000Z",
+	"approvedDate": "2007-08-17T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 28.0,
+	"upCount": 41.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1438.0,
+	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
+}

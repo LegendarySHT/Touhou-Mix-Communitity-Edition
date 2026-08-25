@@ -1,0 +1,30 @@
+{
+	"hash": "26f8600304aaa09ec88f1cd9248d36d4",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "luna_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab4b6",
+		"name": "月時計　～ ルナ・ダイアル",
+		"track": 11.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008d",
+		"name": "東方紅魔郷　～ the Embodiment of Scarlet Devil",
+		"abbr": "TH06",
+		"date": "2002-08-11T07:00:00.000Z"
+	},
+	"uploadedDate": "2002-08-11T07:00:00.000Z",
+	"approvedDate": "2002-08-11T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 28.0,
+	"upCount": 174.0,
+	"downCount": 15.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 6856.0,
+	"coverHash": "5fd01a8f459718d93167137dca76efa5"
+}

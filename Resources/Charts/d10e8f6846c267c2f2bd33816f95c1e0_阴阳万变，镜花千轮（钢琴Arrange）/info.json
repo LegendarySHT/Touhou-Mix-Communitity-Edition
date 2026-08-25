@@ -1,0 +1,30 @@
+{
+	"hash": "d10e8f6846c267c2f2bd33816f95c1e0",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "阴阳万变，镜花千轮（钢琴Arrange）",
+	"desc": "转载自：https://www.youtube.com/watch?v=Ubsiq6h9ApM\n作曲：FanTouhouMusic - ファン東方ミュージック=\n原作者开放对MIDI的使用\n钢琴Arrange：Legendary_SHT\n===============\n既然手上有MIDI,就随手做了一个钢琴Arrange,相比于原曲，这首显得更加的柔和，也许更适合作为游戏内谱面游玩？",
+	"artistName": "FanTouhouMusic",
+	"artistUrl": "https://m.youtube.com/@fantouhoumusic-2188",
+	"song": {
+		"_id": "65a1f21404bfae42a36b4d85",
+		"name": "阴阳万变，镜花千轮",
+		"track": 21.0,
+		"author": "FanTouhouMusic"
+	},
+	"album": {
+		"_id": "65a1618a04bfae42a36b4bf2",
+		"name": "東方蒔夢原 ～ Champaign of Unfinished Dreams.",
+		"abbr": null,
+		"date": "2024-01-12T15:58:02.405Z"
+	},
+	"uploadedDate": "2023-11-19T09:28:02.248Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 129.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 11.0,
+	"coverHash": "82484e91a08206d3c35e1ef2d5de45e7"
+}

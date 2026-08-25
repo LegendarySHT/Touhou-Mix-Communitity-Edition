@@ -1,0 +1,30 @@
+{
+	"hash": "a456ad4c917194290eaea732a9d15f15",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "星の交差点~Where Stars Cross",
+	"desc": "游玩建议（重要）：\n开启Track1,4\n如需提高难度可开启其他音轨\n====================\n总时长5:41\n转载自：https://www.bilibili.com/video/BV1G2421c7C4\n扒谱作者：Azhuzhuuuu  https://space.bilibili.com/159432040\n原作者已同意转载\nMIDI修改：Legendary_SHT\n====================",
+	"artistName": "Azhuzhuuuu",
+	"artistUrl": "https://space.bilibili.com/159432040",
+	"song": {
+		"_id": "song_2062b2393d39f62c",
+		"name": "ほおずきみたいに紅い魂",
+		"track": 0,
+		"author": "DDBY"
+	},
+	"album": {
+		"_id": "album_98c8561eb54d9178",
+		"name": "Cafe de Touhou",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-02-12T14:04:10.094Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 181.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 30.0,
+	"coverHash": "f4832fa2115c413717d7ec4d274c41bf"
+}

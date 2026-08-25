@@ -1,0 +1,30 @@
+{
+	"hash": "8e5b0ee163da417593f3d51c6368e197",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "萃梦想",
+	"desc": "萃梦想\nhttp://pz.perfectpiano.cn/html/userDetail.html?picid=25670\n转载自完美钢琴\n该midi仅供游玩和欣赏\n⭐原作者已同意转载⭐",
+	"artistName": "旋律终音",
+	"artistUrl": "http://pz.perfectpiano.cn/html/userDetail.html?picid=25670",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab587",
+		"name": "萃夢想",
+		"track": 1.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0099",
+		"name": "東方萃夢想　～ Immaterial and Missing Power",
+		"abbr": "TH07.5",
+		"date": "2004-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2020-05-22T22:41:43.988Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 668.0,
+	"upCount": 7.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 190.0,
+	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
+}

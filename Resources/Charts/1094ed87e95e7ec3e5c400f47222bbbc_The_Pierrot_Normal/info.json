@@ -1,0 +1,30 @@
+{
+	"hash": "1094ed87e95e7ec3e5c400f47222bbbc",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "The_Pierrot_Normal",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab55d",
+		"name": "星条旗のピエロ",
+		"track": 11.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0096",
+		"name": "東方紺珠伝　～ Legacy of Lunatic Kingdom",
+		"abbr": "TH15",
+		"date": "2015-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2015-08-14T07:00:03.000Z",
+	"approvedDate": "2015-08-14T07:00:03.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 26.0,
+	"upCount": 18.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 569.0,
+	"coverHash": "3a62a8fee980003c3f889e5070dd8eb8"
+}

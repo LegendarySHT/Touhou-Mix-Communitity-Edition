@@ -1,0 +1,30 @@
+{
+	"hash": "1008a87bcc6a64110dfe1bc14fbaf34a",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "幽梦　~ Inanimate Dream",
+	"desc": "游玩建议：\n普通版：开启Track1.\n困难版：开启Track1,2\n────────────────\n自制MIDI\n\n原钢琴改编：幽梦　~ Inanimate Dream\n专辑：CIRNO IN WONDERLAND\n原改编作者：ありおと\n════════════════\nTAG:\n#幽梦 #东方幻想乡 #幻想乡 #风见幽香",
+	"artistName": "Legendary_SHT",
+	"artistUrl": "https://space.bilibili.com/150497762",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab487",
+		"name": "幽夢　～ Inanimate Dream",
+		"track": 15.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008b",
+		"name": "東方幻想郷　～ Lotus Land Story",
+		"abbr": "TH04",
+		"date": "1998-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-04-16T08:20:51.944Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 179.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 10.0,
+	"coverHash": "007ad004f4cd35703085162abdb5a514"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "46097895ca32c02c5739890262e18d63",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "Bhava-agra As Seen Through a Child's Mind_easy",
+	"desc": "MIDI来自東方ピアノEasyモード\n原地址：https://www.easypianoscore.jp/index.php#requestAll\n======================\nTAG:\n#绯想天 #东方绯想天 #幼小的有顶天",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab5be",
+		"name": "幼心地の有頂天",
+		"track": 16.0,
+		"author": "DMBN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed009b",
+		"name": "東方緋想天　～ Scarlet Weather Rhapsody",
+		"abbr": "TH10.5",
+		"date": "2008-05-25T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-04-07T07:21:11.066Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 169.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 36.0,
+	"coverHash": "cf5c0b1cdb611b7368c24bf2d310f1b2"
+}

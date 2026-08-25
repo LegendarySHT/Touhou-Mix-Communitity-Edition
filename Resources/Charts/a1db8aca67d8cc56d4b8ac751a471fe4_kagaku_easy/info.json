@@ -1,0 +1,30 @@
+{
+	"hash": "a1db8aca67d8cc56d4b8ac751a471fe4",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "kagaku_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab63a",
+		"name": "幻想科学　～ Doll's Phantom",
+		"track": 14.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00a5",
+		"name": "秋霜玉 ～しゅうそうぎょく～",
+		"abbr": "SSG",
+		"date": "2000-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2000-12-30T08:00:00.000Z",
+	"approvedDate": "2000-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 19.0,
+	"upCount": 8.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 246.0,
+	"coverHash": "9962b65bd4691adeeb83047cf3bd3426"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "91e79f83591d7be46593cef50e5d3533",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Himorogi, Burn in Violet_Lunatic",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a484679d16d79ab456",
+		"name": "ひもろぎ、むらさきにもえ",
+		"track": 8.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0089",
+		"name": "東方封魔録　～ the Story of Eastern Wonderland",
+		"abbr": "TH02",
+		"date": "1997-08-15T07:00:00.000Z"
+	},
+	"uploadedDate": "1997-08-15T07:00:02.000Z",
+	"approvedDate": "1997-08-15T07:00:02.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 19.0,
+	"upCount": 9.0,
+	"downCount": 3.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 329.0,
+	"coverHash": "11f08912ca5e75592fd65372b99bf3a3"
+}

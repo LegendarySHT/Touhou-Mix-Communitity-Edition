@@ -1,0 +1,30 @@
+{
+	"hash": "3a893394b5531ea02b48932e883fa9df",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "封印されし神々",
+	"desc": "封印されし神々v2MID\n\n推荐启用音轨：3, 5, 12\n视频：https://www.bilibili.com/video/BV1AN4y1V7tp/\n此次转载已获作者授权\n\nTag：\n#东方风神录　～ Mountain of Faith.\n#被封印的众神",
+	"artistName": "arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4f9",
+		"name": "封印されし神々",
+		"track": 1.0,
+		"author": "arplane"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0091",
+		"name": "東方風神録　～ Mountain of Faith",
+		"abbr": "TH10",
+		"date": "2007-08-17T07:00:00.000Z"
+	},
+	"uploadedDate": "2022-01-24T08:39:40.985Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 619.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 40.0,
+	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "02cbb0f569bf644541a18ba2dc2618a5",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "yume_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab678",
+		"name": "夢と現の境界",
+		"track": 9.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b3",
+		"name": "夢違科学世紀　～ Changeability of Strange Dream",
+		"abbr": "CoSD",
+		"date": "2004-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2004-12-30T08:00:00.000Z",
+	"approvedDate": "2004-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 25.0,
+	"upCount": 23.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 619.0,
+	"coverHash": "400f68e57ea1aee70e3adb9bebc3a299"
+}

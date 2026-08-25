@@ -1,0 +1,30 @@
+{
+	"hash": "c5f9c5b4eeb256a9fe314eae2ce6c1c6",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "梦想蜂昀 ～ Fancy Swallower（看简介）",
+	"desc": "游玩建议（重要）：\n启用Track3,5,16\n如需增加难度可开启其他音轨。\n===============\n总时长2:01\n转载自：https://m.youtube.com/watch?v=el_HbxNg-DQ\n原作者开放MIDI的使用。\n已对原midi进行分离Track处理,并适配游戏内播放而更改响度的处理\n原曲： https://b23.tv/JMYIO6f\n鈴集無名の丘：https://store.steampowered.com/app/2525120 (免费)\n==============\n♪梦想蜂昀 ～ Fancy Swallower\n\n作曲／曲评:SHO\n稍微有些强敌感和小物感的那种样子而写的曲子。\n发狂的钢琴节奏果然还是不错呢。听和写的时候都觉得很有趣。\n我个人认为这首曲子后半情绪盛起的感觉非常好呢。\n\n曲评:畑枚\n荷苗　忧芽的主题曲。 \n接续了道中曲的风格，在夜晚中响起笛声与蜂鸣交错的曲子。 \n蜂昀的意思结合了中日英文，是「存在于此的蜂的日光照耀」，曲子的高潮段落也能感受到那雷射如同日光般温暖的感觉。 \n旋律中也带起了忧芽她看似假装却隐藏起来的真实力，这时的她已经分不清楚自己说的是真心话亦或是谎言了。 \n明明是​泥壶​蜂却长了恶魔般的翅膀，​铃​集的角色外型可能是梅蒂脑中幻想出来的吧。​",
+	"artistName": "FanTouhouMusic",
+	"artistUrl": "https://m.youtube.com/@fantouhoumusic-2188",
+	"song": {
+		"_id": "song_41a619cf2052d24d",
+		"name": "梦想蜂昀 ～ Fancy Swallower",
+		"track": 0,
+		"author": "SHO"
+	},
+	"album": {
+		"_id": "album_a63050f16c23c906",
+		"name": "鈴集無名の丘 ～ Little Doll Queen",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-11-15T05:23:10.320Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 108.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 15.0,
+	"coverHash": "3a2b6386bc5d219faaa12da9110f9c19"
+}

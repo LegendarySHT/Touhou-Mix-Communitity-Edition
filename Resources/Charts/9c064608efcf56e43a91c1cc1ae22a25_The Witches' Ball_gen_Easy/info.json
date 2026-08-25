@@ -1,0 +1,30 @@
+{
+	"hash": "9c064608efcf56e43a91c1cc1ae22a25",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "The Witches' Ball_gen_Easy",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab63d",
+		"name": "魔女達の舞踏会　～ Magus",
+		"track": 17.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00a5",
+		"name": "秋霜玉 ～しゅうそうぎょく～",
+		"abbr": "SSG",
+		"date": "2000-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2000-12-30T08:00:05.000Z",
+	"approvedDate": "2000-12-30T08:00:05.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 22.0,
+	"upCount": 0.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 42.0,
+	"coverHash": "9962b65bd4691adeeb83047cf3bd3426"
+}

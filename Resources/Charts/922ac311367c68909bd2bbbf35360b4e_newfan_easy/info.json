@@ -1,0 +1,30 @@
+{
+	"hash": "922ac311367c68909bd2bbbf35360b4e",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "newfan_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab645",
+		"name": "新幻想　～ New Fantasy",
+		"track": 5.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00a6",
+		"name": "稀翁玉 ～きおうぎょく～",
+		"abbr": "KOG",
+		"date": "2001-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2001-12-30T08:00:00.000Z",
+	"approvedDate": "2001-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 23.0,
+	"upCount": 11.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 493.0,
+	"coverHash": "9a10b607061852f723482f051b64ccf4"
+}

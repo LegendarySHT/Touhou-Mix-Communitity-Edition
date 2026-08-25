@@ -1,0 +1,30 @@
+{
+	"hash": "ad4d45dab872bd81de60407fb5d4fc99",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "bosyo_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab5bf",
+		"name": "暮色蒼然",
+		"track": 17.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed009b",
+		"name": "東方緋想天　～ Scarlet Weather Rhapsody",
+		"abbr": "TH10.5",
+		"date": "2008-05-25T07:00:00.000Z"
+	},
+	"uploadedDate": "2008-05-25T07:00:00.000Z",
+	"approvedDate": "2008-05-25T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 20.0,
+	"upCount": 12.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 624.0,
+	"coverHash": "cf5c0b1cdb611b7368c24bf2d310f1b2"
+}

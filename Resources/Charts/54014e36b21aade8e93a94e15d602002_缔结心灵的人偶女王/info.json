@@ -1,0 +1,30 @@
+{
+	"hash": "54014e36b21aade8e93a94e15d602002",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "缔结心灵的人偶女王",
+	"desc": "游玩建议（重要）：\n普通版：开启Track1,3,5,7,10,13,15,18,20. \n困难版：开启Track1,3,4,5,6,7,8,10,11,13,14,15,16,18,19,20 \n如需进一步提高难度可开启其他音轨\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n========================\n转载自：https://www.youtube.com/watch?v=ecMS5j2gmBs\nMIDI兼改编作者：FanTouhouMusic   https://m.youtube.com/@fantouhoumusic-2188\n原作者开放对MIDI的使用\n原曲：https://www.bilibili.com/video/BV1pu4y1e7cQ/\nMIDI修改：Legendary_SHT（已对原MIDI进行音量平衡，分割Track等处理）\n========================\n♪缔结心灵的人偶女王\n\n作曲／曲评:SHO\n这是一首迄今为止的曲子的组曲。\n听着这些曲子是为了让您能沉浸在其剧情当中，同时回味着这一路走来的点点滴滴。",
+	"artistName": "FanTouhouMusic",
+	"artistUrl": "https://m.youtube.com/@fantouhoumusic-2188",
+	"song": {
+		"_id": "song_363499fb3edf80c2",
+		"name": "缔结心灵的人偶女王",
+		"track": 0,
+		"author": "SHO"
+	},
+	"album": {
+		"_id": "album_a63050f16c23c906",
+		"name": "鈴集無名の丘 ～ Little Doll Queen",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-02-27T08:22:05.028Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 116.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 1.0,
+	"coverHash": "3a2b6386bc5d219faaa12da9110f9c19"
+}

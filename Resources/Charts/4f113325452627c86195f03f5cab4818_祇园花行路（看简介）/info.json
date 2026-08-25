@@ -1,0 +1,30 @@
+{
+	"hash": "4f113325452627c86195f03f5cab4818",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "祇园花行路（看简介）",
+	"desc": "游玩建议（重要）：\n简单版：启用Track1,8,14,15,16\n普通版：启用Track1,2,8,10,14,16\n困难版：启用Track1,2,4,5,8,10,14,16\n如需进一步提高难度可开启Track10或其他音轨\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n===================\n总时长2:57\n转载自：https://www.bilibili.com/video/BV1834y1V71Y/\n版权归作曲者所有，请在良识范围内取用MIDI\n原曲：https://music.163.com/#/program?id=2530691130\nMIDI修改：Legendary_SHT（已对原MIDI进行删除循环部分，分割Track，重平衡音量等处理）\n==================\n介绍： 05. 祇园花行路（二面道中）\n作曲：a100xiaoxue\n\n其实是本人第一次做企划用曲，所以感谢大佬们提供这样的机会能发表曲子ww\n试着按自己的感觉写了一首，但是毕竟能力有限，所以就是这样了（ 顺便，其实我是把五道中初稿的某一段8小节旋律搬过来用了的，因为五道中和二道中的场景是一样的；但是之后五面重做时把那段旋律废弃了，有点可惜（\n总之如果有人喜欢的话我很荣幸w",
+	"artistName": "a100xiaoxue",
+	"artistUrl": "https://space.bilibili.com/23465850",
+	"song": {
+		"_id": "65a16a7e04bfae42a36b4c21",
+		"name": "祇园花行路",
+		"track": 5.0,
+		"author": "a100xiaoxue"
+	},
+	"album": {
+		"_id": "65a1687404bfae42a36b4c1a",
+		"name": "明京夢紀行~A Journey of Reminiscences",
+		"abbr": null,
+		"date": "2024-01-12T16:27:32.552Z"
+	},
+	"uploadedDate": "2024-01-03T09:43:35.723Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 93.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 12.0,
+	"coverHash": "20049882cf14eab86398e54b78ecf8a0"
+}

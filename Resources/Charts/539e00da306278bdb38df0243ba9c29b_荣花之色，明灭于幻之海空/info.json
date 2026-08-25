@@ -1,0 +1,30 @@
+{
+	"hash": "539e00da306278bdb38df0243ba9c29b",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "荣花之色，明灭于幻之海空",
+	"desc": "游玩建议（重要）：\n简单版：启用Track1,3。\n普通版：启用Track1,3,4\n如需进一步提高难度可开启其他音轨\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n===================\n转载自：https://www.bilibili.com/video/BV1834y1V71Y/\n版权归作曲者所有，请在良识范围内取用MIDI\nMIDI修改：Legendary_SHT（已对原MIDI进行分割Track等处理）\n===================",
+	"artistName": "HP9_Hardpiano-IX",
+	"artistUrl": "https://space.bilibili.com/32494974",
+	"song": {
+		"_id": "65a16b6204bfae42a36b4c2c",
+		"name": "荣花之色，明灭于幻之海空",
+		"track": 15.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "65a1687404bfae42a36b4c1a",
+		"name": "明京夢紀行~A Journey of Reminiscences",
+		"abbr": null,
+		"date": "2024-01-12T16:27:32.552Z"
+	},
+	"uploadedDate": "2024-02-26T07:12:23.228Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 95.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 7.0,
+	"coverHash": "20049882cf14eab86398e54b78ecf8a0"
+}

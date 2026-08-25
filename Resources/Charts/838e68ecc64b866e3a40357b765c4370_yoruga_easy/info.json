@@ -1,0 +1,30 @@
+{
+	"hash": "838e68ecc64b866e3a40357b765c4370",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "yoruga_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab597",
+		"name": "夜が降りてくる　～ Evening Star",
+		"track": 17.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0099",
+		"name": "東方萃夢想　～ Immaterial and Missing Power",
+		"abbr": "TH07.5",
+		"date": "2004-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2004-12-30T08:00:00.000Z",
+	"approvedDate": "2004-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 25.0,
+	"upCount": 21.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 700.0,
+	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
+}

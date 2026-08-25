@@ -1,0 +1,30 @@
+{
+	"hash": "8b6acd04147d1476c1b94a9e259aa62e",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "rein_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a484679d16d79ab464",
+		"name": "Reincarnation",
+		"track": 4.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008a",
+		"name": "東方夢時空　～ Phantasmagoria of Dim.Dream",
+		"abbr": "TH03",
+		"date": "1997-12-29T08:00:00.000Z"
+	},
+	"uploadedDate": "1997-12-29T08:00:00.000Z",
+	"approvedDate": "1997-12-29T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 20.0,
+	"upCount": 43.0,
+	"downCount": 7.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1631.0,
+	"coverHash": "2ecdd318637d9e41eaf61e6ad9e82fe6"
+}

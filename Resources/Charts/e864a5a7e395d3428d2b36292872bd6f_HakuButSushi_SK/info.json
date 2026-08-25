@@ -1,0 +1,30 @@
+{
+	"hash": "e864a5a7e395d3428d2b36292872bd6f",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "HakuButSushi_SK",
+	"desc": "Made by a friend.",
+	"artistName": "S.K.",
+	"artistUrl": "",
+	"song": {
+		"_id": "5e84f0aa84679d16d79ab6a7",
+		"name": "他愛も無い二人の博物誌",
+		"track": 1.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b9",
+		"name": "燕石博物誌　～ Dr.Latency's Freak Report",
+		"abbr": "DLFR",
+		"date": "2016-05-08T07:00:00.000Z"
+	},
+	"uploadedDate": "2019-03-24T06:20:17.721Z",
+	"approvedDate": "2019-03-24T06:20:17.721Z",
+	"status": "INCLUDED",
+	"downloadCount": 24.0,
+	"upCount": 22.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 760.0,
+	"coverHash": "f28a7b0c1873140acbdb6d54e6bb3fcf"
+}

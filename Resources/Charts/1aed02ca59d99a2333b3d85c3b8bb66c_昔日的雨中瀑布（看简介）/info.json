@@ -1,0 +1,30 @@
+{
+	"hash": "1aed02ca59d99a2333b3d85c3b8bb66c",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "昔日的雨中瀑布（看简介）",
+	"desc": "游玩建议（重要）：\n选用Lunatic,开启Track2，Track4，Track6，Track8，Track11，Track15，Track16。\n如需提高难度可开启Track5，Track7或其他音轨\n播放建议：\n强烈建议使用SD-90音源（群文件中的Touhou.sf2),以获得最佳听觉体验\n============================\n转载自： https://www.bilibili.com/video/BV1Y34y1N7iy/\n原作者已同意转载\n感谢旧雨忆梦幻想乐团制作的东方山海传\n旧雨忆梦幻想乐团：https://space.bilibili.com/3537113087740167\nMIDI修改：Legendary_SHT(已对原midi进行补全音色，分离Track处理）\n============================\n\n1面的主题曲。\n\n这首曲子是我整个曲集最早完成的。\n前前后后也修改过很多次。因为理想中一面是在海上进行战斗。\n如此温柔的音乐……这不正意味着暴风雨前的宁静么？",
+	"artistName": "旧雨忆梦幻想乐团",
+	"artistUrl": "https://space.bilibili.com/3537113087740167",
+	"song": {
+		"_id": "song_dac3c5a67352e43d",
+		"name": "昔日的雨中瀑布",
+		"track": 0,
+		"author": "穆然皎若"
+	},
+	"album": {
+		"_id": "album_6b54c52ba74a7487",
+		"name": "東方山海傳 ~ the Potential Crisis",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-10-15T10:01:48.348Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 119.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 7.0,
+	"coverHash": "4130631fb8661979d6df1ba75112b614"
+}

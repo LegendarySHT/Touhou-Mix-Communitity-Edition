@@ -1,0 +1,30 @@
+{
+	"hash": "7e95aff78c5f353c4bc204042237a646",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "tukimi_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4e3",
+		"name": "月見草",
+		"track": 19.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008f",
+		"name": "東方永夜抄　～ Imperishable Night",
+		"abbr": "TH08",
+		"date": "2004-08-15T07:00:00.000Z"
+	},
+	"uploadedDate": "2004-08-15T07:00:00.000Z",
+	"approvedDate": "2004-08-15T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 23.0,
+	"upCount": 10.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 518.0,
+	"coverHash": "2769890f8d849e3df18bc185024bcef0"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "ba7230d22dfa943df543e88ece0b0eba",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "《幻想游戏<雅>3》全曲",
+	"desc": "《幻想游戏<雅>3》全曲\nhttp://pz.perfectpiano.cn/html/userDetail.html?picid=530585\n转载自完美钢琴\n此midi仅供游玩和欣赏\n如有争议请找原作者\n⭐原作者已允许转载⭐",
+	"artistName": "旋律终音",
+	"artistUrl": "http://pz.perfectpiano.cn/html/userDetail.html?picid=530585",
+	"song": {
+		"_id": "song_23fbf275f970ca2e",
+		"name": "組曲",
+		"track": 0,
+		"author": ""
+	},
+	"album": {
+		"_id": "album_617b130861cbcbdd",
+		"name": "幻想遊戲<雅>",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2020-05-12T04:13:23.952Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 466.0,
+	"upCount": 4.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 81.0,
+	"coverHash": "efc04cda5fe71fe69162f3479e229a14"
+}

@@ -55,9 +55,6 @@ var trial_count: int = 0
 ## 统计数据 - 下载数
 var download_count: int = 0
 
-## 统计数据 - 收藏数
-var love_count: int = 0
-
 ## 统计数据 - 好评数
 var up_count: int = 0
 
@@ -217,7 +214,6 @@ func from_json(json_data: Dictionary) -> void:
 	# 处理两种格式的字段名
 	trial_count = json_data.get("trialCount", 0)
 	download_count = json_data.get("downloadCount", 0)
-	love_count = json_data.get("loveCount", 0)
 	up_count = json_data.get("upCount", 0)
 	down_count = json_data.get("downCount", 0)
 	

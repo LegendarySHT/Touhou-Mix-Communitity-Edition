@@ -1,0 +1,30 @@
+{
+	"hash": "579232c812aa50e61595e946cc00a536",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "party_sui_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab58b",
+		"name": "魔女達の舞踏会",
+		"track": 5.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0099",
+		"name": "東方萃夢想　～ Immaterial and Missing Power",
+		"abbr": "TH07.5",
+		"date": "2004-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2004-12-30T08:00:00.000Z",
+	"approvedDate": "2004-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 25.0,
+	"upCount": 14.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 406.0,
+	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
+}

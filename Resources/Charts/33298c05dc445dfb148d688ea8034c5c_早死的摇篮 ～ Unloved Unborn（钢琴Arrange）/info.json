@@ -1,0 +1,30 @@
+{
+	"hash": "33298c05dc445dfb148d688ea8034c5c",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "早死的摇篮 ～ Unloved Unborn（钢琴Arrange）",
+	"desc": "===============\n总时长2:13\n原MIDI转载自：https://m.youtube.com/watch?v=pf-WaeUisL4\n原作者开放MIDI的使用。\n钢琴Arrange：Legendary_SHT\n原曲：https://www.bilibili.com/video/BV1Hp4y1E7qp/\n鈴集無名の丘：https://store.steampowered.com/app/2525120 (免费)\n==============\n♪早死的摇篮 ～ Unloved Unborn\n\n作曲／曲评:SHO\n前奏很诡谲且节奏也很独特的与众不同的一首曲子。\n我个人较喜欢这种的BOSS曲，它给人的感觉更有些强敌感。\n\n曲评:畑枚\n直灵　早璧的主题曲。 \n既然是无名之丘的游戏了，那可少不了原先被丢弃在无名之丘的婴尸的登场，很有婴尸感的一首曲子。 \n前奏的此岸之冢是刻意的，因为是于无名之丘的BOSS战，在之后则是那种渴望得到双亲之爱的绝望弃婴旋律。 \n在间奏之后，是早璧她使用识魂能力的高潮段落，婴灵会用这种能力感觉挺强的。 \n最后的钢琴段落则是安详地得到幸魂了，这里的大家都很温暖，真是太好了。",
+	"artistName": "FanTouhouMusic",
+	"artistUrl": "https://m.youtube.com/@fantouhoumusic-2188",
+	"song": {
+		"_id": "song_d72f66c5310a6530",
+		"name": "早死的摇篮 ～ Unloved Unborn",
+		"track": 0,
+		"author": "SHO"
+	},
+	"album": {
+		"_id": "album_a63050f16c23c906",
+		"name": "鈴集無名の丘 ～ Little Doll Queen",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-11-21T16:05:44.028Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 123.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 6.0,
+	"coverHash": "3a2b6386bc5d219faaa12da9110f9c19"
+}

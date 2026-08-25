@@ -1,0 +1,30 @@
+{
+	"hash": "d5662fc54a496afb96aeeb86ad6a7dda",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "tono_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab4c0",
+		"name": "遠野幻想物語",
+		"track": 4.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008e",
+		"name": "東方妖々夢　～ Perfect Cherry Blossom",
+		"abbr": "TH07",
+		"date": "2003-08-17T07:00:00.000Z"
+	},
+	"uploadedDate": "2003-08-17T07:00:00.000Z",
+	"approvedDate": "2003-08-17T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 24.0,
+	"upCount": 40.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1637.0,
+	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
+}

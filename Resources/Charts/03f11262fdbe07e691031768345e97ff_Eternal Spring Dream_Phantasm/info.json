@@ -1,0 +1,30 @@
+{
+	"hash": "03f11262fdbe07e691031768345e97ff",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Eternal Spring Dream_Phantasm",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab559",
+		"name": "永遠の春夢",
+		"track": 7.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0096",
+		"name": "東方紺珠伝　～ Legacy of Lunatic Kingdom",
+		"abbr": "TH15",
+		"date": "2015-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2015-08-14T07:00:05.000Z",
+	"approvedDate": "2015-08-14T07:00:05.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 25.0,
+	"upCount": 13.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 305.0,
+	"coverHash": "3a62a8fee980003c3f889e5070dd8eb8"
+}

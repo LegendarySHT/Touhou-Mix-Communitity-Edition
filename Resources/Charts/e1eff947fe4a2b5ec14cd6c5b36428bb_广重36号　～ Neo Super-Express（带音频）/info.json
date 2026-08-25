@@ -1,0 +1,30 @@
+{
+	"hash": "e1eff947fe4a2b5ec14cd6c5b36428bb",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "广重36号　～ Neo Super-Express（带音频）",
+	"desc": "(重要）使用方法（重要）\n配套使用mp3下载:\n方法一：打开 https://thwiki.cc/-/48rp，点击游戏教程及资源下载(Onedrive)，下载对应人声谱资源\n文件编号 00 05\n文件名：e1eff947fe4a2b5ec14cd6c5b36428bb\n方法二：测试群群文件下载Touhou Mix人声谱MP3合集\n参考音频偏移：0.05秒（因设备而异）\n════════════════\n游玩建议：\n开启Track3,4,5,13,15,17,18\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n════════════════\n原曲还原：Arplane\nhttps://space.bilibili.com/452626808/\n原地址：https://www.bilibili.com/video/BV1kEWwzHE3d\n════════════════\nTAG:\n#东方\n#卯酉东海道 #卯酉東海道 #Retrospective 53 minutes\n#广重36号 #ヒロシゲ36号 #Neo Super-Express",
+	"artistName": "arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab67b",
+		"name": "ヒロシゲ36号　～ Neo Super-Express",
+		"track": 1.0,
+		"author": "arplane"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b4",
+		"name": "卯酉東海道　～ Retrospective 53 minutes",
+		"abbr": "R53m",
+		"date": "2006-05-21T07:00:00.000Z"
+	},
+	"uploadedDate": "2025-09-26T07:21:45.107Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 261.0,
+	"upCount": 3.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 13.0,
+	"coverHash": "119e65a1ce8d44d705907959f1100671"
+}

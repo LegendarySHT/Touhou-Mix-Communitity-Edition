@@ -1,0 +1,30 @@
+{
+	"hash": "d38af152817539cf0bd41f449253b68e",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Shoutoku Legend ~ True Administrator_Normal",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab53b",
+		"name": "聖徳伝説　～ True Administrator",
+		"track": 13.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0094",
+		"name": "東方神霊廟　～ Ten Desires",
+		"abbr": "TH13",
+		"date": "2011-08-13T07:00:00.000Z"
+	},
+	"uploadedDate": "2011-08-13T07:00:04.000Z",
+	"approvedDate": "2011-08-13T07:00:04.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 29.0,
+	"upCount": 23.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 703.0,
+	"coverHash": "4521910803028b07e68dd059c69b3051"
+}

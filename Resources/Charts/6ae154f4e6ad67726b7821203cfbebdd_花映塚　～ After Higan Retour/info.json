@@ -1,0 +1,30 @@
+{
+	"hash": "6ae154f4e6ad67726b7821203cfbebdd",
+	"uploaderId": "5f5cb31ec9ea33595793e1fe",
+	"uploaderName": "apa",
+	"name": "花映塚　～ After Higan Retour",
+	"desc": "花映塚　～ After Higan Retour\n推荐启用音轨：4, 12, 13, 14\n\n视频：https://www.bilibili.com/video/BV1Rt4y1r7A7/\n\nTag：\n#东方文花帖 ～ Bohemian Archive in Japanese Red.\n#花映塚　　～ after Higan Retour",
+	"artistName": "arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "65a200af04bfae42a36b4e39",
+		"name": "花映塚　～ after Higan Retour",
+		"track": 3.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00c2",
+		"name": "東方文花帖 ～ Bohemian Archive in Japanese Red",
+		"abbr": "BAiJR",
+		"date": "2005-08-11T07:00:00.000Z"
+	},
+	"uploadedDate": "2021-06-13T08:04:17.885Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 737.0,
+	"upCount": 0.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/9cc5669e2ccee02a423b4ab73fc5eea4.jpg",
+	"trialCount": 12.0,
+	"coverHash": "f2968412c281428486f9824bb565ac88"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "c2e45c2538ad54c58d82e1d552f96d84",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "kairou_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0aa84679d16d79ab6d1",
+		"name": "夢幻回廊",
+		"track": 5.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00d4",
+		"name": "その他の作品　～ ZUN's Strange Works",
+		"abbr": "ZSW",
+		"date": "2002-10-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2002-10-14T07:00:00.000Z",
+	"approvedDate": "2002-10-14T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 26.0,
+	"upCount": 85.0,
+	"downCount": 4.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 2203.0,
+	"coverHash": "c0ae97da0eaf3e50b5ee5b7adfaa61f8"
+}

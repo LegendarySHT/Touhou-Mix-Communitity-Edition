@@ -1,0 +1,30 @@
+{
+	"hash": "1020fb39c319fb1ad7e51c01babd4c60",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "阿加尔塔之风",
+	"desc": "游玩建议：\n开启Track2,4,8,12,14,20\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n════════════════\n原曲还原：Arplane\nhttps://space.bilibili.com/452626808/\n原地址：https://www.bilibili.com/video/BV17Jn1zfEfo/\n════════════════\nTAG:\n#东方 #秘封\n#伊奘诺物质 #伊弉諾物質 #Neo-traditionalism of Japan\n#阿加尔塔之风 #アガルタの風",
+	"artistName": "arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "5e84f0aa84679d16d79ab6a1",
+		"name": "アガルタの風",
+		"track": 5.0,
+		"author": "arplane"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b8",
+		"name": "伊弉諾物質　～ Neo-traditionalism of Japan",
+		"abbr": "NToJ",
+		"date": "2012-08-11T07:00:00.000Z"
+	},
+	"uploadedDate": "2025-10-01T02:37:56.584Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 244.0,
+	"upCount": 0.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 3.0,
+	"coverHash": "8a63d77217b22244b58581588b4a3919"
+}

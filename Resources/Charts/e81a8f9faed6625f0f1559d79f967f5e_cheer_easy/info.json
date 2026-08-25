@@ -1,0 +1,30 @@
+{
+	"hash": "e81a8f9faed6625f0f1559d79f967f5e",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "cheer_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab515",
+		"name": "死体旅行　～ Be of good cheer!",
+		"track": 11.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0092",
+		"name": "東方地霊殿　～ Subterranean Animism",
+		"abbr": "TH11",
+		"date": "2008-08-16T07:00:00.000Z"
+	},
+	"uploadedDate": "2008-08-16T07:00:00.000Z",
+	"approvedDate": "2008-08-16T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 32.0,
+	"upCount": 15.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 997.0,
+	"coverHash": "625cb9e3c514e2918eb88791474682df"
+}

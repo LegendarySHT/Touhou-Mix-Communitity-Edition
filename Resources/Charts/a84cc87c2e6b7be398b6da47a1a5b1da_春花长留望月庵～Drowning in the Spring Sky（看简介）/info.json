@@ -1,0 +1,30 @@
+{
+	"hash": "a84cc87c2e6b7be398b6da47a1a5b1da",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "春花长留望月庵～Drowning in the Spring Sky（看简介）",
+	"desc": "游玩建议（重要）：\n启用Track1,3,5,7,8\n如需进一步提高难度可开启Track12或其他音轨\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n===================\n总时长2:46\n转载自：https://www.bilibili.com/video/BV1834y1V71Y/\n版权归作曲者所有，请在良识范围内取用MIDI\n原曲：https://music.163.com/#/program?id=2530718108\nMIDI修改：Legendary_SHT（已对原MIDI进行删除循环部分，分割Track，重平衡音量等处理）\n==================\n介绍： 08. 春花长留望月庵～Drowning in the Spring Sky（三面boss曲）\n作曲：FanTouhouMusic\n\n佐藤义清的主题曲。\n这是一首严肃的主题曲。所以，我使用了比较激烈的引子和音色。弦乐给他的曲子注入了力量感。顺便，你能猜出高潮参考了哪首曲子吗？\n\n故人的虚影\n佐藤义清\n\n春夜望月时，樱瓣纷落，如梦似幻。\n每逢此情此景，天梦都会忍不住忆起一位故人。这位故人，便是以和歌闻名的西行法师——佐藤义清。\n彼时，她尚是个喜爱和歌的少女，他超凡的歌才和深刻的洞察，无一不令她深深欣赏。即便身份悬殊，二人依旧时时以歌相合，也曾度过一段美好时光。\n然人世变幻无常，好景又岂能长存。某一日，义清弃世出家，与尘世种种烦恼挥手作别。而出家的原因，历来为人猜测，却终无定论。\n或许，在义清看来，现世不过无常秽土，一切繁华皆是过眼云烟，唯有彼方净土，才是值得用尽一生追寻之所。\n\n后来，天梦一方在保元之乱中落败，而她也被软禁在仁和寺。此时早已远离俗世的义清，却依然赶往仁和寺探望——但二人却未能见面。\n天梦被流放至赞岐后，孤苦寂寞中向他送去和歌，希求得到慰藉与救赎。但，与她热切的心情相比，义清的回应却显得冷淡。或许是他真心希望她能够抛却眼下的怨恨，从而获得救赎——尽管故事的结局并非他所愿。\n等到她辞世之后，他跋山涉水前往赞岐，详细记下了陵墓的位置，在荒凉墓前，吟起哀惋悼歌。\n直到多年后的某个春夜，一生钟爱樱花的义清，如愿在望月繁樱下了此一生，身后留下了不朽的传说。\n\n从历史的只言片语中，所拼起的这段往事，或许只不过是后人的想象。而“事实”究竟如何，大概只有故事中的角色本人才知晓。\n唯一笃定的是——这世上留恋之物，美好愿景，大抵如这春空，这满月，这繁花——泡影般转瞬即逝。\n\n符卡：\n忘樱【勿忘之伪约】\n恨月【奈何澄月独皎然】\n追思【歌诗所引之山道】\n自歌合【御裳濯河三十六番胜负】\n【松山波仍在，故人影难寻】",
+	"artistName": "FanTouhouMusic",
+	"artistUrl": "https://m.youtube.com/@fantouhoumusic-2188",
+	"song": {
+		"_id": "65a16ac704bfae42a36b4c24",
+		"name": "春花长留望月庵～Drowning in the Spring Sky.",
+		"track": 8.0,
+		"author": "FanTouhouMusic"
+	},
+	"album": {
+		"_id": "65a1687404bfae42a36b4c1a",
+		"name": "明京夢紀行~A Journey of Reminiscences",
+		"abbr": null,
+		"date": "2024-01-12T16:27:32.552Z"
+	},
+	"uploadedDate": "2024-01-10T14:46:10.837Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 107.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 10.0,
+	"coverHash": "20049882cf14eab86398e54b78ecf8a0"
+}

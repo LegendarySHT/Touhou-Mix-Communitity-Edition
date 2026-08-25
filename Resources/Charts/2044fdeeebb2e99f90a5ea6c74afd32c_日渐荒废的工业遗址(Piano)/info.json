@@ -1,0 +1,30 @@
+{
+	"hash": "2044fdeeebb2e99f90a5ea6c74afd32c",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "日渐荒废的工业遗址(Piano)",
+	"desc": "游玩建议：\n普通版：开启Track1\n困难版：开启Track1,2\n======================\n总时长3:00\n原组曲来源：https://musescore.com/user/29625/scores/6799692\n原作者：https://musescore.com/user/29625\nMIDI裁剪：Legendary_SHT\n本MIDI遵循CC BY-NC-SA 4.0 DEED协议\n=========================\n　4面的主题曲。\n　\n　在过去，矿场曾经是能围绕其建造起一座城市的大产业。\n　为了运输，道路和铁路发展壮大，可以说它支撑了日本的产业。\n　然而，现在的矿洞几乎都废弃了。\n　这首曲子的氛围便来自对矿洞遗址的怀念。",
+	"artistName": "chronondecay",
+	"artistUrl": "https://musescore.com/user/29625",
+	"song": {
+		"_id": "65a114782460b9425d191d9b",
+		"name": "廃れゆく産業遺構",
+		"track": 8.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2023-12-27T09:58:21.908Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 174.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 34.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

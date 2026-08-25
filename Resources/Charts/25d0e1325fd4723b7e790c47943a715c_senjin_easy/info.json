@@ -1,0 +1,30 @@
+{
+	"hash": "25d0e1325fd4723b7e790c47943a715c",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "senjin_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab5a6",
+		"name": "戦迅",
+		"track": 32.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0099",
+		"name": "東方萃夢想　～ Immaterial and Missing Power",
+		"abbr": "TH07.5",
+		"date": "2004-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2004-12-30T08:00:00.000Z",
+	"approvedDate": "2004-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 22.0,
+	"upCount": 6.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 392.0,
+	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
+}

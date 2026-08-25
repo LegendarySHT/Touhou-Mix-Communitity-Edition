@@ -1,0 +1,30 @@
+{
+	"hash": "838e399c5e8aa014bcd2467c76441fa1",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "灭杀龙王的公主(Piano)",
+	"desc": "游玩建议：\n普通版：开启Track1\n困难版：开启Track1,2\n======================\n总时长2:32\n原组曲来源：https://musescore.com/user/29625/scores/6799692\n原作者：https://musescore.com/user/29625\nMIDI裁剪：Legendary_SHT\n本MIDI遵循CC BY-NC-SA 4.0 DEED协议\n=========================\n姬虫 百百世的主题曲。\n　\n　她是蜈蚣公主。哎，不管说多喜欢昆虫，蜈蚣还是太……\n　丑恶、有毒、经常能够发现、稀有度低，蜈蚣身上全都是\n　这种会被讨厌的要素，但再怎么说……还是讨厌。不过我把\n　这首曲子写成了最为欢快，像蜈蚣一样帅气的音乐。说不定我还是喜欢蜈蚣。",
+	"artistName": "chronondecay",
+	"artistUrl": "https://musescore.com/user/29625",
+	"song": {
+		"_id": "65a114782460b9425d191da2",
+		"name": "龍王殺しのプリンセス",
+		"track": 15.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2023-12-28T09:38:42.907Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 228.0,
+	"upCount": 4.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 75.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

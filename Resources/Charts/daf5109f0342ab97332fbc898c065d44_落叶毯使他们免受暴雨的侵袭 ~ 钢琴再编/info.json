@@ -1,0 +1,30 @@
+{
+	"hash": "daf5109f0342ab97332fbc898c065d44",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "落叶毯使他们免受暴雨的侵袭 ~ 钢琴再编",
+	"desc": "自制MIDI\n时长4:32",
+	"artistName": "Legendary_SHT",
+	"artistUrl": "https://thmix.org/users/639358aa4c2c822decc671e1",
+	"song": {
+		"_id": "song_360647bf8dc64009",
+		"name": "落叶毯使他们免受暴雨的侵袭",
+		"track": 0,
+		"author": "PumpkinPielex"
+	},
+	"album": {
+		"_id": "album_c0bfaf673764bc32",
+		"name": "東方天界雲 ～ Empyreal Garden of Amusements",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-02-06T05:40:47.903Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 120.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 6.0,
+	"coverHash": "52978735b9d0f0e8241a0a61b8897521"
+}

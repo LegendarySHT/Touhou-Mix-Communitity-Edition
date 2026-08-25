@@ -1,0 +1,30 @@
+{
+	"hash": "d9abb6e27ebe0fe6f655758a2d1e7600",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "cosmic_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab529",
+		"name": "感情の摩天楼　～ Cosmic Mind",
+		"track": 13.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0093",
+		"name": "東方星蓮船　～ Undefined Fantastic Object",
+		"abbr": "TH12",
+		"date": "2009-08-15T07:00:00.000Z"
+	},
+	"uploadedDate": "2009-08-15T07:00:00.000Z",
+	"approvedDate": "2009-08-15T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 31.0,
+	"upCount": 101.0,
+	"downCount": 6.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 2926.0,
+	"coverHash": "4dc6506f566664b7d547e98663300a81"
+}

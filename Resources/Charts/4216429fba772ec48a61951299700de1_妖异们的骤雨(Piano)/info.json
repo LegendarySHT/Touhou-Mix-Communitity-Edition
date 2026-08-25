@@ -1,0 +1,30 @@
+{
+	"hash": "4216429fba772ec48a61951299700de1",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "妖异们的骤雨(Piano)",
+	"desc": "游玩建议：\n普通版：开启Track1\n困难版：开启Track1,2\n======================\n原组曲来源：https://musescore.com/user/29625/scores/6799692\n原作者：https://musescore.com/user/29625\nMIDI裁剪：Legendary_SHT\n本MIDI遵循CC BY-NC-SA 4.0 DEED协议\n=========================\n　1面的主题曲。\n　\n　大雨中的森林上方的曲子。\n　以雨为主题的曲子，根据曲风是平缓还是具有疾驰感，\n　曲子的印象会有180度的变化。\n　这首曲子符合1面的感觉，是后者。",
+	"artistName": "chronondecay",
+	"artistUrl": "https://musescore.com/user/29625",
+	"song": {
+		"_id": "65a114772460b9425d191d95",
+		"name": "妖異達の通り雨",
+		"track": 2.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2023-12-27T13:29:55.614Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 173.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 28.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

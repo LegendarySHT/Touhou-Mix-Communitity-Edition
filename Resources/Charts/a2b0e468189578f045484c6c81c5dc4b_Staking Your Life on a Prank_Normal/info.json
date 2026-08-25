@@ -1,0 +1,30 @@
+{
+	"hash": "a2b0e468189578f045484c6c81c5dc4b",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Staking Your Life on a Prank_Normal",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab5ea",
+		"name": "いたずらに命をかけて",
+		"track": 3.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed009e",
+		"name": "妖精大戦争　～ 東方三月精",
+		"abbr": "TH12.8",
+		"date": "2010-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2010-08-14T07:00:03.000Z",
+	"approvedDate": "2010-08-14T07:00:03.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 22.0,
+	"upCount": 3.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 161.0,
+	"coverHash": "9db88975759e326002d0615d2f7d5fd6"
+}

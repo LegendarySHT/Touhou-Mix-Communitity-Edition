@@ -1,0 +1,30 @@
+{
+	"hash": "261bc8479e0472aa6b778817c2a18f8b",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "日暮归倦鸟 ～ Meteor Dream",
+	"desc": "游玩建议（重要）：\n启用Track1,3,5,8,15。\n如需进一步提高难度可开启其他音轨\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n===================\n转载自：https://www.bilibili.com/video/BV1834y1V71Y/\n版权归作曲者所有，请在良识范围内取用MIDI\nMIDI修改：Legendary_SHT（已对原MIDI进行分割Track等处理）\n===================\n介绍： 16. 日暮归倦鸟~Meteor Dream（Staff Roll）\n作曲：RickyRister\n\n说起来，这是一张天梦曲集，却没有任何一首曲子参考了天梦的主题曲。\n但如果真的要加入天梦流星成分的话，还是得加在staff roll曲里面。\n毕竟，这是在回顾旅程，回到一切开始的地方，不仅是就这个故事而言，也是就角色本身而言。我们回到十年前，回到第一次和天梦，以及...",
+	"artistName": "RickyRister",
+	"artistUrl": "https://space.bilibili.com/393639419",
+	"song": {
+		"_id": "65a16b7a04bfae42a36b4c2d",
+		"name": "日暮归倦鸟~Meteor Dream.",
+		"track": 16.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "65a1687404bfae42a36b4c1a",
+		"name": "明京夢紀行~A Journey of Reminiscences",
+		"abbr": null,
+		"date": "2024-01-12T16:27:32.552Z"
+	},
+	"uploadedDate": "2024-02-29T08:14:17.363Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 102.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 5.0,
+	"coverHash": "20049882cf14eab86398e54b78ecf8a0"
+}

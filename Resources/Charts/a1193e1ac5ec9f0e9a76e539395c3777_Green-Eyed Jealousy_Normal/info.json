@@ -1,0 +1,30 @@
+{
+	"hash": "a1193e1ac5ec9f0e9a76e539395c3777",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Green-Eyed Jealousy_Normal",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab50f",
+		"name": "緑眼のジェラシー",
+		"track": 5.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0092",
+		"name": "東方地霊殿　～ Subterranean Animism",
+		"abbr": "TH11",
+		"date": "2008-08-16T07:00:00.000Z"
+	},
+	"uploadedDate": "2008-08-16T07:00:04.000Z",
+	"approvedDate": "2008-08-16T07:00:04.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 23.0,
+	"upCount": 14.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 493.0,
+	"coverHash": "625cb9e3c514e2918eb88791474682df"
+}

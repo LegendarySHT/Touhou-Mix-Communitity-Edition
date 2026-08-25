@@ -1,0 +1,30 @@
+{
+	"hash": "1019c75aae420516b644108a9861d590",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "樱花飞舞的浅间神社（看简介）（改）",
+	"desc": "游玩建议：\n标准版（难度较低）：选用Lunatic 开启Track4，Track6，Track10，Track15，Track22\n钢琴伴奏版：开启Track10，Track20，Track22\n如需增加难度可开启Track11,Track21.\n强烈建议使用SD-90音源（即群文件中的Touhou.sf2）已获得最佳听觉体验\n==================================\n对音轨响度进行了重新调整\n转载自https://www.bilibili.com/video/BV1KM4y1e7jG\n原作者已同意转载\n在原MIDI的基础上已进行修改\n==================================\n第五面的主题曲，主题是「空寂」。\n和原作5面那普遍比较悲伤的感觉一脉相承。\n尽力去营造了曲径通幽处的氛围，也有柳暗花明又一村的感觉。\n让人感到心旷神怡但又凄神寒骨呢。",
+	"artistName": "Yukarirakuy",
+	"artistUrl": "https://space.bilibili.com/638464788",
+	"song": {
+		"_id": "song_f9b416e9c44f578a",
+		"name": "樱花飞舞的浅间神社",
+		"track": 0,
+		"author": "灵猫子"
+	},
+	"album": {
+		"_id": "album_b81fc68bdf5c1f7f",
+		"name": "东方祈华梦 ～ Elegant Impermanence of Sakura",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-11-17T07:00:11.393Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 150.0,
+	"upCount": 3.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 35.0,
+	"coverHash": "71536570719a9e4a3e9c91cc1ed488af"
+}

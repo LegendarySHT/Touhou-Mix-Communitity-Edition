@@ -88,7 +88,7 @@ func download_chart(hash: String) -> Dictionary:
 	
 	# 3. 下载 MIDI 文件
 	var midi_url := "%s/api/charts/%s/file" % [NetManager.instance.server_url, safe_hash]
-	var midi_path := chart_dir.path_join("%s.mid" % safe_hash)
+	var midi_path := chart_dir.path_join("song.mid")
 	var midi_result := await _download_file(midi_url, midi_path)
 	if not midi_result.get("ok", false):
 		return _fail_download(hash, chart_dir, created_files, "midi_download_failed: %s" % str(midi_result.get("error", "")))
@@ -98,8 +98,7 @@ func download_chart(hash: String) -> Dictionary:
 	var has_cover := bool(chart_data.get("hasCover", false))
 	if has_cover:
 		var cover_url := "%s/api/charts/%s/cover" % [NetManager.instance.server_url, safe_hash]
-		# 尝试 jpg 和 png 两种扩展名
-		var cover_path := chart_dir.path_join("%s-cover.jpg" % safe_hash)
+		var cover_path := chart_dir.path_join("cover.jpg")
 		var cover_result := await _download_file(cover_url, cover_path)
 		if not cover_result.get("ok", false):
 			# 封面下载失败不阻塞整体流程
@@ -107,9 +106,9 @@ func download_chart(hash: String) -> Dictionary:
 		else:
 			created_files.append(cover_path)
 	
-	# 5. 写入元数据 JSON（格式需匹配 MidiData.from_json 期望）
+	# 5. 写入元数据 JSON（白名单结构，匹配 ChartNormalizer / ChartDb 派生）
 	var json_data := _build_local_json(chart_data)
-	var json_path := chart_dir.path_join("%s.json" % safe_hash)
+	var json_path := chart_dir.path_join("info.json")
 	var json_content := JSON.stringify(json_data)
 	var f := FileAccess.open(json_path, FileAccess.WRITE)
 	if f == null:
@@ -146,27 +145,30 @@ func _fail_download(hash: String, chart_dir: String, created_files: Array, error
 	_download_states[hash] = DownloadState.FAILED
 	return {"ok": false, "error": error_msg}
 
-## 构建本地 JSON 元数据（匹配 MidiData.from_json 格式）
+## 构建本地 JSON 元数据（白名单结构，camelCase 键，对齐 ChartNormalizer / ChartDb 派生）
 func _build_local_json(chart_data: Dictionary) -> Dictionary:
 	return {
-		"_id": str(chart_data.get("hash", "")),
+		"hash": str(chart_data.get("hash", "")),
+		"uploaderId": str(chart_data.get("uploaderId", "")),
+		"uploaderName": str(chart_data.get("uploaderName", "")),
+		"uploaderAvatarUrl": str(chart_data.get("uploaderAvatarUrl", "")),
 		"name": str(chart_data.get("title", "")),
 		"desc": str(chart_data.get("description", "")),
-		"status": str(chart_data.get("status", "APPROVED")),
 		"artistName": str(chart_data.get("artistName", "")),
-		"uploaderName": str(chart_data.get("uploaderName", "")),
-		"author": str(chart_data.get("authorName", "")),
+		"artistUrl": str(chart_data.get("artistUrl", "")),
+		"coverHash": str(chart_data.get("coverHash", "")),
 		"uploadedDate": str(chart_data.get("uploadedAt", "")),
-		"hash": str(chart_data.get("hash", "")),
-		# 顶层扁平字段，与 MidiData.from_json / ChartDb.GetChartJson 对齐
-		"song_id": str(chart_data.get("songId", "")),
-		"song_name": str(chart_data.get("songName", "")),
-		"album_id": str(chart_data.get("albumId", "")),
-		"album_name": str(chart_data.get("albumName", "")),
-		# 嵌套 song/album 供 ChartNormalizer/ChartDb 派生读取，用 _id 承载真实 ID
+		"approvedDate": str(chart_data.get("approvedAt", "")),
+		"status": str(chart_data.get("status", "APPROVED")),
+		"downloadCount": chart_data.get("downloadCount", 0),
+		"trialCount": chart_data.get("trialCount", 0),
+		"upCount": chart_data.get("upCount", 0),
+		"downCount": chart_data.get("downCount", 0),
+		# 嵌套 song/album 供 ChartNormalizer/ChartDb 派生读取；author 写入 song.author（不在顶层）
 		"song": {
 			"_id": str(chart_data.get("songId", "")),
-			"name": str(chart_data.get("songName", ""))
+			"name": str(chart_data.get("songName", "")),
+			"author": str(chart_data.get("authorName", ""))
 		},
 		"album": {
 			"_id": str(chart_data.get("albumId", "")),

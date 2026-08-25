@@ -1,0 +1,30 @@
+{
+	"hash": "a24d64b460449027f15b4222c76d88ef",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "意祈华思 夜星明梦",
+	"desc": "游玩建议：\n开启Track1,5\n如需增加难度可开启Track2,6或其他音轨。\n\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,以获得最佳听觉体验\n═══════════════════════\n转载自：https://www.bilibili.com/video/BV1vn8mefEiZ/\nMIDI作者：Yukarirakuy\nhttps://space.bilibili.com/638464788\n原作者已许可转载\nMIDI修改：Legebdary_SHT\n═══════════════════════\n标题画面的主题曲。\n所谓祈华梦，自然就是祈求荣华的黄粱梦。\n请怀抱着这样的感情去进行游戏吧。\n\n应该不难听出有《飞舞飘散凭依华吹雪》的感觉。\n因为我很喜欢zun号突然吹响的感觉，于是就模仿了这样一首。\n═══════════════════════\nTAG:\n#东方祈华梦 #祈华梦 #意祈华思 夜星明梦 #Elegant Impermanence of Sakura",
+	"artistName": "Yukarirakuy",
+	"artistUrl": "https://space.bilibili.com/638464788",
+	"song": {
+		"_id": "song_9550efe3d0c396d9",
+		"name": "意祈华思 夜星明梦",
+		"track": 0,
+		"author": "灵猫子"
+	},
+	"album": {
+		"_id": "album_b81fc68bdf5c1f7f",
+		"name": "东方祈华梦 ～ Elegant Impermanence of Sakura",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-07-22T08:34:22.678Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 119.0,
+	"upCount": 3.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 19.0,
+	"coverHash": "71536570719a9e4a3e9c91cc1ed488af"
+}

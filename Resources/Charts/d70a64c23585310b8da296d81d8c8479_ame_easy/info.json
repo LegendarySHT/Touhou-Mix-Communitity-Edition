@@ -1,0 +1,30 @@
+{
+	"hash": "d70a64c23585310b8da296d81d8c8479",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "ame_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab509",
+		"name": "神は恵みの雨を降らす　～ Sylphid Dream",
+		"track": 17.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0091",
+		"name": "東方風神録　～ Mountain of Faith",
+		"abbr": "TH10",
+		"date": "2007-08-17T07:00:00.000Z"
+	},
+	"uploadedDate": "2007-08-17T07:00:00.000Z",
+	"approvedDate": "2007-08-17T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 22.0,
+	"upCount": 5.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 370.0,
+	"coverHash": "45f1aead7a837bf2d1bf74a5ae123b62"
+}

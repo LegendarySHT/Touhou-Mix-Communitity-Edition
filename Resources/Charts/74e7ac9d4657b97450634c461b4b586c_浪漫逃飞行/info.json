@@ -1,0 +1,30 @@
+{
+	"hash": "74e7ac9d4657b97450634c461b4b586c",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "浪漫逃飞行",
+	"desc": "游玩建议:\n简单版：开启Track 1,5,7,9.\n普通版：开启Track 1,5,6,7,9.\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n════════════════\n转载自：\nhttps://gamebanana.com/projects/35374\n请勿将本MIDI用作商业用途\nMIDI修改：Legendary_SHT\n════════════════\n浪漫逃飞行         ZUN\n\n中盘的主题曲。\n\n　风格一转，变成了开放的感觉。\n　到了这里，应该就不能简简单单地\n　打通场景了吧？\n════════════════\n#浪漫逃飞行 #ロマンチック逃飛行 #弹幕天邪鬼 #弾幕アマノジャク #鬼人正邪 #官方曲目",
+	"artistName": "Shirai Yuki",
+	"artistUrl": "",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab608",
+		"name": "ロマンチック逃飛行",
+		"track": 4.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00a0",
+		"name": "弾幕アマノジャク　～ Impossible Spell Card",
+		"abbr": "TH14.3",
+		"date": "2014-05-11T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-06-26T13:05:49.441Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 203.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 17.0,
+	"coverHash": "0be06d7c239edb9bf95fedb79e1ac15f"
+}

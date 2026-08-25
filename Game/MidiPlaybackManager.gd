@@ -1259,6 +1259,10 @@ func _locate_midi_file(midi_data: MidiData) -> String:
 	var chart_path: String = metadata.path
 	if chart_path.is_empty():
 		chart_path = FileSystemManager.CHARTS_DIR.path_join(folder_name)
+	# 0) 标准命名 song.mid（导入/下载新格式）优先
+	var std_path: String = chart_path.path_join("song.mid")
+	if FileAccess.file_exists(std_path):
+		return std_path
 	# 1) 按 chart_id 命名的mid
 	var midi_file_path: String = chart_path.path_join(chart_id + ".mid")
 	if FileAccess.file_exists(midi_file_path):
@@ -1275,6 +1279,7 @@ func _locate_midi_file(midi_data: MidiData) -> String:
 	# 4) 作为后备，尝试 res:// 目录同名路径
 	var res_chart_path: String = FileSystemManager.DEFAULT_CHARTS_SRC.path_join(folder_name)
 	var res_candidates = [
+		res_chart_path.path_join("song.mid"),
 		res_chart_path.path_join(chart_id + ".mid"),
 		res_chart_path.path_join(midi_data.id + ".mid"),
 		res_chart_path.path_join(midi_data.file_hash + ".mid") if not midi_data.file_hash.is_empty() else ""

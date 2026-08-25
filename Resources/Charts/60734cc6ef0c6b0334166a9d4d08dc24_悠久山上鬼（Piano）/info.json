@@ -1,0 +1,30 @@
+{
+	"hash": "60734cc6ef0c6b0334166a9d4d08dc24",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "悠久山上鬼（Piano）",
+	"desc": "游玩建议：\n普通版：开启Track1\n困难版：开启Track1,2\n======================\n转载自：https://musescore.com/user/29625/scores/12732763\n此MIDI遵循CC BY-NC-SA 4.0 DEED协议\nMIDI裁剪：Legendary_SHT\n===================\n伊吹萃香&剧情模式后期主题曲。\n　\n　这支曲子是基于登山的印象创作的。\n　虽然这也不是个登山游戏啦。\n　我写这支曲子本来是为了给东风谷早苗当主题曲，\n　可是成品和角色印象实在差太远了……（笑）\n════════════════\nTAG:\n#东方兽王园 #兽王园 #东方 #UDoALG #東方獣王園 #東方 #悠久山上鬼 #鬼は悠久の山に #",
+	"artistName": "chronondecay",
+	"artistUrl": "https://musescore.com/user/29625",
+	"song": {
+		"_id": "65a114782460b9425d191da8",
+		"name": "鬼は悠久の山に",
+		"track": 4.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d90",
+		"name": "東方獣王園　～ Unfinished Dream of All Living Ghost",
+		"abbr": "TH19",
+		"date": "2023-08-13T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-01-25T07:09:58.607Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 211.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 51.0,
+	"coverHash": "3caeb2a039e159399504995880d87bb6"
+}

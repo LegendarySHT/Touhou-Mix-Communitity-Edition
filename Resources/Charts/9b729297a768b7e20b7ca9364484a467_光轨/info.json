@@ -1,0 +1,30 @@
+{
+	"hash": "9b729297a768b7e20b7ca9364484a467",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "光轨",
+	"desc": "游玩建议：\n普通版：开启Track2.\n困难版：开启Track2,4.\n===============\n自制MIDI\n有错漏请见谅\n原曲https://music.163.com/song?id=528170533\n===============\n",
+	"artistName": "Legendary_SHT",
+	"artistUrl": "https://space.bilibili.com/150497762",
+	"song": {
+		"_id": "song_2efc4f298374c308",
+		"name": "光轨",
+		"track": 0,
+		"author": "MiraGevot"
+	},
+	"album": {
+		"_id": "album_a973771f68145fd1",
+		"name": "末纪天穹",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-03-22T14:54:40.104Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 88.0,
+	"upCount": 5.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 33.0,
+	"coverHash": "6f638995bbada7a0b97dc76170731799"
+}

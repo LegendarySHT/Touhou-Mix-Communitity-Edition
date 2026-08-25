@@ -1,0 +1,30 @@
+{
+	"hash": "4c0273b22d68a0485686bd5573da30d8",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "幻想的白色旅人",
+	"desc": "游玩建议：\n开启Track1,2,3,5,6,10.\n如需增加难度可开启其他音轨。\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,以获得最佳听觉体验\n═══════════════════════\n转载自https://gamebanana.com/projects/updates/35179\n原作者：ryoya1295\nhttp://www.youtube.com/@ryoya1295channel\nMIDI修改：Legendary_SHT\n本MIDI可非商业使用\n═══════════════════════\n4面的主题曲。\n\n　说到冬天就离不开风雪呢。\n　不是雪国的住民可能很难明白，风雪和豪雨是不同的，\n　从地面被风卷起来的大雪会迎面砸过来呢。\n　戴斗笠是没用的。\n═══════════════════════\nTAG:\n#幻想的白色旅人 #东方天空璋 #天空璋 #幻想のホワイトトラベラー #Illusionary White Traveler",
+	"artistName": "ryoya1295",
+	"artistUrl": "http://www.youtube.com/@ryoya1295channel",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab56c",
+		"name": "幻想のホワイトトラベラー",
+		"track": 8.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0097",
+		"name": "東方天空璋　～ Hidden Star in Four Seasons",
+		"abbr": "TH16",
+		"date": "2017-08-11T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-05-28T07:02:54.647Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 194.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 10.0,
+	"coverHash": "2813ff97d8a237c9190da86652462c60"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "5d3f712993c91fcaca1bb49f6f51bddf",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "heart_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab512",
+		"name": "ハートフェルトファンシー",
+		"track": 8.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0092",
+		"name": "東方地霊殿　～ Subterranean Animism",
+		"abbr": "TH11",
+		"date": "2008-08-16T07:00:00.000Z"
+	},
+	"uploadedDate": "2008-08-16T07:00:00.000Z",
+	"approvedDate": "2008-08-16T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 23.0,
+	"upCount": 7.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 420.0,
+	"coverHash": "625cb9e3c514e2918eb88791474682df"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "3af53e5498d730dd925c75d6e8f670f4",
+	"uploaderId": "64eca22e541cdc68ba121f9c",
+	"uploaderName": "Hakurei Reimu",
+	"name": "Illusionary_Night_Hard",
+	"desc": "https://www.easypianoscore.jp/\n第１面的主题曲。\n　虽然总觉得第一面来点轻快而情绪高昂的东西多好啊，不过这首，\n　也许还算轻快但却非常黑暗呢。\n　但是因为永夜抄所讲述的是夜晚与妖怪的故事，黑暗点吧黑暗点吧。\n　这首曲子由于在莲台野夜行中也有收录，也许有不少人都已经听过了。\n　才第１面就这么黑暗了后面真是令人担忧啊。",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4d2",
+		"name": "幻視の夜　～ Ghostly Eyes",
+		"track": 2.0,
+		"author": "DMBN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008f",
+		"name": "東方永夜抄　～ Imperishable Night",
+		"abbr": "TH08",
+		"date": "2004-08-15T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-04-23T10:01:37.224Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 185.0,
+	"upCount": 0.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/69e0806e61d86346fe0ee48d07f40a2c.jpg",
+	"trialCount": 2.0,
+	"coverHash": "2769890f8d849e3df18bc185024bcef0"
+}

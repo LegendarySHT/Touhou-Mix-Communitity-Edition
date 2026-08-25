@@ -1,0 +1,30 @@
+{
+	"hash": "6454edb9d1b0397df8dd72c698125172",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Inchlings of the Shining Needle ~ Little Princess_Normal",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab54d",
+		"name": "輝く針の小人族　～ Little Princess",
+		"track": 13.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0095",
+		"name": "東方輝針城　～ Double Dealing Character",
+		"abbr": "TH14",
+		"date": "2013-08-12T07:00:00.000Z"
+	},
+	"uploadedDate": "2013-08-12T07:00:03.000Z",
+	"approvedDate": "2013-08-12T07:00:03.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 28.0,
+	"upCount": 27.0,
+	"downCount": 4.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 833.0,
+	"coverHash": "d3ab244024949f7c779dbfb747cbaed0"
+}

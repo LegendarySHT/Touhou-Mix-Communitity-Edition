@@ -1,0 +1,30 @@
+{
+	"hash": "dd507c87a328fba186c2530a58086ba0",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "flower_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4e9",
+		"name": "フラワリングナイト",
+		"track": 4.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0090",
+		"name": "東方花映塚　～ Phantasmagoria of Flower View",
+		"abbr": "TH09",
+		"date": "2005-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2005-08-14T07:00:00.000Z",
+	"approvedDate": "2005-08-14T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 29.0,
+	"upCount": 126.0,
+	"downCount": 7.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 3456.0,
+	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
+}

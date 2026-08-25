@@ -1,0 +1,30 @@
+{
+	"hash": "fb0c144ddb2ce81f874a44ceb7aaed9c",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "雾锁船港",
+	"desc": "游玩建议（重要）：\n开启Track4,8,11,13,16\n如需进一步提高难度可开启其他音轨\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n===================\n東方革金機 ~ The Golden Age Will Return Again\n地址：https://www.bilibili.com/video/BV1Qx421f7ie/\n旧雨忆梦幻想乐团\nhttps://space.bilibili.com/3537113087740167\n===================\n介绍： 四面道中 雾都，已然隐入幻想\n场景：圣船港\n\n霧に閉ざされた港\nShipport Shrouded In Fog\n雾锁船港\n\n作曲：Arplane\nhttps://space.bilibili.com/452626808\n\n这是体验版中我最为喜欢的一首道中曲。\n这首曲子想要描绘的是一片被浓雾笼罩的，灰暗的船港。故事已经步入中期，曲子的风格也变得与三面的开朗大相径庭，而是略有压抑。带有一些凯尔特风味的曲调也为这首曲子增添了东方风以外的趣味。\n自不必说令人惊喜的高潮段落，旋律与隐隐约约的人声相互交织，就仿佛灵梦等人穿过层层浓雾，逐渐逼近异变的真相那样，可谓是将氛围塑造到了极点。\n\n曲评：鸢鸢鸢鸢子\n====================\nTAG:\n#东方革金机 #旧梦忆雨 #东方风自作曲",
+	"artistName": "Arplane",
+	"artistUrl": "https://space.bilibili.com/452626808",
+	"song": {
+		"_id": "song_e625b1831a729e0a",
+		"name": "雾锁船港",
+		"track": 0,
+		"author": "Arplane"
+	},
+	"album": {
+		"_id": "album_57a22336c7a97442",
+		"name": "東方革金機 ~ The Golden Age Will Return Again",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-03-14T06:49:00.991Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 136.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 15.0,
+	"coverHash": "8a98db3590eb653c0b1f4a7b2e21b053"
+}

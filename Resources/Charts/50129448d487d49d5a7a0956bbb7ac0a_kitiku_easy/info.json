@@ -1,0 +1,29 @@
+{
+	"hash": "50129448d487d49d5a7a0956bbb7ac0a",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "kitiku_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "65a1147d2460b9425d191dbd",
+		"name": "最終鬼畜妹フランドール・S",
+		"track": 1.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d93",
+		"name": "その他その他の作品　～ Others' Strange Works",
+		"abbr": "OSW",
+		"date": "2002-10-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2002-10-14T07:00:00.000Z",
+	"approvedDate": "2002-10-14T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 35.0,
+	"upCount": 612.0,
+	"downCount": 41.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 11459.0
+}

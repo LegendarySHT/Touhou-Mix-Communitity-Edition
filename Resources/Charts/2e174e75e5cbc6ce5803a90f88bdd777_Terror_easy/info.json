@@ -1,0 +1,30 @@
+{
+	"hash": "2e174e75e5cbc6ce5803a90f88bdd777",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Terror_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab485",
+		"name": "眠れる恐怖　～Sleeping Terror",
+		"track": 13.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008b",
+		"name": "東方幻想郷　～ Lotus Land Story",
+		"abbr": "TH04",
+		"date": "1998-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "1998-08-14T07:00:00.000Z",
+	"approvedDate": "1998-08-14T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 23.0,
+	"upCount": 14.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 732.0,
+	"coverHash": "007ad004f4cd35703085162abdb5a514"
+}

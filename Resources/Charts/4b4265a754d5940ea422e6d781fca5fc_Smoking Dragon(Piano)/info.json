@@ -1,0 +1,30 @@
+{
+	"hash": "4b4265a754d5940ea422e6d781fca5fc",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "Smoking Dragon(Piano)",
+	"desc": "游玩建议：\n普通版：开启Track1\n困难版：开启Track1,2\n======================\n总时长2:20\n原组曲来源：https://musescore.com/user/29625/scores/6799692\n原作者：https://musescore.com/user/29625\nMIDI裁剪：Legendary_SHT\n本MIDI遵循CC BY-NC-SA 4.0 DEED协议\n=========================\n　驹草 山如的主题曲。\n　\n　因为她单手拿着烟斗的风貌，她被称为驹草太夫。\n　我直率地创作了一首曲风非常独特的曲子。\n　我本来的目标是更加有黑道的感觉，但这种道中BOSS的气场是怎么回事……\n　不过她也只不过是个门卫，毋庸置疑只是个道中BOSS。",
+	"artistName": "chronondecay",
+	"artistUrl": "https://musescore.com/user/29625",
+	"song": {
+		"_id": "65a114782460b9425d191d9a",
+		"name": "スモーキングドラゴン",
+		"track": 7.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2023-12-27T09:48:11.439Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 171.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 25.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

@@ -709,7 +709,7 @@ public partial class ChartDb : Node
 
     /// <summary>
     /// 按状态过滤 + 字段排序 +（可选）关键词搜索，返回规范 folder_name 数组（已有序）。
-    /// sortField: 0=DEFAULT(sort_name) 1=download_count 2=love_count 3=up_count 4=trial_count 5=uploaded_date
+    /// sortField: 0=DEFAULT(sort_name) 1=download_count 2=up_count 3=trial_count 4=uploaded_date
     /// direction: 0=ASC 1=DESC
     /// </summary>
     public Godot.Collections.Array<string> GetSortedMidiKeys(string status, int sortField, int direction, string searchQuery)
@@ -824,7 +824,6 @@ public partial class ChartDb : Node
         item["download_count"] = BsonConvert.GetLong(d, "download_count");
         item["trial_count"] = BsonConvert.GetLong(d, "trial_count");
         item["up_count"] = BsonConvert.GetLong(d, "up_count");
-        item["love_count"] = BsonConvert.GetLong(d, "love_count");
         item["down_count"] = BsonConvert.GetLong(d, "down_count");
         item["file_hash"] = BsonConvert.GetStr(d, "file_hash");
         return item;
@@ -852,15 +851,12 @@ public partial class ChartDb : Node
                 sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "download_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "download_count"));
                 break;
             case 2:
-                sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "love_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "love_count"));
-                break;
-            case 3:
                 sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "up_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "up_count"));
                 break;
-            case 4:
+            case 3:
                 sorted = asc ? docs.OrderBy(d => BsonConvert.GetLong(d, "trial_count")) : docs.OrderByDescending(d => BsonConvert.GetLong(d, "trial_count"));
                 break;
-            case 5:
+            case 4:
                 sorted = asc ? docs.OrderBy(d => BsonConvert.GetStr(d, "uploaded_date"), StringComparer.Ordinal) : docs.OrderByDescending(d => BsonConvert.GetStr(d, "uploaded_date"), StringComparer.Ordinal);
                 break;
             default:
@@ -1022,7 +1018,12 @@ public partial class ChartDb : Node
             if (doc == null) return new Godot.Collections.Dictionary();
 
             var gd = new Godot.Collections.Dictionary();
-            gd["_id"] = BsonConvert.GetStr(doc, "midi_id");
+            // midi_id 为谱面唯一标识：规范化/导入 JSON 只保留 hash（无 _id），故既有空 midi_id 兜底回退
+            // 到 hash / folder_hash，保证水合出的 MidiData.id 非空（否则 DataManager._ensure_midi 判空返回 null）
+            var midiId = BsonConvert.GetStr(doc, "midi_id");
+            if (string.IsNullOrEmpty(midiId)) midiId = BsonConvert.GetStr(doc, "hash");
+            if (string.IsNullOrEmpty(midiId)) midiId = BsonConvert.GetStr(doc, "folder_hash");
+            gd["_id"] = midiId;
             gd["name"] = BsonConvert.GetStr(doc, "name");
             gd["desc"] = BsonConvert.GetStr(doc, "description");
             gd["status"] = BsonConvert.GetStr(doc, "status", "PENDING");
@@ -1032,7 +1033,6 @@ public partial class ChartDb : Node
             gd["uploadedDate"] = BsonConvert.GetStr(doc, "uploaded_date");
             gd["trialCount"] = BsonConvert.GetLong(doc, "trial_count");
             gd["downloadCount"] = BsonConvert.GetLong(doc, "download_count");
-            gd["loveCount"] = BsonConvert.GetLong(doc, "love_count");
             gd["upCount"] = BsonConvert.GetLong(doc, "up_count");
             gd["downCount"] = BsonConvert.GetLong(doc, "down_count");
             gd["avgAccuracy"] = BsonConvert.GetDouble(doc, "avg_accuracy");
@@ -1112,7 +1112,6 @@ public partial class ChartDb : Node
         _charts.EnsureIndex("status", "$.status");
         _charts.EnsureIndex("uploaded_date", "$.uploaded_date");
         _charts.EnsureIndex("download_count", "$.download_count");
-        _charts.EnsureIndex("love_count", "$.love_count");
         _charts.EnsureIndex("up_count", "$.up_count");
         _charts.EnsureIndex("trial_count", "$.trial_count");
         _charts.EnsureIndex("song_id", "$.song_id");
@@ -1278,8 +1277,7 @@ public partial class ChartDb : Node
         if (!doc.ContainsKey("uploader_id")) doc["uploader_id"] = "";
         if (!doc.ContainsKey("uploader_avatar_url")) doc["uploader_avatar_url"] = "";
         if (!doc.ContainsKey("author_name")) doc["author_name"] = "";
-        if (!doc.ContainsKey("coverUrl")) doc["coverUrl"] = "";
-        if (!doc.ContainsKey("coverPath")) doc["coverPath"] = "";
+        if (!doc.ContainsKey("coverHash")) doc["coverHash"] = "";
         if (!doc.ContainsKey("uploaded_date")) doc["uploaded_date"] = "";
         if (!doc.ContainsKey("approved_date")) doc["approved_date"] = "";
         if (!doc.ContainsKey("trial_count")) doc["trial_count"] = (long)0;
@@ -1651,7 +1649,7 @@ public partial class ChartDb : Node
                     a["abbr"] = BsonConvert.GetStr(ab, "abbr");
                     a["date"] = BsonConvert.GetStr(ab, "date");
                     a["description"] = BsonConvert.GetStr(ab, "description");
-                    a["coverUrl"] = BsonConvert.GetStr(ab, "coverUrl");
+                    a["coverHash"] = BsonConvert.GetStr(ab, "coverHash");
                 }
                 albums[albumId] = a;
             }
@@ -1691,7 +1689,7 @@ public partial class ChartDb : Node
         var unknownAlbum = new BsonDocument
         {
             ["_id"] = "__unknown_album__", ["name"] = "Unknown", ["abbr"] = "",
-            ["date"] = "", ["description"] = "", ["coverUrl"] = "",
+            ["date"] = "", ["description"] = "", ["coverHash"] = "",
             ["song_ids"] = new BsonArray(), ["total_midi_count"] = (long)0, ["earliest_uploaded_date"] = ""
         };
         var unknownSong = new BsonDocument

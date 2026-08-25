@@ -1,0 +1,30 @@
+{
+	"hash": "200649dea7416f778b2d0fcbd11e6d61",
+	"uploaderId": "60649c4b12d862208dfdc774",
+	"uploaderName": "KaiIang",
+	"name": "东方红-辉全曲MIDI组曲",
+	"desc": "东方红-辉全曲MIDI组曲 24902.mid\nMidi Length : 1:13:21\n转载自完美钢琴\n⭐作者已同意转载⭐\nhttp://pz.perfectpiano.cn/html/userDetail.html?picid=24902",
+	"artistName": "神影ゾーイ",
+	"artistUrl": "http://pz.perfectpiano.cn/html/userDetail.html?picid=24902",
+	"song": {
+		"_id": "song_2e3ad6ac3e74fff9",
+		"name": "东方project",
+		"track": 0,
+		"author": ""
+	},
+	"album": {
+		"_id": "album_23fbf275f970ca2e",
+		"name": "組曲",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2021-07-12T05:24:51.970Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 668.0,
+	"upCount": 5.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/cd4c1ec3b35db0dd6894b39d90fbde99.jpg",
+	"trialCount": 43.0,
+	"coverHash": "d64cf74e9024d16f7d2d7a60c5f37bd4"
+}

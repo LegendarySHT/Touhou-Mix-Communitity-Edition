@@ -1,0 +1,30 @@
+{
+	"hash": "f06cfd7477021d11e145825b81f34991",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "bake_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab66b",
+		"name": "月の妖鳥、化猫の幻",
+		"track": 7.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b2",
+		"name": "蓮台野夜行　～ Ghostly Field Club",
+		"abbr": "GFC",
+		"date": "2003-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2003-12-30T08:00:00.000Z",
+	"approvedDate": "2003-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 23.0,
+	"upCount": 7.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 369.0,
+	"coverHash": "a54b620eb8e83cdd1689c337533ffa23"
+}

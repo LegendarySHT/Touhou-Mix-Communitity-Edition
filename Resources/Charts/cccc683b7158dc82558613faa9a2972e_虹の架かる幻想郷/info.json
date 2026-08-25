@@ -1,0 +1,30 @@
+{
+	"hash": "cccc683b7158dc82558613faa9a2972e",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "虹の架かる幻想郷",
+	"desc": "虹の架かる幻想郷\n作者：arplane\n推荐启用音轨：3，4\n\n此转载已获作者授权\n\nTag:\n#东方虹龙洞\n#架起虹桥的幻想乡",
+	"artistName": "arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "65a114772460b9425d191d94",
+		"name": "虹の架かる幻想郷",
+		"track": 1.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2021-04-09T21:16:33.219Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 1151.0,
+	"upCount": 8.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 101.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

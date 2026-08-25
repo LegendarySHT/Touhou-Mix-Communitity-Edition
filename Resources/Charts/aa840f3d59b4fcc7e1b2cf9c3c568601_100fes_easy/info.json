@@ -1,0 +1,30 @@
+{
+	"hash": "aa840f3d59b4fcc7e1b2cf9c3c568601",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "100fes_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab4b9",
+		"name": "魔法少女達の百年祭",
+		"track": 14.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008d",
+		"name": "東方紅魔郷　～ the Embodiment of Scarlet Devil",
+		"abbr": "TH06",
+		"date": "2002-08-11T07:00:00.000Z"
+	},
+	"uploadedDate": "2002-08-11T07:00:00.000Z",
+	"approvedDate": "2002-08-11T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 24.0,
+	"upCount": 51.0,
+	"downCount": 5.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1905.0,
+	"coverHash": "5fd01a8f459718d93167137dca76efa5"
+}

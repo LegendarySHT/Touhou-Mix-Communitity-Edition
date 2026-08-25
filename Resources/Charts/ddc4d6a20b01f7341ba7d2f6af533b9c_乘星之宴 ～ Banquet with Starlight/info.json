@@ -1,0 +1,30 @@
+{
+	"hash": "ddc4d6a20b01f7341ba7d2f6af533b9c",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "乘星之宴 ～ Banquet with Starlight",
+	"desc": "游玩建议（重要）：\n启用Track1,2,5,9.\n如需进一步提高难度可开启其他音轨\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n===================\n转载自：https://www.bilibili.com/video/BV15x411e7T2\n时长3:25\nMIDI修改：Legendary_SHT\n===================\n用新的鼓音源Remix了之前的曲子。\n这种鼓用来搭配这首曲子的疾走感真实在合适不过了（\n希望是能够释放大家所有压抑的11式狂飙！（\n如果原曲是流星般的感觉的话，\n那么这首Remix就是流星雨的感觉了吧？",
+	"artistName": "Tokini11",
+	"artistUrl": "https://space.bilibili.com/1664494",
+	"song": {
+		"_id": "song_5a03a886c0f85e14",
+		"name": "乘星之宴 ～ Banquet with Starlight",
+		"track": 0,
+		"author": "Tokini11"
+	},
+	"album": {
+		"_id": "album_3c90a8b4ac579bca",
+		"name": "东方风自作曲",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-02-04T15:06:05.477Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 133.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 19.0,
+	"coverHash": "e7b1a83d540bb8bc92b210b56504be0f"
+}

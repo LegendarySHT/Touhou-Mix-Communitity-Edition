@@ -1,0 +1,30 @@
+{
+	"hash": "cf8fa019c1c781758799445ce6159212",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "bakko_w_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4cd",
+		"name": "妖々跋扈　～ Who done it!",
+		"track": 17.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008e",
+		"name": "東方妖々夢　～ Perfect Cherry Blossom",
+		"abbr": "TH07",
+		"date": "2003-08-17T07:00:00.000Z"
+	},
+	"uploadedDate": "2003-08-17T07:00:00.000Z",
+	"approvedDate": "2003-08-17T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 25.0,
+	"upCount": 17.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 715.0,
+	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "950065f6cfb69a2163a6d1bf8b132bf4",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "dakara_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0aa84679d16d79ab6bd",
+		"name": "夜だから眠れない",
+		"track": 2.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00c5",
+		"name": "東方三月精 ～ Eastern and Little Nature Deity",
+		"abbr": "EaLND",
+		"date": "2007-01-26T08:00:00.000Z"
+	},
+	"uploadedDate": "2007-01-26T08:00:00.000Z",
+	"approvedDate": "2007-01-26T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 22.0,
+	"upCount": 9.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 388.0,
+	"coverHash": "17a0eafd7d1f014dab725e2922a7c72b"
+}

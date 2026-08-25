@@ -1,0 +1,30 @@
+{
+	"hash": "394d56a814e093ea6068f4f45f0afd45",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "border_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4ca",
+		"name": "ボーダーオブライフ",
+		"track": 14.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008e",
+		"name": "東方妖々夢　～ Perfect Cherry Blossom",
+		"abbr": "TH07",
+		"date": "2003-08-17T07:00:00.000Z"
+	},
+	"uploadedDate": "2003-08-17T07:00:00.000Z",
+	"approvedDate": "2003-08-17T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 25.0,
+	"upCount": 44.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1545.0,
+	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "43821ab26d2d0cd77aa6200a4b960121",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "绽放的净土之花~Purify filth（看简介）",
+	"desc": "游玩建议（重要）：\n标准版：开启Track2,4,12。\n困难版：开启Track2,4,5,12,13\n如需提高难度可开启其他音轨\n播放建议：\n强烈建议使用SD-90音源（群文件中的Touhou.sf2),以获得最佳听觉体验\n=============================\n总时长2:51\n转载自： https://www.bilibili.com/video/BV1Y34y1N7iy/\n原作者已同意转载\n感谢旧雨忆梦幻想乐团制作的东方山海传\n旧雨忆梦幻想乐团：https://space.bilibili.com/3537113087740167\nMIDI修改：Legendary_SHT(已对原midi进行补全音色，分离Track，删除循环部分处理）\n=============================\nMusic Room\n端木忆的主题曲。\n\n这首曲子的听感就像六面boss一样（在我这次修改过之前更加相似）\n\n我这次削弱了一下部分结构让它听起来不那么像六面boss。\n\n说来真是奇怪，我很容易把一首boss曲写的很长，看来我还需要继续学习怎么控制好速度和结构呢（",
+	"artistName": "旧雨忆梦幻想乐团",
+	"artistUrl": "https://space.bilibili.com/3537113087740167",
+	"song": {
+		"_id": "song_05918f58a3b585e3",
+		"name": "绽放的净土之花 ~ Purify Filth",
+		"track": 0,
+		"author": "穆然皎若"
+	},
+	"album": {
+		"_id": "album_6b54c52ba74a7487",
+		"name": "東方山海傳 ~ the Potential Crisis",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-11-22T09:46:12.979Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 131.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 13.0,
+	"coverHash": "4130631fb8661979d6df1ba75112b614"
+}

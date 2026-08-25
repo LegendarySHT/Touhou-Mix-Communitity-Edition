@@ -1,0 +1,30 @@
+{
+	"hash": "36618e4d125b5cf93ab277d55ad1564f",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "空漠的黑与白 ～ Double Sickle of Death（看简介)",
+	"desc": "已尝试将主旋律进行分离\n播放建议：（如果用默认配置，曲子会听起来很奇怪）\n音源文件路径替换为Touhou.sf2(测试群中可下载）\n音频混响设定改为“通用”\n将Track15,16音色替换为“中提琴”\n游玩建议：\n简单版：选用Lunatic 开启Track2,Track3,Track5,Track13,Track16,Track20。\n普通版：选用Lunatic 开启Track2,Track5,Track12,Track13,Track15,Track16，Track20。\n若想提高难度可开启Track1其他音轨\n---------------------------------------\n转载并修改自：https://space.bilibili.com/1664494\n东方雪莲华steam:https://store.steampowered.com/app/1000440/__Abyss_Soul_Lotus/\n=======================\n◇空漠的黑与白 ～ Double Sickle of Death\n\n 荼靡 结音 & 墨樱 初月的主题曲。\n\n 虽说是黑白无常，但是曲子却意外地十分活泼。\n 同时也加入了能够让曲子听起来更像后半程战斗的元素。\n 因为是双Boss所以做了左右声道切换，大概很爽。\n 啊——发挥的仍然还是中规中矩吧。\n\n==========\n\n以左右声道的两个乐器进行“问答”作为线索，完成了这首曲子；\n至于为什么说中规中矩呢，大概是因为曲子本身除了双声道切换之外并没有什么太大的创新点，仍然是几年前最传统的11东方风个人风格，用简单的动次打次配上一些比较清亮的旋律\n不过加进去的不少小细节倒是意外地很符合设定了？（\n小黑好凶好可怕，死镰主宰更可怕（（（",
+	"artistName": "Tokini11",
+	"artistUrl": "https://space.bilibili.com/1664494",
+	"song": {
+		"_id": "65a15f2804bfae42a36b4bd5",
+		"name": "空漠的黑与白 ～ Double Sickle of Death",
+		"track": 9.0,
+		"author": "Tokini11"
+	},
+	"album": {
+		"_id": "64c924b6541cdc68ba11a3e7",
+		"name": "東方雪蓮華 ～ Abyss Soul Lotus.",
+		"abbr": null,
+		"date": "2023-08-01T15:28:54.263Z"
+	},
+	"uploadedDate": "2023-07-18T06:37:16.243Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 220.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 48.0,
+	"coverHash": "be37932ff783846b846cdd670814dd00"
+}

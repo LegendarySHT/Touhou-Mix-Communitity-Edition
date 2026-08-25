@@ -1,0 +1,30 @@
+{
+	"hash": "dbffe99a7eac4b2340cdd6e2b9f5a120",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "Nightmare_Diary_Hard",
+	"desc": "MIDI来自東方ピアノEasyモード\n原地址：https://www.easypianoscore.jp/index.php#requestAll\n======================\nTAG:\n#秘封噩梦日记 #Nightmare Diary #噩梦日记",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "song_bd8d83bc11e7df4d",
+		"name": "ナイトメアダイアリー",
+		"track": 0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "album_0cc21e37ee99c17d",
+		"name": "秘封ナイトメアダイアリー　～ Violet Detector",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-04-07T09:12:42.280Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 161.0,
+	"upCount": 0.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 4.0,
+	"coverHash": "9e8e073882d558fee6ae1142a3d41f6f"
+}

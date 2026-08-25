@@ -1,0 +1,30 @@
+{
+	"hash": "ba9150254720a0c1eadfd32f788c8b4e",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "风の都",
+	"desc": "游玩建议：\n⭐普通版：开启Track1,2.\n简单版：开启Track1.\n═══════════════════════\n自制MIDI\n有错漏请见谅\nMIDI下载：https://www.midishow.com/midi/200557.html\n原曲：幽雅地绽放吧，墨染的樱花　～ Border of Life\n═══════════════════════\nTAG:\n#东方妖妖梦 #妖妖梦 #墨染樱 #幽雅地绽放吧，墨染的樱花　～ Border of Life #风之都 #风の都 #DDBY",
+	"artistName": "Legendary_SHT",
+	"artistUrl": "https://space.bilibili.com/150497762",
+	"song": {
+		"_id": "song_ad2776bb8be737c0",
+		"name": "风の都",
+		"track": 0,
+		"author": "DDBY"
+	},
+	"album": {
+		"_id": "album_98c8561eb54d9178",
+		"name": "Cafe de Touhou",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-08-17T05:58:50.878Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 169.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 9.0,
+	"coverHash": "f4832fa2115c413717d7ec4d274c41bf"
+}

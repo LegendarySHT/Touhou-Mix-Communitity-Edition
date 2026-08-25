@@ -1,0 +1,30 @@
+{
+	"hash": "2fd960b91354e18a95fe252fdc1d9ad0",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "熙攘市场今何在　～ Immemorial Marketeers(Piano)",
+	"desc": "游玩建议：\n普通版：开启Track1\n困难版：开启Track1,2\n======================\n总时长3:44\n原组曲来源：https://musescore.com/user/29625/scores/6799692\n原作者：https://musescore.com/user/29625\nMIDI裁剪：Legendary_SHT\n本MIDI遵循CC BY-NC-SA 4.0 DEED协议\n=========================\n天弓 千亦的主题曲。\n　\n　她是集市之神。说到彩虹，就是和异界交错的地方。\n　不同事物交汇的地方，就是她的领域。\n　这首曲子同样，由节奏轻快热闹愉快的部分，和富有力量感、\n　仿佛能听见某处传来的悲鸣一样的部分，这两部分交错组成。",
+	"artistName": "chronondecay",
+	"artistUrl": "https://musescore.com/user/29625",
+	"song": {
+		"_id": "65a114782460b9425d191da0",
+		"name": "あの賑やかな市場は今どこに　～ Immemorial Marketeers",
+		"track": 13.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2023-12-28T09:07:51.276Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 266.0,
+	"upCount": 16.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 237.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

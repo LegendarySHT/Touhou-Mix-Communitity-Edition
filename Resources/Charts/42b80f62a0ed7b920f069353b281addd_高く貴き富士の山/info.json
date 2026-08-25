@@ -1,0 +1,30 @@
+{
+	"hash": "42b80f62a0ed7b920f069353b281addd",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "高く貴き富士の山",
+	"desc": "扒谱：Arplane\nhttps://space.bilibili.com/452626808/\n推荐启用音轨：5, 16, 17\n════════════════\nTAG:\n#高く貴き富士の山  #富士新興講 ～ The Overwritten God",
+	"artistName": "Arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "song_4cc6b020105b3109",
+		"name": "高く貴き富士の山",
+		"track": 0,
+		"author": "桐生"
+	},
+	"album": {
+		"_id": "album_7b7b2845a104e4c0",
+		"name": "富士新興講 ～ The Overwritten God",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-05-12T04:33:51.018Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 113.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 6.0,
+	"coverHash": "c23f3b55fb995f116f6c1f065598e7e6"
+}

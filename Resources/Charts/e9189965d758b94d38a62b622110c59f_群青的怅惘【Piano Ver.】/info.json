@@ -1,0 +1,30 @@
+{
+	"hash": "e9189965d758b94d38a62b622110c59f",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "群青的怅惘【Piano Ver.】",
+	"desc": "游玩建议：\n普通版：开启Track1.\n困难版：开启Track1,2\n============================\n自制MIDI\n时长2:56\n原曲：https://www.bilibili.com/video/BV1eW411b76m\n原曲作者：\n11是谁啊     https://space.bilibili.com/1664494\n梦旅人小屋  https://space.bilibili.com/4296083\n===========================\n惯例的12月31日跨年曲~大家新年快乐！\n这次因为最近比较忙，只能投稿一下存货（\n这是刚刚换了钢琴音源之后写的曲子，也是时依人设的道中曲，投稿的是纯钢琴版，在Lua群第八次群活动中大家可以听到东方风的版本。\n和猫步聚聚写的合作曲。另外，和猫步聚聚的道中曲有联动哦，那首是「茜色的思惑」【av17824584】。\n视频里因为要用到midi视图，所以使用了无变速ver（\n有变速的完全体mp3下载在这里！→https://pan.baidu.com/s/1jHBNkMi",
+	"artistName": "Legendary_SHT",
+	"artistUrl": "https://thmix.org/users/639358aa4c2c822decc671e1",
+	"song": {
+		"_id": "song_238d1182554706df",
+		"name": "群青的怅惘",
+		"track": 0,
+		"author": "Tokini11&梦旅人小屋"
+	},
+	"album": {
+		"_id": "album_3c90a8b4ac579bca",
+		"name": "东方风自作曲",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-02-05T05:08:16.842Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 141.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 18.0,
+	"coverHash": "e7b1a83d540bb8bc92b210b56504be0f"
+}

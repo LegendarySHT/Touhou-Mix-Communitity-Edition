@@ -1,0 +1,30 @@
+{
+	"hash": "80a5ba50002739ffcaf8710539bf91f0",
+	"uploaderId": "5f5cb31ec9ea33595793e1fe",
+	"uploaderName": "apa",
+	"name": "神は恵みの雨を降らす ～ Sylphid Dream",
+	"desc": "神は恵みの雨を降らす ～ Sylphid Dream\n\n推荐启用音轨：3，4，6，7，10，11\n视频：https://www.bilibili.com/video/BV1644y1B7wj/\n\n\nTag：\n#东方风神录　～ Mountain of Faith.\n#神明降下恩惠之雨　～ Sylphid Dream",
+	"artistName": "arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab509",
+		"name": "神は恵みの雨を降らす　～ Sylphid Dream",
+		"track": 17.0,
+		"author": "arplane"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0091",
+		"name": "東方風神録　～ Mountain of Faith",
+		"abbr": "TH10",
+		"date": "2007-08-17T07:00:00.000Z"
+	},
+	"uploadedDate": "2021-06-18T13:00:11.782Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 700.0,
+	"upCount": 0.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/9cc5669e2ccee02a423b4ab73fc5eea4.jpg",
+	"trialCount": 9.0,
+	"coverHash": "45f1aead7a837bf2d1bf74a5ae123b62"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "815535157f26a0648833fddd5bf8af18",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "高く貴き富士の山 （改）",
+	"desc": "游玩建议：\n简单版：开启Track5,10,13,18,20.\n普通版：开启Track3,5,10,13,18,20\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n════════════════\n扒谱：Arplane\nhttps://space.bilibili.com/452626808/\nMIDI修改：Legendary_SHT\n════════════════\nTAG:\n#高く貴き富士の山  #富士新興講 ～ The Overwritten God",
+	"artistName": "Arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "song_4cc6b020105b3109",
+		"name": "高く貴き富士の山",
+		"track": 0,
+		"author": "桐生"
+	},
+	"album": {
+		"_id": "album_7b7b2845a104e4c0",
+		"name": "富士新興講 ～ The Overwritten God",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-05-12T05:06:53.490Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 132.0,
+	"upCount": 3.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 14.0,
+	"coverHash": "c23f3b55fb995f116f6c1f065598e7e6"
+}

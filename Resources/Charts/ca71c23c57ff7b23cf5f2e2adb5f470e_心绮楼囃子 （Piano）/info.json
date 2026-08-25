@@ -1,0 +1,30 @@
+{
+	"hash": "ca71c23c57ff7b23cf5f2e2adb5f470e",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "心绮楼囃子 （Piano）",
+	"desc": "游玩建议：\n简单版：开启Track0.\n普通版：开启Track0,1\n═══════════════════════\n转载自：https://musescore.com/user/28344526/scores/6236791\n本MIDI遵守CC BY-NC 4.0 DEED协议\n═══════════════════════\n看起来是个主题曲，但是除此之外只有一首曲子使用了这个乐句的谜曲。\n曲子上来说虽然不是囃子但是就这么说了。毕竟里面可是有和太鼓的！ 这首曲子\n除了标题之外使用的地方或许才是它原本的用途。　　　　　　　小提琴. ＪＵＮ\n═══════════════════════\nTAG:\n#心绮楼囃子 #心綺楼囃子 #东方心绮楼 #心绮楼 #東方心綺楼　～ Hopeless Masquerade",
+	"artistName": "7forks",
+	"artistUrl": "https://musescore.com/user/28344526",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab5fe",
+		"name": "心綺楼囃子",
+		"track": 13.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed009f",
+		"name": "東方心綺楼　～ Hopeless Masquerade",
+		"abbr": "TH13.5",
+		"date": "2013-05-26T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-05-21T02:55:15.430Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 204.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 24.0,
+	"coverHash": "7bdb89a4adb37032aae8e17025f4bb7f"
+}

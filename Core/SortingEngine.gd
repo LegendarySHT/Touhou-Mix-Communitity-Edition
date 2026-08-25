@@ -14,7 +14,6 @@ enum SortDirection {
 enum SortDataField {
 	DEFAULT,            # 默认顺序（按专辑）
 	DOWNLOAD_COUNT,    # 按下载数排序
-	LOVE_COUNT,        # 按收藏数排序
 	UP_COUNT,          # 按好评数排序
 	TRIAL_COUNT,       # 按试玩数排序
 	UPLOADED_DATE     # 按上传时间排序
@@ -107,9 +106,6 @@ func _compare_midis(
 		SortDataField.DOWNLOAD_COUNT:
 			result = _compare_int(midi_a.download_count, midi_b.download_count)
 		
-		SortDataField.LOVE_COUNT:
-			result = _compare_int(midi_a.love_count, midi_b.love_count)
-		
 		SortDataField.UP_COUNT:
 			result = _compare_int(midi_a.up_count, midi_b.up_count)
 		
@@ -164,7 +160,7 @@ func _get_status_name(status: SortStatField) -> String:
 
 ## 可读化排序配置（调试用）：状态/字段/方向全打印，便于确认筛选面板切换时的完整生效状态
 func _describe_sort(status: SortStatField, field: SortDataField, direction: SortDirection) -> String:
-	var field_names := ["默认(专辑名)", "下载数", "收藏数", "好评数", "试玩数", "上传时间"]
+	var field_names := ["默认(专辑名)", "下载数", "好评数", "试玩数", "上传时间"]
 	var stat_name := _get_status_name(status)
 	if stat_name.is_empty():
 		stat_name = "ALL"

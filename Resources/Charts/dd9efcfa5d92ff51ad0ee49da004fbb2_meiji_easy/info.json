@@ -1,0 +1,30 @@
+{
+	"hash": "dd9efcfa5d92ff51ad0ee49da004fbb2",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "meiji_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab4b2",
+		"name": "明治十七年の上海アリス",
+		"track": 7.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008d",
+		"name": "東方紅魔郷　～ the Embodiment of Scarlet Devil",
+		"abbr": "TH06",
+		"date": "2002-08-11T07:00:00.000Z"
+	},
+	"uploadedDate": "2002-08-11T07:00:05.000Z",
+	"approvedDate": "2002-08-11T07:00:05.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 27.0,
+	"upCount": 59.0,
+	"downCount": 9.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 2407.0,
+	"coverHash": "5fd01a8f459718d93167137dca76efa5"
+}

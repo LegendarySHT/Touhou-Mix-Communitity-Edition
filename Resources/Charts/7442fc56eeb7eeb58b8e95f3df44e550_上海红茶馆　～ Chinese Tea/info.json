@@ -1,0 +1,30 @@
+{
+	"hash": "7442fc56eeb7eeb58b8e95f3df44e550",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "上海红茶馆　～ Chinese Tea ",
+	"desc": "游玩建议：\n开启Track3,5,8,13,17,18\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n════════════════\n原曲还原：Arplane\nhttps://space.bilibili.com/452626808/\n原地址：https://www.bilibili.com/video/BV134nuzEEok/\n════════════════\nTAG:\n#东方\n#梦违科学世纪 #夢違科学世紀 #Changeability of Strange Dream\n#上海红茶馆 #上海紅茶館 #Chinese Tea",
+	"artistName": "arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab672",
+		"name": "上海紅茶館　～ Chinese Tea",
+		"track": 3.0,
+		"author": "arplane"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b3",
+		"name": "夢違科学世紀　～ Changeability of Strange Dream",
+		"abbr": "CoSD",
+		"date": "2004-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2025-09-26T06:44:35.876Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 370.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 11.0,
+	"coverHash": "400f68e57ea1aee70e3adb9bebc3a299"
+}

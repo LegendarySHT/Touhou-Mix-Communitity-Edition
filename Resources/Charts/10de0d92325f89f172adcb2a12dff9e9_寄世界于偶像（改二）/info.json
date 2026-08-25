@@ -1,0 +1,30 @@
+{
+	"hash": "10de0d92325f89f172adcb2a12dff9e9",
+	"uploaderId": "5e8033be49a12c3753fef129",
+	"uploaderName": "mirror",
+	"name": "寄世界于偶像（改二）",
+	"desc": "键少的是谱面",
+	"artistName": "星雨似剑",
+	"artistUrl": "无",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab582",
+		"name": "偶像に世界を委ねて　～ Idoratrize World",
+		"track": 13.0,
+		"author": "上海爱丽丝幻乐团"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0098",
+		"name": "東方鬼形獣　～ Wily Beast and Weakest Creature",
+		"abbr": "TH17",
+		"date": "2019-08-12T07:00:00.000Z"
+	},
+	"uploadedDate": "2020-03-31T00:23:33.291Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 517.0,
+	"upCount": 3.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 52.0,
+	"coverHash": "ffd24aec85de388005947cd3e4944684"
+}

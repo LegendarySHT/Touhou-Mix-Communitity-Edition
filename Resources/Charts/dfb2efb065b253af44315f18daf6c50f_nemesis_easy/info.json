@@ -1,0 +1,30 @@
+{
+	"hash": "dfb2efb065b253af44315f18daf6c50f",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "nemesis_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab5e4",
+		"name": "ネメシスの要塞",
+		"track": 4.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed009d",
+		"name": "ダブルスポイラー　～ 東方文花帖",
+		"date": "2010-03-14T08:00:00.000Z",
+		"abbr": "TH12.5"
+	},
+	"uploadedDate": "2010-03-14T08:00:00.000Z",
+	"approvedDate": "2010-03-14T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 25.0,
+	"upCount": 5.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 226.0,
+	"coverHash": "44feb949478470f7e23ed73715f42ce6"
+}

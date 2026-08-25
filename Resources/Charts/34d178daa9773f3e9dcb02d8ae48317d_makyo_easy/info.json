@@ -1,0 +1,30 @@
+{
+	"hash": "34d178daa9773f3e9dcb02d8ae48317d",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "makyo_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a484679d16d79ab448",
+		"name": "魔鏡",
+		"track": 9.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0088",
+		"name": "東方靈異伝　～ Highly Responsive to Prayers",
+		"abbr": "TH01",
+		"date": "1997-08-15T07:00:00.000Z"
+	},
+	"uploadedDate": "1997-08-15T07:00:00.000Z",
+	"approvedDate": "1997-08-15T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 17.0,
+	"upCount": 199.0,
+	"downCount": 20.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 7087.0,
+	"coverHash": "7d4c86970886460fe3d47f288612d712"
+}

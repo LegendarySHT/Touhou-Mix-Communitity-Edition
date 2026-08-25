@@ -1,0 +1,30 @@
+{
+	"hash": "cf8bdce2f22a23b75797b667315ee922",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "冲破结界的骇浪~Connect the bridge of the continent（看简介）",
+	"desc": "游玩建议（重要）：\n简易版：启用Lunatic，开启Track1，Track4，Track8，Track10，Track17，Track21\n标准版：启用Lunatic，开启Track1，Track2，Track4，Track5，Track8，Track9，Track10，Track17，Track18，Track21，Track22\n如需提高难度可开启其他音轨\n播放建议：\n强烈建议使用SD-90音源（群文件中的Touhou.sf2),以获得最佳听觉体验\n============================\n转载自： https://www.bilibili.com/video/BV1Y34y1N7iy/\n原作者已同意转载\n感谢旧雨忆梦幻想乐团制作的东方山海传\n旧雨忆梦幻想乐团：https://space.bilibili.com/3537113087740167\nMIDI修改：Legendary_SHT(已对原midi进行补全音色，分离Track，删除循环部分处理）\n============================\n\n南宫蒂亚的主题曲。\n\n相较于之前的宁静，她的到来就像暴风雨一样给了大家重重的一击。\n\n夫诸是鹿灵，但是却掌管着古瓷的海域，虽然看上去非常奇怪，\n\n但是事实上山海经出现什么样的设定大家应该都已经见怪不怪了吧。",
+	"artistName": "旧雨忆梦幻想乐团",
+	"artistUrl": "https://space.bilibili.com/3537113087740167",
+	"song": {
+		"_id": "song_1759a2fe77b0b070",
+		"name": "冲破结界的骇浪~Connect the bridge of the continent",
+		"track": 0,
+		"author": "穆然皎若"
+	},
+	"album": {
+		"_id": "album_6b54c52ba74a7487",
+		"name": "東方山海傳 ~ the Potential Crisis",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-10-18T09:48:44.527Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 120.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 9.0,
+	"coverHash": "4130631fb8661979d6df1ba75112b614"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "56a56e396b1b8ff66ace6b7cf7a12964",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "薛定谔的怪猫（Arrange）（看简介）",
+	"desc": "游玩建议（重要）：\n启用Track1,10,12,14,16,17\n如需进一步提高难度可开启Track3或其他音轨\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n============================\n总时长3:04\n转载自：https://www.bilibili.com/video/BV16g4y1m7zg\nArrange作者：穆然皎若 https://space.bilibili.com/1796405643\n原作者已同意转载\nMIDI修改：Legendary_SHT（已对原MIDI进行分割Track，重平衡音量等处理）\n============================\n「妖怪消失后到哪里去了呢，这么想着，就看见了。\n妖怪现今也栖息着的世界」\n「难道说，那是另一个膜宇宙……」\n「那是什么」\n「只有物理学家才能看见的世界之一」\n由于地理、地质、或是某种偶然，能够看到其他世界的地方\n被人们称为圣地。神社之类正是所谓的圣地。\n梅莉说她在神社里看到了一只猫。\n　可是那只猫似乎绝不停留在任何人的视线内，也不被任何障碍\n所阻挡地自由地回环运动着。\n　梅莉立刻领悟了。那正是蛰伏于量子的间隙之中的，妖怪猫。\n「是吗，量子意义上无法观测的猫……。\n在得到观测之前亦生亦死。\n就好比是薛定谔的猫啊」\n「只不过因为被我观测了，所以确定是活的了」",
+	"artistName": "穆然皎若",
+	"artistUrl": "https://space.bilibili.com/1796405643",
+	"song": {
+		"_id": "5e84f0aa84679d16d79ab6ac",
+		"name": "シュレディンガーの化猫",
+		"track": 6.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b9",
+		"name": "燕石博物誌　～ Dr.Latency's Freak Report",
+		"abbr": "DLFR",
+		"date": "2016-05-08T07:00:00.000Z"
+	},
+	"uploadedDate": "2024-01-16T06:12:03.137Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 155.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 21.0,
+	"coverHash": "f28a7b0c1873140acbdb6d54e6bb3fcf"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "d9c54f0a97babfd98144addb432bc562",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "砕月",
+	"desc": "砕月（MIDI）\n推荐启用音轨：5，9\n\n⭐作者已同意转载⭐\n作者b站页面：https://space.bilibili.com/452626808/",
+	"artistName": "arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "5e84f0a884679d16d79ab5a8",
+		"name": "砕月",
+		"track": 34.0,
+		"author": "arplane"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0099",
+		"name": "東方萃夢想　～ Immaterial and Missing Power",
+		"abbr": "TH07.5",
+		"date": "2004-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2022-01-24T08:44:40.096Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 1157.0,
+	"upCount": 3.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 100.0,
+	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
+}

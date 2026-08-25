@@ -1,0 +1,30 @@
+{
+	"hash": "3400a577e6a2753eb503e9804516b4b9",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Shanghai_Alice_of_Meiji_17_Lunatic",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab4b2",
+		"name": "明治十七年の上海アリス",
+		"track": 7.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008d",
+		"name": "東方紅魔郷　～ the Embodiment of Scarlet Devil",
+		"abbr": "TH06",
+		"date": "2002-08-11T07:00:00.000Z"
+	},
+	"uploadedDate": "2002-08-11T07:00:02.000Z",
+	"approvedDate": "2002-08-11T07:00:02.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 25.0,
+	"upCount": 15.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 348.0,
+	"coverHash": "5fd01a8f459718d93167137dca76efa5"
+}

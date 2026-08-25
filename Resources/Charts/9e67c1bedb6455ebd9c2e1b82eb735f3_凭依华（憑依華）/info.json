@@ -1,0 +1,30 @@
+{
+	"hash": "9e67c1bedb6455ebd9c2e1b82eb735f3",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "凭依华（憑依華）",
+	"desc": "【东方凭依华】凭依华（憑依華）\nMidi Length : 5:09\nhttps://www.youtube.com/watch?v=pUnghT6GZvk",
+	"artistName": "Karl Zuñiga",
+	"artistUrl": "https://www.youtube.com/channel/UCjVTRDb1tX-lDf2pvlj75Gw",
+	"song": {
+		"_id": "65a1fddd04bfae42a36b4e12",
+		"name": "憑依華",
+		"track": 59.0,
+		"author": "あきやまうに"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00c1",
+		"name": "完全憑依ディスコグラフィ　東方憑依華 ORIGINAL SOUND TRACK",
+		"abbr": "OST7",
+		"date": "2018-05-06T07:00:00.000Z"
+	},
+	"uploadedDate": "2021-10-12T22:24:00.580Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 552.0,
+	"upCount": 13.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 113.0,
+	"coverHash": "61d073455330e54e1ff30ead795bf30d"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "53674c4cb1428bf4661ad5ac24c538ac",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "capriccio_ph_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab482",
+		"name": "少女綺想曲　～ Capriccio",
+		"track": 10.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008b",
+		"name": "東方幻想郷　～ Lotus Land Story",
+		"abbr": "TH04",
+		"date": "1998-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "1998-08-14T07:00:00.000Z",
+	"approvedDate": "1998-08-14T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 23.0,
+	"upCount": 58.0,
+	"downCount": 9.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 2492.0,
+	"coverHash": "007ad004f4cd35703085162abdb5a514"
+}

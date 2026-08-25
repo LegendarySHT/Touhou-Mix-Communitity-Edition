@@ -88,7 +88,7 @@ static func normalize_chart_json(data: Dictionary) -> bool:
 			song["_id"] = "song_" + sn.sha256_text().substr(0, 16)
 			changed = true
 		for key in song.keys():
-			if key not in ["_id", "name", "track"]:
+			if key not in ["_id", "name", "track", "author"]:
 				song.erase(key)
 				changed = true
 	else:
@@ -130,14 +130,24 @@ static func normalize_chart_json(data: Dictionary) -> bool:
 		changed = true
 
 	# ── author ──
-	# 优先 sourceArtistName → author（兼容 String/Dict/Array）→ 空
+	# 统一落位到 song.author（白名单键之一），顶层不再保留 author
+	# 取值优先级：sourceArtistName(旧) → 顶层 author(旧) → song.author(现) → 空
 	var new_author := _safe_str(data.get("sourceArtistName", ""), "")
-	if new_author.is_empty():
-		if data.has("author"):
-			new_author = _extract_author_name(data["author"])
+	if new_author.is_empty() and data.has("author"):
+		new_author = _extract_author_name(data["author"])
 
-	if not data.has("author") or not data["author"] is String or data["author"] != new_author:
-		data["author"] = new_author
+	var song: Dictionary = data["song"]
+	var existing_song_author := _safe_str(song.get("author", ""), "")
+	if new_author.is_empty():
+		new_author = existing_song_author
+
+	# 旧格式顶层 author 迁移：已并入取值逻辑，此处直接移除顶层
+	if data.has("author"):
+		data.erase("author")
+		changed = true
+
+	if not song.has("author") or not song["author"] is String or song["author"] != new_author:
+		song["author"] = new_author
 		changed = true
 
 	# ── 删除顶层冗余字段 ──

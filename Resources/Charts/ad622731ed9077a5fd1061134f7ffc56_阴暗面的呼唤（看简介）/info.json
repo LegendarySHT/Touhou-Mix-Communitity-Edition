@@ -1,0 +1,30 @@
+{
+	"hash": "ad622731ed9077a5fd1061134f7ffc56",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "阴暗面的呼唤（看简介）",
+	"desc": "游玩建议（重要）：\n启用Track1,3,8,9.11\n如需进一步提高难度可开启其他音轨\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n===================\n转载自：https://www.bilibili.com/video/BV1Dt41147xz\n时长3:10\nMIDI修改：Legendary_SHT\n===================\n是一首\n有着极其悲惨极其壮烈极其可歌可泣的命运的曲子。\n它被命运之神残忍地抛弃，最终辗转一生只能投向了死神的怀抱。\n它为全人类的幸福和平做出了巨大的牺牲，却被凶恶残暴的敌人残忍地杀害。\n……\n其实就是一首未使用曲（\n偷懒，不做midi视图了，作为补偿把midi直接给大家hhh\n音色使用上可能会导致某些反应（尤其是头痛患者请不要听（",
+	"artistName": "Tokini11",
+	"artistUrl": "https://space.bilibili.com/1664494",
+	"song": {
+		"_id": "song_1bd04c36ef1d720f",
+		"name": "阴暗面的呼唤",
+		"track": 0,
+		"author": "Tokini11"
+	},
+	"album": {
+		"_id": "album_3c90a8b4ac579bca",
+		"name": "东方风自作曲",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-02-06T04:04:55.223Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 138.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 16.0,
+	"coverHash": "e7b1a83d540bb8bc92b210b56504be0f"
+}

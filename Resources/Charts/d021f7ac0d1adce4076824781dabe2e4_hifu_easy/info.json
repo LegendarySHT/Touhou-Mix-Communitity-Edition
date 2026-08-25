@@ -1,0 +1,30 @@
+{
+	"hash": "d021f7ac0d1adce4076824781dabe2e4",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "hifu_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab666",
+		"name": "少女秘封倶楽部",
+		"track": 2.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b2",
+		"name": "蓮台野夜行　～ Ghostly Field Club",
+		"abbr": "GFC",
+		"date": "2003-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2003-12-30T08:00:00.000Z",
+	"approvedDate": "2003-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 24.0,
+	"upCount": 52.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1724.0,
+	"coverHash": "a54b620eb8e83cdd1689c337533ffa23"
+}

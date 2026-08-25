@@ -1,0 +1,30 @@
+{
+	"hash": "84295b2cd604d1705d76a10f09061d99",
+	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
+	"uploaderName": "Yang_",
+	"name": "【Animenz】Bad Apple !!",
+	"desc": "【Animenz】Bad Apple !!（Live）\nhttp://pz.perfectpiano.cn/html/userDetail.html?picid=811387\n转载自完美钢琴\n该midi仅供游玩和欣赏\n⭐原作者已同意转载⭐",
+	"artistName": "游途",
+	"artistUrl": "http://pz.perfectpiano.cn/html/userDetail.html?picid=811387",
+	"song": {
+		"_id": "song_c7f4c840dcb64bcf",
+		"name": "Bad apple!!",
+		"track": 0,
+		"author": "のみこ/Masayoshi Minoshima"
+	},
+	"album": {
+		"_id": "album_e149486ee20ee4ce",
+		"name": "Lovelight",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2020-05-22T04:12:27.661Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 1868.0,
+	"upCount": 74.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
+	"trialCount": 1602.0,
+	"coverHash": "04c40b6536264e9a6167bae901c579b8"
+}

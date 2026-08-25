@@ -178,9 +178,9 @@ static func _convert_source_dir(source_dir: String, files_dir: String, charts_di
 		var existing_folder: String = existing_hashes.get(hash_val.to_lower(), "")
 		if not existing_folder.is_empty():
 			var existing_dir := charts_dir.path_join(existing_folder)
-			if FileAccess.file_exists(existing_dir.path_join(hash_val + ".mid")) and FileAccess.file_exists(existing_dir.path_join(hash_val + ".json")):
+			if FileAccess.file_exists(existing_dir.path_join("song.mid")) and FileAccess.file_exists(existing_dir.path_join("info.json")):
 				if _fill_missing_assets(source_dir, webcache_map, existing_dir, hash_val, entry, cover_cache, progress_state, source_name):
-					# 补齐了封面/人声 → 重扫进 DB，更新 coverPath 等缓存字段，让运行中的 UI 立即可见
+					# 补齐了封面/人声 → 重扫进 DB，更新 cover_path 等缓存字段，让运行中的 UI 立即可见
 					var imported_list: Array = progress_state.get("imported_folders", [])
 					imported_list.append(existing_folder)
 					progress_state["imported_folders"] = imported_list
@@ -205,7 +205,7 @@ static func _convert_source_dir(source_dir: String, files_dir: String, charts_di
 		# 先写 JSON（谱面元数据先落盘；即使后续移动失败，chart 也不缺 json，下次可补齐）
 		var json_data: Dictionary = entry.get("data", {})
 		ChartNormalizer.normalize_chart_json(json_data)
-		var json_dst := chart_dir.path_join(hash_val + ".json")
+		var json_dst := chart_dir.path_join("info.json")
 		var jf := FileAccess.open(json_dst, FileAccess.WRITE)
 		if jf:
 			# 落盘仅保留白名单字段（与进 DB / 扫描提取保持一致，song/album 已由规范化精简）
@@ -216,7 +216,7 @@ static func _convert_source_dir(source_dir: String, files_dir: String, charts_di
 			continue
 
 		# 剪切 MIDI（同盘 rename O(1)，比 copy 快；目标已存在则删冗余源；失败回退 copy+删源）
-		var midi_dst := chart_dir.path_join(hash_val + ".mid")
+		var midi_dst := chart_dir.path_join("song.mid")
 		if not _move_file(midi_src, midi_dst):
 			_add_warning(progress_state, "%s：移动 MIDI 失败：%s → %s" % [source_name, midi_src, midi_dst])
 			continue
@@ -224,8 +224,7 @@ static func _convert_source_dir(source_dir: String, files_dir: String, charts_di
 		# 复制封面图（封面按专辑名寻址，同专辑多首歌共用 WebCache 里同一份，只能 copy 不能剪切）
 		var cover_src: String = _resolve_cover(webcache_map, entry.get("cover_candidates", []), cover_cache)
 		if not cover_src.is_empty():
-			var cover_filename := cover_src.get_file()
-			var cover_err := DirAccess.copy_absolute(cover_src, chart_dir.path_join(cover_filename))
+			var cover_err := DirAccess.copy_absolute(cover_src, chart_dir.path_join("cover.jpg"))
 			if cover_err != OK:
 				_add_warning(progress_state, "%s：复制封面失败：%s（err=%d）" % [source_name, cover_src, cover_err])
 
@@ -233,7 +232,7 @@ static func _convert_source_dir(source_dir: String, files_dir: String, charts_di
 		for ext in [".ogg", ".mp3", ".wav", ".flac"]:
 			var audio_src := source_dir.path_join(hash_val + ext)
 			if FileAccess.file_exists(audio_src):
-				if not _move_file(audio_src, chart_dir.path_join(hash_val + ext)):
+				if not _move_file(audio_src, chart_dir.path_join("vocal" + ext)):
 					_add_warning(progress_state, "%s：移动音频失败：%s" % [source_name, audio_src])
 
 		converted += 1
@@ -368,19 +367,10 @@ static func _parse_metadata_file(path: String, warnings: Array = []) -> Dictiona
 			warnings.append("元数据缺少 hash/file_hash 字段，已跳过：%s（顶层字段：%s）" % [path, keys])
 		return {}
 
-	# 收集封面候选（优先显式 coverPath/album.coverPath，再回退 coverUrl）
+	# 收集封面候选（经源元数据 coverUrl 定位：其 basename 与 WebCache 封面文件名前缀一致）
+	# 封面在导入时已 copy 为谱面文件夹的 cover.jpg，coverUrl 仅作定位、不随白名单持久化
 	# 模糊图 coverBlurUrl 无实用价值，不作为候选
-	# 注意：WebCache 中封面文件名常与 URL 不一致（如 -cover.jpg-cut415x150-10.png 等裁剪/尺寸变体），
-	# 具体命中交给 _resolve_cover 做前缀模糊匹配
 	var cover_candidates: Array = []
-	var top_cover = data.get("coverPath")
-	if top_cover is String and not (top_cover as String).is_empty():
-		cover_candidates.append(top_cover)
-	var album = data.get("album", {})
-	if album is Dictionary:
-		var album_cover = album.get("coverPath")
-		if album_cover is String and not (album_cover as String).is_empty():
-			cover_candidates.append(album_cover)
 	var cover_url = data.get("coverUrl")
 	if cover_url is String and not (cover_url as String).is_empty():
 		cover_candidates.append(cover_url)
@@ -395,24 +385,24 @@ static func _parse_metadata_file(path: String, warnings: Array = []) -> Dictiona
 
 ## 已导入谱面的补齐：封面/人声缺失时从源目录补拷，补齐后仍视为「已跳过」。
 ## 不重写 json、不重移 midi（两者已存在）；仅补缺失资源，减少重复 I/O。
-## 返回是否有实际补齐（调用方据此决定是否把该目录重扫进 DB，更新 coverPath 等缓存字段）
+## 返回是否有实际补齐（调用方据此决定是否把该目录重扫进 DB，更新 cover_path 等缓存字段）
 static func _fill_missing_assets(source_dir: String, webcache_map: Dictionary, chart_dir: String,
 		hash_val: String, entry: Dictionary, cover_cache: Dictionary,
 		progress_state: Dictionary, source_name: String) -> bool:
 	var changed := false
-	# 封面：按候选解析出实际文件名，目标目录缺该文件才补拷
+	# 封面：按候选解析出实际文件名，目标目录缺 cover.jpg 才补拷
 	var cover_src: String = _resolve_cover(webcache_map, entry.get("cover_candidates", []), cover_cache)
 	if not cover_src.is_empty():
-		var cover_name := cover_src.get_file()
-		if not FileAccess.file_exists(chart_dir.path_join(cover_name)):
-			var err := DirAccess.copy_absolute(cover_src, chart_dir.path_join(cover_name))
+		var cover_dst := chart_dir.path_join("cover.jpg")
+		if not FileAccess.file_exists(cover_dst):
+			var err := DirAccess.copy_absolute(cover_src, cover_dst)
 			if err != OK:
 				_add_warning(progress_state, "%s：补齐封面失败：%s（err=%d）" % [source_name, cover_src, err])
 			else:
 				changed = true
-	# 人声：按 hash 命名，源目录根有而目标缺则补拷
+	# 人声：源目录根有而目标缺 vocal.<ext> 则补拷
 	for ext in [".ogg", ".mp3", ".wav", ".flac"]:
-		var dst := chart_dir.path_join(hash_val + ext)
+		var dst := chart_dir.path_join("vocal" + ext)
 		if FileAccess.file_exists(dst):
 			continue
 		var audio_src := source_dir.path_join(hash_val + ext)
@@ -502,15 +492,24 @@ static func _extract_cut_width(filename: String) -> int:
 
 
 ## 保存谱面 JSON 时只保留白名单字段（与进 DB / 扫描提取保持一致）
+## 丢弃 _id / file_hash（只留 hash）；顶层 author 移入 song.author，并从顶层移除
 ## song/album 子对象已由 ChartNormalizer 精简，author 已归一为字符串
 static func _filter_chart_json(data: Dictionary) -> Dictionary:
-	const WHITELIST := ["_id", "name", "desc", "status", "artistName", "uploaderName", "uploaderId",
-		"uploaderAvatarUrl", "artistUrl", "coverPath", "coverUrl", "uploadedDate", "approvedDate",
-		"trialCount", "downloadCount", "upCount", "downCount", "hash", "file_hash", "author", "song", "album"]
+	const WHITELIST := ["hash", "uploaderId", "uploaderName", "name", "desc", "artistName", "artistUrl",
+		"song", "album", "author", "coverHash", "uploadedDate", "approvedDate",
+		"status", "downloadCount", "upCount", "downCount", "uploaderAvatarUrl", "trialCount"]
 	var out: Dictionary = {}
 	for key in WHITELIST:
 		if data.has(key):
 			out[key] = data[key]
+	# 顶层 author 移入 song.author，并从顶层输出中移除
+	if out.has("author"):
+		var song_val = out.get("song")
+		if not (song_val is Dictionary):
+			song_val = {}
+			out["song"] = song_val
+		song_val["author"] = out["author"]
+		out.erase("author")
 	return out
 
 

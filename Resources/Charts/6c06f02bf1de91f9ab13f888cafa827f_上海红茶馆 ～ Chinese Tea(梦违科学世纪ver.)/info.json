@@ -1,0 +1,30 @@
+{
+	"hash": "6c06f02bf1de91f9ab13f888cafa827f",
+	"uploaderId": "5eb4295cc6ba816c345a47b1",
+	"uploaderName": "already to get",
+	"name": "上海红茶馆 ～ Chinese Tea(梦违科学世纪ver.)",
+	"desc": "shanghai_teahouse_chinese_tea_thedu.mid",
+	"artistName": "",
+	"artistUrl": "",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab672",
+		"name": "上海紅茶館　～ Chinese Tea",
+		"track": 3.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b3",
+		"name": "夢違科学世紀　～ Changeability of Strange Dream",
+		"abbr": "CoSD",
+		"date": "2004-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "2021-10-24T12:17:25.065Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 960.0,
+	"upCount": 6.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/8a00cc4dea68389548649ef56920156a.jpg",
+	"trialCount": 67.0,
+	"coverHash": "400f68e57ea1aee70e3adb9bebc3a299"
+}

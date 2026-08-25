@@ -1,0 +1,30 @@
+{
+	"hash": "78db1b25b1da58ffbc5052d3a85a472e",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "hanaha_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4f7",
+		"name": "花は幻想のままに",
+		"track": 18.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0090",
+		"name": "東方花映塚　～ Phantasmagoria of Flower View",
+		"abbr": "TH09",
+		"date": "2005-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "2005-08-14T07:00:00.000Z",
+	"approvedDate": "2005-08-14T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 24.0,
+	"upCount": 30.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1372.0,
+	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
+}

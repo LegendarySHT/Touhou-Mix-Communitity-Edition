@@ -1,0 +1,30 @@
+{
+	"hash": "5be29c1bd52f7ed9f733c3657b0167de",
+	"uploaderId": "5eb4295cc6ba816c345a47b1",
+	"uploaderName": "already to get",
+	"name": "大吉猫咪",
+	"desc": "",
+	"artistName": "",
+	"artistUrl": "",
+	"song": {
+		"_id": "65a114772460b9425d191d96",
+		"name": "大吉キトゥン",
+		"track": 3.0,
+		"author": ""
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2021-10-24T12:50:23.501Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 1150.0,
+	"upCount": 6.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/8a00cc4dea68389548649ef56920156a.jpg",
+	"trialCount": 140.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

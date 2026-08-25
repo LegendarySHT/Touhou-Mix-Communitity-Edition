@@ -1,0 +1,30 @@
+{
+	"hash": "eb0da7ca008be263baadf3debbd6b758",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "宁静夏夜的微风",
+	"desc": "转载自：https://musescore.com/user/9752406/scores/5045415\n本MIDI遵循CC BY-NC 4.0 DEED协议\n=================\n1面的主题曲。\n因为是夏夜的微风，所以开头做成了格外静谧的感觉。\n这样的开始之后，才是渐渐地进入了游戏。\n旋律是怎么写出来的，其实我也不知道。仅仅是在脑中\n突然出现了这段后赶紧记录下来罢了，效果却意外的好呢。",
+	"artistName": "Yuri Hikari",
+	"artistUrl": "https://musescore.com/user/9752406",
+	"song": {
+		"_id": "song_5fd5c4a119a20d39",
+		"name": "宁静夏夜的微风",
+		"track": 0,
+		"author": "文件"
+	},
+	"album": {
+		"_id": "album_41af71792203995a",
+		"name": "东方夏夜祭 ～ Shining Shooting Star",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-08-02T15:21:28.369Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 215.0,
+	"upCount": 7.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 100.0,
+	"coverHash": "2c020e87fafb6afefd152812679840a0"
+}

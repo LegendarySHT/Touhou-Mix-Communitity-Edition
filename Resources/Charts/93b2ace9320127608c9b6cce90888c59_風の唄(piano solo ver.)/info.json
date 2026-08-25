@@ -1,0 +1,30 @@
+{
+	"hash": "93b2ace9320127608c9b6cce90888c59",
+	"uploaderId": "61f666b3970c380908531e79",
+	"uploaderName": "-C9loud-",
+	"name": "風の唄(piano solo ver.)",
+	"desc": "凋叶棕 - 風の唄(piano solo ver.mid\n授权转载\n【【扒谱】【MIDI付】凋叶棕  - 風の唄(piano solo ver.)-哔哩哔哩】 https://b23.tv/ODKycK4\n\nTAG:\n#风之歌 #凋叶棕 #秘封活动记录",
+	"artistName": "棱鏡_PRiSM ",
+	"artistUrl": "https://b23.tv/QyK8v2X",
+	"song": {
+		"_id": "song_3e0a244c5c6d8c87",
+		"name": "風の唄(piano solo ver.)",
+		"track": 0,
+		"author": "凋叶棕"
+	},
+	"album": {
+		"_id": "album_cdd05493ac95124a",
+		"name": "秘封活動記録-祝-Original Soundtrack",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2022-11-10T14:10:52.050Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 456.0,
+	"upCount": 1.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/a3779f9be8ec9f111da9c44e2b184c89.jpg",
+	"trialCount": 48.0,
+	"coverHash": "6c1f4eb7567f667a0e1a1f2ee0add7e2"
+}

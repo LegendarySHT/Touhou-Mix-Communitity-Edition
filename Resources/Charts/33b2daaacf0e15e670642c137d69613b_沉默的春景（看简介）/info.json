@@ -1,0 +1,30 @@
+{
+	"hash": "33b2daaacf0e15e670642c137d69613b",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "沉默的春景（看简介）",
+	"desc": "游玩建议（重要）:\n简单版：开启Track3,5,14\n普通版：开启Track3,4,,5,6,14,16\n可将 生成短块最大时间 调大以减小长条生成\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n=============================\n总时长2:15\n转载自：https://m.youtube.com/watch?v=NTvGJfn41uc\n原作者：Insignify Music         https://m.youtube.com/@InsignifyMusic\nMIDI修改：Legendary_SHT（已对原MIDI进行删除循环部分，分离Track处理）\n=============================\n1面的主题曲。\n\n经常听到有人说无农药栽培非常难。\n我小学的时候体验过插秧，但是附近的田地里\n用的是插秧机，感受到了文明的力量……。",
+	"artistName": "Insignify Music",
+	"artistUrl": "https://m.youtube.com/@InsignifyMusic",
+	"song": {
+		"_id": "song_76defdc880682a4c",
+		"name": "沈黙の春景",
+		"track": 0,
+		"author": "Wanwan"
+	},
+	"album": {
+		"_id": "album_6481c535f2cc0bab",
+		"name": "東方真珠島 ～ Hollow Song of Birds",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-12-06T02:44:57.761Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 112.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 53.0,
+	"coverHash": "1c970df0f66ec5ba3c880200928502ea"
+}

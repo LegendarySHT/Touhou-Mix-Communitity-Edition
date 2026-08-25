@@ -1,0 +1,30 @@
+{
+	"hash": "251d35bfe77acffda54dbd9ba29daba9",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "bouken_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0aa84679d16d79ab6c6",
+		"name": "フェアリー冒険譚",
+		"track": 1.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00c8",
+		"name": "東方三月精 ～ Strange and Bright Nature Deity. Vol.3",
+		"abbr": "SaBND3",
+		"date": "2009-08-26T07:00:00.000Z"
+	},
+	"uploadedDate": "2009-08-26T07:00:00.000Z",
+	"approvedDate": "2009-08-26T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 23.0,
+	"upCount": 18.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 574.0,
+	"coverHash": "fc532ea2a8b7c86cce5411b9ea5fbb15"
+}

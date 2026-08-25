@@ -1,0 +1,30 @@
+{
+	"hash": "b970204dd930a5205f2759c459629b44",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "mu_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0aa84679d16d79ab6cb",
+		"name": "魔法使いの憂鬱",
+		"track": 1.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00ca",
+		"name": "The Grimoire of Marisa",
+		"abbr": "TGoM",
+		"date": "2009-07-28T07:00:00.000Z"
+	},
+	"uploadedDate": "2009-07-28T07:00:00.000Z",
+	"approvedDate": "2009-07-28T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 26.0,
+	"upCount": 110.0,
+	"downCount": 8.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 2747.0,
+	"coverHash": "74ee24edc8cd73dc78c8a2f03d76b7fa"
+}

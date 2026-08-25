@@ -1,0 +1,30 @@
+{
+	"hash": "c079c56e03827955b419f3a84751f255",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "被解放的无名之幼铃 ～ Hill of Convallaria's Tears（看简介）",
+	"desc": "游玩建议：\n简易版（难度中等）：选用Lunatic，启用Track 4.\n标准版（难度较大）：选用Lunatic，启用Track 4，Track5.\n如需增加难度可开启Track3，Track6或其他音轨。\n===============\n转载自：https://www.bilibili.com/video/BV1K94y1s7Y7\n原作者已同意转载\n已对原midi进行分离Track处理\n原曲：https://www.bilibili.com/video/BV17u4y1e7XT\n鈴集無名の丘：https://store.steampowered.com/app/2525120 (免费)\n==============\n♪被解放的无名之幼铃 ～ Hill of Convallaria's Tears\n\n作曲／曲评:SHO\n我试图将哥德式曲调与现代的混音相互结合了起来。\n我感觉这首曲子在体验到有些怀旧的同时，却又有一种全新的风格的感受。",
+	"artistName": "鸢鸢鸢鸢子",
+	"artistUrl": "https://space.bilibili.com/404372362",
+	"song": {
+		"_id": "song_4b7ed1b85d8f600e",
+		"name": "被解放的无名之幼铃 ～ Hill of Convallaria's Tears",
+		"track": 0,
+		"author": "SHO"
+	},
+	"album": {
+		"_id": "album_a63050f16c23c906",
+		"name": "鈴集無名の丘 ～ Little Doll Queen",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2023-10-03T04:25:34.125Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 138.0,
+	"upCount": 2.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 30.0,
+	"coverHash": "3a2b6386bc5d219faaa12da9110f9c19"
+}

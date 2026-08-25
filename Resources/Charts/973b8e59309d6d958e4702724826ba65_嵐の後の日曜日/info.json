@@ -1,0 +1,30 @@
+{
+	"hash": "973b8e59309d6d958e4702724826ba65",
+	"uploaderId": "5f5cb31ec9ea33595793e1fe",
+	"uploaderName": "apa",
+	"name": "嵐の後の日曜日",
+	"desc": "嵐の後の日曜日\n\n推荐启用音轨：3, 4, 5, 6, 7, 8\n\nTag：\n#东方虹龙洞\n#风暴过后的星期日",
+	"artistName": "arplane",
+	"artistUrl": "https://space.bilibili.com/452626808/",
+	"song": {
+		"_id": "65a114782460b9425d191da3",
+		"name": "嵐の後の日曜日",
+		"track": 16.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2021-05-16T07:54:24.607Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 864.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/9cc5669e2ccee02a423b4ab73fc5eea4.jpg",
+	"trialCount": 108.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

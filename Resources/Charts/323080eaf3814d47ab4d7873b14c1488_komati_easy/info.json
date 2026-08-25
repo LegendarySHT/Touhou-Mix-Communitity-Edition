@@ -1,0 +1,30 @@
+{
+	"hash": "323080eaf3814d47ab4d7873b14c1488",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "komati_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4e5",
+		"name": "東方妖怪小町",
+		"track": 21.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008f",
+		"name": "東方永夜抄　～ Imperishable Night",
+		"date": "2004-08-15T07:00:00.000Z",
+		"abbr": "TH08"
+	},
+	"uploadedDate": "2004-08-15T07:00:00.000Z",
+	"approvedDate": "2004-08-15T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 26.0,
+	"upCount": 26.0,
+	"downCount": 3.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1260.0,
+	"coverHash": "2769890f8d849e3df18bc185024bcef0"
+}

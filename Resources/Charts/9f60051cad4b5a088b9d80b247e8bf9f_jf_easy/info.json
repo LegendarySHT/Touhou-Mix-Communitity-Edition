@@ -1,0 +1,30 @@
+{
+	"hash": "9f60051cad4b5a088b9d80b247e8bf9f",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "jf_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab65a",
+		"name": "桜花之恋塚　～ Japanese Flower",
+		"track": 3.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b1",
+		"name": "蓬莱人形　～ Dolls in Pseudo Paradise",
+		"date": "2002-08-11T07:00:00.000Z",
+		"abbr": "DiPP"
+	},
+	"uploadedDate": "2002-08-11T07:00:00.000Z",
+	"approvedDate": "2002-08-11T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 28.0,
+	"upCount": 58.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1664.0,
+	"coverHash": "d598ee438a28de1bdd124dc6e7141ea2"
+}

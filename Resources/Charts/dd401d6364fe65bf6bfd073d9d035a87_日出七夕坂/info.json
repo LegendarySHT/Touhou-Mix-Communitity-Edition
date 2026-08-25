@@ -1,0 +1,30 @@
+{
+	"hash": "dd401d6364fe65bf6bfd073d9d035a87",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "日出七夕坂",
+	"desc": "游玩建议：\n简单版：开启Track1,4,7,8,10.\n普通版：开启Track1,4,7,8,10,11.\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n════════════════\n转载自：https://www.bilibili.com/video/BV17J4m1J7xH/\n原作者：新月軒\nhttps://space.bilibili.com/89613310\n原作者已许可转载\nMIDI修改：Legendary_SHT\n════════════════\nTAG:\n#日出七夕坂 #七夕版梦幻能 #七夕坂に朝が来る #七夕坂夢幻能 #秘封\n",
+	"artistName": "新月軒",
+	"artistUrl": "https://space.bilibili.com/89613310",
+	"song": {
+		"_id": "663e18bb04bfae42a36d9805",
+		"name": "七夕坂に朝が来る",
+		"track": 1.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "663e181c04bfae42a36d97fb",
+		"name": "七夕坂夢幻能　～ Taboo Japan Disentanglement",
+		"abbr": null,
+		"date": "2024-05-10T12:50:36.422Z"
+	},
+	"uploadedDate": "2024-05-09T09:26:22.041Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 214.0,
+	"upCount": 3.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 29.0,
+	"coverHash": "8edb9c5f84a95b26059a0d3b0a32bea7"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "f58ced30f1e8a481a6021f79b9a090df",
+	"uploaderId": "5eb4295cc6ba816c345a47b1",
+	"uploaderName": "already to get",
+	"name": "緋想天(全人類ノ天楽録disc B ver.)",
+	"desc": "",
+	"artistName": "",
+	"artistUrl": "",
+	"song": {
+		"_id": "song_a1f9a80836c5c7d5",
+		"name": "緋想天",
+		"track": 0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "album_c6ee472d57b193a3",
+		"name": "全人類ノ天楽録 東方緋想天 ORIGINAL SOUND TRACK",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2021-10-24T11:27:10.812Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 797.0,
+	"upCount": 8.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/8a00cc4dea68389548649ef56920156a.jpg",
+	"trialCount": 199.0,
+	"coverHash": "71abc9f426fd729c415cd5960067bbcb"
+}

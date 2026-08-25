@@ -1,0 +1,30 @@
+{
+	"hash": "4c23ef427ab39762d5b24b5f8ff5c595",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "native_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab507",
+		"name": "ネイティブフェイス",
+		"track": 15.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0091",
+		"name": "東方風神録　～ Mountain of Faith",
+		"abbr": "TH10",
+		"date": "2007-08-17T07:00:00.000Z"
+	},
+	"uploadedDate": "2007-08-17T07:00:00.000Z",
+	"approvedDate": "2007-08-17T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 27.0,
+	"upCount": 44.0,
+	"downCount": 4.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 2181.0,
+	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
+}

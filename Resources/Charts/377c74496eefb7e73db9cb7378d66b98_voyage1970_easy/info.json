@@ -1,0 +1,30 @@
+{
+	"hash": "377c74496eefb7e73db9cb7378d66b98",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "voyage1970_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4e0",
+		"name": "ヴォヤージュ1970",
+		"track": 16.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008f",
+		"name": "東方永夜抄　～ Imperishable Night",
+		"abbr": "TH08",
+		"date": "2004-08-15T07:00:00.000Z"
+	},
+	"uploadedDate": "2004-08-15T07:00:00.000Z",
+	"approvedDate": "2004-08-15T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 24.0,
+	"upCount": 16.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 715.0,
+	"coverHash": "2769890f8d849e3df18bc185024bcef0"
+}

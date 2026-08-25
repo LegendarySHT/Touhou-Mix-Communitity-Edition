@@ -1,0 +1,30 @@
+{
+	"hash": "452197584232a209aaa40d4a04c131f1",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Futatsuiwa From Sado -Easy-",
+	"desc": "東方ピアノEasyモード楽譜集 新バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a784679d16d79ab53d",
+		"name": "佐渡の二ッ岩",
+		"track": 15.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0094",
+		"name": "東方神霊廟　～ Ten Desires",
+		"abbr": "TH13",
+		"date": "2011-08-13T07:00:00.000Z"
+	},
+	"uploadedDate": "2011-08-13T07:00:00.000Z",
+	"approvedDate": "2011-08-13T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 25.0,
+	"upCount": 15.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 528.0,
+	"coverHash": "4521910803028b07e68dd059c69b3051"
+}

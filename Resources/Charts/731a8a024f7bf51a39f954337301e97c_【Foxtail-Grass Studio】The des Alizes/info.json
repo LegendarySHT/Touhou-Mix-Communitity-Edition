@@ -1,0 +1,30 @@
+{
+	"hash": "731a8a024f7bf51a39f954337301e97c",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "【Foxtail-Grass Studio】The des Alizes",
+	"desc": "游玩建议：\n普通版：开启Track1,2.\n简单版：开启Track1.\n════════════════\n转载自：https://www.bilibili.com/video/BV1ZcfeYjEzf\n原作者： 小果米米粒\nhttps://space.bilibili.com/1269708113\n原作者已许可转载\nMIDI上传时有修改\n════════════════\nTAG:\n#The des Alizes #Foxtail-Grass Studio #衛星カフェテラス #卫星露天咖啡屋 #大空魔术 #东方 #秘封",
+	"artistName": "小果米米粒",
+	"artistUrl": "https://space.bilibili.com/1269708113",
+	"song": {
+		"_id": "song_2560533d6b09ac29",
+		"name": "The des Alizes",
+		"track": 0,
+		"author": "Foxtail-Grass Studio"
+	},
+	"album": {
+		"_id": "album_778f6c431ece7c17",
+		"name": "Re*Collection",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2025-01-25T04:45:42.113Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 160.0,
+	"upCount": 4.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 47.0,
+	"coverHash": "7e2ca2d94681b1826cd0f673a3f1817f"
+}

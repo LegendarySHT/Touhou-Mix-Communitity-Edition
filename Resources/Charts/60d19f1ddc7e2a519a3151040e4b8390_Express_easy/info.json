@@ -1,0 +1,30 @@
+{
+	"hash": "60d19f1ddc7e2a519a3151040e4b8390",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "Express_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a984679d16d79ab67b",
+		"name": "ヒロシゲ36号　～ Neo Super-Express",
+		"track": 1.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed00b4",
+		"name": "卯酉東海道　～ Retrospective 53 minutes",
+		"abbr": "R53m",
+		"date": "2006-05-21T07:00:00.000Z"
+	},
+	"uploadedDate": "2006-05-21T07:00:00.000Z",
+	"approvedDate": "2006-05-21T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 21.0,
+	"upCount": 37.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 1171.0,
+	"coverHash": "119e65a1ce8d44d705907959f1100671"
+}

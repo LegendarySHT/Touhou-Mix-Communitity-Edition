@@ -1,0 +1,30 @@
+{
+	"hash": "fafaaa7c17ee9cecb607e59c3ec88d14",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "驹草盛开的万年积雪(Piano)",
+	"desc": "游玩建议：\n普通版：开启Track1\n困难版：开启Track1,2\n======================\n总时长2:59\n原组曲来源：https://musescore.com/user/29625/scores/6799692\n原作者：https://musescore.com/user/29625\nMIDI裁剪：Legendary_SHT\n本MIDI遵循CC BY-NC-SA 4.0 DEED协议\n=========================\n3面的主题曲。\n　\n　我作曲时想象了山上稍微空旷的高地。\n　这种难以抵达的高地平原，在古代似乎常常被称为\n　平家或者是忍者的藏身处。\n　虽然这大概不是事实，但很浪漫。",
+	"artistName": "chronondecay",
+	"artistUrl": "https://musescore.com/user/29625",
+	"song": {
+		"_id": "65a114772460b9425d191d99",
+		"name": "駒草咲くパーペチュアルスノー",
+		"track": 6.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2023-12-27T09:34:38.099Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 177.0,
+	"upCount": 3.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 36.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

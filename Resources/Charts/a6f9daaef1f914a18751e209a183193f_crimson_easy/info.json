@@ -1,0 +1,30 @@
+{
+	"hash": "a6f9daaef1f914a18751e209a183193f",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "crimson_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab49e",
+		"name": "真紅の少女　～ Crimson Dead!!",
+		"track": 10.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008c",
+		"name": "東方怪綺談　～ Mystic Square",
+		"abbr": "TH05",
+		"date": "1998-12-30T08:00:00.000Z"
+	},
+	"uploadedDate": "1998-12-30T08:00:00.000Z",
+	"approvedDate": "1998-12-30T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 21.0,
+	"upCount": 8.0,
+	"downCount": 2.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 271.0,
+	"coverHash": "8578b4eb27580acd4059b2855b988878"
+}

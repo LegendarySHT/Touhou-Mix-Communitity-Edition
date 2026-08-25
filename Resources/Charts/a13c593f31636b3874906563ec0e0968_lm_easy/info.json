@@ -1,0 +1,30 @@
+{
+	"hash": "a13c593f31636b3874906563ec0e0968",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "lm_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a484679d16d79ab457",
+		"name": "恋色マジック",
+		"track": 9.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed0089",
+		"name": "東方封魔録　～ the Story of Eastern Wonderland",
+		"abbr": "TH02",
+		"date": "1997-08-15T07:00:00.000Z"
+	},
+	"uploadedDate": "1997-08-15T07:00:00.000Z",
+	"approvedDate": "1997-08-15T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 19.0,
+	"upCount": 112.0,
+	"downCount": 9.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 3947.0,
+	"coverHash": "11f08912ca5e75592fd65372b99bf3a3"
+}

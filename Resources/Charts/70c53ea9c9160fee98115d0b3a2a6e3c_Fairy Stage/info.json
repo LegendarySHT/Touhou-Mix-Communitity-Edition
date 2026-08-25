@@ -1,0 +1,30 @@
+{
+	"hash": "70c53ea9c9160fee98115d0b3a2a6e3c",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "Fairy Stage",
+	"desc": "游玩建议：\n普通版：开启Track1.\n困难版：开启Track1,2.\n════════════════\n曲谱来自：https://www.bilibili.com/video/BV16JSCYXEyr/\n曲谱作者：鸢月北\nhttps://space.bilibili.com/359179763\n曲谱作者已许可对曲谱的使用\nMIDI制作：Legendary_SHT\n本MIDI根据该曲谱制成\n════════════════\nTAG:\n#年中夢中の好奇心 #时刻旺盛的好奇心 #妖精大战争 #妖精大戦争 #Fairy Stage #K2 SOUND #天津星",
+	"artistName": "鸢月北",
+	"artistUrl": "https://space.bilibili.com/359179763",
+	"song": {
+		"_id": "song_b5e2ead57e1730ef",
+		"name": "Fairy Stage",
+		"track": 0,
+		"author": "K2 SOUND"
+	},
+	"album": {
+		"_id": "album_429bdbc89ce698e6",
+		"name": "天津星-Amatsu Hoshi",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-11-13T08:39:59.244Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 202.0,
+	"upCount": 5.0,
+	"downCount": 1.0,
+	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 73.0,
+	"coverHash": "01c0c8520220b8d96992abeba5cf9409"
+}

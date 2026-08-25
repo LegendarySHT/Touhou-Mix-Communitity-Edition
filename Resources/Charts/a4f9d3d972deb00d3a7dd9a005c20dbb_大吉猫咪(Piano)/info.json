@@ -1,0 +1,30 @@
+{
+	"hash": "a4f9d3d972deb00d3a7dd9a005c20dbb",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "大吉猫咪(Piano)",
+	"desc": "游玩建议：\n普通版：开启Track1\n困难版：开启Track1,2\n======================\n总时长1:44\n原组曲来源：https://musescore.com/user/29625/scores/6799692\n原作者：https://musescore.com/user/29625\nMIDI裁剪：Legendary_SHT\n本MIDI遵循CC BY-NC-SA 4.0 DEED协议\n=========================\n　豪德寺 三花的主题曲。\n　\n　说到千客万来、生意兴隆，那就是招财猫。\n　我觉得这首曲子的旋律该说是和风还是中华风，\n　有某种东洋的感觉。\n　曲子很有猫蹦蹦跳跳的感觉，不觉得很可爱吗？",
+	"artistName": "chronondecay",
+	"artistUrl": "https://musescore.com/user/29625",
+	"song": {
+		"_id": "65a114772460b9425d191d96",
+		"name": "大吉キトゥン",
+		"track": 3.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "65a114702460b9425d191d8f",
+		"name": "東方虹龍洞　～ Unconnected Marketeers",
+		"abbr": "TH18",
+		"date": "2021-05-04T07:00:00.000Z"
+	},
+	"uploadedDate": "2023-12-27T03:41:32.080Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 209.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 54.0,
+	"coverHash": "71dc36239bf0269dd291014695114ba2"
+}

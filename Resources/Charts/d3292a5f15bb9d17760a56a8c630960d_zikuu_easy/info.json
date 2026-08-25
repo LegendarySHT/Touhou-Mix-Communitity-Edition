@@ -1,0 +1,30 @@
+{
+	"hash": "d3292a5f15bb9d17760a56a8c630960d",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "zikuu_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a484679d16d79ab461",
+		"name": "夢は時空を越えて",
+		"track": 1.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008a",
+		"name": "東方夢時空　～ Phantasmagoria of Dim.Dream",
+		"abbr": "TH03",
+		"date": "1997-12-29T08:00:00.000Z"
+	},
+	"uploadedDate": "1997-12-29T08:00:00.000Z",
+	"approvedDate": "1997-12-29T08:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 21.0,
+	"upCount": 94.0,
+	"downCount": 5.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 2562.0,
+	"coverHash": "2ecdd318637d9e41eaf61e6ad9e82fe6"
+}

@@ -1,0 +1,30 @@
+{
+	"hash": "daa661d5b7fa23924f0b0bbf7c186439",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "apple_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a584679d16d79ab47f",
+		"name": "Bad Apple!!",
+		"track": 7.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008b",
+		"name": "東方幻想郷　～ Lotus Land Story",
+		"abbr": "TH04",
+		"date": "1998-08-14T07:00:00.000Z"
+	},
+	"uploadedDate": "1998-08-14T07:00:00.000Z",
+	"approvedDate": "1998-08-14T07:00:00.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 21.0,
+	"upCount": 472.0,
+	"downCount": 34.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 12954.0,
+	"coverHash": "007ad004f4cd35703085162abdb5a514"
+}

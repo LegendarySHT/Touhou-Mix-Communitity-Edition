@@ -1,0 +1,30 @@
+{
+	"hash": "e0c90cd4cd123b3c21014d2f42208c3f",
+	"uploaderId": "5c9721a02d2ced64fbd027a4",
+	"uploaderName": "System",
+	"name": "taketori_easy",
+	"desc": "東方ピアノEasyモード楽譜集 旧バージョン",
+	"artistName": "DMBN",
+	"artistUrl": "http://easypianoscore.jp/",
+	"song": {
+		"_id": "5e84f0a684679d16d79ab4df",
+		"name": "竹取飛翔　～ Lunatic Princess",
+		"track": 15.0,
+		"author": "ZUN"
+	},
+	"album": {
+		"_id": "5e84f06ab93fe616b2ed008f",
+		"name": "東方永夜抄　～ Imperishable Night",
+		"abbr": "TH08",
+		"date": "2004-08-15T07:00:00.000Z"
+	},
+	"uploadedDate": "2004-08-15T07:00:05.000Z",
+	"approvedDate": "2004-08-15T07:00:05.000Z",
+	"status": "INCLUDED",
+	"downloadCount": 24.0,
+	"upCount": 9.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "",
+	"trialCount": 364.0,
+	"coverHash": "2769890f8d849e3df18bc185024bcef0"
+}

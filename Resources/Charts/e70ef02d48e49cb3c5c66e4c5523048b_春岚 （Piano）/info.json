@@ -1,0 +1,30 @@
+{
+	"hash": "e70ef02d48e49cb3c5c66e4c5523048b",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "春岚 （Piano）",
+	"desc": "游玩建议：\n开启：Track1,2.\n════════════════\n转载自：https://www.bilibili.com/video/BV1Pr421g7v8\n原作者已许可转载\n════════════════\n这是一首非常特别的曲子，不如说是配乐了\n当看见樱花轨迹汇聚到一起的时候，你是否感觉到了震撼呢\n════════════════\nTAG:\n#东方幕华祭 #春岚 #东方幕华祭春雪篇 ",
+	"artistName": "稽王奥斯特",
+	"artistUrl": "https://space.bilibili.com/228309373",
+	"song": {
+		"_id": "song_e65355f0821cfe86",
+		"name": "春岚",
+		"track": 0,
+		"author": "StarX"
+	},
+	"album": {
+		"_id": "album_495e2572f5ad1f92",
+		"name": "東方幕華祭 春雪篇 ～ Fantastic Danmaku Festival Part II",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-05-02T13:59:08.480Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 330.0,
+	"upCount": 4.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 28.0,
+	"coverHash": "4776f222cdab140ca783ae416f53e56b"
+}

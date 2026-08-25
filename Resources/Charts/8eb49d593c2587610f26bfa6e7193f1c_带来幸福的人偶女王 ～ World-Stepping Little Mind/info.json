@@ -1,0 +1,30 @@
+{
+	"hash": "8eb49d593c2587610f26bfa6e7193f1c",
+	"uploaderId": "639358aa4c2c822decc671e1",
+	"uploaderName": "Legendary_SHT",
+	"name": "带来幸福的人偶女王 ～ World-Stepping Little Mind",
+	"desc": "游玩建议（重要）：\n开启Track1,3,5,6,8,10,12\n如需进一步提高难度可开启其他音轨\n播放建议：使用测试群文件中的TOUHOU INSTRUMENT + DRUM KIT.sf2（推荐）或Touhou.sf2,已获得最佳听觉体验\n========================\n总时长4:02\n转载自：https://www.youtube.com/watch?v=ecMS5j2gmBs\nMIDI兼改编作者：FanTouhouMusic   https://m.youtube.com/@fantouhoumusic-2188\n原作者开放对MIDI的使用\n原曲：https://www.bilibili.com/video/BV1ou4y1Y7qg/\nMIDI修改：Legendary_SHT（已对原MIDI进行音量平衡，分割Track等处理）\n========================\n♪带来幸福的人偶女王 ～ World-Stepping Little Mind\n\n作曲／曲评:SHO\n在许多的东方作品连接起来的同时，我有意识地将这首曲子作为一个连贯的完整体来去制作它。\n如果您能从快速变化的乐句中，对其感受到一些共同的氛围，我会非常开心。",
+	"artistName": "FanTouhouMusic",
+	"artistUrl": "https://m.youtube.com/@fantouhoumusic-2188",
+	"song": {
+		"_id": "song_a7c34bc81f6abab4",
+		"name": "带来幸福的人偶女王 ～ World-Stepping Little Mind",
+		"track": 0,
+		"author": "SHO"
+	},
+	"album": {
+		"_id": "album_a63050f16c23c906",
+		"name": "鈴集無名の丘 ～ Little Doll Queen",
+		"abbr": "",
+		"date": ""
+	},
+	"uploadedDate": "2024-02-21T06:41:57.413Z",
+	"approvedDate": null,
+	"status": "INCLUDED",
+	"downloadCount": 146.0,
+	"upCount": 2.0,
+	"downCount": 0.0,
+	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
+	"trialCount": 20.0,
+	"coverHash": "3a2b6386bc5d219faaa12da9110f9c19"
+}
