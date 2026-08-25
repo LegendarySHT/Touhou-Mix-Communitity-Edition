@@ -19,6 +19,7 @@ var filesystem_manager: FileSystemManager
 var net_manager: NetManager
 var auth_manager: AuthManager
 var score_manager: ScoreManager
+var community_manager: CommunityManager
 var _is_reloading_settings: bool = false
 
 # UI组件路径
@@ -217,6 +218,13 @@ func _initialize_core_systems() -> void:
 	add_child(score_manager)
 	if logger:
 		logger.info("ScoreManager initialized", "Main")
+
+	# 12.7. 初始化社区管理器（依赖网络、认证、成绩管理器与已打开的 ChartDB）
+	community_manager = CommunityManager.new()
+	community_manager.name = "CommunityManager"
+	add_child(community_manager)
+	if logger:
+		logger.info("CommunityManager initialized", "Main")
 
 	# 13. 初始化并加载UI（确保各管理器已就绪）
 	_init_ui()

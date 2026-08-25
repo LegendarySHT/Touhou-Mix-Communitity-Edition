@@ -35,6 +35,10 @@
 | `AudioManager` | 含 `static var instance`（如有） |
 | `MidiPlaybackManager` | 含 `static var instance`（如有） |
 | `KeySequenceManager` | 含 `static var instance`（如有） |
+| `NetManager` | 在线连接和 HTTP 请求 |
+| `AuthManager` | 登录态与鉴权请求 |
+| `ScoreManager` | 本地成绩与成绩上传 |
+| `CommunityManager` | MIDI 评价、评论、点赞与公开计数缓存 |
 
 特征：
 - 在 `Main._initialize_core_systems()` 按顺序创建

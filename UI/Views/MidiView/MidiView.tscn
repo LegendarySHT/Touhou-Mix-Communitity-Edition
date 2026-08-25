@@ -832,7 +832,9 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_gjqh3")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_s4c5m")
 theme_override_styles/hover = SubResource("StyleBoxFlat_pj210")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_0wvp2")
-text = "9999+"
+disabled = true
+toggle_mode = true
+text = "0"
 icon = SubResource("AtlasTexture_qoscg")
 expand_icon = true
 
@@ -848,7 +850,9 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_gjqh3")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_s4c5m")
 theme_override_styles/hover = SubResource("StyleBoxFlat_pj210")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_0wvp2")
-text = "9999+"
+disabled = true
+toggle_mode = true
+text = "0"
 icon = SubResource("AtlasTexture_1vlqv")
 expand_icon = true
 
@@ -878,6 +882,9 @@ size_flags_vertical = 4
 offset_transform_enabled = true
 offset_transform_position = Vector2(10, 0)
 offset_transform_visual_only = false
+placeholder_text = "发表评论..."
+max_length = 500
+editable = false
 
 [node name="Button" type="Button" parent="OptionPanel/VBoxC/TabView/Comment/Bottom" unique_id=1704251894]
 custom_minimum_size = Vector2(120, 80)
@@ -888,6 +895,7 @@ offset_transform_enabled = true
 offset_transform_position = Vector2(-10, 0)
 offset_transform_visual_only = false
 theme_override_font_sizes/font_size = 36
+disabled = true
 text = "发送"
 
 [node name="FavorPanel" type="PanelContainer" parent="OptionPanel/VBoxC/TabView" unique_id=203199523]

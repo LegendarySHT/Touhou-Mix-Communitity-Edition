@@ -34,6 +34,7 @@ public partial class ChartDb : Node
     private ILiteCollection<BsonDocument> _runtime;
     private ILiteCollection<BsonDocument> _meta;
     private ILiteCollection<BsonDocument> _localScores;
+    private ILiteCollection<BsonDocument> _communityCounts;
 
     private readonly object _lock = new();
     private bool _isOpen;
@@ -989,6 +990,51 @@ public partial class ChartDb : Node
         }
     }
 
+    // ========== 社区赞踩计数缓存（community_counts 集合） ==========
+    // 仅保存公开计数，不缓存资格、用户评价或评论。该集合不参与谱面 schema 重建。
+
+    /// 保存某 MIDI 最近一次成功在线获取的赞踩计数。
+    public void SaveCommunityCounts(string midiHash, long likeCount, long dislikeCount, long fetchedAt)
+    {
+        if (!IsOpen() || string.IsNullOrEmpty(midiHash)) return;
+        lock (_lock)
+        {
+            _communityCounts.Upsert(new BsonDocument
+            {
+                ["_id"] = midiHash,
+                ["like_count"] = Math.Max(0, likeCount),
+                ["dislike_count"] = Math.Max(0, dislikeCount),
+                ["fetched_at"] = fetchedAt,
+            });
+        }
+    }
+
+    /// 读取某 MIDI 的社区计数缓存；无记录返回空字典。
+    public Godot.Collections.Dictionary GetCommunityCounts(string midiHash)
+    {
+        var result = new Godot.Collections.Dictionary();
+        if (!IsOpen() || string.IsNullOrEmpty(midiHash)) return result;
+        lock (_lock)
+        {
+            var d = _communityCounts.FindById(midiHash);
+            if (d == null) return result;
+            result["like_count"] = BsonConvert.GetLong(d, "like_count");
+            result["dislike_count"] = BsonConvert.GetLong(d, "dislike_count");
+            result["fetched_at"] = BsonConvert.GetLong(d, "fetched_at");
+            return result;
+        }
+    }
+
+    /// 服务端明确返回 MIDI 不存在时删除已失效的社区计数缓存。
+    public void DeleteCommunityCounts(string midiHash)
+    {
+        if (!IsOpen() || string.IsNullOrEmpty(midiHash)) return;
+        lock (_lock)
+        {
+            _communityCounts.Delete(midiHash);
+        }
+    }
+
     /// <summary>
     /// 把任意别名（folder_name / folder_hash / json _id / file_hash / hash）解析为
     /// chart_runtime 的规范主键 folder_name（真正唯一，避免 hash 撞车互相覆盖配置）。
@@ -1101,6 +1147,7 @@ public partial class ChartDb : Node
         _runtime = _db.GetCollection("chart_runtime");
         _meta = _db.GetCollection("meta");
         _localScores = _db.GetCollection("local_scores");
+        _communityCounts = _db.GetCollection("community_counts");
     }
 
     private void EnsureIndexes()

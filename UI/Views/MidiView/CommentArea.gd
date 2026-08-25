@@ -1,136 +1,354 @@
 extends VBoxContainer
 
-## 评论区：展示谱面评论列表 + 推荐/喜欢/不喜欢 + 发表评论
-## 后端评论接口未就绪，_request_* / _submit_* 系列以占位符实现（见各函数内 TODO 注释）
-## 评论列表使用 CommentList（BaseScrollList，列表项 commentItem.tscn）
+## 当前 MIDI 的评价与评论区。公开内容在线可读；写操作由服务端按非 W 成绩授权。
 
-## 评论列表（BaseScrollList）
+const DEFAULT_INPUT_HINT: String = "发表评论..."
+const MAX_COMMENT_LENGTH: int = 500
+
 @onready var comments_list: BaseScrollList = $Comments
-
-## 评论输入框
 @onready var input: LineEdit = $Bottom/LineEdit
+@onready var send_btn: Button = $Bottom/Button
+@onready var like_btn: Button = $Top/Like
+@onready var dislike_btn: Button = $Top/Dislike
 
-## 当前关联的 MIDI（用于刷新/发表评论/推荐）
 var _current_midi: MidiData = null
-
-## 请求版本号：快速切换 MIDI 时丢弃过期响应
 var _request_version: int = 0
+var _comments_data: Array[Dictionary] = []
+var _can_interact: bool = false
+var _my_reaction: String = ""
+var _reaction_busy: bool = false
+var _comment_busy: bool = false
+var _was_online_ready: bool = false
+var _retry_on_online_heartbeat: bool = false
 
-## FailMessage 显示前的标签页索引（隐藏时恢复，见 _hide_fail_message）
-var _fail_prev_tab: int = -1
 
-## 由 MidiView 在 midi 选中变化/重新进入视图时调用
+func _ready() -> void:
+	EvtBus.online_state_changed.connect(_on_online_state_changed)
+	EvtBus.auth_changed.connect(_on_auth_changed)
+	EvtBus.score_uploaded.connect(_on_score_uploaded)
+	input.placeholder_text = DEFAULT_INPUT_HINT
+	input.max_length = MAX_COMMENT_LENGTH
+	_was_online_ready = _is_online_ready()
+	_set_interaction_enabled(false)
+	_set_counts(0, 0)
+
+
+## 由 MidiView 在 MIDI 选中变化或重新进入视图时调用。
 func load_comments(midi: MidiData) -> void:
 	_current_midi = midi
 	_request_version += 1
 	var version := _request_version
+	_comments_data.clear()
 	comments_list.clear_items()
-	# 仅当评论区为当前激活标签时才操作 FailMessage，避免抢占排行榜等其它标签页的提示
-	if is_visible_in_tree():
-		_hide_fail_message()
+	_reaction_busy = false
+	_comment_busy = false
+	_retry_on_online_heartbeat = false
+	_my_reaction = ""
+	_set_reaction_visual("")
+	_set_interaction_enabled(false)
+	input.placeholder_text = DEFAULT_INPUT_HINT
+	input.tooltip_text = ""
 
 	if midi == null or midi.file_hash.is_empty():
+		_set_counts(0, 0)
 		return
 
-	_request_comments(midi, version)
+	_show_cached_counts(midi.file_hash)
+	if not _is_online_ready() or CommunityManager.instance == null:
+		return
 
-## 拉取评论列表（后端占位）
-## TODO: 后端评论接口未实现 —— 实装后改为异步请求评论列表，完成后校验 version 再渲染
-func _request_comments(midi: MidiData, version: int) -> void:
-	# 占位：后端接口未就绪，直接以空列表返回
-	_finish_fetch_comments(version, [])
+	_request_summary(midi.file_hash, version)
+	_request_comments(midi.file_hash, version)
 
-## 渲染评论列表：失败/空列表时在 FailMessage 显示提示
-func _finish_fetch_comments(version: int, comments: Array) -> void:
-	if version != _request_version:
-		return  # 已有更新的请求，丢弃过期响应
+
+func _request_summary(midi_hash: String, version: int) -> void:
+	var result: Dictionary = await CommunityManager.instance.get_summary(midi_hash)
+	if not _is_current_request(midi_hash, version):
+		return
+	if not result.get("ok", false):
+		_set_interaction_enabled(false)
+		if int(result.get("status", 0)) == 404:
+			_set_counts(0, 0)
+			_request_version += 1
+		else:
+			_schedule_online_retry(result)
+		return
+	var data = result.get("data")
+	if not data is Dictionary:
+		_set_interaction_enabled(false)
+		_schedule_online_retry(result)
+		return
+	_set_counts(int(data.get("likeCount", 0)), int(data.get("dislikeCount", 0)))
+	var reaction = data.get("myReaction")
+	_my_reaction = str(reaction) if reaction != null else ""
+	_set_reaction_visual(_my_reaction)
+	_set_interaction_enabled(bool(data.get("canInteract", false)))
+
+
+func _request_comments(midi_hash: String, version: int) -> void:
+	var result: Dictionary = await CommunityManager.instance.get_comments(midi_hash)
+	if not _is_current_request(midi_hash, version):
+		return
+	if not result.get("ok", false):
+		comments_list.clear_items()
+		_comments_data.clear()
+		if int(result.get("status", 0)) == 404:
+			_set_counts(0, 0)
+			_set_interaction_enabled(false)
+			_request_version += 1
+		else:
+			_schedule_online_retry(result)
+		return
+	var data = result.get("data")
+	if not data is Dictionary:
+		_schedule_online_retry(result)
+		return
+	var comments = data.get("comments", [])
+	if not comments is Array:
+		return
+	_comments_data.clear()
+	for value in comments:
+		if value is Dictionary:
+			_comments_data.append(value)
+	_render_comments()
+
+
+func _render_comments() -> void:
 	comments_list.clear_items()
-	if comments.is_empty():
-		if is_visible_in_tree():
-			_show_fail_message("评论区暂未开放")
-		return
-	if is_visible_in_tree():
-		_hide_fail_message()
-	for i in range(comments.size()):
-		var comment: Dictionary = comments[i]
-		var node := comments_list.create_and_add_item(str(i), "comment")
-		node.setup_comment(comment)
+	for i in range(_comments_data.size()):
+		var comment := _comments_data[i]
+		var item_id := str(comment.get("id", i))
+		var node := comments_list.create_and_add_item(item_id, "comment")
+		if node != null:
+			if node.has_signal("interaction_invalidated"):
+				node.connect("interaction_invalidated", _on_comment_interaction_invalidated)
+			node.setup_comment(comment, _can_interact)
 
-## 发表评论（发送按钮 pressed / 输入框回车 text_submitted 均连接到此）
+
 func _on_send_pressed(_text: String = "") -> void:
-	var content := input.text.strip_edges() if input else ""
+	if not _can_interact or _comment_busy or _current_midi == null:
+		return
+	var content := input.text.strip_edges()
 	if content.is_empty():
-		_show_fail_message("评论内容不能为空")
+		_set_input_status("评论内容不能为空")
 		return
-	if _current_midi == null:
-		_show_fail_message("请先选择歌曲")
-		return
-	if not _is_online_ready():
+	if content.length() > MAX_COMMENT_LENGTH:
+		_set_input_status("评论不能超过 %d 字" % MAX_COMMENT_LENGTH)
 		return
 	_submit_comment(content)
 
-## 提交评论到后端（后端占位）
-## TODO: 后端评论接口未实现 —— 实装后调用评论 API 提交，成功后把新评论插入列表顶部并清空输入框
+
 func _submit_comment(content: String) -> void:
-	# 占位：接口未就绪，仅提示
-	_show_fail_message("评论功能暂未开放")
+	_comment_busy = true
+	_update_controls()
+	var version := _request_version
+	var midi_hash := _current_midi.file_hash
+	var result: Dictionary = await CommunityManager.instance.create_comment(midi_hash, content)
+	if not _is_current_request(midi_hash, version):
+		return
+	_comment_busy = false
+	if not result.get("ok", false):
+		_handle_write_failure(result)
+		_update_controls()
+		return
+	var data = result.get("data")
+	if data is Dictionary:
+		_comments_data.push_front(data)
+		input.clear()
+		input.placeholder_text = DEFAULT_INPUT_HINT
+		input.tooltip_text = ""
+		_render_comments()
+	else:
+		_handle_write_failure({
+			"ok": false,
+			"status": int(result.get("status", 0)),
+			"data": null,
+			"error": "invalid_response",
+		})
+	_update_controls()
 
-## 推荐按钮（顶栏 Like 图标）
+
 func _on_like_pressed() -> void:
-	_submit_recommendation("like")
+	var target := "" if _my_reaction == "like" else "like"
+	_submit_reaction(target)
 
-## 喜欢按钮（顶栏 Love 图标）
-func _on_love_pressed() -> void:
-	_submit_recommendation("love")
 
-## 不喜欢按钮（顶栏 Dislike 图标）
 func _on_dislike_pressed() -> void:
-	_submit_recommendation("dislike")
+	var target := "" if _my_reaction == "dislike" else "dislike"
+	_submit_reaction(target)
 
-## 提交推荐/喜欢/不喜欢（后端占位）
-## TODO: 后端接口未实现 —— 实装后调用推荐 API 提交并更新按钮状态
-func _submit_recommendation(kind: String) -> void:
+
+func _submit_reaction(target: String) -> void:
+	if not _can_interact or _reaction_busy or _current_midi == null:
+		_set_reaction_visual(_my_reaction)
+		return
+	var previous := _my_reaction
+	_reaction_busy = true
+	_set_reaction_visual(target)
+	_update_controls()
+	var version := _request_version
+	var midi_hash := _current_midi.file_hash
+	var body_value: Variant = target if not target.is_empty() else null
+	var result: Dictionary = await CommunityManager.instance.set_reaction(midi_hash, body_value)
+	if not _is_current_request(midi_hash, version):
+		return
+	_reaction_busy = false
+	if not result.get("ok", false):
+		_set_reaction_visual(previous)
+		_handle_write_failure(result)
+		_update_controls()
+		return
+	var data = result.get("data")
+	if data is Dictionary:
+		_set_counts(int(data.get("likeCount", 0)), int(data.get("dislikeCount", 0)))
+		var reaction = data.get("myReaction")
+		_my_reaction = str(reaction) if reaction != null else ""
+		_set_reaction_visual(_my_reaction)
+		_set_interaction_enabled(bool(data.get("canInteract", false)))
+	else:
+		_set_reaction_visual(previous)
+		_handle_write_failure({
+			"ok": false,
+			"status": int(result.get("status", 0)),
+			"data": null,
+			"error": "invalid_response",
+		})
+	_update_controls()
+
+
+func _on_online_state_changed(state: int, _latency_ms: int) -> void:
+	var online_now := state == NetManager.ConnectState.ONLINE \
+		and NetManager.instance != null and NetManager.instance.is_online
+	var became_online := online_now and not _was_online_ready
+	var became_unavailable := not online_now and _was_online_ready
+	_was_online_ready = online_now
 	if _current_midi == null:
-		_show_fail_message("请先选择歌曲")
 		return
-	if not _is_online_ready():
-		return
-	# 占位：接口未就绪，仅提示
-	_show_fail_message("推荐功能暂未开放")
+	if online_now and (became_online or _retry_on_online_heartbeat):
+		_retry_on_online_heartbeat = false
+		load_comments(_current_midi)
+	elif became_unavailable:
+		_request_version += 1
+		_comments_data.clear()
+		comments_list.clear_items()
+		_my_reaction = ""
+		_set_reaction_visual("")
+		_set_interaction_enabled(false)
+		_show_cached_counts(_current_midi.file_hash)
 
-## 在线功能可用性检查（在线模式开启且已连接服务器）
+
+func _on_auth_changed(_user: Variant) -> void:
+	if _current_midi == null:
+		return
+	if _is_online_ready():
+		load_comments(_current_midi)
+	else:
+		_my_reaction = ""
+		_set_reaction_visual("")
+		_set_interaction_enabled(false)
+
+
+## W 上传也会发出 score_uploaded；是否解锁始终以服务端 canInteract 为准。
+func _on_score_uploaded(midi_hash: String) -> void:
+	if _current_midi == null or _current_midi.file_hash != midi_hash:
+		return
+	if _is_online_ready():
+		load_comments(_current_midi)
+
+
+func _set_interaction_enabled(enabled: bool) -> void:
+	_can_interact = enabled and _is_online_ready()
+	_update_controls()
+	for item in comments_list.list_items:
+		if item != null and item.has_method("set_interaction_enabled"):
+			item.set_interaction_enabled(_can_interact)
+
+
+func _update_controls() -> void:
+	like_btn.disabled = not _can_interact or _reaction_busy
+	dislike_btn.disabled = not _can_interact or _reaction_busy
+	send_btn.disabled = not _can_interact or _comment_busy
+	input.editable = _can_interact and not _comment_busy
+
+
+func _set_reaction_visual(reaction: String) -> void:
+	like_btn.button_pressed = reaction == "like"
+	dislike_btn.button_pressed = reaction == "dislike"
+
+
+func _show_cached_counts(midi_hash: String) -> void:
+	if CommunityManager.instance == null:
+		_set_counts(0, 0)
+		return
+	var cached := CommunityManager.instance.get_cached_counts(midi_hash)
+	_set_counts(
+		int(cached.get("like_count", 0)),
+		int(cached.get("dislike_count", 0))
+	)
+
+
+func _set_counts(like_count: int, dislike_count: int) -> void:
+	_set_button_count(like_btn, maxi(like_count, 0), 25)
+	_set_button_count(dislike_btn, maxi(dislike_count, 0), 24)
+
+
+func _set_button_count(button: Button, count: int, base_size: int) -> void:
+	var value := str(count)
+	button.text = value
+	var shrink := maxi(value.length() - 5, 0) * 2
+	button.add_theme_font_size_override("font_size", maxi(base_size - shrink, 14))
+
+
+func _handle_write_failure(result: Dictionary) -> void:
+	var status := int(result.get("status", 0))
+	var error := str(result.get("error", ""))
+	var response_data = result.get("data")
+	var api_error := str(response_data.get("error", "")) if response_data is Dictionary else ""
+	if status == 401 or error in ["not_logged_in", "token_expired"]:
+		_set_input_status("请先登录账号")
+		_set_interaction_enabled(false)
+	elif status == 403:
+		_set_input_status("请先完成该谱面并成功上传非 W 成绩")
+		_set_interaction_enabled(false)
+	elif status == 404 and api_error == "comment_not_found":
+		_set_input_status("该评论已不存在，请刷新后重试")
+		_set_interaction_enabled(false)
+	elif status == 404:
+		_set_input_status("服务端未收录该谱面")
+		_set_counts(0, 0)
+		_set_interaction_enabled(false)
+	elif status == 400:
+		_set_input_status("提交内容无效")
+	else:
+		_set_input_status("在线操作失败，请稍后重试")
+		_set_interaction_enabled(false)
+		if _current_midi != null:
+			_show_cached_counts(_current_midi.file_hash)
+		_schedule_online_retry(result)
+
+
+func _set_input_status(message: String) -> void:
+	input.placeholder_text = message
+	input.tooltip_text = message
+
+
+func _on_comment_interaction_invalidated(result: Dictionary) -> void:
+	_handle_write_failure(result)
+
+
+## 请求层失败时等待下一次在线心跳补刷；正常的 4xx 由用户状态变化触发刷新。
+func _schedule_online_retry(result: Dictionary) -> void:
+	var status := int(result.get("status", 0))
+	if status == 0 or status >= 500 or (status >= 200 and status < 300):
+		_retry_on_online_heartbeat = true
+
+
+func _is_current_request(midi_hash: String, version: int) -> bool:
+	return is_inside_tree() and version == _request_version \
+		and _current_midi != null and _current_midi.file_hash == midi_hash
+
+
 func _is_online_ready() -> bool:
-	if NetManager.instance == null or NetManager.instance.connect_state == NetManager.ConnectState.OFFLINE_MODE:
-		_show_fail_message("在线功能未启用")
-		return false
-	if not NetManager.instance.is_online:
-		_show_fail_message("在线模式未开启")
-		return false
-	return true
-
-## 显示 TabView 级别的提示：FailMessage 节点位于 TabView 下，作为独立页展示
-## 显示时 TabContainer 会把 current_tab 切到 FailMessage，隐藏时容器自动切到"下一可用"标签
-func _show_fail_message(msg: String) -> void:
-	var fail := get_node_or_null("../FailMessage") as Label
-	if fail == null:
-		return
-	if not fail.visible:
-		var tab_view := get_parent()
-		if tab_view is TabContainer:
-			_fail_prev_tab = tab_view.current_tab
-	fail.text = msg
-	fail.visible = true
-
-## 隐藏 FailMessage 并恢复到显示前的标签页
-## 仅当 FailMessage 由本评论区显示时操作，避免干预排行榜等其它标签页
-func _hide_fail_message() -> void:
-	var fail := get_node_or_null("../FailMessage") as Label
-	if fail == null or not fail.visible:
-		return
-	if _fail_prev_tab < 0:
-		return  # FailMessage 非本评论区显示，不干预
-	fail.visible = false
-	var tab_view := get_parent()
-	if tab_view is TabContainer:
-		tab_view.current_tab = _fail_prev_tab
-	_fail_prev_tab = -1
+	return NetManager.instance != null \
+		and NetManager.instance.connect_state == NetManager.ConnectState.ONLINE \
+		and NetManager.instance.is_online

@@ -23,6 +23,9 @@
 10.  AudioManager.new() + add_child()
 11.  MidiPlaybackManager.new() + add_child()
 12.  KeySequenceManager.new() + add_child()
+12.5 NetManager.new() + add_child()
+12.6 AuthManager.new() + ScoreManager.new() + add_child()
+12.7 CommunityManager.new() + add_child()
 13.  _init_ui() -> _connect_signals() -> _load_configuration() -> _load_midi_data()
 ```
 
@@ -41,6 +44,7 @@
 ### 先管理器后 UI
 - `_init_ui()` 在所有核心管理器就位后执行
 - 防止 View 在 `_ready()` 提前读取空状态
+- `CommunityManager` 必须在 `NetManager`、`AuthManager`、`ScoreManager` 和 `ChartDB` 就绪后创建
 
 ### ThemeManager
 - ThemeManager 作为 autoload 在引擎启动时已就位

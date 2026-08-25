@@ -283,7 +283,7 @@ func check_health() -> Dictionary:
 	return await _request("GET", url, {})
 
 ## 通用请求方法
-## method: "GET"/"POST"/"PATCH"/"DELETE"
+## method: "GET"/"POST"/"PUT"/"PATCH"/"DELETE"
 ## url: 完整 URL
 ## body: Dictionary（自动 JSON 序列化）或 null
 ## headers: 额外请求头
@@ -341,6 +341,7 @@ func _method_to_http_client(method: String) -> int:
 	match method:
 		"GET": return HTTPClient.METHOD_GET
 		"POST": return HTTPClient.METHOD_POST
+		"PUT": return HTTPClient.METHOD_PUT
 		"PATCH": return HTTPClient.METHOD_PATCH
 		"DELETE": return HTTPClient.METHOD_DELETE
 		_: return HTTPClient.METHOD_GET
