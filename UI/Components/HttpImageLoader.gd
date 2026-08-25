@@ -40,9 +40,9 @@ static func load(url: String, target: Node, on_loaded: Callable) -> void:
 	_inflight[url] = pending
 	if pending.size() > 1:
 		return  # 已在途，等待首个请求完成
-	_start_request(url, target)
+	_start_request(url)
 
-static func _start_request(url: String, target: Node) -> void:
+static func _start_request(url: String) -> void:
 	var holder := _get_holder()
 	if holder == null:
 		_inflight.erase(url)

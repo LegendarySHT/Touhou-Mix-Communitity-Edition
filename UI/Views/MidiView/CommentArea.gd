@@ -188,7 +188,9 @@ func _submit_reaction(target: String) -> void:
 	_update_controls()
 	var version := _request_version
 	var midi_hash := _current_midi.file_hash
-	var body_value: Variant = target if not target.is_empty() else null
+	var body_value: Variant = null
+	if not target.is_empty():
+		body_value = target
 	var result: Dictionary = await CommunityManager.instance.set_reaction(midi_hash, body_value)
 	if not _is_current_request(midi_hash, version):
 		return

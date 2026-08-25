@@ -47,24 +47,24 @@ func get_chart_list(page: int = 1, limit: int = 20, search: String = "",
 
 ## 下载 MIDI 到本地
 ## 返回 {"ok": bool, "error": String}
-func download_chart(hash: String) -> Dictionary:
+func download_chart(chart_hash: String) -> Dictionary:
 	if NetManager.instance == null or not NetManager.instance.is_online:
 		return {"ok": false, "error": "offline"}
-	if hash.is_empty():
+	if chart_hash.is_empty():
 		return {"ok": false, "error": "hash_empty"}
 	
-	var safe_hash := _sanitize_hash(hash)
+	var safe_hash := _sanitize_hash(chart_hash)
 	if safe_hash.is_empty():
-		_download_states[hash] = DownloadState.FAILED
+		_download_states[chart_hash] = DownloadState.FAILED
 		return {"ok": false, "error": "invalid_hash"}
 	
-	_download_states[hash] = DownloadState.DOWNLOADING
+	_download_states[chart_hash] = DownloadState.DOWNLOADING
 	
 	# 1. 获取元数据
 	var meta_url := "%s/api/charts/%s" % [NetManager.instance.server_url, safe_hash]
 	var meta_result := await NetManager.instance._request("GET", meta_url, null)
 	if not meta_result.get("ok", false):
-		_download_states[hash] = DownloadState.FAILED
+		_download_states[chart_hash] = DownloadState.FAILED
 		return {"ok": false, "error": "metadata_fetch_failed: %s" % str(meta_result.get("error", ""))}
 	
 	var chart_data: Dictionary = meta_result.data
@@ -81,7 +81,7 @@ func download_chart(hash: String) -> Dictionary:
 	# 确保目录存在
 	var mkdir_err := DirAccess.make_dir_recursive_absolute(chart_dir)
 	if mkdir_err != OK:
-		_download_states[hash] = DownloadState.FAILED
+		_download_states[chart_hash] = DownloadState.FAILED
 		return {"ok": false, "error": "mkdir_failed"}
 	# 记录本次已写入的文件，下载失败时清理
 	var created_files: Array[String] = []
@@ -91,7 +91,7 @@ func download_chart(hash: String) -> Dictionary:
 	var midi_path := chart_dir.path_join("song.mid")
 	var midi_result := await _download_file(midi_url, midi_path)
 	if not midi_result.get("ok", false):
-		return _fail_download(hash, chart_dir, created_files, "midi_download_failed: %s" % str(midi_result.get("error", "")))
+		return _fail_download(chart_hash, chart_dir, created_files, "midi_download_failed: %s" % str(midi_result.get("error", "")))
 	created_files.append(midi_path)
 	
 	# 4. 下载封面（如有）
@@ -112,7 +112,7 @@ func download_chart(hash: String) -> Dictionary:
 	var json_content := JSON.stringify(json_data)
 	var f := FileAccess.open(json_path, FileAccess.WRITE)
 	if f == null:
-		return _fail_download(hash, chart_dir, created_files, "json_write_failed")
+		return _fail_download(chart_hash, chart_dir, created_files, "json_write_failed")
 	created_files.append(json_path)
 	f.store_string(json_content)
 	f.close()
@@ -121,28 +121,28 @@ func download_chart(hash: String) -> Dictionary:
 	if FileSystemManager.instance:
 		await FileSystemManager.instance.rescan_resources()
 	
-	_download_states[hash] = DownloadState.DOWNLOADED
+	_download_states[chart_hash] = DownloadState.DOWNLOADED
 	GLogger.info("Chart downloaded: %s" % safe_hash, "ResMGR")
 	return {"ok": true}
 
 ## 校验下载 hash 是否可安全用于本地路径（仅允许 URL-safe 字符，拒绝分隔符/点号/控制字符）
-func _sanitize_hash(hash: String) -> String:
-	if hash.is_empty() or hash.length() > 128:
+func _sanitize_hash(chart_hash: String) -> String:
+	if chart_hash.is_empty() or chart_hash.length() > 128:
 		return ""
-	for c in hash:
+	for c in chart_hash:
 		var code := c.unicode_at(0)
 		var is_alnum := (code >= 48 and code <= 57) or (code >= 65 and code <= 90) or (code >= 97 and code <= 122)
 		if not is_alnum and c != "_" and c != "-":
 			return ""
-	return hash
+	return chart_hash
 
 ## 下载失败清理：删除本次已写入的部分文件；目录为空时一并删除
-func _fail_download(hash: String, chart_dir: String, created_files: Array, error_msg: String) -> Dictionary:
+func _fail_download(chart_hash: String, chart_dir: String, created_files: Array, error_msg: String) -> Dictionary:
 	for file_path in created_files:
 		if FileAccess.file_exists(file_path):
 			DirAccess.remove_absolute(file_path)
 	DirAccess.remove_absolute(chart_dir)  # 非空目录删除会失败，忽略
-	_download_states[hash] = DownloadState.FAILED
+	_download_states[chart_hash] = DownloadState.FAILED
 	return {"ok": false, "error": error_msg}
 
 ## 构建本地 JSON 元数据（白名单结构，camelCase 键，对齐 ChartNormalizer / ChartDb 派生）
@@ -205,9 +205,9 @@ func _download_file(url: String, save_path: String) -> Dictionary:
 	return {"ok": true}
 
 ## 清理文件夹名中的非法字符
-func _sanitize_folder_name(str: String) -> String:
+func _sanitize_folder_name(folder_name: String) -> String:
 	var illegal := ["\\", "/", ":", "*", "?", "\"", "<", ">", "|"]
-	var result := str
+	var result := folder_name
 	for c in illegal:
 		result = result.replace(c, "_")
 	return result
@@ -238,13 +238,13 @@ func get_download_state(chart_hash: String) -> DownloadState:
 # ========== 预留接口（未来实现） ==========
 
 ## 下载人声音频（预留接口）
-func download_vocal(target_hash: String) -> Dictionary:
+func download_vocal(_target_hash: String) -> Dictionary:
 	return {"ok": false, "error": "not_implemented"}
 
 ## 下载 SF2 音源（预留接口）
-func download_soundfont(id: String) -> Dictionary:
+func download_soundfont(_id: String) -> Dictionary:
 	return {"ok": false, "error": "not_implemented"}
 
 ## 下载皮肤包（预留接口）
-func download_skin(id: String) -> Dictionary:
+func download_skin(_id: String) -> Dictionary:
 	return {"ok": false, "error": "not_implemented"}

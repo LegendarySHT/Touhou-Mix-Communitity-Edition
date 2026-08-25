@@ -14,6 +14,7 @@ var is_complete: bool = false      ## 是否完整（含音频文件）
 ## v3 扁平化字段（扫描 dict 顶层直接提供，避免物化整块 JSON）
 var midi_id: String = ""           ## 谱面 JSON 的 _id
 var file_hash: String = ""         ## 谱面 JSON 的 file_hash（favorites/别名查找用）
+@warning_ignore("shadowed_global_identifier")
 var hash: String = ""              ## 谱面 JSON 的 hash（别名查找用）
 
 ## 从 Dictionary 构造（兼容旧格式）

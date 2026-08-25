@@ -71,14 +71,14 @@ func save_local_score(midi: MidiData, snapshot: Dictionary) -> void:
 	if ChartDB == null or not ChartDB.IsOpen():
 		GLogger.warning("Local score save skipped: ChartDB not ready", "ScoreMGR")
 		return
-	var hash := midi.file_hash
-	var cur: Dictionary = ChartDB.GetLocalBest(hash)
+	var midi_hash := midi.file_hash
+	var cur: Dictionary = ChartDB.GetLocalBest(midi_hash)
 	if not cur.is_empty() and float(cur.get("pp", 0.0)) >= float(snapshot.get("pp", 0.0)):
 		return  # 已有更高或相同 pp，不覆盖
 	var record: Dictionary = _extract_payload(midi, snapshot)
 	record["timestamp"] = Time.get_unix_time_from_system()
-	ChartDB.SaveLocalScore(hash, record)
-	GLogger.info("Local score saved: midi=%s pp=%s" % [hash, str(record.get("pp", 0))], "ScoreMGR")
+	ChartDB.SaveLocalScore(midi_hash, record)
+	GLogger.info("Local score saved: midi=%s pp=%s" % [midi_hash, str(record.get("pp", 0))], "ScoreMGR")
 
 
 ## 读取某 MIDI 的本地最佳成绩（无记录返回空字典）

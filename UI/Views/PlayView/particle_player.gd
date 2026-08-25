@@ -259,6 +259,7 @@ func _draw_layer(layer: Layer) -> void:
 	if layer.cached_frame != layer.frame:
 		layer.cached_frame = layer.frame
 		var col := layer.frame % layer.cols
+		@warning_ignore("integer_division")
 		var row := layer.frame / layer.cols
 		layer.cached_region = Rect2(col * layer.source_size, row * layer.source_size, layer.source_size, layer.source_size)
 	var region := layer.cached_region
@@ -273,11 +274,11 @@ func _draw_layer(layer: Layer) -> void:
 				a = 0.0
 			elif a > 1.0:
 				a = 1.0
-	var modulate := Color(1.0, 1.0, 1.0, a)
+	var tint_color := Color(1.0, 1.0, 1.0, a)
 
 	if layer.rotation == 0.0:
-		draw_texture_rect_region(layer.texture, Rect2(pos.x - hs, pos.y - hs, hs * 2.0, hs * 2.0), region, modulate)
+		draw_texture_rect_region(layer.texture, Rect2(pos.x - hs, pos.y - hs, hs * 2.0, hs * 2.0), region, tint_color)
 	else:
 		draw_set_transform(pos, layer.rotation, Vector2.ONE)
-		draw_texture_rect_region(layer.texture, Rect2(-hs, -hs, hs * 2.0, hs * 2.0), region, modulate)
+		draw_texture_rect_region(layer.texture, Rect2(-hs, -hs, hs * 2.0, hs * 2.0), region, tint_color)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

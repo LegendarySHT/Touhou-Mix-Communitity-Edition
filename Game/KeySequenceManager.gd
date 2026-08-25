@@ -1169,6 +1169,7 @@ func _init_touches_with_hands() -> Array[VirtualTouch]:
 	var home_per_hand: int = ceili(float(max_touch_count) / 2.0)
 
 	# 计算左右手的车道区域
+	@warning_ignore("integer_division")
 	var half_lane: int = lane_count / 2
 	var left_lanes = _distribute_home_lanes(0, half_lane - 1, home_per_hand)
 	var right_lanes = _distribute_home_lanes(half_lane, lane_count - 1, home_per_hand)
@@ -1191,6 +1192,7 @@ func _init_touches_with_hands() -> Array[VirtualTouch]:
 		var touch = VirtualTouch.new(0)
 		touch.hand = -1
 		touch.hand_home_positions = all_home_xs
+		@warning_ignore("integer_division")
 		touch.home_x = _calculate_lane_position(lane_count / 2)  # 屏幕中心
 		touch.last_press_x = touch.home_x
 		touches.append(touch)
@@ -1226,6 +1228,7 @@ func _distribute_home_lanes(lane_start: int, lane_end: int, count: int) -> Array
 	if count <= 0 or lane_end < lane_start:
 		return lanes
 	if count == 1:
+		@warning_ignore("integer_division")
 		lanes.append((lane_start + lane_end) / 2)
 		return lanes
 	var span = lane_end - lane_start

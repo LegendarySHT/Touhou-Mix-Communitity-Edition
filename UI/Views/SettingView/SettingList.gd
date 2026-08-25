@@ -726,12 +726,12 @@ func _apply_advanced_visibility() -> void:
 func apply_button_theme(color: Color) -> void:
 	if not _value_button_instance:
 		return
-	var theme: Theme = _value_button_instance.theme
-	if theme == null:
+	var button_theme: Theme = _value_button_instance.theme
+	if button_theme == null:
 		return
-	var sb_normal: StyleBoxFlat = theme.get_stylebox("normal", "Button") as StyleBoxFlat
-	var sb_pressed: StyleBoxFlat = theme.get_stylebox("pressed", "Button") as StyleBoxFlat
-	var sb_hover: StyleBoxFlat = theme.get_stylebox("hover", "Button") as StyleBoxFlat
+	var sb_normal: StyleBoxFlat = button_theme.get_stylebox("normal", "Button") as StyleBoxFlat
+	var sb_pressed: StyleBoxFlat = button_theme.get_stylebox("pressed", "Button") as StyleBoxFlat
+	var sb_hover: StyleBoxFlat = button_theme.get_stylebox("hover", "Button") as StyleBoxFlat
 	if sb_normal:
 		sb_normal.bg_color = color
 	if sb_pressed:

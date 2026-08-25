@@ -84,6 +84,7 @@ func _format_upload_date(raw: String) -> String:
 			minute = int(t[1])
 	# UTC 加 8 小时 → 东八区墙钟
 	minute += 8 * 60 + hour * 60
+	@warning_ignore("integer_division")
 	day += minute / (24 * 60)
 	minute %= 60
 	while day > _days_in_month(year, month):

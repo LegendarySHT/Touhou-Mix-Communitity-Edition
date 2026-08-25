@@ -137,11 +137,11 @@ func set_progress(value: float) -> void:
 	progress_bar.value = value
 
 
-func set_debug_enabled(is_visible: bool) -> void:
-	show_debug_info = is_visible
+func set_debug_enabled(debug_visible: bool) -> void:
+	show_debug_info = debug_visible
 	if debug_info_label == null:
 		return
-	debug_info_label.visible = is_visible
+	debug_info_label.visible = debug_visible
 	debug_info_elapsed = debug_info_refresh_interval
 	if visible:
 		_update_debug_overlay()

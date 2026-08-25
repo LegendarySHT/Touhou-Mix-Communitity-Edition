@@ -66,8 +66,8 @@ func _handle_key_navigation(event: InputEventKey) -> void:
 		return
 
 	# 常规页面：焦点无效（null/隐藏/已释放）时重定向到当前页默认合法项
-	var owner := _safe_focus_owner()
-	if owner == null or not is_valid_focus(owner):
+	var focus_owner := _safe_focus_owner()
+	if focus_owner == null or not is_valid_focus(focus_owner):
 		_redirect_focus_by_state()
 		get_viewport().set_input_as_handled()
 
@@ -75,21 +75,21 @@ func _is_nav_key(keycode: Key) -> bool:
 	return keycode in _NAV_KEYS
 
 func _safe_focus_owner() -> Control:
-	var owner := get_viewport().gui_get_focus_owner()
-	if owner == null or not is_instance_valid(owner):
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	if focus_owner == null or not is_instance_valid(focus_owner):
 		return null
-	return owner
+	return focus_owner
 
 ## 焦点是否有效：在树、可见、且允许聚焦
-func is_valid_focus(owner: Control) -> bool:
-	return owner.is_visible_in_tree() and owner.focus_mode != Control.FOCUS_NONE
+func is_valid_focus(focus_owner: Control) -> bool:
+	return focus_owner.is_visible_in_tree() and focus_owner.focus_mode != Control.FOCUS_NONE
 
 ## 当前焦点是否位于 node 内部（含 node 本身）
 func _focus_inside(node: Node) -> bool:
-	var owner := _safe_focus_owner()
-	if owner == null:
+	var focus_owner := _safe_focus_owner()
+	if focus_owner == null:
 		return false
-	return node == owner or node.is_ancestor_of(owner)
+	return node == focus_owner or node.is_ancestor_of(focus_owner)
 
 ## 让 node 内第一个可见可聚焦的控件获得焦点
 func _grab_first_focusable(root: Node) -> void:

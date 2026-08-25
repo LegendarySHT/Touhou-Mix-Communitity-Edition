@@ -302,53 +302,53 @@ func on_midi_select(midi: MidiData):
 	EvtBus.midi_selected.emit.call_deferred(midi.id, midi)
 
 ## 远程 chart 点击：根据下载状态执行不同行为
-func on_remote_chart_select(hash: String) -> void:
+func on_remote_chart_select(chart_hash: String) -> void:
 	if ResMGR == null:
 		return
-	var state = ResMGR.get_download_state(hash)
+	var state = ResMGR.get_download_state(chart_hash)
 	match state:
 		ResourceManager.DownloadState.DOWNLOADED:
 			# 已下载：从本地查找 MidiData 并跳转
-			_jump_to_midi_view(hash)
+			_jump_to_midi_view(chart_hash)
 		ResourceManager.DownloadState.NOT_DOWNLOADED, ResourceManager.DownloadState.FAILED:
 			# 未下载或失败：触发下载
-			_download_chart(hash)
+			_download_chart(chart_hash)
 		ResourceManager.DownloadState.DOWNLOADING:
 			pass  # 下载中，忽略
 
 ## 下载 chart 并更新 UI
-func _download_chart(hash: String) -> void:
+func _download_chart(chart_hash: String) -> void:
 	# 更新列表项状态为下载中
-	_update_item_download_state(hash, ResourceManager.DownloadState.DOWNLOADING)
+	_update_item_download_state(chart_hash, ResourceManager.DownloadState.DOWNLOADING)
 
-	var result: Dictionary = await ResMGR.download_chart(hash)
+	var result: Dictionary = await ResMGR.download_chart(chart_hash)
 
 	if result.get("ok", false):
-		_update_item_download_state(hash, ResourceManager.DownloadState.DOWNLOADED)
-		GLogger.info("Chart downloaded successfully: %s" % hash, "StoreView")
+		_update_item_download_state(chart_hash, ResourceManager.DownloadState.DOWNLOADED)
+		GLogger.info("Chart downloaded successfully: %s" % chart_hash, "StoreView")
 	else:
-		_update_item_download_state(hash, ResourceManager.DownloadState.FAILED)
+		_update_item_download_state(chart_hash, ResourceManager.DownloadState.FAILED)
 		GLogger.warning("Chart download failed: %s" % str(result.get("error", "")), "StoreView")
 
 ## 更新指定 hash 的列表项下载状态
-func _update_item_download_state(hash: String, state: int) -> void:
+func _update_item_download_state(chart_hash: String, state: int) -> void:
 	for item in list_items:
 		if item and is_instance_valid(item) and item is StoreMidiListItem:
 			var store_item = item as StoreMidiListItem
-			if store_item.chart_hash == hash:
+			if store_item.chart_hash == chart_hash:
 				store_item.download_state = state
 				store_item._update_download_state_ui()
 
 ## 从本地查找已下载的 MidiData 并跳转 MidiView
-func _jump_to_midi_view(hash: String) -> void:
+func _jump_to_midi_view(chart_hash: String) -> void:
 	# 直接用 hash 经 LookupChartKey 解析并水合单条，避免全量水合卡顿
-	var midi: MidiData = DataMGR.get_midi_by_id(hash)
+	var midi: MidiData = DataMGR.get_midi_by_id(chart_hash)
 	if midi:
 		UiStatMGR.change_state(UIStateManager.UIState.MIDI_VIEW)
 		EvtBus.midi_selected.emit.call_deferred(midi.id, midi)
 		return
 	# 如果 DataMGR 中没有（可能索引未刷新），尝试直接构建
-	GLogger.warning("MidiData not found for hash %s, may need rescan" % hash, "StoreView")
+	GLogger.warning("MidiData not found for hash %s, may need rescan" % chart_hash, "StoreView")
 
 ## 上一页按钮回调
 func _on_previ_pressed() -> void:

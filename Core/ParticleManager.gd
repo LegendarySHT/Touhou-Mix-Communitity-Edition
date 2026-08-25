@@ -185,9 +185,9 @@ func _parse_file_list(file_value: Variant) -> Array[String]:
 		return list
 	var text := str(file_value)
 	for part in text.split(",", false):
-		var name := part.strip_edges()
-		if not name.is_empty():
-			list.append(name)
+		var file_name := part.strip_edges()
+		if not file_name.is_empty():
+			list.append(file_name)
 	return list
 
 ## 解析随机旋转规格，返回 null（不旋转）或 {mode, ...}：
@@ -284,10 +284,10 @@ func get_particle_pack_by_index(index: int) -> String:
 
 ## 按粒子包名字取包键（config 用包名字而非数字索引，避免新增粒子包导致索引错位）
 ## 精确匹配包键；找不到（包被删除/改名/值为旧数字格式）返回空 = None（无特效）
-func get_particle_pack_by_name(name: String) -> String:
-	if name.is_empty():
+func get_particle_pack_by_name(pack_name: String) -> String:
+	if pack_name.is_empty():
 		return ""
-	return name if particles_index.has(name) else ""
+	return pack_name if particles_index.has(pack_name) else ""
 
 ## 获取声明了指定角色精灵图的粒子包键列表（按名称排序）
 ## role: ROLE_BASE / ROLE_EMITTER；供设置弹窗按角色过滤下拉选项
@@ -333,6 +333,7 @@ func _build_layer_template(pack_key: String, role: String) -> Dictionary:
 	if cfg_cols > 0:
 		cols = cfg_cols
 	elif tex_w > 0:
+		@warning_ignore("integer_division")
 		cols = maxi(1, tex_w / int(source_size))
 	else:
 		cols = 1
@@ -340,6 +341,7 @@ func _build_layer_template(pack_key: String, role: String) -> Dictionary:
 	if cfg_rows > 0:
 		rows = cfg_rows
 	elif tex_h > 0:
+		@warning_ignore("integer_division")
 		rows = maxi(1, tex_h / int(source_size))
 	else:
 		rows = 1

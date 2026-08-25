@@ -1622,10 +1622,10 @@ func get_vocal_position() -> float:
 	return 0.0
 
 ## 跳转人声播放进度（毫秒）
-func seek_vocal(position_ms: float) -> void:
+func seek_vocal(vocal_position_ms: float) -> void:
 	var backend = _get_active_backend()
 	if backend != null and backend.has_method("seek_vocal"):
-		backend.call("seek_vocal", position_ms)
+		backend.call("seek_vocal", vocal_position_ms)
 
 ## 人声是否正在播放（自然结束返回 false）
 func is_vocal_playing() -> bool:

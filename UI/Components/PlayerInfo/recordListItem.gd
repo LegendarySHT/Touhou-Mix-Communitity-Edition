@@ -78,12 +78,12 @@ func set_withdraw_state(withdraw: bool) -> void:
 	modulate.a = 0.4 if withdraw else 1.0
 
 ## 从服务端加载曲包封面（GET /api/charts/{hash}/cover）
-func _load_remote_cover(hash: String) -> void:
+func _load_remote_cover(chart_hash: String) -> void:
 	if NetManager.instance == null or not NetManager.instance.is_online:
 		return
 	# 先隐藏默认封面，避免加载失败时显示占位图
 	cover_rect.texture = null
-	var cover_url := "%s/api/charts/%s/cover" % [NetManager.instance.server_url, hash]
+	var cover_url := "%s/api/charts/%s/cover" % [NetManager.instance.server_url, chart_hash]
 	HttpImageLoader.load(cover_url, self, func(tex: Texture2D) -> void:
 		if not is_instance_valid(self):
 			return

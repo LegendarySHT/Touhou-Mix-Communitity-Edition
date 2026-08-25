@@ -216,10 +216,6 @@ func _load_midi(midi: MidiData) -> void:
 	# 初始化Latency输入框
 	_init_latency_edit()
 
-	# 等待人声预加载完成：确保 play() 时人声 stream 已就绪
-	# 若不等待，start_vocal_playback 会回退到同步加载（在 backend.play 之后），
-	# 导致 MIDI 已开始播放但人声仍在解码，造成 MIDI/人声不同步
-	await midi_playback_manager.await_vocal_preload()
 	# 启动播放（UI 已完全加载，避免 _prepare_to_play 阻塞 UI 渲染）
 	midi_playback_manager.play()
 

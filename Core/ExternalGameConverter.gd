@@ -181,9 +181,9 @@ static func _convert_source_dir(source_dir: String, files_dir: String, charts_di
 			if FileAccess.file_exists(existing_dir.path_join("song.mid")) and FileAccess.file_exists(existing_dir.path_join("info.json")):
 				if _fill_missing_assets(source_dir, webcache_map, existing_dir, hash_val, entry, cover_cache, progress_state, source_name):
 					# 补齐了封面/人声 → 重扫进 DB，更新 cover_path 等缓存字段，让运行中的 UI 立即可见
-					var imported_list: Array = progress_state.get("imported_folders", [])
-					imported_list.append(existing_folder)
-					progress_state["imported_folders"] = imported_list
+					var repaired_folders: Array = progress_state.get("imported_folders", [])
+					repaired_folders.append(existing_folder)
+					progress_state["imported_folders"] = repaired_folders
 				skipped_existing += 1
 				continue
 

@@ -75,21 +75,21 @@ static func normalize_chart_json(data: Dictionary) -> bool:
 
 	if data.has("song") and _has_meaningful_data(data["song"]):
 		# 嵌套 song 有实际数据 → 精简
-		var song: Dictionary = data["song"]
-		var sid := _get_str(song, "_id", "")
+		var nested_song: Dictionary = data["song"]
+		var sid := _get_str(nested_song, "_id", "")
 		if sid.is_empty():
 			# 兼容旧格式：部分来源用 "id" 而非 "_id"（如旧版下载 JSON）
-			sid = _get_str(song, "id", "")
+			sid = _get_str(nested_song, "id", "")
 			if not sid.is_empty():
-				song["_id"] = sid
+				nested_song["_id"] = sid
 				changed = true
 		if sid.is_empty():
-			var sn := _get_str(song, "name", "Unknown Song")
-			song["_id"] = "song_" + sn.sha256_text().substr(0, 16)
+			var sn := _get_str(nested_song, "name", "Unknown Song")
+			nested_song["_id"] = "song_" + sn.sha256_text().substr(0, 16)
 			changed = true
-		for key in song.keys():
+		for key in nested_song.keys():
 			if key not in ["_id", "name", "track", "author"]:
-				song.erase(key)
+				nested_song.erase(key)
 				changed = true
 	else:
 		# 无实际数据或缺失 → 从 sourceSongName 重建

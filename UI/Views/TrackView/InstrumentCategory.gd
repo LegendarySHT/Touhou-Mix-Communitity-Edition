@@ -56,6 +56,7 @@ static func get_icon_region(category: int) -> Rect2:
 	var col: int = c % COLUMNS
 	@warning_ignore("integer_division")
 	var row: int = c / COLUMNS
+	@warning_ignore("integer_division")
 	var cell: int = ATLAS_SIZE / COLUMNS
 	return Rect2(col * cell, row * cell, cell, cell)
 

@@ -362,11 +362,11 @@ func _count_default_chart_folders() -> int:
 		return 0
 	var count := 0
 	source_dir.list_dir_begin()
-	var name := source_dir.get_next()
-	while name != "":
-		if source_dir.current_is_dir() and not name.begins_with("."):
+	var entry_name := source_dir.get_next()
+	while entry_name != "":
+		if source_dir.current_is_dir() and not entry_name.begins_with("."):
 			count += 1
-		name = source_dir.get_next()
+		entry_name = source_dir.get_next()
 	source_dir.list_dir_end()
 	return count
 
@@ -404,7 +404,7 @@ func _copy_default_charts_async(progress_bar: ProgressBar = null) -> int:
 				copied_count += 1
 
 			# 依据 JSON coverHash 从中央封面目录复制封面（封面已移出曲包）
-			await _copy_default_cover_async(dest_chart_path)
+			_copy_default_cover(dest_chart_path)
 
 			if progress_bar:
 				progress_bar.value = minf(copied_count, progress_bar.max_value)
@@ -526,7 +526,7 @@ func _copy_image_via_resource_loader(src_path: String, dest_path: String) -> boo
 ## 依据谱面 JSON 的 coverHash，从中央封面目录复制封面到谱面文件夹（cover.jpg）
 ## 封面已移出曲包，统一按 {coverHash}.{ext} 存于 res://Resources/Covers/
 ## 与 _copy_image_via_resource_loader 一致，导出后经 ResourceLoader 解码回原始格式
-func _copy_default_cover_async(dest_chart_path: String) -> bool:
+func _copy_default_cover(dest_chart_path: String) -> bool:
 	# 在目标（user://）谱面文件夹中定位元数据 JSON
 	var chart_id := dest_chart_path.get_file().split("_")[0]
 	var json_path := ""

@@ -191,6 +191,7 @@ func _compute_indicator_offset(index: int) -> float:
 	var count: int = indicator.get_child_count()
 	if count <= 1:
 		return 0.0
+	@warning_ignore("integer_division")
 	return (int(count / 2) - index) * pitch + pitch / 2
 
 ## 刷新显示

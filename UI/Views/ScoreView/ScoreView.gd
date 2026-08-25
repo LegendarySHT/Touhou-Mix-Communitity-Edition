@@ -292,16 +292,16 @@ func _animate_pp_to(target_pp: float) -> void:
 	_pp_tween.tween_method(_set_pp_display, from_pp, target_pp, 1.5)
 
 ## 按指定 pp 同步刷新等级/进度条/PP 标签（供上涨动画逐帧调用，也可直接设置）
-func _set_pp_display(pp: float) -> void:
-	_pp_displayed = pp
+func _set_pp_display(current_pp: float) -> void:
+	_pp_displayed = current_pp
 	var lvl := 0
 	var lvl_progress := 0.0
 	if _pic:
-		lvl = _pic.calc_level(pp)
-		lvl_progress = _pic.calc_level_progress(pp, lvl) * 100.0
+		lvl = _pic.calc_level(current_pp)
+		lvl_progress = _pic.calc_level_progress(current_pp, lvl) * 100.0
 	lvl_label.text = "Lv%d" % lvl
 	lvl_exp_progress.value = lvl_progress
-	pp_label.text = "%.2fpp" % pp
+	pp_label.text = "%.2fpp" % current_pp
 
 func _play_loop_ani():
 	_kill_loop_ani()

@@ -110,10 +110,10 @@ func _read_pct(edit: LineEdit, default: int) -> int:
 	return int(text) if text.is_valid_int() else default
 
 ## 配置中存的是粒子包名字（如 "Diamond-Rainbow [内置]"），转成对应角色下拉的索引；找不到 → 0(None)
-func _preset_index_of(name: String, list: Array) -> int:
-	if name.is_empty():
+func _preset_index_of(preset_name: String, list: Array) -> int:
+	if preset_name.is_empty():
 		return 0
-	var idx := list.find(name)
+	var idx := list.find(preset_name)
 	return idx if idx >= 0 else 0
 
 ## 播放一次预览粒子（在 ParticlePreview 中心，使用当前选中的预设与数值）
