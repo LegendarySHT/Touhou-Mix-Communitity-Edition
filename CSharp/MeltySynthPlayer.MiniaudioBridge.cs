@@ -69,6 +69,11 @@ public partial class MeltySynthPlayer
 			private int _postSeekSilenceFrames = 0;
 			private StringName _bus = new StringName("Master");
 
+			// Vocal control methods are called from the Godot main thread. The native
+			// audio callback owns the actual playback state and never reads these fields.
+			private bool _vocalLoaded = false;
+			private float _vocalVolumeLinear = 1.0f;
+
 			// ---- 统计 ----
 			private float _lastSampleL = 0;
 			private float _lastSampleR = 0;
@@ -211,6 +216,9 @@ public partial class MeltySynthPlayer
 				{
 					return false;
 				}
+				// Native load first unloads any previous decoder. Keep the managed state
+				// aligned even when opening the replacement file fails.
+				_vocalLoaded = false;
 				var utf8Path = MiniaudioNative.StringToUtf8NullTerminated(path);
 				var r = MiniaudioNative.ma_bridge_vocal_load(_bridgeHandle, utf8Path);
 				if (r != MiniaudioNative.Result.Ok)
@@ -218,12 +226,15 @@ public partial class MeltySynthPlayer
 					GD.PrintErr($"[MeltySynthPlayer][miniaudio] ma_bridge_vocal_load failed: {r} ({path})");
 					return false;
 				}
+				_vocalLoaded = true;
+				ApplyVocalVolume();
 				GD.Print($"[MeltySynthPlayer][miniaudio] Vocal loaded: {path}");
 				return true;
 			}
 
 			public void UnloadVocal()
 			{
+				_vocalLoaded = false;
 				if (_bridgeHandle != IntPtr.Zero)
 				{
 					MiniaudioNative.ma_bridge_vocal_unload(_bridgeHandle);
@@ -232,7 +243,7 @@ public partial class MeltySynthPlayer
 
 			public void PlayVocal()
 			{
-				if (_bridgeHandle == IntPtr.Zero) return;
+				if (_bridgeHandle == IntPtr.Zero || !_vocalLoaded) return;
 				var r = MiniaudioNative.ma_bridge_vocal_play(_bridgeHandle);
 				if (r != MiniaudioNative.Result.Ok)
 				{
@@ -242,7 +253,7 @@ public partial class MeltySynthPlayer
 
 			public void PauseVocal()
 			{
-				if (_bridgeHandle == IntPtr.Zero) return;
+				if (_bridgeHandle == IntPtr.Zero || !_vocalLoaded) return;
 				var r = MiniaudioNative.ma_bridge_vocal_pause(_bridgeHandle);
 				if (r != MiniaudioNative.Result.Ok)
 				{
@@ -257,7 +268,7 @@ public partial class MeltySynthPlayer
 
 			public void StopVocal()
 			{
-				if (_bridgeHandle == IntPtr.Zero) return;
+				if (_bridgeHandle == IntPtr.Zero || !_vocalLoaded) return;
 				var r = MiniaudioNative.ma_bridge_vocal_stop(_bridgeHandle);
 				if (r != MiniaudioNative.Result.Ok)
 				{
@@ -267,7 +278,7 @@ public partial class MeltySynthPlayer
 
 			public void SeekVocal(double positionMs)
 			{
-				if (_bridgeHandle == IntPtr.Zero) return;
+				if (_bridgeHandle == IntPtr.Zero || !_vocalLoaded) return;
 				// The native decoder is configured with the device's actual rate. This can
 				// differ from the requested synth rate when WASAPI applies a device format.
 				int vocalSampleRate = _actualSampleRate > 0 ? (int)_actualSampleRate : _sampleRate;
@@ -282,8 +293,14 @@ public partial class MeltySynthPlayer
 
 			public void SetVocalVolume(float volumeLinear)
 			{
-				if (_bridgeHandle == IntPtr.Zero) return;
-				var r = MiniaudioNative.ma_bridge_vocal_set_volume(_bridgeHandle, volumeLinear);
+				_vocalVolumeLinear = Math.Clamp(volumeLinear, 0.0f, 4.0f);
+				if (_bridgeHandle == IntPtr.Zero || !_vocalLoaded) return;
+				ApplyVocalVolume();
+			}
+
+			private void ApplyVocalVolume()
+			{
+				var r = MiniaudioNative.ma_bridge_vocal_set_volume(_bridgeHandle, _vocalVolumeLinear);
 				if (r != MiniaudioNative.Result.Ok)
 				{
 					GD.PushWarning($"[MeltySynthPlayer][miniaudio] ma_bridge_vocal_set_volume failed: {r}");
