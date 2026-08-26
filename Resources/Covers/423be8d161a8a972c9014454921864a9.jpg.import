@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dmrgs6j21v2hm"
-path="res://.godot/imported/1.jpg-1509b9da5ea343383fc94b00106607d7.ctex"
+uid="uid://bxkgbenh2ja4h"
+path="res://.godot/imported/423be8d161a8a972c9014454921864a9.jpg-9adea635636bb220fd9833b1ade54da2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Resources/song_cover/1.jpg"
-dest_files=["res://.godot/imported/1.jpg-1509b9da5ea343383fc94b00106607d7.ctex"]
+source_file="res://Resources/Covers/423be8d161a8a972c9014454921864a9.jpg"
+dest_files=["res://.godot/imported/423be8d161a8a972c9014454921864a9.jpg-9adea635636bb220fd9833b1ade54da2.ctex"]
 
 [params]
 

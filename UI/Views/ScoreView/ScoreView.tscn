@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://sdxdtvdsllvp" path="res://UI/Views/ScoreView/ScoreView.gd" id="1_xn8wu"]
 [ext_resource type="Texture2D" uid="uid://bf7nd5qojdcla" path="res://Resources/icon/lily-white.png" id="2_iqsw5"]
-[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="4_kq2mn"]
+[ext_resource type="Texture2D" uid="uid://bxkgbenh2ja4h" path="res://Resources/Covers/423be8d161a8a972c9014454921864a9.jpg" id="4_iqsw5"]
 [ext_resource type="Texture2D" uid="uid://cpog56bd63i4e" path="res://Resources/icon/NoAvatar.jpg" id="5_0sw27"]
 [ext_resource type="Script" uid="uid://dpn6fchjbt3b8" path="res://UI/Components/SkewArea.gd" id="5_skew"]
 [ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="6_iqsw5"]
@@ -293,7 +293,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_0sw27")
 
 [node name="TextureRect" type="TextureRect" parent="Bottom/skew/C/SongInfo/PanelContainer" unique_id=226451417]
 layout_mode = 2
-texture = ExtResource("4_kq2mn")
+texture = ExtResource("4_iqsw5")
 expand_mode = 5
 stretch_mode = 6
 

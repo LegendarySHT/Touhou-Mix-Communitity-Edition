@@ -2,7 +2,7 @@
 
 [ext_resource type="Theme" uid="uid://cm3mry6cxo28t" path="res://UI/Theme/BtnTheme/ListBtn-ColorBorder.tres" id="1_aaj07"]
 [ext_resource type="Script" uid="uid://c4gjvjg4gl57p" path="res://UI/Views/SortedMidiView/SortedMidiListItem.gd" id="1_sx7kd"]
-[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_aaj07"]
+[ext_resource type="Texture2D" uid="uid://bxkgbenh2ja4h" path="res://Resources/Covers/423be8d161a8a972c9014454921864a9.jpg" id="3_aaj07"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_ex0j5"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o5pup"]
@@ -42,7 +42,7 @@ pivot_offset = Vector2(0, 350)
 size_flags_vertical = 0
 offset_transform_enabled = true
 mouse_filter = 2
-texture = ExtResource("2_aaj07")
+texture = ExtResource("3_aaj07")
 expand_mode = 5
 stretch_mode = 6
 

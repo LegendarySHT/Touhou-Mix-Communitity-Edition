@@ -2,7 +2,7 @@
 
 [ext_resource type="Theme" uid="uid://cm3mry6cxo28t" path="res://UI/Theme/BtnTheme/ListBtn-ColorBorder.tres" id="1_fljdd"]
 [ext_resource type="Script" uid="uid://dye4gnjw1k7du" path="res://UI/Views/AlbumView/AlbumListItem.gd" id="1_pxpjj"]
-[ext_resource type="Texture2D" uid="uid://dmrgs6j21v2hm" path="res://Resources/song_cover/1.jpg" id="2_wrosb"]
+[ext_resource type="Texture2D" uid="uid://bxkgbenh2ja4h" path="res://Resources/Covers/423be8d161a8a972c9014454921864a9.jpg" id="3_pxpjj"]
 [ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="5_fljdd"]
 
 [sub_resource type="FontVariation" id="FontVariation_jttwt"]
@@ -58,7 +58,7 @@ pivot_offset = Vector2(0, 350)
 size_flags_vertical = 0
 offset_transform_enabled = true
 mouse_filter = 2
-texture = ExtResource("2_wrosb")
+texture = ExtResource("3_pxpjj")
 expand_mode = 5
 stretch_mode = 6
 

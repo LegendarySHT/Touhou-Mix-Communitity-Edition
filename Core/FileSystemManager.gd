@@ -36,6 +36,8 @@ const DEFAULT_BACKGROUND_SRC = "res://Resources/BackgroundImage/"
 const DEFAULT_COVERS_SRC = "res://Resources/Covers/"
 ## 查找中央封面时尝试的扩展名（coverHash 纯哈希不带扩展名）
 const COVER_HASH_EXTS = ["jpg", "jpeg", "png", "webp"]
+## 默认封面路径（兜底用，res:// 中的默认封面资源）
+const DEFAULT_COVER_PATH := "res://Resources/Covers/423be8d161a8a972c9014454921864a9.jpg"
 
 ## 通用加载/导入提示文案（ProcessTip，与 Main.tscn 默认文案一致）
 const LOADING_TIP_TEXT := "加载中，请稍后"
@@ -1809,7 +1811,6 @@ func get_chart_path(chart_id: String) -> String:
 ## 封面路径兜底：为空或 user:// 文件不存在 → 返回默认封面路径（与 load_cover_with_cache 回退一致）
 ## Album/Song 列表项（DB 直查 cover_path）与 _cover_path_from_chart 共用
 func default_cover_if_missing(path: String) -> String:
-	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	if path.is_empty():
 		return DEFAULT_COVER_PATH
 	if not path.begins_with("res://") and not FileAccess.file_exists(path):
@@ -1837,7 +1838,6 @@ func get_cover_by_ids(file_hash: String, midi_id: String) -> Texture2D:
 	return load_cover_with_cache(_cover_path_from_chart(file_hash, midi_id))
 
 func get_cover_by_midiData(midi: MidiData) -> Texture2D:
-	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	if not midi:
 		return load_cover_with_cache(DEFAULT_COVER_PATH)
 	return get_cover_by_ids(midi.file_hash, midi.id)
@@ -1847,7 +1847,6 @@ func get_cover_by_midiData(midi: MidiData) -> Texture2D:
 ## 与 load_cover_with_cache 的回退行为一致：user:// 文件不存在时回退到默认封面
 ## 避免异步加载器读到 null 后无回退逻辑导致封面空白
 func get_cover_path_by_midiData(midi: MidiData) -> String:
-	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	if not midi:
 		return DEFAULT_COVER_PATH
 	return get_cover_path_by_ids(midi.file_hash, midi.id)
@@ -1875,7 +1874,6 @@ func _cache_cover_texture(path: String, tex: Texture2D) -> void:
 ## 同 path 多次调用：若上次加载的 Texture 仍被列表项引用（WeakRef 有效），直接返回，零读盘开销
 ## 若 Texture 已被 GC（所有列表项都释放了），WeakRef 失效，重新从磁盘加载并清理失效条目
 func load_cover_with_cache(path: String) -> Texture2D:
-	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	# 命中缓存：通过 WeakRef 取回 Texture
 	if _cover_texture_cache.has(path):
 		var weak := _cover_texture_cache[path] as WeakRef

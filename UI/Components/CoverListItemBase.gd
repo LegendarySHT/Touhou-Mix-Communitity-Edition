@@ -5,6 +5,9 @@
 extends ListItemBase
 class_name CoverListItemBase
 
+## 默认封面路径(兜底用，res:// 中的默认封面资源)
+const DEFAULT_COVER_PATH := FileSystemManager.DEFAULT_COVER_PATH
+
 ## 封面纹理节点(子类在 _ready 中赋值,因节点路径各不相同)
 var cover_texture: TextureRect = null
 
@@ -111,7 +114,6 @@ func _on_cover_loaded_async(path: String, image: Image, _version: int) -> void:
 ## 当异步读盘失败(文件损坏)或 user:// 文件不存在时调用,与旧同步路径的回退行为一致
 ## path 参数用于避免无限递归:若 path 已是默认封面路径则不再重试
 func _fallback_to_default_cover(failed_path: String) -> void:
-	const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 	if failed_path == DEFAULT_COVER_PATH:
 		# 默认封面也加载失败(极端情况):标记 _cover_loaded=true 避免 trigger_cover_chain 反复重试
 		_cover_loaded = true
