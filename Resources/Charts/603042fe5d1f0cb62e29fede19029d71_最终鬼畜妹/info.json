@@ -13,10 +13,10 @@
 		"author": ""
 	},
 	"album": {
-		"_id": "5e9162e7ef11ba26d503f6b0",
-		"name": "東方ストライク",
-		"abbr": null,
-		"date": "2020-04-11T06:25:43.265Z"
+		"_id": "album_bd2ecf407d70c264",
+		"name": "東方インストライク",
+		"abbr": "",
+		"date": "2012-12-30T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-05-22T22:32:54.582Z",
 	"approvedDate": null,
@@ -26,5 +26,5 @@
 	"downCount": 0.0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
 	"trialCount": 554.0,
-	"coverHash": "8e7123fc9e38f6ddcaeb771d9553dd66"
+	"coverHash": "f08b0561e6a7765ab1b462e6d58b5130"
 }

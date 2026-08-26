@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bv3v7dtplq27o"
-path="res://.godot/imported/8e7123fc9e38f6ddcaeb771d9553dd66.jpg-143c0957a4e4f93e3fca193de45ea1b4.ctex"
+uid="uid://dat8el5qt5sm8"
+path="res://.godot/imported/cover.jpg-dcacaa4df4d5e160b5588be4018aa495.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Resources/Covers/8e7123fc9e38f6ddcaeb771d9553dd66.jpg"
-dest_files=["res://.godot/imported/8e7123fc9e38f6ddcaeb771d9553dd66.jpg-143c0957a4e4f93e3fca193de45ea1b4.ctex"]
+source_file="res://Resources/Charts/110b52898d4a8f488b0ca062f0cd1ecf_Tomorrow is Anothor Day/cover.jpg"
+dest_files=["res://.godot/imported/cover.jpg-dcacaa4df4d5e160b5588be4018aa495.ctex"]
 
 [params]
 
