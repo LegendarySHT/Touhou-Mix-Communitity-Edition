@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d7227cbc96ba6a1f2885f620b636ec84",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5bd",
 		"name": "有頂天変　～ Wonderful Heaven",
-		"track": 15.0,
+		"track": 15,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-05-25T07:00:00.000Z",
 	"approvedDate": "2008-05-25T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 90.0,
-	"downCount": 10.0,
+	"downloadCount": 23,
+	"upCount": 90,
+	"downCount": 10,
 	"uploaderAvatarUrl": "",
-	"trialCount": 2491.0,
+	"trialCount": 2491,
 	"coverHash": "cf5c0b1cdb611b7368c24bf2d310f1b2"
 }

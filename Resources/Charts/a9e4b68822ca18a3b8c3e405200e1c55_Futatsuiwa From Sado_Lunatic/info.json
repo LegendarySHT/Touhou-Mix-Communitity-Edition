@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "a9e4b68822ca18a3b8c3e405200e1c55",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab53d",
 		"name": "佐渡の二ッ岩",
-		"track": 15.0,
+		"track": 15,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2011-08-13T07:00:03.000Z",
 	"approvedDate": "2011-08-13T07:00:03.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 5.0,
-	"downCount": 0.0,
+	"downloadCount": 24,
+	"upCount": 5,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 122.0,
+	"trialCount": 122,
 	"coverHash": "4521910803028b07e68dd059c69b3051"
 }

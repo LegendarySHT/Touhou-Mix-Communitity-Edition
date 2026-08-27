@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "56a56e396b1b8ff66ace6b7cf7a12964",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0aa84679d16d79ab6ac",
 		"name": "シュレディンガーの化猫",
-		"track": 6.0,
+		"track": 6,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2016-05-08T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-16T06:12:03.137Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 155.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 155,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 21.0,
+	"trialCount": 21,
 	"coverHash": "f28a7b0c1873140acbdb6d54e6bb3fcf"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d25a1127f0abce4affc8a947609af2ce",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5e2",
 		"name": "あなたの町の怪事件",
-		"track": 2.0,
+		"track": 2,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2010-03-14T08:00:00.000Z",
 	"approvedDate": "2010-03-14T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 6.0,
-	"downCount": 1.0,
+	"downloadCount": 21,
+	"upCount": 6,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 364.0,
+	"trialCount": 364,
 	"coverHash": "44feb949478470f7e23ed73715f42ce6"
 }

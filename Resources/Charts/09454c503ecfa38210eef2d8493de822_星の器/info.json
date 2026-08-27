@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "09454c503ecfa38210eef2d8493de822",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab483",
 		"name": "星の器　～ Casket of Star",
-		"track": 11.0,
+		"track": 11,
 		"author": "黄昏フロンティア/上海アり幻樂団"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "1998-08-14T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-03-29T15:01:58.907Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 406.0,
-	"upCount": 1.0,
-	"downCount": 1.0,
+	"downloadCount": 406,
+	"upCount": 1,
+	"downCount": 1,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 56.0,
+	"trialCount": 56,
 	"coverHash": "007ad004f4cd35703085162abdb5a514"
 }

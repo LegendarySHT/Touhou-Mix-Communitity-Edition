@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "1a3d15de2b3f67a02959148470f8ae32",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab50c",
 		"name": "暗闇の風穴",
-		"track": 2.0,
+		"track": 2,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2008-08-16T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-06-19T22:46:29.198Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 683.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 683,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 61.0,
+	"trialCount": 61,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

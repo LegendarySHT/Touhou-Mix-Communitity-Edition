@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f99719658acbadbfd9ab142d963cabd1",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5ad",
 		"name": "レトロスペクティブ京都",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2005-12-30T08:00:00.000Z",
 	"approvedDate": "2005-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 16.0,
-	"downCount": 3.0,
+	"downloadCount": 23,
+	"upCount": 16,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 602.0,
+	"trialCount": 602,
 	"coverHash": "33c3fbc1b9af64fc5c682a160808f4e4"
 }

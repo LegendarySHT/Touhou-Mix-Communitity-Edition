@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "932b85480af56d927a838f84be654770",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab685",
 		"name": "最も澄みわたる空と海",
-		"track": 11.0,
+		"track": 11,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2006-05-21T07:00:00.000Z",
 	"approvedDate": "2006-05-21T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 32.0,
-	"downCount": 1.0,
+	"downloadCount": 20,
+	"upCount": 32,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 759.0,
+	"trialCount": 759,
 	"coverHash": "119e65a1ce8d44d705907959f1100671"
 }

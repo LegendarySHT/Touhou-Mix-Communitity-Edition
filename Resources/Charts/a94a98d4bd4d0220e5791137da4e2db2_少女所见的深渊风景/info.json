@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "a94a98d4bd4d0220e5791137da4e2db2",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a15f0d04bfae42a36b4bd2",
 		"name": "少女所见的深渊风景",
-		"track": 8.0,
+		"track": 8,
 		"author": "Tokini11"
 	},
 	"album": {
 		"_id": "64c924b6541cdc68ba11a3e7",
 		"name": "東方雪蓮華 ～ Abyss Soul Lotus.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2023-08-01T15:28:54.263Z"
 	},
 	"uploadedDate": "2023-07-14T13:37:19.702Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 210.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 210,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 36.0,
+	"trialCount": 36,
 	"coverHash": "be37932ff783846b846cdd670814dd00"
 }

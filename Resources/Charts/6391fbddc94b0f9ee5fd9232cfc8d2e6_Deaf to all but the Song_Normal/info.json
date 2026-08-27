@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "6391fbddc94b0f9ee5fd9232cfc8d2e6",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4d5",
 		"name": "もう歌しか聞こえない",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-08-15T07:00:03.000Z",
 	"approvedDate": "2004-08-15T07:00:03.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 25.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 25,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 361.0,
+	"trialCount": 361,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

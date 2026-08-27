@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "e1eff947fe4a2b5ec14cd6c5b36428bb",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab67b",
 		"name": "ヒロシゲ36号　～ Neo Super-Express",
-		"track": 1.0,
+		"track": 1,
 		"author": "arplane"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2006-05-21T07:00:00.000Z"
 	},
 	"uploadedDate": "2025-09-26T07:21:45.107Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 261.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 261,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 13.0,
+	"trialCount": 13,
 	"coverHash": "119e65a1ce8d44d705907959f1100671"
 }

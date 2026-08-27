@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "b5f2ff63d7ac6c007513a761fa6c7352",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a1602f04bfae42a36b4be4",
 		"name": "不灭之魂 ～ Everlasting Volition",
-		"track": 17.0,
+		"track": 17,
 		"author": "Tokini11"
 	},
 	"album": {
 		"_id": "64c924b6541cdc68ba11a3e7",
 		"name": "東方雪蓮華 ～ Abyss Soul Lotus.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2023-08-01T15:28:54.263Z"
 	},
 	"uploadedDate": "2023-07-14T07:48:33.392Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 204.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 204,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 54.0,
+	"trialCount": 54,
 	"coverHash": "be37932ff783846b846cdd670814dd00"
 }

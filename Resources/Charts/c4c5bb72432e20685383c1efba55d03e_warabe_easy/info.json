@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "c4c5bb72432e20685383c1efba55d03e",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab670",
 		"name": "童祭　～ Innocent Treasures",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-12-30T08:00:00.000Z",
 	"approvedDate": "2004-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 141.0,
-	"downCount": 10.0,
+	"downloadCount": 24,
+	"upCount": 141,
+	"downCount": 10,
 	"uploaderAvatarUrl": "",
-	"trialCount": 3076.0,
+	"trialCount": 3076,
 	"coverHash": "400f68e57ea1aee70e3adb9bebc3a299"
 }

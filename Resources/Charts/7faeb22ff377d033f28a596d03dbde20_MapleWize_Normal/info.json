@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "7faeb22ff377d033f28a596d03dbde20",
 	"uploaderId": "64eca22e541cdc68ba121f9c",
 	"uploaderName": "Hakurei Reimu",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab49c",
 		"name": "メイプルワイズ",
-		"track": 8.0,
+		"track": 8,
 		"author": "DMBN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "1998-12-30T08:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-19T12:23:22.722Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 150.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 150,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/69e0806e61d86346fe0ee48d07f40a2c.jpg",
-	"trialCount": 3.0,
+	"trialCount": 3,
 	"coverHash": "8578b4eb27580acd4059b2855b988878"
 }

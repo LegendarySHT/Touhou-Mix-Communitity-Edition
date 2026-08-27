@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "4bf746c88f53163138442c008d280f6a",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191db9",
 		"name": "獣王達の休息",
-		"track": 21.0,
+		"track": 21,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-30T04:12:50.766Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 214.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 214,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 10.0,
+	"trialCount": 10,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

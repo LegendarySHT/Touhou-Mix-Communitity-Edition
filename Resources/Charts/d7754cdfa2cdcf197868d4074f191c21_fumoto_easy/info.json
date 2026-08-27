@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d7754cdfa2cdcf197868d4074f191c21",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab508",
 		"name": "麓の神社",
-		"track": 16.0,
+		"track": 16,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2007-08-17T07:00:00.000Z",
 	"approvedDate": "2007-08-17T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 22,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 301.0,
+	"trialCount": 301,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

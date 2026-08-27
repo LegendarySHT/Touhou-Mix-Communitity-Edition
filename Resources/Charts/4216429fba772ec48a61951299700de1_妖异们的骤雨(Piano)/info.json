@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "4216429fba772ec48a61951299700de1",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114772460b9425d191d95",
 		"name": "妖異達の通り雨",
-		"track": 2.0,
+		"track": 2,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2023-12-27T13:29:55.614Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 173.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 173,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 28.0,
+	"trialCount": 28,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

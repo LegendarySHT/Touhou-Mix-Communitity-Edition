@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "b6ebc28b97bf4c8bcf81a9c6b3a06e53",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4ae",
 		"name": "妖魔夜行",
-		"track": 3.0,
+		"track": 3,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:00.000Z",
 	"approvedDate": "2002-08-11T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 135.0,
-	"downCount": 22.0,
+	"downloadCount": 24,
+	"upCount": 135,
+	"downCount": 22,
 	"uploaderAvatarUrl": "",
-	"trialCount": 5605.0,
+	"trialCount": 5605,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

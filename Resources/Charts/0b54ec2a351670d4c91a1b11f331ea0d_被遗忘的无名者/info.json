@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "0b54ec2a351670d4c91a1b11f331ea0d",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a1600f04bfae42a36b4be1",
 		"name": "被遗忘的无名者",
-		"track": 16.0,
+		"track": 16,
 		"author": "Tokini11"
 	},
 	"album": {
 		"_id": "64c924b6541cdc68ba11a3e7",
 		"name": "東方雪蓮華 ～ Abyss Soul Lotus.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2023-08-01T15:28:54.263Z"
 	},
 	"uploadedDate": "2023-07-15T06:56:40.462Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 211.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 211,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 24.0,
+	"trialCount": 24,
 	"coverHash": "be37932ff783846b846cdd670814dd00"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "52371709c2a4fe762eb53a1a7d7853f4",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab68f",
 		"name": "向こう側の月",
-		"track": 10.0,
+		"track": 10,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2006-08-13T07:00:00.000Z",
 	"approvedDate": "2006-08-13T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 25.0,
-	"downCount": 3.0,
+	"downloadCount": 24,
+	"upCount": 25,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 834.0,
+	"trialCount": 834,
 	"coverHash": "76c6c28556c1cca39f194745232e8b79"
 }

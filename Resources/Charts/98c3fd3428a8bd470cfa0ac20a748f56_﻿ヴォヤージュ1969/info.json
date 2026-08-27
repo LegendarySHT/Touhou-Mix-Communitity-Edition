@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "98c3fd3428a8bd470cfa0ac20a748f56",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4dd",
 		"name": "ヴォヤージュ1969",
-		"track": 13.0,
+		"track": 13,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2004-08-15T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-05-29T23:56:52.890Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 689.0,
-	"upCount": 9.0,
-	"downCount": 0.0,
+	"downloadCount": 689,
+	"upCount": 9,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 266.0,
+	"trialCount": 266,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

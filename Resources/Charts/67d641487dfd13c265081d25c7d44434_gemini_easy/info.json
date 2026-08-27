@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "67d641487dfd13c265081d25c7d44434",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab631",
 		"name": "ディザストラスジェミニ",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2000-12-30T08:00:00.000Z",
 	"approvedDate": "2000-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 19.0,
-	"upCount": 21.0,
-	"downCount": 2.0,
+	"downloadCount": 19,
+	"upCount": 21,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 622.0,
+	"trialCount": 622,
 	"coverHash": "9962b65bd4691adeeb83047cf3bd3426"
 }

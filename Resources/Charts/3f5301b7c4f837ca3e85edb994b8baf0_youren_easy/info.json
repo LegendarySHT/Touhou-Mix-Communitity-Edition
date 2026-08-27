@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "3f5301b7c4f837ca3e85edb994b8baf0",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab463",
 		"name": "東方妖恋談",
-		"track": 3.0,
+		"track": 3,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-12-29T08:00:00.000Z",
 	"approvedDate": "1997-12-29T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 35.0,
-	"downCount": 4.0,
+	"downloadCount": 20,
+	"upCount": 35,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1358.0,
+	"trialCount": 1358,
 	"coverHash": "2ecdd318637d9e41eaf61e6ad9e82fe6"
 }

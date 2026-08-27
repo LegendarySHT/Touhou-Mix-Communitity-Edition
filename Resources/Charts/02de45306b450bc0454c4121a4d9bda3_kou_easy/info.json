@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "02de45306b450bc0454c4121a4d9bda3",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4bc",
 		"name": "紅楼　～ Eastern Dream...",
-		"track": 17.0,
+		"track": 17,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:00.000Z",
 	"approvedDate": "2002-08-11T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 84.0,
-	"downCount": 6.0,
+	"downloadCount": 24,
+	"upCount": 84,
+	"downCount": 6,
 	"uploaderAvatarUrl": "",
-	"trialCount": 3255.0,
+	"trialCount": 3255,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

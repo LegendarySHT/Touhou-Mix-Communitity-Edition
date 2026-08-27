@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "75d2f2f64ede238ccd3b4ac1daab04a6",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0aa84679d16d79ab6c2",
 		"name": "可愛い大戦争のリフレーン",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2009-02-18T08:00:00.000Z",
 	"approvedDate": "2009-02-18T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 26.0,
-	"upCount": 26.0,
-	"downCount": 2.0,
+	"downloadCount": 26,
+	"upCount": 26,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 861.0,
+	"trialCount": 861,
 	"coverHash": "fc532ea2a8b7c86cce5411b9ea5fbb15"
 }

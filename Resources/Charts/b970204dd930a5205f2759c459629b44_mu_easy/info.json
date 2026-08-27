@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "b970204dd930a5205f2759c459629b44",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0aa84679d16d79ab6cb",
 		"name": "魔法使いの憂鬱",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2009-07-28T07:00:00.000Z",
 	"approvedDate": "2009-07-28T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 26.0,
-	"upCount": 110.0,
-	"downCount": 8.0,
+	"downloadCount": 26,
+	"upCount": 110,
+	"downCount": 8,
 	"uploaderAvatarUrl": "",
-	"trialCount": 2747.0,
+	"trialCount": 2747,
 	"coverHash": "74ee24edc8cd73dc78c8a2f03d76b7fa"
 }

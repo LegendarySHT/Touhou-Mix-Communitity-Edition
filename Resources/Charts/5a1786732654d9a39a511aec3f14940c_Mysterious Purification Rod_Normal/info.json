@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "5a1786732654d9a39a511aec3f14940c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab541",
 		"name": "不思議なお祓い棒",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2013-08-12T07:00:04.000Z",
 	"approvedDate": "2013-08-12T07:00:04.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 24,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 242.0,
+	"trialCount": 242,
 	"coverHash": "d3ab244024949f7c779dbfb747cbaed0"
 }

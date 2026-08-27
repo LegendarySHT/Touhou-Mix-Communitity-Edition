@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "746ae019a34b0a912f9a29f18b616e07",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114772460b9425d191d97",
 		"name": "深緑に隠された断崖",
-		"track": 4.0,
+		"track": 4,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2023-12-27T03:57:12.167Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 159.0,
-	"upCount": 5.0,
-	"downCount": 0.0,
+	"downloadCount": 159,
+	"upCount": 5,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 20.0,
+	"trialCount": 20,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

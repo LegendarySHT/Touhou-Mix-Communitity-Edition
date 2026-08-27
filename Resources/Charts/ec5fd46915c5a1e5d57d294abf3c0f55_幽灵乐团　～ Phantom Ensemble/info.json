@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ec5fd46915c5a1e5d57d294abf3c0f55",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4c5",
 		"name": "幽霊楽団　～ Phantom Ensemble",
-		"track": 9.0,
+		"track": 9,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2003-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-05-22T22:26:52.510Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 674.0,
-	"upCount": 4.0,
-	"downCount": 1.0,
+	"downloadCount": 674,
+	"upCount": 4,
+	"downCount": 1,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 40.0,
+	"trialCount": 40,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

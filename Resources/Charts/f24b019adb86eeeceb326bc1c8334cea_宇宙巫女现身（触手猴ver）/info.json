@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f24b019adb86eeeceb326bc1c8334cea",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab553",
 		"name": "宇宙巫女現る",
-		"track": 1.0,
+		"track": 1,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2015-08-14T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-02-19T06:13:34.680Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 209.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 209,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 58.0,
+	"trialCount": 58,
 	"coverHash": "3a62a8fee980003c3f889e5070dd8eb8"
 }

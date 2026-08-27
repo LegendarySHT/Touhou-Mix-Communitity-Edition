@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "9a35291aeed7bff9a41b7e6335632156",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab46c",
 		"name": "Strawberry Crisis!!",
-		"track": 12.0,
+		"track": 12,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-12-29T08:00:00.000Z",
 	"approvedDate": "1997-12-29T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 18.0,
-	"upCount": 32.0,
-	"downCount": 4.0,
+	"downloadCount": 18,
+	"upCount": 32,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 815.0,
+	"trialCount": 815,
 	"coverHash": "94463dad4ffeaf4aebbb36db4fe82c92"
 }

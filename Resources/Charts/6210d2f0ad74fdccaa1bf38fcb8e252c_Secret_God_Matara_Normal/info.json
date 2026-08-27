@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "6210d2f0ad74fdccaa1bf38fcb8e252c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab573",
 		"name": "秘神マターラ　～ Hidden Star in All Seasons",
-		"track": 15.0,
+		"track": 15,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2017-08-11T07:00:03.000Z",
 	"approvedDate": "2017-08-11T07:00:03.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 27.0,
-	"upCount": 12.0,
-	"downCount": 1.0,
+	"downloadCount": 27,
+	"upCount": 12,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 299.0,
+	"trialCount": 299,
 	"coverHash": "2813ff97d8a237c9190da86652462c60"
 }

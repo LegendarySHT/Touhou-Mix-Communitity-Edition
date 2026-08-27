@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "9c49e63a783c2c450dd23548df551e10",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab637",
 		"name": "魔法少女十字軍",
-		"track": 11.0,
+		"track": 11,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2000-12-30T08:00:00.000Z",
 	"approvedDate": "2000-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 12.0,
-	"downCount": 0.0,
+	"downloadCount": 21,
+	"upCount": 12,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 480.0,
+	"trialCount": 480,
 	"coverHash": "9962b65bd4691adeeb83047cf3bd3426"
 }

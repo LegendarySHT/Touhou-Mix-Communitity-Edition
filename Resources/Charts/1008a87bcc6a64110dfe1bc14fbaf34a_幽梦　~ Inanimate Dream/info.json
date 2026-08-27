@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "1008a87bcc6a64110dfe1bc14fbaf34a",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab487",
 		"name": "幽夢　～ Inanimate Dream",
-		"track": 15.0,
+		"track": 15,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "1998-08-14T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-16T08:20:51.944Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 179.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 179,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 10.0,
+	"trialCount": 10,
 	"coverHash": "007ad004f4cd35703085162abdb5a514"
 }

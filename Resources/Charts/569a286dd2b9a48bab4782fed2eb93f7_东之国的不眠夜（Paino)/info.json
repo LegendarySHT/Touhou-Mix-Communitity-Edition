@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "569a286dd2b9a48bab4782fed2eb93f7",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5ac",
 		"name": "東の国の眠らない夜",
-		"track": 4.0,
+		"track": 4,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2005-12-30T08:00:00.000Z"
 	},
 	"uploadedDate": "2024-02-28T08:20:59.251Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 166.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 166,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 50.0,
+	"trialCount": 50,
 	"coverHash": "33c3fbc1b9af64fc5c682a160808f4e4"
 }

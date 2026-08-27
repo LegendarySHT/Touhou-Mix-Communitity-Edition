@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ac5027b3472a48728a1b3f3519020989",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a15ee304bfae42a36b4bd1",
 		"name": "雪兔的踪迹　～ Nowhere but Everywhere",
-		"track": 7.0,
+		"track": 7,
 		"author": "Tokini11"
 	},
 	"album": {
 		"_id": "64c924b6541cdc68ba11a3e7",
 		"name": "東方雪蓮華 ～ Abyss Soul Lotus.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2023-08-01T15:28:54.263Z"
 	},
 	"uploadedDate": "2023-08-01T04:04:25.810Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 187.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 187,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 34.0,
+	"trialCount": 34,
 	"coverHash": "be37932ff783846b846cdd670814dd00"
 }

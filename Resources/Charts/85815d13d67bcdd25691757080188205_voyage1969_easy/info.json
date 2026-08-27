@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "85815d13d67bcdd25691757080188205",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4dd",
 		"name": "ヴォヤージュ1969",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-08-15T07:00:00.000Z",
 	"approvedDate": "2004-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 29.0,
-	"upCount": 38.0,
-	"downCount": 1.0,
+	"downloadCount": 29,
+	"upCount": 38,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1502.0,
+	"trialCount": 1502,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

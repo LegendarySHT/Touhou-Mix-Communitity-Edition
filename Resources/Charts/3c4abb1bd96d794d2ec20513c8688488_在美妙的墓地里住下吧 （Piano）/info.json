@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "3c4abb1bd96d794d2ec20513c8688488",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab534",
 		"name": "素敵な墓場で暮しましょ",
-		"track": 6.0,
+		"track": 6,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2011-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-23T06:14:40.934Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 184.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 184,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 14.0,
+	"trialCount": 14,
 	"coverHash": "4521910803028b07e68dd059c69b3051"
 }

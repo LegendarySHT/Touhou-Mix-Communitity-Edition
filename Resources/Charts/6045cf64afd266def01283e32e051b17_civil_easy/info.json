@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "6045cf64afd266def01283e32e051b17",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab44b",
 		"name": "死なばもろとも",
-		"track": 12.0,
+		"track": 12,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-08-15T07:00:00.000Z",
 	"approvedDate": "1997-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 66.0,
-	"downCount": 18.0,
+	"downloadCount": 20,
+	"upCount": 66,
+	"downCount": 18,
 	"uploaderAvatarUrl": "",
-	"trialCount": 3604.0,
+	"trialCount": 3604,
 	"coverHash": "7d4c86970886460fe3d47f288612d712"
 }

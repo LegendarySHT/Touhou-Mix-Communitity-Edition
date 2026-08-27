@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "a67721dbcbcc742ad79563351487ac39",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191da9",
 		"name": "タイニーシャングリラ",
-		"track": 5.0,
+		"track": 5,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-25T07:37:18.414Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 231.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 231,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 54.0,
+	"trialCount": 54,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

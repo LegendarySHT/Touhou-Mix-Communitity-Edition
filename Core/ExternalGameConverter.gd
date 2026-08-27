@@ -510,6 +510,8 @@ static func _filter_chart_json(data: Dictionary) -> Dictionary:
 			out["song"] = song_val
 		song_val["author"] = out["author"]
 		out.erase("author")
+	# 类型统一：整数 float → int，字符串字段 null → ""
+	ChartNormalizer.cleanup_types_recursive(out)
 	return out
 
 

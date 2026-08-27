@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "7fcd25dde8eee31c9b039eec6062c222",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4fe",
 		"name": "神々が恋した幻想郷",
-		"track": 6.0,
+		"track": 6,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2007-08-17T07:00:00.000Z",
 	"approvedDate": "2007-08-17T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 28.0,
-	"upCount": 216.0,
-	"downCount": 15.0,
+	"downloadCount": 28,
+	"upCount": 216,
+	"downCount": 15,
 	"uploaderAvatarUrl": "",
-	"trialCount": 6017.0,
+	"trialCount": 6017,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

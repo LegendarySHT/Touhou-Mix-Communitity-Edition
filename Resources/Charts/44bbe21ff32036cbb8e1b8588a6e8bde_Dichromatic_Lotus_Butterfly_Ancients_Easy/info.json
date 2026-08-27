@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "44bbe21ff32036cbb8e1b8588a6e8bde",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab63e",
 		"name": "二色蓮花蝶　～ Ancients",
-		"track": 18.0,
+		"track": 18,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2000-12-30T08:00:00.000Z",
 	"approvedDate": "2000-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 14.0,
-	"downCount": 4.0,
+	"downloadCount": 20,
+	"upCount": 14,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 531.0,
+	"trialCount": 531,
 	"coverHash": "9962b65bd4691adeeb83047cf3bd3426"
 }

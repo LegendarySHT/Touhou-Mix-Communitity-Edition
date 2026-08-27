@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "6bc74091e5fd68da18aef21202cea2b8",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab596",
 		"name": "Demystify Feast",
-		"track": 16.0,
+		"track": 16,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-12-30T08:00:00.000Z",
 	"approvedDate": "2004-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 25.0,
-	"upCount": 6.0,
-	"downCount": 1.0,
+	"downloadCount": 25,
+	"upCount": 6,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 318.0,
+	"trialCount": 318,
 	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
 }

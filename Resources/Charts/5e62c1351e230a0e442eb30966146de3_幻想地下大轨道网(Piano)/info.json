@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "5e62c1351e230a0e442eb30966146de3",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191da1",
 		"name": "幻想の地下大線路網",
-		"track": 14.0,
+		"track": 14,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2023-12-28T09:22:10.878Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 197.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 197,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 39.0,
+	"trialCount": 39,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

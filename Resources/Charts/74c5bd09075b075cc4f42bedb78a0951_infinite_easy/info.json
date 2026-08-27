@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "74c5bd09075b075cc4f42bedb78a0951",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4a3",
 		"name": "神話幻想　～ Infinite Being",
-		"track": 15.0,
+		"track": 15,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-12-30T08:00:00.000Z",
 	"approvedDate": "1998-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 26.0,
-	"upCount": 4.0,
-	"downCount": 6.0,
+	"downloadCount": 26,
+	"upCount": 4,
+	"downCount": 6,
 	"uploaderAvatarUrl": "",
-	"trialCount": 418.0,
+	"trialCount": 418,
 	"coverHash": "8578b4eb27580acd4059b2855b988878"
 }

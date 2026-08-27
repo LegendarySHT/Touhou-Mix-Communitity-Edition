@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "289ff9ce90064147583b2e42b37a410b",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab481",
 		"name": "アリスマエステラ",
-		"track": 9.0,
+		"track": 9,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-08-14T07:00:00.000Z",
 	"approvedDate": "1998-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 22.0,
-	"downCount": 3.0,
+	"downloadCount": 22,
+	"upCount": 22,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 781.0,
+	"trialCount": 781,
 	"coverHash": "007ad004f4cd35703085162abdb5a514"
 }

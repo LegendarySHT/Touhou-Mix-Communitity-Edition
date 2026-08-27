@@ -42,6 +42,12 @@ func _ready() -> void:
 	event_bus.album_selected.connect(_load_songs)
 	event_bus.midi_deleted.connect(func(_id): if not current_album_id.is_empty(): _load_songs(current_album_id))
 	event_bus.midis_deleted.connect(func(_ids): if not current_album_id.is_empty(): _load_songs(current_album_id))
+	# 启动后全量/增量扫描完成，若发现谱面的 album_id / song_id 归属发生变更（结构变化），
+	# 仅在此统一信号到来时刷新；避免中间每步变化都刷新导致卡顿
+	event_bus.charts_structure_changed.connect(func():
+		if not current_album_id.is_empty():
+			_load_songs(current_album_id)
+	)
 	# 回到 SongView 时自动刷新，确保删除等操作后数据最新
 	# 但 _load_songs 已处理首次进入和 album_selected 触发的场景，
 	# 需跳过冗余重建避免封面加载被中断

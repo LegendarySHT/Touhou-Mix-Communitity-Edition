@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "41505c249b234de28f8d3dfa155c052a",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4cb",
 		"name": "妖々跋扈",
-		"track": 15.0,
+		"track": 15,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2003-08-17T07:00:00.000Z",
 	"approvedDate": "2003-08-17T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 26.0,
-	"upCount": 12.0,
-	"downCount": 2.0,
+	"downloadCount": 26,
+	"upCount": 12,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 574.0,
+	"trialCount": 574,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "51238d3c17fff3763b818ba924337e74",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab452",
 		"name": "End of Daylight",
-		"track": 4.0,
+		"track": 4,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-08-15T07:00:00.000Z",
 	"approvedDate": "1997-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 54.0,
-	"downCount": 4.0,
+	"downloadCount": 21,
+	"upCount": 54,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1850.0,
+	"trialCount": 1850,
 	"coverHash": "11f08912ca5e75592fd65372b99bf3a3"
 }

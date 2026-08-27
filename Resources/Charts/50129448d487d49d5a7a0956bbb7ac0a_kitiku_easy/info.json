@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "50129448d487d49d5a7a0956bbb7ac0a",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e91635eef11ba26d503f6b2",
 		"name": "最終鬼畜妹フランドール・Ｓ",
-		"track": 11.0,
+		"track": 11,
 		"author": ""
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-10-14T07:00:00.000Z",
 	"approvedDate": "2002-10-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 35.0,
-	"upCount": 612.0,
-	"downCount": 41.0,
+	"downloadCount": 35,
+	"upCount": 612,
+	"downCount": 41,
 	"uploaderAvatarUrl": "",
-	"trialCount": 11459.0,
+	"trialCount": 11459,
 	"coverHash": "f08b0561e6a7765ab1b462e6d58b5130"
 }

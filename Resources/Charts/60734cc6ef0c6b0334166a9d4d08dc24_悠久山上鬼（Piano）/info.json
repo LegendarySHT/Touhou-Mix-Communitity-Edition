@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "60734cc6ef0c6b0334166a9d4d08dc24",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191da8",
 		"name": "鬼は悠久の山に",
-		"track": 4.0,
+		"track": 4,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-25T07:09:58.607Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 211.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 211,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 51.0,
+	"trialCount": 51,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

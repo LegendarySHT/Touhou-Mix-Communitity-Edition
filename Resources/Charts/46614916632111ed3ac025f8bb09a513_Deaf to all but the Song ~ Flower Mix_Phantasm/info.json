@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "46614916632111ed3ac025f8bb09a513",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4ee",
 		"name": "もう歌しか聞こえない　～ Flower Mix",
-		"track": 9.0,
+		"track": 9,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2005-08-14T07:00:04.000Z",
 	"approvedDate": "2005-08-14T07:00:04.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 26.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 26,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 70.0,
+	"trialCount": 70,
 	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
 }

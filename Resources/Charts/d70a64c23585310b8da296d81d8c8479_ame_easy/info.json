@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d70a64c23585310b8da296d81d8c8479",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab509",
 		"name": "神は恵みの雨を降らす　～ Sylphid Dream",
-		"track": 17.0,
+		"track": 17,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2007-08-17T07:00:00.000Z",
 	"approvedDate": "2007-08-17T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 5.0,
-	"downCount": 0.0,
+	"downloadCount": 22,
+	"upCount": 5,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 370.0,
+	"trialCount": 370,
 	"coverHash": "45f1aead7a837bf2d1bf74a5ae123b62"
 }

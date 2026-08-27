@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "e422f1e49523d568124f1c6f942dade2",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab49a",
 		"name": "Romantic Children",
-		"track": 6.0,
+		"track": 6,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "1998-12-30T08:00:00.000Z"
 	},
 	"uploadedDate": "2020-07-29T13:46:01.063Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 605.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 605,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 26.0,
+	"trialCount": 26,
 	"coverHash": "8578b4eb27580acd4059b2855b988878"
 }

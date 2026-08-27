@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "60d19f1ddc7e2a519a3151040e4b8390",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab67b",
 		"name": "ヒロシゲ36号　～ Neo Super-Express",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2006-05-21T07:00:00.000Z",
 	"approvedDate": "2006-05-21T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 37.0,
-	"downCount": 2.0,
+	"downloadCount": 21,
+	"upCount": 37,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1171.0,
+	"trialCount": 1171,
 	"coverHash": "119e65a1ce8d44d705907959f1100671"
 }

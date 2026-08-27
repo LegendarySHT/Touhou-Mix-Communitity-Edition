@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ebd568c472271ecfba1874a3f60aa567",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab656",
 		"name": "呑んべぇのレムリア",
-		"track": 6.0,
+		"track": 6,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2007-12-31T08:00:00.000Z",
 	"approvedDate": "2007-12-31T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 17.0,
-	"downCount": 0.0,
+	"downloadCount": 24,
+	"upCount": 17,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 539.0,
+	"trialCount": 539,
 	"coverHash": "624098bcac5fff4780b5dc65581512f3"
 }

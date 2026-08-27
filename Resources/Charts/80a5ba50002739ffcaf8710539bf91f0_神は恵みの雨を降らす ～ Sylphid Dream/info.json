@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "80a5ba50002739ffcaf8710539bf91f0",
 	"uploaderId": "5f5cb31ec9ea33595793e1fe",
 	"uploaderName": "apa",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab509",
 		"name": "神は恵みの雨を降らす　～ Sylphid Dream",
-		"track": 17.0,
+		"track": 17,
 		"author": "arplane"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2007-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-06-18T13:00:11.782Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 700.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 700,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/9cc5669e2ccee02a423b4ab73fc5eea4.jpg",
-	"trialCount": 9.0,
+	"trialCount": 9,
 	"coverHash": "45f1aead7a837bf2d1bf74a5ae123b62"
 }

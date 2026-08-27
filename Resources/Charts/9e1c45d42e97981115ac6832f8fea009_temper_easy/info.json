@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "9e1c45d42e97981115ac6832f8fea009",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab451",
 		"name": "She's in a temper!!",
-		"track": 3.0,
+		"track": 3,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-08-15T07:00:00.000Z",
 	"approvedDate": "1997-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 19.0,
-	"upCount": 118.0,
-	"downCount": 16.0,
+	"downloadCount": 19,
+	"upCount": 118,
+	"downCount": 16,
 	"uploaderAvatarUrl": "",
-	"trialCount": 3486.0,
+	"trialCount": 3486,
 	"coverHash": "11f08912ca5e75592fd65372b99bf3a3"
 }

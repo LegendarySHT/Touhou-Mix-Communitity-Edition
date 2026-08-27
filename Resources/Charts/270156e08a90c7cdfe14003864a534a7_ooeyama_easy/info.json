@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "270156e08a90c7cdfe14003864a534a7",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab511",
 		"name": "華のさかづき大江山",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-08-16T07:00:00.000Z",
 	"approvedDate": "2008-08-16T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 25.0,
-	"upCount": 8.0,
-	"downCount": 1.0,
+	"downloadCount": 25,
+	"upCount": 8,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 712.0,
+	"trialCount": 712,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

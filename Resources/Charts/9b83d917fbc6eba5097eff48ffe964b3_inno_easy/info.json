@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "9b83d917fbc6eba5097eff48ffe964b3",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab48a",
 		"name": "かわいい悪魔　～ Innocence",
-		"track": 18.0,
+		"track": 18,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-08-14T07:00:00.000Z",
 	"approvedDate": "1998-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 26.0,
-	"downCount": 5.0,
+	"downloadCount": 20,
+	"upCount": 26,
+	"downCount": 5,
 	"uploaderAvatarUrl": "",
-	"trialCount": 957.0,
+	"trialCount": 957,
 	"coverHash": "007ad004f4cd35703085162abdb5a514"
 }

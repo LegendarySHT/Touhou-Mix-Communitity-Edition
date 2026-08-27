@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "e8e64608fcc6d89d0f66f6283f788c10",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab444",
 		"name": "東方怪奇談",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-08-15T07:00:00.000Z",
 	"approvedDate": "1997-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 274.0,
-	"downCount": 69.0,
+	"downloadCount": 22,
+	"upCount": 274,
+	"downCount": 69,
 	"uploaderAvatarUrl": "",
-	"trialCount": 12672.0,
+	"trialCount": 12672,
 	"coverHash": "7d4c86970886460fe3d47f288612d712"
 }

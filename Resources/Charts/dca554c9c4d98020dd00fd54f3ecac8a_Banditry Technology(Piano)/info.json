@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "dca554c9c4d98020dd00fd54f3ecac8a",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114772460b9425d191d98",
 		"name": "バンデットリィテクノロジー",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2023-12-27T05:35:50.106Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 168.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 168,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 32.0,
+	"trialCount": 32,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

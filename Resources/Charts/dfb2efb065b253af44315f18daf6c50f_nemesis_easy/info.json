@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "dfb2efb065b253af44315f18daf6c50f",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5e4",
 		"name": "ネメシスの要塞",
-		"track": 4.0,
+		"track": 4,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2010-03-14T08:00:00.000Z",
 	"approvedDate": "2010-03-14T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 25.0,
-	"upCount": 5.0,
-	"downCount": 1.0,
+	"downloadCount": 25,
+	"upCount": 5,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 226.0,
+	"trialCount": 226,
 	"coverHash": "44feb949478470f7e23ed73715f42ce6"
 }

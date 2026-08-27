@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "583108ca013b6e1f68370d35b58cc3ab",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a1f21404bfae42a36b4d85",
 		"name": "阴阳万变，镜花千轮",
-		"track": 21.0,
+		"track": 21,
 		"author": "FanTouhouMusic"
 	},
 	"album": {
 		"_id": "65a1618a04bfae42a36b4bf2",
 		"name": "東方蒔夢原 ～ Champaign of Unfinished Dreams.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2024-01-12T15:58:02.405Z"
 	},
 	"uploadedDate": "2023-11-18T14:31:36.578Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 136.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 136,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 16.0,
+	"trialCount": 16,
 	"coverHash": "82484e91a08206d3c35e1ef2d5de45e7"
 }

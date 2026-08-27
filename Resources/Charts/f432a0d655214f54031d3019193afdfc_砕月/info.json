@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f432a0d655214f54031d3019193afdfc",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5a8",
 		"name": "砕月",
-		"track": 34.0,
+		"track": 34,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2004-12-30T08:00:00.000Z"
 	},
 	"uploadedDate": "2020-09-07T14:22:37.072Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 1375.0,
-	"upCount": 5.0,
-	"downCount": 1.0,
+	"downloadCount": 1375,
+	"upCount": 5,
+	"downCount": 1,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 109.0,
+	"trialCount": 109,
 	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
 }

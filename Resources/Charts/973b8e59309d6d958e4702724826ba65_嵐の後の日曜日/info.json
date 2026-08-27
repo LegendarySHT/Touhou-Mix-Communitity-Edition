@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "973b8e59309d6d958e4702724826ba65",
 	"uploaderId": "5f5cb31ec9ea33595793e1fe",
 	"uploaderName": "apa",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191da3",
 		"name": "嵐の後の日曜日",
-		"track": 16.0,
+		"track": 16,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-05-16T07:54:24.607Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 864.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 864,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/9cc5669e2ccee02a423b4ab73fc5eea4.jpg",
-	"trialCount": 108.0,
+	"trialCount": 108,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

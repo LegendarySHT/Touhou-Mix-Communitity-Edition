@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "10de0d92325f89f172adcb2a12dff9e9",
 	"uploaderId": "5e8033be49a12c3753fef129",
 	"uploaderName": "mirror",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab582",
 		"name": "偶像に世界を委ねて　～ Idoratrize World",
-		"track": 13.0,
+		"track": 13,
 		"author": "上海爱丽丝幻乐团"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2019-08-12T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-03-31T00:23:33.291Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 517.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 517,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 52.0,
+	"trialCount": 52,
 	"coverHash": "ffd24aec85de388005947cd3e4944684"
 }

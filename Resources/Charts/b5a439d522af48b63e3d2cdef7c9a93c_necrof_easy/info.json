@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "b5a439d522af48b63e3d2cdef7c9a93c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4cc",
 		"name": "少女幻葬　～ Necro-Fantasy",
-		"track": 16.0,
+		"track": 16,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2003-08-17T07:00:00.000Z",
 	"approvedDate": "2003-08-17T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 31.0,
-	"upCount": 83.0,
-	"downCount": 4.0,
+	"downloadCount": 31,
+	"upCount": 83,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 2604.0,
+	"trialCount": 2604,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

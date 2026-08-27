@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ac27106c6896f3d8e84a36f99445d3f1",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab668",
 		"name": "古の冥界寺",
-		"track": 4.0,
+		"track": 4,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2003-12-30T08:00:00.000Z",
 	"approvedDate": "2003-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 13.0,
-	"downCount": 0.0,
+	"downloadCount": 23,
+	"upCount": 13,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 272.0,
+	"trialCount": 272,
 	"coverHash": "a54b620eb8e83cdd1689c337533ffa23"
 }

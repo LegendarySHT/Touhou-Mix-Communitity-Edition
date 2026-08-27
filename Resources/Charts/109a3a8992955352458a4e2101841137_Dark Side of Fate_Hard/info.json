@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "109a3a8992955352458a4e2101841137",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4fd",
 		"name": "運命のダークサイド",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2007-08-17T07:00:02.000Z",
 	"approvedDate": "2007-08-17T07:00:02.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 24,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 147.0,
+	"trialCount": 147,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

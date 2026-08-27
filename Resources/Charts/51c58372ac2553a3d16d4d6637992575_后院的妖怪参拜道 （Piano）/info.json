@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "51c58372ac2553a3d16d4d6637992575",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab53c",
 		"name": "妖怪裏参道",
-		"track": 14.0,
+		"track": 14,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2011-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-05-07T07:13:44.422Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 174.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 174,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 4.0,
+	"trialCount": 4,
 	"coverHash": "4521910803028b07e68dd059c69b3051"
 }

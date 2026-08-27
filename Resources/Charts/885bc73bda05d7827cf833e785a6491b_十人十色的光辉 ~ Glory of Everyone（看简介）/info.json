@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "885bc73bda05d7827cf833e785a6491b",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a165c004bfae42a36b4c08",
 		"name": "十人十色の輝き ～ Glory of Everyone",
-		"track": 11.0,
+		"track": 11,
 		"author": "Anonymous, Plazzap"
 	},
 	"album": {
 		"_id": "65a1618a04bfae42a36b4bf2",
 		"name": "東方蒔夢原 ～ Champaign of Unfinished Dreams.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2024-01-12T15:58:02.405Z"
 	},
 	"uploadedDate": "2023-10-12T14:41:38.742Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 137.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 137,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 3.0,
+	"trialCount": 3,
 	"coverHash": "82484e91a08206d3c35e1ef2d5de45e7"
 }

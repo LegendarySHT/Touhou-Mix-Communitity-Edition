@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d021f7ac0d1adce4076824781dabe2e4",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab666",
 		"name": "少女秘封倶楽部",
-		"track": 2.0,
+		"track": 2,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2003-12-30T08:00:00.000Z",
 	"approvedDate": "2003-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 52.0,
-	"downCount": 2.0,
+	"downloadCount": 24,
+	"upCount": 52,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1724.0,
+	"trialCount": 1724,
 	"coverHash": "a54b620eb8e83cdd1689c337533ffa23"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "95ca2afcc44691bdd5be39f542be5608",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191d9d",
 		"name": "待ちわびた逢魔が時",
-		"track": 10.0,
+		"track": 10,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2023-12-27T11:45:37.234Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 183.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 183,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 67.0,
+	"trialCount": 67,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

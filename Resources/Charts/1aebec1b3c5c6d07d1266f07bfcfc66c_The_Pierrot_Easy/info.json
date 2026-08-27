@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "1aebec1b3c5c6d07d1266f07bfcfc66c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab55d",
 		"name": "星条旗のピエロ",
-		"track": 11.0,
+		"track": 11,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2015-08-14T07:00:00.000Z",
 	"approvedDate": "2015-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 47.0,
-	"downCount": 4.0,
+	"downloadCount": 24,
+	"upCount": 47,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1106.0,
+	"trialCount": 1106,
 	"coverHash": "3a62a8fee980003c3f889e5070dd8eb8"
 }

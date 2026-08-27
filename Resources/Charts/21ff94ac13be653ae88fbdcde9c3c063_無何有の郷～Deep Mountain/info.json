@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "21ff94ac13be653ae88fbdcde9c3c063",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4be",
 		"name": "無何有の郷　～ Deep Mountain",
-		"track": 2.0,
+		"track": 2,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2003-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-07-29T13:42:10.376Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 851.0,
-	"upCount": 7.0,
-	"downCount": 0.0,
+	"downloadCount": 851,
+	"upCount": 7,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 167.0,
+	"trialCount": 167,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

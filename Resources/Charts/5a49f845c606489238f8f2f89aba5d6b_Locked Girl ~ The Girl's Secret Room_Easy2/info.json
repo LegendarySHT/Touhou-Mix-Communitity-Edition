@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "5a49f845c606489238f8f2f89aba5d6b",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4b4",
 		"name": "ラクトガール　～ 少女密室",
-		"track": 9.0,
+		"track": 9,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:01.000Z",
 	"approvedDate": "2002-08-11T07:00:01.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 8.0,
-	"downCount": 0.0,
+	"downloadCount": 24,
+	"upCount": 8,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 187.0,
+	"trialCount": 187,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

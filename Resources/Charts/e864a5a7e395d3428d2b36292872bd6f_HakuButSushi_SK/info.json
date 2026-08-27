@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "e864a5a7e395d3428d2b36292872bd6f",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0aa84679d16d79ab6a7",
 		"name": "他愛も無い二人の博物誌",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2019-03-24T06:20:17.721Z",
 	"approvedDate": "2019-03-24T06:20:17.721Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 22.0,
-	"downCount": 2.0,
+	"downloadCount": 24,
+	"upCount": 22,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 760.0,
+	"trialCount": 760,
 	"coverHash": "f28a7b0c1873140acbdb6d54e6bb3fcf"
 }

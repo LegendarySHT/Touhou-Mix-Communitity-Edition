@@ -37,6 +37,9 @@ signal midis_deleted(midi_ids: Array)
 ## 启动时先从缓存恢复 charts_index 让用户立即操作，后台 worker 校验文件状态
 ## 校验完成后 emit 此信号；changed=true 表示发现了新增/删除/修改的文件夹，UI 需刷新
 signal charts_cache_validated(changed: bool)
+## 全量/增量扫描完成后，若发现谱面的 song_id / album_id 归属发生变更（结构变化）
+## AlbumView / SongView 监听此信号并刷新；仅扫描完毕后统一 emit 一次，避免中间卡顿
+signal charts_structure_changed
 
 ## ========== 收藏夹事件 ==========
 ## 收藏夹数据加载并验证完成

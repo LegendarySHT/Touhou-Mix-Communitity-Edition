@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "0f143f503d6a3ba27bd9423696984a82",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab689",
 		"name": "車椅子の未来宇宙",
-		"track": 4.0,
+		"track": 4,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2006-08-13T07:00:00.000Z",
 	"approvedDate": "2006-08-13T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 15.0,
-	"downCount": 1.0,
+	"downloadCount": 23,
+	"upCount": 15,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 827.0,
+	"trialCount": 827,
 	"coverHash": "76c6c28556c1cca39f194745232e8b79"
 }

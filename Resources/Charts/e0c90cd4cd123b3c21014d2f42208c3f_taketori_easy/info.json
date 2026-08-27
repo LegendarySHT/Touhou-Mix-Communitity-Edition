@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "e0c90cd4cd123b3c21014d2f42208c3f",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4df",
 		"name": "竹取飛翔　～ Lunatic Princess",
-		"track": 15.0,
+		"track": 15,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-08-15T07:00:05.000Z",
 	"approvedDate": "2004-08-15T07:00:05.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 9.0,
-	"downCount": 0.0,
+	"downloadCount": 24,
+	"upCount": 9,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 364.0,
+	"trialCount": 364,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

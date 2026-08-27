@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ae4421110e7214b9f38d12491094b05b",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab517",
 		"name": "霊知の太陽信仰　～ Nuclear Fusion",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-08-16T07:00:00.000Z",
 	"approvedDate": "2008-08-16T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 27.0,
-	"upCount": 91.0,
-	"downCount": 6.0,
+	"downloadCount": 27,
+	"upCount": 91,
+	"downCount": 6,
 	"uploaderAvatarUrl": "",
-	"trialCount": 3155.0,
+	"trialCount": 3155,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

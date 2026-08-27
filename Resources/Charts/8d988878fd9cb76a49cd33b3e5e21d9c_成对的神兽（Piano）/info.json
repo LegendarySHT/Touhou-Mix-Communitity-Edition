@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "8d988878fd9cb76a49cd33b3e5e21d9c",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191db0",
 		"name": "一対の神獣",
-		"track": 12.0,
+		"track": 12,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-29T08:31:02.107Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 201.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 201,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 21.0,
+	"trialCount": 21,
 	"coverHash": "c9047f65983611d60cf61e5e9625fe11"
 }

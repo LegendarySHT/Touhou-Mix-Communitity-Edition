@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "2fad05e16fdbbbfd33f331436f4a97d5",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4a0",
 		"name": "the Last Judgement",
-		"track": 12.0,
+		"track": 12,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-12-30T08:00:00.000Z",
 	"approvedDate": "1998-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 36.0,
-	"upCount": 9.0,
-	"downCount": 2.0,
+	"downloadCount": 36,
+	"upCount": 9,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 295.0,
+	"trialCount": 295,
 	"coverHash": "8578b4eb27580acd4059b2855b988878"
 }

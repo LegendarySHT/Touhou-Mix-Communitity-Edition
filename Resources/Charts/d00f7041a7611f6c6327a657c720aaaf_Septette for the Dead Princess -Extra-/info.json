@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d00f7041a7611f6c6327a657c720aaaf",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4b8",
 		"name": "亡き王女の為のセプテット",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:02.000Z",
 	"approvedDate": "2002-08-11T07:00:02.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 30.0,
-	"upCount": 13.0,
-	"downCount": 4.0,
+	"downloadCount": 30,
+	"upCount": 13,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 484.0,
+	"trialCount": 484,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

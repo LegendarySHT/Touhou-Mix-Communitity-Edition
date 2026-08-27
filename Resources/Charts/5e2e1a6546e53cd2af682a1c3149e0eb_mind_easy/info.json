@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "5e2e1a6546e53cd2af682a1c3149e0eb",
 	"uploaderId": "64eca22e541cdc68ba121f9c",
 	"uploaderName": "Hakurei Reimu",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab49b",
 		"name": "プラスチックマインド",
-		"track": 7.0,
+		"track": 7,
 		"author": "DMBN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "1998-12-30T08:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-19T12:18:52.674Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 141.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 141,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/69e0806e61d86346fe0ee48d07f40a2c.jpg",
-	"trialCount": 3.0,
+	"trialCount": 3,
 	"coverHash": "8578b4eb27580acd4059b2855b988878"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "8d4720293ab8849815acb5b3497d066e",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191dac",
 		"name": "振り向かない黄泉の道",
-		"track": 8.0,
+		"track": 8,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-26T03:37:13.896Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 233.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 233,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 73.0,
+	"trialCount": 73,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

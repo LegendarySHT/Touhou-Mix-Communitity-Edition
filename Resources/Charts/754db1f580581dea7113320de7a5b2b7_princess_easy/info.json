@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "754db1f580581dea7113320de7a5b2b7",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab467",
 		"name": "Maniacal Princess",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-12-29T08:00:00.000Z",
 	"approvedDate": "1997-12-29T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 14.0,
-	"downCount": 2.0,
+	"downloadCount": 20,
+	"upCount": 14,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 575.0,
+	"trialCount": 575,
 	"coverHash": "2ecdd318637d9e41eaf61e6ad9e82fe6"
 }

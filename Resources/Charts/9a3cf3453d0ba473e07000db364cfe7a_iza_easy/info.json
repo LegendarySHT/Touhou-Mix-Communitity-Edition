@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "9a3cf3453d0ba473e07000db364cfe7a",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab44a",
 		"name": "いざ、倒れ逝くその時まで",
-		"track": 11.0,
+		"track": 11,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-08-15T07:00:00.000Z",
 	"approvedDate": "1997-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 127.0,
-	"downCount": 21.0,
+	"downloadCount": 20,
+	"upCount": 127,
+	"downCount": 21,
 	"uploaderAvatarUrl": "",
-	"trialCount": 5329.0,
+	"trialCount": 5329,
 	"coverHash": "7d4c86970886460fe3d47f288612d712"
 }

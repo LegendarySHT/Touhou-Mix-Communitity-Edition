@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "8a6056e1782a6faf5f212474f6eff1c0",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a166f704bfae42a36b4c14",
 		"name": "暦法有定、人世無常",
-		"track": 18.0,
+		"track": 18,
 		"author": "Kaioshi K，Ocha"
 	},
 	"album": {
 		"_id": "65a1618a04bfae42a36b4bf2",
 		"name": "東方蒔夢原 ～ Champaign of Unfinished Dreams.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2024-01-12T15:58:02.405Z"
 	},
 	"uploadedDate": "2023-12-17T07:00:56.818Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 109.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 109,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 8.0,
+	"trialCount": 8,
 	"coverHash": "82484e91a08206d3c35e1ef2d5de45e7"
 }

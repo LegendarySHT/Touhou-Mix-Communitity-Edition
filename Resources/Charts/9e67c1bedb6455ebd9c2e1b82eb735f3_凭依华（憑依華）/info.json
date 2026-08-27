@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "9e67c1bedb6455ebd9c2e1b82eb735f3",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a1fddd04bfae42a36b4e12",
 		"name": "憑依華",
-		"track": 59.0,
+		"track": 59,
 		"author": "あきやまうに"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2018-05-06T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-10-12T22:24:00.580Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 552.0,
-	"upCount": 13.0,
-	"downCount": 2.0,
+	"downloadCount": 552,
+	"upCount": 13,
+	"downCount": 2,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 113.0,
+	"trialCount": 113,
 	"coverHash": "61d073455330e54e1ff30ead795bf30d"
 }

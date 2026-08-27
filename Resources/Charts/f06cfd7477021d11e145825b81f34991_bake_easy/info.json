@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f06cfd7477021d11e145825b81f34991",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab66b",
 		"name": "月の妖鳥、化猫の幻",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2003-12-30T08:00:00.000Z",
 	"approvedDate": "2003-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 7.0,
-	"downCount": 0.0,
+	"downloadCount": 23,
+	"upCount": 7,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 369.0,
+	"trialCount": 369,
 	"coverHash": "a54b620eb8e83cdd1689c337533ffa23"
 }

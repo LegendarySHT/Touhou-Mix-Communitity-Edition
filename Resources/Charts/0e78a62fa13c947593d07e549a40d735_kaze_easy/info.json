@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "0e78a62fa13c947593d07e549a40d735",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab44e",
 		"name": "風の神社",
-		"track": 15.0,
+		"track": 15,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-08-15T07:00:00.000Z",
 	"approvedDate": "1997-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 193.0,
-	"downCount": 17.0,
+	"downloadCount": 21,
+	"upCount": 193,
+	"downCount": 17,
 	"uploaderAvatarUrl": "",
-	"trialCount": 5856.0,
+	"trialCount": 5856,
 	"coverHash": "7d4c86970886460fe3d47f288612d712"
 }

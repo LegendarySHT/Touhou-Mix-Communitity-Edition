@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "fcff61e7e3ff3fef859a4dc4c1454d2e",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab47e",
 		"name": "紅響曲　～ Scarlet Phoneme",
-		"track": 6.0,
+		"track": 6,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-08-14T07:00:00.000Z",
 	"approvedDate": "1998-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 53.0,
-	"downCount": 3.0,
+	"downloadCount": 23,
+	"upCount": 53,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1430.0,
+	"trialCount": 1430,
 	"coverHash": "007ad004f4cd35703085162abdb5a514"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "a1b2143f05ab130bab1003b4f13699ad",
 	"uploaderId": "64eca22e541cdc68ba121f9c",
 	"uploaderName": "Hakurei Reimu",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4e2",
 		"name": "月まで届け、不死の煙",
-		"track": 18.0,
+		"track": 18,
 		"author": "DMBN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2004-08-15T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-24T04:50:38.076Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 258.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 258,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/69e0806e61d86346fe0ee48d07f40a2c.jpg",
-	"trialCount": 13.0,
+	"trialCount": 13,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

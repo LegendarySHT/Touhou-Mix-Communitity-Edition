@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "4a92e52b83dd5eb10c02162fe9a4e112",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0aa84679d16d79ab6c8",
 		"name": "妖怪宇宙旅行",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-04-09T07:00:00.000Z",
 	"approvedDate": "2008-04-09T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 35.0,
-	"downCount": 5.0,
+	"downloadCount": 23,
+	"upCount": 35,
+	"downCount": 5,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1186.0,
+	"trialCount": 1186,
 	"coverHash": "792903a2057609359667ad72865d06f5"
 }

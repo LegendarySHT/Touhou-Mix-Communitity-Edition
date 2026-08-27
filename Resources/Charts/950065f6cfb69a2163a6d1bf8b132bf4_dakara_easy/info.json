@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "950065f6cfb69a2163a6d1bf8b132bf4",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0aa84679d16d79ab6bd",
 		"name": "夜だから眠れない",
-		"track": 2.0,
+		"track": 2,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2007-01-26T08:00:00.000Z",
 	"approvedDate": "2007-01-26T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 9.0,
-	"downCount": 2.0,
+	"downloadCount": 22,
+	"upCount": 9,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 388.0,
+	"trialCount": 388,
 	"coverHash": "17a0eafd7d1f014dab725e2922a7c72b"
 }

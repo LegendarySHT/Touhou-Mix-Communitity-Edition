@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d3292a5f15bb9d17760a56a8c630960d",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab461",
 		"name": "夢は時空を越えて",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-12-29T08:00:00.000Z",
 	"approvedDate": "1997-12-29T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 94.0,
-	"downCount": 5.0,
+	"downloadCount": 21,
+	"upCount": 94,
+	"downCount": 5,
 	"uploaderAvatarUrl": "",
-	"trialCount": 2562.0,
+	"trialCount": 2562,
 	"coverHash": "2ecdd318637d9e41eaf61e6ad9e82fe6"
 }

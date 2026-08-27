@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "24663b45d9d2deb0c47e37562ab92b48",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab686",
 		"name": "月面ツアーへようこそ",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2006-08-13T07:00:00.000Z",
 	"approvedDate": "2006-08-13T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 21.0,
-	"downCount": 2.0,
+	"downloadCount": 23,
+	"upCount": 21,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 531.0,
+	"trialCount": 531,
 	"coverHash": "76c6c28556c1cca39f194745232e8b79"
 }

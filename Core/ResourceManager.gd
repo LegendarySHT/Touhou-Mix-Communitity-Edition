@@ -108,8 +108,10 @@ func download_chart(chart_hash: String) -> Dictionary:
 	
 	# 5. 写入元数据 JSON（白名单结构，匹配 ChartNormalizer / ChartDb 派生）
 	var json_data := _build_local_json(chart_data)
+	# 类型清理：整数 float → int，字符串字段 null → ""
+	ChartNormalizer.cleanup_types_recursive(json_data)
 	var json_path := chart_dir.path_join("info.json")
-	var json_content := JSON.stringify(json_data)
+	var json_content := JSON.stringify(json_data, "\t", false)
 	var f := FileAccess.open(json_path, FileAccess.WRITE)
 	if f == null:
 		return _fail_download(chart_hash, chart_dir, created_files, "json_write_failed")
@@ -160,10 +162,10 @@ func _build_local_json(chart_data: Dictionary) -> Dictionary:
 		"uploadedDate": str(chart_data.get("uploadedAt", "")),
 		"approvedDate": str(chart_data.get("approvedAt", "")),
 		"status": str(chart_data.get("status", "APPROVED")),
-		"downloadCount": chart_data.get("downloadCount", 0),
-		"trialCount": chart_data.get("trialCount", 0),
-		"upCount": chart_data.get("upCount", 0),
-		"downCount": chart_data.get("downCount", 0),
+		"downloadCount": int(chart_data.get("downloadCount", 0)),
+		"trialCount": int(chart_data.get("trialCount", 0)),
+		"upCount": int(chart_data.get("upCount", 0)),
+		"downCount": int(chart_data.get("downCount", 0)),
 		# 嵌套 song/album 供 ChartNormalizer/ChartDb 派生读取；author 写入 song.author（不在顶层）
 		"song": {
 			"_id": str(chart_data.get("songId", "")),

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "225812c1442398173a9acd2ba566a8d2",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4b0",
 		"name": "おてんば恋娘",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:04.000Z",
 	"approvedDate": "2002-08-11T07:00:04.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 32.0,
-	"upCount": 30.0,
-	"downCount": 5.0,
+	"downloadCount": 32,
+	"upCount": 30,
+	"downCount": 5,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1145.0,
+	"trialCount": 1145,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

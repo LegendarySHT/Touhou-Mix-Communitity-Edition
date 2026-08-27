@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "4c0273b22d68a0485686bd5573da30d8",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab56c",
 		"name": "幻想のホワイトトラベラー",
-		"track": 8.0,
+		"track": 8,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2017-08-11T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-05-28T07:02:54.647Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 194.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 194,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 10.0,
+	"trialCount": 10,
 	"coverHash": "2813ff97d8a237c9190da86652462c60"
 }

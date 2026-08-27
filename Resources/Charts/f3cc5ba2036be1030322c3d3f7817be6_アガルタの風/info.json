@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f3cc5ba2036be1030322c3d3f7817be6",
 	"uploaderId": "5f5cb31ec9ea33595793e1fe",
 	"uploaderName": "apa",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0aa84679d16d79ab6a1",
 		"name": "アガルタの風",
-		"track": 5.0,
+		"track": 5,
 		"author": "arplane"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2012-08-11T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-06-26T01:49:53.091Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 678.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 678,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/9cc5669e2ccee02a423b4ab73fc5eea4.jpg",
-	"trialCount": 13.0,
+	"trialCount": 13,
 	"coverHash": "8a63d77217b22244b58581588b4a3919"
 }

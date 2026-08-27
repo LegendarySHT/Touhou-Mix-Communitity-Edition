@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "8808c53b3d52543c1bb8e465e3931e2c",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a16a9104bfae42a36b4c22",
 		"name": "华尽染分恋语录~A Fruitless Love.",
-		"track": 6.0,
+		"track": 6,
 		"author": "FanTouhouMusic"
 	},
 	"album": {
 		"_id": "65a1687404bfae42a36b4c1a",
 		"name": "明京夢紀行~A Journey of Reminiscences",
-		"abbr": null,
+		"abbr": "",
 		"date": "2024-01-12T16:27:32.552Z"
 	},
 	"uploadedDate": "2024-01-04T09:26:13.915Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 113.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 113,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 15.0,
+	"trialCount": 15,
 	"coverHash": "20049882cf14eab86398e54b78ecf8a0"
 }

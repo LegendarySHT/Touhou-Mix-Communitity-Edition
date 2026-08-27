@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "c2ae04a86de035c557cc6276cac717fc",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab51a",
 		"name": "地霊達の帰宅",
-		"track": 16.0,
+		"track": 16,
 		"author": "arplane"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2008-08-16T07:00:00.000Z"
 	},
 	"uploadedDate": "2025-09-27T08:13:38.457Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 214.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 214,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 4.0,
+	"trialCount": 4,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

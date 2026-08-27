@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "889a30d3332cf90b98fd6ea6df769988",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab474",
 		"name": "勝利デモ",
-		"track": 20.0,
+		"track": 20,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-12-29T08:00:01.000Z",
 	"approvedDate": "1997-12-29T08:00:01.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 1.0,
-	"downCount": 1.0,
+	"downloadCount": 22,
+	"upCount": 1,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 570.0,
+	"trialCount": 570,
 	"coverHash": "2ecdd318637d9e41eaf61e6ad9e82fe6"
 }

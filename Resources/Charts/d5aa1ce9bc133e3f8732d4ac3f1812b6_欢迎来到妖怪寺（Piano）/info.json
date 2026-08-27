@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d5aa1ce9bc133e3f8732d4ac3f1812b6",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab532",
 		"name": "妖怪寺へようこそ",
-		"track": 4.0,
+		"track": 4,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2011-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-10T12:32:27.026Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 159.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 159,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 14.0,
+	"trialCount": 14,
 	"coverHash": "4521910803028b07e68dd059c69b3051"
 }

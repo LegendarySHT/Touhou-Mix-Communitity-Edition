@@ -46,6 +46,9 @@ func _ready() -> void:
 	data_manager.data_loaded.connect(_load_albums)
 	event_bus.midi_deleted.connect(func(_id): _load_albums())
 	event_bus.midis_deleted.connect(func(_ids): _load_albums())
+	# 启动后全量/增量扫描完成，若谱面 album_id / song_id 归属有变化，仅在此统一刷新
+	# 覆盖"结构变化但 charts_cache_validated/data_loaded 未触发 AlbumView 重建"的边角场景
+	event_bus.charts_structure_changed.connect(_load_albums)
 	event_bus.config_changed.connect(_on_config_changed)
 	event_bus.album_selected.connect(func(album_id): _last_opened_album_id = String(album_id))
 	# 回到 AlbumView 时补检空列表（midi_deleted 在不活跃时触发刷新，不会显示 NoItems）

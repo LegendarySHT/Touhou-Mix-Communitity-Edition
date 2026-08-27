@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "96b1823eaf346b4acf71fb4fe83b3205",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4bb",
 		"name": "紅より儚い永遠",
-		"track": 16.0,
+		"track": 16,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:00.000Z",
 	"approvedDate": "2002-08-11T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 28.0,
-	"downCount": 6.0,
+	"downloadCount": 21,
+	"upCount": 28,
+	"downCount": 6,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1429.0,
+	"trialCount": 1429,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f038d261edfde2e319ae25e4bd0cbdcf",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab51b",
 		"name": "エネルギー黎明　～ Future Dream...",
-		"track": 17.0,
+		"track": 17,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-08-16T07:00:00.000Z",
 	"approvedDate": "2008-08-16T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 8.0,
-	"downCount": 3.0,
+	"downloadCount": 22,
+	"upCount": 8,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 555.0,
+	"trialCount": 555,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

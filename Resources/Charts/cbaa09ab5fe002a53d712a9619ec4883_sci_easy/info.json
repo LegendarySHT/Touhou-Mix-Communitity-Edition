@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "cbaa09ab5fe002a53d712a9619ec4883",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab674",
 		"name": "科学世紀の少年少女",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-12-30T08:00:00.000Z",
 	"approvedDate": "2004-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 11.0,
-	"downCount": 3.0,
+	"downloadCount": 22,
+	"upCount": 11,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 282.0,
+	"trialCount": 282,
 	"coverHash": "400f68e57ea1aee70e3adb9bebc3a299"
 }

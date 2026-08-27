@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d7977ad2a44af291a08dd2f54ac08098",
 	"uploaderId": "64eca22e541cdc68ba121f9c",
 	"uploaderName": "Hakurei Reimu",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab561",
 		"name": "パンデモニックプラネット",
-		"track": 15.0,
+		"track": 15,
 		"author": "DMBN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2015-08-14T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-09T14:33:58.051Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 164.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 164,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/69e0806e61d86346fe0ee48d07f40a2c.jpg",
-	"trialCount": 7.0,
+	"trialCount": 7,
 	"coverHash": "3a62a8fee980003c3f889e5070dd8eb8"
 }

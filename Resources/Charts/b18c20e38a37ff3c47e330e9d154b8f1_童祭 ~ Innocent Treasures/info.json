@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "b18c20e38a37ff3c47e330e9d154b8f1",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab670",
 		"name": "童祭　～ Innocent Treasures",
-		"track": 1.0,
+		"track": 1,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2004-12-30T08:00:00.000Z"
 	},
 	"uploadedDate": "2020-04-13T01:07:23.624Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 853.0,
-	"upCount": 25.0,
-	"downCount": 1.0,
+	"downloadCount": 853,
+	"upCount": 25,
+	"downCount": 1,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 522.0,
+	"trialCount": 522,
 	"coverHash": "400f68e57ea1aee70e3adb9bebc3a299"
 }

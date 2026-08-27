@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "2a0c9bc6f3eaeb97932c32676089d369",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -19,12 +19,12 @@
 		"date": ""
 	},
 	"uploadedDate": "2024-04-19T06:41:49.565Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 129.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 129,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 3.0,
+	"trialCount": 3,
 	"coverHash": "1c970df0f66ec5ba3c880200928502ea"
 }

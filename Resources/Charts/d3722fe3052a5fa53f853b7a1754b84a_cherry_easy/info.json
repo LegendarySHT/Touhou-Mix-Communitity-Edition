@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d3722fe3052a5fa53f853b7a1754b84a",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4c9",
 		"name": "幽雅に咲かせ、墨染の桜　～ Border of Life",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2003-08-17T07:00:00.000Z",
 	"approvedDate": "2003-08-17T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 30.0,
-	"upCount": 127.0,
-	"downCount": 4.0,
+	"downloadCount": 30,
+	"upCount": 127,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 4548.0,
+	"trialCount": 4548,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

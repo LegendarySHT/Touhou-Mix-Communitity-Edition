@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "94161c2be51ba4f817d3775fe9fc027f",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab50e",
 		"name": "渡る者の途絶えた橋",
-		"track": 4.0,
+		"track": 4,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-08-16T07:00:00.000Z",
 	"approvedDate": "2008-08-16T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 9.0,
-	"downCount": 0.0,
+	"downloadCount": 23,
+	"upCount": 9,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 519.0,
+	"trialCount": 519,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

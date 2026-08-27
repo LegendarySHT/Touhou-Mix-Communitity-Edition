@@ -89,6 +89,10 @@ var resources_scanned: bool = false  ## 标记资源扫描是否已完成
 ## 此期间 charts_index 可能被协程 clear + 重建，外部若要安全读取/删除需 await await_busy_done()
 var _is_validating: bool = false
 
+## 结构变更检测：扫描前拍下的 (folder_name -> "album_id|song_id") 快照
+## 扫描/校验完成后对比，不一致则 emit charts_structure_changed 让 AlbumView/SongView 统一刷新
+var _pre_scan_structure: Dictionary = {}
+
 ## ========== 信号 ==========
 signal resources_ready
 
@@ -101,6 +105,29 @@ func is_busy() -> bool:
 func await_busy_done() -> void:
 	while is_scanning or _is_validating:
 		await get_tree().process_frame
+
+## 记录当前 DB 内的结构快照（扫描/校验前调用）
+func _snapshot_structure_pre() -> void:
+	if ChartDB and ChartDB.IsOpen():
+		_pre_scan_structure = ChartDB.GetStructureSnapshot()
+	else:
+		_pre_scan_structure.clear()
+
+## 对比快照 + DB 最新结构；不一致则 emit charts_structure_changed 让 UI 统一刷新
+## 仅扫描/校验全部完成后调用一次，避免中间刷新卡顿
+func _snapshot_structure_check_and_emit() -> void:
+	if not (ChartDB and ChartDB.IsOpen() and EvtBus):
+		return
+	var after: Dictionary = ChartDB.GetStructureSnapshot()
+	if after == _pre_scan_structure:
+		return
+	var before_size: int = _pre_scan_structure.size()
+	var after_size: int = after.size()
+	_pre_scan_structure = after
+	EvtBus.charts_structure_changed.emit()
+	GLogger.info("Structure changed (charts=%d -> %d), emitted charts_structure_changed" % [
+		before_size, after_size
+	], "FileSystemMGR")
 
 func _ready() -> void:
 	if instance == null:
@@ -735,6 +762,9 @@ func _scan_all_resources() -> void:
 	var t_start := Time.get_ticks_usec()
 	GLogger.info("Scanning all resources (cache + parallel)...", "FileSystemMGR")
 
+	# 结构变更检测：扫描前拍下 DB 快照，完成后对比；仅结构变了才让 UI 大刷新
+	_snapshot_structure_pre()
+
 	# 清空所有索引（主线程，避免 worker 并发写）
 	charts_index.clear()
 	_chart_id_to_folder.clear()
@@ -855,6 +885,10 @@ func _scan_all_resources() -> void:
 	# === 阶段 A.7：emit resources_ready，用户可立即操作 ===
 	# 快速路径：charts_index 已从缓存恢复，后台校验仍在进行，完成后会 emit charts_cache_validated
 	# 全量路径：charts_index 已从 worker 结果构建完成
+	# 全量路径：扫描完成且 DB upsert + 聚合重算已全部结束，此时对比结构变更；
+	# 快速路径：_await_cache_validation 末尾自行对比
+	if not use_fast_path:
+		_snapshot_structure_check_and_emit()
 	is_scanning = false
 	resources_scanned = true
 	resources_ready.emit()
@@ -955,6 +989,10 @@ func _await_cache_validation(task_id: int, rw: Dictionary, cached_charts: Dictio
 	if ChartDB and ChartDB.IsOpen() and not removed_folders.is_empty():
 		ChartDB.RemoveCharts(removed_folders)
 
+	# 结构变更检测：SaveChartsCache + RemoveCharts 均已触发 RebuildAlbumsSongs，
+	# 此时与扫描前快照对比，不一致才通知 UI 刷新 AlbumView + SongView（避免无意义卡顿）
+	_snapshot_structure_check_and_emit()
+
 	_is_validating = false
 	# emit 信号通知 UI 刷新
 	if EvtBus:
@@ -973,7 +1011,9 @@ func _all_simple_tasks_completed(task_ids: Array) -> bool:
 ## 通过 WorkerThreadPool 分片并行扫描，主线程 await 全部完成
 ## 注意：此方法不走缓存（用于 DelView 删除资源后的强制重扫），启动时走 _scan_all_resources 的缓存路径
 func scan_charts() -> void:
+	_snapshot_structure_pre()
 	await _scan_charts_full_sync()
+	_snapshot_structure_check_and_emit()
 
 ## 全量扫描 charts 并构建索引 + 保存缓存（公共逻辑）
 ## 内部：list folders → start chunk tasks → await → collect → clear+build index → save cache
@@ -1528,9 +1568,13 @@ static func _extract_chart_fields(json: Dictionary) -> Dictionary:
 	flat["author_name"] = author_val if author_val is String else ""
 	# song / album 子文档原样保留（RebuildAlbumsSongs / GetChartJson 复用）
 	if json.has("song") and json["song"] is Dictionary:
-		flat["song"] = json["song"]
+		var song_dict: Dictionary = json["song"].duplicate(true)
+		ChartNormalizer.cleanup_types_recursive(song_dict)
+		flat["song"] = song_dict
 	if json.has("album") and json["album"] is Dictionary:
-		flat["album"] = json["album"]
+		var album_dict: Dictionary = json["album"].duplicate(true)
+		ChartNormalizer.cleanup_types_recursive(album_dict)
+		flat["album"] = album_dict
 	# 磁盘 JSON 内嵌的旧运行时配置（仅供 SaveChartsCache 播种 chart_runtime，非持久化字段）
 	if json.has("_runtime") and json["_runtime"] is Dictionary:
 		flat["_seed_runtime"] = json["_runtime"]

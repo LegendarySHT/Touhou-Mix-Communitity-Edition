@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "e32a100616e0096e8c0bf938d81d629b",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4b4",
 		"name": "ラクトガール　～ 少女密室",
-		"track": 9.0,
+		"track": 9,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2002-08-11T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-04-12T02:22:41.062Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 506.0,
-	"upCount": 6.0,
-	"downCount": 0.0,
+	"downloadCount": 506,
+	"upCount": 6,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 72.0,
+	"trialCount": 72,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

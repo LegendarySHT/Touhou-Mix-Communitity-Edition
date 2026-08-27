@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f1af172a4cdc46b7400049c4fcdb968e",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191db3",
 		"name": "死体旅行　～ Be of good cheer!",
-		"track": 15.0,
+		"track": 15,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-29T09:04:14.396Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 279.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 279,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 94.0,
+	"trialCount": 94,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

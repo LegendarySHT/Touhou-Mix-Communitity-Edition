@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "5226cda61fa380c5d2c30914ed830e1e",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab636",
 		"name": "カナベラルの夢幻少女",
-		"track": 10.0,
+		"track": 10,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2000-12-30T08:00:00.000Z",
 	"approvedDate": "2000-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 17.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 17,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 238.0,
+	"trialCount": 238,
 	"coverHash": "9962b65bd4691adeeb83047cf3bd3426"
 }

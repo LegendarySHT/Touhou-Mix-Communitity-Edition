@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "75e390328d41f2b0810869b2d6988548",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab456",
 		"name": "ひもろぎ、むらさきにもえ",
-		"track": 8.0,
+		"track": 8,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-08-15T07:00:04.000Z",
 	"approvedDate": "1997-08-15T07:00:04.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 9.0,
-	"downCount": 1.0,
+	"downloadCount": 21,
+	"upCount": 9,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 307.0,
+	"trialCount": 307,
 	"coverHash": "11f08912ca5e75592fd65372b99bf3a3"
 }

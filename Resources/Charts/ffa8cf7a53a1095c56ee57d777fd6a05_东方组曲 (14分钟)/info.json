@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ffa8cf7a53a1095c56ee57d777fd6a05",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -19,12 +19,12 @@
 		"date": ""
 	},
 	"uploadedDate": "2020-05-17T03:30:45.138Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 596.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 596,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 12.0,
+	"trialCount": 12,
 	"coverHash": "6c7f998c586cadd1683da093dbe54ca7"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ca71c23c57ff7b23cf5f2e2adb5f470e",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5fe",
 		"name": "心綺楼囃子",
-		"track": 13.0,
+		"track": 13,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2013-05-26T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-05-21T02:55:15.430Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 204.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 204,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 24.0,
+	"trialCount": 24,
 	"coverHash": "7bdb89a4adb37032aae8e17025f4bb7f"
 }

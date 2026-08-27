@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f3e60fae30aeb4d6fb106b24c14e42ac",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114772460b9425d191d94",
 		"name": "虹の架かる幻想郷",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2023-12-27T02:59:59.419Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 170.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 170,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 24.0,
+	"trialCount": 24,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

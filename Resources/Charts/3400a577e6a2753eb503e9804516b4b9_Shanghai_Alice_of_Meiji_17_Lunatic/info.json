@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "3400a577e6a2753eb503e9804516b4b9",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4b2",
 		"name": "明治十七年の上海アリス",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:02.000Z",
 	"approvedDate": "2002-08-11T07:00:02.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 25.0,
-	"upCount": 15.0,
-	"downCount": 1.0,
+	"downloadCount": 25,
+	"upCount": 15,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 348.0,
+	"trialCount": 348,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "e9c9d461a5d5446fe37e2751a37fcb1a",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4ac",
 		"name": "赤より紅い夢",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:00.000Z",
 	"approvedDate": "2002-08-11T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 27.0,
-	"upCount": 202.0,
-	"downCount": 17.0,
+	"downloadCount": 27,
+	"upCount": 202,
+	"downCount": 17,
 	"uploaderAvatarUrl": "",
-	"trialCount": 7487.0,
+	"trialCount": 7487,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

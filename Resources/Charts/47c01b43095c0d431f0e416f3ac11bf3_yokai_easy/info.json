@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "47c01b43095c0d431f0e416f3ac11bf3",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab501",
 		"name": "妖怪の山　～ Mysterious Mountain",
-		"track": 9.0,
+		"track": 9,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2007-08-17T07:00:00.000Z",
 	"approvedDate": "2007-08-17T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 28.0,
-	"upCount": 70.0,
-	"downCount": 4.0,
+	"downloadCount": 28,
+	"upCount": 70,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 2955.0,
+	"trialCount": 2955,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

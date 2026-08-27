@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "a4be6039041928e16218ec3de1bf580e",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4f2",
 		"name": "今昔幻想郷　～ Flower Land",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2005-08-14T07:00:00.000Z",
 	"approvedDate": "2005-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 22.0,
-	"downCount": 0.0,
+	"downloadCount": 24,
+	"upCount": 22,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 875.0,
+	"trialCount": 875,
 	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
 }

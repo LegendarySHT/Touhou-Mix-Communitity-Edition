@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "9bb6cd34ed503dc7a36dceaafdd80122",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4da",
 		"name": "恋色マスタースパーク",
-		"track": 10.0,
+		"track": 10,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2004-08-15T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-05-30T00:15:09.916Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 900.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 900,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 74.0,
+	"trialCount": 74,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

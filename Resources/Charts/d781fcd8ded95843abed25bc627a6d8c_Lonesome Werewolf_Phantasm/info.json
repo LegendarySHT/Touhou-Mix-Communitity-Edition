@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d781fcd8ded95843abed25bc627a6d8c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab547",
 		"name": "孤独なウェアウルフ",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2013-08-12T07:00:05.000Z",
 	"approvedDate": "2013-08-12T07:00:05.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 26.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 26,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 99.0,
+	"trialCount": 99,
 	"coverHash": "d3ab244024949f7c779dbfb747cbaed0"
 }

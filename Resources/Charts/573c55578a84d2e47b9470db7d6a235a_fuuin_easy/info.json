@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "573c55578a84d2e47b9470db7d6a235a",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4f9",
 		"name": "封印されし神々",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2007-08-17T07:00:00.000Z",
 	"approvedDate": "2007-08-17T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 24.0,
-	"downCount": 1.0,
+	"downloadCount": 24,
+	"upCount": 24,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1396.0,
+	"trialCount": 1396,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

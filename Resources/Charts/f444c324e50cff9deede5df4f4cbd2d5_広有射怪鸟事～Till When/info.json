@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f444c324e50cff9deede5df4f4cbd2d5",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4c7",
 		"name": "広有射怪鳥事　～ Till When?",
-		"track": 11.0,
+		"track": 11,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2003-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-06-12T13:37:09.768Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 823.0,
-	"upCount": 10.0,
-	"downCount": 3.0,
+	"downloadCount": 823,
+	"upCount": 10,
+	"downCount": 3,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 299.0,
+	"trialCount": 299,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

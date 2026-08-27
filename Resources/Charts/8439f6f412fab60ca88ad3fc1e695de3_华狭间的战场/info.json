@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "8439f6f412fab60ca88ad3fc1e695de3",
 	"uploaderId": "5eb4295cc6ba816c345a47b1",
 	"uploaderName": "already to get",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab62b",
 		"name": "華狭間のバトルフィールド",
-		"track": 29.0,
+		"track": 29,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2015-05-10T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-10-24T11:41:43.179Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 668.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 668,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/8a00cc4dea68389548649ef56920156a.jpg",
-	"trialCount": 19.0,
+	"trialCount": 19,
 	"coverHash": "54194280a05c93755d5829d36b7ade3f"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "65fcfb67cb126d68e25b3bab059e500d",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0aa84679d16d79ab6c7",
 		"name": "二つの世界",
-		"track": 2.0,
+		"track": 2,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2009-08-26T07:00:00.000Z",
 	"approvedDate": "2009-08-26T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 19.0,
-	"downCount": 4.0,
+	"downloadCount": 22,
+	"upCount": 19,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 528.0,
+	"trialCount": 528,
 	"coverHash": "fc532ea2a8b7c86cce5411b9ea5fbb15"
 }

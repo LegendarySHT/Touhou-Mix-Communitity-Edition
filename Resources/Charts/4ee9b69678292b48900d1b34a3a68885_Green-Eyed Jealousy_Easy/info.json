@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "4ee9b69678292b48900d1b34a3a68885",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab50f",
 		"name": "緑眼のジェラシー",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-08-16T07:00:00.000Z",
 	"approvedDate": "2008-08-16T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 24.0,
-	"downCount": 4.0,
+	"downloadCount": 23,
+	"upCount": 24,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 889.0,
+	"trialCount": 889,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "71b59565ae36344565a19a84eaf03857",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab63d",
 		"name": "魔女達の舞踏会　～ Magus",
-		"track": 17.0,
+		"track": 17,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2000-12-30T08:00:09.000Z",
 	"approvedDate": "2000-12-30T08:00:09.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 23,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 66.0,
+	"trialCount": 66,
 	"coverHash": "9962b65bd4691adeeb83047cf3bd3426"
 }

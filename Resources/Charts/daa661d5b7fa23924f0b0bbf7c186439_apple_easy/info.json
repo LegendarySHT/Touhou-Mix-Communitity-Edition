@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "daa661d5b7fa23924f0b0bbf7c186439",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab47f",
 		"name": "Bad Apple!!",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-08-14T07:00:00.000Z",
 	"approvedDate": "1998-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 472.0,
-	"downCount": 34.0,
+	"downloadCount": 21,
+	"upCount": 472,
+	"downCount": 34,
 	"uploaderAvatarUrl": "",
-	"trialCount": 12954.0,
+	"trialCount": 12954,
 	"coverHash": "007ad004f4cd35703085162abdb5a514"
 }

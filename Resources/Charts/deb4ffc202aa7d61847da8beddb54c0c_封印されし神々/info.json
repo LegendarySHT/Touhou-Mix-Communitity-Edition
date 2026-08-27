@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "deb4ffc202aa7d61847da8beddb54c0c",
 	"uploaderId": "5f5cb31ec9ea33595793e1fe",
 	"uploaderName": "apa",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4f9",
 		"name": "封印されし神々",
-		"track": 1.0,
+		"track": 1,
 		"author": "arplane"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2007-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-06-12T09:18:00.060Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 738.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 738,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/9cc5669e2ccee02a423b4ab73fc5eea4.jpg",
-	"trialCount": 8.0,
+	"trialCount": 8,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

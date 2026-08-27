@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "4bef339fde111f69feab3b7a7a951236",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191daf",
 		"name": "妖々跋扈　～ Who done it!",
-		"track": 11.0,
+		"track": 11,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-28T03:26:22.682Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 234.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 234,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 70.0,
+	"trialCount": 70,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

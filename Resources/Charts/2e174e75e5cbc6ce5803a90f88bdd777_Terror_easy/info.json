@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "2e174e75e5cbc6ce5803a90f88bdd777",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab485",
 		"name": "眠れる恐怖　～Sleeping Terror",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-08-14T07:00:00.000Z",
 	"approvedDate": "1998-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 14.0,
-	"downCount": 1.0,
+	"downloadCount": 23,
+	"upCount": 14,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 732.0,
+	"trialCount": 732,
 	"coverHash": "007ad004f4cd35703085162abdb5a514"
 }

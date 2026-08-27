@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "1a7bf50d8ff992f799447a1fe0bcce23",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5bc",
 		"name": "天衣無縫",
-		"track": 14.0,
+		"track": 14,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-05-25T07:00:00.000Z",
 	"approvedDate": "2008-05-25T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 26.0,
-	"downCount": 1.0,
+	"downloadCount": 23,
+	"upCount": 26,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 868.0,
+	"trialCount": 868,
 	"coverHash": "cf5c0b1cdb611b7368c24bf2d310f1b2"
 }

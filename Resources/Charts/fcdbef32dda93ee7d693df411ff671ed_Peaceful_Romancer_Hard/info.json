@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "fcdbef32dda93ee7d693df411ff671ed",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4aa",
 		"name": "Peaceful Romancer",
-		"track": 22.0,
+		"track": 22,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-12-30T08:00:02.000Z",
 	"approvedDate": "1998-12-30T08:00:02.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 20,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 102.0,
+	"trialCount": 102,
 	"coverHash": "8578b4eb27580acd4059b2855b988878"
 }

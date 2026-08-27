@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "7a8cc96da1c42d22ca214697d381ccd5",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab68c",
 		"name": "G Free",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2006-08-13T07:00:00.000Z",
 	"approvedDate": "2006-08-13T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 18.0,
-	"downCount": 0.0,
+	"downloadCount": 22,
+	"upCount": 18,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 388.0,
+	"trialCount": 388,
 	"coverHash": "76c6c28556c1cca39f194745232e8b79"
 }

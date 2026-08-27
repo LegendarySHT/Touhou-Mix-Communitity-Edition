@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "91a726904b44b3ce38d639e2df087f2c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5a5",
 		"name": "紅夜",
-		"track": 31.0,
+		"track": 31,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-12-30T08:00:00.000Z",
 	"approvedDate": "2004-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 5.0,
-	"downCount": 0.0,
+	"downloadCount": 23,
+	"upCount": 5,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 355.0,
+	"trialCount": 355,
 	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
 }

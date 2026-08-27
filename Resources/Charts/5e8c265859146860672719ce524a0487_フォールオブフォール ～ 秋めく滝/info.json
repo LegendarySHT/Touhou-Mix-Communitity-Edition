@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "5e8c265859146860672719ce524a0487",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab500",
 		"name": "フォールオブフォール　～ 秋めく滝",
-		"track": 8.0,
+		"track": 8,
 		"author": "arplane"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2007-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2025-09-27T06:38:52.485Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 214.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 214,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 9.0,
+	"trialCount": 9,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

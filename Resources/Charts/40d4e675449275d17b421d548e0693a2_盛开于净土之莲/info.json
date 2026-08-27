@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "40d4e675449275d17b421d548e0693a2",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a15a6504bfae42a36b4bb1",
 		"name": "盛开在净土之莲",
-		"track": 1.0,
+		"track": 1,
 		"author": "Tokini11"
 	},
 	"album": {
 		"_id": "64c924b6541cdc68ba11a3e7",
 		"name": "東方雪蓮華 ～ Abyss Soul Lotus.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2023-08-01T15:28:54.263Z"
 	},
 	"uploadedDate": "2023-07-16T06:35:46.250Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 225.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 225,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 63.0,
+	"trialCount": 63,
 	"coverHash": "be37932ff783846b846cdd670814dd00"
 }

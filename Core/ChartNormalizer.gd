@@ -31,6 +31,79 @@ static func _get_str(dict: Dictionary, key: String, fallback: String) -> String:
 
 
 ## 从 author 字段提取名称字符串（兼容 String / Dictionary / Array 三种格式）
+## 语义上是字符串的字段名集合（在任何层级出现时 null → ""，非 String 会保留原值不转）
+## 注：GDScript 无 Set，用 Array 存，靠 has() 判断（对小集合足够）
+const _STRING_FIELD_KEYS: Array[String] = [
+	"_id", "id", "name", "desc", "description", "status",
+	"artistName", "artist",
+	"uploaderName", "uploaderId", "uploaderAvatarUrl",
+	"artistUrl", "coverHash", "coverUrl", "cover",
+	"uploadedDate", "approvedDate",
+	"hash", "file_hash", "folder_hash", "folder_name",
+	"sourceSongName", "sourceAlbumName", "sourceArtistName",
+	"midi_id", "song_id", "album_id", "album_name",
+	"audio_path", "json_path", "path", "cover_path",
+	"author", "abbr", "date",
+	"type", "format", "comment", "message", "version",
+]
+
+
+## 就地清理字典：
+##   - 所有 float 若整数部分等于其值 → 转 int（例 1.0 → 1）
+##   - 字段名在 _STRING_FIELD_KEYS 内且值为 null → 转 ""
+## 返回是否有任何修改
+static func cleanup_types_recursive(obj, _in_key: String = "", _depth: int = 0) -> bool:
+	var t := typeof(obj)
+	if t == TYPE_DICTIONARY:
+		var d := obj as Dictionary
+		var changed := false
+		var ks := d.keys()
+		for k in ks:
+			var v = d[k]
+			# 先对 leaf 值做直接替换（null→""、float→int）
+			var res: Array = _coerce_value(k, v)
+			var new_v = res[0]
+			if res[1]:
+				d[k] = new_v
+				changed = true
+				v = new_v
+			# 再对容器递归
+			if cleanup_types_recursive(v, String(k), _depth + 1):
+				changed = true
+		return changed
+	if t == TYPE_ARRAY:
+		var arr := obj as Array
+		var changed := false
+		for i in range(arr.size()):
+			var v = arr[i]
+			var res: Array = _coerce_value("", v)  # 数组项无 key → 不做 null→""，只转整数 float
+			var new_v = res[0]
+			if res[1]:
+				arr[i] = new_v
+				changed = true
+				v = new_v
+			if cleanup_types_recursive(v, "", _depth + 1):
+				changed = true
+		return changed
+	return false
+
+
+## 对单个值返回规范化后的值，以及是否变化。供 Dictionary 上层调用方替换用。
+## 返回 Array: [新值（Variant）, 是否变化（bool）]
+static func _coerce_value(k, v) -> Array:
+	# 1. null→""（只对字符串字段）
+	if v == null and _STRING_FIELD_KEYS.has(k):
+		return ["", true]
+	# 2. float → int（当整数）
+	if typeof(v) == TYPE_FLOAT:
+		var fv: float = float(v)
+		if is_finite(fv) and fv == float(int(fv)):
+			var iv: int = int(fv)
+			return [iv, true]
+	# 其他：不做（Dictionary/Array 由上层递归，String/Bool/Int 原样）
+	return [v, false]
+
+
 static func _extract_author_name(author_val) -> String:
 	if author_val is String:
 		var s := author_val as String
@@ -86,6 +159,16 @@ static func normalize_chart_json(data: Dictionary) -> bool:
 		if sid.is_empty():
 			var sn := _get_str(nested_song, "name", "Unknown Song")
 			nested_song["_id"] = "song_" + sn.sha256_text().substr(0, 16)
+			changed = true
+		# track：统一为 int，避免 JSON 写入 1.0 导致 C#/GDScript 类型不一致
+		if nested_song.has("track"):
+			var tv: Variant = nested_song["track"]
+			var iv: int = int(tv)
+			if typeof(tv) != TYPE_INT or iv != tv:
+				nested_song["track"] = iv
+				changed = true
+		else:
+			nested_song["track"] = 0
 			changed = true
 		for key in nested_song.keys():
 			if key not in ["_id", "name", "track", "author"]:
@@ -165,5 +248,9 @@ static func normalize_chart_json(data: Dictionary) -> bool:
 		if data.has(field):
 			data.erase(field)
 			changed = true
+
+	# ── 类型清理：整数值的 float → int，字符串字段 null → ""
+	if ChartNormalizer.cleanup_types_recursive(data):
+		changed = true
 
 	return changed

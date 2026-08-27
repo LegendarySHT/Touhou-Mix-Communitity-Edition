@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "cd4ca92012a85a288dcc606c4b9c3721",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab68d",
 		"name": "大空魔術　～ Magical Astronomy",
-		"track": 8.0,
+		"track": 8,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2006-08-13T07:00:01.000Z",
 	"approvedDate": "2006-08-13T07:00:01.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 9.0,
-	"downCount": 1.0,
+	"downloadCount": 23,
+	"upCount": 9,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 297.0,
+	"trialCount": 297,
 	"coverHash": "76c6c28556c1cca39f194745232e8b79"
 }

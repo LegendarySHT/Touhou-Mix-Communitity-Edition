@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "b9d94e148a38a7877d140d811e1dd334",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191da6",
 		"name": "世界は可愛く出来ている",
-		"track": 2.0,
+		"track": 2,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-25T06:05:29.700Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 498.0,
-	"upCount": 21.0,
-	"downCount": 0.0,
+	"downloadCount": 498,
+	"upCount": 21,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 508.0,
+	"trialCount": 508,
 	"coverHash": "c9047f65983611d60cf61e5e9625fe11"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "b1dfc54a0290b83942617cd0d9fa8130",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab559",
 		"name": "永遠の春夢",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2015-08-14T07:00:04.000Z",
 	"approvedDate": "2015-08-14T07:00:04.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 27.0,
-	"upCount": 18.0,
-	"downCount": 3.0,
+	"downloadCount": 27,
+	"upCount": 18,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 633.0,
+	"trialCount": 633,
 	"coverHash": "3a62a8fee980003c3f889e5070dd8eb8"
 }

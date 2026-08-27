@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "3a25cab3a7e346c52ab4dd3c64ad8065",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5a8",
 		"name": "砕月",
-		"track": 34.0,
+		"track": 34,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-12-30T08:00:00.000Z",
 	"approvedDate": "2004-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 27.0,
-	"upCount": 159.0,
-	"downCount": 12.0,
+	"downloadCount": 27,
+	"upCount": 159,
+	"downCount": 12,
 	"uploaderAvatarUrl": "",
-	"trialCount": 5310.0,
+	"trialCount": 5310,
 	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
 }

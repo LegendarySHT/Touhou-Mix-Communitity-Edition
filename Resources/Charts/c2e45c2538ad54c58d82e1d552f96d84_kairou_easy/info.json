@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "c2e45c2538ad54c58d82e1d552f96d84",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0aa84679d16d79ab6d1",
 		"name": "夢幻回廊",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-10-14T07:00:00.000Z",
 	"approvedDate": "2002-10-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 26.0,
-	"upCount": 85.0,
-	"downCount": 4.0,
+	"downloadCount": 26,
+	"upCount": 85,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 2203.0,
+	"trialCount": 2203,
 	"coverHash": "c0ae97da0eaf3e50b5ee5b7adfaa61f8"
 }

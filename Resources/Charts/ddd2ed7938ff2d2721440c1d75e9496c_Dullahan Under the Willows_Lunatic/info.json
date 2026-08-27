@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ddd2ed7938ff2d2721440c1d75e9496c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab545",
 		"name": "柳の下のデュラハン",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2013-08-12T07:00:03.000Z",
 	"approvedDate": "2013-08-12T07:00:03.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 23,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 73.0,
+	"trialCount": 73,
 	"coverHash": "d3ab244024949f7c779dbfb747cbaed0"
 }

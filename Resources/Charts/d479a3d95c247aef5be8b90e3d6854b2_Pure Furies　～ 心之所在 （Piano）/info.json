@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d479a3d95c247aef5be8b90e3d6854b2",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab55f",
 		"name": "ピュアヒューリーズ　～ 心の在処",
-		"track": 13.0,
+		"track": 13,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2015-08-14T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-05-21T02:35:18.577Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 611.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 611,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 105.0,
+	"trialCount": 105,
 	"coverHash": "3a62a8fee980003c3f889e5070dd8eb8"
 }

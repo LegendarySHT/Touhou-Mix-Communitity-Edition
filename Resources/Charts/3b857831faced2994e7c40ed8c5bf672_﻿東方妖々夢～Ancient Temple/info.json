@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "3b857831faced2994e7c40ed8c5bf672",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4c6",
 		"name": "東方妖々夢　～ Ancient Temple",
-		"track": 10.0,
+		"track": 10,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2003-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-05-30T00:09:37.941Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 753.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 753,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 61.0,
+	"trialCount": 61,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

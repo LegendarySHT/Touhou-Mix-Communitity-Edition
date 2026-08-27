@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "06aa23423ce315ccfdab44e8b52df1f2",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab471",
 		"name": "永遠の満月",
-		"track": 17.0,
+		"track": 17,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "1997-12-29T08:00:00.000Z"
 	},
 	"uploadedDate": "2020-05-30T00:12:50.568Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 649.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 649,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 65.0,
+	"trialCount": 65,
 	"coverHash": "2ecdd318637d9e41eaf61e6ad9e82fe6"
 }

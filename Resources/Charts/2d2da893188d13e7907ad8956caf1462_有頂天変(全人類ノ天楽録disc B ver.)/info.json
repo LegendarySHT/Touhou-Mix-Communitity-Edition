@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "2d2da893188d13e7907ad8956caf1462",
 	"uploaderId": "5eb4295cc6ba816c345a47b1",
 	"uploaderName": "already to get",
@@ -19,12 +19,12 @@
 		"date": ""
 	},
 	"uploadedDate": "2021-10-24T11:30:49.804Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 839.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 839,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/8a00cc4dea68389548649ef56920156a.jpg",
-	"trialCount": 64.0,
+	"trialCount": 64,
 	"coverHash": "71abc9f426fd729c415cd5960067bbcb"
 }

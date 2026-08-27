@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "1aba40da7fdf692d992c22538eeeb60e",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5ac",
 		"name": "東の国の眠らない夜",
-		"track": 4.0,
+		"track": 4,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2005-12-30T08:00:00.000Z",
 	"approvedDate": "2005-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 9.0,
-	"downCount": 0.0,
+	"downloadCount": 23,
+	"upCount": 9,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 545.0,
+	"trialCount": 545,
 	"coverHash": "33c3fbc1b9af64fc5c682a160808f4e4"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "fedfb696f588c8a85fa81ab1d270cd2f",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab63f",
 		"name": "ハーセルヴズ",
-		"track": 19.0,
+		"track": 19,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2000-12-30T08:00:00.000Z",
 	"approvedDate": "2000-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 19.0,
-	"upCount": 6.0,
-	"downCount": 1.0,
+	"downloadCount": 19,
+	"upCount": 6,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 250.0,
+	"trialCount": 250,
 	"coverHash": "9962b65bd4691adeeb83047cf3bd3426"
 }

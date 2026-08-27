@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "84fa9fd49ce0f0ab4bb2132789cfbd5e",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4a5",
 		"name": "the Grimoire of Alice",
-		"track": 17.0,
+		"track": 17,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-12-30T08:00:00.000Z",
 	"approvedDate": "1998-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 25.0,
-	"upCount": 12.0,
-	"downCount": 2.0,
+	"downloadCount": 25,
+	"upCount": 12,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 529.0,
+	"trialCount": 529,
 	"coverHash": "8578b4eb27580acd4059b2855b988878"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "e5f5a74e5cceee4d3aa57689354f8a7f",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "68d76c6fb7f7c6097db6a9b7",
 		"name": "テーマ・オブ・イースタンストーリー",
-		"track": 15.0,
+		"track": 15,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2007-12-31T08:00:00.000Z"
 	},
 	"uploadedDate": "2022-01-24T08:30:01.822Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 457.0,
-	"upCount": 6.0,
-	"downCount": 0.0,
+	"downloadCount": 457,
+	"upCount": 6,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 36.0,
+	"trialCount": 36,
 	"coverHash": "361f2c6e36bd170a1093ecf8c0846667"
 }

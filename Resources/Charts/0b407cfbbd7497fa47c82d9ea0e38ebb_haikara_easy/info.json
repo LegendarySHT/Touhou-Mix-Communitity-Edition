@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "0b407cfbbd7497fa47c82d9ea0e38ebb",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab523",
 		"name": "時代親父とハイカラ少女",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2009-08-15T07:00:00.000Z",
 	"approvedDate": "2009-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 8.0,
-	"downCount": 1.0,
+	"downloadCount": 23,
+	"upCount": 8,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 297.0,
+	"trialCount": 297,
 	"coverHash": "4dc6506f566664b7d547e98663300a81"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "3069a04ad68dd271953e9e4048b6f34b",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4ba",
 		"name": "U.N.オーエンは彼女なのか？",
-		"track": 15.0,
+		"track": 15,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:06.000Z",
 	"approvedDate": "2002-08-11T07:00:06.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 33.0,
-	"upCount": 36.0,
-	"downCount": 2.0,
+	"downloadCount": 33,
+	"upCount": 36,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1094.0,
+	"trialCount": 1094,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "595808802c9d93cee89c112feafc83e9",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4d4",
 		"name": "夜雀の歌声　～ Night Bird",
-		"track": 4.0,
+		"track": 4,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2004-08-15T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-07-29T13:47:30.649Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 906.0,
-	"upCount": 7.0,
-	"downCount": 0.0,
+	"downloadCount": 906,
+	"upCount": 7,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 117.0,
+	"trialCount": 117,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

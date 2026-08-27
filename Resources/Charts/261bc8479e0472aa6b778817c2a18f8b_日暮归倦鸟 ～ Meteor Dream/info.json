@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "261bc8479e0472aa6b778817c2a18f8b",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a16b7a04bfae42a36b4c2d",
 		"name": "日暮归倦鸟~Meteor Dream.",
-		"track": 16.0,
+		"track": 16,
 		"author": ""
 	},
 	"album": {
 		"_id": "65a1687404bfae42a36b4c1a",
 		"name": "明京夢紀行~A Journey of Reminiscences",
-		"abbr": null,
+		"abbr": "",
 		"date": "2024-01-12T16:27:32.552Z"
 	},
 	"uploadedDate": "2024-02-29T08:14:17.363Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 102.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 102,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 5.0,
+	"trialCount": 5,
 	"coverHash": "20049882cf14eab86398e54b78ecf8a0"
 }

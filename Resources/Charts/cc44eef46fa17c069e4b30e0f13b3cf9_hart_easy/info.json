@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "cc44eef46fa17c069e4b30e0f13b3cf9",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab519",
 		"name": "ハルトマンの妖怪少女",
-		"track": 15.0,
+		"track": 15,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-08-16T07:00:00.000Z",
 	"approvedDate": "2008-08-16T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 33.0,
-	"upCount": 296.0,
-	"downCount": 22.0,
+	"downloadCount": 33,
+	"upCount": 296,
+	"downCount": 22,
 	"uploaderAvatarUrl": "",
-	"trialCount": 9300.0,
+	"trialCount": 9300,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

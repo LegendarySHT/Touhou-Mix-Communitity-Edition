@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "253e956635f0582ffc667920d9be6bab",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab453",
 		"name": "やみのちから",
-		"track": 5.0,
+		"track": 5,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-08-15T07:00:00.000Z",
 	"approvedDate": "1997-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 47.0,
-	"downCount": 8.0,
+	"downloadCount": 21,
+	"upCount": 47,
+	"downCount": 8,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1426.0,
+	"trialCount": 1426,
 	"coverHash": "11f08912ca5e75592fd65372b99bf3a3"
 }

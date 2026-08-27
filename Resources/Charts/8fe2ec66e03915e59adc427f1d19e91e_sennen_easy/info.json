@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "8fe2ec66e03915e59adc427f1d19e91e",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4de",
 		"name": "千年幻想郷　～ History of the Moon",
-		"track": 14.0,
+		"track": 14,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-08-15T07:00:00.000Z",
 	"approvedDate": "2004-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 32.0,
-	"upCount": 117.0,
-	"downCount": 6.0,
+	"downloadCount": 32,
+	"upCount": 117,
+	"downCount": 6,
 	"uploaderAvatarUrl": "",
-	"trialCount": 4680.0,
+	"trialCount": 4680,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

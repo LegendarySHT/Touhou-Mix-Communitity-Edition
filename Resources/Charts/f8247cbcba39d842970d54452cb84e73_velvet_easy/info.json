@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f8247cbcba39d842970d54452cb84e73",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab642",
 		"name": "天鵞絨少女戦　～ Velvet Battle",
-		"track": 2.0,
+		"track": 2,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2001-12-30T08:00:00.000Z",
 	"approvedDate": "2001-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 19.0,
-	"upCount": 22.0,
-	"downCount": 2.0,
+	"downloadCount": 19,
+	"upCount": 22,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 607.0,
+	"trialCount": 607,
 	"coverHash": "9a10b607061852f723482f051b64ccf4"
 }

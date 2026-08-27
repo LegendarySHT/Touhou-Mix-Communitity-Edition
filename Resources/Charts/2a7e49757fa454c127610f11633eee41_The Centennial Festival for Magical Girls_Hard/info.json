@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "2a7e49757fa454c127610f11633eee41",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4b9",
 		"name": "魔法少女達の百年祭",
-		"track": 14.0,
+		"track": 14,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:03.000Z",
 	"approvedDate": "2002-08-11T07:00:03.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 7.0,
-	"downCount": 2.0,
+	"downloadCount": 22,
+	"upCount": 7,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 238.0,
+	"trialCount": 238,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

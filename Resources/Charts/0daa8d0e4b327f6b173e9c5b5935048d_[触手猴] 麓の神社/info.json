@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "0daa8d0e4b327f6b173e9c5b5935048d",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab508",
 		"name": "麓の神社",
-		"track": 16.0,
+		"track": 16,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2007-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-05-01T10:01:03.945Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 444.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 444,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 33.0,
+	"trialCount": 33,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

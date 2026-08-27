@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "001ed006ca87991968c8de685047859d",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab475",
 		"name": "ゲームオーバー",
-		"track": 21.0,
+		"track": 21,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-12-29T08:00:00.000Z",
 	"approvedDate": "1997-12-29T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 18.0,
-	"upCount": 15.0,
-	"downCount": 1.0,
+	"downloadCount": 18,
+	"upCount": 15,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1634.0,
+	"trialCount": 1634,
 	"coverHash": "2ecdd318637d9e41eaf61e6ad9e82fe6"
 }

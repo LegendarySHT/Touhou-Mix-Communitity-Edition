@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "3440de57b271c2e67aef061b8fcb3504",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191da5",
 		"name": "獣の知性",
-		"track": 1.0,
+		"track": 1,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-25T05:41:19.939Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 237.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 237,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 23.0,
+	"trialCount": 23,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

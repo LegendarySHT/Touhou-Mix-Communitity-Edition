@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "a13c593f31636b3874906563ec0e0968",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab457",
 		"name": "恋色マジック",
-		"track": 9.0,
+		"track": 9,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-08-15T07:00:00.000Z",
 	"approvedDate": "1997-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 19.0,
-	"upCount": 112.0,
-	"downCount": 9.0,
+	"downloadCount": 19,
+	"upCount": 112,
+	"downCount": 9,
 	"uploaderAvatarUrl": "",
-	"trialCount": 3947.0,
+	"trialCount": 3947,
 	"coverHash": "11f08912ca5e75592fd65372b99bf3a3"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "4d9dbfe896ff801e8ee293c74622195a",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4b3",
 		"name": "ヴワル魔法図書館",
-		"track": 8.0,
+		"track": 8,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:00.000Z",
 	"approvedDate": "2002-08-11T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 27.0,
-	"upCount": 27.0,
-	"downCount": 5.0,
+	"downloadCount": 27,
+	"upCount": 27,
+	"downCount": 5,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1378.0,
+	"trialCount": 1378,
 	"coverHash": "06a6f926a30dab7d2d473a8a112fa3e9"
 }

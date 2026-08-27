@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "12012d404176f966cfde45bef7a3be90",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4bc",
 		"name": "紅楼　～ Eastern Dream...",
-		"track": 17.0,
+		"track": 17,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2002-08-11T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-10-05T07:04:10.136Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 837.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 837,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 241.0,
+	"trialCount": 241,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

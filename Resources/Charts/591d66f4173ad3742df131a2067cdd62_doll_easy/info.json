@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "591d66f4173ad3742df131a2067cdd62",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4c3",
 		"name": "人形裁判　～ 人の形弄びし少女",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2003-08-17T07:00:00.000Z",
 	"approvedDate": "2003-08-17T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 32.0,
-	"upCount": 54.0,
-	"downCount": 3.0,
+	"downloadCount": 32,
+	"upCount": 54,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1878.0,
+	"trialCount": 1878,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

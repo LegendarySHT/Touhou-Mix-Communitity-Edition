@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d23fcab88351aa35ac7aec53b25022b7",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab582",
 		"name": "偶像に世界を委ねて　～ Idoratrize World",
-		"track": 13.0,
+		"track": 13,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2019-08-12T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-02-16T15:53:16.705Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 433.0,
-	"upCount": 8.0,
-	"downCount": 0.0,
+	"downloadCount": 433,
+	"upCount": 8,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 183.0,
+	"trialCount": 183,
 	"coverHash": "ffd24aec85de388005947cd3e4944684"
 }

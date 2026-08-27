@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "21e244a14e5c33c9f7830e0b4853b47e",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab502",
 		"name": "少女が見た日本の原風景",
-		"track": 10.0,
+		"track": 10,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2007-08-17T07:00:00.000Z",
 	"approvedDate": "2007-08-17T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 30.0,
-	"upCount": 54.0,
-	"downCount": 3.0,
+	"downloadCount": 30,
+	"upCount": 54,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1517.0,
+	"trialCount": 1517,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

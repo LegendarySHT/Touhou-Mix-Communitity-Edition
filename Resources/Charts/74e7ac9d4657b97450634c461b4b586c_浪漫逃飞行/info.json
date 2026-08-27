@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "74e7ac9d4657b97450634c461b4b586c",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab608",
 		"name": "ロマンチック逃飛行",
-		"track": 4.0,
+		"track": 4,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2014-05-11T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-06-26T13:05:49.441Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 203.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 203,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 17.0,
+	"trialCount": 17,
 	"coverHash": "0be06d7c239edb9bf95fedb79e1ac15f"
 }

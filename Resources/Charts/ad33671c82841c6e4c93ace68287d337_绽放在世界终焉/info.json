@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ad33671c82841c6e4c93ace68287d337",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a1609004bfae42a36b4be7",
 		"name": "绽放在世界终焉",
-		"track": 18.0,
+		"track": 18,
 		"author": "Tokini11"
 	},
 	"album": {
 		"_id": "64c924b6541cdc68ba11a3e7",
 		"name": "東方雪蓮華 ～ Abyss Soul Lotus.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2023-08-01T15:28:54.263Z"
 	},
 	"uploadedDate": "2023-07-16T07:01:56.969Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 232.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 232,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 23.0,
+	"trialCount": 23,
 	"coverHash": "be37932ff783846b846cdd670814dd00"
 }

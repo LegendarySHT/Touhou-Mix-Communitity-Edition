@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "e77d6c7de4ed90aea446be7a163046cc",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab516",
 		"name": "業火マントル",
-		"track": 12.0,
+		"track": 12,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-08-16T07:00:00.000Z",
 	"approvedDate": "2008-08-16T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 6.0,
-	"downCount": 0.0,
+	"downloadCount": 24,
+	"upCount": 6,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 409.0,
+	"trialCount": 409,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

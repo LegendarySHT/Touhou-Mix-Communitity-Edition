@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ebe4d638db36f653036164493ed3dcd9",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191db7",
 		"name": "聖徳太子のペガサス　～ Dark Pegasus",
-		"track": 19.0,
+		"track": 19,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-30T03:45:47.780Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 230.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 230,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 39.0,
+	"trialCount": 39,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "6ae154f4e6ad67726b7821203cfbebdd",
 	"uploaderId": "5f5cb31ec9ea33595793e1fe",
 	"uploaderName": "apa",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a200af04bfae42a36b4e39",
 		"name": "花映塚　～ after Higan Retour",
-		"track": 3.0,
+		"track": 3,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2005-08-11T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-06-13T08:04:17.885Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 737.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 737,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/9cc5669e2ccee02a423b4ab73fc5eea4.jpg",
-	"trialCount": 12.0,
+	"trialCount": 12,
 	"coverHash": "f2968412c281428486f9824bb565ac88"
 }

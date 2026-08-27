@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "9208dc76459fa7eb8d3de5ba1e6c394f",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab690",
 		"name": "未知の花 魅知の旅",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2011-05-08T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-11-26T12:10:17.669Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 711.0,
-	"upCount": 5.0,
-	"downCount": 1.0,
+	"downloadCount": 711,
+	"upCount": 5,
+	"downCount": 1,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 134.0,
+	"trialCount": 134,
 	"coverHash": "d78538a410a7e99b271d04d2524d39f3"
 }

@@ -353,6 +353,29 @@ public partial class ChartDb : Node
         }
     }
 
+    /// <summary>
+    /// 返回所有谱面的 (folder_name -> "album_id|song_id") 结构快照，
+    /// 用于扫描前后对比 album / song 归属是否变化。
+    /// 返回 Dictionary：key=folder_name, value="album_id|song_id"（空值字段占位 ""）。
+    /// </summary>
+    public Godot.Collections.Dictionary GetStructureSnapshot()
+    {
+        var dict = new Godot.Collections.Dictionary();
+        if (!IsOpen()) return dict;
+        lock (_lock)
+        {
+            foreach (var d in _charts.FindAll())
+            {
+                var fn = BsonConvert.GetStr(d, "_id");
+                if (fn.Length == 0) continue;
+                var aid = BsonConvert.GetStr(d, "album_id");
+                var sid = BsonConvert.GetStr(d, "song_id");
+                dict[fn] = string.Concat(aid, "|", sid);
+            }
+        }
+        return dict;
+    }
+
     public Godot.Collections.Array<string> GetChartsByStatus(string status)
     {
         if (!IsOpen()) return new Godot.Collections.Array<string>();
@@ -531,7 +554,7 @@ public partial class ChartDb : Node
     }
 
     /// <summary>
-    /// 返回专辑下所有歌曲的轻量投影（Array[Dictionary]）：{id, name, midi_count}。
+    /// 返回专辑下所有歌曲的轻量投影（Array[Dictionary]）：{id, name, midi_count, track}。
     /// 替代 DataMGR.get_songs_by_album 的 SongData 水合，SongView/DelView 直接消费。
     /// 注意：从 charts 集合直接推导（权威源），不依赖派生 songs 集合的 album_id——
     /// 同一 song_id 可能分属多个专辑（源数据里同名歌在不同专辑各有一条谱面），派生集合
@@ -559,8 +582,12 @@ public partial class ChartDb : Node
                     if (d.TryGetValue("song", out var sv) && sv.IsDocument)
                     {
                         var s = sv.AsDocument;
-                        if (s.TryGetValue("track", out var tv) && tv.IsInt64)
-                            track = tv.AsInt64;
+                        if (s.TryGetValue("track", out var tv))
+                        {
+                            if (tv.IsInt64) track = tv.AsInt64;
+                            else if (tv.IsInt32) track = tv.AsInt32;
+                            else if (tv.IsDouble) track = (long)Math.Round(tv.AsDouble);
+                        }
                     }
                     tracks[sid] = track;
 
@@ -571,6 +598,7 @@ public partial class ChartDb : Node
                     item["id"] = sid;
                     item["name"] = name;
                     item["midi_count"] = (long)0;
+                    item["track"] = track;
                     items[sid] = item;
                     dates[sid] = BsonConvert.GetStr(d, "uploaded_date");
                 }
@@ -1340,6 +1368,20 @@ public partial class ChartDb : Node
             var s = sdV.AsDocument;
             songId = BsonConvert.GetStr(s, "_id");
             songName = BsonConvert.GetStr(s, "name");
+            // song.track：强制为 long（int64），避免 JSON 写入 1.0 这种 float 导致类型不一致。
+            // GetSongItemsByAlbum 处也同步支持双类型读取，这里统一落盘为 long 即可保证一致。
+            if (s.TryGetValue("track", out var tv))
+            {
+                long trackVal = 0;
+                if (tv.IsInt64) trackVal = tv.AsInt64;
+                else if (tv.IsInt32) trackVal = tv.AsInt32;
+                else if (tv.IsDouble) trackVal = (long)Math.Round(tv.AsDouble);
+                s["track"] = trackVal;
+            }
+            else
+            {
+                s["track"] = (long)0;
+            }
         }
         string albumId = BsonConvert.GetStr(doc, "album_id");
         string albumName = BsonConvert.GetStr(doc, "album_name");

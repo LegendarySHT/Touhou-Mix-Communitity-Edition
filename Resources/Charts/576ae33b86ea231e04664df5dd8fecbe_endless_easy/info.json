@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "576ae33b86ea231e04664df5dd8fecbe",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4a7",
 		"name": "Endless",
-		"track": 19.0,
+		"track": 19,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-12-30T08:00:00.000Z",
 	"approvedDate": "1998-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 4.0,
-	"downCount": 1.0,
+	"downloadCount": 21,
+	"upCount": 4,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 152.0,
+	"trialCount": 152,
 	"coverHash": "8578b4eb27580acd4059b2855b988878"
 }

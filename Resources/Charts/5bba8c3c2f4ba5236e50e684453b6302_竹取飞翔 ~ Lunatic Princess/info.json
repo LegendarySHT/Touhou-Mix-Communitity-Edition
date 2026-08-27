@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "5bba8c3c2f4ba5236e50e684453b6302",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4df",
 		"name": "竹取飛翔　～ Lunatic Princess",
-		"track": 15.0,
+		"track": 15,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2004-08-15T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-05-22T22:39:47.913Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 881.0,
-	"upCount": 12.0,
-	"downCount": 3.0,
+	"downloadCount": 881,
+	"upCount": 12,
+	"downCount": 3,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 174.0,
+	"trialCount": 174,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

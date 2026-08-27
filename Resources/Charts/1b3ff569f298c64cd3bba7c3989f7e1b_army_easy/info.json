@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "1b3ff569f298c64cd3bba7c3989f7e1b",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab633",
 		"name": "天空アーミー",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2000-12-30T08:00:00.000Z",
 	"approvedDate": "2000-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 8.0,
-	"downCount": 3.0,
+	"downloadCount": 20,
+	"upCount": 8,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 407.0,
+	"trialCount": 407,
 	"coverHash": "9962b65bd4691adeeb83047cf3bd3426"
 }

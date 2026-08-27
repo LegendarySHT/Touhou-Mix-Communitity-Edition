@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "be7c5df91b8b2a52228902eb4b4dd6f2",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5bb",
 		"name": "黒い海に紅く　～ Legendary Fish",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-05-25T07:00:00.000Z",
 	"approvedDate": "2008-05-25T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 25.0,
-	"downCount": 2.0,
+	"downloadCount": 22,
+	"upCount": 25,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 512.0,
+	"trialCount": 512,
 	"coverHash": "cf5c0b1cdb611b7368c24bf2d310f1b2"
 }

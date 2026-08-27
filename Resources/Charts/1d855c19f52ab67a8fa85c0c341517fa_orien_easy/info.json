@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "1d855c19f52ab67a8fa85c0c341517fa",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4e8",
 		"name": "オリエンタルダークフライト",
-		"track": 3.0,
+		"track": 3,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2005-08-14T07:00:00.000Z",
 	"approvedDate": "2005-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 9.0,
-	"downCount": 2.0,
+	"downloadCount": 20,
+	"upCount": 9,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 530.0,
+	"trialCount": 530,
 	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "46097895ca32c02c5739890262e18d63",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5be",
 		"name": "幼心地の有頂天",
-		"track": 16.0,
+		"track": 16,
 		"author": "DMBN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2008-05-25T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-07T07:21:11.066Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 169.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 169,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 36.0,
+	"trialCount": 36,
 	"coverHash": "cf5c0b1cdb611b7368c24bf2d310f1b2"
 }

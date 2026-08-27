@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f6f73d59dd727d4361bccb252ddb5bd0",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191db8",
 		"name": "強欲な獣のメメント",
-		"track": 20.0,
+		"track": 20,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-30T04:06:28.774Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 232.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 232,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 67.0,
+	"trialCount": 67,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

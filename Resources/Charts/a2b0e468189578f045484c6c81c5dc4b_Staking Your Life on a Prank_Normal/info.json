@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "a2b0e468189578f045484c6c81c5dc4b",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5ea",
 		"name": "いたずらに命をかけて",
-		"track": 3.0,
+		"track": 3,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2010-08-14T07:00:03.000Z",
 	"approvedDate": "2010-08-14T07:00:03.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 22,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 161.0,
+	"trialCount": 161,
 	"coverHash": "9db88975759e326002d0615d2f7d5fd6"
 }

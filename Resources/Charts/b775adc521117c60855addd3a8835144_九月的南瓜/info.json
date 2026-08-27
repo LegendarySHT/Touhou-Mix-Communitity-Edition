@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "b775adc521117c60855addd3a8835144",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab557",
 		"name": "九月のパンプキン",
-		"track": 5.0,
+		"track": 5,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2015-08-14T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-03-06T06:46:49.852Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 167.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 167,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 56.0,
+	"trialCount": 56,
 	"coverHash": "3a62a8fee980003c3f889e5070dd8eb8"
 }

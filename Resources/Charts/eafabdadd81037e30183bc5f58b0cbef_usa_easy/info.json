@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "eafabdadd81037e30183bc5f58b0cbef",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4ef",
 		"name": "お宇佐さまの素い幡",
-		"track": 10.0,
+		"track": 10,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2005-08-14T07:00:00.000Z",
 	"approvedDate": "2005-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 10.0,
-	"downCount": 2.0,
+	"downloadCount": 23,
+	"upCount": 10,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 405.0,
+	"trialCount": 405,
 	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d4f483ed1ab7c5fbb5dc7104b939d2f3",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a15ebd04bfae42a36b4bd0",
 		"name": "开不尽的雪莲华",
-		"track": 6.0,
+		"track": 6,
 		"author": "Tokini11"
 	},
 	"album": {
 		"_id": "64c924b6541cdc68ba11a3e7",
 		"name": "東方雪蓮華 ～ Abyss Soul Lotus.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2023-08-01T15:28:54.263Z"
 	},
 	"uploadedDate": "2023-08-01T08:54:33.273Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 220.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 220,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 44.0,
+	"trialCount": 44,
 	"coverHash": "be37932ff783846b846cdd670814dd00"
 }

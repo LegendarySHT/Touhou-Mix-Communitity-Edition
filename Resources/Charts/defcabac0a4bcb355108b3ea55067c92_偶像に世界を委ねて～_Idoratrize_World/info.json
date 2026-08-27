@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "defcabac0a4bcb355108b3ea55067c92",
 	"uploaderId": "60649c4b12d862208dfdc774",
 	"uploaderName": "KaiIang",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab582",
 		"name": "偶像に世界を委ねて　～ Idoratrize World",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2019-08-12T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-12-31T02:58:18.474Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 1072.0,
-	"upCount": 16.0,
-	"downCount": 0.0,
+	"downloadCount": 1072,
+	"upCount": 16,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/febd9d5a7c7fde6bc5579b7576f40789.jpg",
-	"trialCount": 135.0,
+	"trialCount": 135,
 	"coverHash": "ffd24aec85de388005947cd3e4944684"
 }

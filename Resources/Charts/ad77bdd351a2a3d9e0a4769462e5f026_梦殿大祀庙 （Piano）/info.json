@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ad77bdd351a2a3d9e0a4769462e5f026",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab538",
 		"name": "夢殿大祀廟",
-		"track": 10.0,
+		"track": 10,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2011-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-23T08:17:11.468Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 196.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 196,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 7.0,
+	"trialCount": 7,
 	"coverHash": "4521910803028b07e68dd059c69b3051"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "789f1c3bd95fad120d98c359772f3a51",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a1657904bfae42a36b4c05",
 		"name": "スピリチュアルシーナリー ～ 千彩",
-		"track": 9.0,
+		"track": 9,
 		"author": "ISMTUD, Artifex"
 	},
 	"album": {
 		"_id": "65a1618a04bfae42a36b4bf2",
 		"name": "東方蒔夢原 ～ Champaign of Unfinished Dreams.",
-		"abbr": null,
+		"abbr": "",
 		"date": "2024-01-12T15:58:02.405Z"
 	},
 	"uploadedDate": "2023-12-20T02:51:15.834Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 100.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 100,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 21.0,
+	"trialCount": 21,
 	"coverHash": "82484e91a08206d3c35e1ef2d5de45e7"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "79e02d0af2cf291779d9cbe9ae8d31a1",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab572",
 		"name": "もうドアには入れない",
-		"track": 14.0,
+		"track": 14,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2017-08-11T07:00:01.000Z",
 	"approvedDate": "2017-08-11T07:00:01.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 27.0,
-	"upCount": 4.0,
-	"downCount": 1.0,
+	"downloadCount": 27,
+	"upCount": 4,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 131.0,
+	"trialCount": 131,
 	"coverHash": "2813ff97d8a237c9190da86652462c60"
 }

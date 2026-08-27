@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "6a682c789d8b7e2f2c4b9bf3ea6d276f",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab54d",
 		"name": "輝く針の小人族　～ Little Princess",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2013-08-12T07:00:02.000Z",
 	"approvedDate": "2013-08-12T07:00:02.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 26.0,
-	"upCount": 7.0,
-	"downCount": 3.0,
+	"downloadCount": 26,
+	"upCount": 7,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 335.0,
+	"trialCount": 335,
 	"coverHash": "d3ab244024949f7c779dbfb747cbaed0"
 }

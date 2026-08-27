@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "b59b3efd799087d517f71f384a2da580",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab44c",
 		"name": "星幽剣士",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-08-15T07:00:00.000Z",
 	"approvedDate": "1997-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 53.0,
-	"downCount": 6.0,
+	"downloadCount": 21,
+	"upCount": 53,
+	"downCount": 6,
 	"uploaderAvatarUrl": "",
-	"trialCount": 2335.0,
+	"trialCount": 2335,
 	"coverHash": "7d4c86970886460fe3d47f288612d712"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "02cbb0f569bf644541a18ba2dc2618a5",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab678",
 		"name": "夢と現の境界",
-		"track": 9.0,
+		"track": 9,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-12-30T08:00:00.000Z",
 	"approvedDate": "2004-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 25.0,
-	"upCount": 23.0,
-	"downCount": 2.0,
+	"downloadCount": 25,
+	"upCount": 23,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 619.0,
+	"trialCount": 619,
 	"coverHash": "400f68e57ea1aee70e3adb9bebc3a299"
 }

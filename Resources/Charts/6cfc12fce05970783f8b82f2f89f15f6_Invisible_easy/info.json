@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "6cfc12fce05970783f8b82f2f89f15f6",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4dc",
 		"name": "狂気の瞳　～ Invisible Full Moon",
-		"track": 12.0,
+		"track": 12,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-08-15T07:00:00.000Z",
 	"approvedDate": "2004-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 27.0,
-	"upCount": 119.0,
-	"downCount": 6.0,
+	"downloadCount": 27,
+	"upCount": 119,
+	"downCount": 6,
 	"uploaderAvatarUrl": "",
-	"trialCount": 4067.0,
+	"trialCount": 4067,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

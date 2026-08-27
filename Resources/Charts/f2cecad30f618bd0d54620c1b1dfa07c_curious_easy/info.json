@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "f2cecad30f618bd0d54620c1b1dfa07c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab64c",
 		"name": "キュアリアス上海古牌",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2009-03-08T08:00:00.000Z",
 	"approvedDate": "2009-03-08T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 35.0,
-	"downCount": 5.0,
+	"downloadCount": 23,
+	"upCount": 35,
+	"downCount": 5,
 	"uploaderAvatarUrl": "",
-	"trialCount": 796.0,
+	"trialCount": 796,
 	"coverHash": "8e814f064ec6db5b0dccbc02d7e92be9"
 }

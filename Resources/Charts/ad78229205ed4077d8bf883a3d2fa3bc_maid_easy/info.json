@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ad78229205ed4077d8bf883a3d2fa3bc",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab4b5",
 		"name": "メイドと血の懐中時計",
-		"track": 10.0,
+		"track": 10,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-08-11T07:00:00.000Z",
 	"approvedDate": "2002-08-11T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 37.0,
-	"upCount": 115.0,
-	"downCount": 9.0,
+	"downloadCount": 37,
+	"upCount": 115,
+	"downCount": 9,
 	"uploaderAvatarUrl": "",
-	"trialCount": 3695.0,
+	"trialCount": 3695,
 	"coverHash": "5fd01a8f459718d93167137dca76efa5"
 }

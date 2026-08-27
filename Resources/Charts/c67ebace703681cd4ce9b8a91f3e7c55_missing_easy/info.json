@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "c67ebace703681cd4ce9b8a91f3e7c55",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab598",
 		"name": "御伽の国の鬼が島　～ Missing Power",
-		"track": 18.0,
+		"track": 18,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-12-30T08:00:00.000Z",
 	"approvedDate": "2004-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 9.0,
-	"downCount": 1.0,
+	"downloadCount": 22,
+	"upCount": 9,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 525.0,
+	"trialCount": 525,
 	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
 }

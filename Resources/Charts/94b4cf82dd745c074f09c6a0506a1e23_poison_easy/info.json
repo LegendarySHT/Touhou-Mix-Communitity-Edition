@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "94b4cf82dd745c074f09c6a0506a1e23",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4f1",
 		"name": "ポイズンボディ　～ Forsaken Doll",
-		"track": 12.0,
+		"track": 12,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2005-08-14T07:00:00.000Z",
 	"approvedDate": "2005-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 23.0,
-	"upCount": 12.0,
-	"downCount": 0.0,
+	"downloadCount": 23,
+	"upCount": 12,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 430.0,
+	"trialCount": 430,
 	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
 }

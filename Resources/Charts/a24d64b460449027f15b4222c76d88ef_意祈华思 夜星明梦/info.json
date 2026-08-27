@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "a24d64b460449027f15b4222c76d88ef",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -19,12 +19,12 @@
 		"date": "2020-04-16T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-07-22T08:34:22.678Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 119.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 119,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 19.0,
+	"trialCount": 19,
 	"coverHash": "71536570719a9e4a3e9c91cc1ed488af"
 }

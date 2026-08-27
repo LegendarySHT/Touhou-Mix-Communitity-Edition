@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "a7e9503837c657990f52b4bfa523fa06",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191da3",
 		"name": "嵐の後の日曜日",
-		"track": 16.0,
+		"track": 16,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2023-12-28T09:51:11.149Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 172.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 172,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 8.0,
+	"trialCount": 8,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

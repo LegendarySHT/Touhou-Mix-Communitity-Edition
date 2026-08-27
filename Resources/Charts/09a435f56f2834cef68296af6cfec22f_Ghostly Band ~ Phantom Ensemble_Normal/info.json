@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "09a435f56f2834cef68296af6cfec22f",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4c5",
 		"name": "幽霊楽団　～ Phantom Ensemble",
-		"track": 9.0,
+		"track": 9,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2003-08-17T07:00:05.000Z",
 	"approvedDate": "2003-08-17T07:00:05.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 32.0,
-	"upCount": 17.0,
-	"downCount": 0.0,
+	"downloadCount": 32,
+	"upCount": 17,
+	"downCount": 0,
 	"uploaderAvatarUrl": "",
-	"trialCount": 586.0,
+	"trialCount": 586,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "dd401d6364fe65bf6bfd073d9d035a87",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "663e18bb04bfae42a36d9805",
 		"name": "七夕坂に朝が来る",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
 		"_id": "663e181c04bfae42a36d97fb",
 		"name": "七夕坂夢幻能　～ Taboo Japan Disentanglement",
-		"abbr": null,
+		"abbr": "",
 		"date": "2024-05-10T12:50:36.422Z"
 	},
 	"uploadedDate": "2024-05-09T09:26:22.041Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 214.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 214,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 29.0,
+	"trialCount": 29,
 	"coverHash": "8edb9c5f84a95b26059a0d3b0a32bea7"
 }

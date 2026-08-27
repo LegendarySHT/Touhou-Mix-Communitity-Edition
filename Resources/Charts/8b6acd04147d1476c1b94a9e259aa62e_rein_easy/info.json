@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "8b6acd04147d1476c1b94a9e259aa62e",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a484679d16d79ab464",
 		"name": "Reincarnation",
-		"track": 4.0,
+		"track": 4,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1997-12-29T08:00:00.000Z",
 	"approvedDate": "1997-12-29T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 43.0,
-	"downCount": 7.0,
+	"downloadCount": 20,
+	"upCount": 43,
+	"downCount": 7,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1631.0,
+	"trialCount": 1631,
 	"coverHash": "2ecdd318637d9e41eaf61e6ad9e82fe6"
 }

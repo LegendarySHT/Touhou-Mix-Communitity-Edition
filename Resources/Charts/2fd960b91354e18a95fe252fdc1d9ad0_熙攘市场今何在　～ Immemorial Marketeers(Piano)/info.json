@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "2fd960b91354e18a95fe252fdc1d9ad0",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191da0",
 		"name": "あの賑やかな市場は今どこに　～ Immemorial Marketeers",
-		"track": 13.0,
+		"track": 13,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2023-12-28T09:07:51.276Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 266.0,
-	"upCount": 16.0,
-	"downCount": 0.0,
+	"downloadCount": 266,
+	"upCount": 16,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 237.0,
+	"trialCount": 237,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

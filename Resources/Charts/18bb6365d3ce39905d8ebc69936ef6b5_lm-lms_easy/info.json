@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "18bb6365d3ce39905d8ebc69936ef6b5",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a1147d2460b9425d191dbe",
 		"name": "恋色マジック→マスタースパーク",
-		"track": 2.0,
+		"track": 2,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2002-10-14T07:00:00.000Z",
 	"approvedDate": "2002-10-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 42.0,
-	"upCount": 91.0,
-	"downCount": 4.0,
+	"downloadCount": 42,
+	"upCount": 91,
+	"downCount": 4,
 	"uploaderAvatarUrl": "",
-	"trialCount": 3386.0,
+	"trialCount": 3386,
 	"coverHash": "11f08912ca5e75592fd65372b99bf3a3"
 }

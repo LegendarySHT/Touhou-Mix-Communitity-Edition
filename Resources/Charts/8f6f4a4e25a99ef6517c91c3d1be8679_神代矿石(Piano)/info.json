@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "8f6f4a4e25a99ef6517c91c3d1be8679",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191d9c",
 		"name": "神代鉱石",
-		"track": 9.0,
+		"track": 9,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2023-12-27T10:11:30.933Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 174.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 174,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 38.0,
+	"trialCount": 38,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

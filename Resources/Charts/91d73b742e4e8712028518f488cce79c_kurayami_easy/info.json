@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "91d73b742e4e8712028518f488cce79c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab50c",
 		"name": "暗闇の風穴",
-		"track": 2.0,
+		"track": 2,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-08-16T07:00:00.000Z",
 	"approvedDate": "2008-08-16T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 19.0,
-	"upCount": 19.0,
-	"downCount": 1.0,
+	"downloadCount": 19,
+	"upCount": 19,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 825.0,
+	"trialCount": 825,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

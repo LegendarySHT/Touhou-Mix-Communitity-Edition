@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ab73d903f80b72b4272218372c1b654d",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191d9e",
 		"name": "星降る天魔の山",
-		"track": 11.0,
+		"track": 11,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2023-12-28T08:35:43.373Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 191.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 191,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 88.0,
+	"trialCount": 88,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

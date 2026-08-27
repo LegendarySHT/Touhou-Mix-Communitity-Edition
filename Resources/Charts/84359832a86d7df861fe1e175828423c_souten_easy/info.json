@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "84359832a86d7df861fe1e175828423c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5ba",
 		"name": "雲外蒼天",
-		"track": 12.0,
+		"track": 12,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-05-25T07:00:00.000Z",
 	"approvedDate": "2008-05-25T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 9.0,
-	"downCount": 1.0,
+	"downloadCount": 24,
+	"upCount": 9,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 508.0,
+	"trialCount": 508,
 	"coverHash": "cf5c0b1cdb611b7368c24bf2d310f1b2"
 }

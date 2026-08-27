@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "6db8bff20d8629f8cb92060dda5e84dd",
 	"uploaderId": "5eb4295cc6ba816c345a47b1",
 	"uploaderName": "already to get",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a2007304bfae42a36b4e37",
 		"name": "風神少女",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2005-08-11T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-10-24T12:35:42.132Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 911.0,
-	"upCount": 2.0,
-	"downCount": 1.0,
+	"downloadCount": 911,
+	"upCount": 2,
+	"downCount": 1,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/8a00cc4dea68389548649ef56920156a.jpg",
-	"trialCount": 76.0,
+	"trialCount": 76,
 	"coverHash": "f2968412c281428486f9824bb565ac88"
 }

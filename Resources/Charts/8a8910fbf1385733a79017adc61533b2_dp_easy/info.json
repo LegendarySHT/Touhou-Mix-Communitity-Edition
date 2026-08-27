@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "8a8910fbf1385733a79017adc61533b2",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a584679d16d79ab490",
 		"name": "Dreamy pilot",
-		"track": 24.0,
+		"track": 24,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "1998-08-14T07:00:00.000Z",
 	"approvedDate": "1998-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 19.0,
-	"upCount": 11.0,
-	"downCount": 1.0,
+	"downloadCount": 19,
+	"upCount": 11,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 654.0,
+	"trialCount": 654,
 	"coverHash": "007ad004f4cd35703085162abdb5a514"
 }

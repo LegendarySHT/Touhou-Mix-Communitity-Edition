@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "13f5de2301a004ece37b010d71b57969",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191db6",
 		"name": "トータスドラゴン　～ 幸運と不運",
-		"track": 18.0,
+		"track": 18,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-30T03:33:37.551Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 221.0,
-	"upCount": 5.0,
-	"downCount": 0.0,
+	"downloadCount": 221,
+	"upCount": 5,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 64.0,
+	"trialCount": 64,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

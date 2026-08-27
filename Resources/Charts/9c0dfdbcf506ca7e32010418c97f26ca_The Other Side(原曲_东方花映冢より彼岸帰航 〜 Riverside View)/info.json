@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "9c0dfdbcf506ca7e32010418c97f26ca",
 	"uploaderId": "5e599f7fc25a1d16efc1e9b3",
 	"uploaderName": "毛玉",
@@ -19,12 +19,12 @@
 		"date": ""
 	},
 	"uploadedDate": "2020-08-22T06:53:34.272Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 702.0,
-	"upCount": 6.0,
-	"downCount": 0.0,
+	"downloadCount": 702,
+	"upCount": 6,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/914e119dea4d38dcedd3c20efea09ab6.jpg",
-	"trialCount": 57.0,
+	"trialCount": 57,
 	"coverHash": "b7ff6caf3df4c20dde1b72acf7498f5f"
 }

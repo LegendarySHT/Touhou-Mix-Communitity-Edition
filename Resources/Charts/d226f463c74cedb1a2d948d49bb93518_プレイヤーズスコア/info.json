@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d226f463c74cedb1a2d948d49bb93518",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab50a",
 		"name": "プレイヤーズスコア",
-		"track": 18.0,
+		"track": 18,
 		"author": "arplane"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2007-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2025-09-27T06:54:40.312Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 229.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 229,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 3.0,
+	"trialCount": 3,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

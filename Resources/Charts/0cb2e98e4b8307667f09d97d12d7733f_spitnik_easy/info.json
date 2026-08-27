@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "0cb2e98e4b8307667f09d97d12d7733f",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab634",
 		"name": "スプートニク幻夜",
-		"track": 8.0,
+		"track": 8,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2000-12-30T08:00:00.000Z",
 	"approvedDate": "2000-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 21.0,
-	"upCount": 10.0,
-	"downCount": 2.0,
+	"downloadCount": 21,
+	"upCount": 10,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 267.0,
+	"trialCount": 267,
 	"coverHash": "9962b65bd4691adeeb83047cf3bd3426"
 }

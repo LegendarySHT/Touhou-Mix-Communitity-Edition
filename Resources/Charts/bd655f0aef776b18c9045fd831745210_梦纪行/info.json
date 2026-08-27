@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "bd655f0aef776b18c9045fd831745210",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a1699e04bfae42a36b4c1b",
 		"name": "梦纪行",
-		"track": 1.0,
+		"track": 1,
 		"author": ""
 	},
 	"album": {
 		"_id": "65a1687404bfae42a36b4c1a",
 		"name": "明京夢紀行~A Journey of Reminiscences",
-		"abbr": null,
+		"abbr": "",
 		"date": "2024-01-12T16:27:32.552Z"
 	},
 	"uploadedDate": "2025-04-27T06:57:46.278Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 98.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 98,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 2.0,
+	"trialCount": 2,
 	"coverHash": "20049882cf14eab86398e54b78ecf8a0"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "3a893394b5531ea02b48932e883fa9df",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4f9",
 		"name": "封印されし神々",
-		"track": 1.0,
+		"track": 1,
 		"author": "arplane"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2007-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2022-01-24T08:39:40.985Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 619.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 619,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 40.0,
+	"trialCount": 40,
 	"coverHash": "b91a5e84a0815f6d7be06529690ef353"
 }

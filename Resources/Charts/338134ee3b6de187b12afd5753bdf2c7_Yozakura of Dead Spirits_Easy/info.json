@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "338134ee3b6de187b12afd5753bdf2c7",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab530",
 		"name": "死霊の夜桜",
-		"track": 2.0,
+		"track": 2,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2011-08-13T07:00:00.000Z",
 	"approvedDate": "2011-08-13T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 20.0,
-	"downCount": 1.0,
+	"downloadCount": 20,
+	"upCount": 20,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 719.0,
+	"trialCount": 719,
 	"coverHash": "4521910803028b07e68dd059c69b3051"
 }

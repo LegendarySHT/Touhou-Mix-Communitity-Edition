@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "a98c70cfc2886c9f4b13d9714a977bb1",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4f3",
 		"name": "彼岸帰航　～ Riverside View",
-		"track": 14.0,
+		"track": 14,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2005-08-14T07:00:00.000Z",
 	"approvedDate": "2005-08-14T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 25.0,
-	"upCount": 21.0,
-	"downCount": 2.0,
+	"downloadCount": 25,
+	"upCount": 21,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 966.0,
+	"trialCount": 966,
 	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
 }

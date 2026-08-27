@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "6f7082535dea88e94d054f210bc2faf9",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab517",
 		"name": "霊知の太陽信仰　～ Nuclear Fusion",
-		"track": 13.0,
+		"track": 13,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2008-08-16T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-03-12T13:41:50.755Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 983.0,
-	"upCount": 7.0,
-	"downCount": 1.0,
+	"downloadCount": 983,
+	"upCount": 7,
+	"downCount": 1,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 287.0,
+	"trialCount": 287,
 	"coverHash": "625cb9e3c514e2918eb88791474682df"
 }

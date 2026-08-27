@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "15ff6531803b91ec9bb8de120853a0ac",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191dab",
 		"name": "吸血怪獣チュパカブラ",
-		"track": 7.0,
+		"track": 7,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-26T03:24:53.972Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 239.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 239,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 52.0,
+	"trialCount": 52,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

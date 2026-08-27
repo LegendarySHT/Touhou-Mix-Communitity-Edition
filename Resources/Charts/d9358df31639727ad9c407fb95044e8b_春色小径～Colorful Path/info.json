@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d9358df31639727ad9c407fb95044e8b",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4e7",
 		"name": "春色小径　～ Colorful Path",
-		"track": 2.0,
+		"track": 2,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2005-08-14T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-07-29T13:44:33.564Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 828.0,
-	"upCount": 10.0,
-	"downCount": 0.0,
+	"downloadCount": 828,
+	"upCount": 10,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 114.0,
+	"trialCount": 114,
 	"coverHash": "3a688bb1173de9ec08ace9012cec980c"
 }

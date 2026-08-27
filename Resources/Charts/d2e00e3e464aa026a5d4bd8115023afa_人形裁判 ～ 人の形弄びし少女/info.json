@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "d2e00e3e464aa026a5d4bd8115023afa",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4c3",
 		"name": "人形裁判　～ 人の形弄びし少女",
-		"track": 7.0,
+		"track": 7,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2003-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-04-12T02:20:36.584Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 514.0,
-	"upCount": 3.0,
-	"downCount": 2.0,
+	"downloadCount": 514,
+	"upCount": 3,
+	"downCount": 2,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 131.0,
+	"trialCount": 131,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

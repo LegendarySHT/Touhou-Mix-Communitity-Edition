@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "78ce7fb4c312ea1f489f391198e62dbb",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114772460b9425d191d96",
 		"name": "大吉キトゥン",
-		"track": 3.0,
+		"track": 3,
 		"author": "ZUN"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2021-05-04T07:00:00.000Z"
 	},
 	"uploadedDate": "2021-03-28T11:29:23.156Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 1545.0,
-	"upCount": 30.0,
-	"downCount": 6.0,
+	"downloadCount": 1545,
+	"upCount": 30,
+	"downCount": 6,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 831.0,
+	"trialCount": 831,
 	"coverHash": "71dc36239bf0269dd291014695114ba2"
 }

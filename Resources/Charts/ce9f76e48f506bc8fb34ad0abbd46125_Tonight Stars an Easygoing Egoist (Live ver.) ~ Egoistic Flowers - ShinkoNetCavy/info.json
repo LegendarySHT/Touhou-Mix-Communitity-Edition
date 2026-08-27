@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ce9f76e48f506bc8fb34ad0abbd46125",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a1fbdb04bfae42a36b4ddf",
 		"name": "今宵は飄逸なエゴイスト(Live ver)　～ Egoistic Flowers.",
-		"track": 37.0,
+		"track": 37,
 		"author": "上海アリス幻樂団/黄昏フロンテぃア"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2017-12-29T08:00:00.000Z"
 	},
 	"uploadedDate": "2020-03-31T01:20:55.316Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 613.0,
-	"upCount": 15.0,
-	"downCount": 0.0,
+	"downloadCount": 613,
+	"upCount": 15,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 57.0,
+	"trialCount": 57,
 	"coverHash": "e046cdc3f4c7fa40ed771ecd095baa46"
 }

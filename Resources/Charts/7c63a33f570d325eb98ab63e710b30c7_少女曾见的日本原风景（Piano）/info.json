@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "7c63a33f570d325eb98ab63e710b30c7",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191dae",
 		"name": "信仰は儚き人間の為に",
-		"track": 10.0,
+		"track": 10,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-28T03:14:31.191Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 272.0,
-	"upCount": 6.0,
-	"downCount": 0.0,
+	"downloadCount": 272,
+	"upCount": 6,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 94.0,
+	"trialCount": 94,
 	"coverHash": "c9047f65983611d60cf61e5e9625fe11"
 }

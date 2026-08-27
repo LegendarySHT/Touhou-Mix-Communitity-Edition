@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "ad4d45dab872bd81de60407fb5d4fc99",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5bf",
 		"name": "暮色蒼然",
-		"track": 17.0,
+		"track": 17,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-05-25T07:00:00.000Z",
 	"approvedDate": "2008-05-25T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 20.0,
-	"upCount": 12.0,
-	"downCount": 2.0,
+	"downloadCount": 20,
+	"upCount": 12,
+	"downCount": 2,
 	"uploaderAvatarUrl": "",
-	"trialCount": 624.0,
+	"trialCount": 624,
 	"coverHash": "cf5c0b1cdb611b7368c24bf2d310f1b2"
 }

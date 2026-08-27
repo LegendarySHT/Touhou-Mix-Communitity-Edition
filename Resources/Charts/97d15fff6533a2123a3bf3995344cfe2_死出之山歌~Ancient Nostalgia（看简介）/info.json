@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "97d15fff6533a2123a3bf3995344cfe2",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,22 +9,22 @@
 	"song": {
 		"_id": "65a16a2404bfae42a36b4c20",
 		"name": "死出之山歌~Ancient Nostalgia.",
-		"track": 4.0,
+		"track": 4,
 		"author": "FanTouhouMusic"
 	},
 	"album": {
 		"_id": "65a1687404bfae42a36b4c1a",
 		"name": "明京夢紀行~A Journey of Reminiscences",
-		"abbr": null,
+		"abbr": "",
 		"date": "2024-01-12T16:27:32.552Z"
 	},
 	"uploadedDate": "2024-01-03T02:52:39.200Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 92.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 92,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 10.0,
+	"trialCount": 10,
 	"coverHash": "20049882cf14eab86398e54b78ecf8a0"
 }

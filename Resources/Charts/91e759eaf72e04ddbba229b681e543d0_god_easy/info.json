@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "91e759eaf72e04ddbba229b681e543d0",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab64b",
 		"name": "AN ORDEAL FROM GOD",
-		"track": 1.0,
+		"track": 1,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2008-05-25T07:00:00.000Z",
 	"approvedDate": "2008-05-25T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 24.0,
-	"upCount": 21.0,
-	"downCount": 3.0,
+	"downloadCount": 24,
+	"upCount": 21,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 896.0,
+	"trialCount": 896,
 	"coverHash": "073e69c58bed9e1407691a72185a4ccb"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "7442fc56eeb7eeb58b8e95f3df44e550",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a984679d16d79ab672",
 		"name": "上海紅茶館　～ Chinese Tea",
-		"track": 3.0,
+		"track": 3,
 		"author": "arplane"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2004-12-30T08:00:00.000Z"
 	},
 	"uploadedDate": "2025-09-26T06:44:35.876Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 370.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 370,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 11.0,
+	"trialCount": 11,
 	"coverHash": "400f68e57ea1aee70e3adb9bebc3a299"
 }

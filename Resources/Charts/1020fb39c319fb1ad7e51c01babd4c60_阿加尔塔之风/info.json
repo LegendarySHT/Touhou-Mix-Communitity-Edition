@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "1020fb39c319fb1ad7e51c01babd4c60",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0aa84679d16d79ab6a1",
 		"name": "アガルタの風",
-		"track": 5.0,
+		"track": 5,
 		"author": "arplane"
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2012-08-11T07:00:00.000Z"
 	},
 	"uploadedDate": "2025-10-01T02:37:56.584Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 244.0,
-	"upCount": 0.0,
-	"downCount": 0.0,
+	"downloadCount": 244,
+	"upCount": 0,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 3.0,
+	"trialCount": 3,
 	"coverHash": "8a63d77217b22244b58581588b4a3919"
 }

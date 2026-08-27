@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "c885f08b1299bb227b747cda36542575",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191dad",
 		"name": "逸脱者達の無礙光　～ Kingdam of Nothingness",
-		"track": 9.0,
+		"track": 9,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-26T03:49:36.250Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 284.0,
-	"upCount": 4.0,
-	"downCount": 0.0,
+	"downloadCount": 284,
+	"upCount": 4,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 59.0,
+	"trialCount": 59,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

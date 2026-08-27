@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "e8e6d7bbeca530bc21d23ba5df0e8b7f",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4d4",
 		"name": "夜雀の歌声　～ Night Bird",
-		"track": 4.0,
+		"track": 4,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-08-15T07:00:00.000Z",
 	"approvedDate": "2004-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 26.0,
-	"upCount": 40.0,
-	"downCount": 3.0,
+	"downloadCount": 26,
+	"upCount": 40,
+	"downCount": 3,
 	"uploaderAvatarUrl": "",
-	"trialCount": 1468.0,
+	"trialCount": 1468,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }

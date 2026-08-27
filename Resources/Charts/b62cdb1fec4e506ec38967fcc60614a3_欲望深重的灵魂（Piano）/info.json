@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "b62cdb1fec4e506ec38967fcc60614a3",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab52f",
 		"name": "欲深き霊魂",
-		"track": 1.0,
+		"track": 1,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2011-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-09T07:07:49.423Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 152.0,
-	"upCount": 1.0,
-	"downCount": 0.0,
+	"downloadCount": 152,
+	"upCount": 1,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 24.0,
+	"trialCount": 24,
 	"coverHash": "4521910803028b07e68dd059c69b3051"
 }

@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "fba41a35e5df36c7a93bbe0362017bdc",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a784679d16d79ab53a",
 		"name": "小さな欲望の星空",
-		"track": 12.0,
+		"track": 12,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2011-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-04-30T07:48:08.892Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 202.0,
-	"upCount": 2.0,
-	"downCount": 0.0,
+	"downloadCount": 202,
+	"upCount": 2,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 9.0,
+	"trialCount": 9,
 	"coverHash": "4521910803028b07e68dd059c69b3051"
 }

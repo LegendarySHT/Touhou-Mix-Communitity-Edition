@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "25d0e1325fd4723b7e790c47943a715c",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a884679d16d79ab5a6",
 		"name": "戦迅",
-		"track": 32.0,
+		"track": 32,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-12-30T08:00:00.000Z",
 	"approvedDate": "2004-12-30T08:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 22.0,
-	"upCount": 6.0,
-	"downCount": 1.0,
+	"downloadCount": 22,
+	"upCount": 6,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 392.0,
+	"trialCount": 392,
 	"coverHash": "b1b4348368d475e5e62e6fb4b38ed402"
 }

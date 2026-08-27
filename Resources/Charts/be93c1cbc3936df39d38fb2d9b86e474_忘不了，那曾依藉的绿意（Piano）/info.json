@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "be93c1cbc3936df39d38fb2d9b86e474",
 	"uploaderId": "639358aa4c2c822decc671e1",
 	"uploaderName": "Legendary_SHT",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "65a114782460b9425d191db2",
 		"name": "忘れがたき、よすがの緑",
-		"track": 14.0,
+		"track": 14,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2023-08-13T07:00:00.000Z"
 	},
 	"uploadedDate": "2024-01-29T08:52:30.583Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 209.0,
-	"upCount": 3.0,
-	"downCount": 0.0,
+	"downloadCount": 209,
+	"upCount": 3,
+	"downCount": 0,
 	"uploaderAvatarUrl": "https://storage.googleapis.com/microvolt-bucket-1/imgs/ea393e5e055ddbb50d47ffa0371504ff.jpg",
-	"trialCount": 36.0,
+	"trialCount": 36,
 	"coverHash": "3caeb2a039e159399504995880d87bb6"
 }

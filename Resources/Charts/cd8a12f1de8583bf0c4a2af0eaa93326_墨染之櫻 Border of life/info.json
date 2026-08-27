@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "cd8a12f1de8583bf0c4a2af0eaa93326",
 	"uploaderId": "5e59a69dc25a1d16efc1e9b4",
 	"uploaderName": "Yang_",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4c9",
 		"name": "幽雅に咲かせ、墨染の桜　～ Border of Life",
-		"track": 13.0,
+		"track": 13,
 		"author": ""
 	},
 	"album": {
@@ -19,12 +19,12 @@
 		"date": "2003-08-17T07:00:00.000Z"
 	},
 	"uploadedDate": "2020-05-14T04:54:16.217Z",
-	"approvedDate": null,
+	"approvedDate": "",
 	"status": "INCLUDED",
-	"downloadCount": 609.0,
-	"upCount": 3.0,
-	"downCount": 2.0,
+	"downloadCount": 609,
+	"upCount": 3,
+	"downCount": 2,
 	"uploaderAvatarUrl": "https://storage.thmix.org/imgs/a786359e5b0136eca0d59ab553de8949.jpg",
-	"trialCount": 117.0,
+	"trialCount": 117,
 	"coverHash": "37512d4bc1c1d7e113f98cb36b4e343d"
 }

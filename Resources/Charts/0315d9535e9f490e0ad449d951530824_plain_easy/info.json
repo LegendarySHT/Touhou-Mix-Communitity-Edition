@@ -1,4 +1,4 @@
-{
+﻿{
 	"hash": "0315d9535e9f490e0ad449d951530824",
 	"uploaderId": "5c9721a02d2ced64fbd027a4",
 	"uploaderName": "System",
@@ -9,7 +9,7 @@
 	"song": {
 		"_id": "5e84f0a684679d16d79ab4d7",
 		"name": "プレインエイジア",
-		"track": 7.0,
+		"track": 7,
 		"author": "ZUN"
 	},
 	"album": {
@@ -21,10 +21,10 @@
 	"uploadedDate": "2004-08-15T07:00:00.000Z",
 	"approvedDate": "2004-08-15T07:00:00.000Z",
 	"status": "INCLUDED",
-	"downloadCount": 25.0,
-	"upCount": 12.0,
-	"downCount": 1.0,
+	"downloadCount": 25,
+	"upCount": 12,
+	"downCount": 1,
 	"uploaderAvatarUrl": "",
-	"trialCount": 903.0,
+	"trialCount": 903,
 	"coverHash": "2769890f8d849e3df18bc185024bcef0"
 }
