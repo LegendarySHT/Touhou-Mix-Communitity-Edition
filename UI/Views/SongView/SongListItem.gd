@@ -21,13 +21,13 @@ func _ready() -> void:
 	cover_texture = $HBoxC/PN/cover
 	await _init_fin
 
-	var name_str: String = String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown"
+	var name_str: String =" %s" % String(item_dict.get("name", "")) if item_dict.get("name", "") else "Unknown"
 	# track 兼容 int/float（旧 JSON 可能被存为 1.0，roundi 确保 0.6→1、1.0→1 一致）
 	var track_raw = item_dict.get("track", 0)
 	var track_val: int = track_raw if typeof(track_raw) == TYPE_INT else int(roundf(float(track_raw)))
 	if track_val != 0:
-		name_str = "%02d: %s" % [track_val, name_str]
-	song_name_label.set_scroll_text(" %s" % name_str)
+		name_str = "%02d:%s" % [track_val, name_str]
+	song_name_label.set_scroll_text(name_str)
 	midi_count_label.text = "%d" % item_dict.get("midi_count", 0)
 
 	# 直接开始加载封面（不等列表构建完毕）
