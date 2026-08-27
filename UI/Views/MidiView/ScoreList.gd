@@ -211,9 +211,11 @@ func _show_message(msg: String) -> void:
 	_pending_message = msg
 	if is_visible_in_tree():
 		_apply_message()
-	elif _fail_prev_tab >= 0:
-		# FailMessage 当前仍由本列表占用时，ScoreList 不可见也要立即更新文案。
-		_apply_message()
+	else:
+		# FailMessage 当前仍由本列表占用（可见）时，ScoreList 不可见也要立即更新文案。
+		var fail := get_node_or_null("../../FailMessage") as Label
+		if fail != null and fail.visible:
+			_apply_message()
 
 ## 把待显示消息写入 FailMessage（显示时 TabContainer 会切到该页）
 func _apply_message() -> void:
