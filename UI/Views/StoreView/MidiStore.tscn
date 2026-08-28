@@ -1,8 +1,6 @@
 [gd_scene format=3 uid="uid://dvvggbuqsfxbw"]
 
 [ext_resource type="Script" uid="uid://dbgwcersgki3c" path="res://UI/Views/StoreView/StoreView.gd" id="1_77ghf"]
-[ext_resource type="Texture2D" uid="uid://hfrabpihanry" path="res://Resources/icon/上传时间.png" id="3_u7c36"]
-[ext_resource type="Texture2D" uid="uid://cs25cbu1falgn" path="res://Resources/icon/midi时长.png" id="4_6ial6"]
 [ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="4_t7rtt"]
 [ext_resource type="Texture2D" uid="uid://68fry5jr6m8l" path="res://Resources/icon/icon_set2.png" id="5_7hdap"]
 
@@ -28,6 +26,22 @@ gradient = SubResource("Gradient_2hjjb")
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_77ghf"]
 texture = SubResource("GradientTexture2D_aexbj")
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7hdap"]
+atlas = ExtResource("5_7hdap")
+region = Rect2(240, 320, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bbxvy"]
+atlas = ExtResource("5_7hdap")
+region = Rect2(0, 320, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_77y4q"]
+atlas = ExtResource("5_7hdap")
+region = Rect2(80, 320, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ay6ya"]
+atlas = ExtResource("5_7hdap")
+region = Rect2(160, 320, 80, 80)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_hhcpw"]
 atlas = ExtResource("4_t7rtt")
@@ -178,17 +192,25 @@ theme_override_constants/separation = 30
 [node name="FilterBtn" type="OptionButton" parent="TopBar/C" unique_id=685507467]
 layout_mode = 2
 size_flags_horizontal = 3
+offset_transform_enabled = true
+offset_transform_position = Vector2(25, 0)
 theme_override_constants/h_separation = 30
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 36
 flat = true
 selected = 0
-item_count = 2
+item_count = 4
 popup/item_0/text = "上传时间"
-popup/item_0/icon = ExtResource("3_u7c36")
+popup/item_0/icon = SubResource("AtlasTexture_7hdap")
 popup/item_0/id = 0
-popup/item_1/text = "歌曲时长"
-popup/item_1/icon = ExtResource("4_6ial6")
+popup/item_1/text = "下载数"
+popup/item_1/icon = SubResource("AtlasTexture_bbxvy")
 popup/item_1/id = 1
+popup/item_2/text = "游玩数"
+popup/item_2/icon = SubResource("AtlasTexture_77y4q")
+popup/item_2/id = 2
+popup/item_3/text = "点赞数"
+popup/item_3/icon = SubResource("AtlasTexture_ay6ya")
+popup/item_3/id = 3
 
 [node name="Search" type="MarginContainer" parent="TopBar/C" unique_id=802377483]
 custom_minimum_size = Vector2(800, 0)

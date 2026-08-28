@@ -20,9 +20,12 @@ var _is_loading: bool = false
 
 # 搜索 / 排序状态
 var _current_search: String = ""
-var _current_sort: String = "uploaded_at"   # uploaded_at | duration
+var _current_sort: String = "uploaded_at"   # uploaded_at | download_count | play_count | like_count
 var _current_order: String = "desc"          # asc | desc
 var _search_debounce: SceneTreeTimer = null
+
+# FilterBtn 选项 → 后端 sort 字段名映射
+const _SORT_FIELDS := ["uploaded_at", "download_count", "play_count", "like_count"]
 
 ## 提示信息 Label（离线/连接失败/加载失败时显示在内容区域中央，替代本地示例数据）
 var _message_label: Label = null
@@ -389,9 +392,10 @@ func _debounced_reload() -> void:
 	_current_page = 1
 	_load_remote_charts()
 
-## 排序字段切换（FilterBtn OptionButton: 0=上传时间, 1=歌曲时长）
+## 排序字段切换（FilterBtn OptionButton: 0=上传时间, 1=下载数, 2=游玩数, 3=点赞数）
 func _on_filter_selected(index: int) -> void:
-	_current_sort = "duration" if index == 1 else "uploaded_at"
+	var idx := clampi(index, 0, _SORT_FIELDS.size() - 1)
+	_current_sort = _SORT_FIELDS[idx]
 	_current_page = 1
 	_load_remote_charts()
 
