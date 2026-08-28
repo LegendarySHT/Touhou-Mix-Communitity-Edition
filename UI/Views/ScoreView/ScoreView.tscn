@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://bxkgbenh2ja4h" path="res://Resources/Covers/423be8d161a8a972c9014454921864a9.jpg" id="4_iqsw5"]
 [ext_resource type="Texture2D" uid="uid://cpog56bd63i4e" path="res://Resources/icon/NoAvatar.jpg" id="5_0sw27"]
 [ext_resource type="Script" uid="uid://dpn6fchjbt3b8" path="res://UI/Components/SkewArea.gd" id="5_skew"]
+[ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="5_y1cb1"]
 [ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="6_iqsw5"]
 
 [sub_resource type="Gradient" id="Gradient_01xql"]
@@ -298,7 +299,7 @@ expand_mode = 5
 stretch_mode = 6
 
 [node name="Info" type="VBoxContainer" parent="Bottom/skew/C/SongInfo" unique_id=1352108271]
-custom_minimum_size = Vector2(490, 0)
+custom_minimum_size = Vector2(460, 0)
 layout_mode = 2
 size_flags_vertical = 4
 
@@ -309,7 +310,9 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "AlbumName"
 vertical_alignment = 1
-autowrap_mode = 3
+script = ExtResource("5_y1cb1")
+outline_size = 2
+end_padding = 0.0
 
 [node name="song" type="Label" parent="Bottom/skew/C/SongInfo/Info" unique_id=639353669]
 custom_minimum_size = Vector2(400, 0)
@@ -318,7 +321,9 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "SongName"
 vertical_alignment = 1
-autowrap_mode = 3
+script = ExtResource("5_y1cb1")
+outline_size = 2
+end_padding = 0.0
 
 [node name="HSeparator" type="HSeparator" parent="Bottom/skew/C/SongInfo/Info" unique_id=1746048499]
 modulate = Color(1, 1, 1, 0)
@@ -332,7 +337,9 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "MidiName"
 vertical_alignment = 1
-autowrap_mode = 3
+script = ExtResource("5_y1cb1")
+outline_size = 2
+end_padding = 0.0
 
 [node name="midiAuthor" type="Label" parent="Bottom/skew/C/SongInfo/Info" unique_id=1530134955]
 custom_minimum_size = Vector2(400, 0)
@@ -341,7 +348,9 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "MidiAuthor"
 vertical_alignment = 1
-autowrap_mode = 3
+script = ExtResource("5_y1cb1")
+outline_size = 2
+end_padding = 0.0
 
 [node name="difficulty" type="Label" parent="Bottom/skew/C/SongInfo/Info" unique_id=1623047885]
 custom_minimum_size = Vector2(400, 0)

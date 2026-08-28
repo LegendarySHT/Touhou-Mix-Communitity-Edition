@@ -10,6 +10,7 @@
 [ext_resource type="Script" uid="uid://cbp1sof2efk35" path="res://UI/Views/PlayView/GlowLayer.gd" id="8_glow"]
 [ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="9_q4lmo"]
 [ext_resource type="Theme" uid="uid://clu7eeeh6aitj" path="res://UI/Theme/BtnTheme/R12NoBorder.tres" id="10_q4lmo"]
+[ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="11_i1we6"]
 [ext_resource type="Texture2D" uid="uid://bxkgbenh2ja4h" path="res://Resources/Covers/423be8d161a8a972c9014454921864a9.jpg" id="11_q4lmo"]
 
 [sub_resource type="Gradient" id="Gradient_7ak4s"]
@@ -45,6 +46,18 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 shadow_color = Color(0, 0, 0, 0.21176471)
 shadow_size = 15
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3y6u5"]
+atlas = ExtResource("9_q4lmo")
+region = Rect2(320, 320, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_q71vh"]
+atlas = ExtResource("9_q4lmo")
+region = Rect2(160, 0, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_p7r7c"]
+atlas = ExtResource("9_q4lmo")
+region = Rect2(160, 160, 80, 80)
 
 [node name="PlayView" type="Control" unique_id=1157893026]
 z_index = 23
@@ -339,178 +352,146 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0.8784314)
 
-[node name="Menu" type="HBoxContainer" parent="Layer/CenterBackGround" unique_id=920842605]
-visible = false
-modulate = Color(1, 1, 1, 0.8117647)
-custom_minimum_size = Vector2(1500, 500)
+[node name="VBox" type="VBoxContainer" parent="Layer/CenterBackGround" unique_id=322506335]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -750.0
-offset_top = -300.0
-offset_right = 750.0
-offset_bottom = 200.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(750, 260)
-theme = ExtResource("10_q4lmo")
-theme_override_constants/separation = 60
 alignment = 1
 
-[node name="retry" type="Button" parent="Layer/CenterBackGround/Menu" unique_id=1162302948]
-custom_minimum_size = Vector2(250, 250)
-layout_mode = 2
-size_flags_vertical = 4
-focus_mode = 0
-theme_override_font_sizes/font_size = 72
-text = "重试"
-
-[node name="continue" type="Button" parent="Layer/CenterBackGround/Menu" unique_id=1413325283]
-custom_minimum_size = Vector2(250, 250)
-layout_mode = 2
-size_flags_vertical = 4
-focus_mode = 0
-theme_override_font_sizes/font_size = 72
-text = "继续"
-
-[node name="quit" type="Button" parent="Layer/CenterBackGround/Menu" unique_id=1209230804]
-custom_minimum_size = Vector2(250, 250)
-layout_mode = 2
-size_flags_vertical = 4
-focus_mode = 0
-theme_override_font_sizes/font_size = 72
-text = "退出"
-
-[node name="SongInfo" type="HBoxContainer" parent="Layer/CenterBackGround" unique_id=1904785845]
-visible = false
+[node name="SongInfo" type="HBoxContainer" parent="Layer/CenterBackGround/VBox" unique_id=1904785845]
 custom_minimum_size = Vector2(1000, 600)
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -20.0
-offset_right = 20.0
-offset_bottom = 20.0
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 2
 theme_override_constants/separation = 100
+alignment = 1
 
-[node name="PanelContainer" type="PanelContainer" parent="Layer/CenterBackGround/SongInfo" unique_id=1305550429]
+[node name="PanelContainer" type="PanelContainer" parent="Layer/CenterBackGround/VBox/SongInfo" unique_id=1305550429]
 custom_minimum_size = Vector2(400, 400)
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_jlvmc")
 
-[node name="TextureRect" type="TextureRect" parent="Layer/CenterBackGround/SongInfo/PanelContainer" unique_id=1401711672]
+[node name="TextureRect" type="TextureRect" parent="Layer/CenterBackGround/VBox/SongInfo/PanelContainer" unique_id=1401711672]
 layout_mode = 2
 texture = ExtResource("11_q4lmo")
 expand_mode = 5
 stretch_mode = 6
 
-[node name="GridContainer" type="GridContainer" parent="Layer/CenterBackGround/SongInfo" unique_id=536004679]
+[node name="GridContainer" type="GridContainer" parent="Layer/CenterBackGround/VBox/SongInfo" unique_id=536004679]
 custom_minimum_size = Vector2(490, 0)
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_constants/h_separation = 15
 columns = 2
 
-[node name="Label1" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1262238620]
+[node name="Label1" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1262238620]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "专辑"
 vertical_alignment = 1
 
-[node name="album" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1982615706]
+[node name="album" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1982615706]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "1111111"
 vertical_alignment = 1
-autowrap_mode = 3
+clip_text = true
+script = ExtResource("11_i1we6")
+outline_size = 2
+end_padding = 0.0
 
-[node name="Label2" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1638560578]
+[node name="Label2" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1638560578]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "歌名"
 vertical_alignment = 1
 
-[node name="song" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=862163164]
+[node name="song" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=862163164]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "1111111"
 vertical_alignment = 1
-autowrap_mode = 3
+clip_text = true
+script = ExtResource("11_i1we6")
+outline_size = 2
+end_padding = 0.0
 
-[node name="Label3" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=377821397]
+[node name="Label3" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=377821397]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "作曲"
 vertical_alignment = 1
 
-[node name="artist" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1333504800]
+[node name="artist" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1333504800]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "1111111"
 vertical_alignment = 1
-autowrap_mode = 3
+clip_text = true
+script = ExtResource("11_i1we6")
+outline_size = 2
+end_padding = 0.0
 
-[node name="HSeparator" type="HSeparator" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=2008031952]
+[node name="HSeparator" type="HSeparator" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=2008031952]
 modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 
-[node name="HSeparator2" type="HSeparator" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1466739661]
+[node name="HSeparator2" type="HSeparator" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1466739661]
 modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 
-[node name="Label4" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1483964143]
+[node name="Label4" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1483964143]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "Midi名"
 vertical_alignment = 1
 
-[node name="midiName" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1098768823]
+[node name="midiName" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1098768823]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "1111111"
 vertical_alignment = 1
-autowrap_mode = 3
+clip_text = true
+script = ExtResource("11_i1we6")
+outline_size = 2
+end_padding = 0.0
 
-[node name="Label5" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=272814813]
+[node name="Label5" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=272814813]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
-text = "Midi作者"
+text = "作者"
 vertical_alignment = 1
 
-[node name="midiAuthor" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1088727112]
+[node name="midiAuthor" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1088727112]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "1111111"
 vertical_alignment = 1
-autowrap_mode = 3
+clip_text = true
+script = ExtResource("11_i1we6")
+outline_size = 2
+end_padding = 0.0
 
-[node name="Label6" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1558778960]
+[node name="Label6" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1558778960]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "时长"
 vertical_alignment = 1
 
-[node name="midiDuration" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1102601957]
+[node name="midiDuration" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1102601957]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -519,13 +500,13 @@ text = "99:61:000"
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="Label7" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=900148067]
+[node name="Label7" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=900148067]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "难度"
 vertical_alignment = 1
 
-[node name="difficulty" type="Label" parent="Layer/CenterBackGround/SongInfo/GridContainer" unique_id=1021145344]
+[node name="difficulty" type="Label" parent="Layer/CenterBackGround/VBox/SongInfo/GridContainer" unique_id=1021145344]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -534,7 +515,43 @@ text = "Lunatic"
 vertical_alignment = 1
 autowrap_mode = 3
 
+[node name="Menu" type="HBoxContainer" parent="Layer/CenterBackGround/VBox" unique_id=920842605]
+visible = false
+modulate = Color(1, 1, 1, 0.8117647)
+custom_minimum_size = Vector2(1500, 150)
+layout_mode = 2
+theme = ExtResource("10_q4lmo")
+theme_override_constants/separation = 60
+alignment = 1
+
+[node name="retry" type="Button" parent="Layer/CenterBackGround/VBox/Menu" unique_id=1162302948]
+custom_minimum_size = Vector2(250, 120)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_font_sizes/font_size = 72
+icon = SubResource("AtlasTexture_3y6u5")
+icon_alignment = 1
+
+[node name="continue" type="Button" parent="Layer/CenterBackGround/VBox/Menu" unique_id=1413325283]
+custom_minimum_size = Vector2(250, 120)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_font_sizes/font_size = 72
+icon = SubResource("AtlasTexture_q71vh")
+icon_alignment = 1
+
+[node name="quit" type="Button" parent="Layer/CenterBackGround/VBox/Menu" unique_id=1209230804]
+custom_minimum_size = Vector2(250, 120)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_font_sizes/font_size = 72
+icon = SubResource("AtlasTexture_p7r7c")
+icon_alignment = 1
+
 [connection signal="pressed" from="Layer/BackBtn" to="." method="show_or_hide_menu"]
 [connection signal="value_changed" from="Layer/TopProgressBar" to="Layer" method="_on_progress_bar_value_changed"]
-[connection signal="pressed" from="Layer/CenterBackGround/Menu/continue" to="." method="show_or_hide_menu"]
-[connection signal="pressed" from="Layer/CenterBackGround/Menu/quit" to="." method="_on_quit_pressed"]
+[connection signal="pressed" from="Layer/CenterBackGround/VBox/Menu/continue" to="." method="show_or_hide_menu"]
+[connection signal="pressed" from="Layer/CenterBackGround/VBox/Menu/quit" to="." method="_on_quit_pressed"]

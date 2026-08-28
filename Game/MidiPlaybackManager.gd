@@ -1495,6 +1495,8 @@ func apply_vocal_offset() -> void:
 func _seek_vocal_to_midi_position(midi_position_ms: float) -> void:
 	if current_midi_data == null or current_midi_data.vocal_file_path.is_empty():
 		return
+	if not current_midi_data.vocal_enabled:
+		return
 	# _vocal_initialized is cleared on natural EOF. The native decoder remains
 	# loaded, so a later user seek must be allowed to re-arm it.
 	if _vocal_loaded_path != current_midi_data.vocal_file_path:
@@ -1645,6 +1647,12 @@ func is_vocal_finished() -> bool:
 func _sync_vocal_with_midi() -> void:
 	var audio_manager = AudioManager.instance
 	if audio_manager == null:
+		return
+	if current_midi_data == null or not current_midi_data.vocal_enabled:
+		# vocal 被禁用时确保不残留播放
+		if audio_manager.is_vocal_playing():
+			audio_manager.set_vocal_playing(false)
+		_vocal_initialized = false
 		return
 
 	# 自然结束后不再尝试恢复，等待下次 start_vocal_playback

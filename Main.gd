@@ -58,30 +58,27 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## 统一的返回/退出处理
 func _handle_back_request() -> void:
-	var popup = PopupWindow.instance
 	# 主界面 → 显示退出确认
 	if state_manager.current_state == UIStateManager.UIState.ALBUM_VIEW:
-		if popup:
-			if await popup.show_message("确定要退出游戏吗？", true):
-				get_tree().quit()
-		return
+		var popup = PopupWindow.instance
+		if popup and await popup.show_message("确定要退出游戏吗？", true):
+			get_tree().quit()
 
-	# 打歌界面 → 先弹出暂停菜单（与桌面端 Esc 行为一致）
-	if state_manager.current_state == UIStateManager.UIState.PLAY_VIEW:
+	# 打歌界面 → 交由 PlayView 处理（准备阶段切暂停菜单/暂停后继续等逻辑都在其中）
+	elif state_manager.current_state == UIStateManager.UIState.PLAY_VIEW:
 		var play_view = get_node_or_null("PlayView")
-		# 游戏中 → 弹出暂停菜单
-		if play_view and not play_view.is_pause:
+		if play_view:
 			play_view.show_or_hide_menu()
-			return
 
 	# 设置页内部子页面（DelView）→ 先切回设置主页，而非直接退出设置
-	if state_manager.current_state == UIStateManager.UIState.SETTINGS_VIEW:
-		var setting_view: Variant = state_manager.get_loaded_view(UIStateManager.UIState.SETTINGS_VIEW)
-		if setting_view and setting_view.has_method("handle_back_request") and setting_view.handle_back_request():
-			return
+	elif state_manager.current_state == UIStateManager.UIState.SETTINGS_VIEW:
+		var setting_view = state_manager.get_loaded_view(UIStateManager.UIState.SETTINGS_VIEW)
+		if setting_view and setting_view.has_method("handle_back_request"):
+			setting_view.handle_back_request()
 
 	# 其他层级 → 返回上一级
-	state_manager.go_back()
+	else:
+		state_manager.go_back()
 
 ## 初始化核心系统
 func _initialize_core_systems() -> void:

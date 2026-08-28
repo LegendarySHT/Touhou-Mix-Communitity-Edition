@@ -10,21 +10,21 @@ extends Control
 # 菜单及歌曲信息的背景遮罩
 @onready var center_bg:ColorRect = $Layer/CenterBackGround
 # 菜单
-@onready var menu: Control = $Layer/CenterBackGround/Menu
-@onready var retry_btn: Button = $Layer/CenterBackGround/Menu/retry
+@onready var menu: Control = $Layer/CenterBackGround/VBox/Menu
+@onready var retry_btn: Button = $Layer/CenterBackGround/VBox/Menu/retry
 # 歌曲信息
-@onready var song_info: Control = $Layer/CenterBackGround/SongInfo
-@onready var cover: TextureRect = $Layer/CenterBackGround/SongInfo/PanelContainer/TextureRect
+@onready var song_info: Control = $Layer/CenterBackGround/VBox/SongInfo
+@onready var cover: TextureRect = $Layer/CenterBackGround/VBox/SongInfo/PanelContainer/TextureRect
 # 原曲
-@onready var album: Label = $Layer/CenterBackGround/SongInfo/GridContainer/album
-@onready var song: Label = $Layer/CenterBackGround/SongInfo/GridContainer/song
-@onready var artist: Label = $Layer/CenterBackGround/SongInfo/GridContainer/artist
+@onready var album: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/album
+@onready var song: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/song
+@onready var artist: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/artist
 # midi
-@onready var midi_name: Label = $Layer/CenterBackGround/SongInfo/GridContainer/midiName
-@onready var midi_author: Label = $Layer/CenterBackGround/SongInfo/GridContainer/midiAuthor
-@onready var midi_duration: Label = $Layer/CenterBackGround/SongInfo/GridContainer/midiDuration
+@onready var midi_name: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/midiName
+@onready var midi_author: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/midiAuthor
+@onready var midi_duration: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/midiDuration
 # 难度
-@onready var difficulty: Label = $Layer/CenterBackGround/SongInfo/GridContainer/difficulty
+@onready var difficulty: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/difficulty
 
 # 轨道光效及键位显示
 @onready var lane_area: Control = $Lane
@@ -53,6 +53,9 @@ var play_mode: bool = true
 var game_sequences: Array[KeySequenceManager.GameSequence] = []
 
 var _is_finishing_game: bool = false
+
+## 游戏是否已正式开始, 用于区分开局准备阶段是否完成并可以开始
+var _game_started: bool = false
 
 ## 游戏代次：每次 _prepare_game 自增，用于让已启动的 _on_game_finished 协程在
 ## 用户重试（仍停留在 PLAY_VIEW）时失效，避免等待结束后被强切回 ScoreView
@@ -425,19 +428,19 @@ var is_pause: bool = false:
 				_visual_time_needs_anchor = true
 
 func show_or_hide_menu():
-	song_info.visible = false
-	if is_pause:
-		is_pause = false
+	if is_pause and menu.visible:
+		if _game_started:
+			is_pause = false
+			ani.animate_fade_out(center_bg, 0.2, "_show_bg")
 		ani.animate_fade_out(menu, 0.2, "_show_menu")
-		ani.animate_fade_out(center_bg, 0.2, "_show_bg")
 	else:
 		_show_pause_menu()
 
 func _show_pause_menu() -> void:
-	song_info.visible = false
 	is_pause = true
+	if not center_bg.visible:
+		ani.animate_fade_in(center_bg, 0.2, "_show_bg")
 	ani.animate_fade_in(menu, 0.2, "_show_menu")
-	ani.animate_fade_in(center_bg, 0.2, "_show_bg")
 
 func _on_window_focus_exited() -> void:
 	_auto_pause_on_background("window_focus_exited")
@@ -458,6 +461,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	current_midi = midi
 	play_result = ScoreView.ScoreData.new()
 	_is_finishing_game = false
+	_game_started = false
 	_is_auto_mode_play = false
 	_last_playback_position = -1.0
 	_position_stall_frames = 0
@@ -563,6 +567,12 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 		var remain_ms := 3000 - (Time.get_ticks_msec() - panel_start_ms)
 		if remain_ms > 0:
 			await get_tree().create_timer(remain_ms / 1000.0).timeout
+		# 等待期间若用户主动呼出了暂停菜单，则不再自动淡出遮罩并开始播放，
+		# 交给用户从暂停菜单手动"继续"（标记 _game_started 使"继续"等同于直接开局）
+		if menu.visible:
+			GLogger.info("Ready phase done but pause menu opened, skipping auto-start (awaiting user resume)", "PlayView")
+			_game_started = true
+			return
 		await AniMGR.animate_fade_out(center_bg, 1).finished
 
 	# 准备阶段若用户已退出播放视图（打开菜单后强退/返回），不再启动播放：
@@ -573,6 +583,7 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 	# 记录游玩开始时间（用于统计游玩时长）
 	_play_start_time = Time.get_ticks_msec()
 	# 开始播放MIDI
+	_game_started = true
 	is_pause = false
 
 ## 加载MIDI（不再处理FlowArea初始化，该部分由KeySequenceManager处理）
@@ -1129,17 +1140,17 @@ func _init_display(show_ready_animation: bool = true):
 
 	if show_ready_animation:
 		ani.animate_fade_in(center_bg, 0.2, "_show_bg")
-	album.text = current_midi.album_name if not current_midi.album_name.is_empty() else current_midi.artist_name
-	song.text = current_midi.song_name
-	artist.text = current_midi.author_name if current_midi.author_name else "Unknow"
+	album.set_scroll_text(current_midi.album_name if not current_midi.album_name.is_empty() else current_midi.artist_name)
+	song.set_scroll_text(current_midi.song_name)
+	artist.set_scroll_text(current_midi.author_name if current_midi.author_name else "Unknow")
 	var s := int(current_midi.duration_ms / 1000.0)
 	@warning_ignore("integer_division")
 	midi_duration.text = "%02d:%02d" % [s / 60, s % 60]
-	midi_name.text = current_midi.name
-	midi_author.text = current_midi.artist_name
+	midi_name.set_scroll_text(current_midi.name)
+	midi_author.set_scroll_text(current_midi.artist_name)
 	
 	menu.visible = false
-	song_info.visible = show_ready_animation
+	song_info.visible = true
 
 	center_bg.visible = show_ready_animation
 	is_pause = true

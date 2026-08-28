@@ -202,10 +202,10 @@ func _update_song_info(midi: MidiData) -> void:
 	if midi == null:
 		return
 	cover.texture = FileSystemManager.instance.get_cover_by_midiData(midi)
-	album_label.text = midi.album_name if not midi.album_name.is_empty() else midi.artist_name
-	song_label.text = midi.song_name
-	midi_name_label.text = midi.name
-	midi_author_label.text = midi.artist_name
+	album_label.set_scroll_text(midi.album_name if not midi.album_name.is_empty() else midi.artist_name)
+	song_label.set_scroll_text(midi.song_name)
+	midi_name_label.set_scroll_text(midi.name)
+	midi_author_label.set_scroll_text(midi.artist_name)
 
 ## 根据 AP / FC / AUTO 设置旗帜节点可见性
 func _update_flags(result: ScoreData, is_auto: bool) -> void:
