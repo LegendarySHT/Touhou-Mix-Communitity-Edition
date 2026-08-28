@@ -4,8 +4,6 @@ extends VBoxContainer
 @onready var mode_btn: OptionButton = $TabView/Mode/HFlowC/Mode
 # 限制设置 (无限制/FC/AP)
 @onready var limit_btn: OptionButton = $TabView/Mode/HFlowC/Limit
-# 循环设置 （单次/无限）
-@onready var repeat_btn: OptionButton = $TabView/Mode/HFlowC/Repeat
 # 游戏模式 （普通/扫描线）
 @onready var gamme_mode_btn: OptionButton = $TabView/Mode/HFlowC/GameMode
 
@@ -26,7 +24,7 @@ func _ready():
 			)
 			_apply_tab_focus_style(i)
 	
-	for i in [mode_btn, limit_btn, repeat_btn, gamme_mode_btn]:
+	for i in [mode_btn, limit_btn, gamme_mode_btn]:
 		i.get_popup().about_to_popup.connect(_on_popup_menu_popup.bind(i.get_popup()))
 
 	if not mode_btn.item_selected.is_connected(_on_mode_selected):
