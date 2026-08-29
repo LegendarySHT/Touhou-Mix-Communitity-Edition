@@ -117,17 +117,22 @@ func _initialize_core_systems() -> void:
 	if logger:
 		logger.info("FileSystemManager initialized", "Main")
 	
-	# 初始化目录结构
-	filesystem_manager.initialize_directory_structure()
-
-	# 3.25. 打开 ChartDB（LiteDB 数据层），必须在 FileSystemManager 扫描前就绪
+	# 初始化目录结构（异步：复制默认资源 → 导入外部游戏 → 扫描并更新 DB 缓存）
+	# 注意：initialize_directory_structure 是异步协程，其内部扫描可能同步执行，
+	# 因此必须先把 ChartDB 打开，确保扫描读缓存时 DB 已就绪（避免每次启动误走全量扫描）
+	# 3.25. 确保 DB 目录存在后再打开 ChartDB（LiteDB 数据层），必须在 FileSystemManager 扫描前就绪
 	# 路径经 globalize_path 转为真实 OS 路径供 C# System.IO 使用
+	var files_dir := ProjectSettings.globalize_path(PathHelper.get_files_dir())
+	DirAccess.make_dir_recursive_absolute(files_dir)
 	if ChartDB:
-		var db_path := ProjectSettings.globalize_path(PathHelper.get_files_dir()).path_join("charts.ldb")
+		var db_path := files_dir.path_join("charts.ldb")
 		var old_cache_path := ProjectSettings.globalize_path(PathHelper.get_base_dir()).path_join(".charts_scan_cache.json")
 		ChartDB.OpenDb(db_path, old_cache_path)
 		if logger:
 			logger.info("ChartDB opened (db: %s)" % db_path, "Main")
+
+	# 初始化目录结构（扫描此时 DB 已就绪）
+	filesystem_manager.initialize_directory_structure()
 	
 	# 4. 初始化事件总线（单例，已自动管理）
 	event_bus = EvtBus
