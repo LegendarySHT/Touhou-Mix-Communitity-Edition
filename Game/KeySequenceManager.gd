@@ -61,6 +61,7 @@ class BlockInfo:
 	var end_time_ms: float = 0.0    # 块的结束时间（多个Note时取最大）
 	var duration_ms: float = 0.0    # 块的显示持续时间
 	var type: int = BlockType.Block  # 判定后的块类型
+	var slide_forced: bool = false  # 由长条覆盖/手指预算在分组阶段强制为 Slide，判型时不再改判
 	var touch_index: int = -1   # 分配的虚拟触点ID (-1表示未分配)
 	var prev_block: BlockInfo = null  # 指向前一个块（用于连块判定）
 	var pitch_list: Array[int] = []  # 合并块的所有pitch值
@@ -77,8 +78,7 @@ class VirtualTouch:
 	var is_free: bool = true        # 是否空闲
 	var last_press_x: float = 0.0   # 最后按下的屏幕X位置
 	var last_press_time_ms: float = -INF  # 最后按下的时间
-	var holding_block: BlockInfo = null  # 正在按住的LONG块
-	var last_press_block: BlockInfo = null  # 最后按下的块对象
+	var last_press_block: BlockInfo = null  # 最后按下的块对象（含长条，占用期统一用其 end 表达）
 	# 手部模型字段
 	var hand: int = 1  # 0=左手, 1=右手, -1=无归属（键盘模式或max_touch_count=1）
 	var home_x: float = 0.0  # 当前绑定的原位X坐标
@@ -89,23 +89,10 @@ class VirtualTouch:
 		is_free = true
 		last_press_x = 0.0
 		last_press_time_ms = -INF
-		holding_block = null
 		last_press_block = null
 		hand = 1
 		home_x = 0.0
 		hand_home_positions = []
-
-## 临时音符对象（generate_keys 流水线中间格式）
-## 替代旧版 Dictionary（每音符 7 个 StringName key + Variant 装箱，6 万音符约 16.8MB 临时内存）
-## typed class 字段直接访问，比 Dictionary.get 哈希查找快 5-10 倍；单实例约 160 字节 vs Dict ~280 字节
-class TempNote:
-	var pitch: int = 0
-	var velocity: int = 0
-	var track_index: int = 0
-	var channel: int = 0
-	var start_time_ms: float = 0.0
-	var duration_ms: float = 0.0
-	var original_note: MidiParser.NoteEvent = null  # 直接引用 NoteEvent
 
 ## 当前MIDI数据
 var current_midi_data: MidiData
@@ -148,7 +135,7 @@ var key_width: float = 40.0
 
 ## ========== 键生成配置参数 ==========
 var lane_count: int = 12  # 轨道数量
-var block_coalesce_seconds: float = 0.25  # 批次合并时间窗口（秒）
+var density_cap_per_sec: int = 8  # 音符生成密度上限（每 1 秒最多保留的按压时刻组数；0 = 跳过密度削减）
 var instant_block_threshold: float = 0.2  # 滑块(Slide)时长阈值（秒）；配置键保持旧名 instant_block_max_time
 var short_block_threshold: float = 1.0  # 点块(Block)时长阈值（秒）；配置键保持旧名 short_block_max_time
 var min_tap_interval: float = 1.0  # 最小敲击间隔（秒）
@@ -284,7 +271,7 @@ func _load_config_parameters() -> void:
 	min_tap_interval = config_manager.get_float(gen_cfg, "min_tap_interval", 1.0)
 	cooldown_seconds = config_manager.get_float(gen_cfg, "min_touch_cooldown_time", 2.0)
 	max_touch_move_velocity = config_manager.get_float(gen_cfg, "max_touch_move_speed", 300.0)
-	block_coalesce_seconds = config_manager.get_float(gen_cfg, "max_block_coalesce_time", 0.25)
+	density_cap_per_sec = config_manager.get_int(gen_cfg, "max_block_coalesce_time", 8)
 
 	# 从Judge段读取并排音符最小横向间距（单位：轨道数）
 	# 兼容旧版未实装的像素单位值：超出合理范围（>= lane_count）则重置为默认值1
@@ -315,8 +302,8 @@ func _load_config_parameters() -> void:
 		)
 	
 	GLogger.info(
-		"KeyGeneration config loaded: block_coalesce=%.2fs, slide=%.2fs, block=%.2fs, maxTouch=%d, max_touch_velocity=%.1f, min_block_spacing=%d" %
-		[block_coalesce_seconds, instant_block_threshold, short_block_threshold, max_touch_count, max_touch_move_velocity, min_block_spacing],
+		"KeyGeneration config loaded: density=%d/sec, slide=%.2fs, block=%.2fs, maxTouch=%d, max_touch_velocity=%.1f, min_block_spacing=%d" %
+		[density_cap_per_sec, instant_block_threshold, short_block_threshold, max_touch_count, max_touch_move_velocity, min_block_spacing],
 		"KeySequenceManager"
 	)
 func classify_sequences(midi_data: MidiData, all_midi_notes: Array) -> bool:
@@ -327,8 +314,8 @@ func classify_sequences(midi_data: MidiData, all_midi_notes: Array) -> bool:
 	all_notes = all_midi_notes
 	
 	# 清空之前的分类
-	game_sequences.clear()
-	background_sequences.clear()
+	game_sequences = []
+	background_sequences = []
 	next_key_id = 0
 	
 	# 根据选中的轨道创建背景序列
@@ -363,20 +350,28 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 		pairs_hash += str(k) + ","
 	var cache_key := "%s|%s" % [midi_id, pairs_hash.hash()]
 	if cache_key == _cache_key and not _cached_sequences.is_empty():
-		# 命中缓存，直接复用（选歌预览与 PlayView 重复生成时命中）
-		game_sequences = _clone_game_sequences(_cached_sequences)
-		background_sequences = _clone_background_sequences(_cached_background_sequences)
-		last_manual_control_notes = _cached_manual_notes.duplicate()
-		last_auto_play_notes = _cached_auto_notes.duplicate()
-		GLogger.debug("generate_keys HIT cache, reuse %d sequences" % game_sequences.size(), "KSM")
+		# 命中缓存：直接共享缓存引用（不深拷贝）。
+		# 原因：深拷贝原先在本 worker 内克隆共享数组，会与主线程清缓存并发读到被截短的
+		# 同一数组 → "Out of bounds get index" 越界。改为共享后，需要独立可写副本的消费方
+		# （如 PlayView 改写 flow_note_ref）在各自准备阶段自行 clone_game_sequences()，
+		# 克隆移出 worker 后不再并发读共享缓存，越界问题结构性消除，也省去预览路径的多余拷贝
+		game_sequences = _cached_sequences
+		background_sequences = _cached_background_sequences
+		last_manual_control_notes = _cached_manual_notes
+		last_auto_play_notes = _cached_auto_notes
+		GLogger.debug("generate_keys HIT cache, share %d sequences" % game_sequences.size(), "KSM")
 		return true
 	GLogger.debug("generate_keys MISS cache, regenerating...", "KSM")
 	if game_notes.is_empty():
-		game_sequences.clear()
+		game_sequences = []
 		return true
 
-	game_sequences.clear()
-	background_sequences.clear()
+	# 缓存与运行态解耦：重建为新数组对象，而非 clear()。
+	# 原因：_cached_* 与 game_* 引用共享同一对象，若用 clear() 就地清空，会把 _cached_sequences 仍指向的上一次缓存对象一并清空
+	game_sequences = []
+	background_sequences = []
+	last_manual_control_notes = []
+	last_auto_play_notes = []
 	next_key_id = 0
 
 	# 获取时间参数：显式传入（midi 自己的 timebase/bpm_timeline）优先，否则回退读 MidiPlaybackManager
@@ -389,33 +384,21 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 		bpm_timeline_data = midi_mgr.bpm_timeline
 	set_midi_time_parameters(timebase, bpm_timeline_data)
 
-	# Step 1: 转换Note对象为统一格式（确保start_time_ms和duration_ms为毫秒）
-	var converted_notes = _convert_notes_to_internal_format(game_notes)
-
-	# Step 2: 音符已有序，跳过排序
-
-	# Step 3: 执行批次合并（Step A）
-	var batches := _batch_notes_by_coalesce(converted_notes)
-
-	# Step 3.5: 立即释放 converted_notes（66k TempNote ~10MB）
-	# batches 已持有 TempNote 引用，converted_notes 数组本身不再需要
-	converted_notes.clear()
-	converted_notes = []
-
-	# Step 4: 为每个批次执行去重（Step B）
+	# Step 1~3: 直接消费已按 start_time 有序的 game_notes，按按压时刻分组 → 同轨去重 → 间距/数量约束
+	# 毫秒值在分组时经 _tick_ms_cache 即时换算，省去中间 TempNote 数组与一趟全量转换循环
 	var all_blocks: Array[BlockInfo] = []
 	var bg_notes: Array = []
-	for batch_idx in range(batches.size()):
-		var deduped_blocks = _dedup_batch(batches[batch_idx], bg_notes, batch_idx)
-		all_blocks.append_array(deduped_blocks)
+	_build_chords(game_notes, all_blocks, bg_notes)
 
-	# Step 4.5: 立即释放 batches + _tick_ms_cache（step5/6/7 不再需要）
-	batches.clear()
-	batches = []
+	# Step 3.5: 立即释放分组建的 _tick_ms_cache（可达 5-12MB），后续高开销步骤不再需要
+	# _tick_ms_cache 在 Step 8 背景排序时经 _get_note_start_time_ms 会按需重建
 	_tick_ms_cache.clear()
 
 	# Step 5: 虚拟触点匹配和块类型判定（Step C + Step D)
 	_assign_touches_and_judge_types(all_blocks, bg_notes)
+
+	# Step 5.5: 密度削减（后置）——触点判定拿到真实块类型后，按每秒按压时刻组数控制密度
+	_reduce_density_by_second(all_blocks, bg_notes)
 
 	# Step 6: 连块生成（Step E）
 	_generate_connects(all_blocks)
@@ -424,12 +407,11 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	_convert_blocks_to_game_sequences(all_blocks)
 
 	# Step 7.5: 释放 all_blocks（GameSequence 已持有 original_notes 引用）
-	# 必须先断开 prev_block 链：_judge_block_type 跨批次累积形成数千节点的 prev_block 链，
-	# clear() 时 BlockInfo 引用计数降为 0 会触发级联析构（A→B→C→...），Android ARM 栈溢出
-	var block_idx: int = 0
-	while block_idx < all_blocks.size():
-		all_blocks[block_idx].prev_block = null
-		block_idx += 2000
+	# 必须先断开 prev_block 链：_judge_block_type 跨批次累积形成的 prev_block 链可能上万节点，
+	# 原实现每间隔 2000 个块断一个并不能保证切断跳跃型长链（该链可能指回很早的块），
+	# 此处在 clear() 前线性遍历全断 prev_block，避免引用计数级联析构（A→B→C→...）导致 Android ARM 栈溢出
+	for _block in all_blocks:
+		_block.prev_block = null
 	all_blocks.clear()
 	all_blocks = []
 
@@ -458,10 +440,10 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 	_finalize_notes_classification()
 
 	# 写入缓存（引用共享，不 duplicate）
-	# game_sequences/background_sequences/last_* 在此后不再修改，
-	# 下次 generate_keys 命中缓存时会深拷贝 GameSequence/BackgroundSequence 副本给消费方
-	# （见上方 cache hit 分支），
-	# 因此 _cached_* 引用的内容不会被外部修改
+	# game_sequences/background_sequences/last_* 在此后不再修改；
+	# 下次 generate_keys 命中缓存时直接共享本引用（见上方 cache hit 分支）。
+	# 需要独立可写副本的消费方（PlayView）在准备阶段自行 clone_game_sequences()，
+	# 此处保证 _cached_* 引用的内容本身不被外部修改
 	_cache_key = cache_key
 	_cached_sequences = game_sequences
 	_cached_background_sequences = background_sequences
@@ -470,8 +452,8 @@ func generate_keys(game_notes: Array, midi_id: String = "", enabled_pairs: Dicti
 
 	return true
 
-## 深拷贝 GameSequence 数组（缓存命中时返回独立副本，消费方写入 flow_note_ref 等字段不污染缓存）
-## 返回类型必须与 game_sequences 一致（Array[GameSequence]），否则缓存命中赋值会报
+## 深拷贝 GameSequence 数组（由 clone_game_sequences 调用，给消费方独立副本，避免污染共享缓存）
+## 返回类型必须与 game_sequences 一致（Array[GameSequence]），否则克隆赋值会报
 ## "Trying to assign an array of type Array to a variable of type Array[GameSequence]"
 func _clone_game_sequences(src: Array[GameSequence]) -> Array[GameSequence]:
 	var result: Array[GameSequence] = []
@@ -485,17 +467,6 @@ func _clone_game_sequences(src: Array[GameSequence]) -> Array[GameSequence]:
 		c.original_notes = s.original_notes.duplicate()
 		c.lane = s.lane
 		# flow_note_ref 不复制：由消费方按需设置，避免残留引用污染
-		result[i] = c
-	return result
-
-## 深拷贝背景序列数组（notes 数组复制，NoteEvent 对象只读共享）
-func _clone_background_sequences(src: Array[BackgroundSequence]) -> Array[BackgroundSequence]:
-	var result: Array[BackgroundSequence] = []
-	result.resize(src.size())
-	for i in range(src.size()):
-		var s: BackgroundSequence = src[i]
-		var c := BackgroundSequence.new(s.track_index)
-		c.notes = s.notes.duplicate()
 		result[i] = c
 	return result
 
@@ -532,7 +503,7 @@ func _launch_generate_task(run: Callable) -> int:
 
 ## 启动 generate_keys（WorkerThreadPool 后台线程执行，保留 async 签名以兼容调用方 await）
 ## 线程安全：generate_keys 仅访问 self 字段与 MidiPlaybackManager.instance 静态字段，不访问场景树
-## RefCounted 对象（TempNote/BlockInfo/GameSequence）在 worker 创建/析构安全：
+## RefCounted 对象（BlockInfo/GameSequence）在 worker 创建/析构安全：
 ##   - prev_block 链在 Step 7.5 已断开，避免级联析构栈溢出
 ##   - GLogger 已用 call_deferred 保护，无 StringName 引用计数竞态
 ## timebase/bpm_timeline_data：显式时间参数（调用方直接给 midi 自己的值），
@@ -576,109 +547,284 @@ func generate_keys_async(game_notes: Array, midi_id: String = "", enabled_pairs:
 	await await_generate_keys(task_id)
 	return true
 
-## 将 NoteEvent 对象转换为内部格式（确保使用毫秒单位）
-## 返回 Array[TempNote]，替代旧版 Array[Dictionary]
-## TempNote 字段直接访问比 Dictionary.get 哈希查找快 5-10 倍，内存占用降 ~40%
-func _convert_notes_to_internal_format(game_notes: Array) -> Array:
-	var converted: Array = []
+## 同刻和弦合并容差（毫秒）：两个音符开始时间差 <= 该值视为"同刻"（并列落下）
+const CHORD_TOLERANCE_MS: float = 10.0
 
-	for note in game_notes:
-		if note is MidiParser.NoteEvent:
-			var tn := TempNote.new()
-			tn.pitch = note.pitch
-			tn.velocity = note.velocity
-			tn.track_index = note.track_index
-			tn.channel = note.channel
-			tn.start_time_ms = _tick_to_ms(note.start_time)
-			tn.duration_ms = _tick_duration_to_ms(note.start_time, note.duration)
-			tn.original_note = note
-			converted.append(tn)
-		# 其他格式跳过（不应出现）
-
-	return converted
-
-## Step A: 批次合并 - 按blockCoalesceSeconds分组
-func _batch_notes_by_coalesce(sorted_notes: Array) -> Array:
-	var batches: Array = []
-	if sorted_notes.is_empty():
-		return batches
-
-	var current_batch: Array = []
-	var current_batch_start_time: float = -1.0
-
-	for note in sorted_notes:
-		# TempNote 字段直接访问
-		var note_time: float = note.start_time_ms
-
-		if current_batch_start_time < 0:
-			current_batch_start_time = note_time
-			current_batch.append(note)
-		elif note_time <= current_batch_start_time + (block_coalesce_seconds * 1000.0):
-			current_batch.append(note)
-		else:
-			if not current_batch.is_empty():
-				batches.append(current_batch)
-			current_batch = [note]
-			current_batch_start_time = note_time
-
-	# 添加最后一个批次
-	if not current_batch.is_empty():
-		batches.append(current_batch)
-
-	return batches
-
-## Step B: 去重与冲突消除 - 同lane保留高音符，低音移入背景（Unity兼容版本）
-func _dedup_batch(batch: Array, bg_notes: Array, batch_idx: int) -> Array[BlockInfo]:
-	var blocks: Array[BlockInfo] = []
-	var lane_to_note: Dictionary = {}  # lane -> TempNote
-
-	# 第1步：按lane去重（同lane保留最高音符）
-	for note in batch:
-		var pitch: int = note.pitch
-		var lane: int = pitch % lane_count
-
-		if lane_to_note.has(lane):
-			var existing_note = lane_to_note[lane]
-			var existing_pitch: int = existing_note.pitch
-			# 比较音高，保留更高的
-			if pitch > existing_pitch:
-				# 将旧的加入背景
-				_append_note_to_background(existing_note.original_note, bg_notes)
-				lane_to_note[lane] = note
+## Step A/B 替代实现（单趟流式）+ 长条覆盖导致的 Slide 判定：
+## 直接消费已按 start_time 有序的 NoteEvent，按"按压时刻"分组（≈10ms 同刻=和弦，同轨去重保高音）
+## 毫秒值经 _tick_ms_cache 即时换算（同 tick 只真正算一次），省去中间 TempNote 数组
+## 每个和弦内执行最小横向间距 + 手指预算（同刻可操作音符 Block+Slide 总数 ≤ max_touch_count，
+## 进行中长条不占名额；超出优先移除普通 Block 再移除 Slide；有长条时就近把普通转 Slide 便于操作）
+## 长条覆盖判定：维护每条轨道的"进行中长条结束时间"数组，同轨音符起始时间在长条结束前 → 强制 Slide
+## 顺序保证：先定去留（去重/间距/预算），确认保留后才注册长条 → 被剔入背景的长条不会残留脏状态
+## 数组为局部作用域，分组结束自动释放；密度削减仍后置在触点判定后（_reduce_density_by_second）
+func _build_chords(game_notes: Array, all_blocks: Array, bg_notes: Array) -> void:
+	if game_notes.is_empty():
+		return
+	var n: int = game_notes.size()
+	var i: int = 0
+	var chord_idx: int = 0
+	# 每条轨道的进行中长条结束时间（-1 = 无进行中长条）
+	var lane_long_end := PackedFloat32Array()
+	lane_long_end.resize(lane_count)
+	lane_long_end.fill(-1.0)
+	while i < n:
+		var chord_note: MidiParser.NoteEvent = game_notes[i]
+		var chord_start: float = _tick_to_ms(chord_note.start_time)
+		# 计数此刻仍进行中的长条（先前已确认保留的长条）
+		var active_longs: int = 0
+		for l in range(lane_count):
+			if lane_long_end[l] > chord_start:
+				active_longs += 1
+		# 同刻合并 + 同 lane 去重（同 lane 保留高音，低音移入背景）
+		var lane_map: Dictionary = {}
+		var j: int = i
+		while j < n:
+			var note: MidiParser.NoteEvent = game_notes[j]
+			if _tick_to_ms(note.start_time) - chord_start > CHORD_TOLERANCE_MS:
+				break
+			var lane: int = note.pitch % lane_count
+			if lane_map.has(lane):
+				var existing: MidiParser.NoteEvent = lane_map[lane]
+				if note.pitch > existing.pitch:
+					_append_note_to_background(existing, bg_notes)
+					lane_map[lane] = note
+				else:
+					_append_note_to_background(note, bg_notes)
 			else:
-				# 将当前的加入背景
-				_append_note_to_background(note.original_note, bg_notes)
+				lane_map[lane] = note
+			j += 1
+		i = j
+		if lane_map.is_empty():
+			continue
+		# 为和弦内保留音符建 BlockInfo（batch = 和弦索引）
+		var chord_blocks: Array[BlockInfo] = []
+		for lane in lane_map.keys():
+			var note: MidiParser.NoteEvent = lane_map[lane]
+			var start_ms: float = _tick_to_ms(note.start_time)
+			var dur_ms: float = _tick_duration_to_ms(note.start_time, note.duration)
+			var block := BlockInfo.new()
+			block.batch = chord_idx
+			block.notes.append(note)
+			block.lane = lane
+			block.start_time_ms = start_ms
+			block.end_time_ms = start_ms + dur_ms
+			block.duration_ms = dur_ms
+			block.pitch_list.append(note.pitch)
+			block.x = _calculate_lane_position(lane)
+			# 同轨进行中的长条覆盖到本时刻 → 强制 Slide（几何+时间判据，与手指分配解耦）
+			if lane_long_end[lane] > start_ms:
+				block.slide_forced = true
+				block.type = BlockType.Slide
+			chord_blocks.append(block)
+		# 最小横向间距（仍可能剔除到背景）
+		chord_blocks = _enforce_min_lane_spacing(chord_blocks, bg_notes)
+		# 手指预算（同刻总数口径；进行中长条不占名额）：
+		# 1) 有进行中长条时，就近把紧邻长条的普通音符转 Slide，减少玩家从长条滑动的距离（不增名额）
+		# 2) 同刻可操作音符总数（普通 Block + Slide，含长条覆盖/就近转的）≤ max_touch_count
+		#    超出按序移除：优先移除普通 Block（低音先删），仍超出再移除 Slide，保证几何/长条相关 Slide 尽量保留
+		if max_touch_count > 0 and not chord_blocks.is_empty():
+			# (1) 就近转 Slide
+			if active_longs > 0:
+				var active_long_lanes: Array[int] = []
+				for l in range(lane_count):
+					if lane_long_end[l] > chord_start:
+						active_long_lanes.append(l)
+				if not active_long_lanes.is_empty():
+					var normals: Array[BlockInfo] = []
+					for b2 in chord_blocks:
+						if b2.type != BlockType.Slide:
+							normals.append(b2)
+					if not normals.is_empty():
+						normals.sort_custom(func(a, b):
+							return _min_lane_dist_to_longs(a.lane, active_long_lanes) < _min_lane_dist_to_longs(b.lane, active_long_lanes))
+						var to_slide: int = mini(active_longs, normals.size())
+						for k in range(to_slide):
+							normals[k].slide_forced = true
+							normals[k].type = BlockType.Slide
+			# (2) 总数上限：普通 + Slide ≤ max_touch_count，超出移除（先普通后 Slide，均低音优先）
+			if chord_blocks.size() > max_touch_count:
+				var need_remove: int = chord_blocks.size() - max_touch_count
+				var ordinary: Array[BlockInfo] = []
+				for b2 in chord_blocks:
+					if not b2.slide_forced:
+						ordinary.append(b2)
+				ordinary.sort_custom(func(a, b): return a.pitch_list[0] < b.pitch_list[0])  # 音高升序→低音先删
+				for eb in ordinary:
+					if need_remove <= 0:
+						break
+					if not eb.notes.is_empty():
+						_append_note_to_background(eb.notes[0], bg_notes)
+					chord_blocks.erase(eb)
+					need_remove -= 1
+				# 仍超出 → 移除 Slide（保证几何/长条 Slide 尽量保留）
+				while need_remove > 0:
+					var slides: Array[BlockInfo] = []
+					for b2 in chord_blocks:
+						if b2.slide_forced:
+							slides.append(b2)
+					if slides.is_empty():
+						break
+					slides.sort_custom(func(a, b): return a.pitch_list[0] < b.pitch_list[0])
+					var eb: BlockInfo = slides[0]
+					if not eb.notes.is_empty():
+						_append_note_to_background(eb.notes[0], bg_notes)
+					chord_blocks.erase(eb)
+					need_remove -= 1
+		if chord_blocks.is_empty():
+			continue
+		# 注册进行中的长条（仅在确认保留且非 Slide 后进行）
+		for b3 in chord_blocks:
+			if b3.type != BlockType.Slide and b3.duration_ms / 1000.0 > short_block_threshold:
+				lane_long_end[b3.lane] = b3.end_time_ms
+		all_blocks.append_array(chord_blocks)
+		chord_idx += 1
+
+## 计算某轨道到最近进行中长条轨道的最小距离（用于长条占手转 Slide 的就近选择）
+func _min_lane_dist_to_longs(lane: int, long_lanes: Array[int]) -> int:
+	var best := 1 << 30
+	for ll in long_lanes:
+		var d: int = absi(lane - ll)
+		if d < best:
+			best = d
+	return best
+
+## 密度削减（后置）：在触点判定拿到真实块类型后，按每秒按压时刻组数控制密度
+## - 每秒总预算 = density_cap（普通块当量），Slide 计 0.33，Block/Long 计 1.0
+##   （slide 容易打 → 占预算少 → 纯 slide 一秒最多可达 cap/0.33 组）
+## - 先按等距时间槽取每槽 prio 最高的组作均匀骨架；超预算优先剔全 slide 组再按 prio 升序剔其余，富余按 prio 降序补入
+## - 被剔除的整组移入背景。注意：这些组已完成触点判定，会留下 last_press/prev_block 等副作用
+##   （方向上是"难按的连打顺延被判为滑键"，实际更好打，代价最小）
+func _reduce_density_by_second(all_blocks: Array, bg_notes: Array) -> void:
+	if density_cap_per_sec <= 0 or all_blocks.is_empty():
+		return
+	var budget: float = float(density_cap_per_sec)
+	# 按 batch（同批=同按压时刻组）聚合块，并算每组真实 cost/prio
+	var groups_by_batch: Dictionary = {}  # batch -> {blocks, time, cost, prio}
+	for b in all_blocks:
+		if not groups_by_batch.has(b.batch):
+			groups_by_batch[b.batch] = {"blocks": [], "time": b.start_time_ms}
+		groups_by_batch[b.batch]["blocks"].append(b)
+	# 按秒桶聚合组
+	var second_groups: Dictionary = {}  # sec -> Array[组]
+	for batch in groups_by_batch.keys():
+		var g: Dictionary = groups_by_batch[batch]
+		# Dictionary 取值会丢失 Array[BlockInfo] 元素类型，手动转 typed 再传入
+		var typed_blocks: Array[BlockInfo] = []
+		for blk: BlockInfo in g["blocks"]:
+			typed_blocks.append(blk)
+		var metrics: Dictionary = _compute_chord_metrics(typed_blocks)
+		g["cost"] = metrics["cost"]
+		g["prio"] = metrics["prio"]
+		g["slide_only"] = metrics["slide_only"]  # 记录全 slide 标记，超预算剔除时优先删
+		var sec: int = int(floor(g["time"] / 1000.0))
+		if not second_groups.has(sec):
+			second_groups[sec] = []
+		second_groups[sec].append(g)
+	# 每秒骨架 + 预算决定去留
+	var kept_batches: Dictionary = {}  # batch -> true
+	for sec in second_groups.keys():
+		var groups: Array = second_groups[sec]
+		var slot_w: float = 1000.0 / budget
+		var n_slots: int = density_cap_per_sec
+		# 骨架：每槽保留 prio 最高的组，保证均匀覆盖
+		var skeleton: Dictionary = {}  # slot -> 组索引
+		for idx in range(groups.size()):
+			var g: Dictionary = groups[idx]
+			var t_in_sec: float = g["time"] - sec * 1000.0
+			var slot: int = int(minf(floor(t_in_sec / slot_w), n_slots - 1))
+			if not skeleton.has(slot) or g["prio"] > groups[skeleton[slot]]["prio"]:
+				skeleton[slot] = idx
+		var kept_idx: Dictionary = {}
+		var total_cost: float = 0.0
+		for slot in skeleton.keys():
+			var idx: int = skeleton[slot]
+			kept_idx[idx] = true
+			total_cost += groups[idx]["cost"]
+		# 超预算：优先剔除全 slide 组（易打、删了损失小），不足再按 prio 升序剔除非 slide 组
+		if total_cost > budget:
+			var slide_eject: Array = []
+			var non_slide_eject: Array = []
+			for idx in kept_idx.keys():
+				if groups[idx]["slide_only"]:
+					slide_eject.append(idx)
+				else:
+					non_slide_eject.append(idx)
+			# 第一轮：剔全 slide 组（prio 升序，先剔最没保留价值的）
+			slide_eject.sort_custom(func(a, b): return groups[a]["prio"] < groups[b]["prio"])
+			for idx in slide_eject:
+				if total_cost <= budget:
+					break
+				if not kept_idx.has(idx):
+					continue
+				kept_idx.erase(idx)
+				total_cost -= groups[idx]["cost"]
+			# 仍超预算：剔非 slide 组（prio 升序）
+			if total_cost > budget:
+				non_slide_eject.sort_custom(func(a, b): return groups[a]["prio"] < groups[b]["prio"])
+				for idx in non_slide_eject:
+					if total_cost <= budget:
+						break
+					if not kept_idx.has(idx):
+						continue
+					kept_idx.erase(idx)
+					total_cost -= groups[idx]["cost"]
+		# 富余（主要是 slide 空出的预算）：按 prio 降序补入剩余组
+		if total_cost < budget:
+			var remainder: float = budget - total_cost
+			var candidates: Array = []
+			for idx in range(groups.size()):
+				if kept_idx.has(idx) or groups[idx]["cost"] > remainder:
+					continue
+				candidates.append(idx)
+			candidates.sort_custom(func(a, b): return groups[a]["prio"] > groups[b]["prio"])
+			for idx in candidates:
+				if groups[idx]["cost"] <= remainder:
+					kept_idx[idx] = true
+					total_cost += groups[idx]["cost"]
+					remainder -= groups[idx]["cost"]
+		# 记录本秒保留的 batch
+		for idx in kept_idx.keys():
+			for b in groups[idx]["blocks"]:
+				kept_batches[b.batch] = true
+	# 过滤 all_blocks，被剔除的和弦整体移入背景
+	var write_idx: int = 0
+	for b in all_blocks:
+		if kept_batches.has(b.batch):
+			all_blocks[write_idx] = b
+			write_idx += 1
 		else:
-			lane_to_note[lane] = note
+			for note in b.notes:
+				_append_note_to_background(note, bg_notes)
+	all_blocks.resize(write_idx)
 
-	# 第2步：为保留下来的Note创建BlockInfo
-	for lane in lane_to_note.keys():
-		var note: TempNote = lane_to_note[lane]
-		var block = BlockInfo.new()
-		block.batch = batch_idx
-		# 添加原始Note对象（BlockInfo._init()已初始化notes为[]）
-		block.notes.append(note.original_note)
-		block.lane = lane
-		block.start_time_ms = note.start_time_ms
-		block.end_time_ms = block.start_time_ms + note.duration_ms
-		block.duration_ms = note.duration_ms
-		# 将pitch添加到pitch_list
-		block.pitch_list.append(note.pitch)
-		block.x = _calculate_lane_position(lane)
-		blocks.append(block)
-
-	# 第3步：执行最小横向间距约束（并排音符轨道间距）
-	blocks = _enforce_min_lane_spacing(blocks, bg_notes)
-
-	# 第4步：按音高排序并移除超过maxTouchCount的块（与Unity版本一致）
-	if blocks.size() > max_touch_count:
-		blocks.sort_custom(func(a, b): return a.pitch_list[0] > b.pitch_list[0])
-		while blocks.size() > max_touch_count:
-			var removed_block = blocks.pop_back()
-			if not removed_block.notes.is_empty():
-				_append_note_to_background(removed_block.notes[0], bg_notes)
-
-	return blocks
+## 计算一个按压时刻组（和弦）的当量与保留优先级（基于触点判定后的真实块类型）
+## cost（占预算）：Slide 计 0.33，Block/Long 计 1.0（slide 好打 → 占预算少 → 能出现更多）
+## prio（保留优先级，越高越优先保留）：
+##   1.5×(平均力度/127) + 1.5×(最大音高/127) - 0.3×(并排普通块数-1)
+##   （音/音高提权 1.5 保主旋律；并排普通块略降权 → 更难按的越靠后被剔）
+func _compute_chord_metrics(blocks: Array[BlockInfo]) -> Dictionary:
+	var count: int = blocks.size()
+	if count == 0:
+		return {"cost": 0.0, "prio": 0.0}
+	var cost: float = 0.0
+	var vel_sum: int = 0
+	var max_pitch: int = 0
+	var non_slide_cnt: int = 0
+	for b in blocks:
+		var is_slide: bool = b.type == BlockType.Slide
+		cost += 0.33 if is_slide else 1.0
+		if not is_slide:
+			non_slide_cnt += 1
+		if not b.notes.is_empty():
+			vel_sum += b.notes[0].velocity
+		if not b.pitch_list.is_empty() and b.pitch_list[0] > max_pitch:
+			max_pitch = b.pitch_list[0]
+	var avg_vel: float = float(vel_sum) / float(count)
+	var prio: float = 1.5 * avg_vel / 127.0 + 1.5 * float(max_pitch) / 127.0
+	prio -= 0.3 * float(max(0, non_slide_cnt - 1))
+	# slide_only：整组全是 slide（易打、删了损失小）→ 超预算剔除时优先删
+	return {"cost": cost, "prio": prio, "slide_only": non_slide_cnt == 0}
 
 ## 校验并排音符最小横向间距取值
 ## min_block_spacing 为轨道数：0 表示关闭约束；负数或 >= lane_count 属于无效/旧版像素残留，重置为默认值1
@@ -959,17 +1105,10 @@ func _can_assign_block_to_touch(block: BlockInfo, touch: VirtualTouch) -> bool:
 	if touch == null:
 		return true
 	
-	# 检查冷却时间：触点必须已释放（或从未使用过）
-	if touch.holding_block != null:
-		# 如果正在按住LONG块，检查当前块是否在hold期内
-		if block.start_time_ms < touch.holding_block.end_time_ms:
-			return false
-		# 检查冷却期
-		if block.start_time_ms - touch.holding_block.end_time_ms < (cooldown_seconds * 1000.0):
-			return false
-	elif touch.last_press_block != null:
-		# 检查冷却期
-		if block.start_time_ms - touch.last_press_block.end_time_ms < (cooldown_seconds * 1000.0):
+	# 占用期 = 按下时刻 + 冷却
+	if touch.last_press_time_ms >= 0:
+		var occupy_end: float = touch.last_press_time_ms + (cooldown_seconds * 1000.0)
+		if block.start_time_ms < occupy_end:
 			return false
 	
 	# 检查移动速度约束（使用有效位置：含释放后回归原位）
@@ -995,17 +1134,21 @@ func _judge_block_type(block: BlockInfo, touches: Array[VirtualTouch]) -> void:
 	var touch = touches[block.touch_index]
 	
 	# ========== 第1步：按duration判定基础类型 ==========
-	if duration_sec <= instant_block_threshold:
+	# 长条覆盖/手指预算已在 _build_chords 强制为 Slide，此处不再改判
+	if block.slide_forced:
+		block.type = BlockType.Slide
+	elif duration_sec <= instant_block_threshold:
 		block.type = BlockType.Slide
 	elif duration_sec <= short_block_threshold:
 		block.type = BlockType.Block
 	else:
 		block.type = BlockType.Long
 	
-	# ========== 第2步：检查冷却期（触点可用性） ==========
+	# ========== 第2步：检查占用期（触点可用性，统一模型） ==========
+	# 占用期 = 按下时刻 + 冷却，与块类型无关
 	if not touch.is_free:
-		# 检查触点是否从hold状态释放
-		if touch.holding_block == null and block.start_time_ms > touch.last_press_time_ms + (cooldown_seconds * 1000.0):
+		var occupy_end: float = touch.last_press_time_ms + (cooldown_seconds * 1000.0)
+		if block.start_time_ms > occupy_end:
 			touch.is_free = true
 			touch.last_press_block = null
 		else:
@@ -1032,15 +1175,6 @@ func _judge_block_type(block: BlockInfo, touches: Array[VirtualTouch]) -> void:
 				block.lane = _calculate_lane_from_x(block.x)
 				block.x = _calculate_lane_position(block.lane)
 	
-	# ========== 第3步：检查是否在LONG块内 ==========
-	if touch.holding_block != null:
-		if block.start_time_ms < touch.holding_block.end_time_ms:
-			# ✅ 修正：强制为Slide（滑块）
-			block.type = BlockType.Slide
-		else:
-			# LONG块结束
-			touch.holding_block = null
-	
 	# ========== 第4步：检查敲击间隔（minTapInterval） ==========
 	if touch.last_press_time_ms >= 0:
 		var gap = (block.start_time_ms - touch.last_press_time_ms) / 1000.0
@@ -1049,9 +1183,6 @@ func _judge_block_type(block: BlockInfo, touches: Array[VirtualTouch]) -> void:
 			block.type = BlockType.Slide
 	
 	# ========== 第5步：更新触点状态 ==========
-	if block.type == BlockType.Long:
-		touch.holding_block = block
-	
 	touch.is_free = false
 	touch.last_press_time_ms = block.start_time_ms
 	touch.last_press_x = block.x
@@ -1241,8 +1372,8 @@ func _distribute_home_lanes(lane_start: int, lane_end: int, count: int) -> Array
 func _get_touch_current_x(touch: VirtualTouch, at_time_ms: float) -> float:
 	if touch.last_press_time_ms < 0:
 		return touch.home_x  # 从未使用过，在原位
-	if not touch.is_free or touch.holding_block != null:
-		return touch.last_press_x  # 占用中，位置不变
+	if not touch.is_free:
+		return touch.last_press_x  # 占用中（含长条占用，is_free=false 期间位置不变）
 	# 已释放：向最近原位回归
 	if not hand_model_enabled or touch.hand_home_positions.is_empty():
 		return touch.last_press_x  # 无原位模型
@@ -1277,9 +1408,10 @@ func _get_block_hand(block_x: float) -> int:
 	return 0 if block_x < screen_width * 0.5 else 1
 
 
-## 获取游戏序列列表
-func get_game_sequences() -> Array[GameSequence]:
-	return game_sequences.duplicate()
+## 深拷贝当前游戏序列为独立可写副本（消费方如 PlayView 改写 flow_note_ref 时调用，避免污染共享缓存）
+## 仅主线程在 worker join 后调用（await_generate_keys 结束后），此时无 worker 并发读共享缓存
+func clone_game_sequences() -> Array[GameSequence]:
+	return _clone_game_sequences(game_sequences)
 
 ## 获取背景序列列表
 func get_background_sequences() -> Array[BackgroundSequence]:
@@ -1347,17 +1479,17 @@ func get_last_notes_classification() -> Dictionary:
 ## 同步清空 _cached_*，避免单 slot 缓存常驻（约 3-15 MB GameSequence + 引用数组）
 ## 下次进入 PlayView 时 generate_keys 会重新生成并填充缓存
 func clear_sequences() -> void:
-	game_sequences.clear()
-	background_sequences.clear()
-	all_notes.clear()
+	game_sequences = []
+	background_sequences = []
+	all_notes = []
 	next_key_id = 0
 	current_midi_data = null
 	# 同步清空单 slot 缓存，避免 PlayView 退出后僵尸内存驻留
 	_cache_key = ""
-	_cached_sequences.clear()
-	_cached_background_sequences.clear()
-	_cached_manual_notes.clear()
-	_cached_auto_notes.clear()
+	_cached_sequences = []
+	_cached_background_sequences = []
+	_cached_manual_notes = []
+	_cached_auto_notes = []
 	# 同步清空 BPM 时间线相关的查找缓存（6 万音符 MIDI 的 _tick_ms_cache 可达 5-12 MB）
 	# set_midi_time_parameters 下次调用时会重建 _bpm_lookup 与 _tick_ms_cache
 	_tick_ms_cache.clear()
@@ -1385,10 +1517,10 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 	# 任何影响音符生成的配置变更都应清除缓存，避免返回旧结果
 	# 同步清空 _cached_* 释放内存，否则旧 GameSequence 会常驻（_cache_key="" 但数组仍持有引用）
 	_cache_key = ""
-	_cached_sequences.clear()
-	_cached_background_sequences.clear()
-	_cached_manual_notes.clear()
-	_cached_auto_notes.clear()
+	_cached_sequences = []
+	_cached_background_sequences = []
+	_cached_manual_notes = []
+	_cached_auto_notes = []
 
 	# 处理 Lane 相关配置变更
 	if section == "Lane":
@@ -1445,7 +1577,7 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 				else:
 					GLogger.info("Ignored max_touch_move_speed change (keyboard mode active)", "KeySequenceManager")
 			"max_block_coalesce_time":
-				block_coalesce_seconds = float(value)
+				density_cap_per_sec = int(value)
 	
 	# 处理 Appearance 相关配置变更
 	elif section == "Appearance":

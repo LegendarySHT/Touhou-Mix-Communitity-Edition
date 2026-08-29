@@ -84,7 +84,7 @@ static var mappings: Dictionary = {
 	"min_tap_interval": {"section": "Generator", "key": "min_tap_interval", "value_type": "float"},
 	"min_touch_cooldown_time": {"section": "Generator", "key": "min_touch_cooldown_time", "value_type": "float"},
 	"max_touch_move_speed": {"section": "Generator", "key": "max_touch_move_speed", "value_type": "int"},
-	"max_block_coalesce_time": {"section": "Generator", "key": "max_block_coalesce_time", "value_type": "float"},
+	"max_block_coalesce_time": {"section": "Generator", "key": "max_block_coalesce_time", "value_type": "int"},
 	"note_fall_time": {"section": "Generator", "key": "note_fall_time", "value_type": "float"},
 	
 	# ========== 外观设置 ==========

@@ -517,12 +517,12 @@ static func get_setting_groups() -> Array:
 			},
 			{
 				"id": "max_block_coalesce_time",
-				"name_en": "Max Block Coalesce Time",
-				"name_zh": "每个批次最大时间",
-				"description": "控制每组下落的音符的时间间隔",
+				"name_en": "Note Density Cap",
+				"name_zh": "音符生成密度上限",
+				"description": "控制每 1 秒内最多生成的按压时刻组数量（0 = 不限）",
 				"type": "TYPE_LINE_EDIT",
-				"default_value": "0.5",
-				"unit": "s"
+				"default_value": "8",
+				"unit": "组/秒"
 			},
 			{
 				"id": "note_fall_adjust",

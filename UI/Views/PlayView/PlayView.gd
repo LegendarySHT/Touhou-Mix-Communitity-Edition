@@ -729,8 +729,10 @@ func _finish_generate_game_sequences(_midi_data: MidiData, task_id: int) -> void
 			)
 
 	# 缓存生成的游戏序列
-	var raw_sequences = key_sequence_mgr.get_game_sequences()
-	GLogger.info("get_game_sequences returned %d items" % raw_sequences.size(), "PlayView")
+	# 深拷贝独立副本（clone_game_sequences）：下方 _convert_game_sequences_to_flow_notes 会改写
+	# seq.flow_note_ref，必须避免污染 KSM 共享缓存；深拷贝已从 generate_keys 命中逻辑移出到此
+	var raw_sequences = key_sequence_mgr.clone_game_sequences()
+	GLogger.info("clone_game_sequences returned %d items" % raw_sequences.size(), "PlayView")
 	game_sequences = raw_sequences
 	GLogger.info("game_sequences assigned, size = %d" % game_sequences.size(), "PlayView")
 
