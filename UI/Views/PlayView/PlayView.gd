@@ -26,6 +26,11 @@ extends Control
 # 难度
 @onready var difficulty: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/difficulty
 
+# 难度预设显示名（下标即 difficulty id：0=Easy,1=Normal,2=Hard,3=Lunatic,4=Custom）
+const DIFFICULTY_NAMES: Array[String] = ["Easy", "Normal", "Hard", "Lunatic", "Custom"]
+const DIFFICULTY_CFG_SECTION: String = "Generator"
+const DIFFICULTY_CFG_KEY: String = "difficulty"
+
 # 轨道光效及键位显示
 @onready var lane_area: Control = $Lane
 
@@ -1148,7 +1153,12 @@ func _init_display(show_ready_animation: bool = true):
 	midi_duration.text = "%02d:%02d" % [s / 60, s % 60]
 	midi_name.set_scroll_text(current_midi.name)
 	midi_author.set_scroll_text(current_midi.artist_name)
-	
+
+	# 显示当前选中的难度预设
+	var difficulty_id := ConfigManager.instance.get_int(DIFFICULTY_CFG_SECTION, DIFFICULTY_CFG_KEY, 1)
+	if difficulty_id >= 0 and difficulty_id < DIFFICULTY_NAMES.size():
+		difficulty.text = DIFFICULTY_NAMES[difficulty_id]
+
 	menu.visible = false
 	song_info.visible = true
 

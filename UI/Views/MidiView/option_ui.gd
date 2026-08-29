@@ -6,11 +6,25 @@ extends VBoxContainer
 @onready var limit_btn: OptionButton = $TabView/Mode/HFlowC/Limit
 # 游戏模式 （普通/扫描线）
 @onready var gamme_mode_btn: OptionButton = $TabView/Mode/HFlowC/GameMode
+# 难度预设 (Easy/Normal/Hard/Lunatic/Custom)
+@onready var difficulty_btn: OptionButton = $TabView/Mode/HFlowC/Difficulty
 
 const MODE_NORMAL_ID: int = 0
 const MODE_AUTO_ID: int = 1
 
+# 难度预设：difficulty_id → {setting_id: value}（Custom 不在此表中，沿用配置现有值）
+const DIFFICULTY_PRESETS: Dictionary = {
+	0: {"max_simultaneous_blocks": 2, "min_tap_interval": 0.5, "min_touch_cooldown_time": 0.5, "max_touch_move_speed": 500, "max_block_coalesce_time": 0.5},
+	1: {"max_simultaneous_blocks": 2, "min_tap_interval": 0.25, "min_touch_cooldown_time": 0.25, "max_touch_move_speed": 1000, "max_block_coalesce_time": 0.1},
+	2: {"max_simultaneous_blocks": 3, "min_tap_interval": 0.25, "min_touch_cooldown_time": 0.25, "max_touch_move_speed": 99999, "max_block_coalesce_time": 0.05},
+	3: {"max_simultaneous_blocks": 4, "min_tap_interval": 0.0, "min_touch_cooldown_time": 0.0, "max_touch_move_speed": 99999, "max_block_coalesce_time": 0.0},
+}
+const DIFFICULTY_CUSTOM_ID: int = 4
+const DIFFICULTY_CFG_SECTION: String = "Generator"
+const DIFFICULTY_CFG_KEY: String = "difficulty"
+
 var _is_syncing_mode_ui: bool = false
+var _is_syncing_difficulty_ui: bool = false
 
 
 func _ready():
@@ -24,13 +38,11 @@ func _ready():
 			)
 			_apply_tab_focus_style(i)
 	
-	for i in [mode_btn, limit_btn, gamme_mode_btn]:
+	for i in [mode_btn, limit_btn, gamme_mode_btn, difficulty_btn]:
 		i.get_popup().about_to_popup.connect(_on_popup_menu_popup.bind(i.get_popup()))
 
-	if not mode_btn.item_selected.is_connected(_on_mode_selected):
-		mode_btn.item_selected.connect(_on_mode_selected)
-
 	_sync_mode_from_config()
+	_sync_difficulty_from_config()
 
 ## 给选项卡按钮设置 focus 样式：按下效果 + 白色边框（参考 SettingView 快捷按钮）
 ## 聚焦时按钮已自动按下，focus 样式叠加在 pressed 样式之上形成白边
@@ -72,6 +84,37 @@ func _on_mode_selected(index: int) -> void:
 	else:
 		GLogger.info("Playback.auto_mode set to %d" % value, "OptionUI")
 
+## 从配置恢复难度 OptionButton 选中态
+func _sync_difficulty_from_config() -> void:
+	var difficulty_id := ConfigManager.instance.get_int(DIFFICULTY_CFG_SECTION, DIFFICULTY_CFG_KEY, 1)
+	var idx := difficulty_btn.get_item_index(difficulty_id)
+	if idx < 0:
+		idx = 1  # 回退 Normal
+	_is_syncing_difficulty_ui = true
+	difficulty_btn.select(idx)
+	_is_syncing_difficulty_ui = false
+
+## 难度切换：写预设值到配置 + 锁定设置项（Custom 仅解锁，不覆盖值）
+func _on_difficulty_selected(index: int) -> void:
+	if _is_syncing_difficulty_ui:
+		return
+	var difficulty_id: int = difficulty_btn.get_item_id(index)
+	# 先写 5 个预设值（触发 KeySequenceManager 运行时更新），最后写 difficulty
+	# 保证 SettingList 的 difficulty 监听器触发时 5 个值已就位
+	if difficulty_id != DIFFICULTY_CUSTOM_ID:
+		var preset: Dictionary = DIFFICULTY_PRESETS.get(difficulty_id, {})
+		for setting_id in preset:
+			var mapping = SettingsMapper.mappings.get(setting_id)
+			if mapping == null:
+				continue
+			ConfigManager.instance.set_value_and_notify(mapping.section, mapping.key, preset[setting_id])
+	ConfigManager.instance.set_value_and_notify(DIFFICULTY_CFG_SECTION, DIFFICULTY_CFG_KEY, difficulty_id)
+	var save_ok := ConfigManager.instance.save_config(ConfigManager.USER_CONFIG_PATH)
+	if not save_ok:
+		GLogger.warning("Failed to persist difficulty to user config", "OptionUI")
+	else:
+		GLogger.info("Difficulty set to %d" % difficulty_id, "OptionUI")
+
 # 修改popupmenu的弹出位置
 func _on_popup_menu_popup(popup_menu: PopupMenu) -> void:
 	await get_tree().process_frame
@@ -87,3 +130,11 @@ func _on_button_toggled(toggle_on, button):
 			return
 		t_page.visible = true
 		AniMGR.animate_fade_in(t_page, 0.2, "tabSwitch")
+
+
+func _on_game_mode_selected(index: int) -> void:
+	pass # Replace with function body.
+
+
+func _on_limit_selected(index: int) -> void:
+	pass # Replace with function body.

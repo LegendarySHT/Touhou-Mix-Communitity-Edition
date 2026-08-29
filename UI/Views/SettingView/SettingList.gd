@@ -7,6 +7,18 @@ var setting_items: Dictionary = {}  # 存储所有设置项，键为id，值为S
 const VALUE_BUTTON_SCENE := preload("res://UI/Views/SettingView/ValueButton.tscn")
 var _value_button_instance: Button = null
 
+# 受难度预设控制的生成设置项（难度 != Custom 时锁定）
+const DIFFICULTY_LOCKED_IDS: Array[String] = [
+	"max_simultaneous_blocks",
+	"min_tap_interval",
+	"min_touch_cooldown_time",
+	"max_touch_move_speed",
+	"max_block_coalesce_time",
+]
+const DIFFICULTY_CUSTOM_ID: int = 4
+const DIFFICULTY_CFG_SECTION: String = "Generator"
+const DIFFICULTY_CFG_KEY: String = "difficulty"
+
 # 进入 SettingView 时的配置快照（setting_id → 原始值，类型已转换好）
 var _initial_config: Dictionary = {}
 # 当前待保存的配置（setting_id → 已转换好类型的最终值）
@@ -41,6 +53,10 @@ func _ready() -> void:
 			tBtn.button_pressed = true
 	)
 
+	# 监听难度变更：SettingView 缓存不重跑 load_settings，需主动刷新 5 个受控项
+	if EvtBus and not EvtBus.config_changed.is_connected(_on_difficulty_config_changed):
+		EvtBus.config_changed.connect(_on_difficulty_config_changed)
+
 # 传入配置字典加载界面
 func load_settings(setting: Dictionary = {}):
 	# 清空现有项目
@@ -69,6 +85,9 @@ func load_settings(setting: Dictionary = {}):
 
 	# 应用高级设置项可见性（根据 show_advanced_settings 的值）
 	_apply_advanced_visibility()
+
+	# 应用难度预设锁定（值已由 load_settings 从文件读入，仅切换锁定态）
+	_apply_difficulty_lock_state(true)
 
 var separators = []
 @onready var separator_scene = load(item_separator)
@@ -716,6 +735,34 @@ func _apply_advanced_visibility() -> void:
 			setting_item.visible = show_advanced
 			if setting_item.value_node:
 				setting_item.value_node.visible = show_advanced
+
+## ========== 难度预设锁定 ==========
+
+## 难度相关配置变更：刷新 5 个受控项的显示值 + 锁定态
+func _on_difficulty_config_changed(key: String, _section: String, _value: Variant) -> void:
+	if key != DIFFICULTY_CFG_KEY:
+		return
+	_apply_difficulty_lock_state(false)
+
+## apply_values_from_config=true: 仅切换锁定态（load_settings 后调用，值已就位）
+## apply_values_from_config=false: 同时从 ConfigManager 重读 5 项值刷新显示（难度变更后调用）
+func _apply_difficulty_lock_state(apply_values_from_config: bool) -> void:
+	var difficulty_id: int = ConfigManager.instance.get_int(DIFFICULTY_CFG_SECTION, DIFFICULTY_CFG_KEY, 1)
+	var locked: bool = difficulty_id != DIFFICULTY_CUSTOM_ID
+	for setting_id in DIFFICULTY_LOCKED_IDS:
+		if not setting_items.has(setting_id):
+			continue
+		var item: SettingItem = setting_items[setting_id]
+		if item == null:
+			continue
+		if not apply_values_from_config:
+			var mapping = SettingsMapper.mappings.get(setting_id)
+			if mapping:
+				var v: Variant = ConfigManager.instance.get_value(mapping.section, mapping.key, "")
+				item.set_value(v)
+				_pending_config[setting_id] = v
+				_initial_config[setting_id] = v
+		item.set_enabled(not locked)
 
 ## ========== 主题化 ==========
 

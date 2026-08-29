@@ -156,14 +156,6 @@ draw_center = false
 content_margin_left = 50.0
 content_margin_right = 50.0
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_3y6u5"]
-atlas = ExtResource("2_1rn3q")
-region = Rect2(80, 320, 80, 80)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_r153q"]
-atlas = ExtResource("2_1rn3q")
-region = Rect2(320, 80, 80, 80)
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_4rbvf"]
 atlas = ExtResource("2_1rn3q")
 region = Rect2(320, 240, 80, 80)
@@ -175,6 +167,14 @@ region = Rect2(240, 240, 80, 80)
 [sub_resource type="AtlasTexture" id="AtlasTexture_vyv6b"]
 atlas = ExtResource("2_1rn3q")
 region = Rect2(160, 240, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3y6u5"]
+atlas = ExtResource("2_1rn3q")
+region = Rect2(80, 320, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_r153q"]
+atlas = ExtResource("2_1rn3q")
+region = Rect2(320, 80, 80, 80)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_j02sm"]
 atlas = ExtResource("8_r153q")
@@ -737,24 +737,28 @@ theme_override_constants/h_separation = 20
 theme_override_constants/v_separation = 20
 alignment = 1
 
-[node name="Mode" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/HFlowC" unique_id=1997638858]
+[node name="Difficulty" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/HFlowC" unique_id=1847448867]
+custom_minimum_size = Vector2(0, 88)
 custom_maximum_size = Vector2(350, 120)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 focus_neighbor_left = NodePath("../Mode")
 focus_neighbor_bottom = NodePath("../GameMode")
-theme_override_font_sizes/font_size = 23
-alignment = 2
-autowrap_mode = 2
-selected = 0
-item_count = 2
-popup/item_0/text = "Norm Mode"
-popup/item_0/icon = SubResource("AtlasTexture_3y6u5")
+theme_override_font_sizes/font_size = 36
+alignment = 1
+selected = 1
+item_count = 5
+popup/item_0/text = "Easy"
 popup/item_0/id = 0
-popup/item_1/text = "Auto Mode"
-popup/item_1/icon = SubResource("AtlasTexture_r153q")
+popup/item_1/text = "Normal"
 popup/item_1/id = 1
+popup/item_2/text = "Hard"
+popup/item_2/id = 2
+popup/item_3/text = "Lunatic"
+popup/item_3/id = 3
+popup/item_4/text = "Custom"
+popup/item_4/id = 4
 
 [node name="Limit" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/HFlowC" unique_id=1131758216]
 custom_maximum_size = Vector2(350, 120)
@@ -777,6 +781,25 @@ popup/item_1/id = 1
 popup/item_2/text = "All Perfect"
 popup/item_2/icon = SubResource("AtlasTexture_vyv6b")
 popup/item_2/id = 2
+
+[node name="Mode" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/HFlowC" unique_id=1997638858]
+custom_maximum_size = Vector2(350, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+focus_neighbor_left = NodePath(".")
+focus_neighbor_bottom = NodePath("../GameMode")
+theme_override_font_sizes/font_size = 23
+alignment = 2
+autowrap_mode = 2
+selected = 0
+item_count = 2
+popup/item_0/text = "Norm Mode"
+popup/item_0/icon = SubResource("AtlasTexture_3y6u5")
+popup/item_0/id = 0
+popup/item_1/text = "Auto Mode"
+popup/item_1/icon = SubResource("AtlasTexture_r153q")
+popup/item_1/id = 1
 
 [node name="GameMode" type="OptionButton" parent="OptionPanel/VBoxC/TabView/Mode/HFlowC" unique_id=872825176]
 custom_maximum_size = Vector2(350, 120)
@@ -962,6 +985,10 @@ metadata/_tab_index = 4
 [connection signal="pressed" from="LeftArea/MainBtn/TrackViewBtn" to="." method="_on_click_track_btn"]
 [connection signal="pressed" from="LeftArea/MainBtn/PlayBtn" to="." method="_on_click_start_btn"]
 [connection signal="pressed" from="LeftArea/MainBtn/FavorListBtn" to="." method="_on_click_favor_list_btn"]
+[connection signal="item_selected" from="OptionPanel/VBoxC/TabView/Mode/HFlowC/Difficulty" to="OptionPanel/VBoxC" method="_on_difficulty_selected"]
+[connection signal="item_selected" from="OptionPanel/VBoxC/TabView/Mode/HFlowC/Limit" to="OptionPanel/VBoxC" method="_on_limit_selected"]
+[connection signal="item_selected" from="OptionPanel/VBoxC/TabView/Mode/HFlowC/Mode" to="OptionPanel/VBoxC" method="_on_mode_selected"]
+[connection signal="item_selected" from="OptionPanel/VBoxC/TabView/Mode/HFlowC/GameMode" to="OptionPanel/VBoxC" method="_on_game_mode_selected"]
 [connection signal="pressed" from="OptionPanel/VBoxC/TabView/Comment/Top/Like" to="OptionPanel/VBoxC/TabView/Comment" method="_on_like_pressed"]
 [connection signal="pressed" from="OptionPanel/VBoxC/TabView/Comment/Top/Dislike" to="OptionPanel/VBoxC/TabView/Comment" method="_on_dislike_pressed"]
 [connection signal="text_submitted" from="OptionPanel/VBoxC/TabView/Comment/Bottom/LineEdit" to="OptionPanel/VBoxC/TabView/Comment" method="_on_send_pressed"]
