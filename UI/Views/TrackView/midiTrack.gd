@@ -82,7 +82,7 @@ func _ready():
 		push_error("轨道 %d 初始化失败: 无可用乐器选项" % track_index)
 		return
 
-	# 构建两级乐器菜单：大类 → 具体乐器（仅首帧构建，SoundFont 变更时经 rebuild 重建）
+	# 构建两级乐器菜单：大类 → 具体乐器（大类子菜单节点急切创建，具体乐器项首次打开时惰性填充）
 	if instruments_btn.get_popup().item_count == 0:
 		_build_category_items()
 		_build_instrument_menus()
@@ -213,8 +213,8 @@ func _make_cat_icon(category: int) -> Texture2D:
 	return at
 
 # 构建大类主菜单 + 各具体乐器子菜单。
-# 子菜单 PopupMenu 节点一次性创建（add_submenu_item 要求节点构建时已存在），
-# 具体乐器项也在此全部填充（乐器项字符串来自共享的 instrument_options，仅存引用）。
+# 子菜单全部复用 TrackView 持有的全局共享 PopupMenu（add_submenu_item 要求节点构建时已是本弹窗的子元素，
+# 故在 _attach_shared_submenu 中 reparent 到本弹窗下；打开时的归属按当前音轨由 _ensure_submenus_attached 决定）。
 func _build_instrument_menus() -> void:
 	var popup := instruments_btn.get_popup()
 	popup.clear()
@@ -223,6 +223,9 @@ func _build_instrument_menus() -> void:
 
 	# 大类主菜单滚动支持（16 类超出屏幕时可触摸拖动滚动）
 	_setup_main_menu_scroll(popup)
+	# 主菜单弹出前把共享子菜单 reparent 到本弹窗并预填当前轨乐器项（此时才确定活动音轨）
+	if not popup.is_connected("about_to_popup", Callable(self, "_on_main_menu_about_to_popup")):
+		popup.about_to_popup.connect(_on_main_menu_about_to_popup)
 
 	# 禁用 hover 自动展开子菜单：仅点击大类项时才打开子菜单。
 	# 默认 hover 0.3s 就切换子菜单，拖拽滚动经过各分类项时频繁切换会打断/卡顿拖动；
@@ -232,37 +235,51 @@ func _build_instrument_menus() -> void:
 	popup.set_block_signals(true)
 	var idx := 0
 	for cat in _category_items.keys():
-		var sub := PopupMenu.new()
-		sub.name = "Submenu_%d" % cat
-		# add_submenu_item 通过 get_node_or_null 相对 popup 自身解析路径，
-		# 子菜单必须挂到 popup 下才能被找到（之后作为 popup 的子树弹出）。
-		popup.add_child(sub)
+		# 复用全局共享子菜单（reparent 到本弹窗下，供 add_submenu_item 相对名解析 + 引擎内嵌）
+		var sub : PopupMenu = parent_node.get_shared_submenu(cat)
+		_attach_shared_submenu(sub, cat)
 		popup.add_submenu_item(InstrumentCategory.CATEGORY_NAMES[cat], sub.name)
 		popup.set_item_id(idx, cat)
 		var icon := _make_cat_icon(cat)
 		if icon:
 			popup.set_item_icon(idx, icon)
-		sub.about_to_popup.connect(_on_submenu_about_to_popup.bind(sub))
-		sub.id_pressed.connect(_on_submenu_item_selected.bind(cat))
-		# 一次性填充该类下的具体乐器项（不懒加载）
-		var list: Array = _category_items.get(cat, [])
-		for i in list.size():
-			sub.add_item(list[i], i)
-		# 子菜单触摸滚动支持
-		_setup_submenu_scroll(sub)
 		idx += 1
 	popup.set_block_signals(false)
 
-func _release_submenus() -> void:
+# 归属共享子菜单：reparent 到本轨弹窗、清掉上一音轨遗留乐器项改装当前音轨、一次性信号接线。
+# owner/category meta 让共享子菜单的信号回调定位到当前活动音轨（见 owner 分发）。
+func _attach_shared_submenu(sub: PopupMenu, cat: int) -> void:
 	var popup := instruments_btn.get_popup()
-	for child in popup.get_children():
-		if child is PopupMenu:
-			child.queue_free()
-	_drag_flags.clear()
+	if sub.get_parent() != popup:
+		# add_child 不能直接 reparent，须先从旧父（其它轨/本视图）摘下再挂到本弹窗
+		if sub.get_parent():
+			sub.get_parent().remove_child(sub)
+		popup.add_child(sub)
+	sub.clear()
+	sub.set_meta("owner", self)
+	sub.set_meta("category", cat)
+	var list: Array = _category_items.get(cat, [])
+	for i in list.size():
+		sub.add_item(list[i], i)
+	if not sub.has_meta("wired"):
+		sub.set_meta("wired", true)
+		sub.about_to_popup.connect(_on_submenu_about_to_popup.bind(sub))
+		sub.id_pressed.connect(_on_submenu_item_selected.bind(sub))
+		_setup_submenu_scroll(sub)
 
-# 按大类号取对应子菜单（子菜单以固定名 "Submenu_%d" 挂在主菜单 popup 下）
-func _find_submenu(category: int) -> PopupMenu:
-	return instruments_btn.get_popup().get_node_or_null("Submenu_%d" % category)
+# 主菜单弹出前，把所有共享子菜单 reparent 到本轨弹窗并预填本轨乐器项
+func _on_main_menu_about_to_popup() -> void:
+	if parent_node == null or not parent_node.has_method("get_shared_submenu"):
+		return
+	for cat in _category_items.keys():
+		var sub : PopupMenu = parent_node.get_shared_submenu(cat)
+		_attach_shared_submenu(sub, cat)
+
+# 共享子菜单不销毁，只从本弹窗移除交还 TrackView 持有，供其它音轨复用
+func _release_submenus() -> void:
+	if parent_node and parent_node.has_method("_reclaim_shared_submenus"):
+		parent_node._reclaim_shared_submenus()
+	_drag_flags.clear()
 
 # 大类主菜单（MenuButton popup）触摸滚动配置
 func _setup_main_menu_scroll(popup: PopupMenu) -> void:
@@ -291,14 +308,18 @@ func _setup_submenu_scroll(submenu: PopupMenu) -> void:
 	submenu.popup_hide.connect(_on_menu_hide.bind(submenu, scroll))
 
 func _on_menu_scroll_gui_input(event: InputEvent, popup: PopupMenu) -> void:
+	# 共享子菜单被复用，owner 定位到当前活动音轨
+	var owner = popup.get_meta("owner") as MidiTrack
+	if owner == null:
+		return
 	# 新一轮按下开始时重置拖拽标志：上一次"拖拽滚动但未选中项"的标记不应残留到后续点击，
 	# 否则后续点击都会被误判成拖拽松手而无法选中（表现为按钮无效但 hover 正常）。
 	if (event is InputEventMouseButton or event is InputEventScreenTouch) and event.pressed:
-		_drag_flags[popup] = false
+		owner._drag_flags[popup] = false
 	elif event is InputEventScreenDrag:
-		_drag_flags[popup] = true
+		owner._drag_flags[popup] = true
 	elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT):
-		_drag_flags[popup] = true
+		owner._drag_flags[popup] = true
 
 # 主菜单拖拽检测：有拖拽位移时标记 _main_dragging，_on_submenu_about_to_popup 据此跳过复位；
 # 松手时清除标志并复位卡住的拖拽跟随（主菜单打开子菜单时自身不关闭，popup_hide 不会触发，
@@ -319,29 +340,36 @@ func _on_main_scroll_gui_input(event: InputEvent) -> void:
 # 仅"点击展开子菜单"（非拖拽）时复位：拖拽滚动中悬浮切到其它大类也会触发弹出，此时复位会中断拖拽。
 # 同时记录打开的子菜单并启用"提前收起"轮询：鼠标一回到大类列表区域就收起子菜单，主菜单即可直接拖拽。
 func _on_submenu_about_to_popup(sub: PopupMenu) -> void:
-	if _main_scroll and not _main_dragging:
-		_main_scroll.set_v_scroll(_main_scroll.get_v_scroll())
-	_active_submenu = sub
-	_submenu_open = true
-	_last_submenu_open_ms = Time.get_ticks_msec()
-	set_process(true)
+	# 共享子菜单被复用，owner 定位到当前活动音轨
+	var owner = sub.get_meta("owner") as MidiTrack
+	if owner == null:
+		return
+	if owner._main_scroll and not owner._main_dragging:
+		owner._main_scroll.set_v_scroll(owner._main_scroll.get_v_scroll())
+	owner._active_submenu = sub
+	owner._submenu_open = true
+	owner._last_submenu_open_ms = Time.get_ticks_msec()
+	owner.set_process(true)
 
 # 弹窗关闭时清除拖拽标志 + 重置 ScrollContainer 卡住的拖拽状态
 func _on_menu_hide(popup: PopupMenu, scroll: ScrollContainer) -> void:
-	_drag_flags.erase(popup)
 	if popup == instruments_btn.get_popup():
-		# 主菜单关闭必然同时收起所有子菜单
+		# 主菜单关闭必然同时收起所有子菜单（popup 即本轨主弹窗）
+		_drag_flags.erase(popup)
 		_main_dragging = false
 		if _active_submenu:
 			_active_submenu = null
 		_submenu_open = false
 		set_process(false)
 	else:
-		# 子菜单被收起
-		if _active_submenu == popup:
-			_active_submenu = null
-			_submenu_open = false
-			set_process(false)
+		# 共享子菜单被收起，owner 定位到当前活动音轨
+		var owner = popup.get_meta("owner") as MidiTrack
+		if owner:
+			owner._drag_flags.erase(popup)
+			if owner._active_submenu == popup:
+				owner._active_submenu = null
+				owner._submenu_open = false
+				owner.set_process(false)
 	scroll.set_v_scroll(scroll.get_v_scroll())
 
 # 提前收起子菜单轮询：仅当有子菜单打开时才运行（set_process 动态启停）。
@@ -383,34 +411,36 @@ func _set_mouse_filter_recursive(node: Node, filter: int, skip_root: bool = fals
 	for child in node.get_children(true):
 		_set_mouse_filter_recursive(child, filter, false)
 
-# 选中某大类下的具体乐器，更新按钮显示并通知父节点应用
-func _on_submenu_item_selected(id: int, category: int) -> void:
-	var list: Array = _category_items.get(category, [])
+# 选中某大类下的具体乐器，更新按钮显示并通知父节点应用（共享子菜单经 owner 定位当前音轨）
+func _on_submenu_item_selected(id: int, sub: PopupMenu) -> void:
+	var owner = sub.get_meta("owner") as MidiTrack
+	if owner == null:
+		return
+	var category := int(sub.get_meta("category", -1))
+	var list: Array = owner._category_items.get(category, [])
 	if id < 0 or id >= list.size():
 		return
-	var sub := _find_submenu(category)
 	# 拖拽滚动后松手：不选中、不关闭（与 TouchScrollOptionButton 一致）
-	if sub != null and _drag_flags.get(sub, false):
+	if owner._drag_flags.get(sub, false):
 		return
 	var display: String = list[id]
-	current_instrument = display
-	_current_display_name = display
-	instruments_btn.text = display
+	owner.current_instrument = display
+	owner._current_display_name = display
+	owner.instruments_btn.text = display
 	# 勾选切换到当前大类
-	var popup := instruments_btn.get_popup()
+	var popup = owner.instruments_btn.get_popup()
 	for i in popup.item_count:
 		popup.set_item_checked(i, false)
-	var cat_idx := popup.get_item_index(category)
+	var cat_idx = popup.get_item_index(category)
 	if cat_idx >= 0:
 		popup.set_item_checked(cat_idx, true)
 	# hide_on_item_selection=false，需手动关闭子菜单
-	if sub != null:
-		sub.hide()
-	if parent_node and parent_node.has_method("_on_track_instrument_changed"):
+	sub.hide()
+	if owner.parent_node and owner.parent_node.has_method("_on_track_instrument_changed"):
 		var info := InstrumentCategory.parse_display_name(display)
-		parent_node._on_track_instrument_changed(
-			track_index,
-			track_channel,
+		owner.parent_node._on_track_instrument_changed(
+			owner.track_index,
+			owner.track_channel,
 			info.get("bank", 0),
 			info.get("program", 0),
 			info.get("name", ""))

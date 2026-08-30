@@ -13,7 +13,7 @@ var duration: float
 var type: NoteType
 var lane: int            		# 轨道索引
 var held_by_touch_id: int = -1  # 按住该音符的触摸点ID
-var game_sequence_ref: Object = null  # 新增：指向对应的GameSequence（演奏模式触发使用）
+var game_sequence_ref: int = -1  # C# 输出中的 game sequence 索引（演奏模式触发使用，-1=无）。由 _spawn_note 写入
 
 # Node2D 批量绘制缓存字段（Block/Slide 用 x/center_x/half_height/color；Long 用下方 cached_head/tail/body 字段）
 # 由 _spawn_note 一次性设置 x/center_x/half_height，由 _update_block_note_fall 每帧更新 center_y

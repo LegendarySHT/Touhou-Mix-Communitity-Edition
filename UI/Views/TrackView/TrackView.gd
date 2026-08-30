@@ -36,6 +36,10 @@ var last_position_ms: float = 0.0  # 用于检测循环播放重置
 var instrument_options: Array = [] # 全局乐器列表（会被 _extract_instruments_from_midi() 填充）
 var regular_instruments: Array = []  # 常规乐器
 var drum_instruments: Array = []     # GM/GS/GM2 鼓组 bank（B120+）
+
+# 全局共享的乐器子菜单（16 大类各一套，跨所有音轨复用），挂在本视图下避免随轨道场景释放。
+# 打开某轨主菜单时经 midiTrack._ensure_submenus_attached reparent 到该轨弹窗下（见 get_shared_submenu）。
+var _shared_instrument_submenus: Dictionary = {}
 # 人声音频路径存在时相关组件会显示
 # vocal_file_path 现由 _vocal_controller 管理
 
@@ -147,6 +151,9 @@ func _load_midi(midi: MidiData) -> void:
 	solo_pairs.clear()
 	solo_mute_snapshot.clear()
 
+	# 收回全局共享的乐器子菜单（避免随旧轨道场景一起被释放）
+	_reclaim_shared_submenus()
+
 	# 清空现有的轨道
 	clear_items()
 
@@ -185,11 +192,16 @@ func _load_midi(midi: MidiData) -> void:
 	_config_persistence.restore_midi_data_config()
 
 	# 加载音符
-	# runtime_track_channel_notes 由 MidiListItem worker 线程预构建（或 preparse_midi_async 构建）
-	# _build_buckets 直接复用，无需主线程遍历 current_notes
-	if current_midi_data.runtime_track_channel_notes.is_empty():
+	# runtime_track_channel_notes 由 MidiPlaybackManager.load_midi 兜底从 notes_soa 重建（保证与 SOA 强一致），
+	# _build_buckets 直接读取（SOA 就绪时经 grouped_indices 重建 bucket，无需主线程遍历全量音符）。
+	# 守卫不能只看 is_empty()：残留"空分组字典"也要重建；SOA 就绪则直接以 grouped_indices 兜底。
+	if (current_midi_data.notes_soa == null or current_midi_data.notes_soa.size() == 0) \
+			and current_midi_data.runtime_track_channel_notes.is_empty():
 		push_warning("No track_channel_notes available (preparse may have failed)")
 		return
+	if current_midi_data.notes_soa != null and current_midi_data.notes_soa.size() > 0 \
+			and current_midi_data.runtime_track_channel_notes.is_empty():
+		current_midi_data.runtime_track_channel_notes = current_midi_data.notes_soa.grouped_indices()
 	# 按 (track, channel) 分组构建 TrackNoteBucket（主线程仅 O(Buckets)）
 	_build_buckets()
 	# 构建 buckets 后让出一帧，避免 _init_master_note_displayer 紧接其后再阻塞
@@ -725,32 +737,40 @@ func _init_master_note_displayer() -> void:
 		master_note_displayer.sync_from_midi_data(current_midi_data)
 
 ## 按 (track, channel) 分组构建 TrackNoteBucket
-## 直接复用 MidiPlaybackManager.preparse_midi_async 预构建的 runtime_track_channel_notes（主线程仅 O(Buckets)）
-## worker 遍历已排序的 parsed_notes 构建 grouping，每 bucket 内天然按 start_time 升序
-## 数据来源保证：preparse_midi_async 构建（MidiView 统计 / TrackView / PlayView 共享同一解析）
+## groups 直接读 set_parsed_soa 构建的 runtime_track_channel_notes（与 SOA 强一致），只读复用；
+## 仅当缓存缺失/空分组时才从 SOA 兜底重建并回写
 func _build_buckets() -> void:
 	_all_buckets.clear()
-	# 直接从 worker 预构建的 (track, channel) → notes 分组构建
-	# preparse_midi_async 在解析 MIDI 时顺便构建，TrackView._load_midi 已 await 其完成
-	# assign() 把 untyped Array 的 NoteEvent 引用复制到 typed Array[MidiParser.NoteEvent]
-	# NoteEvent 是 RefCounted，只复制引用（8 字节/项），不复制对象本身
-	for key in current_midi_data.runtime_track_channel_notes:
+	var soa := current_midi_data.notes_soa
+	var use_soa := soa != null and soa.size() > 0
+	# 分组唯一权威来源是 set_parsed_soa 与 SOA 一并构建的 runtime_track_channel_notes（与 SOA 强一致）。
+	# 只读复用，不再每次进入重复 O(N) 重建；仅当缓存缺失/空分组时才从 SOA 兜底重建。
+	var groups: Dictionary = current_midi_data.runtime_track_channel_notes
+	if groups.is_empty() and use_soa:
+		groups = soa.grouped_indices()
+		current_midi_data.runtime_track_channel_notes = groups
+	for key in groups:
 		var parts = key.split(":")
 		var track_idx = int(parts[0])
 		var channel = int(parts[1])
-		var notes = current_midi_data.runtime_track_channel_notes[key]
+		var indices = groups[key]
 
 		var bucket = NoteDisplayer.TrackNoteBucket.new()
 		bucket.track_index = track_idx
 		bucket.channel = channel
 		bucket.hue = MidiTrack.colors_set[track_idx % MidiTrack.colors_set.size()].h
 		bucket.color = Color.from_hsv(bucket.hue, 1, 0.9, 0.8)
-		# assign() 复制元素到 bucket.notes 的内部 buffer（不与源 Dictionary 共享）
-		# 后续对 bucket.notes 的 sort 等修改不会污染 runtime_track_channel_notes
-		# NoteEvent 是 RefCounted，复制的是引用（8 字节/项），不复制对象本身
-		bucket.notes.assign(notes)
+		# 统一透传到 bucket：soa != null 时 indices 为 PackedInt32Array（SOA 索引），显示路径
+		# 只读直引 bucket.soa，不物化全量 22w NoteEvent（音符数据唯一来源仍是 SOA）
+		bucket.notes = indices
+		bucket.soa = soa if use_soa else null
 		_all_buckets.append(bucket)
-	# worker 遍历已排序的 parsed_notes，每 bucket 内天然按 start_time 升序，无需再 sort
+	# SOA 来源数组已按 start_tick 升序，每组内天然有序，无需再 sort
+	var diag_total := 0
+	for b in _all_buckets:
+		diag_total += b.notes.size()
+	GLogger.info("Build buckets: soa_size=%d use_soa=%s buckets=%d total_notes=%d" %
+		[soa.size() if soa != null else -1, use_soa, _all_buckets.size(), diag_total], "TrackView")
 
 func _init_track_note_displayer(track_scene: MidiTrack, source_bucket: NoteDisplayer.TrackNoteBucket) -> void:
 	if track_scene.note_display == null:
@@ -1019,3 +1039,32 @@ func _refresh_all_track_instruments() -> void:
 		if item is MidiTrack:
 			item.refresh_instrument_options(regular_instruments, drum_instruments)
 			GLogger.info("Updated instrument options for track %d channel %d" % [item.track_index, item.track_channel], "TrackView")
+
+# ===== 全局共享的乐器子菜单 =====
+# 16 大类子菜单全程只创建一套（挂在 TrackView 下），所有音轨共用；
+# 打开某轨主菜单时由 midiTrack._ensure_submenus_attached reparent 到该轨弹窗下。
+# 相比每轨各建 16 个 PopupMenu/Window 节点，可显著降低 TrackView 随音轨数线性增长的内存。
+
+## 取全局共享子菜单（不存在则创建一个裸 PopupMenu 挂在本视图下），category 为乐器大类号
+func get_shared_submenu(category: int) -> PopupMenu:
+	if _shared_instrument_submenus.has(category):
+		var existing = _shared_instrument_submenus[category]
+		if existing != null and is_instance_valid(existing):
+			return existing
+	var sub := PopupMenu.new()
+	sub.name = "SharedSubmenu_%d" % category
+	sub.hide_on_item_selection = false  # 选中项由 MidiTrack 手动控制关闭
+	add_child(sub)  # 本视图持有；绑定到某轨弹窗后需调 _reclaim_shared_submenus 收回
+	_shared_instrument_submenus[category] = sub
+	return sub
+
+## 把共享子菜单从轨道弹窗收回本视图持有（不销毁），防止换谱/清轨时随轨道场景被释放
+func _reclaim_shared_submenus() -> void:
+	for cat in _shared_instrument_submenus:
+		var sub = _shared_instrument_submenus[cat]
+		if sub == null or not is_instance_valid(sub):
+			_shared_instrument_submenus[cat] = null
+			continue
+		if sub.get_parent() != self:
+			sub.get_parent().remove_child(sub)
+			add_child(sub)

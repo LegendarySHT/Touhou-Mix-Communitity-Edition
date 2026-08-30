@@ -70,7 +70,7 @@ var judge_windows: Dictionary = {
 	"bad": 500        # < 0.50s
 }
 
-# 音符生成提前量（毫秒） - 确保音符在到达判定线前有足够时间显示 - 调下落速度也是用它（
+# 音符生成提前量（毫秒） - 确保音符在到达判定线前有足够时间显示 - 调下落速度也是用它
 var note_generation_lead_time: float = 1000.0
 
 # 下落参数
@@ -98,8 +98,8 @@ signal long_holding(long_instance_id: int)
 
 # 音符相关
 var lane_width: float = 0
-# 音符按 类型(Block/Slide/Long) → 颜色 → 数组 三级分桶存储
-# 替代原单一 active_notes 数组：_draw/_process 免逐音符类型分发；同色音符同桶连续绘制利于贴图批处理
+# 音符按 类型(Block/Slide/Long) → 颜色 → Array[int] 三级分桶存储
+# 桶元素为 seq 索引（而非对象），_draw/_process 免逐音符类型分发；同色音符同桶连续绘制利于贴图批处理
 const _TYPE_ORDER: Array = [FlowNote.NoteType.Block, FlowNote.NoteType.Slide, FlowNote.NoteType.Long]
 ## _process 热路径遍历用：Block/Slide 共用 _update_block_note_fall，避免每帧分配 [Block, Slide] 数组
 const _BLOCK_SLIDE_TYPES: Array = [FlowNote.NoteType.Block, FlowNote.NoteType.Slide]
@@ -109,7 +109,7 @@ var _note_buckets: Dictionary = {
 	FlowNote.NoteType.Long: {},
 }
 var _active_note_count: int = 0  # 活跃音符计数
-var _notes_by_lane: Dictionary = {}  # 按轨道分组索引：{lane: Array[FlowNote]}，加速音符判定查找
+var _notes_by_lane: Dictionary = {}  # 按轨道分组索引：{lane: Array[int]}，加速音符判定查找
 
 
 # Block/Slide/Long 音符批量绘制器（PlayView.tscn 场景节点，Node2D _draw 替代 N 个 Control 节点）
@@ -131,13 +131,126 @@ var _synced_current_time: float = 0.0
 # 判定（过线/Miss/长条结束/滑过认领）仍用 _synced_current_time（音频钟），保证判定与声音对齐。
 var _render_time_ms: float = 0.0
 
-# 修改为从PlayView传入的音符列表
-var notes_list: Array[FlowNote] = []  # 移除测试用的音符
-var note_idx: int = 0
+# ===== 平行数组（彻底无 FlowNote 对象，直接消费 C# 静态数据 + 本地运行态数组）=====
+# 索引 = C# KeySequenceCore 的 seq 索引。静态数据（时间/时长/类型/轨道）在 build_seq_data() 时
+# 从 C# 一次快照进 _st_* ；运行态（坐标/判定标志/长条状态）存于 _rt_*。
+# 只按索引写数组元素，全程不创建任何音符对象，内存与活动音符数解耦（数组长度=序列总条数，固定分配一次）。
+var _st_type: PackedByteArray = PackedByteArray()        # 0=Block 1=Slide 2=Long（与 FlowNote.NoteType 同名同值）
+var _st_start: PackedFloat32Array = PackedFloat32Array()
+var _st_dur: PackedFloat32Array = PackedFloat32Array()
+var _st_lane: PackedInt32Array = PackedInt32Array()
+var _count: int = 0                                     # 序列总数（=数组长度）
+
+# 运行态标志位打包到一个字节（_rt_flags）：
+const F_REMOVED := 1      # 已从绘制列表移除
+const F_JUDGED := 2       # 已被判定过
+const F_CAN_JUDGE := 4    # 滑块可被认领（键盘模式）
+const F_HELD := 8         # 长条被按住
+const F_PASSED := 16      # 已过判定线
+var _rt_flags: PackedByteArray = PackedByteArray()
+var _rt_x: PackedFloat32Array = PackedFloat32Array()            # cached_x（左缘）
+var _rt_cx: PackedFloat32Array = PackedFloat32Array()            # cached_center_x（判定/绘制用）
+var _rt_cy: PackedFloat32Array = PackedFloat32Array()            # cached_center_y（每帧更新）
+var _rt_half: PackedFloat32Array = PackedFloat32Array()          # Block/Slide 半高
+var _rt_color: PackedColorArray = PackedColorArray()             # 每音符颜色（轨道交替色/皮肤解析色）
+var _rt_x_base: PackedFloat32Array = PackedFloat32Array()        # Long spawn 基准左缘 x（拖动手势偏移基准）
+var _rt_head_cy: PackedFloat32Array = PackedFloat32Array()       # Long 头部中心 y
+var _rt_tail_cy: PackedFloat32Array = PackedFloat32Array()       # Long 尾部中心 y
+var _rt_head_half: PackedFloat32Array = PackedFloat32Array()     # Long 头部半高
+var _rt_tail_half: PackedFloat32Array = PackedFloat32Array()     # Long 尾部半高
+var _rt_body_top: PackedFloat32Array = PackedFloat32Array()      # Long body 顶部 y
+var _rt_body_h: PackedFloat32Array = PackedFloat32Array()        # Long body 高度
+var _rt_cooldown: PackedFloat32Array = PackedFloat32Array()      # 长按触发计时器
+var _rt_hold_press_x: PackedFloat32Array = PackedFloat32Array()  # 长按记录触摸 x（NAN=非触摸来源）
+var _rt_long_id: PackedInt32Array = PackedInt32Array()           # 长条唯一实例 ID
+var _rt_claimed: PackedInt32Array = PackedInt32Array()           # 认领该滑块的触点 ID（-1=无）
+var _rt_held_by: PackedInt32Array = PackedInt32Array()           # 按住长条的触点 ID（-1=无）
+var _needs_bucket_sweep: bool = false                            # 本帧是否有移除待清理分桶
+var _next_long_id: int = 0                                       # 长条唯一实例 ID 生成器
+
+## 唯一长条实例 ID（原 FlowNote._gen_long_id，供 ScoreCalculator 独立衰减链）
+func _alloc_long_id() -> int:
+	_next_long_id += 1
+	return _next_long_id
+
+# ========== 静态数据快照 / 运行态数组生命周期 ==========
+
+## 全量预建：开局前由 PlayView 调用，一次性把 C# KeySequenceCore 全部序列的静态数据
+## （时间/时长/类型/轨道）快照进 _st_*，并预分配运行态数组。此后游戏内零对象、零新建。
+func build_seq_data() -> void:
+	var ksm = KeySequenceManager.instance
+	var cnt := ksm.seq_count()
+	_count = cnt
+	_st_type.resize(cnt)
+	_st_start.resize(cnt)
+	_st_dur.resize(cnt)
+	_st_lane.resize(cnt)
+	_rt_flags.resize(cnt)
+	_rt_x.resize(cnt)
+	_rt_cx.resize(cnt)
+	_rt_cy.resize(cnt)
+	_rt_half.resize(cnt)
+	_rt_color.resize(cnt)
+	_rt_x_base.resize(cnt)
+	_rt_head_cy.resize(cnt)
+	_rt_tail_cy.resize(cnt)
+	_rt_head_half.resize(cnt)
+	_rt_tail_half.resize(cnt)
+	_rt_body_top.resize(cnt)
+	_rt_body_h.resize(cnt)
+	_rt_cooldown.resize(cnt)
+	_rt_hold_press_x.resize(cnt)
+	_rt_long_id.resize(cnt)
+	_rt_claimed.resize(cnt)
+	_rt_held_by.resize(cnt)
+	var lc = parent_node.get_lane_count()
+	for i in cnt:
+		var lane: int = ksm.seq_lane(i)
+		if lane < 0:
+			lane = ksm.seq_pitch(i) % lc
+		_st_lane[i] = lane
+		_st_start[i] = ksm.seq_start_ms(i)
+		_st_dur[i] = ksm.seq_dur_ms(i)
+		_st_type[i] = _seq_type_to_int(ksm.seq_type(i))
+		_rt_claimed[i] = -1
+		_rt_held_by[i] = -1
+		_rt_long_id[i] = -1
+	note_idx = 0
+
+## C# BlockType → FlowNote.NoteType（三种枚举已统一同名同值，仅做防御性映射）
+func _seq_type_to_int(t: int) -> int:
+	match t:
+		KeySequenceManager.BlockType.Block:
+			return FlowNote.NoteType.Block
+		KeySequenceManager.BlockType.Slide:
+			return FlowNote.NoteType.Slide
+		_:
+			return FlowNote.NoteType.Long
+
+## 序列总数（= _st_* 数组长度），供 PlayView 结算统计用
+func get_sequence_count() -> int:
+	return _count
+
+## 清空全部平行数组（clear_flow_area 调用；build_seq_data 会重新分配）
+func _reset_seq_arrays() -> void:
+	_count = 0
+	_st_type.clear()
+	_st_start.clear()
+	_st_dur.clear()
+	_st_lane.clear()
+	for arr in [
+		_rt_flags, _rt_x, _rt_cx, _rt_cy, _rt_half, _rt_color,
+		_rt_x_base, _rt_head_cy, _rt_tail_cy, _rt_head_half, _rt_tail_half,
+		_rt_body_top, _rt_body_h, _rt_cooldown, _rt_hold_press_x,
+		_rt_long_id, _rt_claimed, _rt_held_by
+	]:
+		arr.clear()
+
+var note_idx: int = 0  # 生成游标
 
 # 多点触控支持
 var touch_positions: Dictionary = {}  # 存储每个触摸点的位置
-var active_holds: Dictionary = {}     # 存储正在按住长条音符的触摸点ID和对应的音符
+var active_holds: Dictionary = {}     # 存储正在按住长条音符的触摸点ID和对应的音符（触摸ID -> seq 索引）
 
 # 触点手势状态（滑动事件跟踪）：touch_id -> {
 #   "press_pos": Vector2,
@@ -165,12 +278,13 @@ var _last_press_was_mouse: bool = false
 var pressed_keys: Dictionary = {}
 
 func init_flow_area():
+	clear_flow_area()
 	# 分桶模型：drawer 直接遍历 _note_buckets（按引用共享字典），增删无需再同步到 drawer
 	_note_drawer.set_notes_source(_note_buckets)
-	# 保存 notes_list，因为 clear_flow_area() 会清空它
-	var saved_notes = notes_list.duplicate()
-	clear_flow_area()
-	notes_list = saved_notes
+	# 注入本对象引用（drawer/GlowLayer 分桶现在存 int 索引，需经本对象读平行数组）
+	_note_drawer.flow_area = self
+	# NoteJudger 平行数组版同样需要宿主读取 _rt_cx/_rt_cy/_rt_flags
+	note_judger.flow_area = self
 	note_idx = 0
 
 	# 清空手动 NoteOff 挂起队列（上一局的定时器/代数不应残留到下一局）
@@ -472,12 +586,12 @@ func refresh_note_colors() -> void:
 		for color_key in color_keys:
 			var bucket: Array = _note_buckets[type_key][color_key]
 			var snapshot: Array = bucket.duplicate()  # 快照，遍历中 _move_note_to_bucket 安全
-			for note in snapshot:
-				if note.is_removed:
+			for idx in snapshot:
+				if _rt_flags[idx] & F_REMOVED:
 					continue
-				var new_color: Color = _get_note_color(note.type, note.lane)
-				if new_color != note.cached_color:
-					_move_note_to_bucket(note, new_color)
+				var new_color: Color = _get_note_color(_st_type[idx], _st_lane[idx])
+				if new_color != _rt_color[idx]:
+					_move_note_to_bucket(idx, new_color)
 	if _note_drawer:
 		_note_drawer.request_redraw()
 
@@ -501,15 +615,7 @@ func set_note_width(wid: float):
 		_note_max_size_y = _note_drawer.get_max_half_height() * 2.0
 
 func clear_flow_area():
-	# 斩断 FlowNote ↔ GameSequence 的 RefCounted 循环引用，释放旧音符
-	if notes_list:
-		for note in notes_list:
-			if note.game_sequence_ref != null:
-				note.game_sequence_ref.flow_note_ref = null
-				note.game_sequence_ref = null
-		notes_list.clear()
-
-	# 清空 drawer 的绘制列表（Block/Slide/Long 统一走批量绘制）
+	# 清空运行态分桶/索引/手势/平行数组（静态数据 _st_* 由 build_seq_data 重建，此处随数组一并清空）
 	if _note_drawer:
 		_note_drawer.clear()
 
@@ -526,6 +632,8 @@ func clear_flow_area():
 	_gestures.clear()
 	pressed_keys.clear()
 	note_idx = 0
+	_needs_bucket_sweep = false
+	_reset_seq_arrays()
 
 	# 释放尚未触发的手动 NoteOff（游戏结束/清场时，避免音符一直挂在合成器上）
 	_manual_off_scheduler.process(_synced_current_time, true)
@@ -566,46 +674,39 @@ func _get_note_color(tp: FlowNote.NoteType, lane_idx: int) -> Color:
 	var lane_cl = parent_node.get_lane_color(lane_idx)
 	return lane_cl if lane_cl != null else _get_resolved_color_for_type(tp)
 
+## 生成音符：静态数据已快照在 _st_*，此处只初始化运行态坐标/半高/颜色/长条专属字段，
+## 并加入分桶与轨道索引。全程不创建任何对象。
 func _spawn_note(note_index: int) -> void:
-	if note_index >= notes_list.size():
+	if note_index >= _count:
 		return
 
-	var nt = notes_list[note_index]
-	# 关键：重置 Note 数据对象的判定状态（修复多音符同时判定问题）
-	nt.is_judged = false
-	nt.can_judge = false
-	nt.claimed_by_touch_id = -1
-	nt.is_held = false
-	nt.held_by_touch_id = -1
-	nt.cooldown = 0
-	nt.judge_line_passed = false
-	nt.is_removed = false
+	var tp: int = _st_type[note_index]
+	var lane: int = _st_lane[note_index]
 
 	# 计算音符位置（轨道几何由 LaneEffect 提供：左缘 x + 光柱宽度）
 	# 音符始终以轨道中心为基准居中：margin 可为负（音符宽于光柱时两端对称溢出），
 	# 保证音符中心恒等于光柱中心/轨道中心（否则音符宽于光柱时左对齐会导致光效相对偏左）
 	var lane_area = parent_node.lane_area
 	var beam_margin : float= (lane_area.get_lane_width() - note_visual_width) / 2.0
-	var start_x : float = lane_area.get_lane_x(nt.lane) + beam_margin
+	var start_x : float = lane_area.get_lane_x(lane) + beam_margin
 
-	nt.cached_x = start_x
-	nt.cached_center_x = start_x + note_visual_width * 0.5
-	
-	# Long: 走 Node2D 批量绘制（与 Block/Slide 统一），不创建 Control 节点
-	if nt.type == FlowNote.NoteType.Long:
-		nt.cached_x_base = start_x  # 拖动手势偏移基准（按住时随触摸平移）
-		nt.cached_head_half_height = _note_drawer.get_long_head_half_height()
-		nt.cached_tail_half_height = _note_drawer.get_long_tail_half_height()
-	else: # Block/Slide: Node2D 批量绘制，不创建 Control 节点
-		nt.cached_half_height = _note_drawer.get_half_height(nt.type)
+	_rt_x[note_index] = start_x
+	_rt_cx[note_index] = start_x + note_visual_width * 0.5
+	_rt_color[note_index] = _get_note_color(tp, lane)
 
-	# 每音符颜色：交替轨道颜色开启时按轨道色，否则皮肤解析色
-	nt.cached_color = _get_note_color(nt.type, nt.lane)
+	if tp == FlowNote.NoteType.Long:
+		_rt_x_base[note_index] = start_x  # 拖动手势偏移基准（按住时随触摸平移）
+		_rt_head_half[note_index] = _note_drawer.get_long_head_half_height()
+		_rt_tail_half[note_index] = _note_drawer.get_long_tail_half_height()
+		_rt_held_by[note_index] = -1
+	else:
+		_rt_half[note_index] = _note_drawer.get_half_height(tp)
+		_rt_claimed[note_index] = -1
 
-	_prewarm_composite(nt)
-	_add_to_bucket(nt)
-	_add_note_to_lane_index(nt)
-	_update_block_note_fall(nt, _synced_current_time, _render_time_ms)
+	_prewarm_composite(tp, _rt_color[note_index])
+	_add_to_bucket(note_index)
+	_add_note_to_lane_index(note_index)
+	_update_block_note_fall(note_index, _synced_current_time, _render_time_ms)
 
 ## 集中刷新下落常量：距离 / 速度 / 线后速度（判定线 Y、音符尺寸、下落配置变化时调用）
 func _recompute_fall_constants() -> void:
@@ -628,17 +729,17 @@ func _build_curve_lut(trans: int, ease_: int) -> PackedFloat32Array:
 ## Block/Slide 音符的 synced time 驱动位置更新 (替代 Tween)
 ## 每帧由 _process 调用, 根据 _synced_current_time 计算音符位置
 ## 同时处理过线回调 (Slide 检查/auto_mode) 和 Miss 判定
-## Node2D 批量绘制版：写入 note.cached_center_y，drawer 在 _draw 中读取
+## 平行数组版：写 _rt_cy[note_index]，drawer 在 _draw 中读取
 ## current_time_ms = 判定时钟（音频），render_time_ms = 渲染时钟（平滑视觉，可选）
 ## 热路径：内联 _compute_center_y_by_judge_time + _evaluate_lut（每音符每帧 3 次函数调用 → 0）
-func _update_block_note_fall(note: FlowNote, current_time_ms: float, render_time_ms: float = -1.0) -> void:
-	if note.is_removed:
+func _update_block_note_fall(note_index: int, current_time_ms: float, render_time_ms: float = -1.0) -> void:
+	if _rt_flags[note_index] & F_REMOVED:
 		return
 	if render_time_ms < 0.0:
 		render_time_ms = current_time_ms
 
-	var half_height = note.cached_half_height
-	var judge_time_ms = note.start_time
+	var half_height = _rt_half[note_index]
+	var judge_time_ms = _st_start[note_index]
 	var pre_ms = _note_fall_pre_ms
 	var spawn_time_ms : float = judge_time_ms - pre_ms
 	var center_y: float
@@ -677,65 +778,64 @@ func _update_block_note_fall(note: FlowNote, current_time_ms: float, render_time
 			eased_after = _curve_lut_after[idx] + (_curve_lut_after[idx + 1] - _curve_lut_after[idx]) * (scaled - float(idx))
 		center_y = _judge_line_y + eased_after * after_distance
 
-	note.cached_center_y = center_y
+	_rt_cy[note_index] = center_y
 
 	# 过线回调: 音符首次到达/超过判定线时触发
-	if not note.judge_line_passed and current_time_ms >= judge_time_ms:
-		note.judge_line_passed = true
-		if note.is_judged or note.is_removed:
+	if not (_rt_flags[note_index] & F_PASSED) and current_time_ms >= judge_time_ms:
+		_rt_flags[note_index] |= F_PASSED
+		if _rt_flags[note_index] & F_JUDGED or _rt_flags[note_index] & F_REMOVED:
 			return
-		if note.type == FlowNote.NoteType.Slide and _check_slide_stat(note):
+		if _st_type[note_index] == FlowNote.NoteType.Slide and _check_slide_stat(note_index):
 			return
 		if auto_mode:
-			_auto_click(note)
+			_auto_click(note_index)
 
 	# Miss 判定: 音符超出窗口底部且未被击打 (原第二 Tween.finished 逻辑)
-	if not note.is_judged and not note.is_removed and center_y >= _cached_viewport_height:
-		_remove_note(note)
-		note_judged.emit("Miss", "", note.type, 1.0, 0.0)
+	if not (_rt_flags[note_index] & F_JUDGED) and not (_rt_flags[note_index] & F_REMOVED) and center_y >= _cached_viewport_height:
+		_remove_note(note_index)
+		note_judged.emit("Miss", "", _st_type[note_index], 1.0, 0.0)
 
 ## current_time_ms = 判定时钟（音频），render_time_ms = 渲染时钟（平滑视觉，可选）
-## Node2D 批量绘制版：写入 cached_head_center_y / cached_tail_center_y / cached_body_* 缓存字段，
-## drawer 在 _draw() 中读取绘制（body → tail → head），裁剪由 drawer 内部处理
+## 平行数组版：写 _rt_head_cy/_rt_tail_cy/_rt_body_* 缓存字段，drawer 在 _draw 中读取绘制
 ## 热路径：内联 _evaluate_lut + 常量预读
-func _update_long_note_fall(note: FlowNote, current_time_ms: float, render_time_ms: float = -1.0) -> void:
-	if note.is_removed:
+func _update_long_note_fall(note_index: int, current_time_ms: float, render_time_ms: float = -1.0) -> void:
+	if _rt_flags[note_index] & F_REMOVED:
 		return
 	if render_time_ms < 0.0:
 		render_time_ms = current_time_ms
 
-	var head_half = note.cached_head_half_height
-	var tail_half = note.cached_tail_half_height
+	var head_half = _rt_head_half[note_index]
+	var tail_half = _rt_tail_half[note_index]
 	var pre_ms = _note_fall_pre_ms
 	var lut_m1 := _CURVE_LUT_SIZE - 1
 
 	# 按住时长条头部钉在判定线，跳过缓动计算（原实现先算再覆盖，浪费一次 easing）
 	var head_center: float
-	if note.is_held:
+	if _rt_flags[note_index] & F_HELD:
 		head_center = _judge_line_y
 	else:
-		head_center = _compute_center_y_inlined(note.start_time, render_time_ms, head_half, pre_ms, lut_m1)
-	var tail_center = _compute_center_y_inlined(note.start_time + max(0.0, note.duration), render_time_ms, tail_half, pre_ms, lut_m1)
+		head_center = _compute_center_y_inlined(_st_start[note_index], render_time_ms, head_half, pre_ms, lut_m1)
+	var tail_center = _compute_center_y_inlined(_st_start[note_index] + max(0.0, _st_dur[note_index]), render_time_ms, tail_half, pre_ms, lut_m1)
 
-	note.cached_head_center_y = head_center
-	note.cached_tail_center_y = tail_center
-	note.cached_center_y = head_center  # 判定/特效用代表中心（NoteJudger / hit_pos）
+	_rt_head_cy[note_index] = head_center
+	_rt_tail_cy[note_index] = tail_center
+	_rt_cy[note_index] = head_center  # 判定/特效用代表中心（NoteJudger / hit_pos）
 
 	# 长条连接模式：edge（边缘连接，body 从 tail_bottom 到 head_top）
 	# 或 center（中心连接，body 从 tail_center 到 head_center，head/tail 各向 body 偏移半高）
 	# 两种模式下 head/tail 矩形相同（head 半高居中于 head_center，tail 半高居中于 tail_center）
 	if _long_connect_center:
-		note.cached_body_top_y = tail_center
-		note.cached_body_height = max(0.0, head_center - tail_center)
+		_rt_body_top[note_index] = tail_center
+		_rt_body_h[note_index] = max(0.0, head_center - tail_center)
 	else:
 		# 边缘连接（默认）：body 从 tail_bottom（tail_center+tail_half）到 head_top（head_center-head_half）
-		note.cached_body_top_y = tail_center + tail_half
-		note.cached_body_height = max(0.0, (head_center - head_half) - (tail_center + tail_half))
+		_rt_body_top[note_index] = tail_center + tail_half
+		_rt_body_h[note_index] = max(0.0, (head_center - head_half) - (tail_center + tail_half))
 
-	if not note.is_judged and not note.is_held and note.held_by_touch_id < 0:
+	if not (_rt_flags[note_index] & F_JUDGED) and not (_rt_flags[note_index] & F_HELD) and _rt_held_by[note_index] < 0:
 		if tail_center >= _cached_viewport_height:
-			_remove_note(note)
-			note_judged.emit("Miss", "", note.type, 1.0, 0.0)
+			_remove_note(note_index)
+			note_judged.emit("Miss", "", FlowNote.NoteType.Long, 1.0, 0.0)
 
 ## 内联辅助：长条更新用（保留 _compute_center_y_by_judge_time 逻辑，但接收预计算常量避免重复取值）
 ## 等价于 _compute_center_y_by_judge_time(judge_time_ms, render_time_ms, half_height)，
@@ -775,39 +875,37 @@ var _auto_hold_idx: int = 0
 ##   关闭时与手动点击滑块一致，按点块(Block)计分（固定倍率并重置滑块衰减链）。
 ## 传入 _synced_current_time 作为 input_time_ms：跳过 _get_realtime_position_ms 实时查询，
 ## 与 _update_block_note_fall 触发本函数的判定时钟一致（auto 模式无需音频钟精确同步）
-func _auto_click(note: FlowNote):
-	if parent_node.play_mode and note.game_sequence_ref:
-		_manual_off_scheduler.trigger_from_sequence(note.game_sequence_ref)
-	if note.type == FlowNote.NoteType.Long:
-		_judge_note(note, false, _synced_current_time)
-		_hold_long_note(_auto_hold_idx + 666, note)
+func _auto_click(note_index: int):
+	if parent_node.play_mode:
+		_manual_off_scheduler.trigger_from_sequence(KeySequenceManager.instance, note_index)
+	if _st_type[note_index] == FlowNote.NoteType.Long:
+		_judge_note(note_index, false, _synced_current_time)
+		_hold_long_note(_auto_hold_idx + 666, note_index)
 		_auto_hold_idx += 1
-	elif note.type == FlowNote.NoteType.Slide and not only_perfect_slides:
-		_judge_note(note, false, _synced_current_time, FlowNote.NoteType.Block)
+	elif _st_type[note_index] == FlowNote.NoteType.Slide and not only_perfect_slides:
+		_judge_note(note_index, false, _synced_current_time, FlowNote.NoteType.Block)
 	else:
-		_judge_note(note, false, _synced_current_time)
+		_judge_note(note_index, false, _synced_current_time)
 
 # 因为在for循环遍历时erase会导致漏元素，所以推迟元素的移除
 func _delay_free(list, item_to_free):
 	if list != null:
 		list.erase(item_to_free)
 
-# ========== 颜色分桶维护 ==========
+# ========== 颜色分桶维护（桶元素为 seq 索引） ==========
 
-## 把音符加入其 (type, color) 对应的颜色桶，并记录桶引用（_remove_note 延迟删除用）
-func _add_to_bucket(note: FlowNote) -> void:
-	var type_bucket: Dictionary = _note_buckets[note.type]
-	var color_key: Color = note.cached_color
+## 把音符索引加入其 (type, color) 对应的颜色桶
+func _add_to_bucket(note_index: int) -> void:
+	var type_bucket: Dictionary = _note_buckets[_st_type[note_index]]
+	var color_key: Color = _rt_color[note_index]
 	if not type_bucket.has(color_key):
 		type_bucket[color_key] = []
-	var bucket: Array = type_bucket[color_key]
-	bucket.append(note)
-	note.bucket_ref = bucket
+	type_bucket[color_key].append(note_index)
 	_active_note_count += 1
 
-## 预构建该音符合成贴图（spawn/换色时调用；成本落在主线程生成阶段而非 _draw）
-func _prewarm_composite(note: FlowNote) -> void:
-	_prewarm_composite_color(note.type, note.cached_color)
+## 预构建该音符（type, color）组合的合成贴图（spawn/换色时调用；成本落在主线程生成阶段而非 _draw）
+func _prewarm_composite(type_key: int, color: Color) -> void:
+	_prewarm_composite_color(type_key, color)
 
 ## 预构建 (type, color) 组合的合成贴图（Long 含 head/tail/body 三部分）
 func _prewarm_composite_color(type_key: int, color: Color) -> void:
@@ -855,14 +953,15 @@ func prewarm_spark_packs() -> void:
 			ParticleMGR.get_layer_template(emitter, ParticleMGR.ROLE_EMITTER)
 
 ## 换色：从旧颜色桶移除并加入新颜色桶（refresh_note_colors 用）
-func _move_note_to_bucket(note: FlowNote, new_color: Color) -> void:
-	if not note.bucket_ref.is_empty():
-		note.bucket_ref.erase(note)
-		note.bucket_ref = []
-		_active_note_count -= 1  # 平衡 _add_to_bucket 的 +1（换色净计数不变）
-	note.cached_color = new_color
-	_prewarm_composite(note)
-	_add_to_bucket(note)
+func _move_note_to_bucket(note_index: int, new_color: Color) -> void:
+	var type_key: int = _st_type[note_index]
+	var old_color: Color = _rt_color[note_index]
+	var old_bucket: Array = _note_buckets[type_key].get(old_color, [])
+	old_bucket.erase(note_index)
+	_active_note_count -= 1  # 平衡 _add_to_bucket 的 +1（换色净计数不变）
+	_rt_color[note_index] = new_color
+	_prewarm_composite(type_key, new_color)
+	_add_to_bucket(note_index)
 
 func set_glow_params(intensity: float, size_val: float) -> void:
 	glow_intensity = clampf(intensity, 0.0, 2.0)
@@ -879,43 +978,52 @@ func _init_note_pool() -> void:
 	_note_drawer.set_cull_margins(_note_cull_margin_top, _note_cull_margin_bottom)
 	_note_drawer.set_viewport_height(get_viewport().get_visible_rect().size.y)
 
-func _remove_note(note: FlowNote) -> void:
-	note.is_removed = true
-	# 分桶模型：drawer 遍历的就是 _note_buckets（同引用），此处只触发重绘立即清除画面
-	# 从颜色桶的移除推迟到帧末执行：
-	# AUTO 模式下过线判定在 _process 遍历桶的循环体内触发 _remove_note，
-	# 若此处同步 erase，GDScript 数组迭代器（idx++ 后取 arr.get(idx)）会因元素前移跳过
-	# 下一个音符，使其一帧不更新位置/不判定，在判定线附近停滞一帧。
-	# 延迟删除后遍历期间数组不再变化；期间 drawer 按 note.is_removed 跳过绘制，画面不会残留。
+func _remove_note(note_index: int) -> void:
+	if _rt_flags[note_index] & F_REMOVED:
+		return
+	_rt_flags[note_index] |= F_REMOVED
+	# 分桶模型：drawer 遍历的就是 _note_buckets（同引用），此处只触发重绘立即清除画面；按 F_REMOVED 跳过绘制
 	if _note_drawer:
 		_note_drawer.request_redraw()
-	if not note.bucket_ref.is_empty():
-		var bucket: Array = note.bucket_ref
-		note.bucket_ref = []
-		_active_note_count -= 1  # bucket_ref 清空后重复调用不会二次递减（幂等）
-		call_deferred("_delay_free", bucket, note)
+	_active_note_count -= 1  # F_REMOVED 守卫后重复调用不会二次递减（幂等）
+	# 从颜色桶/轨道索引的移除推迟到帧末执行（见 _sweep_removed_from_buckets）
+	_needs_bucket_sweep = true
 
-	_remove_note_from_lane_index(note)
+	# 若是被按住的长条音符，清理触摸点
+	if _rt_flags[note_index] & F_HELD and _rt_held_by[note_index] in active_holds:
+		call_deferred("_delay_free", active_holds, _rt_held_by[note_index])
 
-	# 如果是被按住的长条音符，清理触摸点
-	if note.is_held and note.held_by_touch_id in active_holds:
-		call_deferred("_delay_free", active_holds, note.held_by_touch_id)
+## 帧末清理已移除音符：从全部颜色桶移除（F_REMOVED 已置位，避免遍历中 mutate 数组）
+func _sweep_removed_from_buckets() -> void:
+	for type_key in _TYPE_ORDER:
+		var color_keys: Array = _note_buckets[type_key].keys()
+		for color_key in color_keys:
+			var bucket: Array = _note_buckets[type_key][color_key]
+			if bucket.is_empty():
+				continue
+			var alive: Array = []
+			for idx in bucket:
+				if _rt_flags[idx] & F_REMOVED == 0:
+					alive.append(idx)
+			_note_buckets[type_key][color_key] = alive
+	_needs_bucket_sweep = false
 
 # ========== 轨道索引维护（用于加速音符判定） ==========
-func _add_note_to_lane_index(note: FlowNote) -> void:
-	if not _notes_by_lane.has(note.lane):
-		_notes_by_lane[note.lane] = []
-	_notes_by_lane[note.lane].append(note)
+func _add_note_to_lane_index(note_index: int) -> void:
+	var lane: int = _st_lane[note_index]
+	if not _notes_by_lane.has(lane):
+		_notes_by_lane[lane] = []
+	_notes_by_lane[lane].append(note_index)
 
-func _remove_note_from_lane_index(note: FlowNote) -> void:
-	if _notes_by_lane.has(note.lane):
-		var lane_notes: Array = _notes_by_lane[note.lane]
-		lane_notes.erase(note)
+func _remove_note_from_lane_index(note_index: int) -> void:
+	var lane: int = _st_lane[note_index]
+	if _notes_by_lane.has(lane):
+		_notes_by_lane[lane].erase(note_index)
 
 func _clear_lane_index() -> void:
 	_notes_by_lane.clear()
 
-## 获取触摸位置附近的轨道音符列表（当前轨道 ± 相邻轨道）
+## 获取触摸位置附近的轨道音符索引列表（当前轨道 ± 相邻轨道）
 func _get_notes_near_lane(lane: int) -> Array:
 	var result: Array = []
 	for offset in [-1, 0, 1]:
@@ -985,9 +1093,9 @@ func _input(event: InputEvent) -> void:
 				var event_time_ms := _get_realtime_position_ms()
 				pressed_keys[event.keycode] = idx
 				# 使用统一的判定函数，支持所有音符类型
-				var bn = judge_note_at_lane(idx, idx, event_time_ms)
-				if bn:
-					if bn.type == FlowNote.NoteType.Long:
+				var bn := judge_note_at_lane(idx, idx, event_time_ms)
+				if bn >= 0:
+					if _st_type[bn] == FlowNote.NoteType.Long:
 						_hold_long_note(event.keycode, bn)
 				else:
 					parent_node.lane_area.light_lane(idx)
@@ -998,22 +1106,19 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_ESCAPE and event.pressed:
 			parent_node.show_or_hide_menu()
 
-# 处理触摸按下
+# ========== 触摸/键盘判定 ==========
+
+## 处理触摸按下（平行数组版：候选为 seq 索引数组，判定结果写 _rt_*）
 func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> void:
 	var judge_time_ms := input_time_ms
 	if judge_time_ms < 0.0:
 		judge_time_ms = _get_realtime_position_ms()
 
 	# 去重逻辑：部分 Android 设备单次触摸会同时发送鼠标+触摸双事件
-	# - 触摸事件间不互相去重（保留多指能力）
-	# - 触摸事件仅在前一次是鼠标事件时去重（处理 Android 模拟鼠标）
-	# - 鼠标事件始终去重（桌面端原生防重复）
 	var should_dedup := false
 	if touch_id == -1:
-		# 鼠标事件：始终检查去重
 		should_dedup = abs(judge_time_ms - _last_press_time_ms) <= _PRESS_DEDUP_MS and pos.distance_to(_last_press_pos) <= _PRESS_DEDUP_DISTANCE
 	else:
-		# 触摸事件：仅在前一次是鼠标事件时去重
 		should_dedup = _last_press_was_mouse and abs(judge_time_ms - _last_press_time_ms) <= _PRESS_DEDUP_MS and pos.distance_to(_last_press_pos) <= _PRESS_DEDUP_DISTANCE
 	_last_press_was_mouse = touch_id == -1
 	_last_press_time_ms = judge_time_ms
@@ -1027,56 +1132,44 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 		"press_time_ms": judge_time_ms,
 		"last_pos": pos,
 		"last_time_ms": judge_time_ms,
-		"lanes": _finger_lanes(pos.x),  # 手指当前覆盖的轨道集合（音符宽度为轨道宽度，可多轨）
+		"lanes": _finger_lanes(pos.x),
 	}
 	_gestures[touch_id] = g
 
-	# 【TEMP DIAG】首触卡顿定位（验证后移除）
-	var _diag_press_t0 := Time.get_ticks_usec()
-
 	var estimated_lane := _estimate_lane_from_x(pos.x)
 	var candidate_notes: Array = _get_notes_near_lane(estimated_lane)
-	candidate_notes = candidate_notes.filter(func(n):
-		return n != null and not n.is_judged and not n.is_removed and not n.is_held \
-			and n.claimed_by_touch_id < 0
+	candidate_notes = candidate_notes.filter(func(i):
+		return not (_rt_flags[i] & F_JUDGED) and not (_rt_flags[i] & F_REMOVED) \
+			and not (_rt_flags[i] & F_HELD) and _rt_claimed[i] < 0
 	)
 	if candidate_notes.is_empty():
 		return
 	if only_perfect_slides:
-		# 仅判定完美滑块开启时，点击/按键选音符阶段直接忽略滑块
-		candidate_notes = candidate_notes.filter(func(n):
-			return n.type != FlowNote.NoteType.Slide
+		candidate_notes = candidate_notes.filter(func(i):
+			return _st_type[i] != FlowNote.NoteType.Slide
 		)
 		if candidate_notes.is_empty():
 			return
 
-	var note = note_judger.find_best_note(pos, candidate_notes, jl.position.y, note_judge_width, judge_mode)
-	if note == null:
+	var note_index := note_judger.find_best_note_index(pos, candidate_notes, jl.position.y, note_judge_width, judge_mode)
+	if note_index < 0:
 		return
-	if parent_node.play_mode and note.game_sequence_ref:
-		_manual_off_scheduler.trigger_from_sequence(note.game_sequence_ref)
-	if note.type == FlowNote.NoteType.Slide:
+	if parent_node.play_mode:
+		_manual_off_scheduler.trigger_from_sequence(KeySequenceManager.instance, note_index)
+	if _st_type[note_index] == FlowNote.NoteType.Slide:
 		# 点击滑块按点块(Block)计分（固定倍率并重置滑块衰减链）
-		_judge_note(note, true, judge_time_ms, FlowNote.NoteType.Block)
+		_judge_note(note_index, true, judge_time_ms, FlowNote.NoteType.Block)
 	else:
-		_judge_note(note, true, judge_time_ms)
-	if note.type == FlowNote.NoteType.Long:
-		_hold_long_note(touch_id, note, pos.x)
-	# 同时视为滑入轨道（rule 3）：接住列内其余已过线仍在 great 窗口的滑键（挤在一起的滑键一次点按全判）
-	# 完美滑块模式（only_perfect_slides）下滑键仅按滑动判定，点击不接
+		_judge_note(note_index, true, judge_time_ms)
+	if _st_type[note_index] == FlowNote.NoteType.Long:
+		_hold_long_note(touch_id, note_index, pos.x)
+	# 同时视为滑入轨道（rule 3）：接住列内其余已过线仍在 great 窗口的滑键
+	# 完美滑块模式下滑键仅按滑动判定，点击不接
 	if not only_perfect_slides:
 		for lane in g["lanes"]:
 			_judge_slides_entering_lane(lane, pos, judge_time_ms)
 
-	# 【TEMP DIAG】首触卡顿定位（验证后移除）
-	_diag_press_count += 1
-	if _diag_press_count <= 5 and note != null:
-		GLogger.info("[TapDiag] press#%d lane=%d 处理耗时 %.2fms" % [_diag_press_count, note.lane, (Time.get_ticks_usec() - _diag_press_t0) / 1000.0], "FlowArea")
-
-## 【TEMP DIAG】首触卡顿定位（验证后移除）
-var _diag_press_count: int = 0
-
-# 处理触摸松开 释放长条音符
+## 处理触摸松开 释放长条音符
 func _handle_release(touch_id: int, input_time_ms: float = -1.0, released_lane: int = -1) -> void:
 	var judge_time_ms := input_time_ms if input_time_ms >= 0.0 else _get_realtime_position_ms()
 
@@ -1088,12 +1181,12 @@ func _handle_release(touch_id: int, input_time_ms: float = -1.0, released_lane: 
 
 	if touch_id not in active_holds:
 		return
-	
-	var note = active_holds[touch_id]
-	note.is_held = false
-	
+
+	var note_index: int = active_holds[touch_id]
+	_rt_flags[note_index] &= ~F_HELD
+
 	# 移除音符
-	_remove_note(note)
+	_remove_note(note_index)
 	active_holds.erase(touch_id)
 
 # 处理触摸拖动
@@ -1101,31 +1194,31 @@ func _handle_touch_drag(touch_id: int, pos: Vector2) -> void:
 	if touch_id not in active_holds:
 		return
 
-	var note = active_holds[touch_id]
-	if not note.is_held or note.held_by_touch_id != touch_id:
+	var note_index: int = active_holds[touch_id]
+	if not (_rt_flags[note_index] & F_HELD) or _rt_held_by[note_index] != touch_id:
 		return
 
-	if is_nan(note.hold_press_x):
+	if is_nan(_rt_hold_press_x[note_index]):
 		return  # 非触摸来源（键盘/自动模式）不跟踪手势
 
 	# 批量绘制版：平移 cached_x（相对 spawn 基准偏移），drawer 在 _draw 中读取
-	note.cached_x = note.cached_x_base + (pos.x - note.hold_press_x)
-	note.cached_center_x = note.cached_x + note_visual_width * 0.5
+	_rt_x[note_index] = _rt_x_base[note_index] + (pos.x - _rt_hold_press_x[note_index])
+	_rt_cx[note_index] = _rt_x[note_index] + note_visual_width * 0.5
 	if _note_drawer:
 		_note_drawer.request_redraw()
 
 # 按住长条音符
 # 注意：调用方负责在调用此函数之前已通过 _judge_note() 完成判定
-func _hold_long_note(touch_id: int, note: FlowNote, press_x: float = NAN) -> void:
+func _hold_long_note(touch_id: int, note_index: int, press_x: float = NAN) -> void:
 	# 兜底：长条进入按住态后不应再走未判定 Miss 分支
-	note.is_judged = true
-	note.is_held = true
-	note.held_by_touch_id = touch_id
-	note.hold_press_x = press_x  # NAN 表示非触摸来源（键盘/自动模式），_handle_touch_drag 将跳过
+	_rt_flags[note_index] |= F_JUDGED
+	_rt_flags[note_index] |= F_HELD
+	_rt_held_by[note_index] = touch_id
+	_rt_hold_press_x[note_index] = press_x  # NAN 表示非触摸来源（键盘/自动模式），_handle_touch_drag 将跳过
 	# 为新长条分配唯一实例 ID（用于 ScoreCalculator 独立衰减链）
-	if note.long_instance_id < 0:
-		note.long_instance_id = FlowNote._gen_long_id()
-	active_holds[touch_id] = note
+	if _rt_long_id[note_index] < 0:
+		_rt_long_id[note_index] = _alloc_long_id()
+	active_holds[touch_id] = note_index
 
 # ========== 滑键滑动判定（事件驱动模型 rule 2/3/4） ==========
 
@@ -1134,45 +1227,43 @@ func _clear_gesture(touch_id: int) -> void:
 	_gestures.erase(touch_id)
 
 ## 以 Slide 类型判定一个滑键（进入滑块衰减链）
-## 滑动事件（rule 2/3/4）与 rule 1 点按的「视为滑入」均走此入口；rule 1 选中的滑键本身按 Block 计分
-func _judge_slide_as_slide(note: FlowNote, judge_time_ms: float) -> void:
-	if note == null or note.is_judged or note.is_removed or note.is_held:
+## 滑动事件（rule 2/3/4）与 rule 1 点按的「视为滑入」均走此入口
+func _judge_slide_as_slide(note_index: int, judge_time_ms: float) -> void:
+	if _rt_flags[note_index] & (F_JUDGED | F_REMOVED | F_HELD):
 		return
-	if parent_node.play_mode and note.game_sequence_ref:
-		_manual_off_scheduler.trigger_from_sequence(note.game_sequence_ref)
-	_judge_note(note, false, judge_time_ms)
-	GLogger.debug("[FlowArea] Slide catch: lane=%d start=%.0fms judge=%.0fms diff=%.0fms" \
-		% [note.lane, note.start_time, judge_time_ms, note.start_time - judge_time_ms], "FlowArea")
+	if parent_node.play_mode:
+		_manual_off_scheduler.trigger_from_sequence(KeySequenceManager.instance, note_index)
+	_judge_note(note_index, false, judge_time_ms)
 
 ## 滑键是否可被滑动判定：Slide 类型 + 未判/未移除/未按住 + 手指在判定列内（半宽 = note_judge_width/2）
-func _is_slide_catchable(note: FlowNote, pos: Vector2) -> bool:
-	if note == null or note.type != FlowNote.NoteType.Slide:
+func _is_slide_catchable(note_index: int, pos: Vector2) -> bool:
+	if _st_type[note_index] != FlowNote.NoteType.Slide:
 		return false
-	if note.is_judged or note.is_removed or note.is_held:
+	if _rt_flags[note_index] & (F_JUDGED | F_REMOVED | F_HELD):
 		return false
-	if abs(pos.x - note.cached_center_x) > note_judge_width * 0.5:
+	if abs(pos.x - _rt_cx[note_index]) > note_judge_width * 0.5:
 		return false
 	return true
 
 ## rule 3 滑入：判定该轨道已过线但仍在 great 窗口内的滑键（仅本轨道，不扫相邻轨）
 func _judge_slides_entering_lane(lane: int, pos: Vector2, judge_time_ms: float) -> void:
 	var great := float(judge_windows["great"])
-	for note in _notes_by_lane.get(lane, []):
-		if not _is_slide_catchable(note, pos):
+	for note_index in _notes_by_lane.get(lane, []):
+		if not _is_slide_catchable(note_index, pos):
 			continue
-		if judge_time_ms < note.start_time or judge_time_ms > note.start_time + great:
+		if judge_time_ms < _st_start[note_index] or judge_time_ms > _st_start[note_index] + great:
 			continue
-		_judge_slide_as_slide(note, judge_time_ms)
+		_judge_slide_as_slide(note_index, judge_time_ms)
 
 ## rule 4 滑出/抬手：判定该轨道未过线但在 perfect 窗口内的滑键（仅本轨道，不扫相邻轨）
 func _judge_slides_exiting_lane(lane: int, pos: Vector2, judge_time_ms: float) -> void:
 	var perfect := float(judge_windows["perfect"])
-	for note in _notes_by_lane.get(lane, []):
-		if not _is_slide_catchable(note, pos):
+	for note_index in _notes_by_lane.get(lane, []):
+		if not _is_slide_catchable(note_index, pos):
 			continue
-		if judge_time_ms >= note.start_time or judge_time_ms < note.start_time - perfect:
+		if judge_time_ms >= _st_start[note_index] or judge_time_ms < _st_start[note_index] - perfect:
 			continue
-		_judge_slide_as_slide(note, judge_time_ms)
+		_judge_slide_as_slide(note_index, judge_time_ms)
 
 ## 手指拖动：覆盖轨道集合差集触发 rule 3/4（新进入=滑入，退出=滑出）
 func _handle_slide_drag(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> void:
@@ -1199,8 +1290,7 @@ func _handle_slide_drag(touch_id: int, pos: Vector2, input_time_ms: float = -1.0
 			_judge_slides_exiting_lane(lane, prev_pos, judge_time_ms)
 	g["lanes"] = new_lanes
 
-## 手指当前覆盖的轨道集合：轨道宽度 = 音符判定宽度（默认即音符宽度），窄轨下可同时覆盖多轨；
-## 与 _is_slide_catchable 判定列一致，保证「轨道在集合内 ⇔ 该轨道滑键可判」
+## 手指当前覆盖的轨道集合：轨道宽度 = 音符判定宽度（默认即音符宽度），窄轨下可同时覆盖多轨
 func _finger_lanes(x: float) -> Array:
 	var lc: int = parent_node.get_lane_count()
 	if lc <= 1:
@@ -1215,31 +1305,29 @@ func _finger_lanes(x: float) -> Array:
 ## 轨道 lane 内音符的统一中心 X（与 cached_center_x 公式一致；音符始终以轨道中心为基准居中）
 func _note_center_x_for_lane(lane: int) -> float:
 	var lane_area = parent_node.lane_area
-	# 轨道左缘 + (轨道宽-音符宽)/2 + 音符宽/2 = 轨道中心，音符宽于轨道时两端对称溢出
 	return lane_area.get_lane_x(lane) + (lane_area.get_lane_width() - note_visual_width) / 2.0 + note_visual_width * 0.5
 
 ## 滑键到达判定线的瞬间回调（rule 2 hold-catch）：手指/键盘键覆盖其轨道即接住
-## 返回是否被判定
-## 由 _update_block_note_fall 过线分支调用，每音符仅触发一次
-func _check_slide_stat(note: FlowNote) -> bool:
-	# 键盘：对应轨道有按键被按住 → 过线接住（键盘点击滑块已即时判定，此处兜底）
+## 返回是否被判定。由 _update_block_note_fall 过线分支调用，每音符仅触发一次
+func _check_slide_stat(note_index: int) -> bool:
+	# 键盘：对应轨道有按键被按住 → 过线接住
 	for keycode in pressed_keys:
-		if pressed_keys[keycode] == note.lane:
-			if parent_node.play_mode and note.game_sequence_ref:
-				_manual_off_scheduler.trigger_from_sequence(note.game_sequence_ref)
+		if pressed_keys[keycode] == _st_lane[note_index]:
+			if parent_node.play_mode:
+				_manual_off_scheduler.trigger_from_sequence(KeySequenceManager.instance, note_index)
 			if only_perfect_slides:
-				_judge_note(note, false, note.start_time, -1, "Perfect")
+				_judge_note(note_index, false, _st_start[note_index], -1, "Perfect")
 			else:
-				_judge_note(note)
+				_judge_note(note_index)
 			return true
 
 	# 触摸 hold-catch（rule 2）：手指覆盖音符所在轨道即接住
 	for candidate_touch_id in touch_positions:
 		if not _gestures.has(candidate_touch_id):
 			continue
-		if not note.lane in _finger_lanes(touch_positions[candidate_touch_id].x):
+		if not _st_lane[note_index] in _finger_lanes(touch_positions[candidate_touch_id].x):
 			continue
-		_judge_slide_as_slide(note, _synced_current_time)
+		_judge_slide_as_slide(note_index, _synced_current_time)
 		return true
 	return false
 
@@ -1259,8 +1347,9 @@ func _judge_slides_on_lift(touch_id: int, input_time_ms: float = -1.0) -> void:
 
 ## 键盘模式专用：在指定轨道范围内查找最合适的音符并完成判定
 ## 触摸模式请使用 _handle_press()（通过 NoteJudger 实现）
-func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -> FlowNote:
-	var best_note: FlowNote = null
+## 返回判定的 seq 索引（-1=未判定）
+func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -> int:
+	var best_note: int = -1
 	var best_score: float = INF
 
 	# 使用轨道索引加速：只遍历目标轨道范围内的音符
@@ -1269,14 +1358,14 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 		if _notes_by_lane.has(lane):
 			candidate_notes.append_array(_notes_by_lane[lane])
 
-	for note in candidate_notes:
-		if note.is_held or note.is_judged or note.is_removed or note.can_judge:
+	for i in candidate_notes:
+		if _rt_flags[i] & (F_HELD | F_JUDGED | F_REMOVED | F_CAN_JUDGE):
 			continue
-		if only_perfect_slides and note.type == FlowNote.NoteType.Slide:
+		if only_perfect_slides and _st_type[i] == FlowNote.NoteType.Slide:
 			continue
 
-		# 代表 Y 坐标：Long 与 Block/Slide 统一用 cached_center_y
-		var note_y: float = note.cached_center_y
+		# 代表 Y 坐标：Long 与 Block/Slide 统一用 _rt_cy
+		var note_y: float = _rt_cy[i]
 
 		match judge_mode:
 			NoteJudger.JudgeMode.NEAREST, NoteJudger.JudgeMode.BEST_TIMING, NoteJudger.JudgeMode.NEAREST_JUDGE:
@@ -1284,24 +1373,23 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 				var diff: float = abs(jl.position.y - note_y)
 				if diff < best_score:
 					best_score = diff
-					best_note = note
+					best_note = i
 			NoteJudger.JudgeMode.BEST_TIMING_FIFO:
 				# 先现先判：选最靠近底部（note_y 最大）的音符
 				var score: float = -note_y
 				if score < best_score:
 					best_score = score
-					best_note = note
+					best_note = i
 
-	if best_note:
-		if parent_node.play_mode and best_note.game_sequence_ref:
-			_manual_off_scheduler.trigger_from_sequence(best_note.game_sequence_ref)
-		if best_note.type == FlowNote.NoteType.Slide:
-			# 键盘点击滑块按点块(Block)计分（重置滑块衰减链）；与滑过接住（Slide 计分：进入衰减链）路径互斥
+	if best_note >= 0:
+		if parent_node.play_mode:
+			_manual_off_scheduler.trigger_from_sequence(KeySequenceManager.instance, best_note)
+		if _st_type[best_note] == FlowNote.NoteType.Slide:
+			# 键盘点击滑块按点块(Block)计分（重置滑块衰减链）；与滑过接住（Slide 计分）路径互斥
 			_judge_note(best_note, true, input_time_ms, FlowNote.NoteType.Block)
 		else:
 			_judge_note(best_note, true, input_time_ms)
-		return best_note
-	return null
+	return best_note
 
 func _trigger_touch_vibration() -> void:
 	if not Input.has_method("vibrate_handheld"):
@@ -1319,7 +1407,6 @@ func _generate_particle(type: String, pos: Vector2) -> void:
 	var emitter_key: String = spark_emitters.get(type, "")
 	if base_key.is_empty() and emitter_key.is_empty():
 		return
-	# 三个数值已由 _reload_spark_config 预换算为倍率/不透明度（spawn 内部不再除 100）
 	_particle_drawer.spawn(base_key, emitter_key, pos,
 		spark_scalings.get(type, 1.0), spark_alphas.get(type, 1.0), spark_emitter_scales.get(type, 1.5))
 
@@ -1336,35 +1423,21 @@ func _reload_spark_config() -> void:
 		spark_scalings[judge] = ConfigManager.instance.get_float("Lane", jl_str + "_spark_scaling", 100) / 100.0
 		spark_alphas[judge] = ConfigManager.instance.get_float("Lane", jl_str + "_spark_alpha", 100) / 100.0
 		spark_emitter_scales[judge] = ConfigManager.instance.get_float("Lane", jl_str + "_spark_emitter_scaling", 150) / 100.0
-	
-## 【方案C】同步当前播放时间（毫秒）
-## 由 PlayView._process() 每帧调用，确保 FlowArea 的时间与 MIDI 播放位置完全同步。
-## time_ms = 音频钟（判定用）；render_time_ms = 渲染钟（平滑视觉，可选，缺省回退音频钟）。
-func set_current_time(time_ms: float, render_time_ms: float = -1.0) -> void:
-	_synced_current_time = time_ms
-	_render_time_ms = render_time_ms if render_time_ms >= 0.0 else time_ms
 
-func _get_realtime_position_ms() -> float:
-	var playback_mgr = MidiPlaybackManager.instance
-	if playback_mgr:
-		return playback_mgr.get_realtime_position_ms()
-	return _synced_current_time
-
-func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_time_ms: float = -1.0,
+## 核心判定入口（平行数组版）：note_index 为 seq 索引
+func _judge_note(note_index: int, trigger_vibration: bool = false, input_time_ms: float = -1.0,
 		block_type_override: int = -1, result_override: String = ""):
-	# 防止重复判定：如果该note已被判定过，直接返回
-	if judge_note.is_judged:
+	# 防止重复判定：如果该 note 已被判定过，直接返回
+	if _rt_flags[note_index] & F_JUDGED:
 		return
 
 	# input_time_ms 来自 _get_realtime_position_ms() 或 note.start_time（与 current_time 同坐标系）
 	var judge_time_ms := input_time_ms if input_time_ms >= 0.0 else _get_realtime_position_ms()
-	var time_diff = judge_note.start_time - judge_time_ms  # 毫秒，优先使用事件时刻的实时播放位置
+	var time_diff = _st_start[note_index] - judge_time_ms  # 毫秒，优先使用事件时刻的实时播放位置
 	var abs_diff = abs(time_diff)
 	var result: String = result_override
 
 	if result.is_empty():
-		# 缓存 judge_windows 阈值到局部变量，避免 4 次字典查找
-		# judge_windows 仅在声明处初始化、从不被外部修改，缓存安全
 		var jw := judge_windows
 		var perfect_thr := float(jw["perfect"])
 		if abs_diff <= perfect_thr:
@@ -1379,30 +1452,26 @@ func _judge_note(judge_note: FlowNote, trigger_vibration: bool = false, input_ti
 	# 转换为秒，传递给 ScoreCalculator 所需的数据
 	var timing_sec: float = abs_diff / 1000.0
 	var signed_offset_sec: float = time_diff / 1000.0
-	# NoteType 与 BlockType 已统一同名同值（Block=0/Slide=1/Long=2），直接透传；
-	# 点击滑块时 override 为 Block（按点块计分）
-	var block_type: int = block_type_override if block_type_override >= 0 else judge_note.type
+	# NoteType 与 BlockType 已统一同名同值；点击滑块时 override 为 Block（按点块计分）
+	var block_type: int = block_type_override if block_type_override >= 0 else _st_type[note_index]
 
-	# 标记该note已被判定，防止重复
-	judge_note.is_judged = true
-	# 走 Node2D 批量绘制，Long 与 Block/Slide 统一用 cached 字段（cached_center_y = head 中心）
-	var hit_pos := Vector2(judge_note.cached_center_x, judge_note.cached_center_y)
+	# 标记该 note 已被判定，防止重复
+	_rt_flags[note_index] |= F_JUDGED
+	var hit_pos := Vector2(_rt_cx[note_index], _rt_cy[note_index])
 
 	note_judged.emit(result, "%s%.1f ms" % ["+" if time_diff>=0 else "", time_diff],
 		block_type, timing_sec, signed_offset_sec)
 	if trigger_vibration:
 		_trigger_touch_vibration()
-	if judge_note.type != FlowNote.NoteType.Long:
-		_remove_note(judge_note)
+	if _st_type[note_index] != FlowNote.NoteType.Long:
+		_remove_note(note_index)
 
 	# 特效（轨道光束颜色与音符一致：交替轨道颜色开启时按轨道色点亮）
-	# 直接复用 spawn 时已缓存的 cached_color（refresh_note_colors 在主题/轨道色变化时同步刷新），
-	# 免去 _get_note_color → get_lane_color + _get_resolved_color_for_type 的查找开销
-	get_parent().lane_area.light_lane(judge_note.lane, judge_note.cached_color)
-	
+	get_parent().lane_area.light_lane(_st_lane[note_index], _rt_color[note_index])
+
 	var preset = spark_presets.get(result, "")
 	var emitter = spark_emitters.get(result, "")
-	if (not preset.is_empty() or not emitter.is_empty()) and judge_note.type != FlowNote.NoteType.Long and hit_pos != Vector2.ZERO:
+	if (not preset.is_empty() or not emitter.is_empty()) and _st_type[note_index] != FlowNote.NoteType.Long and hit_pos != Vector2.ZERO:
 		_generate_particle(result, hit_pos)
 
 var _is_pause: bool = false
@@ -1415,11 +1484,23 @@ func _notification(what: int) -> void:
 		if _note_drawer:
 			_note_drawer.set_viewport_height(_cached_viewport_height)
 
+## 【方案C】同步当前播放时间（毫秒）
+## 由 PlayView._process() 每帧调用。time_ms = 音频钟（判定用）；render_time_ms = 渲染钟（平滑视觉，可选）
+func set_current_time(time_ms: float, render_time_ms: float = -1.0) -> void:
+	_synced_current_time = time_ms
+	_render_time_ms = render_time_ms if render_time_ms >= 0.0 else time_ms
+
+func _get_realtime_position_ms() -> float:
+	var playback_mgr = MidiPlaybackManager.instance
+	if playback_mgr:
+		return playback_mgr.get_realtime_position_ms()
+	return _synced_current_time
+
 func _process(delta: float) -> void:
 	if not parent_node:
 		return
 
-	# 暂停处理（音符下落由 _process 时间驱动，暂停时下方提前 return 即冻结，无需 Tween 暂停）
+	# 暂停处理（音符下落由 _process 时间驱动，暂停时下方提前 return 即冻结）
 	if parent_node.is_pause and not _is_pause:
 		_is_pause = true
 	elif not parent_node.is_pause and _is_pause:
@@ -1431,48 +1512,52 @@ func _process(delta: float) -> void:
 	# 驱动手动音符的 NoteOff（按播放位置触发，暂停时自动停）
 	_manual_off_scheduler.process(_synced_current_time)
 
-	# 生成音符
-	while note_idx < notes_list.size() and notes_list[note_idx].start_time < parent_node.current_time + note_generation_lead_time:
+	# 生成音符（从 _st_* 按 start_time 判断是否进入下落提前量窗口）
+	while note_idx < _count and _st_start[note_idx] < parent_node.current_time + note_generation_lead_time:
 		_spawn_note(note_idx)
 		note_idx += 1
 
 	# 每帧更新所有活跃音符位置
-	# Block/Slide/Long 统一写入 cached_* 字段，drawer 在 _draw 中批量绘制（Long 由 _update_long_note_fall 维护）
-	# 按类型分桶遍历：免逐音符类型分发；同步/渲染时间提升为局部变量，免每音符重复读成员
+	# Block/Slide/Long 统一写 _rt_* 数组，drawer 在 _draw 中批量绘制
+	# 按类型分桶遍历：免逐音符类型分发；同步/渲染时间提升为局部变量
 	for type_key in _BLOCK_SLIDE_TYPES:
 		for color_key in _note_buckets[type_key]:
-			for note in _note_buckets[type_key][color_key]:
-				_update_block_note_fall(note, _synced_current_time, _render_time_ms)
+			for note_index in _note_buckets[type_key][color_key]:
+				_update_block_note_fall(note_index, _synced_current_time, _render_time_ms)
 	for color_key in _note_buckets[FlowNote.NoteType.Long]:
-		for note in _note_buckets[FlowNote.NoteType.Long][color_key]:
+		for note_index in _note_buckets[FlowNote.NoteType.Long][color_key]:
 			# 自动模式
-			if auto_mode and not note.is_held:
-				if _synced_current_time + 5 >= note.start_time:
-					_auto_click(note)
+			if auto_mode and not (_rt_flags[note_index] & F_HELD):
+				if _synced_current_time + 5 >= _st_start[note_index]:
+					_auto_click(note_index)
 
-			_update_long_note_fall(note, _synced_current_time, _render_time_ms)
+			_update_long_note_fall(note_index, _synced_current_time, _render_time_ms)
 
 	# 位置已更新，通知 Node2D 批量绘制器重绘
 	if _note_drawer and has_active_notes():
 		_note_drawer.request_redraw()
 
-	# 更新长条音符的按住进度和显示（Long 与 Block/Slide 统一走 cached 字段）
+	# 帧末清理已移除音符（延迟到遍历结束后，避免遍历中 mutate 数组）
+	if _needs_bucket_sweep:
+		_sweep_removed_from_buckets()
+
+	# 更新长条音符的按住进度和显示
 	for touch_id in active_holds.keys():
-		var note = active_holds[touch_id]
-		if not note or not note.is_held:
+		var note_index: int = active_holds[touch_id]
+		if not (_rt_flags[note_index] & F_HELD):
 			continue
 
-		var long_end_time = note.start_time + max(0.0, note.duration)
+		var long_end_time = _st_start[note_index] + max(0.0, _st_dur[note_index])
 		if _synced_current_time >= long_end_time:
 			if not spark_presets.get("Perfect", "").is_empty() or not spark_emitters.get("Perfect", "").is_empty():
-				_generate_particle("Perfect", Vector2(note.cached_center_x, note.cached_tail_center_y))
-			_remove_note(note)
+				_generate_particle("Perfect", Vector2(_rt_cx[note_index], _rt_tail_cy[note_index]))
+			_remove_note(note_index)
 			active_holds.erase(touch_id)
 			continue
 
 		# 加分（长条持续 tick 只加分，不加 combo；combo 仅由首判增加）
-		if note.cooldown > 0.25: # 0.25是触发频率
-			note.cooldown = 0
-			long_holding.emit(note.long_instance_id)
+		if _rt_cooldown[note_index] > 0.25: # 0.25是触发频率
+			_rt_cooldown[note_index] = 0
+			long_holding.emit(_rt_long_id[note_index])
 		else:
-			note.cooldown += delta
+			_rt_cooldown[note_index] += delta

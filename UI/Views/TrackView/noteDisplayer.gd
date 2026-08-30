@@ -61,9 +61,23 @@ class TrackNoteBucket:
 	var channel: int = 0
 	var hue: float = 0.0              # 颜色色相（由 track_index 查 colors_set 一次）
 	var color: Color = Color.WHITE    # 由 hue 预计算的绘制颜色（避免逐音符 Color.from_hsv）
-	var notes: Array[MidiParser.NoteEvent] = []  # 按 start_time 升序（_build_buckets 中排序）
+	## 音符容器（按 start_time 升序）：
+	##   soa != null → PackedInt32Array（notes_soa 索引），显示路径经 soa 只读直引，不物化 22w NoteEvent；
+	##   soa == null → Array[MidiParser.NoteEvent]（兼容旧对象形态）
+	var notes: Variant = []
+	var soa: NoteSoa = null          # 共享 SOA 引用（索引形态时只读直引；_draw 不持有全量对象）
 	var cursor: int = 0               # 懒生成游标（指向下一个待生成的音符）
 	var is_enabled: bool = true       # master 用：该音轨是否启用
+
+	## 元素统一只读接口：e 为 notes[cursor]（SOA 索引 int 或 NoteEvent 对象）
+	func n_start(e: Variant) -> float:
+		return soa.start_tick(e) if soa != null else float(e.start_time)
+	func n_end(e: Variant) -> float:
+		return soa.end_tick(e) if soa != null else float(e.start_time + e.duration)
+	func n_pitch(e: Variant) -> int:
+		return soa.pitch(e) if soa != null else e.pitch
+	func n_count() -> int:
+		return notes.size()
 
 class NoteState:
 	extends RefCounted
@@ -201,7 +215,7 @@ func _process(_delta):
 	# 所有 bucket（含禁用）都生成到 _bucket_active（供子 displayer 绘制）；
 	# 启用 bucket 额外进 active_notes（总览绘制 + master 计数）
 	for b in buckets:
-		while b.cursor < b.notes.size() and b.notes[b.cursor].start_time < view_right_bound:
+		while b.cursor < b.n_count() and b.n_start(b.notes[b.cursor]) < view_right_bound:
 			_create_note(b.notes[b.cursor], b)
 			b.cursor += 1
 
@@ -243,11 +257,11 @@ func _process(_delta):
 				and child.flow_area.get_global_rect().intersects(child.get_viewport_rect()):
 			child._draw_node.queue_redraw()
 
-func _create_note(note_evt: MidiParser.NoteEvent, bucket: TrackNoteBucket):
+func _create_note(e: Variant, bucket: TrackNoteBucket):
 	var state := NoteState.new()
-	state.pitch = note_evt.pitch
-	state.start_tick = float(note_evt.start_time)
-	state.end_tick = state.start_tick + float(note_evt.duration)
+	state.pitch = bucket.n_pitch(e)
+	state.start_tick = bucket.n_start(e)
+	state.end_tick = bucket.n_end(e)
 	state.bucket = bucket
 	state.is_passed = false
 	var key := _key_str(bucket.track_index, bucket.channel)
@@ -347,13 +361,13 @@ func _compute_counts_from(ct: float) -> void:
 		var key := _key_str(b.track_index, b.channel)
 		var passed := 0
 		for n in b.notes:
-			if n.start_time < ct:
+			if b.n_start(n) < ct:
 				passed += 1
 			else:
 				break  # bucket 内已排序，提前退出
 		_bucket_passed[key] = passed
 		if b.is_enabled:
-			master_total += b.notes.size()
+			master_total += b.n_count()
 			master_passed += passed
 	for n in active_notes:
 		if n.start_tick < ct:
@@ -413,13 +427,13 @@ func reset_playhead_position(target_ms: float) -> void:
 
 	# 定位每 bucket 到视野起点（跳过一个 end_tick < target_tick 的音符）
 	for b in buckets:
-		while b.cursor < b.notes.size() and (b.notes[b.cursor].start_time + b.notes[b.cursor].duration) < target_tick:
+		while b.cursor < b.n_count() and b.n_end(b.notes[b.cursor]) < target_tick:
 			b.cursor += 1
 
 	# 生成视野内音符
 	var view_right_bound = target_tick + area_width / scale_factor
 	for b in buckets:
-		while b.cursor < b.notes.size() and b.notes[b.cursor].start_time < view_right_bound:
+		while b.cursor < b.n_count() and b.n_start(b.notes[b.cursor]) < view_right_bound:
 			_create_note(b.notes[b.cursor], b)
 			b.cursor += 1
 

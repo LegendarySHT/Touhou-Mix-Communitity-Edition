@@ -217,21 +217,14 @@ func ensure_track_config_initialized(midi_data: MidiData, notes: Array) -> void:
 	for t in desc_parse["recommended_tracks"]:
 		midi_data.desc_recommended_tracks.append(int(t))
 
-	# 根据 notes 应用推荐轨道
+	# 根据 notes 应用推荐轨道（优先走 SOA 枚举 (track,channel)，避免 materialize 全量 NoteEvent）
 	midi_data.selected_track_configs.clear()
 	var recommended := midi_data.desc_recommended_tracks
 	var use_recommendation := not recommended.is_empty()
-	for note in notes:
-		if note is MidiParser.NoteEvent:
-			var should_enable := true
-			if use_recommendation:
-				should_enable = note.track_index in recommended
-			midi_data.set_track_channel_enabled(note.track_index, note.channel, should_enable)
+	_apply_recommended_pairs(midi_data, recommended, use_recommendation, notes)
 	# 回退：推荐轨道均不存在于 MIDI 时启用全部，避免无音符可见
 	if use_recommendation and midi_data.selected_track_configs.is_empty():
-		for note in notes:
-			if note is MidiParser.NoteEvent:
-				midi_data.set_track_channel_enabled(note.track_index, note.channel, true)
+		_apply_recommended_pairs(midi_data, recommended, false, notes)
 		GLogger.info("Recommended tracks %s not found in MIDI, fell back to enabling all" % [recommended], "MidiPlaybackManager")
 	elif use_recommendation:
 		GLogger.info("Enabled recommended tracks from description: %s" % [recommended], "MidiPlaybackManager")
@@ -241,6 +234,24 @@ func ensure_track_config_initialized(midi_data: MidiData, notes: Array) -> void:
 	midi_data.set_track_config_initialized(true)
 	# 立即持久化到 DB，避免下次启动重复解析简介
 	_save_runtime_config(midi_data)
+
+## 按启用策略批量设置 (track,channel) 对（SOA 优先，避免批量建对象）
+func _apply_recommended_pairs(midi_data: MidiData, recommended: Array, use_recommendation: bool, notes: Array) -> void:
+	# 注意 MidiData.set_track_channel_enabled 是幂等的（内部去重），重复调用安全
+	if midi_data != null and midi_data.notes_soa != null and midi_data.notes_soa.size() > 0:
+		var soa := midi_data.notes_soa
+		for i in range(soa.size()):
+			var should_enable := true
+			if use_recommendation:
+				should_enable = soa.track(i) in recommended
+			midi_data.set_track_channel_enabled(soa.track(i), soa.channel(i), should_enable)
+		return
+	for note in notes:
+		if note is MidiParser.NoteEvent:
+			var should_enable := true
+			if use_recommendation:
+				should_enable = note.track_index in recommended
+			midi_data.set_track_channel_enabled(note.track_index, note.channel, should_enable)
 
 ## 加载MIDI文件
 ## 返回: success (bool)
@@ -276,7 +287,7 @@ func load_midi(midi_data: MidiData) -> bool:
 	
 	# 解析MIDI文件（带缓存：retry 场景跳过重复解析）
 	var track_infos: Array
-	if not midi_data.parsed_notes.is_empty() and midi_data.midi_file_path == midi_file_path and not midi_data._runtime_track_infos.is_empty():
+	if midi_data.has_notes() and midi_data.midi_file_path == midi_file_path and not midi_data._runtime_track_infos.is_empty():
 		# 缓存命中：跳过昂贵的 MIDI 解析
 		current_notes = midi_data.parsed_notes
 		bpm_timeline = midi_data.bpm_timeline.duplicate()
@@ -290,20 +301,14 @@ func load_midi(midi_data: MidiData) -> bool:
 			push_error("Failed to parse MIDI file: %s" % midi_file_path)
 			return false
 
-		# 主线程从 SOA 重建 NoteEvent（load_and_parse_midi 不再在 worker 创建 RefCounted）
-		if parse_result.get("notes", []).is_empty() and parse_result.has("soa") and not parse_result["soa"].is_empty():
-			parse_result["notes"] = MidiParser.build_notes_from_soa(parse_result["soa"])
-			parse_result.erase("soa")
-
-		# 保存解析结果
-		current_notes = parse_result["notes"]
+		# 音符数据以 SOA 紧凑数组存储（不 materialize 全量 NoteEvent，20w+ 音符内存优化）
+		# 单一授权点：SOA + 轨道-通道分组一并写入，保证与 notes_soa 强一致
+		current_midi_data.set_parsed_soa(parse_result)
 		bpm_timeline = parse_result.get("bpm_timeline", [])  # 获取BPM时间线
 		midi_timebase = parse_result.get("timebase", 480)  # 保存timebase
 		track_infos = parse_result["track_infos"]
+		current_notes = []  # SOA 路径下不再持有全量对象；消费方按需经 SOA 取
 
-		# build_notes_from_soa 已按 start_time 升序排序，无需重复排序
-
-		current_midi_data.parsed_notes = current_notes
 		current_midi_data.track_count = track_infos.size()
 		current_midi_data.duration_ms = parse_result["duration_ms"]
 		current_midi_data.bpm_timeline = bpm_timeline.duplicate()
@@ -329,6 +334,9 @@ func load_midi(midi_data: MidiData) -> bool:
 
 	# 首次需要轨道配置的入口（MidiView 统计 / TrackView / PlayView）前确保已按简介初始化
 	ensure_track_config_initialized(current_midi_data, current_notes)
+
+	# 轨道-通道分组已由 set_parsed_soa 与 SOA 一并构建（单一授权点），非空即与当前 SOA 强一致；
+	# 命中缓存路径复用 preparse 写入的既有分组，无需在此重复 O(N) 重建。
 	
 	# 加载到活跃后端
 	var backend = _get_active_backend()
@@ -353,15 +361,27 @@ func load_midi(midi_data: MidiData) -> bool:
 		var default_volume := 0.5
 		var seen_pairs := {}
 		var default_count := 0
-		for note in current_notes:
-			if note is MidiParser.NoteEvent:
-				var pair_key := "%d_%d" % [note.track_index, note.channel]
+		if current_midi_data != null and current_midi_data.notes_soa != null and current_midi_data.notes_soa.size() > 0:
+			# SOA 路径：只枚举 (track,channel) 对，不建全量 NoteEvent
+			var soa := current_midi_data.notes_soa
+			for i in range(soa.size()):
+				var pair_key := "%d_%d" % [soa.track(i), soa.channel(i)]
 				if seen_pairs.has(pair_key):
 					continue
 				seen_pairs[pair_key] = true
 				if backend != null and backend.has_method("set_track_channel_volume"):
-					backend.set_track_channel_volume(note.track_index, note.channel, default_volume)
+					backend.set_track_channel_volume(soa.track(i), soa.channel(i), default_volume)
 				default_count += 1
+		else:
+			for note in current_notes:
+				if note is MidiParser.NoteEvent:
+					var pair_key := "%d_%d" % [note.track_index, note.channel]
+					if seen_pairs.has(pair_key):
+						continue
+					seen_pairs[pair_key] = true
+					if backend != null and backend.has_method("set_track_channel_volume"):
+						backend.set_track_channel_volume(note.track_index, note.channel, default_volume)
+					default_count += 1
 		if default_count > 0:
 			GLogger.info("Applied %d default track volumes (50%%)" % default_count, "MidiPlaybackManager")
 	
@@ -448,10 +468,15 @@ var _preparse_inflight: Dictionary = {}
 func preparse_midi_async(midi_data: MidiData) -> bool:
 	# 缓存命中检查（与 load_midi 内部条件一致）
 	# 命中缓存时 runtime_track_channel_notes 已由本函数构建，TrackView._build_buckets 可直接复用
-	if not midi_data.parsed_notes.is_empty() and not midi_data._runtime_track_infos.is_empty():
+	if midi_data.has_notes() and not midi_data._runtime_track_infos.is_empty():
 		# 缓存命中时也复用已构建的 cached_track_channel_instruments（避免 load_midi 重新提取）
 		# 但 cached_track_channel_instruments 是 MidiPlaybackManager 单实例字段，切换 MIDI 时会被 clear
 		# 此处不做特殊处理：load_midi 内部会判断 cached_track_channel_instruments 是否为空决定是否调用提取
+		# 确保 (track,channel) 索引分组已就绪：某些路径（如 load_midi 直接设置 notes_soa、或复用旧实例）
+		# 可能只重建了 SOA 而未建分组，缺则从 SOA 重建，保证 TrackView._build_buckets 总是能取到数据
+		if midi_data.runtime_track_channel_notes.is_empty() \
+				and midi_data.notes_soa != null and midi_data.notes_soa.size() > 0:
+			midi_data.runtime_track_channel_notes = midi_data.notes_soa.grouped_indices()
 		return true  # 已缓存，无需预解析
 
 	# 同一 MIDI 已有解析在进行：单纯等待其完成（MidiListItem 的统计解析 / TrackView / PlayView 共享一次解析）
@@ -459,7 +484,7 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 		while _preparse_inflight.has(midi_data) and not _preparse_inflight[midi_data].get("done", false):
 			await Engine.get_main_loop().process_frame
 		# 解析完成（成功或失败）；失败时字段仍为空，按失败处理
-		return (not midi_data.parsed_notes.is_empty() and not midi_data._runtime_track_infos.is_empty())
+		return (midi_data.has_notes() and not midi_data._runtime_track_infos.is_empty())
 
 	var midi_file_path := _locate_midi_file(midi_data)
 	if midi_file_path.is_empty():
@@ -497,16 +522,11 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 		push_error("[MidiPlaybackManager] Failed to parse MIDI file: %s" % midi_file_path)
 		return false
 
-	# 主线程从 SOA 重建 NoteEvent（避免 worker 线程批量创建 66k RefCounted 导致 Android ARM 引用计数损坏）
-	if parse_result.get("notes", []).is_empty() and parse_result.has("soa") and not parse_result["soa"].is_empty():
-		parse_result["notes"] = MidiParser.build_notes_from_soa(parse_result["soa"])
-		parse_result.erase("soa")  # 释放 SOA 的 PackedInt32Array 内存
-
-	# 主线程构建 track_channel_notes（依赖 NoteEvent，必须在 NoteEvent 重建后）
-	var track_channel_notes := MidiParser.build_track_channel_notes(parse_result["notes"])
+	# 音符数据以 SOA 紧凑数组存储（不 materialize 全量 NoteEvent，20w+ 音符内存优化）
+	# 单一授权点：SOA + 轨道-通道分组一并写入，保证与 notes_soa 强一致
+	midi_data.set_parsed_soa(parse_result)
 
 	# 写入 midi_data 字段，load_midi 后续会命中缓存跳过同步解析
-	midi_data.parsed_notes = parse_result["notes"]
 	# 与 load_midi 一致：duplicate() 防止后续修改影响原解析结果
 	midi_data.bpm_timeline = parse_result.get("bpm_timeline", []).duplicate()
 	midi_data.midi_timebase = parse_result.get("timebase", 480)
@@ -520,17 +540,15 @@ func preparse_midi_async(midi_data: MidiData) -> bool:
 	cached_track_channel_instruments = result_wrapper["instruments"]
 	midi_data.track_channel_instruments = cached_track_channel_instruments.duplicate()
 
-	# 主线程构建的 (track,channel) → notes 分组（TrackView._build_buckets 直接复用）
-	midi_data.runtime_track_channel_notes = track_channel_notes
-
-	# build_notes_from_soa 已按 start_time 升序排序，无需重复排序
+	# SOA 来源数组已按 start_tick 升序排序，无需重复排序
 
 	# 标记完成并移除在途记录（等待方在 while 循环里以 has() 守卫，erase 后立即退出循环）
 	inflight_entry["done"] = true
 	_preparse_inflight.erase(midi_data)
 
+	var json_note_count: int = midi_data.notes_soa.size()
 	GLogger.info("MIDI preparse completed (threaded): %d notes, duration=%.0fms, %d (track,channel) groups" % [
-		midi_data.parsed_notes.size(),
+		json_note_count,
 		midi_data.duration_ms,
 		midi_data.runtime_track_channel_notes.size()
 	], "MidiPlaybackManager")
@@ -1160,9 +1178,19 @@ func unmute_all_channels() -> void:
 
 ## 获取已选中轨道对应的Note
 func get_selected_track_notes() -> Array:
-	if current_midi_data == null or current_notes.is_empty():
+	if current_midi_data == null:
 		return []
-	
+	# SOA 路径：按 selected_track_indices 从 SOA 按需构建 NoteEvent 子集（不 materialize 全量）
+	if current_midi_data.notes_soa != null and current_midi_data.notes_soa.size() > 0:
+		var soa := current_midi_data.notes_soa
+		var selected := current_midi_data.selected_track_indices
+		var notes: Array = []
+		for i in range(soa.size()):
+			if soa.track(i) in selected:
+				notes.append(soa.note(i))
+		return notes
+	if current_notes.is_empty():
+		return []
 	return MidiParser.extract_notes_by_track(current_notes, current_midi_data.selected_track_indices)
 
 ## 获取可用的乐器预设列表
@@ -1304,9 +1332,8 @@ func _on_vocal_finished() -> void:
 
 ## 获取当前MIDI的轨道信息列表
 func get_track_infos() -> Array:
-	if current_midi_data == null or current_notes.is_empty():
+	if current_midi_data == null:
 		return []
-
 	# 优先使用 load_midi() 中已缓存的 _runtime_track_infos，避免重复解析 MIDI 文件
 	# （MIDI 解析是同步文件 I/O + 数据结构构建，开销很大）
 	if not current_midi_data._runtime_track_infos.is_empty():
@@ -1364,57 +1391,34 @@ func classify_notes(all_notes: Array, manual_track_indices: Array[int] = []) -> 
 	
 	return result
 
-## 设置MidiPlayer的手动控制note标记
-## 游戏完成分类后，应调用此方法通知MidiPlayer哪些note需要手动控制
-## @param	manual_control_notes	NoteEvent数组（需手动控制的音符）
-func set_manual_control_notes(manual_control_notes: Array) -> void:
-	if midi_player == null:
-		push_warning("[MidiPlaybackManager] MidiPlayer not initialized")
+## 从 KeySequenceCore（ksm 访问器）读取手动控制音符（C# 保存数据，索引指向 enabled 输入数组）
+func set_manual_control_from_core(ksm) -> void:
+	if ksm == null or midi_player == null:
 		return
-	
-	# 构建手动控制note的字典（精确到起始tick）
-	# 新格式：{track_index: {channel: {pitch: {start_tick: true}}}}
-	# 兼容性：播放器端仍兼容旧格式 {channel: {pitch: true}}
 	var manually_controlled: Dictionary = {}
-	
-	for note in manual_control_notes:
-		# 所有 note 均为 MidiParser.NoteEvent 类型
-		if note is MidiParser.NoteEvent:
-			var track_index = note.track_index
-			var channel = note.channel
-			var pitch = note.pitch
-			var start_tick = int(round(note.start_time))
-			
-			if not manually_controlled.has(track_index):
-				manually_controlled[track_index] = {}
-			if not manually_controlled[track_index].has(channel):
-				manually_controlled[track_index][channel] = {}
-			if not manually_controlled[track_index][channel].has(pitch):
-				manually_controlled[track_index][channel][pitch] = {}
-			
-			var tick_map = manually_controlled[track_index][channel][pitch]
-			tick_map[start_tick] = int(tick_map.get(start_tick, 0)) + 1
-	
-	# 传递给MidiPlayer
+	for i in range(ksm.manual_count()):
+		var input_idx = ksm.manual_at(i)
+		var track_index = ksm.input_track_at(input_idx)
+		var channel = ksm.input_channel_at(input_idx)
+		var pitch = ksm.input_pitch_at(input_idx)
+		var start_tick = ksm.input_start_tick_at(input_idx)
+		if not manually_controlled.has(track_index):
+			manually_controlled[track_index] = {}
+		if not manually_controlled[track_index].has(channel):
+			manually_controlled[track_index][channel] = {}
+		if not manually_controlled[track_index][channel].has(pitch):
+			manually_controlled[track_index][channel][pitch] = {}
+		var tick_map = manually_controlled[track_index][channel][pitch]
+		tick_map[start_tick] = int(tick_map.get(start_tick, 0)) + 1
 	if midi_player.has_method("set_manually_controlled_notes"):
 		midi_player.set_manually_controlled_notes(manually_controlled)
-		
-		# 调试日志：显示已标记的手动控制notes
-		var total_entries = 0
-		for track_key in manually_controlled.keys():
-			for ch in manually_controlled[track_key].keys():
-				for pitch in manually_controlled[track_key][ch].keys():
-					total_entries += manually_controlled[track_key][ch][pitch].size()
-		GLogger.info("Set manual control: %d notes, %d precise (track,ch,pitch,start_tick) entries" % 
-			[manual_control_notes.size(), total_entries], "MidiPlaybackManager")
+		GLogger.info("Set manual control from core: %d notes" % ksm.manual_count(), "MidiPlaybackManager")
 	else:
 		push_warning("[MidiPlaybackManager] MidiPlayer does not support set_manually_controlled_notes")
 
 ## 清除所有手动控制note标记（恢复所有notes自动播放）
 ## 当退出PlayView返回TrackView等场景时调用
 func clear_manual_control_notes() -> void:
-	if midi_player == null:
-		return
 	
 	# 传递空字典给MidiPlayer，清除所有手动控制标记
 	if midi_player.has_method("set_manually_controlled_notes"):

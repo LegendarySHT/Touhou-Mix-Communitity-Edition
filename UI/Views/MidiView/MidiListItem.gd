@@ -27,6 +27,10 @@ static var _info_cache: Dictionary = {}
 ## 本处不再自起 Thread，避免与 PlayView/TrackView 的 preparse 并发解析同一文件
 var _computing_midi: MidiData = null
 
+## 配置去抖：同一帧内多次 config_changed（切换难度写多个 Generator 键）合并为一次重算，
+## 避免每次写键各自触发一次全量 generate_keys 造成主线程卡顿
+var _recompute_pending: bool = false
+
 func _ready() -> void:
 	# MidiListItem 不使用封面视差滚动（封面静态显示，与 SongListItem 一致）
 	_parallax_enabled = false
@@ -225,10 +229,20 @@ func _refresh_file_data(info_node: Control) -> void:
 
 ## 统计当前 MIDI 的轨道数量（= TrackView 解析出的非空 (track, channel) 轨道数）
 func _format_track_count(midi: MidiData) -> String:
+	var groups := midi.runtime_track_channel_notes
 	var count := 0
-	for key in midi.runtime_track_channel_notes:
-		if not midi.runtime_track_channel_notes[key].is_empty():
+	for key in groups:
+		if not groups[key].is_empty():
 			count += 1
+	# 缓存字典可能缺失或带空分组（preparse/load_midi 缓存路径未同步时），
+	# SOA 就绪且统计为 0 时直接从 SOA 重建并回写，确保轨道数可靠
+	if count == 0 and midi.notes_soa != null and midi.notes_soa.size() > 0:
+		groups = midi.notes_soa.grouped_indices()
+		midi.runtime_track_channel_notes = groups
+		count = 0
+		for key in groups:
+			if not groups[key].is_empty():
+				count += 1
 	if count <= 0:
 		return "—"
 	return "%d TRACK%s" % [count, "" if count == 1 else "S"]
@@ -249,8 +263,8 @@ func _start_midi_compute() -> void:
 	if midi == null:
 		return
 
-	# 若 parsed_notes 已有（之前解析过或 MidiPlaybackManager加载过），直接算 Note 数量
-	if midi.duration_ms > 0 and not midi.parsed_notes.is_empty():
+	# 若音符数据已就绪（SOA 或旧对象路径；之前解析过或 MidiPlaybackManager 加载过），直接算 Note 数量
+	if midi.duration_ms > 0 and midi.has_notes():
 		var entry: Dictionary = _info_cache.get(midi.id, {})
 		# 补全 time 缓存（可能之前没建过）
 		if not entry.has("time_str"):
@@ -328,7 +342,7 @@ func _fill_time_cache(midi: MidiData, entry: Dictionary) -> void:
 ## 在主线程计算 Note / MPP 并写入缓存，完成后刷新显示
 func _compute_and_cache_notes(midi: MidiData) -> void:
 	var ksm := KeySequenceManager.instance
-	if ksm == null or midi.parsed_notes.is_empty():
+	if ksm == null or not midi.has_notes():
 		return
 
 	# 计算前先确保轨道配置已按简介完成初始化（幂等）：
@@ -358,19 +372,22 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 		_apply_display()
 		return
 
-	# 按 (track, channel) 筛选音符
-	var filtered: Array = []
-	for note in midi.parsed_notes:
-		if note is MidiParser.NoteEvent:
-			if not configs_initialized:
-				# 未初始化：全部纳入
-				filtered.append(note)
-			else:
-				var key := "%d:%d" % [note.track_index, note.channel]
-				if enabled_pairs.has(key):
-					filtered.append(note)
+	# 按 (track, channel) 筛选音符（SOA 优先：只对启用子集建索引，不 materialize 全量对象）
+	var enabled_indices: Array
+	if midi.notes_soa != null and midi.notes_soa.size() > 0:
+		var soa := midi.notes_soa
+		if configs_initialized:
+			enabled_indices = midi.get_enabled_note_indices(enabled_pairs)
+		else:
+			# 未初始化（极端兜底：如 pm 不可用）：全部纳入
+			enabled_indices = []
+			enabled_indices.resize(soa.size())
+			for i in range(soa.size()):
+				enabled_indices[i] = i
+	else:
+		enabled_indices = []
 
-	if filtered.is_empty():
+	if enabled_indices.is_empty():
 		entry["note_str"] = "0"
 		entry["mpp_str"] = "—"
 		_info_cache[midi.id] = entry
@@ -378,14 +395,18 @@ func _compute_and_cache_notes(midi: MidiData) -> void:
 		return
 
 	# 异步生成（WorkerThreadPool 后台线程），避免 6 万音符时主线程阻塞 200-800ms
-	# 显式传入 midi 自己的 timebase/bpm_timeline：
-	# 旧实现靠临时改写 pm.bpm_timeline/midi_timebase 全局字段喂参，await 恢复时若
-	# PlayView.load_midi 已写入自己的时间线，会被误恢复 clobber 掉 → 生成用错时间线（音符缺失）
-	await ksm.generate_keys_async(filtered, midi.id, enabled_pairs, midi.midi_timebase, midi.bpm_timeline)
+	# 显式传入 midi 自己的 timebase/bpm_timeline；feed SOA 底层数组 + 启用索引，
+	# cache_key = midi_id + enabled_indices.hash()，与 PlayView 喂法一致可互相命中
+	var task_id := await ksm.generate_keys_async(
+		midi.notes_soa.get_raw_arrays(), enabled_indices, midi.id,
+		midi.midi_timebase, midi.bpm_timeline
+	)
+	if task_id >= 0:
+		await ksm.await_generate_keys(task_id)
 
 	# 切换项守卫：await 期间用户可能已切到其他 MIDI 项，本 item 不再是选中项
 	# 仍写入 _info_cache（缓存供下次使用），但 _apply_display 会自行判断是否刷新共享面板
-	var count: int = ksm.game_sequences.size()
+	var count: int = ksm.seq_count()
 	if count > 0 and midi.duration_ms > 0:
 		entry["note_str"] = "%d" % count
 		entry["mpp_str"] = "%.1f" % (count / (midi.duration_ms / 60000.0))
@@ -438,13 +459,26 @@ func _on_config_changed(key: String, section: String, _value: Variant) -> void:
 	for mid_id in _info_cache.keys():
 		_info_cache[mid_id].erase("note_str")
 		_info_cache[mid_id].erase("mpp_str")
-	# 若本 item 正展开，立即重新触发计算
+	# 若本 item 正展开，标记待重算并去抖：同一帧内多次配置变更只触发一次后台重算
 	if parent_node and parent_node.selected_item == item_index and midi_data != null:
 		var info_node = get_node_or_null(PathRegistry.MIDI_VIEW_DETAIL_DATA)
 		if info_node:
 			info_node.get_node("PC1/BasicData/Note").text = "..."
 			info_node.get_node("PC1/BasicData/NotePerMinute").text = "..."
-		_start_midi_compute()
+		_schedule_recompute()
+
+## 配置变更后延迟到下一帧重算 Note（同一帧内多次 config_changed 合并为一次），
+## 切换难度时 option_ui 会连续写 6 个 Generator 键，若不合并。
+## 每次都会触发全量 generate_keys（66k 音符各阻塞主线程 200-800ms，累加即"卡好几秒"）。
+func _schedule_recompute() -> void:
+	if _recompute_pending:
+		return
+	_recompute_pending = true
+	await get_tree().process_frame
+	_recompute_pending = false
+	if not is_inside_tree() or midi_data == null:
+		return
+	_start_midi_compute()
 
 
 ## 状态切换：从 TRACK_VIEW 返回 MIDI_VIEW → 轨道启用状态可能已变，清除 Note 缓存

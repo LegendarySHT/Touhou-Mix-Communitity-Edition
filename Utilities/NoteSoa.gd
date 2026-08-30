@@ -1,0 +1,155 @@
+## SOA（Structure of Arrays）只读访问器
+## 包装 C# MidiParserNative 产出的 6 个并行紧凑数组，作为音符数据的唯一事实来源。
+## 替代 Array[NoteEvent] 的对象形态：22w 音符 = 22w 个 NoteEvent → 6 个 PackedInt32Array，
+## 消除 Android ARM 上 RefCounted + StringName 引用计数开销（Easy 大谱面闪退/高内存的根源）。
+## 对象仅在下游"确实需要 NoteEvent"的边界点按需重建（note(i) / build_from_indices），
+## 而非一次性批量 materialize。访问器只在主线程使用；不创建 RefCounted 到 worker。
+class_name NoteSoa
+extends RefCounted
+
+## 6 个并行数组（索引语义一致，长度相等）
+var _pitches: PackedInt32Array
+var _velocities: PackedInt32Array
+var _start_ticks: PackedInt32Array
+var _durations: PackedInt32Array
+var _track_indices: PackedInt32Array
+var _channels: PackedInt32Array
+
+## 时间换算（可选）：tick → ms 依赖 bpm_timeline + timebase；未提供时仅能取 tick
+var _timebase: int = 480
+var _bpm_lookup: Array = []   # [[tick, bpm, cumulative_ms], ...]，按 tick 升序
+
+static func from_result(parse_result: Dictionary) -> NoteSoa:
+	## 从 load_and_parse_midi 结果构建（优先读 "soa" 字典，无则回退单数组空）。
+	var instance := NoteSoa.new()
+	instance._init_arrays(parse_result.get("soa", {}), parse_result.get("timebase", 480), parse_result.get("bpm_timeline", []))
+	return instance
+
+func _init_arrays(arrays: Dictionary, timebase: int, bpm_timeline: Array) -> void:
+	if arrays.has("pitches"):
+		_pitches = arrays.get("pitches", PackedInt32Array())
+		_velocities = arrays.get("velocities", PackedInt32Array())
+		_start_ticks = arrays.get("start_ticks", PackedInt32Array())
+		_durations = arrays.get("durations", PackedInt32Array())
+		_track_indices = arrays.get("track_indices", PackedInt32Array())
+		_channels = arrays.get("channels", PackedInt32Array())
+	_timebase = timebase if timebase > 0 else 480
+	_prebuild_bpm_lookup(bpm_timeline)
+
+func _prebuild_bpm_lookup(bpm_timeline: Array) -> void:
+	_bpm_lookup.clear()
+	if _timebase <= 0:
+		_timebase = 480
+	var cum: float = 0.0
+	for i in range(bpm_timeline.size()):
+		var e = bpm_timeline[i]
+		var tk: float = float(e.get("tick", 0.0))
+		var bpm: float = float(e.get("bpm", 120.0))
+		_bpm_lookup.append([tk, bpm, cum])
+		if i + 1 < bpm_timeline.size():
+			var nt: float = float(bpm_timeline[i + 1].get("tick", tk))
+			var ms_per_tick: float = (60000.0 / bpm) / float(_timebase)
+			cum += (nt - tk) * ms_per_tick
+
+## ===================== 基础只读访问 =====================
+
+func size() -> int:
+	return _pitches.size()
+
+## 精确字节：6 个紧凑数组的底层字节数之和（不含访问器对象本身）
+func size_bytes() -> int:
+	return _pitches.to_byte_array().size() + _velocities.to_byte_array().size() \
+		+ _start_ticks.to_byte_array().size() + _durations.to_byte_array().size() \
+		+ _track_indices.to_byte_array().size() + _channels.to_byte_array().size()
+
+## 暴露 6 个底层并行数组（只读共享，COW 零拷贝），供 C# KeySequenceCore 按启用索引装配输入
+## 顺序：{pitches, velocities, start_ticks, durations, track_indices, channels}
+func get_raw_arrays() -> Array:
+	return [_pitches, _velocities, _start_ticks, _durations, _track_indices, _channels]
+
+func pitch(i: int) -> int:
+	return _pitches[i]
+
+func velocity(i: int) -> int:
+	return _velocities[i]
+
+func track(i: int) -> int:
+	return _track_indices[i]
+
+func channel(i: int) -> int:
+	return _channels[i]
+
+## 开始 tick（C# 已按 start_ticks 升序，数组即有序）
+func start_tick(i: int) -> float:
+	return float(_start_ticks[i])
+
+func duration(i: int) -> float:
+	return float(_durations[i])
+
+func end_tick(i: int) -> float:
+	return float(_start_ticks[i] + _durations[i])
+
+func start_tick_ms(i: int) -> float:
+	return _tick_to_ms(float(_start_ticks[i]))
+
+func end_tick_ms(i: int) -> float:
+	return _tick_to_ms(float(_start_ticks[i] + _durations[i]))
+
+## ===================== tick → ms（BPM 感知） =====================
+
+func _tick_to_ms(tick: float) -> float:
+	if _bpm_lookup.is_empty():
+		return (tick / float(_timebase)) * (60000.0 / 120.0)
+	var n: int = _bpm_lookup.size()
+	var first = _bpm_lookup[0]
+	if tick <= first[0]:
+		return first[2] + (tick - first[0]) * ((60000.0 / first[1]) / float(_timebase))
+	var last = _bpm_lookup[n - 1]
+	if tick >= last[0]:
+		return last[2] + (tick - last[0]) * ((60000.0 / last[1]) / float(_timebase))
+	var lo: int = 0
+	var hi: int = n - 1
+	while lo < hi:
+		var mid: int = (lo + hi + 1) >> 1
+		if _bpm_lookup[mid][0] <= tick:
+			lo = mid
+		else:
+			hi = mid - 1
+	var entry = _bpm_lookup[lo]
+	return entry[2] + (tick - entry[0]) * ((60000.0 / entry[1]) / float(_timebase))
+
+## ===================== 边界重建（按需建对象，不批量） =====================
+
+## 惰性重建单个 NoteEvent（仅明确的边界消费点使用，如 ManualNoteOffScheduler 触发）
+func note(i: int) -> MidiParser.NoteEvent:
+	return MidiParser.NoteEvent.new(
+		pitch(i), velocity(i),
+		start_tick(i), duration(i),
+		track(i), channel(i)
+	)
+
+## 按给定索引集合批量重建 NoteEvent 数组（索引须指向本 SOA，保持原有顺序）
+## 供 PlayView/MidiListItem 构建"启用 (track,channel) 子集"后再喂给 generate_keys
+func build_from_indices(indices: Array) -> Array:
+	var notes: Array = []
+	notes.resize(indices.size())
+	for k in range(indices.size()):
+		notes[k] = note(indices[k])
+	return notes
+
+## ===================== 分组（索引化 runtime_track_channel_notes） =====================
+
+## 构建 { "track:channel": PackedInt32Array（SOA 索引）}，取代旧的 object 分组。
+## 数组保持 start_tick 升序（来源数组已升序，逐元素追加即有序）。
+func grouped_indices() -> Dictionary:
+	var groups: Dictionary = {}
+	for i in range(size()):
+		var key := "%d:%d" % [track(i), channel(i)]
+		if not groups.has(key):
+			groups[key] = PackedInt32Array([i])
+		else:
+			# 显式 读出→append→写回：Packed 数组写时复制，直接 groups[key].append() 会分离临时副本而写不回字典
+			var arr: PackedInt32Array = groups[key]
+			arr.append(i)
+			groups[key] = arr
+	return groups

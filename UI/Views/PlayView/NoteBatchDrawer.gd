@@ -50,8 +50,11 @@ var _cull_margin_bottom: float = 180.0
 var _viewport_height: float = 0.0
 
 # 活跃音符来源：FlowArea._note_buckets 引用（set_notes_source 注入，_draw 直接遍历同一字典，省去同步簿记）
-# 结构：type_key(Block/Slide/Long) -> { color -> Array[FlowNote] }
+# 结构：type_key(Block/Slide/Long) -> { color -> Array[int] }  桶元素为 seq 索引
 var _note_buckets: Dictionary = {}
+
+# 平行数组宿主（FlowArea 注入）：_draw 读 flow_area._rt_* 取运行态，无需音符对象
+var flow_area: Object = null
 
 # 透明纹理回退（贴图缺失时）
 var _transparent_tex: Texture2D = null
@@ -285,6 +288,15 @@ func _draw() -> void:
 	var view_h = _viewport_height
 	var top_limit = -_cull_margin_top
 	var bottom_limit = view_h + _cull_margin_bottom
+	# 平行数组宿主引用（_draw 每个元素热读，缓存到局部减少动态查找）
+	var fa = flow_area
+	if fa == null:
+		return
+	var flags: PackedByteArray = fa._rt_flags
+	var rt_cy: PackedFloat32Array = fa._rt_cy
+	var rt_x: PackedFloat32Array = fa._rt_x
+	var rt_half: PackedFloat32Array = fa._rt_half
+	var REMOVED: int = fa.F_REMOVED
 
 	# 绘制音符贴图（short / instant / long）
 	# 只跳过已移除音符：Long 被按住时 is_judged=true 但仍需显示，不能按 is_judged 跳过
@@ -295,14 +307,14 @@ func _draw() -> void:
 		for color_key in type_bucket:
 			var bucket: Array = type_bucket[color_key]
 			var comp: Texture2D = get_composite(type_key, color_key)
-			for note in bucket:
-				if note.is_removed:
+			for note_index in bucket:
+				if flags[note_index] & REMOVED:
 					continue
-				var cy: float = note.cached_center_y
-				var half_h: float = note.cached_half_height
+				var cy: float = rt_cy[note_index]
+				var half_h: float = rt_half[note_index]
 				if cy + half_h < top_limit or cy - half_h > bottom_limit:
 					continue
-				draw_texture_rect(comp, Rect2(note.cached_x, cy - half_h, _note_width, half_h * 2.0), false)
+				draw_texture_rect(comp, Rect2(rt_x[note_index], cy - half_h, _note_width, half_h * 2.0), false)
 
 	# Long：同色桶内 body→tail→head 三遍绘制，最大化同贴图批处理（每音符自身层序仍 body<tail<head）
 	var long_bucket: Dictionary = _note_buckets[FlowNote.NoteType.Long]
@@ -311,25 +323,26 @@ func _draw() -> void:
 		var comp_body: Texture2D = get_composite(FlowNote.NoteType.Long, color_key, "body")
 		var comp_tail: Texture2D = get_composite(FlowNote.NoteType.Long, color_key, "tail")
 		var comp_head: Texture2D = get_composite(FlowNote.NoteType.Long, color_key, "head")
-		for note in bucket:
-			if not note.is_removed:
-				_draw_long_body(note, top_limit, bottom_limit, comp_body)
-		for note in bucket:
-			if not note.is_removed:
-				_draw_long_tail(note, top_limit, bottom_limit, comp_tail)
-		for note in bucket:
-			if not note.is_removed:
-				_draw_long_head(note, top_limit, bottom_limit, comp_head)
+		for note_index in bucket:
+			if not flags[note_index] & REMOVED:
+				_draw_long_body(note_index, fa, top_limit, bottom_limit, comp_body)
+		for note_index in bucket:
+			if not flags[note_index] & REMOVED:
+				_draw_long_tail(note_index, fa, top_limit, bottom_limit, comp_tail)
+		for note_index in bucket:
+			if not flags[note_index] & REMOVED:
+				_draw_long_head(note_index, fa, top_limit, bottom_limit, comp_head)
 
 ## 绘制 Long body（长条连接部分）：
 ## repeat → 按贴图原始高度分条重复；stretch → 整体竖直拉伸。
 ## comp 为 (Long, color, "body") 预合成贴图（合成即 base 尺寸，core 高光随 base 周期重复）
-func _draw_long_body(note, top_limit: float, bottom_limit: float, comp: Texture2D) -> void:
-	var body_top: float = note.cached_body_top_y
-	var body_h: float = note.cached_body_height
+## note_index 为平行数组 seq 索引，运行态经 fa（FlowArea）读取
+func _draw_long_body(note_index: int, fa: Object, top_limit: float, bottom_limit: float, comp: Texture2D) -> void:
+	var body_top: float = fa._rt_body_top[note_index]
+	var body_h: float = fa._rt_body_h[note_index]
 	if body_h <= 0.0 or body_top + body_h < top_limit or body_top > bottom_limit:
 		return
-	var body_rect := Rect2(note.cached_x, body_top, _note_width, body_h)
+	var body_rect := Rect2(fa._rt_x[note_index], body_top, _note_width, body_h)
 	if _long_body_mode == "repeat":
 		_draw_long_body_repeat(comp, body_rect)
 	else:
@@ -337,21 +350,21 @@ func _draw_long_body(note, top_limit: float, bottom_limit: float, comp: Texture2
 		draw_texture_rect(comp, body_rect, false)
 
 ## 绘制 Long tail（尾部）
-func _draw_long_tail(note, top_limit: float, bottom_limit: float, comp: Texture2D) -> void:
-	var tail_cy: float = note.cached_tail_center_y
-	var tail_half: float = note.cached_tail_half_height
+func _draw_long_tail(note_index: int, fa: Object, top_limit: float, bottom_limit: float, comp: Texture2D) -> void:
+	var tail_cy: float = fa._rt_tail_cy[note_index]
+	var tail_half: float = fa._rt_tail_half[note_index]
 	if tail_cy + tail_half < top_limit or tail_cy - tail_half > bottom_limit:
 		return
-	var tail_rect := Rect2(note.cached_x, tail_cy - tail_half, _note_width, tail_half * 2.0)
+	var tail_rect := Rect2(fa._rt_x[note_index], tail_cy - tail_half, _note_width, tail_half * 2.0)
 	draw_texture_rect(comp, tail_rect, false)
 
 ## 绘制 Long head（头部，盖在 body 上）
-func _draw_long_head(note, top_limit: float, bottom_limit: float, comp: Texture2D) -> void:
-	var head_cy: float = note.cached_head_center_y
-	var head_half: float = note.cached_head_half_height
+func _draw_long_head(note_index: int, fa: Object, top_limit: float, bottom_limit: float, comp: Texture2D) -> void:
+	var head_cy: float = fa._rt_head_cy[note_index]
+	var head_half: float = fa._rt_head_half[note_index]
 	if head_cy + head_half < top_limit or head_cy - head_half > bottom_limit:
 		return
-	var head_rect := Rect2(note.cached_x, head_cy - head_half, _note_width, head_half * 2.0)
+	var head_rect := Rect2(fa._rt_x[note_index], head_cy - head_half, _note_width, head_half * 2.0)
 	draw_texture_rect(comp, head_rect, false)
 
 ## repeat 模式下分条绘制 body：水平拉伸（0-1），垂直按贴图原始高度逐条重复

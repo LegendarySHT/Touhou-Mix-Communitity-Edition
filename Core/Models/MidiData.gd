@@ -103,18 +103,33 @@ var track_channel_mute_state: Dictionary = {}
 ## 已选中的音源文件名（默认为空表示使用系统默认）
 var use_soundfont: String = ""
 
-## 已解析的MIDI音符列表（未分类）
+## 已解析的MIDI音符数据（SOA 规范形态，见 notes_soa）
+## 说明：音符数据唯一事实来源是 notes_soa（紧凑并行数组），不再 materialize 全量 NoteEvent。
+## parsed_notes 仅在极少数仍需全量对象的兼容路径下按需构建（调用方构建后自行释放引用）。
 var parsed_notes: Array = []
 
-## 缓存的 track_infos（运行时缓存，不持久化；与 parsed_notes 同生命周期）
+## SOA 只读访问器（6 个并行紧凑数组），音符数据唯一事实来源
+## 由 MidiPlaybackManager.preparse_midi_async / load_midi 构建；为空 = 尚未解析
+## Android 大谱面内存优化：22w 音符 = 6 个 PackedInt32Array，而非 22w NoteEvent 对象
+var notes_soa: NoteSoa = null
+
+## 缓存的 track_infos（运行时缓存，不持久化；与 notes_soa 同生命周期）
 ## 用于 retry 场景跳过重复的 MIDI 解析
 var _runtime_track_infos: Array = []
 
-## 缓存的 (track, channel) → Array[NoteEvent] 分组（运行时缓存，不持久化）
+## 缓存的 (track, channel) → 索引分组（运行时缓存，不持久化）
 ## 由 preparse_midi_async worker 一次性构建，TrackView._build_buckets 直接复用
-## 避免主线程 O(N) 遍历 parsed_notes 重新分组，进入 TrackView 时主线程仅做 O(Buckets) 转换
-## 格式：{ "track:channel": Array[MidiParser.NoteEvent], ... }
+## 避免主线程 O(N) 遍历 SOA 重新分组，进入 TrackView 时主线程仅做 O(Buckets) 转换
+## 格式：{ "track:channel": PackedInt32Array（notes_soa 索引，按 start_tick 升序）, ... }
 var runtime_track_channel_notes: Dictionary = {}
+
+## 启用 (track, channel) 子集的 NoteEvent 缓存（运行时，按启用对签名键）
+## 切换难度等配置变更（enabled_pairs 不变）时，避免每次从 SOA 重新 materialize 全量启用音符
+## （大谱面可达 6w+ 对象，重复建对象是 MidiView 切换难度卡顿的主因）。与 notes_soa 同生命周期。
+var _enabled_notes_cache: Array = []
+var _enabled_notes_cache_key: String = ""
+## 缓存所属的 notes_soa 引用：notes_soa 被重新赋值（重新解析/清空）时缓存即失效
+var _enabled_notes_cache_soa: NoteSoa = null
 
 ## MIDI总时长（毫秒）
 var duration_ms: float = 0.0
@@ -397,14 +412,92 @@ func set_track_channel_enabled(track_idx: int, channel: int, enabled: bool) -> v
 func set_soundfont(soundfont_name: String) -> void:
 	use_soundfont = soundfont_name
 
-## 清空已解析的音符列表与轨道信息（释放内存）
+## 音符数据是否已就绪（SOA 规范形态；兼容旧字段 parsed_notes）
+func has_notes() -> bool:
+	return (notes_soa != null and notes_soa.size() > 0) or not parsed_notes.is_empty()
+
+## 按启用 (track, channel) 扁平集合构建 NoteEvent 子集（供 generate_keys / 统计）
+## enabled_pairs: Dictionary[String, bool]，key = "track:channel"
+## 优先走 SOA（只 materialize 启用子集，通常远小于全量）；无 SOA 时回退遍历 parsed_notes
+## 返回的数组保持 start_tick 升序（SOA 已升序 / parsed_notes 已排序）
+## 缓存：切换难度等配置变更不改 enabled_pairs，直接返回上次 build 的数组，
+## 避免大谱面下反复从 SOA 全量 new NoteEvent（翻倍卡顿主因）。
+func get_enabled_note_events(enabled_pairs: Dictionary) -> Array:
+	var soa := notes_soa
+	if soa != null and soa.size() > 0:
+		# 缓存键 = 启用对签名 + 所属 SOA 引用（重新解析/清空 SOA 即失效）
+		var key := _enabled_pairs_signature(enabled_pairs)
+		if not _enabled_notes_cache.is_empty() \
+				and _enabled_notes_cache_key == key \
+				and _enabled_notes_cache_soa == soa:
+			# 命中缓存：直接共享引用返回（genKeys 对输入只读，不再多余浅拷贝 22w 指针数组）
+			return _enabled_notes_cache
+		var notes: Array = []
+		notes.resize(soa.size())
+		var n := 0
+		for i in range(soa.size()):
+			if enabled_pairs.has("%d:%d" % [soa.track(i), soa.channel(i)]):
+				notes[n] = soa.note(i)
+				n += 1
+		notes.resize(n)
+		_enabled_notes_cache = notes
+		_enabled_notes_cache_key = key
+		_enabled_notes_cache_soa = soa
+		return notes
+	# 兼容回退：无 SOA 时逐对象筛
+	var notes2: Array = []
+	for note in parsed_notes:
+		if note is MidiParser.NoteEvent:
+			if enabled_pairs.is_empty() or enabled_pairs.has("%d:%d" % [note.track_index, note.channel]):
+				notes2.append(note)
+	return notes2
+
+## 构建 enabled_pairs 的稳定签名键（key 排序拼接）
+func _enabled_pairs_signature(enabled_pairs: Dictionary) -> String:
+	var key := ""
+	for k in enabled_pairs.keys():
+		key += str(k) + ","
+	return key
+
+## 获取启用 (track, channel) 子集的 SOA 索引数组（供 generate_keys 等）
+## 返回 Array[int]，保持 start_tick 升序；无 SOA 时返回空（调用方走对象路径）
+func get_enabled_note_indices(enabled_pairs: Dictionary) -> Array:
+	var indices: Array = []
+	if notes_soa == null or notes_soa.size() <= 0:
+		return indices
+	for i in range(notes_soa.size()):
+		if enabled_pairs.has("%d:%d" % [notes_soa.track(i), notes_soa.channel(i)]):
+			indices.append(i)
+	return indices
+
+## 单一授权点：解析完成后一次性构建 SOA 紧凑数组 + 轨道-通道分组缓存。
+## 所有解析入口（MidiPlaybackManager.preparse_midi_async / load_midi）统一经此写入，
+## 保证 notes_soa 与 runtime_track_channel_notes 强一致、永不脱节；消费方只读共享不再各自推导。
+## 这是 SOA 唯一的构建时机——"读取 MIDI 一次建好，其余地方等解析完毕直接取用"。
+func set_parsed_soa(parse_result: Dictionary) -> void:
+	notes_soa = NoteSoa.from_result(parse_result)
+	# 轨道-通道分组与 SOA 同步构建（来源数组已按 start_tick 升序，逐元素追加即有序）
+	runtime_track_channel_notes = notes_soa.grouped_indices()
+	# 启用音符缓存随 SOA 重置失效（重新解析即重新缓存）：
+	# 用"整体替换"而非 clear() 就地清空，避免失效已共享给 genKeys/显示的旧数组引用
+	_enabled_notes_cache = []
+	_enabled_notes_cache_key = ""
+	_enabled_notes_cache_soa = notes_soa
+	# SOA 路径下不再持有全量对象；消费方按需经 SOA 取
+	parsed_notes = []
+
+## 清空已解析的音符数据与轨道信息（释放内存）
 ## 保留 bpm_timeline/duration_ms/midi_timebase 等轻量字段，下次 load_midi 时
-## 仅需重新解析 MIDI 文件填充 parsed_notes + _runtime_track_infos（已通过 preparse_midi_async 线程化）
+## 仅需重新解析 MIDI 文件填充 notes_soa + _runtime_track_infos（已通过 preparse_midi_async 线程化）
 ## 调用时机：TrackView/PlayView 退出后，且无人需要原始 Note 数据时
 func clear_parsed_notes() -> void:
 	parsed_notes.clear()
+	notes_soa = null
 	_runtime_track_infos.clear()
 	runtime_track_channel_notes.clear()
+	_enabled_notes_cache.clear()
+	_enabled_notes_cache_key = ""
+	_enabled_notes_cache_soa = null
 
 ## ========== (Track, Channel) 静音接口 ==========
 

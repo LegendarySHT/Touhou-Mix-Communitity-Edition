@@ -54,9 +54,6 @@ var _play_start_time: int = 0
 ## 演奏模式标志：true = 演奏模式（响应键盘触发音符），false = 听奏模式（MIDI只在背景播放）
 var play_mode: bool = true
 
-## 生成的游戏键序列（演奏模式使用）
-var game_sequences: Array[KeySequenceManager.GameSequence] = []
-
 var _is_finishing_game: bool = false
 
 ## 游戏是否已正式开始, 用于区分开局准备阶段是否完成并可以开始
@@ -263,7 +260,7 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 			playback_mgr.stop()
 			playback_mgr.clear_manual_control_notes()
 		flow_area.clear_flow_area()
-		game_sequences.clear()
+		# 游戏序列数据由 C# KeySequenceCore 持有（跨视图复用），离开时本地无需持有引用
 		# 结算页(from SCORE_VIEW 重试)与播放页同 MIDI，保留已烘焙的模糊背景以便重试复用；
 		# 仅离开播放到其它视图时才清理，避免重试触发重新烘焙、闪现清晰原图
 		if state != UIStateManager.UIState.SCORE_VIEW:
@@ -338,12 +335,10 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		play_mode = new_mode
 		
 		if play_mode:
-			# 演奏模式开启：重新应用手动控制notes标记
-			if playback_mgr and game_sequences.size() > 0:
-				var classification = key_sequence_mgr.get_last_notes_classification()
-				var manual_control_notes = classification["manual_control_notes"]
-				playback_mgr.set_manual_control_notes(manual_control_notes)
-				GLogger.info("Performing mode ON: reapplied manual control notes (%d)" % manual_control_notes.size(), "PlayView")
+			# 演奏模式开启：重新应用手动控制notes标记（数据在 C# 端，经访问器读取）
+			if playback_mgr and key_sequence_mgr != null and key_sequence_mgr.seq_count() > 0:
+				playback_mgr.set_manual_control_from_core(key_sequence_mgr)
+				GLogger.info("Performing mode ON: reapplied manual control notes (%d)" % key_sequence_mgr.manual_count(), "PlayView")
 		else:
 			# 演奏模式关闭：清除手动控制notes标记，恢复全自动播放
 			if playback_mgr:
@@ -524,31 +519,22 @@ func _prepare_game(midi:MidiData = current_midi) -> void:
 			playback_mgr.set_sync_threshold(float(sync_threshold))
 			GLogger.info("Audio sync threshold set to %.0f ms" % float(sync_threshold), "PlayView")
 
-	# 提前启动 generate_keys 的 worker 线程（主线程筛选音符 + 后台线程跑 generate_keys）
+	# 提前启动 generate_keys 的 worker 线程（主线程筛选音符 + 后台线程跑全量 generate_keys）
 	# 通常 MidiView 已触发过 generate_keys，此处命中缓存直接返回（0ms）
-	# 若未命中（如跳过 MidiView 直接进 PlayView），worker 线程跑，主线程不阻塞
-	# 若 MidiView 的 worker 还在跑，await 会让出主线程，转场动画继续播放
+	# 若未命中（如跳过 MidiView 直接进 PlayView），主线程 await 等待全量生成完成后再开局，不再流式抢先
 	var gen_task_id := await _start_generate_game_sequences(midi)
-
-	# 等待 generate_keys worker 完成（每帧让出主线程，动画继续推进）
-	# 完成后做后续处理（分类提交、缓存序列）
-	await _finish_generate_game_sequences(midi, gen_task_id)
-	GLogger.info("After _finish_generate_game_sequences, game_sequences.size() = %d" % game_sequences.size(), "PlayView")
+	if gen_task_id >= 0:
+		await key_sequence_mgr.await_generate_keys(gen_task_id)
 
 	# 解析/生成序列期间若用户已退出播放视图，立即中止后续启动流程，
 	if UiStatMGR.current_state != UIStateManager.UIState.PLAY_VIEW:
 		GLogger.info("Prepare aborted: left PLAY_VIEW during note generation", "PlayView")
 		return
 
-	# 将生成的游戏序列转换为FlowArea所需的音符格式
-	var flow_notes = _convert_game_sequences_to_flow_notes(game_sequences)
-	GLogger.info("After _convert_game_sequences_to_flow_notes, flow_notes.size() = %d" % flow_notes.size(), "PlayView")
-	flow_area.notes_list = flow_notes
-	# 告知 ScoreCalculator 总音符数(LONG的持续 tick 不计入)
-	if score_calc:
-		score_calc.total_notes = flow_notes.size()
-	play_result.total_notes = flow_notes.size()
-	GLogger.info("FlowArea initialized with %d game sequences" % flow_notes.size(), "PlayView")
+	# 全量快照：把 C# KeySequenceCore 全部序列的静态数据一次写入平行数组 + 结算总音符数
+	flow_area.build_seq_data()
+	_finish_playback_setup()
+	GLogger.info("FlowArea prebuilt seq data = %d" % flow_area.get_sequence_count(), "PlayView")
 	# 设置进度条最大值
 	hud.set_progress_max(current_midi.duration_ms)
 
@@ -607,177 +593,88 @@ func _load_and_convert_midi_notes(midi_data: MidiData) -> void:
 	
 	GLogger.info("MIDI loaded and runtime config applied", "PlayView")
 
-## 将KeySequenceManager生成的游戏序列转换为FlowArea所需的格式
-func _convert_game_sequences_to_flow_notes(sequences: Array) -> Array[FlowNote]:
-	GLogger.info("_convert_game_sequences_to_flow_notes called with %d sequences" % sequences.size(), "PlayView")
-	var flow_notes: Array[FlowNote] = []
-	var lc = get_lane_count()
-	GLogger.info("Lane count: %d" % lc, "PlayView")
-
-	for seq in sequences:
-		# 确定车道：优先使用 KeySequenceManager 计算的 lane（可能因速度限制而偏移），
-		# 后备使用 pitch % lc（向后兼容未设置 lane 的旧序列）
-		var lane: int
-		if seq.lane >= 0:
-			lane = seq.lane
-		else:
-			lane = seq.pitch % lc
-		
-		# 三种枚举已统一：Block=0=点块、Slide=1=滑块、Long=2=长条，同名同值直接对应
-		var note_type: int
-		match seq.block_type:
-			KeySequenceManager.BlockType.Block:
-				note_type = FlowNote.NoteType.Block
-			KeySequenceManager.BlockType.Slide:
-				note_type = FlowNote.NoteType.Slide
-			KeySequenceManager.BlockType.Long:
-				note_type = FlowNote.NoteType.Long
-			_:
-				note_type = FlowNote.NoteType.Long
-		
-		# 创建FlowArea的Note对象
-		var flow_note = FlowNote.new(
-			note_type,
-			seq.start_time_ms,   # 开始时间（毫秒）
-			seq.duration_ms,     # 持续时间（毫秒）
-			lane                 # 车道
-		)
-		
-		# 建立双向映射（先斩断旧引用避免 RefCounted 循环泄漏）
-		if seq.flow_note_ref != null:
-			seq.flow_note_ref.game_sequence_ref = null
-			seq.flow_note_ref = null
-		seq.flow_note_ref = flow_note
-		flow_note.game_sequence_ref = seq
-		
-		flow_notes.append(flow_note)
-	
-	GLogger.info("Converted %d sequences to flow notes" % flow_notes.size(), "PlayView")
-	# FlowArea期望按时间排序（虽然KeySequenceManager应该已排序）
-	flow_notes.sort_custom(func(a, b): return a.start_time < b.start_time)
-	
-	return flow_notes
-
-## 启动游戏序列生成（主线程筛选音符 + 启动 worker 线程跑 generate_keys）
-## 返回 worker task_id（-1 表示未启动，如缺 key_sequence_mgr 或无启用音符）
-## 调用方后续通过 await _finish_generate_game_sequences(midi, task_id) 等待完成并做后续处理
-## 注意：本函数是 async（start_generate_keys_async 内部等待旧任务时需让出主线程）
+## 启动游戏序列生成（主线程筛选音符 + 启动 worker 线程跑全量 generate_keys）
+## 返回 worker task_id（-1 表示未启动/命中缓存/无启用音符，如缺 key_sequence_mgr 或无启用音符）
+## 生成完成后经 await_generate_keys(task_id) 等待，随后由调用方 build_seq_data 快照平行数组
 func _start_generate_game_sequences(midi_data: MidiData) -> int:
 	if key_sequence_mgr == null:
 		GLogger.warning("KeySequenceManager not available", "PlayView")
 		return -1
 
-	if midi_data.parsed_notes.is_empty():
+	# 音符数据以 SOA 形式存储，parsed_notes 恒为空；改用 has_notes() 判断数据就绪
+	if not midi_data.has_notes():
 		GLogger.warning("No parsed notes available for key generation", "PlayView")
+		key_sequence_mgr.clear_sequences()
 		return -1
 
 	# screen_width 已不进 cache_key，且 lane_area.size.x 永远是 40（Lane 节点 anchors_preset=0 不拉伸）
 	# 不再调用 set_screen_size：读 lane_area.size.x 没意义，KSM 内部用默认 1920 即可
 	# （仅影响 _judge_block_type 速度限制的边缘场景，FlowArea 显示位置由 viewport 宽度算）
 
-	# 按启用的(track, channel)筛选音符（主线程，30-100ms）
-	var enabled_notes = _filter_notes_by_enabled_track_channels(midi_data.parsed_notes, midi_data)
+	# 构建启用 (track, channel) 集合并筛选音符（主线程）。
+	# 音符数据以 SOA 形式存储（parsed_notes 恒为空），自身已按 start_tick 升序；
+	# C# 端 SaveInputGather 用 (全量 SOA 数组 + 启用索引) 装配输入，避免建 NoteEvent 对象数组。
+	var enabled_pairs := midi_data.get_enabled_pairs_flat()
+	var soa := midi_data.notes_soa
+	if soa == null or soa.size() <= 0:
+		key_sequence_mgr.clear_sequences()
+		return -1
+	var enabled_indices: Array
+	if enabled_pairs.is_empty():
+		# 空对语义取决于轨道配置是否已初始化（与 MidiListItem 一致）：
+		# 已初始化 → 用户主动禁用了所有轨道（空局，清序列返回）；未初始化 → 全部启用
+		if midi_data.is_track_config_initialized():
+			GLogger.warning("All (track, channel) pairs disabled", "PlayView")
+			key_sequence_mgr.clear_sequences()
+			return -1
+		enabled_indices = []
+		enabled_indices.resize(soa.size())
+		for i in range(soa.size()):
+			enabled_indices[i] = i
+	else:
+		enabled_indices = midi_data.get_enabled_note_indices(enabled_pairs)
 
-	if enabled_notes.is_empty():
+	if enabled_indices.is_empty():
 		GLogger.warning("No notes in enabled (track, channel) pairs", "PlayView")
+		key_sequence_mgr.clear_sequences()
 		return -1
 
-	# 启动 worker 线程跑 generate_keys
-	# 传入 midi_id 和 enabled_pairs 以启用缓存命中
-	# enabled_pairs 必须是扁平的 {"track:channel": true} 格式（MidiData.get_enabled_pairs_flat）
-	# 与 MidiListItem 一致，否则 cache_key 中的 pairs_hash 不同会导致缓存 miss
+	# 启动 worker 线程跑全量 generate_keys（一次 RunGenerateGather 完成全部序列，完成后返回，
+	# 不再流式抢先；命中缓存则内部直接返回 -1，此处 0ms 复用）
+	# 传入 SOA 底层数组 + 启用索引：C# 在 worker 中装配合集并产出，避免建对象数组/浅拷贝
 	# 显式传入 midi 自己的 timebase/bpm_timeline，不依赖/改写 MidiPlaybackManager 全局时间线字段
-	# （MidiListItem 的统计生成也用同一 midi 的显式参数，二者 cache_key 一致可互相命中）
-	# await start_generate_keys_async：若 MidiView 的 worker 还在跑，这里会让出主线程等待
-	var task_id := await key_sequence_mgr.start_generate_keys_async(
-		enabled_notes, current_midi.id, midi_data.get_enabled_pairs_flat(),
+	# （MidiListItem 的统计生成也用同一 midi 的显式参数，二者 cache_key 一致可互相命中，
+	#   cache_key = 配置指纹|midi_id+enabled_indices滚动哈希，MidiListItem 同走 KSM._build_cache_key）
+	var task_id := await key_sequence_mgr.generate_keys_async(
+		soa.get_raw_arrays(), enabled_indices, midi_data.id,
 		midi_data.midi_timebase, midi_data.bpm_timeline
 	)
 	return task_id
 
-## 等待游戏序列生成完成 + 后续处理（分类提交、缓存序列）
-## 若 task_id == -1 表示未启动生成，直接清空 game_sequences
-func _finish_generate_game_sequences(_midi_data: MidiData, task_id: int) -> void:
-	if task_id == -1:
-		game_sequences.clear()
-		return
-
-	# 等待 worker 完成（每帧让出，通常 800ms await 后已完成）
-	await key_sequence_mgr.await_generate_keys(task_id)
-
-	# 获取KeySequenceManager统计的真实分类结果
-	var classification = key_sequence_mgr.get_last_notes_classification()
-	var manual_control_notes = classification["manual_control_notes"]
-	var auto_play_notes = classification["auto_play_notes"]
+## 全量生成完成后的收尾（应用手动分类 + 结算总音符数），仅在 _prepare_game 内调用一次
+func _finish_playback_setup() -> void:
+	# 分类数据由 C# KeySequenceCore 保存，经 KSM 访问器读取（manual/auto 计数）
+	var manual_count := key_sequence_mgr.manual_count()
+	var auto_count := key_sequence_mgr.auto_count()
 
 	# 将真实分类提交给MidiPlaybackManager
 	# 仅在演奏模式开启时下发手动控制；关闭时必须清空以恢复自动播放
 	if playback_mgr:
 		if play_mode:
-			playback_mgr.set_manual_control_notes(manual_control_notes)
-			GLogger.info(
-				"[Performing ON] Submitted notes classification: %d manual, %d auto" %
-				[manual_control_notes.size(), auto_play_notes.size()],
-				"PlayView"
-			)
+			playback_mgr.set_manual_control_from_core(key_sequence_mgr)
+			GLogger.info("[Performing ON] Submitted notes classification: %d manual, %d auto" %
+				[manual_count, auto_count], "PlayView")
 		else:
 			playback_mgr.clear_manual_control_notes()
-			GLogger.info(
-				"[Performing OFF] Cleared manual control notes: all notes will auto-play (manual=%d, auto=%d)" %
-				[manual_control_notes.size(), auto_play_notes.size()],
-				"PlayView"
-			)
+			GLogger.info("[Performing OFF] Cleared manual control notes: all notes will auto-play (manual=%d, auto=%d)" %
+				[manual_count, auto_count], "PlayView")
 
-	# 缓存生成的游戏序列
-	# 深拷贝独立副本（clone_game_sequences）：下方 _convert_game_sequences_to_flow_notes 会改写
-	# seq.flow_note_ref，必须避免污染 KSM 共享缓存；深拷贝已从 generate_keys 命中逻辑移出到此
-	var raw_sequences = key_sequence_mgr.clone_game_sequences()
-	GLogger.info("clone_game_sequences returned %d items" % raw_sequences.size(), "PlayView")
-	game_sequences = raw_sequences
-	GLogger.info("game_sequences assigned, size = %d" % game_sequences.size(), "PlayView")
-
-	GLogger.info("Generated %d game sequences for play mode" % game_sequences.size(), "PlayView")
-
-## 按启用的(track, channel)筛选音符
-func _filter_notes_by_enabled_track_channels(all_notes: Array, midi_data: MidiData) -> Array:
-	var filtered: Array = []
-	
-	if midi_data == null:
-		GLogger.warning("midi_data is null when filtering notes", "PlayView")
-		return filtered
-
-	# selected_track_configs 是 Dictionary，格式: {track_idx: [channel1, channel2, ...]}
-	if midi_data.selected_track_configs.is_empty():
-		if midi_data.is_track_config_initialized():
-			push_error("[PlayView] All (track, channel) pairs are disabled! Cannot play game without enabled notes.")
-		else:
-			push_error("[PlayView] No (track, channel) configuration found and no default configuration applied!")
-		return filtered
-
-	GLogger.info("selected_track_configs: %s" % str(midi_data.selected_track_configs), "PlayView")
-	GLogger.info("Filtering %d notes by enabled (track, channel) pairs" % all_notes.size(), "PlayView")
-	
-	# 筛选音符
-	var pair_stats = {}  # 统计每个(track, channel)对的音符数
-	for note in all_notes:
-		if note is MidiParser.NoteEvent:
-			var track_idx = int(note.track_index)
-			var channel = int(note.channel)
-			var pair_key = "%d:%d" % [track_idx, channel]
-
-			# 统计
-			if not pair_stats.has(pair_key):
-				pair_stats[pair_key] = 0
-			pair_stats[pair_key] += 1
-
-			# 筛选
-			if midi_data.is_track_channel_selected(track_idx, channel):
-				filtered.append(note)
-	
-	GLogger.info("Track-channel note stats: %s" % str(pair_stats), "PlayView")
-	GLogger.info("Filtered result by (track,channel): %d notes out of %d" % [filtered.size(), all_notes.size()], "PlayView")
-	
-	return filtered
+	# 结算总音符数（LONG 的持续 tick 不计入）：平行数组快照完成后已确定
+	var seq_total: int = flow_area.get_sequence_count()
+	if score_calc:
+		score_calc.total_notes = seq_total
+	play_result.total_notes = seq_total
+	GLogger.info("Playback setup finalized: %d game sequences" % seq_total, "PlayView")
 
 ## 从ConfigManager加载键盘和轨道相关的参数
 func _load_lane_parameters() -> void:
@@ -1001,13 +898,25 @@ func _apply_midi_runtime_config(midi_data: MidiData) -> void:
 	# solo_pairs: {"track:channel": true}
 	if not midi_data.solo_pairs.is_empty():
 		var seen_pairs := {}
-		for note in playback_mgr.current_notes:
-			var solo_key := "%d:%d" % [note.track_index, note.channel]
-			if seen_pairs.has(solo_key):
-				continue
-			seen_pairs[solo_key] = true
-			if not midi_data.solo_pairs.has(solo_key):
-				playback_mgr.set_track_channel_mute_runtime(note.track_index, note.channel, true)
+		# SOA 路径：只枚举 (track,channel) 对，不建全量 NoteEvent（current_notes 恒为空）
+		var soa := midi_data.notes_soa
+		if soa != null and soa.size() > 0:
+			for i in range(soa.size()):
+				var solo_key := "%d:%d" % [soa.track(i), soa.channel(i)]
+				if seen_pairs.has(solo_key):
+					continue
+				seen_pairs[solo_key] = true
+				if not midi_data.solo_pairs.has(solo_key):
+					playback_mgr.set_track_channel_mute_runtime(soa.track(i), soa.channel(i), true)
+		else:
+			# 兼容回退：无 SOA 时遍历对象列表
+			for note in playback_mgr.current_notes:
+				var solo_key := "%d:%d" % [note.track_index, note.channel]
+				if seen_pairs.has(solo_key):
+					continue
+				seen_pairs[solo_key] = true
+				if not midi_data.solo_pairs.has(solo_key):
+					playback_mgr.set_track_channel_mute_runtime(note.track_index, note.channel, true)
 
 	# 应用音轨-通道的音量调整
 	# track_channel_volume_config: {track_idx: {channel: volume_value}}（值为线性 0.0-1.0）
