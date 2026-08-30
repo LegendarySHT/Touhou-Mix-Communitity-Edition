@@ -169,10 +169,6 @@ func seq_start_ms(i: int) -> float: return _core.SeqStartMs(i)
 func seq_dur_ms(i: int) -> float: return _core.SeqDurMs(i)
 func seq_type(i: int) -> int: return _core.SeqType(i)
 func seq_lane(i: int) -> int: return _core.SeqLane(i)
-func seq_orig_start(i: int) -> int: return _core.SeqOrigStart(i)  # 在扁平原音符列表中的起始
-func seq_orig_len(i: int) -> int: return _core.SeqOrigLen(i)      # 该块包含的原音符数
-func g_note_count() -> int: return _core.GNoteCount
-func g_note_at(j: int) -> int: return _core.GNoteAt(j)            # 扁平原音符 → 输入索引
 
 ## 输入（enabled 子集）音符访问器
 func input_pitch_at(i: int) -> int: return _core.InputPitchAt(i)

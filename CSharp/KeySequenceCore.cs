@@ -39,9 +39,9 @@ public partial class KeySequenceCore : RefCounted
     private readonly List<double> _bpmValue = new();  // 每段 BPM
     private readonly List<double> _bpmCum = new();    // 每段起点累计毫秒
 
-    // ===== 流式跨窗口状态 =====
+    // ===== 跨窗口状态 =====
     private readonly List<Touch> _touches = new();
-    private float[] _laneLongEnd = System.Array.Empty<float>();
+    private float[] _laneLongEnd = System.Array.Empty<float>();  // 长条占用（结束时刻+冷却，供同轨抑制）
     private int _batchCounter;
 
     // ===== 输入音符（enabled 子集，SOA）=====
@@ -52,11 +52,6 @@ public partial class KeySequenceCore : RefCounted
     private int[] _inTrack;
     private int[] _inChannel;
 
-    // ===== 流式游标 =====
-    private int _cursor;          // 已消费的输入索引
-    private double _windowEndMs;  // 当前 1000ms 窗口上界
-    private readonly List<int> _bgAccum = new(); // 跨窗口累积背景音符（输入索引）
-
     // ===== 输出（game sequences，SOA）=====
     private readonly List<int> _seqKeyId = new();
     private readonly List<int> _seqPitch = new();
@@ -64,9 +59,6 @@ public partial class KeySequenceCore : RefCounted
     private readonly List<float> _seqDur = new();
     private readonly List<int> _seqType = new();
     private readonly List<int> _seqLane = new();
-    private readonly List<int> _seqOrigStart = new(); // 在 _gNoteIdx 中的起始
-    private readonly List<int> _seqOrigLen = new();   // 原音符个数
-    private readonly List<int> _gNoteIdx = new();     // 全部 game 原音符输入索引（扁平）
 
     // ===== 输出（背景 / 分类）=====
     private readonly List<int> _bgNoteIdx = new();
@@ -180,9 +172,7 @@ public partial class KeySequenceCore : RefCounted
         int[] track, int[] channel)
     {
         SetInput(startTick, durTick, pitch, velocity, track, channel);
-        StreamBegin();
-        while (StreamNextWindow()) { }
-        StreamFinalize();
+        GenerateAll();
     }
 
     /// <summary>从全量 SOA + 启用索引一次性生成（worker 线程调用）。</summary>
@@ -193,9 +183,7 @@ public partial class KeySequenceCore : RefCounted
     {
         SetInputGather(soaStartTick, soaDurTick, soaPitch, soaVelocity,
             soaTrack, soaChannel, enabledIdx);
-        StreamBegin();
-        while (StreamNextWindow()) { }
-        StreamFinalize();
+        GenerateAll();
     }
 
     // ========== 流式生成（worker 线程逐窗口调用）==========
@@ -230,41 +218,31 @@ public partial class KeySequenceCore : RefCounted
         _inVelocity = ve; _inTrack = tr; _inChannel = ch;
     }
 
-    /// <summary>处理下一个 1000ms 窗口；全部输入消费完毕返回 false。</summary>
-    public bool StreamNextWindow()
+    /// <summary>一次性全量生成：清输出 → 建块/时长分类/密度削减/触点判定/输出 → 背景收尾。</summary>
+    private void GenerateAll()
     {
-        int n = _inStartTick.Length;
-        if (_cursor >= n) return false;
-        int from = _cursor, to = from;
-        while (to < n && TickToMs(_inStartTick[to]) < _windowEndMs) to++;
-        if (to > from)
-        {
-            var blocks = new List<BlockInfo>();
-            ProcessWindow(from, to, blocks, _bgAccum);
-        }
-        _cursor = to;
-        _windowEndMs += 1000.0;
-        return true;
+        ResetGenerate();
+        var allBlocks = new List<BlockInfo>();
+        BuildChords(0, _inStartTick.Length, allBlocks); // 丢弃音符直接写 _bgNoteIdx
+        // 先分配触点 + 降级（得最终 Type），密度削减读已降级 Type 计成本（Slide=0.33，不再误删准 Slide）
+        AssignTouchAndDegrade(allBlocks);
+        ReduceDensity(allBlocks);
+        // 削减后再对幸存音符推导手指移动并钳位，避免在会删掉的音符上浪费几何计算
+        RepositionSurvivors(allBlocks);
+        ConvertToSequences(allBlocks);
+        FinalizeBackgroundAndClassify();
     }
 
-    /// <summary>背景排序 + 手动/自动分类（流式全量消费后调用）。</summary>
-    public void StreamFinalize() => FinalizeBackgroundAndClassify(_bgAccum);
-
-    // ========== 跨窗口状态 ==========
-    public void StreamBegin()
+    private void ResetGenerate()
     {
         _laneLongEnd = new float[_laneCount];
         for (int k = 0; k < _laneCount; k++) _laneLongEnd[k] = -1.0f;
         _batchCounter = 0;
         _touches.Clear();
         InitTouches();
-        _cursor = 0;
-        _windowEndMs = 1000.0;
-        _bgAccum.Clear();
         // 清输出
         _seqKeyId.Clear(); _seqPitch.Clear(); _seqStart.Clear(); _seqDur.Clear();
-        _seqType.Clear(); _seqLane.Clear(); _seqOrigStart.Clear(); _seqOrigLen.Clear();
-        _gNoteIdx.Clear(); _bgNoteIdx.Clear(); _manualIdx.Clear(); _autoIdx.Clear();
+        _seqType.Clear(); _seqLane.Clear(); _bgNoteIdx.Clear(); _manualIdx.Clear(); _autoIdx.Clear();
         _nextKeyId = 0;
     }
 
@@ -355,30 +333,14 @@ public partial class KeySequenceCore : RefCounted
 
     private int BlockHand(float x) => x < _screenWidth * 0.5f ? 0 : 1;
 
-    // ========== 窗口处理 ==========
-    private void ProcessWindow(int from, int to, List<BlockInfo> allBlocks, List<int> bg)
-    {
-        if (to <= from) return;
-        var windowBlocks = new List<BlockInfo>();
-        BuildChords(from, to, windowBlocks, bg);
-        AssignTouchesAndJudge(windowBlocks, bg);
-        ReduceDensity(windowBlocks, bg);
-        GenerateConnects(windowBlocks);
-        ConvertToSequences(windowBlocks);
-        windowBlocks.Clear();
-    }
-
-    // ========== Step A/B 建块 ==========
-    private void BuildChords(int from, int to, List<BlockInfo> allBlocks, List<int> bg)
+    // ========== Step A 建块（仅建块 + 同刻过载保护，不含 Long 状态写入）==========
+    private void BuildChords(int from, int to, List<BlockInfo> allBlocks)
     {
         int n = to;
         int i = from;
         while (i < n)
         {
             float chordStart = TickToMs(_inStartTick[i]);
-            int activeLongs = 0;
-            for (int l = 0; l < _laneCount; l++)
-                if (_laneLongEnd[l] > chordStart) activeLongs++;
 
             // 同刻合并 + 同 lane 去重（保高音）
             var laneMap = new Dictionary<int, int>(); // lane -> note idx
@@ -389,8 +351,8 @@ public partial class KeySequenceCore : RefCounted
                 int lane = _inPitch[j] % _laneCount;
                 if (laneMap.TryGetValue(lane, out int existing))
                 {
-                    if (_inPitch[j] > _inPitch[existing]) { bg.Add(existing); laneMap[lane] = j; }
-                    else bg.Add(j);
+                    if (_inPitch[j] > _inPitch[existing]) { _bgNoteIdx.Add(existing); laneMap[lane] = j; }
+                    else _bgNoteIdx.Add(j);
                 }
                 else laneMap[lane] = j;
                 j++;
@@ -407,69 +369,42 @@ public partial class KeySequenceCore : RefCounted
                 var b = GetBlock();
                 b.Batch = _batchCounter; b.Lane = lane; b.StartMs = startMs; b.EndMs = startMs + durMs;
                 b.DurMs = durMs; b.MainPitch = _inPitch[note]; b.X = CalcLaneX(lane);
+                b.Type = durMs / 1000.0f <= _instantThr ? 1 : (durMs / 1000.0f <= _shortThr ? 0 : 2); // 基线类型
                 b.Notes.Clear(); b.Notes.Add(note);
-                if (_laneLongEnd[lane] > startMs) { b.SlideForced = true; b.Type = 1; }
                 chordBlocks.Add(b);
             }
-            chordBlocks = EnforceMinSpacing(chordBlocks, bg);
-            if (_maxTouchCount > 0 && chordBlocks.Count > 0)
-            {
-                if (activeLongs > 0)
-                {
-                    var longLanes = new List<int>();
-                    for (int l = 0; l < _laneCount; l++)
-                        if (_laneLongEnd[l] > chordStart) longLanes.Add(l);
-                    if (longLanes.Count > 0)
-                    {
-                        var normals = new List<BlockInfo>();
-                        foreach (var bb in chordBlocks) if (bb.Type != 1) normals.Add(bb);
-                        if (normals.Count > 0)
-                        {
-                            normals.Sort((a, b) => MinLaneDist(a.Lane, longLanes).CompareTo(MinLaneDist(b.Lane, longLanes)));
-                            int toSlide = System.Math.Min(activeLongs, normals.Count);
-                            for (int k = 0; k < toSlide; k++) { normals[k].SlideForced = true; normals[k].Type = 1; }
-                        }
-                    }
-                }
-                if (chordBlocks.Count > _maxTouchCount)
-                {
-                    int needRemove = chordBlocks.Count - _maxTouchCount;
-                    var ordinary = new List<BlockInfo>();
-                    foreach (var bb in chordBlocks) if (!bb.SlideForced) ordinary.Add(bb);
-                    ordinary.Sort((a, b) => a.MainPitch.CompareTo(b.MainPitch));
-                    foreach (var eb in ordinary)
-                    {
-                        if (needRemove <= 0) break;
-                        if (eb.Notes.Count > 0) bg.Add(eb.Notes[0]);
-                        chordBlocks.Remove(eb); needRemove--;
-                    }
-                    while (needRemove > 0)
-                    {
-                        var slides = new List<BlockInfo>();
-                        foreach (var bb in chordBlocks) if (bb.SlideForced) slides.Add(bb);
-                        if (slides.Count == 0) break;
-                        slides.Sort((a, b) => a.MainPitch.CompareTo(b.MainPitch));
-                        var eb = slides[0];
-                        if (eb.Notes.Count > 0) bg.Add(eb.Notes[0]);
-                        chordBlocks.Remove(eb); needRemove--;
-                    }
-                }
-            }
+            chordBlocks = EnforceMinSpacing(chordBlocks);
+            if (_maxTouchCount > 0 && chordBlocks.Count > _maxTouchCount)
+                RemoveOverload(chordBlocks);
             if (chordBlocks.Count == 0) continue;
-            foreach (var bb in chordBlocks)
-                if (bb.Type != 1 && bb.DurMs / 1000.0f > _shortThr)
-                    // 加一个手指点击冷却时间，防止长条结束后紧接同轨道 block 点击过紧
-                    _laneLongEnd[bb.Lane] = bb.EndMs + _cooldownSec * 1000.0f;
             foreach (var bb in chordBlocks) allBlocks.Add(bb);
             _batchCounter++;
         }
     }
 
-    private static int MinLaneDist(int lane, List<int> longLanes)
+    // 同刻过载保护：手指不够时按类型删除，普通 Block 优先删，珍贵 Slide/Long 后删；同类低音优先
+    private void RemoveOverload(List<BlockInfo> chordBlocks)
     {
-        int best = 1 << 30;
-        foreach (int ll in longLanes) { int d = System.Math.Abs(lane - ll); if (d < best) best = d; }
-        return best;
+        int needRemove = chordBlocks.Count - _maxTouchCount;
+        for (int pass = 0; pass < 3 && needRemove > 0; pass++)
+        {
+            var cand = new List<BlockInfo>();
+            foreach (var bb in chordBlocks)
+            {
+                bool isOrdinary = bb.DurMs / 1000.0f > _instantThr && bb.DurMs / 1000.0f <= _shortThr;
+                bool isSlide = bb.DurMs / 1000.0f <= _instantThr;
+                if (pass == 0 && isOrdinary) cand.Add(bb);      // 普通 Block
+                else if (pass == 1 && isSlide) cand.Add(bb);    // Slide
+                else if (pass == 2) cand.Add(bb);               // 剩余 Long
+            }
+            cand.Sort((a, b) => a.MainPitch.CompareTo(b.MainPitch));
+            foreach (var eb in cand)
+            {
+                if (needRemove <= 0) break;
+                if (eb.Notes.Count > 0) _bgNoteIdx.Add(eb.Notes[0]);
+                chordBlocks.Remove(eb); needRemove--;
+            }
+        }
     }
 
     private BlockInfo GetBlock()
@@ -479,7 +414,7 @@ public partial class KeySequenceCore : RefCounted
         return b;
     }
 
-    private List<BlockInfo> EnforceMinSpacing(List<BlockInfo> blocks, List<int> bg)
+    private List<BlockInfo> EnforceMinSpacing(List<BlockInfo> blocks)
     {
         if (blocks.Count <= 1 || _minBlockSpacing <= 0) return blocks;
         var sorted = new List<BlockInfo>(blocks);
@@ -490,16 +425,19 @@ public partial class KeySequenceCore : RefCounted
             bool conflict = false;
             foreach (var kb in kept)
                 if (System.Math.Abs(block.Lane - kb.Lane) <= _minBlockSpacing) { conflict = true; break; }
-            if (conflict) { if (block.Notes.Count > 0) bg.Add(block.Notes[0]); }
+            if (conflict) { if (block.Notes.Count > 0) _bgNoteIdx.Add(block.Notes[0]); }
             else kept.Add(block);
         }
         return kept;
     }
 
-    // ========== Step C/D 触点匹配与类型判定 ==========
-    private void AssignTouchesAndJudge(List<BlockInfo> blocks, List<int> bg)
+    // ========== Step C 触点匹配与降级 ==========
+    // Phase A：分配触点 + 降级（最终 Type）+ 推进时序/握持状态；不移动位置（钳位推迟到 Phase B）
+    private void AssignTouchAndDegrade(List<BlockInfo> blocks)
     {
         if (blocks.Count == 0) return;
+        // 无触点（maxTouchCount==0）时任意批 nb > nt，提前返回避免 Enumerate 越界
+        if (_touches.Count == 0) return;
         var byBatch = new Dictionary<int, List<BlockInfo>>();
         foreach (var b in blocks)
         {
@@ -512,9 +450,89 @@ public partial class KeySequenceCore : RefCounted
             var batch = byBatch[bid];
             MatchBlocksToTouches(batch);
             batch.Sort((a, b) => a.StartMs.CompareTo(b.StartMs));
-            foreach (var b in batch) JudgeBlockType(b);
+            foreach (var b in batch) DegradeBlockType(b);
         }
-        ReconcileSpacingAfterClamp(blocks, bg);
+    }
+
+    // Phase A 逐个降级：只判类型 + 推进时序/握持状态，不移动位置
+    private void DegradeBlockType(BlockInfo b)
+    {
+        if (b.TouchIndex < 0 || b.TouchIndex >= _touches.Count) return;
+        var t = _touches[b.TouchIndex];
+
+        // 长条已到的块释放其握持状态（长条结束前其触点不再空闲）
+        if (t.HoldingLongEnd >= 0 && b.StartMs >= t.HoldingLongEnd)
+            t.HoldingLongEnd = float.NegativeInfinity;
+
+        // 最终降级判定（按 StartMs 升序处理，天然有序；用原始 lane，不受钳位漂移影响）
+        // 规则 A：同轨 Long 压制；规则 B：连点过密压制；规则 C：触点正在握长条（手指占用，无法再按）→ Slide
+        if (_laneLongEnd[b.Lane] > b.StartMs) b.Type = 1;
+        else if (t.HoldingLongAt(b.StartMs)) b.Type = 1;
+        else if (t.LastPressTimeMs >= 0)
+        {
+            float gap = (b.StartMs - t.LastPressTimeMs) / 1000.0f;
+            if (gap < _minTapInterval) b.Type = 1;
+        }
+
+        // 独占写入 Long 状态：仅最终 Type == 2 才写（被降级绝不写）
+        if (b.Type == 2)
+        {
+            _laneLongEnd[b.Lane] = b.EndMs + _cooldownSec * 1000.0f;
+            t.HoldingLongEnd = b.EndMs;   // 该触点握持长条直到 EndMs
+        }
+
+        // 更新手指状态（位置用原始 X，仅供后续触点匹配启发式，Phase B 会重推）
+        if (!t.IsFree)
+        {
+            float occupyEnd = t.LastPressTimeMs + _cooldownSec * 1000.0f;
+            if (b.StartMs > occupyEnd) t.IsFree = true;
+        }
+        t.IsFree = false;
+        t.LastPressTimeMs = b.StartMs;
+        t.LastPressX = b.X;
+    }
+
+    // ========== Step C-B 密度削减后：仅对幸存音符推导手指移动并钳位 ==========
+    private void RepositionSurvivors(List<BlockInfo> blocks)
+    {
+        if (blocks.Count == 0) return;
+        // 重置每个触点手指链到初始态，幸存音符按时间序构成链条，无需贯穿被删音符
+        foreach (var t in _touches)
+        {
+            t.LastPressTimeMs = float.NegativeInfinity;
+            t.LastPressX = t.HomeX;
+            t.IsFree = true;
+        }
+        var byTouch = new Dictionary<int, List<BlockInfo>>();
+        foreach (var b in blocks)
+        {
+            if (b.TouchIndex < 0 || b.TouchIndex >= _touches.Count) continue;
+            if (!byTouch.TryGetValue(b.TouchIndex, out var list)) { list = new List<BlockInfo>(); byTouch[b.TouchIndex] = list; }
+            list.Add(b);
+        }
+        foreach (var kv in byTouch)
+        {
+            var list = kv.Value;
+            list.Sort((a, b) => a.StartMs.CompareTo(b.StartMs));
+            var t = _touches[kv.Key];
+            foreach (var b in list)
+            {
+                float tx = TouchCurrentX(t.Index, b.StartMs);
+                float dt = (b.StartMs - t.LastPressTimeMs) / 1000.0f;
+                float maxOff = _maxTouchVelocity * dt;
+                float dist = System.Math.Abs(b.X - tx);
+                if (dist > maxOff)
+                {
+                    b.X = b.X > tx ? tx + maxOff : tx - maxOff;
+                    b.Lane = CalcLaneFromX(b.X);
+                    b.X = CalcLaneX(b.Lane);
+                    // 移动后 lane 已变，仅 Block 被钳进正在长条的轨道时降级 Slide（Long 保持原类型）
+                    if (b.Type == 0 && _laneLongEnd[b.Lane] > b.StartMs) b.Type = 1;
+                }
+                t.LastPressTimeMs = b.StartMs;
+                t.LastPressX = b.X;
+            }
+        }
     }
 
     private void MatchBlocksToTouches(List<BlockInfo> group)
@@ -522,12 +540,7 @@ public partial class KeySequenceCore : RefCounted
         int nb = group.Count, nt = _touches.Count;
         var sorted = new List<BlockInfo>(group);
         sorted.Sort((a, b) => a.X.CompareTo(b.X));
-        if (nb > nt)
-        {
-            sorted.Sort((a, b) => a.StartMs.CompareTo(b.StartMs));
-            foreach (var b in sorted) b.TouchIndex = -1;
-            return;
-        }
+        // nb <= nt 由 BuildChords 过载保护保证；_touches 为空（maxTouchCount==0）时已在入口提前返回
         var best = new int[nb];
         for (int i = 0; i < nb; i++) best[i] = -1;
         bool found = Enumerate(nb, nt, true, sorted, best);
@@ -572,6 +585,8 @@ public partial class KeySequenceCore : RefCounted
         for (int i = 0; i < k; i++)
         {
             var blk = sorted[i]; var t = _touches[combo[i]];
+            // 触点正在握长条：该手指已被长条占用，不可再分配给其他块（被握到长条结束，非仅冷却）
+            if (t.HoldingLongAt(blk.StartMs)) return false;
             if (t.LastPressTimeMs >= 0)
             {
                 float occupyEnd = t.LastPressTimeMs + _cooldownSec * 1000.0f;
@@ -619,75 +634,8 @@ public partial class KeySequenceCore : RefCounted
         return found;
     }
 
-    private void JudgeBlockType(BlockInfo b)
-    {
-        float durSec = b.DurMs / 1000.0f;
-        if (b.TouchIndex < 0 || b.TouchIndex >= _touches.Count) return;
-        var t = _touches[b.TouchIndex];
-        if (b.SlideForced) b.Type = 1;
-        else if (durSec <= _instantThr) b.Type = 1;
-        else if (durSec <= _shortThr) b.Type = 0;
-        else b.Type = 2;
-
-        if (!t.IsFree)
-        {
-            float occupyEnd = t.LastPressTimeMs + _cooldownSec * 1000.0f;
-            if (b.StartMs > occupyEnd) t.IsFree = true;
-            // prev_block 仅用于连块输出，当前消费方已不读，忽略
-        }
-        if (t.LastPressTimeMs >= 0)
-        {
-            float dt = (b.StartMs - t.LastPressTimeMs) / 1000.0f;
-            if (dt > 0)
-            {
-                float tx = TouchCurrentX(t.Index, b.StartMs);
-                float maxOff = _maxTouchVelocity * dt;
-                float dist = System.Math.Abs(b.X - tx);
-                if (dist > maxOff)
-                {
-                    b.X = b.X > tx ? tx + maxOff : tx - maxOff;
-                    b.Lane = CalcLaneFromX(b.X);
-                    b.X = CalcLaneX(b.Lane);
-                }
-            }
-        }
-        if (t.LastPressTimeMs >= 0)
-        {
-            float gap = (b.StartMs - t.LastPressTimeMs) / 1000.0f;
-            if (gap < _minTapInterval) b.Type = 1;
-        }
-        t.IsFree = false;
-        t.LastPressTimeMs = b.StartMs;
-        t.LastPressX = b.X;
-    }
-
-    private void ReconcileSpacingAfterClamp(List<BlockInfo> blocks, List<int> bg)
-    {
-        if (blocks.Count <= 1 || _minBlockSpacing <= 0) return;
-        var byBatch = new Dictionary<int, List<BlockInfo>>();
-        foreach (var b in blocks)
-        {
-            if (!byBatch.TryGetValue(b.Batch, out var list)) { list = new List<BlockInfo>(); byBatch[b.Batch] = list; }
-            list.Add(b);
-        }
-        var toRemove = new HashSet<BlockInfo>();
-        foreach (var kv in byBatch)
-        {
-            var batch = kv.Value;
-            if (batch.Count <= 1) continue;
-            var kept = EnforceMinSpacing(batch, bg);
-            var keptSet = new HashSet<BlockInfo>(kept);
-            foreach (var b in batch) if (!keptSet.Contains(b)) toRemove.Add(b);
-        }
-        if (toRemove.Count == 0) return;
-        int w = 0;
-        for (int i = 0; i < blocks.Count; i++)
-            if (!toRemove.Contains(blocks[i])) blocks[w++] = blocks[i];
-        blocks.RemoveRange(w, blocks.Count - w);
-    }
-
     // ========== Step 5.5 密度削减 ==========
-    private void ReduceDensity(List<BlockInfo> allBlocks, List<int> bg)
+    private void ReduceDensity(List<BlockInfo> allBlocks)
     {
         if (_densityCapPerSec <= 0 || allBlocks.Count == 0) return;
         float budget = _densityCapPerSec;
@@ -770,7 +718,7 @@ public partial class KeySequenceCore : RefCounted
         {
             var b = allBlocks[i];
             if (keptBatches.Contains(b.Batch)) allBlocks[w++] = b;
-            else foreach (int note in b.Notes) bg.Add(note);
+            else foreach (int note in b.Notes) _bgNoteIdx.Add(note);
         }
         allBlocks.RemoveRange(w, allBlocks.Count - w);
     }
@@ -794,21 +742,14 @@ public partial class KeySequenceCore : RefCounted
         return (cost, prio, nonSlide == 0);
     }
 
-    // ========== Step E 连块 ==========
-    private void GenerateConnects(List<BlockInfo> blocks)
-    {
-        // 连块仅用于 GameSequence 输出标记 connected_prev（当前消费方未读），移植语义保留但无需建表
-        if (blocks.Count == 0) return;
-    }
-
-    // ========== Step 7 转 GameSequence（SOA 输出）==========
+    // ========== Step 7 转 GameSequence（SOA 输出）+ 填充手动索引 ==========
+    // 手动 = 全部 game 原音符；每 seq 恰 1 个音符（BuildChords 按 lane 去重），故 manual_at(seq_index) 即该 seq 原音符
     private void ConvertToSequences(List<BlockInfo> blocks)
     {
         foreach (var b in blocks)
         {
             if (b.Notes.Count == 0) continue;
             int main = b.Notes[0];
-            int origStart = _gNoteIdx.Count;
             int key = _nextKeyId++;
             _seqKeyId.Add(key);
             _seqPitch.Add(_inPitch[main]);
@@ -816,32 +757,30 @@ public partial class KeySequenceCore : RefCounted
             _seqDur.Add(b.DurMs);
             _seqType.Add(b.Type);
             _seqLane.Add(b.Lane);
-            foreach (int note in b.Notes) _gNoteIdx.Add(note);
-            _seqOrigStart.Add(origStart);
-            _seqOrigLen.Add(b.Notes.Count);
+            foreach (int note in b.Notes) _manualIdx.Add(note);
         }
     }
 
     // ========== Step 8 背景排序 + 分类 ==========
-    private void FinalizeBackgroundAndClassify(List<int> bg)
+    private void FinalizeBackgroundAndClassify()
     {
-        // 背景按 (时间, 音高) 排序
-        var idx = new List<int>(bg.Count);
-        for (int i = 0; i < bg.Count; i++) idx.Add(i);
+        // 背景单音符块（BuildChords/ReduceDensity 已直写 _bgNoteIdx），按 (时间, 音高) 排序
+        var idx = new List<int>(_bgNoteIdx.Count);
+        for (int i = 0; i < _bgNoteIdx.Count; i++) idx.Add(i);
         idx.Sort((a, b) =>
         {
-            float ta = TickToMs(_inStartTick[bg[a]]), tb = TickToMs(_inStartTick[bg[b]]);
-            if (ta == tb) return _inPitch[bg[a]].CompareTo(_inPitch[bg[b]]);
+            float ta = TickToMs(_inStartTick[_bgNoteIdx[a]]), tb = TickToMs(_inStartTick[_bgNoteIdx[b]]);
+            if (ta == tb) return _inPitch[_bgNoteIdx[a]].CompareTo(_inPitch[_bgNoteIdx[b]]);
             return ta.CompareTo(tb);
         });
+        var sorted = new List<int>(_bgNoteIdx.Count);
+        foreach (int i in idx) sorted.Add(_bgNoteIdx[i]);
         _bgNoteIdx.Clear();
-        foreach (int i in idx) _bgNoteIdx.Add(bg[i]);
+        _bgNoteIdx.AddRange(sorted);
 
-        // 手动 = 全部 game 原音符；自动 = 背景
-        _manualIdx.Clear();
-        foreach (int note in _gNoteIdx) _manualIdx.Add(note);
+        // 自动 = 背景（手动已在 ConvertToSequences 填充）
         _autoIdx.Clear();
-        foreach (int note in _bgNoteIdx) _autoIdx.Add(note);
+        _autoIdx.AddRange(_bgNoteIdx);
     }
 
     // ========== 输出访问器 ==========
@@ -852,10 +791,6 @@ public partial class KeySequenceCore : RefCounted
     public float SeqDurMs(int i) => _seqDur[i];
     public int SeqType(int i) => _seqType[i];
     public int SeqLane(int i) => _seqLane[i];
-    public int SeqOrigStart(int i) => _seqOrigStart[i];
-    public int SeqOrigLen(int i) => _seqOrigLen[i];
-    public int GNoteAt(int j) => _gNoteIdx[j];
-    public int GNoteCount => _gNoteIdx.Count;
     public int BgNoteCount => _bgNoteIdx.Count;
     public int BgNoteAt(int j) => _bgNoteIdx[j];
     public int ManualCount => _manualIdx.Count;
@@ -875,8 +810,7 @@ public partial class KeySequenceCore : RefCounted
     public void ClearOutput()
     {
         _seqKeyId.Clear(); _seqPitch.Clear(); _seqStart.Clear(); _seqDur.Clear();
-        _seqType.Clear(); _seqLane.Clear(); _seqOrigStart.Clear(); _seqOrigLen.Clear();
-        _gNoteIdx.Clear(); _bgNoteIdx.Clear(); _manualIdx.Clear(); _autoIdx.Clear();
+        _seqType.Clear(); _seqLane.Clear(); _bgNoteIdx.Clear(); _manualIdx.Clear(); _autoIdx.Clear();
     }
 
     private class Touch
@@ -885,10 +819,13 @@ public partial class KeySequenceCore : RefCounted
         public bool IsFree = true;
         public float LastPressX;
         public float LastPressTimeMs = float.NegativeInfinity;
-        public int LastPressBlock = -1;
         public int Hand = -1;
         public float HomeX;
         public float[] HandHomes = System.Array.Empty<float>();
+
+        // 该触点当前正在握持的长条绝对结束时刻（-inf 表示未握长条），用于"手指占用"判定
+        public float HoldingLongEnd = float.NegativeInfinity;
+        public bool HoldingLongAt(float t) => HoldingLongEnd >= t;
     }
 
     private class BlockInfo
@@ -900,10 +837,8 @@ public partial class KeySequenceCore : RefCounted
         public float StartMs;
         public float EndMs;
         public float DurMs;
-        public int Type;        // 0 Block 1 Slide 2 Long
-        public bool SlideForced;
+        public int Type;        // 0 Block 1 Slide 2 Long（基线由 BuildChords 按时长赋，最终由降级判定覆盖）
         public int TouchIndex = -1;
-        public int PrevBlock = -1;
         public int MainPitch;
     }
 }

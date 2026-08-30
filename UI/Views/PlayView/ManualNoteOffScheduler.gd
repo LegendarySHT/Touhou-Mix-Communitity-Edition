@@ -28,32 +28,29 @@ func trigger_from_sequence(ksm: KeySequenceManager, seq_index: int) -> void:
 		return
 
 	var abs_end_ms := float(ksm.seq_start_ms(seq_index) + ksm.seq_dur_ms(seq_index))
-	var orig_start := ksm.seq_orig_start(seq_index)
-	var orig_len := ksm.seq_orig_len(seq_index)
+	# 获取该 seq 的原音符（每个 game seq 恰好对应 1 个原音符：BuildChords 按 lane 去重）
+	var input_idx := ksm.manual_at(seq_index)
+	var track_idx := ksm.input_track_at(input_idx)
+	var channel := ksm.input_channel_at(input_idx)
+	var pitch := ksm.input_pitch_at(input_idx)
+	var velocity := ksm.input_velocity_at(input_idx)
 
 	# 收集 original notes 的触发数据 + 登记 NoteOff 调度
 	var events: Array = []
-	for j in range(orig_len):
-		var input_idx := ksm.g_note_at(orig_start + j)
-		var track_idx := ksm.input_track_at(input_idx)
-		var channel := ksm.input_channel_at(input_idx)
-		var pitch := ksm.input_pitch_at(input_idx)
-		var velocity := ksm.input_velocity_at(input_idx)
+	events.append({"pitch": pitch, "velocity": velocity, "channel": channel, "track_index": track_idx})
 
-		events.append({"pitch": pitch, "velocity": velocity, "channel": channel, "track_index": track_idx})
-
-		# NoteOff 锚定到音符的绝对结束时刻（原曲 NoteOff 位于 note_start + duration）。
-		var gen := _bump_note_off_gen(track_idx, channel, pitch)
-		_pending_manual_offs.append({
-			"abs_end_ms": abs_end_ms,
-			"track": track_idx,
-			"channel": channel,
-			"pitch": pitch,
-			"velocity": velocity,
-			"gen": gen,
-		})
-		if abs_end_ms < _pending_manual_offs_min_end:
-			_pending_manual_offs_min_end = abs_end_ms
+	# NoteOff 锚定到音符的绝对结束时刻（原曲 NoteOff 位于 note_start + duration）。
+	var gen := _bump_note_off_gen(track_idx, channel, pitch)
+	_pending_manual_offs.append({
+		"abs_end_ms": abs_end_ms,
+		"track": track_idx,
+		"channel": channel,
+		"pitch": pitch,
+		"velocity": velocity,
+		"gen": gen,
+	})
+	if abs_end_ms < _pending_manual_offs_min_end:
+		_pending_manual_offs_min_end = abs_end_ms
 
 	if events.is_empty():
 		return
