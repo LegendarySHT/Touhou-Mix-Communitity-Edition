@@ -458,7 +458,8 @@ public partial class KeySequenceCore : RefCounted
             if (chordBlocks.Count == 0) continue;
             foreach (var bb in chordBlocks)
                 if (bb.Type != 1 && bb.DurMs / 1000.0f > _shortThr)
-                    _laneLongEnd[bb.Lane] = bb.EndMs;
+                    // 加一个手指点击冷却时间，防止长条结束后紧接同轨道 block 点击过紧
+                    _laneLongEnd[bb.Lane] = bb.EndMs + _cooldownSec * 1000.0f;
             foreach (var bb in chordBlocks) allBlocks.Add(bb);
             _batchCounter++;
         }
