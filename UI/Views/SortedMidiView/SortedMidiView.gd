@@ -125,7 +125,12 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 	need_snap = false
 	_snap_active = false
 
+	# 跳回列表顶部：切换筛选后从顶部开始展示，使封面刷新范围集中在首屏，避免大范围错刷
+	scroll_vertical = 0
+	_drag_scrolling = false
+
 	var counter = 0
+	var cover_triggered := false
 	for item in current_items:
 		# generation 校验:若期间被新调用取代,静默退出(新调用会自行构建列表)
 		if my_generation != _load_generation:
@@ -141,11 +146,18 @@ func _load_sorted_midis(refectch: bool = true) -> void:
 		node.setup_with_dict(item, counter, item_bg)
 		counter += 1
 
-		# 与 AlbumView 一致：每 3 项让出一帧，避免数百项列表逐个等待帧导致构建耗时数秒
-		if counter % 3 == 0:
+		# 封面提前刷新：构建覆盖到首屏视窗上界后即可触发封面加载，不必等整个列表构建完。
+		# 此时视窗内项都已 setup、item_dict 已更新（构建按索引升序，视窗内索引 <= window.y < counter），
+		# 不会刷新错封面；跳顶使视窗固定为首屏，范围可控。
+		if not cover_triggered and _current_cover_window().y < counter:
+			cover_triggered = true
+			trigger_cover_chain()
+
+		# 每 10 项让出一帧：降低持帧粒度加快构建，同时避免一次 add_child 过多导致单帧过久
+		if counter % 10 == 0:
 			await get_tree().process_frame
 
-	# 最终校验:仅当本次 generation 仍为最新时触发未加载项的封面加载
+	# 最终校验:仅当本次 generation 仍为最新时触发未加载项的封面加载（兜底未提前覆盖的首屏外项由滚动懒加载处理）
 	if my_generation == _load_generation:
 		trigger_cover_chain()
 

@@ -114,7 +114,6 @@ func _refresh_display() -> void:
 		is_selected = false
 
 	switch_cover_data()
-	start_cover_load()
 
 ## 重写基类虚函数：返回专辑封面 Texture2D
 ## 选择专辑下首个歌曲的首个 MIDI 的封面，否则由 FileSystemManager 返回默认封面

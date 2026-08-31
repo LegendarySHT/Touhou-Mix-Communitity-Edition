@@ -48,13 +48,8 @@ func _refresh_display() -> void:
 	var artist := String(item_dict.get("artist_name", ""))
 	author_label.text = artist if not artist.is_empty() else "Unknown"
 
-	# 仅复用项（_has_ready=true）需要重置加载状态；新建项 _cover_loaded=false 直接加载
 	if _has_ready:
 		switch_cover_data()
-	start_cover_load()
-
-	# 复用刷新（非首次）时，若自然位置在可见区域内则播放滑入动画
-	if _has_ready:
 		_play_refresh_slide_in()
 
 ## 复用刷新时的滑入动画：offset_transform_position_ratio.x 从 -2 回到 0
@@ -64,12 +59,8 @@ func _play_refresh_slide_in() -> void:
 		_refresh_ani_tween.kill()
 		_refresh_ani_tween = null
 
-	# 强制取消父级惯性滚动：set_v_scroll 内部会调 _cancel_drag()
-	# 列表项多时循环每帧处理一项，入口停滚无法保证轮到屏幕项时位置仍稳定；
-	# 此处紧贴动画播放前停滚，确保可见性判断基于稳定的 global_position
-	var sc := parent_node as ScrollContainer
-	if sc:
-		sc.scroll_vertical = sc.scroll_vertical
+	# 切换筛选已跳回顶部，固定为可见项播放入场动画：
+	# 观感上整列表重新入场，掩盖"跳回顶部"的瞬时切位；不可见项不建动画省资源
 
 	# 临时重置 x ratio 到 0，检测自然位置是否可见
 	offset_transform_position_ratio.x = 0.0
@@ -86,14 +77,19 @@ func _play_refresh_slide_in() -> void:
 		# 不可见：保持 0，无动画
 		offset_transform_position_ratio.x = 0.0
 
-## 检测自身全局矩形是否与父级（ScrollContainer）可见区域相交
+## 检测自身是否与父级（ScrollContainer）当前可视视窗相交
+## 用内容流本地 position 对比 scroll_vertical（与 BaseScrollList._bound_visible 一致）：
+## ScrollContainer 靠平移子节点实现滚动，且平移延迟到下一帧布局才落地，
+## 跳回顶部后立即判断时 global_position 仍是旧滚动位置，会导致给跳转前可见的项误播动画。
 func _is_in_viewport() -> bool:
 	if not parent_node or not is_instance_valid(parent_node):
 		return false
-	var parent_ctrl := parent_node as Control
-	if not parent_ctrl or parent_ctrl.size.y <= 0.0:
+	var sc := parent_node as ScrollContainer
+	if not sc or sc.size.y <= 0.0:
 		return false
-	return get_global_rect().intersects(parent_ctrl.get_global_rect())
+	var top := float(sc.scroll_vertical)
+	var bottom := top + sc.size.y
+	return (position.y + size.y >= top) and (position.y <= bottom)
 
 ## 重写基类虚函数：返回 MIDI 封面 Texture2D
 func _get_cover_texture() -> Texture2D:

@@ -288,47 +288,71 @@ func _schedule_cover_reload() -> void:
 ## 封面分帧入队的批次大小（每批入队后让一帧，避免瞬间锁竞争）
 const COVER_BATCH_SIZE := 10
 
-## trigger_cover_chain 的 generation 守卫
+## 封面懒加载：可见区上下额外预加载的项数。
+## 构建/滚动时只加载该视窗内的封面，屏幕外项滚进视窗才加载，避免数百项一次性入队导致掉帧。
+const COVER_LAZY_EXTEND := 12
+
+## trigger_cover_chain / 懒加载共用的 generation 守卫
 ## 每次新调用递增，使旧的 in-flight async 循环自然退出
 var _cover_chain_generation: int = 0
 
-## 触发所有未加载封面的列表项调 start_cover_load
-## 按列表顺序入队 CoverLoader，后台线程 FIFO 消费；start_cover_load 内部去重，重复调用安全
-## 分帧入队：每 COVER_BATCH_SIZE 项让一帧，避免 100+ 项瞬间入队造成的 Mutex 锁竞争
-## 被选中项优先同步加载：命中 WeakRef 缓存立即应用，user:// 立即入队 CoverLoader 排在分帧任务之前
-## 同步入口 + 内部 async 实现，调用方无需 await；generation 守卫防止快速连调时多协程并发
-func trigger_cover_chain() -> void:
-	if not _items_process_enabled:
-		return
-	if list_items.is_empty():
-		return
-	_cover_chain_generation += 1
-	# 被选中项优先同步加载（命中缓存立即应用，user:// 立即入队 CoverLoader FIFO）
-	# 在分帧循环之前调用，保证被选中项的入队顺序早于其他项，后台线程先消费
-	if selected_item >= 0 and selected_item < list_items.size():
-		var sel := list_items[selected_item]
-		if is_instance_valid(sel) and sel is CoverListItemBase:
-			var sel_cb := sel as CoverListItemBase
-			if not sel_cb._cover_loaded:
-				sel_cb.start_cover_load()
-	_trigger_cover_chain_async(_cover_chain_generation)
+## 上次已触发加载的封面视窗（闭区间）。与当前视窗一致时跳过，实现"滚到/停在稳定位置时不重复加载"。
+var _cover_window: Vector2i = Vector2i(-1, -1)
 
-## async 实现：遍历列表项分帧入队
-## my_gen 不匹配时静默退出（被新调用取代）
-func _trigger_cover_chain_async(my_gen: int) -> void:
+## 当前需加载封面的视窗（闭区间 [first,last]；空列表返回 (-1,-1)）
+func _current_cover_window() -> Vector2i:
+	var n := list_items.size()
+	if n == 0:
+		return Vector2i(-1, -1)
+	var top := float(scroll_vertical)
+	var bottom := top + float(size.y)
+	var first := _bound_visible(top)
+	var last := _bound_visible(bottom)
+	return Vector2i(maxi(first - COVER_LAZY_EXTEND, 0), mini(last + COVER_LAZY_EXTEND, n - 1))
+
+## 封面懒加载驱动：每帧检查，视窗变化时加载新进入视窗的未加载封面。
+## 视窗未变（静止/滑停）时零开销返回，不反复入队。
+func _update_cover_window() -> void:
+	if not _items_process_enabled or list_items.is_empty():
+		return
+	var w := _current_cover_window()
+	if w == _cover_window:
+		return
+	_cover_window = w
+	_cover_chain_generation += 1
+	_load_covers_in_range(w.x, w.y, _cover_chain_generation)
+
+## 立即加载当前视窗内未加载封面的封面（强制：重置视窗使重算必然触发）。
+## 供"构建完成 / 回到本视图 / 滚动稳定"等时机显式触发；平时由 _update_cover_window 每帧懒驱动。
+func trigger_cover_chain() -> void:
+	if not _items_process_enabled or list_items.is_empty():
+		return
+	_cover_window = Vector2i(-1, -1)  # 强制 _update_cover_window 重算并加载
+	_update_cover_window()
+
+## async 实现：对视窗 [first,last] 内的未加载封面项调 start_cover_load
+## 被选中项优先同步加载（命中 WeakRef 缓存立即应用，user:// 立即入队 CoverLoader FIFO）
+## 分帧入队：每 COVER_BATCH_SIZE 项让一帧，避免瞬间 Mutex 锁竞争
+## my_gen 不匹配时静默退出（被新视窗取代）
+func _load_covers_in_range(first: int, last: int, my_gen: int) -> void:
+	if first > last:
+		return
+	if selected_item >= first and selected_item <= last:
+		var sel := list_items[selected_item]
+		if is_instance_valid(sel) and sel is CoverListItemBase and not sel._cover_loaded:
+			sel.start_cover_load()
 	var batch := 0
-	for item in list_items:
+	for i in range(first, last + 1):
 		if my_gen != _cover_chain_generation:
-			return  # 被新调用取代，静默退出
-		if not is_instance_valid(item):
+			return  # 被新视窗取代，静默退出
+		var item := list_items[i]
+		if not is_instance_valid(item) or not (item is CoverListItemBase):
 			continue
-		if item is CoverListItemBase:
-			var cb := item as CoverListItemBase
-			if not cb._cover_loaded:
-				cb.start_cover_load()
-				batch += 1
-				if batch % COVER_BATCH_SIZE == 0:
-					await get_tree().process_frame
+		if not item._cover_loaded:
+			item.start_cover_load()
+			batch += 1
+			if batch % COVER_BATCH_SIZE == 0:
+				await get_tree().process_frame
 
 func _process(delta: float) -> void:
 	if container == null:
@@ -377,6 +401,9 @@ func _process(delta: float) -> void:
 	# 按键从吸附目标处继续正常导航（"吸附项在屏幕内可见时即可按键选择"）
 	if _snap_active and selected_item >= 0 and selected_item < list_items.size():
 		_grab_focus_to_selected()
+
+	# 封面懒加载：视窗变化时才加载新进入的未加载封面
+	_update_cover_window()
 
 	# 批量更新封面视差：统一由本列表驱动，只对可见项触发计算
 	call_deferred("_update_visible_parallax")
@@ -475,7 +502,7 @@ func _update_visible_parallax() -> void:
 			break
 		cb._apply_parallax_offset()
 
-## 二分查找可见区间边界
+## 二分查找可见区间边界 (并非精确范围)
 func _bound_visible(bound: float) -> int:
 	var lo := 0
 	var hi := list_items.size()
@@ -612,6 +639,9 @@ func clear_items() -> void:
 			item.queue_free()
 
 	list_items.clear()
+
+	# 重置封面视窗，使重建后的首次 _update_cover_window 必然重算并加载（避免新旧视窗索引巧合相同导致跳过）
+	_cover_window = Vector2i(-1, -1)
 
 	# 重置值
 	selected_item = -1
