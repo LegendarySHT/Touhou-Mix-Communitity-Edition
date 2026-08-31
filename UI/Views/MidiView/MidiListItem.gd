@@ -41,16 +41,6 @@ func _ready() -> void:
 	if UiStatMGR:
 		UiStatMGR.state_changed.connect(_on_ui_state_changed)
 
-func _notification(what: int) -> void:
-	super._notification(what)
-	if what == NOTIFICATION_EXIT_TREE:
-		if EvtBus and EvtBus.config_changed.is_connected(_on_config_changed):
-			EvtBus.config_changed.disconnect(_on_config_changed)
-		if UiStatMGR and UiStatMGR.state_changed.is_connected(_on_ui_state_changed):
-			UiStatMGR.state_changed.disconnect(_on_ui_state_changed)
-		# 解析统一走 MidiPlaybackManager（WorkerThreadPool），无本实例 Thread 需要 join；
-		# 协程继续持有 midi（RefCounted）安全，_apply_display 以 is_inside_tree 守卫
-
 func _update_display() -> void:
 	# 初始化显示
 	if not status_label:
