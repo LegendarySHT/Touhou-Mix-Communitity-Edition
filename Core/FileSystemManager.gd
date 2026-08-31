@@ -72,6 +72,12 @@ var backgrounds_index: Dictionary = {}
 ## WeakRef 失效时 load_cover_with_cache 会自动 erase 条目，Dictionary 不会无限增长
 var _cover_texture_cache: Dictionary = {}
 
+## coverHash → 稳定封面缓存键路径
+## 同一 coverHash 的封面内容必然一致，复用首个解析到的真实路径作为缓存键，
+## 使不同歌曲（不同 cover_path）指向同一份 Texture，实现封面去重
+## clear_cover_cache 时一并清空，防止谱面删除后键指向已不存在的路径
+var _cover_hash_to_path: Dictionary = {}
+
 ## ========== 反向索引 ==========
 ## {chart_id: folder_name}
 var _chart_id_to_folder: Dictionary = {}
@@ -1953,6 +1959,18 @@ func load_cover_with_cache(path: String) -> Texture2D:
 ## 注：WeakRef 方案下，Texture 生命周期由列表项引用计数决定，此方法仅清空 Dictionary 条目
 func clear_cover_cache() -> void:
 	_cover_texture_cache.clear()
+	_cover_hash_to_path.clear()
+
+## 返回稳定的封面缓存键路径：同一 coverHash 的封面内容必然一致，
+## 复用首个解析到的真实路径作为缓存键，实现跨歌曲封面去重（同 hash 只读入一份 Texture）
+## cover_hash 为空时无法去重，直接返回原路径
+func canonicalize_cover_key(real_path: String, cover_hash: String) -> String:
+	if cover_hash.is_empty():
+		return real_path
+	if _cover_hash_to_path.has(cover_hash):
+		return _cover_hash_to_path[cover_hash]
+	_cover_hash_to_path[cover_hash] = real_path
+	return real_path
 
 ## 获取指定chart ID对应的JSON文件完整路径
 ## 参数: chart_id - MidiData中的id字段或file_hash字段

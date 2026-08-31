@@ -247,6 +247,9 @@ func _on_state_changed(_oldState: UIStateManager.UIState, state: UIStateManager.
 		if state == work_state:
 			# 回到本视图：触发未加载项的封面加载
 			_schedule_cover_reload()
+		elif state == UIStateManager.UIState.MIDI_VIEW:
+			# 进入 MIDI_VIEW 只显示选中的单个 MIDI，源列表的整页封面已无用，释放一次省内存
+			_release_all_covers()
 		elif not (state in _adjacent_states):
 			# 切到不直接相邻的状态：立即释放所有封面
 			_release_all_covers()
@@ -375,6 +378,9 @@ func _process(delta: float) -> void:
 	if _snap_active and selected_item >= 0 and selected_item < list_items.size():
 		_grab_focus_to_selected()
 
+	# 批量更新封面视差：统一由本列表驱动，只对可见项触发计算
+	call_deferred("_update_visible_parallax")
+
 
 func _find_snap_target_from_visible() -> int:
 	var view_top = global_position.y
@@ -443,6 +449,57 @@ func _finish_snap() -> void:
 	_snap_active = false
 	_snap_stable_frames = 0
 	_snap_clamped_frames = 0
+
+## 批量更新可见项封面视差
+## 常规滚动/吸附期间由本列表统一驱动，取代每个列表项各自 _process 造成的"每帧上百次视差计算"。
+## 可见区间用二分定位（列表项在容器内纵向排布，position.y 单调递增）：只迭代真正可见的切片，
+## 不再每帧遍历全部项；屏幕外项不触发 CoverListItemBase._apply_parallax_offset()
+func _update_visible_parallax() -> void:
+	if not is_scrolling() or not _items_process_enabled:
+		return
+	var n := list_items.size()
+	if n == 0:
+		return
+	var top: float = float(scroll_vertical)
+	var bottom: float = top + float(size.y)
+	var start := _lower_bound_visible(top)
+	var end := _upper_bound_visible(bottom)
+	if end < start:
+		return
+	for i in range(start, end + 1):
+		var item := list_items[i]
+		if item == null or not (item is CoverListItemBase):
+			continue
+		var cb := item as CoverListItemBase
+		if not cb._parallax_enabled:
+			continue
+		cb._apply_parallax_offset()
+
+## 二分查找可见区间起点：第一个"底部 >= 视口顶(top)"的项索引
+## 谓词 bottom[i]=pos[i]+size[i] 单调不减（纵向布局下 pos[i+1] ≥ pos[i]+size[i]），二分成立
+func _lower_bound_visible(top: float) -> int:
+	var lo := 0
+	var hi := list_items.size()
+	while lo < hi:
+		var mid := (lo + hi) >> 1
+		if list_items[mid].position.y + list_items[mid].size.y < top:
+			lo = mid + 1
+		else:
+			hi = mid
+	return lo if lo == 0 else lo - 1
+
+## 二分查找可见区间终点：最后一个"顶部 <= 视口底(bottom)"的项索引
+## pred[i]="pos[i] <= bottom" 单调不减，返回最后一个满足者的下标（无满足返回 -1）
+func _upper_bound_visible(bottom: float) -> int:
+	var lo := 0
+	var hi := list_items.size()
+	while lo < hi:
+		var mid := (lo + hi) >> 1
+		if list_items[mid].position.y <= bottom:
+			lo = mid + 1
+		else:
+			hi = mid
+	return lo - 1
 
 func _on_v_scrollbar_gui_input(event):
 	if event is InputEventScreenTouch:

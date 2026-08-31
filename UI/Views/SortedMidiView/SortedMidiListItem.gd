@@ -111,7 +111,10 @@ func _resolve_cover_path() -> String:
 	var fs_mgr := FileSystemManager.instance
 	if not fs_mgr:
 		return ""
-	return fs_mgr.get_cover_path_by_ids(String(item_dict.get("file_hash", "")), String(item_dict.get("id", "")))
+	var real := fs_mgr.get_cover_path_by_ids(String(item_dict.get("file_hash", "")), String(item_dict.get("id", "")))
+	# 同一 coverHash 的封面内容一致，复用首个解析路径作为缓存键，
+	# 同 hash 谱面（不同文件夹各存一份拷贝）共享一份 Texture，避免按路径重复上传
+	return fs_mgr.canonicalize_cover_key(real, String(item_dict.get("coverHash", "")))
 
 ## 从轻量投影字典初始化显示（DB 返回，无完整 MidiData）
 ## 新建节点（_has_ready=false）：emit _init_fin 触发 _ready 中的 await 继续

@@ -85,4 +85,6 @@ func _resolve_cover_path() -> String:
 	var fs_mgr := FileSystemManager.instance
 	if not fs_mgr:
 		return ""
-	return fs_mgr.default_cover_if_missing(ChartDB.GetSongCoverPath(String(item_dict.get("id", ""))))
+	var real := fs_mgr.default_cover_if_missing(ChartDB.GetSongCoverPath(String(item_dict.get("id", ""))))
+	# 同一 coverHash 的封面内容一致，复用首个解析路径作为缓存键，同 hash 歌曲共享一份 Texture
+	return fs_mgr.canonicalize_cover_key(real, String(item_dict.get("coverHash", "")))

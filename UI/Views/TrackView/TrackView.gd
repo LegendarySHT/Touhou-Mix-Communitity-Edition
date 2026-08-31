@@ -236,7 +236,7 @@ func _load_midi(midi: MidiData) -> void:
 	_set_note_displayers_process(true)
 
 	# 等容器尺寸更新，再增加上下边距 （这个不是一定会触发，请勿在后面加总是需要执行的代码）
-	await container.resized
+	await get_tree().process_frame
 	container.custom_minimum_size.y = container.size.y + 300
 
 # 创建轨道视图

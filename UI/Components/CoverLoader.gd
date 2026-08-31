@@ -3,12 +3,16 @@
 ##
 ## 使用方式（主线程调用）：
 ##   CoverLoader.request_load(item_id, path, callback)
-##   callback 签名: func(path: String, image: Image, version: int) -> void
-##   CoverLoader.cancel(item_id)  # 取消在途任务（版本号失效）
+##   callback 签名: func(path: String, texture: Texture2D, version: int) -> void
+##   CoverLoader.cancel(item_id)  # 取消在途/等待任务（版本号失效）
+##
+## 按路径去重共享：同一 path 只保留一个在途后台任务；其余请求该路径的项登记为"等待者"，
+## 任务完成时主线程只创建一份 ImageTexture 并统一写入 FileSystemManager 缓存，
+## 再广播给该路径的所有等待者——实现同一封面全局只存在一份纹理（消除并发重复解码/上传）。
 ##
 ## 线程安全：
 ##   - _task_queue / _result_queue 仅通过 _mutex 访问
-##   - _pending_callbacks / _item_versions 仅主线程访问
+##   - _pending_callbacks / _item_versions / _waiters_by_path / _inflight 仅主线程访问
 ##   - 后台线程只读 LoadTask 字段，只写 LoadResult.image，不访问任何 Node/Resource/Singleton
 ##   - Image.load_from_file 在 Godot 4.x 线程安全
 extends Node
@@ -22,18 +26,14 @@ const THREAD_COUNT := 2
 const DEFAULT_COVER_PATH := "res://Resources/song_cover/1.jpg"
 
 
-## 加载任务
+## 加载任务（只按 path 入队，去重以 path 为键，不再携带 item_id/version）
 class LoadTask:
 	var path: String
-	var item_id: String
-	var version: int
 
 
 ## 加载结果
 class LoadResult:
 	var path: String
-	var item_id: String
-	var version: int
 	var image: Image  # 失败时为 null
 
 
@@ -53,6 +53,12 @@ var _running: bool = true
 var _item_versions: Dictionary = {}
 ## item_id → 回调 Callable（主线程访问）
 var _pending_callbacks: Dictionary = {}
+## path → true：已有该路径的后台任务在队列/执行中（Mutex 保护）
+## 按路径去重：同一 path 只入队一个后台任务，其余请求登记为等待者
+var _queued_paths: Dictionary = {}
+## path → Array[ {item_id,version} ]：等待该路径结果的项（主线程访问）
+## 任务完成时主线程只创建一份纹理并广播给这里的所有等待者
+var _path_requests: Dictionary = {}
 
 
 func _ready() -> void:
@@ -69,18 +75,33 @@ func _ready() -> void:
 
 ## 请求加载封面（主线程调用）
 ## item_id: 列表项标识（用于回调校验和取消）
-## path: 封面文件绝对路径（主线程已预算好）
-## callback: 签名 func(path: String, image: Image, version: int) -> void
+## path: 封面文件绝对路径
+## callback: 签名 func(path: String, texture: Texture2D, version: int) -> void
+## 按路径去重：同一 path 只入队一个后台任务；后续请求登记为等待者，
+## 任务完成时主线程统一创建一份纹理并广播给该路径所有等待者
 func request_load(item_id: String, path: String, callback: Callable) -> void:
 	# 递增版本号，使在途任务结果作废
 	var version: int = int(_item_versions.get(item_id, 0)) + 1
 	_item_versions[item_id] = version
 	_pending_callbacks[item_id] = callback
 
+	# 登记为该路径等待者（主线程访问）
+	if not _path_requests.has(path):
+		_path_requests[path] = []
+	_path_requests[path].append({"item_id": item_id, "version": version})
+
+	# 仅当该路径无在途后台任务时才入队新任务；否则共享已有的，不再重复解码/上传
+	var need_task := false
+	_mutex.lock()
+	if not _queued_paths.has(path):
+		_queued_paths[path] = true
+		need_task = true
+	_mutex.unlock()
+	if not need_task:
+		return
+
 	var task := LoadTask.new()
 	task.path = path
-	task.item_id = item_id
-	task.version = version
 
 	_mutex.lock()
 	_task_queue.append(task)
@@ -91,12 +112,23 @@ func request_load(item_id: String, path: String, callback: Callable) -> void:
 
 ## 取消在途任务（主线程调用）
 ## 递增版本号使在途任务结果作废，并清理回调引用避免内存泄漏
-## 注：不主动从 _task_queue 移除任务（后台线程会自然消费并丢弃）
+## 注：不主动从 _task_queue 移除任务（后台线程会自然消费并丢弃），
+##     共享后台任务仍会完成，仅本等待者不再接收回调
 func cancel(item_id: String) -> void:
 	if not _item_versions.has(item_id):
 		return
 	_item_versions.erase(item_id)
 	_pending_callbacks.erase(item_id)
+	# 从各路径的等待者列表移除本项，避免结果到达时调用已取消回调
+	for path in _path_requests.keys():
+		var reqs: Array = _path_requests[path]
+		var i := reqs.size() - 1
+		while i >= 0:
+			if reqs[i]["item_id"] == item_id:
+				reqs.remove_at(i)
+			i -= 1
+		if reqs.is_empty():
+			_path_requests.erase(path)
 
 
 ## 主线程每帧消费结果队列，触发回调
@@ -115,29 +147,60 @@ func _process(_delta: float) -> void:
 
 	for result in results:
 		var r: LoadResult = result
-		# 校验版本号（cancel / 新 request_load 后版本号会变）
-		var latest_version: int = int(_item_versions.get(r.item_id, -1))
-		if r.version != latest_version:
-			continue  # 旧任务结果，丢弃
+		# 先释放路径槽（同 path 后续请求可重新入队）
+		_mutex.lock()
+		_queued_paths.erase(r.path)
+		_mutex.unlock()
 
-		# 取回调（可能已被新 request_load 覆盖，覆盖了也无所谓——版本号校验已通过）
-		var cb: Variant = _pending_callbacks.get(r.item_id, null)
-		if cb == null or not (cb is Callable):
+		var waiters: Array = _path_requests.get(r.path, [])
+		_path_requests.erase(r.path)
+
+		if r.image == null:
+			# 读盘/解码失败：以 null 纹理触发回调，使等待者走默认封面回退逻辑，
+			# 同时清理其回调/版本条目，避免泄漏与"一直等待不回包"卡死
+			for req_ in waiters:
+				_deliver_callback(req_["item_id"], req_["version"], r.path, null)
 			continue
-		var callback: Callable = cb
-		# 先清理条目,再调用回调
-		# 1. 防止内存泄漏:_pending_callbacks / _item_versions 不再无限增长
-		# 2. 回调内部可能触发新的 request_load(如复用项切换封面),
-		#    先 erase 确保新 request_load 添加的条目不被误删
-		# 3. 旧任务结果已被版本号校验过滤,此处只剩"最新版本"的结果,可安全清理
-		_pending_callbacks.erase(r.item_id)
-		_item_versions.erase(r.item_id)
-		# 校验回调绑定对象是否仍有效（节点可能已被 queue_free）
-		# callback.call 对已 freed 的 Object 会报错并跳过函数体，导致缓存不写入
-		if not callback.is_valid():
+
+		# 主线程只创建一份纹理并写入 WeakRef 缓存（该路径全局共享）：
+		# 若缓存已存在（重复任务/其他路径已加载同内容），直接复用，避免再上传一份 GPU 纹理
+		var tex := _shared_texture(r.path, r.image)
+		if tex == null:
 			continue
-		# 调用回调（回调内部会再校验节点有效性 + _loading_path 一致性）
-		callback.call(r.path, r.image, r.version)
+
+		# 广播给该路径所有等待者
+		for req_ in waiters:
+			_deliver_callback(req_["item_id"], req_["version"], r.path, tex)
+
+
+## 校验版本并向单个等待者投递结果（主线程）
+## 版本不符（已取消/已被新请求覆盖）则不投递；clean 相关条目防泄漏
+func _deliver_callback(item_id: String, version: int, path: String, tex: Texture2D) -> void:
+	if _item_versions.get(item_id, -1) != version:
+		return  # 已取消/已被新请求覆盖
+	var cb: Variant = _pending_callbacks.get(item_id, null)
+	_pending_callbacks.erase(item_id)
+	_item_versions.erase(item_id)
+	if cb == null or not (cb is Callable):
+		return
+	var callback: Callable = cb
+	if not callback.is_valid():
+		return
+	callback.call(path, tex, version)
+
+
+## 获取该路径全局共享的一份纹理（主线程）
+## 缓存已存在 → 直接复用（消除同路径重复 GPU 上传）；否则创建并写入 WeakRef 缓存
+func _shared_texture(path: String, image: Image) -> Texture2D:
+	var fs_mgr := FileSystemManager.instance
+	if fs_mgr:
+		var cached := fs_mgr.get_cached_cover_texture(path)
+		if cached:
+			return cached
+	var tex: Texture2D = ImageTexture.create_from_image(image)
+	if fs_mgr:
+		fs_mgr._cache_cover_texture(path, tex)
+	return tex
 
 
 ## 后台线程主循环
@@ -163,8 +226,6 @@ func _thread_loop() -> void:
 		# 入结果队列
 		var result := LoadResult.new()
 		result.path = task.path
-		result.item_id = task.item_id
-		result.version = task.version
 		result.image = image
 
 		_mutex.lock()
@@ -217,9 +278,11 @@ func shutdown() -> void:
 	_mutex.lock()
 	_task_queue.clear()
 	_result_queue.clear()
+	_queued_paths.clear()
 	_mutex.unlock()
 	_pending_callbacks.clear()
 	_item_versions.clear()
+	_path_requests.clear()
 
 
 ## _exit_tree 兜底：Main 未捕获的退出场景(编辑器停止运行、Android 强杀等)

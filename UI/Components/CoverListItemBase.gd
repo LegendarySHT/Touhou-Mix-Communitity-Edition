@@ -84,8 +84,8 @@ func start_cover_load() -> void:
 	CoverLoader.request_load(item_id, path, _on_cover_loaded_async)
 
 ## 异步加载回调(主线程,CoverLoader._process 中调用)
-## 用 path 一致性校验替代版本号:若 _loading_path 与回调 path 不一致,说明期间已 release 或切到其他封面
-func _on_cover_loaded_async(path: String, image: Image, _version: int) -> void:
+## 回调接收的是 CoverLoader 按路径共享的纹理（同一封面全局一份），此处直接应用，不再各自创建
+func _on_cover_loaded_async(path: String, texture: Texture2D, _version: int) -> void:
 	if not is_instance_valid(self):
 		return  # 节点已销毁
 	if _cover_loaded:
@@ -96,19 +96,13 @@ func _on_cover_loaded_async(path: String, image: Image, _version: int) -> void:
 		return  # 旧任务结果,丢弃
 	_loading_path = ""  # 消费在途标记
 
-	if image == null:
+	if texture == null:
 		# 读盘失败(文件损坏等):回退到默认封面,与 load_cover_with_cache 行为一致
 		# 避免封面保持空白;默认封面是 res:// 路径,主线程同步加载
 		_fallback_to_default_cover(path)
 		return
 
-	# 主线程创建 Texture + 写入 WeakRef 缓存
-	var tex := ImageTexture.create_from_image(image)
-	var fs_mgr := FileSystemManager.instance
-	if fs_mgr:
-		fs_mgr._cache_cover_texture(path, tex)
-
-	_apply_cover_texture(tex)
+	_apply_cover_texture(texture)
 
 ## 回退到默认封面(主线程同步加载)
 ## 当异步读盘失败(文件损坏)或 user:// 文件不存在时调用,与旧同步路径的回退行为一致
@@ -193,21 +187,3 @@ func release_cover() -> void:
 func switch_cover_data() -> void:
 	_loading_path = ""  # 使在途任务回调失效
 	_cover_loaded = false  # 允许 start_cover_load 重新加载
-
-## 节点退出场景树时清理(节点可能被 queue_free)
-## 不调 CoverLoader.cancel:避免影响复用同一 item_id 的新实例(会导致新实例的回调版本号失效)
-## 旧任务结果会被 _loading_path="" 校验自然丢弃(path 不匹配)
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_EXIT_TREE:
-		_loading_path = ""  # 使在途任务回调失效
-
-func _process(_delta: float) -> void:
-	if not _parallax_enabled or cover_texture == null or not is_instance_valid(parent_node):
-		return
-	# 封面未加载时跳过视差计算(避免对空 texture 操作)
-	if not _cover_loaded:
-		return
-	# 仅在滚动、吸附动画或额外动画期间才更新
-	if not parent_node.is_scrolling() and _extra_motion_tween == null:
-		return
-	_apply_parallax_offset()

@@ -599,6 +599,7 @@ public partial class ChartDb : Node
                     item["name"] = name;
                     item["midi_count"] = (long)0;
                     item["track"] = track;
+                    item["coverHash"] = BsonConvert.GetStr(d, "coverHash");
                     items[sid] = item;
                     dates[sid] = BsonConvert.GetStr(d, "uploaded_date");
                 }
@@ -855,6 +856,7 @@ public partial class ChartDb : Node
         item["up_count"] = BsonConvert.GetLong(d, "up_count");
         item["down_count"] = BsonConvert.GetLong(d, "down_count");
         item["file_hash"] = BsonConvert.GetStr(d, "file_hash");
+        item["coverHash"] = BsonConvert.GetStr(d, "coverHash");
         return item;
     }
 
