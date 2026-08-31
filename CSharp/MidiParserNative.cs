@@ -262,6 +262,42 @@ public partial class MidiParserNative : RefCounted
                 channels[i] = n.channel;
             }
 
+            // 10. (track, channel) 音符分组——C# worker 一次性统计，供 GDScript 侧快速重建
+            //     避免 GDScript 逐键 COW/字符串哈希（22w 音符下可慢到秒级）。notes 按 start_tick 升序，
+            //     逐元素 push 的下标 i 即 SOA 索引，故各分组内保持升序，与原始 grouped_indices 语义一致。
+            var swGrp = System.Diagnostics.Stopwatch.StartNew();
+            var grpKeys = new List<int>();                 // 组键：track<<8|channel，按首次出现顺序
+            var grpOrder = new Dictionary<int, int>();     // 组键 -> 组序号
+            var grpLists = new List<List<int>>();          // 每组的 SOA 索引
+            for (int i = 0; i < count; i++)
+            {
+                int gk = (notes[i].trackIndex << 8) | (notes[i].channel & 0xFF);
+                if (!grpOrder.TryGetValue(gk, out int gi))
+                {
+                    gi = grpLists.Count;
+                    grpOrder[gk] = gi;
+                    grpKeys.Add(gk);
+                    grpLists.Add(new List<int>());
+                }
+                grpLists[gi].Add(i);
+            }
+            int gCount = grpKeys.Count;
+            var gKeys = new int[gCount];
+            var gOffsets = new int[gCount + 1];            // 前缀和，len=组数+1（末尾哨兵）
+            int gTotal = 0;
+            for (int g = 0; g < gCount; g++)
+            {
+                gKeys[g] = grpKeys[g];
+                gOffsets[g] = gTotal;
+                gTotal += grpLists[g].Count;
+            }
+            gOffsets[gCount] = gTotal;
+            var gIndices = new int[gTotal];
+            int gW = 0;
+            for (int g = 0; g < gCount; g++)
+                foreach (var idx in grpLists[g]) gIndices[gW++] = idx;
+            swGrp.Stop();
+
             var tlCount = bpmTicks.Count;
             var tlTicks = new int[tlCount];
             var tlBpms = new float[tlCount];
@@ -305,6 +341,10 @@ public partial class MidiParserNative : RefCounted
                 { "bpm_timeline_ticks", tlTicks },
                 { "bpm_timeline_bpms", tlBpms },
                 { "bpm_timeline_times_ms", tlTimesMs },
+                { "track_channel_groups_keys", gKeys },
+                { "track_channel_groups_offsets", gOffsets },
+                { "track_channel_groups_indices", gIndices },
+                { "track_channel_groups_time_ms", swGrp.Elapsed.TotalMilliseconds },
                 { "max_end_tick", maxEndTick },
                 { "track_count", trackCount },
                 { "track_instruments", godotInstruments },

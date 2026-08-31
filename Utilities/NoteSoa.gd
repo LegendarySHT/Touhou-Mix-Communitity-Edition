@@ -15,6 +15,11 @@ var _durations: PackedInt32Array
 var _track_indices: PackedInt32Array
 var _channels: PackedInt32Array
 
+## (track,channel) 分组（C# worker 一次性统计后经 soa 传入，供 grouped_indices 快速重建）
+var _group_keys: Variant = null       # 组键 track<<8|channel，按首次出现顺序
+var _group_offsets: Variant = null    # 前缀和，len=组数+1（末尾哨兵）
+var _group_indices: Variant = null    # 扁平 SOA 索引
+
 ## 时间换算（可选）：tick → ms 依赖 bpm_timeline + timebase；未提供时仅能取 tick
 var _timebase: int = 480
 var _bpm_lookup: Array = []   # [[tick, bpm, cumulative_ms], ...]，按 tick 升序
@@ -33,6 +38,9 @@ func _init_arrays(arrays: Dictionary, timebase: int, bpm_timeline: Array) -> voi
 		_durations = arrays.get("durations", PackedInt32Array())
 		_track_indices = arrays.get("track_indices", PackedInt32Array())
 		_channels = arrays.get("channels", PackedInt32Array())
+	_group_keys = arrays.get("track_channel_groups_keys", null)
+	_group_offsets = arrays.get("track_channel_groups_offsets", null)
+	_group_indices = arrays.get("track_channel_groups_indices", null)
 	_timebase = timebase if timebase > 0 else 480
 	_prebuild_bpm_lookup(bpm_timeline)
 
@@ -140,16 +148,49 @@ func build_from_indices(indices: Array) -> Array:
 ## ===================== 分组（索引化 runtime_track_channel_notes） =====================
 
 ## 构建 { "track:channel": PackedInt32Array（SOA 索引）}，取代旧的 object 分组。
-## 数组保持 start_tick 升序（来源数组已升序，逐元素追加即有序）。
+## 数组保持 start_tick 升序（C# 预统计按 SOA 索引递增填充，各分组内有序）。
+## 主路径：复用 C# worker 一次性算好的分组（_group_*），仅在主线程做末次容器重建，
+## 不再逐元素 COW 写回 / 逐键字符串哈希（22w 音符下旧实现可慢到 1s 级）。
+## 兜底：_group_* 缺失（旧缓存 / 非 C# 源）时走两遍式（先统计计数，预分配后索引写原地填充）。
 func grouped_indices() -> Dictionary:
-	var groups: Dictionary = {}
-	for i in range(size()):
-		var key := "%d:%d" % [track(i), channel(i)]
-		if not groups.has(key):
-			groups[key] = PackedInt32Array([i])
-		else:
-			# 显式 读出→append→写回：Packed 数组写时复制，直接 groups[key].append() 会分离临时副本而写不回字典
-			var arr: PackedInt32Array = groups[key]
-			arr.append(i)
+	if _group_keys != null and _group_keys.size() > 0 \
+			and _group_offsets != null and _group_indices != null:
+		var groups: Dictionary = {}
+		var gcount: int = _group_keys.size()
+		for g in range(gcount):
+			var key := "%d:%d" % [_group_keys[g] >> 8, _group_keys[g] & 0xFF]
+			var start: int = _group_offsets[g]
+			var end: int = _group_offsets[g + 1]
+			var arr := PackedInt32Array()
+			arr.resize(end - start)
+			for w in range(start, end):
+				arr[w - start] = _group_indices[w]
 			groups[key] = arr
+		return groups
+
+	var total := size()
+	# 兜底：第一遍统计每 key 元素个数 + 记录 key 顺序（纯整数累加，无 COW）
+	var count: Dictionary = {}
+	var keys: Array = []
+	for i in range(total):
+		var key := "%d:%d" % [track(i), channel(i)]
+		if count.has(key):
+			count[key] += 1
+		else:
+			count[key] = 1
+			keys.append(key)
+	# 预分配定长数组并记录写出游标
+	var groups: Dictionary = {}
+	var cursors: Dictionary = {}
+	for key in keys:
+		var arr := PackedInt32Array()
+		arr.resize(count[key])
+		groups[key] = arr
+		cursors[key] = 0
+	# 第二遍：索引写原地填充（不整体写回字典）
+	for i in range(total):
+		var key := "%d:%d" % [track(i), channel(i)]
+		var arr: PackedInt32Array = groups[key]
+		arr[cursors[key]] = i
+		cursors[key] += 1
 	return groups

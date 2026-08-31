@@ -119,6 +119,9 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 		"durations": native["durations"],
 		"track_indices": native["track_indices"],
 		"channels": native["channels"],
+		"track_channel_groups_keys": native.get("track_channel_groups_keys", PackedInt32Array()),
+		"track_channel_groups_offsets": native.get("track_channel_groups_offsets", PackedInt32Array()),
+		"track_channel_groups_indices": native.get("track_channel_groups_indices", PackedInt32Array()),
 	}
 	result["bpm"] = float(native["bpm"])
 	result["duration_ms"] = float(native["duration_ms"])
@@ -130,7 +133,8 @@ static func load_and_parse_midi(file_path: String) -> Dictionary:
 	result["success"] = true
 
 	var parse_ms: float = float(native.get("parse_time_ms", 0.0))
-	GLogger.info("MIDI parsed (C#): %d notes, %.0fms, parse=%.1fms" % [count, result["duration_ms"], parse_ms], "MidiParser")
+	var groups_ms: float = float(native.get("track_channel_groups_time_ms", 0.0))
+	GLogger.info("MIDI parsed (C#): %d notes, %.0fms, parse=%.1fms, groups=%.1fms" % [count, result["duration_ms"], parse_ms, groups_ms], "MidiParser")
 
 	return result
 
