@@ -131,6 +131,12 @@ var _enabled_notes_cache_key: String = ""
 ## 缓存所属的 notes_soa 引用：notes_soa 被重新赋值（重新解析/清空）时缓存即失效
 var _enabled_notes_cache_soa: NoteSoa = null
 
+## 启用 (track, channel) 子集的 SOA 索引缓存（按启用对签名键，同上缓存策略）
+## 切换难度等配置变更不改 enabled_pairs，命中缓存即跳过 O(N) 字符串格式化主线程遍历
+var _enabled_indices_cache: Array = []
+var _enabled_indices_cache_key: String = ""
+var _enabled_indices_cache_soa: NoteSoa = null
+
 ## MIDI总时长（毫秒）
 var duration_ms: float = 0.0
 
@@ -465,9 +471,29 @@ func get_enabled_note_indices(enabled_pairs: Dictionary) -> Array:
 	var indices: Array = []
 	if notes_soa == null or notes_soa.size() <= 0:
 		return indices
-	for i in range(notes_soa.size()):
-		if enabled_pairs.has("%d:%d" % [notes_soa.track(i), notes_soa.channel(i)]):
-			indices.append(i)
+	# 缓存键 = 启用对签名 + 所属 SOA 引用（切换难度等变更不改 enabled_pairs，直接命中复用）
+	var key := _enabled_pairs_signature(enabled_pairs)
+	if not _enabled_indices_cache.is_empty() \
+			and _enabled_indices_cache_key == key \
+			and _enabled_indices_cache_soa == notes_soa:
+		return _enabled_indices_cache
+	var groups := runtime_track_channel_notes
+	if not groups.is_empty():
+		# 沿用 set_parsed_soa 预构建的 "track:channel" → 索引分组直接拼装启用子集，
+		# 避免逐个音符格式化字符串 + 字典查找（大谱面主线程卡顿主因），拼完按 start_tick 升序排序
+		for pair in enabled_pairs.keys():
+			var g: PackedInt32Array = groups.get(pair, PackedInt32Array())
+			for idx in g:
+				indices.append(int(idx))
+		indices.sort()
+	else:
+		# 兜底：无分组缓存（极端情况）时逐个音符筛
+		for i in range(notes_soa.size()):
+			if enabled_pairs.has("%d:%d" % [notes_soa.track(i), notes_soa.channel(i)]):
+				indices.append(i)
+	_enabled_indices_cache = indices
+	_enabled_indices_cache_key = key
+	_enabled_indices_cache_soa = notes_soa
 	return indices
 
 ## 单一授权点：解析完成后一次性构建 SOA 紧凑数组 + 轨道-通道分组缓存。
@@ -483,6 +509,10 @@ func set_parsed_soa(parse_result: Dictionary) -> void:
 	_enabled_notes_cache = []
 	_enabled_notes_cache_key = ""
 	_enabled_notes_cache_soa = notes_soa
+	# 索引缓存随 SOA 整体替换失效（同 notes 缓存策略）
+	_enabled_indices_cache = []
+	_enabled_indices_cache_key = ""
+	_enabled_indices_cache_soa = notes_soa
 	# SOA 路径下不再持有全量对象；消费方按需经 SOA 取
 	parsed_notes = []
 
@@ -498,6 +528,9 @@ func clear_parsed_notes() -> void:
 	_enabled_notes_cache.clear()
 	_enabled_notes_cache_key = ""
 	_enabled_notes_cache_soa = null
+	_enabled_indices_cache.clear()
+	_enabled_indices_cache_key = ""
+	_enabled_indices_cache_soa = null
 
 ## ========== (Track, Channel) 静音接口 ==========
 
