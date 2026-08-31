@@ -455,51 +455,37 @@ func _finish_snap() -> void:
 ## 可见区间用二分定位（列表项在容器内纵向排布，position.y 单调递增）：只迭代真正可见的切片，
 ## 不再每帧遍历全部项；屏幕外项不触发 CoverListItemBase._apply_parallax_offset()
 func _update_visible_parallax() -> void:
-	if not is_scrolling() or not _items_process_enabled:
+	if not _items_process_enabled:
 		return
 	var n := list_items.size()
 	if n == 0:
 		return
 	var top: float = float(scroll_vertical)
 	var bottom: float = top + float(size.y)
-	var start := _lower_bound_visible(top)
-	var end := _upper_bound_visible(bottom)
+	var start := _bound_visible(top)
+	var end := _bound_visible(bottom)
 	if end < start:
 		return
-	for i in range(start, end + 1):
+	for i in range(maxi(start - 1, 0) , end + 1):
 		var item := list_items[i]
 		if item == null or not (item is CoverListItemBase):
 			continue
 		var cb := item as CoverListItemBase
 		if not cb._parallax_enabled:
-			continue
+			break
 		cb._apply_parallax_offset()
 
-## 二分查找可见区间起点：第一个"底部 >= 视口顶(top)"的项索引
-## 谓词 bottom[i]=pos[i]+size[i] 单调不减（纵向布局下 pos[i+1] ≥ pos[i]+size[i]），二分成立
-func _lower_bound_visible(top: float) -> int:
+## 二分查找可见区间边界
+func _bound_visible(bound: float) -> int:
 	var lo := 0
 	var hi := list_items.size()
 	while lo < hi:
 		var mid := (lo + hi) >> 1
-		if list_items[mid].position.y + list_items[mid].size.y < top:
+		if list_items[mid].position.y + list_items[mid].size.y < bound:
 			lo = mid + 1
 		else:
 			hi = mid
-	return lo if lo == 0 else lo - 1
-
-## 二分查找可见区间终点：最后一个"顶部 <= 视口底(bottom)"的项索引
-## pred[i]="pos[i] <= bottom" 单调不减，返回最后一个满足者的下标（无满足返回 -1）
-func _upper_bound_visible(bottom: float) -> int:
-	var lo := 0
-	var hi := list_items.size()
-	while lo < hi:
-		var mid := (lo + hi) >> 1
-		if list_items[mid].position.y <= bottom:
-			lo = mid + 1
-		else:
-			hi = mid
-	return lo - 1
+	return maxi(lo - 1, 0)
 
 func _on_v_scrollbar_gui_input(event):
 	if event is InputEventScreenTouch:

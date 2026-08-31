@@ -152,21 +152,10 @@ func _on_cover_texture_set() -> void:
 ## 计算并应用当前视差偏移(仅当 parent_node 已就绪时)
 ## 在 start_cover_load / _process 中复用,确保非滚动状态下封面也有正确的初始偏移
 func _apply_parallax_offset() -> void:
-	if not _parallax_enabled or cover_texture == null or not is_instance_valid(parent_node):
-		return
-	if not _cover_loaded:
-		return
 	var parent_ctrl := parent_node as Control
-	if parent_ctrl == null or parent_ctrl.size.y <= 0.0:
+	if not parent_ctrl or parent_ctrl.size.y <= 0.0:
 		return
-	# 视区剔除
-	var item_top := global_position.y
-	var item_bottom := item_top + size.y
-	var view_top: float = parent_ctrl.global_position.y
-	var view_bottom: float = view_top + parent_ctrl.size.y
-	if item_bottom < view_top or item_top > view_bottom:
-		return
-	var new_offset: float = -(global_position.y / max(parent_ctrl.size.y, 1.0)) * max(cover_texture.size.y - size.y, 0.0)
+	var new_offset: float = -(global_position.y / parent_ctrl.size.y) * max(cover_texture.size.y - size.y, 0.0)
 	if not is_equal_approx(new_offset, _last_cover_offset):
 		cover_texture.offset_transform_position.y = new_offset
 		_last_cover_offset = new_offset
