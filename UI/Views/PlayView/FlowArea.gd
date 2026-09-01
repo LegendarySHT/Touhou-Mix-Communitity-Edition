@@ -9,7 +9,10 @@ class_name FlowArea
 
 ########## 配置参数 #############
 var auto_mode: bool = false
-var judge_mode: int = NoteJudger.JudgeMode.BEST_TIMING_FIFO  # 从 Judge/touch_judging_criteria 配置初始化
+# 判定有效区时间窗（毫秒），0 = 垂直全幅（筛选音符时不受时间限制）
+var judge_window_ms: int = 0
+# 判定有效区选项 -> 时间窗(ms) 映射（索引与设置页 "judge_window_ms" 选项顺序一致）
+const _JUDGE_WINDOW_OPTIONS: Array[int] = [0, 1000, 500, 250]
 var note_judge_width: int = 100  # 统一判定宽度，从 Judge/block_judging_width 配置读取
 var note_visual_width: int = 200  # 从 Appearance/block_size 配置读取
 var glow_intensity: float = 1.0
@@ -295,8 +298,9 @@ func init_flow_area():
 
 	auto_mode = ConfigManager.instance.get_int("Playback", "auto_mode", 0) == 1
 	
-	# 从配置读取判定模式
-	judge_mode = ConfigManager.instance.get_int("Judge", "touch_judging_criteria", NoteJudger.JudgeMode.BEST_TIMING_FIFO)
+	# 从配置读取判定有效区（时间窗）
+	var judge_window_idx = ConfigManager.instance.get_int("Judge", "judge_window_ms", 0)
+	judge_window_ms = _JUDGE_WINDOW_OPTIONS[clampi(judge_window_idx, 0, _JUDGE_WINDOW_OPTIONS.size() - 1)]
 	check_slide_when_finger_up = ConfigManager.instance.get_int("Judge", "check_instant_blocks_when_finger_up", 1) == 1
 	only_perfect_slides = ConfigManager.instance.get_int("Judge", "only_perfect_instant_blocks_before_judge", 0) == 1
 
@@ -412,8 +416,9 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 		return
 
 	if section == "Judge":
-		if key == "touch_judging_criteria":
-			judge_mode = int(value)
+		if key == "judge_window_ms":
+			var idx = clampi(int(value), 0, _JUDGE_WINDOW_OPTIONS.size() - 1)
+			judge_window_ms = _JUDGE_WINDOW_OPTIONS[idx]
 			return
 		if key == "judge_line_position":
 			_apply_judge_line_position()
@@ -1151,7 +1156,7 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 		if candidate_notes.is_empty():
 			return
 
-	var note_index := note_judger.find_best_note_index(pos, candidate_notes, jl.position.y, note_judge_width, judge_mode)
+	var note_index := note_judger.find_best_note_index(pos, candidate_notes, note_judge_width)
 	if note_index < 0:
 		return
 	if parent_node.play_mode:
@@ -1367,19 +1372,11 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 		# 代表 Y 坐标：Long 与 Block/Slide 统一用 _rt_cy
 		var note_y: float = _rt_cy[i]
 
-		match judge_mode:
-			NoteJudger.JudgeMode.NEAREST, NoteJudger.JudgeMode.BEST_TIMING, NoteJudger.JudgeMode.NEAREST_JUDGE:
-				# 键盘模式无点击位置，以判定线 Y 为参考选最近音符
-				var diff: float = abs(jl.position.y - note_y)
-				if diff < best_score:
-					best_score = diff
-					best_note = i
-			NoteJudger.JudgeMode.BEST_TIMING_FIFO:
-				# 先现先判：选最靠近底部（note_y 最大）的音符
-				var score: float = -note_y
-				if score < best_score:
-					best_score = score
-					best_note = i
+		# 先现先判：选最靠近底部（note_y 最大）的音符
+		var score: float = -note_y
+		if score < best_score:
+			best_score = score
+			best_note = i
 
 	if best_note >= 0:
 		if parent_node.play_mode:

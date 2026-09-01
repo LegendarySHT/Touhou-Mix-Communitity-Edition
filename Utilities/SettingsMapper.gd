@@ -65,7 +65,7 @@ static var mappings: Dictionary = {
 	"bad_spark_emitter_scaling": {"section": "Lane", "key": "bad_spark_emitter_scaling", "value_type": "int"},
 	
 	# ========== 判定设置 ==========
-	"touch_judging_criteria": {"section": "Judge", "key": "touch_judging_criteria", "value_type": "int"},
+	"judge_window_ms": {"section": "Judge", "key": "judge_window_ms", "value_type": "int"},
 	"check_instant_blocks_when_finger_up": {"section": "Judge", "key": "check_instant_blocks_when_finger_up", "value_type": "int"},
 	"only_perfect_instant_blocks_before_judge": {"section": "Judge", "key": "only_perfect_instant_blocks_before_judge", "value_type": "int"},
 	"judge_line_position": {"section": "Judge", "key": "judge_line_position", "value_type": "int"},

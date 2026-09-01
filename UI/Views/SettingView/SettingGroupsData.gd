@@ -344,17 +344,17 @@ static func get_setting_groups() -> Array:
 		"name": "判定设置",
 		"settings": [
 			{
-				"id": "touch_judging_criteria",
-				"name_en": "Touch Judging Criteria",
-				"name_zh": "判定方式",
-				"description": "使音符的判定范围变为半径为【音符判定宽度】所设定的数值的圆，手指在以外区域的点击不会生效",
+				"id": "judge_window_ms",
+				"name_en": "Judge Valid Zone",
+				"name_zh": "判定有效区",
+				"description": "筛选可判定音符时的时间范围；选择有限时间则不会判到与当前时间相差超过该值的音符，落到判定线后的音符不受影响",
 				"type": "TYPE_OPTION",
-				"default_value": "3",
+				"default_value": "0",
 				"options": [
-					{"text_en": "Nearest", "text_zh": "最临近"},
-					{"text_en": "Best Timing", "text_zh": "最佳时机"},
-					{"text_en": "Nearest from Judge Line", "text_zh": "距判定线最近"},
-					{"text_en": "Best Timing (First In, First Out)", "text_zh": "最佳时机(先现先判)"}
+					{"text_en": "Full Vertical", "text_zh": "垂直全幅"},
+					{"text_en": "1s", "text_zh": "1s"},
+					{"text_en": "500ms", "text_zh": "500ms"},
+					{"text_en": "250ms", "text_zh": "250ms"}
 				]
 			},
 			{
