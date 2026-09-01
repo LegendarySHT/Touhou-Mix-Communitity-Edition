@@ -235,6 +235,15 @@ alignment = 1
 script = ExtResource("3_xybxw")
 metadata/_tab_index = 1
 
+[node name="BtStatus" type="Label" parent="DelayAdjust" unique_id=987654321]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "当前音频输出：检测中..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="Text" type="Label" parent="DelayAdjust" unique_id=579829843]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
@@ -317,6 +326,13 @@ size_flags_horizontal = 4
 theme = ExtResource("4_4gkd0")
 action_mode = 0
 shortcut = SubResource("Shortcut_krk8y")
+
+[node name="BtToggle" type="CheckButton" parent="DelayAdjust" unique_id=987654322]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 22
+text = "蓝牙输出时自动关闭弹奏模式"
 
 [node name="NoteSkinAdjust" type="HBoxContainer" parent="." unique_id=1274646299]
 visible = false
@@ -1734,6 +1750,7 @@ popup/item_2/id = 2
 [connection signal="text_changed" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_text_changed"]
 [connection signal="text_submitted" from="DelayAdjust/HBoxC/Value" to="DelayAdjust" method="_on_delay_text_submitted"]
 [connection signal="pressed" from="DelayAdjust/Button" to="DelayAdjust" method="_on_delay_btn_pressed"]
+[connection signal="toggled" from="DelayAdjust/BtToggle" to="DelayAdjust" method="_on_bt_auto_off_toggled"]
 [connection signal="item_selected" from="ImageAdjust/VBoxC/ImgType" to="ImageAdjust" method="_on_img_type_selected"]
 [connection signal="item_selected" from="ImageAdjust/VBoxC/OtherOptions/ImgName" to="ImageAdjust" method="_on_img_name_selected"]
 [connection signal="item_selected" from="ImageAdjust/VBoxC/OtherOptions/ImgFillMode" to="ImageAdjust" method="_on_img_fill_mode_selected"]

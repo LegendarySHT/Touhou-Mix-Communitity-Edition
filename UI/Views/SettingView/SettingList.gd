@@ -423,13 +423,20 @@ func _popup_falling_adjust() -> void:
 	_pending_config["note_fall_easing_after_phase"] = String(result.get("note_fall_easing_after_phase", "IN"))
 	GLogger.info("Falling params updated: mode=%s time=%s (pending save)" % [result.get("note_fall_mode"), result.get("note_fall_time")], "SettingList")
 
-# 弹出延迟校准窗口，校准结果写入 audio_playback_delay（pending 保存）
+# 弹出延迟校准窗口，校准结果写入当前输出类型对应的延迟预设（pending 保存）
+# 双预设：蓝牙输出校准写 audio_playback_delay_bt，普通输出校准写 audio_playback_delay
 # DelayAdjust 内部用 MidiPlaybackManager 实时合成 GM 鼓组节拍音，与 PlayView 演奏模式同音频路径
 func _popup_delay_adjust() -> void:
-	var current := int(_pending_config.get("audio_playback_delay", 0))
-	var new_delay := await PopupWindow.instance.show_delay_adjust(current)
-	_pending_config["audio_playback_delay"] = new_delay
-	GLogger.info("audio_playback_delay calibrated: %d ms (pending save)" % new_delay, "SettingList")
+	# 强制刷新检测后再选预设，保证校准目标与状态提示一致
+	AudioBtDetector.is_bluetooth_output(true)
+	var id := AudioBtDetector.get_active_delay_key()
+	var default_value := 200 if id == "audio_playback_delay_bt" else 0
+	var current := int(_pending_config.get(id,
+		ConfigManager.instance.get_int("Gameplay", id, default_value)))
+	var result := await PopupWindow.instance.show_delay_adjust(current)
+	_pending_config[id] = int(result.get("delay", current))
+	_pending_config["bt_auto_disable_performing_mode"] = int(result.get("bt_auto_off_performing", 1))
+	GLogger.info("%s calibrated: %d ms (pending save)" % [id, _pending_config[id]], "SettingList")
 
 # ===== 各判定类型特效设置弹窗入口 =====
 # 4 个按钮分别对应 Perfect/Great/Good/Bad，调用统一的 _popup_spark_adjust(judge_type)

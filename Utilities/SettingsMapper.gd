@@ -32,6 +32,8 @@ static var mappings: Dictionary = {
 	"default_vocal_volume": {"section": "Gameplay", "key": "default_vocal_volume", "value_type": "int"},
 	"audio_sync_threshold": {"section": "Gameplay", "key": "audio_sync_threshold", "value_type": "int"},
 	"audio_playback_delay": {"section": "Gameplay", "key": "audio_playback_delay", "value_type": "int"},
+	"audio_playback_delay_bt": {"section": "Gameplay", "key": "audio_playback_delay_bt", "value_type": "int"},
+	"bt_auto_disable_performing_mode": {"section": "Gameplay", "key": "bt_auto_disable_performing_mode", "value_type": "int"},
 
 	"lane_count": {"section": "Lane", "key": "lane_count", "value_type": "int"},
 	"keyboard_mode": {"section": "Lane", "key": "keyboard_mode", "value_type": "int"},

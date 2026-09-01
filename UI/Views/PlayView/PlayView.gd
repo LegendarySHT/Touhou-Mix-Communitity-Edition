@@ -872,6 +872,12 @@ func _load_play_mode_setting() -> void:
 	var performing_mode = ConfigManager.instance.get_int("Playback", "performing_mode", 1)
 	play_mode = (performing_mode == 1)
 	GLogger.info("PlayView play mode: %s" % ("ON" if play_mode else "OFF"), "PlayView")
+	# 蓝牙输出时自动关闭演奏模式（高延迟下演奏手感不佳）；
+	# 仅当局会话生效（不覆写全局 performing_mode 配置），玩家可在游戏中手动重开
+	if play_mode and AudioBtDetector.is_bluetooth_output() \
+			and ConfigManager.instance.get_int("Gameplay", "bt_auto_disable_performing_mode", 1) == 1:
+		play_mode = false
+		GLogger.info("Performing mode auto-disabled: bluetooth audio output detected", "PlayView")
 
 ## 应用TrackView中保存的MIDI运行时配置（音量、静音、独奏等）
 func _apply_midi_runtime_config(midi_data: MidiData) -> void:

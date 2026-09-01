@@ -50,6 +50,11 @@ func _notification(what: int) -> void:
 		# 关闭 LiteDB（Dispose 刷写 journal）
 		if ChartDB:
 			ChartDB.CloseDb()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		# 应用焦点回归：重新检测蓝牙输出（用户可能在离开期间切换了输出设备），
+		# 蓝牙状态变化时自动切换延迟预设并重建音频桥跟随新默认设备
+		if MidiPlaybackManager.instance != null:
+			MidiPlaybackManager.instance.refresh_audio_delay()
 
 ## 桌面端 Esc 键（仅在无其他控件消费事件时触发）
 func _unhandled_input(event: InputEvent) -> void:

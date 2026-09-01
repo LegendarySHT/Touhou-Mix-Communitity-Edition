@@ -60,9 +60,14 @@ var _vocal_loaded_path: String = ""
 ## 音频不同步阈值（毫秒）
 var sync_threshold_ms: float = 200.0
 
-## 音频校准延迟（毫秒，设置页音频校准写入 audio_playback_delay）
+## 音频校准延迟（毫秒，设置页音频校准写入 audio_playback_delay / audio_playback_delay_bt）
 ## 仅叠加到自动/背景音符与人声时钟，玩家手动触发（touch）的音符实时发声，不附加此延迟。
 var _audio_delay_ms: float = 0.0
+
+## 当前延迟预设是否为蓝牙（决定使用 audio_playback_delay_bt 还是 audio_playback_delay）
+var _delay_using_bt: bool = false
+## 是否已完成首次蓝牙状态检测（首次不触发音频桥重建：桥初始化时已用当前默认设备）
+var _bt_state_initialized: bool = false
 
 ## 上次同步检查时的MIDI位置（毫秒）
 var last_sync_check_pos_ms: float = 0.0
@@ -103,14 +108,39 @@ func _ready() -> void:
 	# 从配置文件加载音源设置
 	_load_soundfont_from_config()
 
-	# 加载音频校准延迟（设置页音频校准写入 audio_playback_delay）
-	_audio_delay_ms = float(ConfigManager.instance.get_int("Gameplay", "audio_playback_delay", 0))
+	# 加载音频校准延迟（按当前输出是否蓝牙选择对应预设）
+	refresh_audio_delay()
 	
 	# 监听设置改变信号（用于动态切换MIDI后端和音源）
 	if EvtBus:
 		EvtBus.settings_changed.connect(_on_settings_changed)
 		# 监听配置变更信号（新增，用于应对直接配置文件修改）
 		EvtBus.config_changed.connect(_on_config_changed)
+
+## 重新检测蓝牙输出并应用对应延迟预设。
+## 蓝牙状态变化时（仅 Windows）重建音频桥，使输出跟随新的系统默认设备。
+## 刷新时点：启动、应用焦点回归（Main._notification）、打开延迟校准窗口。
+func refresh_audio_delay() -> void:
+	var is_bt := AudioBtDetector.is_bluetooth_output(true)
+	var state_changed := is_bt != _delay_using_bt
+	var first_check := not _bt_state_initialized
+	_bt_state_initialized = true
+	_delay_using_bt = is_bt
+	if state_changed and not first_check:
+		GLogger.info("Audio output changed (bluetooth=%s), switching delay preset" % str(is_bt), "MidiPlaybackManager")
+		# WASAPI 流绑定打开设备时的端点，需重建音频桥才跟随新默认设备。
+		# Android 的 AAudio 独占模式 + 蓝牙初始化有风险，不重建（开局前已连蓝牙的场景初始即走蓝牙端点）。
+		if OS.get_name() == "Windows" and midi_player != null \
+				and midi_player.has_method("recreate_audio_output"):
+			midi_player.call("recreate_audio_output")
+	_apply_delay_preset()
+
+## 按当前输出类型读取并应用延迟预设（蓝牙 → audio_playback_delay_bt，否则 audio_playback_delay）
+func _apply_delay_preset() -> void:
+	var key := "audio_playback_delay_bt" if _delay_using_bt else "audio_playback_delay"
+	var default_value := 200 if _delay_using_bt else 0
+	_audio_delay_ms = float(ConfigManager.instance.get_int("Gameplay", key, default_value))
+	GLogger.info("Audio delay preset [%s] = %.0f ms" % [key, _audio_delay_ms], "MidiPlaybackManager")
 
 ## 处理设置改变信号回调（当退出SettingView时触发）
 ## @param setting_name: 改变的设置名 ("*" 表示所有设置)
@@ -1734,9 +1764,13 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			return
 
 		# 音频校准延迟变化（设置页 DelayAdjust 保存后触发），实时生效
-		if key == "audio_playback_delay":
-			_audio_delay_ms = float(value)
-			GLogger.info("Audio playback delay changed to %.0f ms" % _audio_delay_ms, "MidiPlaybackManager")
+		# 双预设：普通/蓝牙各存一套；仅当变更的是当前激活预设时才应用
+		if key == "audio_playback_delay" or key == "audio_playback_delay_bt":
+			if key == ("audio_playback_delay_bt" if _delay_using_bt else "audio_playback_delay"):
+				_audio_delay_ms = float(value)
+				GLogger.info("Audio playback delay changed to %.0f ms" % _audio_delay_ms, "MidiPlaybackManager")
+			else:
+				GLogger.info("Audio playback delay preset '%s' updated (inactive, not applied)" % key, "MidiPlaybackManager")
 
 		# 处理音源文件配置变更
 		if key == "soundfont_file":

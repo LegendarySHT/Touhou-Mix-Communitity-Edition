@@ -345,6 +345,52 @@ public partial class MeltySynthPlayer : Node
 	}
 
 	/// <summary>
+	/// 强制重建音频输出设备（跟随当前系统默认输出端点）。
+	/// 用于输出设备切换（如用户连接/断开蓝牙耳机）后重新路由音频：
+	/// WASAPI/AAudio 流绑定打开设备时的端点，需销毁重建才会跟随新的系统默认设备。
+	/// 复用 set_audio_buffer_frames 已验证的重建流程（销毁旧桥→重新初始化→恢复播放）。
+	/// </summary>
+	public void recreate_audio_output()
+	{
+		// 独占模式绑定固定设备端点，重建后目标端点可能不可用（如蓝牙），跳过并告警
+		if (System.Environment.GetEnvironmentVariable("MINIAUDIO_EXCLUSIVE") == "1")
+		{
+			GD.Print("[MeltySynthPlayer] recreate_audio_output skipped: WASAPI exclusive mode enabled");
+			return;
+		}
+		// 尚未初始化则无需重建：下次初始化自然使用新的默认设备
+		if (_audioOutput == null)
+		{
+			GD.Print("[MeltySynthPlayer] recreate_audio_output: no audio output yet, nothing to rebuild");
+			return;
+		}
+
+		GD.Print("[MeltySynthPlayer] Recreating audio output device to follow system default endpoint");
+		bool wasPlaying = _audioOutput.IsPlaying;
+
+		// 先销毁旧音频桥，停止其音频回调（与 set_audio_buffer_frames 相同的竞态防护）
+		_audioOutput.Dispose();
+		_audioOutput = null;
+
+		// 重新初始化（使用当前系统默认设备；内部已含合成器重绑）
+		EnsureAudioInitialized();
+
+		// 恢复合成器引用（EnsureAudioInitialized 已重绑，此处冗余加固保持与既有路径一致）
+		if (_audioOutput != null && _sequencer != null && _autoSynth != null)
+		{
+			_audioOutput.SetSynthesizers(_sequencer, _autoSynth, _manualSynth, _useSeparateSynthForManual);
+			_audioOutput.SetVolume(_volumeLinear);
+		}
+
+		// 如果之前在播放，恢复播放
+		if (wasPlaying && _audioOutput != null)
+		{
+			_audioOutput.Play();
+			GD.Print("[MeltySynthPlayer] Playback resumed after audio output recreation");
+		}
+	}
+
+	/// <summary>
 	/// 获取当前音频延迟 (毫秒).
 	/// miniaudio 后端: 设备内部延迟 (ma_device_get_latency) + RingBuffer 延迟
 	/// </summary>

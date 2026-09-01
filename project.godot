@@ -30,6 +30,8 @@ ParticleMGR="*res://Core/ParticleManager.gd"
 ChartDB="*res://CSharp/ChartDb/ChartDb.cs"
 CoverLoader="*res://UI/Components/CoverLoader.gd"
 ResMGR="*res://Core/ResourceManager.gd"
+AudioRouteDetector="*res://CSharp/AudioRouteDetector.cs"
+AudioBtDetector="*res://Utilities/AudioBtDetector.gd"
 
 [display]
 
@@ -45,7 +47,7 @@ project/assembly_name="Touhou Mix Comunitity Edition"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/miniaudio/plugin.cfg")
+enabled=PackedStringArray("res://addons/miniaudio/plugin.cfg", "res://addons/android_runtime_inject/plugin.cfg")
 
 [gui]
 

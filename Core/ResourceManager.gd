@@ -32,7 +32,7 @@ func _refresh_local_states() -> void:
 # ========== MIDI 资源 API ==========
 
 ## 获取 MIDI 列表（分页 + 搜索 + 排序）
-## sort: uploaded_at(默认) | duration
+## sort: uploaded_at(默认) | download_count | play_count | like_count
 ## order: desc(默认) | asc
 ## 返回 {ok, data: {charts: [], total: int}}
 func get_chart_list(page: int = 1, limit: int = 20, search: String = "",

@@ -11,6 +11,8 @@ signal finish_requested
 @onready var _shadow_line: PanelContainer = $DelayIndicator/ShadowLine
 @onready var _delay_value: LineEdit = $HBoxC/Value
 @onready var delay_btn: Button = $Button
+@onready var _bt_status: Label = $BtStatus
+@onready var _bt_toggle: CheckButton = $BtToggle
 
 # ===== 延迟校准状态 =====
 ## 校准是否进行中
@@ -29,6 +31,8 @@ var _last_sample: float = NAN
 var _prev_delay_text: String = "0"
 ## 程序化设置 _delay_value.text 时的递归守卫标志，避免触发 text_changed 重复更新
 var _setting_delay_text: bool = false
+## 程序化设置 _bt_toggle.button_pressed 时的递归守卫标志，避免触发 toggled 重复写配置
+var _setting_bt_toggle: bool = false
 
 ## AdjustLine 单向运动范围（绝对值，单位：像素）
 const _ADJUST_LINE_RANGE: float = 310
@@ -67,6 +71,9 @@ func start_calibration(current_delay: int = 0) -> void:
 	_calib_samples.clear()
 	_stable_count = 0
 	_last_sample = NAN
+
+	# 刷新蓝牙输出检测提示与开关初始状态（调用方已强制刷新过检测，此处读缓存）
+	_update_bt_status()
 
 	_delay_value.text = str(current_delay)
 	_prev_delay_text = _delay_value.text
@@ -164,6 +171,35 @@ func get_delay_value() -> int:
 	if text.is_empty() or text == "-":
 		return 0
 	return clampi(text.to_int(), -int(_MAX_DELAY_MS), int(_MAX_DELAY_MS))
+
+## 获取窗口完整结果（PopupWindow.show_delay_adjust 返回给设置页）
+# {"delay": 校准/输入的延迟值, "bt_auto_off_performing": 蓝牙自动关闭弹奏模式开关}
+func get_result() -> Dictionary:
+	return {
+		"delay": get_delay_value(),
+		"bt_auto_off_performing": 1 if _bt_toggle.button_pressed else 0,
+	}
+
+# ===== 蓝牙输出检测提示与开关 =====
+# 刷新顶部蓝牙输出状态提示；窗口每次打开（start_calibration）都会调用
+func _update_bt_status() -> void:
+	var is_bt := AudioBtDetector.is_bluetooth_output()
+	var status := AudioBtDetector.get_status_text()
+	_bt_status.text = "当前音频输出：%s" % status
+	if is_bt:
+		_bt_status.text += "｜正在校准蓝牙延迟预设"
+	# 开关初始状态从配置读取（默认开启）
+	var auto_off := ConfigManager.instance.get_int("Gameplay", "bt_auto_disable_performing_mode", 1) == 1
+	_setting_bt_toggle = true
+	_bt_toggle.button_pressed = auto_off
+	_setting_bt_toggle = false
+
+# 蓝牙自动关闭弹奏模式开关切换：即时写回运行时配置（对齐 FallingAdjust 即时应用模式）
+# 持久化由调用方（SettingList._popup_delay_adjust）经 _pending_config 退出设置页时保存
+func _on_bt_auto_off_toggled(pressed: bool) -> void:
+	if _setting_bt_toggle:
+		return
+	ConfigManager.instance.set_value_and_notify("Gameplay", "bt_auto_disable_performing_mode", 1 if pressed else 0)
 
 # 重拍触发：播放重拍音（用户应在此刻点击）
 # 重拍在 AdjustLine 中心(0) 触发，点击时用 AdjustLine 位置算延迟，与动画完全同步

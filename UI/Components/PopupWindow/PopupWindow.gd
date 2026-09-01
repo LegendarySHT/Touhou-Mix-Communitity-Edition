@@ -143,14 +143,15 @@ func show_message(message: String, cancel_visible: bool = false, options: Array 
 	return _confirm
 
 # 弹出延迟校准窗口
-func show_delay_adjust(current_delay: int = 0) -> int:
+# 返回 Dictionary: {"delay": 校准/输入的延迟值(ms), "bt_auto_off_performing": 蓝牙自动关闭弹奏模式开关(0/1)}
+func show_delay_adjust(current_delay: int = 0) -> Dictionary:
 	_delay_adjust.start_calibration(current_delay)
-	
+
 	_pop_up_window(1)
 	await window_close
 	# 兜底停止（popup_hide 已会调用，此处再保险一次）
 	_delay_adjust.stop_calibration()
-	return _delay_adjust.get_delay_value()
+	return _delay_adjust.get_result()
 
 # 弹出皮肤修改窗口
 func show_note_skin_adjust() -> String:

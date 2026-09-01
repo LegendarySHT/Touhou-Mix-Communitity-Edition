@@ -196,7 +196,7 @@ static func get_setting_groups() -> Array:
 				"id": "audio_playback_delay",
 				"name_en": "Audio Playback Delay",
 				"name_zh": "音频延迟校准",
-				"description": "校准音频输出延迟，使声音到达耳朵的时机与音符判定对齐。点击后跟随节拍点击校准",
+				"description": "校准音频输出延迟，使声音到达耳朵的时机与音符判定对齐。普通输出与蓝牙输出分别记录两套延迟，检测到蓝牙时自动使用蓝牙预设",
 				"type": "TYPE_BUTTON",
 				"default_value": null,
 				"on_click": "_popup_delay_adjust"

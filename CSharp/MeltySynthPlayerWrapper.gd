@@ -229,6 +229,12 @@ func set_audio_buffer_frames(frames: int) -> void:
 		return
 	meltysynth_player.call("set_audio_buffer_frames", frames)
 
+## 强制重建音频输出设备（跟随当前系统默认输出端点；用于蓝牙耳机连接/断开后重路由音频）
+func recreate_audio_output() -> void:
+	if meltysynth_player == null:
+		return
+	meltysynth_player.call("recreate_audio_output")
+
 ## 人声文件加载 (miniaudio 统一输出链路)
 func load_vocal_file(path: String) -> bool:
 	if meltysynth_player == null:
