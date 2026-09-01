@@ -1548,7 +1548,9 @@ func _process(delta: float) -> void:
 			continue
 
 		var long_end_time = _st_start[note_index] + max(0.0, _st_dur[note_index])
-		if _synced_current_time >= long_end_time:
+		# 结束跟随渲染时钟（而非补偿判定钟）：补偿后判定钟在曲终被钳制到不满 delay，
+		# 会让长条尾部提前/无法按视觉滑完而残留、回缩。用渲染钟保证"尾巴滑到判定线即收尾"。
+		if _render_time_ms >= long_end_time:
 			if not spark_presets.get("Perfect", "").is_empty() or not spark_emitters.get("Perfect", "").is_empty():
 				_generate_particle("Perfect", Vector2(_rt_cx[note_index], _rt_tail_cy[note_index]))
 			_remove_note(note_index)
