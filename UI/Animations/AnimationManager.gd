@@ -476,6 +476,14 @@ func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_sta
 			tween = animate_offset_to(song_list, Vector2(0, song_list.size.y), 0.25, tween_id)
 
 		"Sorted_List":
+			# 覆盖层与滚动容器同步滑出，保证下次入场时两者初始偏移对齐（各视图退出后置于 -1500）
+			var overlay := get_node_or_null(PathRegistry.SKEW_C + "/SortedMidiContainer")
+			if overlay:
+				var otween := animate_offset_to(overlay, Vector2(-1500, 0), 0.25, "SortedOverlayOut")
+				otween.finished.connect(func() -> void:
+					if is_instance_valid(overlay):
+						overlay.visible = false
+				)
 			tween = animate_offset_to(ani_comp, Vector2(-1500, 0), 0.25, tween_id)
 			tween.finished.connect(func() -> void:
 				ani_comp.visible=false
@@ -593,7 +601,16 @@ func animate_ui_in(ui_name: String, _old_state: UIStateManager.UIState) -> Tween
 		"Sorted_List":
 			ani_comp.visible = true
 
-			animate_offset_back(ani_comp, 0.25, tween_id)
+			# 覆盖层（虚拟化项渲染容器，与滚动容器同级）与滚动容器同步入场：
+			# 先强制对其初始偏移（退出/首次 tscn 停车位一致），再并行滑回 0，两动画同时结束
+			var overlay := get_node_or_null(PathRegistry.SKEW_C + "/SortedMidiContainer")
+			if overlay:
+				overlay.visible = true
+				if overlay.offset_transform_position != ani_comp.offset_transform_position:
+					overlay.offset_transform_position = ani_comp.offset_transform_position
+				animate_offset_back(overlay, 0.25, "SortedOverlayIn")
+
+			tween = animate_offset_back(ani_comp, 0.25, tween_id)
 		"Midi_Info_View":
 			animate_fade_in(ani_comp, 0.1, "MidiViewFadeIn")
 

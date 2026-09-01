@@ -144,6 +144,10 @@ func _grab_list_selected(list_path: String) -> void:
 	var nd = get_node_or_null(list_path)
 	if nd == null or not ("selected_item" in nd):
 		return
+	# 虚拟化列表：项可能已滚出屏幕被释放，交给其负责先滚动补位再聚焦
+	if nd.has_method("focus_selected_item"):
+		nd.call("focus_selected_item")
+		return
 	# 无选中项时选首项兜底（进入视图但尚未选中任何项，默认聚焦第一项）
 	if nd.selected_item == -1 and nd.list_items.size() > 0:
 		if nd.has_method("select_item"):
