@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://sc0mnsr50ilm"]
 
 [ext_resource type="Script" uid="uid://ds2byracy7vto" path="res://UI/Views/StoreView/StoreMidiListItem.gd" id="1_j6ifx"]
-[ext_resource type="Texture2D" uid="uid://bxkgbenh2ja4h" path="res://Resources/Covers/423be8d161a8a972c9014454921864a9.jpg" id="2_p8evh"]
 [ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="3_p8evh"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jmah3"]
@@ -107,7 +106,6 @@ layout_mode = 0
 offset_right = 550.0
 offset_bottom = 550.0
 mouse_filter = 2
-texture = ExtResource("2_p8evh")
 expand_mode = 3
 stretch_mode = 4
 

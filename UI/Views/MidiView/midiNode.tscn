@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://dcmlyvps8badu"]
 
 [ext_resource type="Script" uid="uid://cax20p7g1wjmk" path="res://UI/Views/MidiView/MidiListItem.gd" id="1_t5w3i"]
-[ext_resource type="Texture2D" uid="uid://bxkgbenh2ja4h" path="res://Resources/Covers/423be8d161a8a972c9014454921864a9.jpg" id="2_u2pgb"]
 [ext_resource type="FontFile" uid="uid://drybvx6hogl55" path="res://Resources/Fonts/方正黑体_GBK.ttf" id="3_jdrqc"]
 [ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="4_u2pgb"]
 
@@ -58,7 +57,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-texture = ExtResource("2_u2pgb")
 expand_mode = 5
 stretch_mode = 6
 

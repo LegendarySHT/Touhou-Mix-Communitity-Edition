@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://bt0e0os76bnfm" path="res://UI/Views/SongView/SongListItem.gd" id="1_5wnnw"]
 [ext_resource type="Theme" uid="uid://cm3mry6cxo28t" path="res://UI/Theme/BtnTheme/ListBtn-ColorBorder.tres" id="1_krpnw"]
-[ext_resource type="Texture2D" uid="uid://bxkgbenh2ja4h" path="res://Resources/Covers/423be8d161a8a972c9014454921864a9.jpg" id="3_krpnw"]
 [ext_resource type="Script" uid="uid://kvvwetb1qkcl" path="res://UI/Components/TextScrollHelper.gd" id="5_3ky2n"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xw3gp"]
@@ -53,7 +52,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 0
 offset_transform_enabled = true
 mouse_filter = 2
-texture = ExtResource("3_krpnw")
 expand_mode = 5
 stretch_mode = 6
 metadata/_edit_use_anchors_ = true

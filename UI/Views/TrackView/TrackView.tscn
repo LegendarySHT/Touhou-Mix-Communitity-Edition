@@ -4,67 +4,6 @@
 [ext_resource type="Script" uid="uid://bnt65j78d2po7" path="res://UI/Views/TrackView/noteDisplayer.gd" id="2_8bk0u"]
 [ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="3_3id1m"]
 
-[sub_resource type="DPITexture" id="DPITexture_8bk0u"]
-_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><circle cx=\"8\" cy=\"8\" r=\"7\" fill=\"#fefefe\" fill-opacity=\".75\"/></svg>
-"
-base_scale = 2.0
-
-[sub_resource type="DPITexture" id="DPITexture_w422c"]
-_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><circle cx=\"8\" cy=\"8\" r=\"7\" fill=\"#fefefe\"/></svg>
-"
-base_scale = 2.0
-
-[sub_resource type="DPITexture" id="DPITexture_mvguw"]
-_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"4\" height=\"8\"><path fill=\"#fff\" fill-opacity=\".25\" d=\"M1 0h2v16H1z\"/></svg>
-"
-base_scale = 2.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fh1od"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(1, 1, 1, 0.5647059)
-corner_radius_top_left = 7
-corner_radius_top_right = 7
-corner_radius_bottom_right = 7
-corner_radius_bottom_left = 7
-corner_detail = 5
-expand_margin_top = 7.0
-expand_margin_bottom = 7.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ya0is"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(1, 1, 1, 0.75)
-corner_radius_top_left = 7
-corner_radius_top_right = 7
-corner_radius_bottom_right = 7
-corner_radius_bottom_left = 7
-corner_detail = 5
-expand_margin_top = 7.0
-expand_margin_bottom = 7.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_d7gux"]
-bg_color = Color(0, 0, 0, 0.49411765)
-corner_radius_top_left = 7
-corner_radius_top_right = 7
-corner_radius_bottom_right = 7
-corner_radius_bottom_left = 7
-corner_detail = 5
-expand_margin_top = 7.0
-expand_margin_bottom = 7.0
-
-[sub_resource type="Theme" id="Theme_87rjv"]
-HSlider/icons/grabber = SubResource("DPITexture_8bk0u")
-HSlider/icons/grabber_highlight = SubResource("DPITexture_w422c")
-HSlider/icons/tick = SubResource("DPITexture_mvguw")
-HSlider/styles/grabber_area = SubResource("StyleBoxFlat_fh1od")
-HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_ya0is")
-HSlider/styles/slider = SubResource("StyleBoxFlat_d7gux")
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_31lmn"]
 bg_color = Color(0.23490001, 0.50328004, 0.81, 1)
 corner_radius_top_left = 12
@@ -177,14 +116,10 @@ shadow_size = 10
 shadow_offset = Vector2(5, 5)
 
 [sub_resource type="DPITexture" id="DPITexture_3id1m"]
-_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><circle cx=\"8\" cy=\"8\" r=\"7\" fill=\"#fefefe\" fill-opacity=\".75\"/></svg>
-"
-base_scale = 3.0
 
 [sub_resource type="DPITexture" id="DPITexture_xcqgn"]
-_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><circle cx=\"8\" cy=\"8\" r=\"7\" fill=\"#fefefe\"/></svg>
-"
-base_scale = 3.0
+
+[sub_resource type="DPITexture" id="DPITexture_mxrqf"]
 
 [sub_resource type="DPITexture" id="DPITexture_7vp1s"]
 _source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"4\" height=\"8\"><path fill=\"#fff\" fill-opacity=\".25\" d=\"M1 0h2v16H1z\"/></svg>
@@ -231,7 +166,8 @@ expand_margin_bottom = 15.0
 
 [sub_resource type="Theme" id="Theme_tygxf"]
 HSlider/icons/grabber = SubResource("DPITexture_3id1m")
-HSlider/icons/grabber_highlight = SubResource("DPITexture_xcqgn")
+HSlider/icons/grabber_disabled = SubResource("DPITexture_xcqgn")
+HSlider/icons/grabber_highlight = SubResource("DPITexture_mxrqf")
 HSlider/icons/tick = SubResource("DPITexture_7vp1s")
 HSlider/styles/grabber_area = SubResource("StyleBoxFlat_fmr41")
 HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_lhfau")
@@ -255,7 +191,6 @@ grow_vertical = 2
 size_flags_horizontal = 0
 size_flags_vertical = 3
 focus_mode = 2
-theme = SubResource("Theme_87rjv")
 follow_focus = true
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2

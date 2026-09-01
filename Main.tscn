@@ -132,19 +132,45 @@ bg_color = Color(0, 0, 0, 0.15)
 expand_margin_left = 2.0
 expand_margin_right = 2.0
 
+[sub_resource type="DPITexture" id="DPITexture_5tuhn"]
+
+[sub_resource type="DPITexture" id="DPITexture_2gh4u"]
+
+[sub_resource type="DPITexture" id="DPITexture_devvj"]
+
+[sub_resource type="DPITexture" id="DPITexture_3b0ty"]
+_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"4\" height=\"8\"><path fill=\"#fff\" fill-opacity=\".25\" d=\"M1 0h2v16H1z\"/></svg>
+"
+base_scale = 2.0
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_grabber"]
-bg_color = Color(1, 1, 1, 1)
+bg_color = Color(0.86898494, 0.8689849, 0.86898494, 1)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
+corner_detail = 5
+expand_margin_top = 8.0
+expand_margin_bottom = 8.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_grabber_hl"]
-bg_color = Color(0.9833, 0.87, 0.687, 1)
-border_width_left = 5
-border_width_top = 5
-border_width_right = 5
-border_width_bottom = 5
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+corner_detail = 5
+expand_margin_top = 8.0
+expand_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5tuhn"]
+bg_color = Color(0, 0, 0, 0.6039216)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+corner_detail = 5
+expand_margin_top = 7.0
+expand_margin_bottom = 7.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lineedit_focus"]
 content_margin_left = 4.0
@@ -282,9 +308,13 @@ HScrollBar/styles/grabber = SubResource("StyleBoxFlat_grabber")
 HScrollBar/styles/grabber_highlight = SubResource("StyleBoxFlat_grabber_hl")
 HScrollBar/styles/grabber_pressed = SubResource("StyleBoxFlat_grabber_hl")
 HScrollBar/styles/scroll = SubResource("StyleBoxFlat_scroll")
+HSlider/icons/grabber = SubResource("DPITexture_5tuhn")
+HSlider/icons/grabber_disabled = SubResource("DPITexture_2gh4u")
+HSlider/icons/grabber_highlight = SubResource("DPITexture_devvj")
+HSlider/icons/tick = SubResource("DPITexture_3b0ty")
 HSlider/styles/grabber_area = SubResource("StyleBoxFlat_slider_grabber")
 HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_slider_grabber_hl")
-HSlider/styles/slider = null
+HSlider/styles/slider = SubResource("StyleBoxFlat_5tuhn")
 Label/colors/font_color = Color(0.875, 0.875, 0.875, 1)
 Label/colors/font_outline_color = Color(0, 0, 0, 0.5)
 Label/font_sizes/font_size = 28
@@ -418,6 +448,9 @@ region = Rect2(0, 240, 80, 80)
 [sub_resource type="AtlasTexture" id="AtlasTexture_5h6qm"]
 atlas = ExtResource("13_bg4s2")
 region = Rect2(160, 80, 80, 80)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_5tuhn"]
+content_margin_right = 20.0
 
 [sub_resource type="InputEventKey" id="InputEventKey_w3rk5"]
 device = -1
@@ -794,6 +827,7 @@ expand_icon = true
 [node name="AlbumList" type="ScrollContainer" parent="skew/C" unique_id=257977288]
 physics_interpolation_mode = 1
 visible = false
+clip_contents = false
 layout_mode = 1
 anchors_preset = -1
 anchor_bottom = 1.0
@@ -838,6 +872,7 @@ offset_right = 1034.0
 offset_bottom = 45.0
 size_flags_horizontal = 3
 size_flags_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxEmpty_5tuhn")
 follow_focus = true
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
@@ -854,6 +889,7 @@ alignment = 1
 [node name="SortedMidisList" type="ScrollContainer" parent="skew/C" unique_id=1679713169]
 physics_interpolation_mode = 1
 visible = false
+clip_contents = false
 layout_mode = 1
 anchors_preset = -1
 anchor_bottom = 1.0

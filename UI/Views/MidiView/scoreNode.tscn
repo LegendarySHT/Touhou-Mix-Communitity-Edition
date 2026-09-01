@@ -11,28 +11,6 @@ corner_radius_bottom_right = 6
 corner_radius_bottom_left = 24
 corner_detail = 1
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m4qc3"]
-draw_center = false
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4qljk"]
-draw_center = false
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gm3kn"]
-draw_center = false
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 12
-border_color = Color(1, 1, 1, 0.25882354)
-border_blend = true
-corner_radius_top_left = 6
-corner_radius_top_right = 24
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 24
-corner_detail = 1
-expand_margin_left = 10.0
-expand_margin_right = 10.0
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dnql7"]
 draw_center = false
 border_width_left = 5
@@ -49,9 +27,9 @@ corner_radius_bottom_left = 6
 [node name="ScoreNode" type="Button" unique_id=487824627]
 custom_minimum_size = Vector2(540, 115)
 theme_override_styles/normal = SubResource("StyleBoxFlat_qg2wq")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_m4qc3")
-theme_override_styles/hover = SubResource("StyleBoxFlat_4qljk")
-theme_override_styles/focus = SubResource("StyleBoxFlat_gm3kn")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qg2wq")
+theme_override_styles/hover = SubResource("StyleBoxFlat_qg2wq")
+theme_override_styles/focus = SubResource("StyleBoxFlat_qg2wq")
 script = ExtResource("1_uq81t")
 
 [node name="Rank" type="Label" parent="." unique_id=1945223485]
