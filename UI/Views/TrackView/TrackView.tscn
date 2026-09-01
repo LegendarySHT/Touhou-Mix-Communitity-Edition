@@ -173,13 +173,21 @@ HSlider/styles/grabber_area = SubResource("StyleBoxFlat_fmr41")
 HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_lhfau")
 HSlider/styles/slider = SubResource("StyleBoxFlat_y5rhe")
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_r0ui6"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_xcqgn"]
 atlas = ExtResource("3_3id1m")
 region = Rect2(0, 80, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_r0ui6"]
+atlas = ExtResource("3_3id1m")
+region = Rect2(80, 80, 80, 80)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_kgiiq"]
 atlas = ExtResource("3_3id1m")
 region = Rect2(0, 160, 80, 80)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3id1m"]
+atlas = ExtResource("3_3id1m")
+region = Rect2(0, 240, 80, 80)
 
 [node name="TrackView" type="ScrollContainer" unique_id=1056782616]
 custom_minimum_size = Vector2(1500, 1120)
@@ -430,7 +438,8 @@ columns = 3
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 toggle_mode = true
-texture_normal = SubResource("AtlasTexture_r0ui6")
+texture_normal = SubResource("AtlasTexture_xcqgn")
+texture_pressed = SubResource("AtlasTexture_r0ui6")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -454,6 +463,7 @@ custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 toggle_mode = true
 texture_normal = SubResource("AtlasTexture_kgiiq")
+texture_pressed = SubResource("AtlasTexture_3id1m")
 ignore_texture_size = true
 stretch_mode = 5
 

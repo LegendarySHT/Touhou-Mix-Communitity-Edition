@@ -88,8 +88,8 @@ expand_margin_bottom = 15.0
 bg_color = Color(0.12941177, 0.4117647, 0.7058824, 1)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tn4wv"]
-atlas = ExtResource("3_qoscg")
-region = Rect2(80, 80, 80, 80)
+atlas = ExtResource("8_r153q")
+region = Rect2(160, 0, 80, 80)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btcpj"]
 bg_color = Color(0.18431373, 0.58431375, 1, 1)

@@ -81,6 +81,10 @@ func restore_midi_data_config() -> void:
 	midi_vol_slider.set_block_signals(false)
 	vocal_vol_slider.set_block_signals(false)
 
+	# 同步静音按钮按下状态（静音 = 音量条 0）：切换 MIDI 时须重置，避免沿用上一个 MIDI 的按下态
+	_track_view.midi_vol_btn.set_pressed_no_signal(midi_vol_slider.value <= 0.0)
+	_track_view.vocal_vol_btn.set_pressed_no_signal(vocal_vol_slider.value <= 0.0)
+
 	# 应用实际的播放音量，不只是更新UI
 	# MIDI音量实际效果为UI值的2倍: 0.5=0dB, 1.0=+6dB
 	var midi_volume_db = linear_to_db(midi_vol * 2.0)

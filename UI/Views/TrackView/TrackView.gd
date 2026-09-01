@@ -358,16 +358,6 @@ func _on_volume_btn_toggled(toggle_on: bool, btn: TextureButton) -> void:
 		else:
 			_on_vocal_volume_changed(_prev_vocal_vol if _prev_vocal_vol >= 0.0 else DEFAULT_VOCAL_VOL)
 
-	_set_volume_btn_visual(btn, toggle_on)
-
-# 统一更新音量按钮的静音视觉状态
-func _set_volume_btn_visual(btn: TextureButton, muted: bool) -> void:
-	if muted:
-		var clr := ThemeManager.DANGER_COLOR
-		btn.modulate = Color(clr.r, clr.g, clr.b, 0.6)
-	else:
-		btn.modulate = Color(1, 1, 1, 1)
-
 # MIDI音量改变回调
 func _on_midi_volume_changed(value: float) -> void:
 	if midi_playback_manager == null:
@@ -377,7 +367,6 @@ func _on_midi_volume_changed(value: float) -> void:
 	if midi_vol_btn.button_pressed and value > 0.0:
 		_prev_midi_vol = value
 		midi_vol_btn.set_pressed_no_signal(false)
-		_set_volume_btn_visual(midi_vol_btn, false)
 
 	# MIDI音量实际效果为UI值的2倍: 0.5=0dB, 1.0=+6dB
 	var volume_db = linear_to_db(value * 2.0)
@@ -395,7 +384,6 @@ func _on_vocal_volume_changed(value: float) -> void:
 	if vocal_vol_btn.button_pressed and value > 0.0:
 		_prev_vocal_vol = value
 		vocal_vol_btn.set_pressed_no_signal(false)
-		_set_volume_btn_visual(vocal_vol_btn, false)
 
 	# 人声音量1:1映射（0-1 线性）
 	var volume_db = linear_to_db(value)
