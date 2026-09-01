@@ -617,6 +617,10 @@ func animate_ui_in(ui_name: String, _old_state: UIStateManager.UIState) -> Tween
 			ani_comp.offset_transform_position = Vector2(0, -500)
 			tween = animate_offset_back(ani_comp, 0.5, tween_id)
 		"Player_Info":
+			# 离线模式下不显示玩家面板（仅检查 online_mode 配置，与 RB_Btn 商店图标一致）
+			if not NetManager.is_online_mode():
+				ani_comp.visible = false
+				return null
 			var chara: Node = ani_comp.get_node("Chara")
 			ani_comp.offset_transform_position = Vector2(900, 200)
 			if chara: chara.offset_transform_position = Vector2(0, chara.size.y)

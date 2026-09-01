@@ -8,6 +8,7 @@ enum ShowStat {
 	BACK_BTN,
 	STORE_BTN,
 	DELVIEW_BACK,
+	CHARA_BTN,
 }
 
 @onready var ani:AnimationManager = AniMGR
@@ -78,6 +79,9 @@ func _set_shortcut_enabled(enabled: bool) -> void:
 			btn.shortcut = null
 
 func switch_display(content_to_show: ShowStat = ShowStat.NONE):
+	# 离线模式下不显示商店图标：请求 STORE_BTN 时改为显示离线专用按钮（CHARA_BTN），其它图标正常入场
+	if content_to_show == ShowStat.STORE_BTN and not NetManager.is_online_mode():
+		content_to_show = ShowStat.CHARA_BTN
 	if content_to_show == _current_stat:
 		return
 
@@ -103,6 +107,9 @@ func switch_display(content_to_show: ShowStat = ShowStat.NONE):
 		ShowStat.DELVIEW_BACK:
 			ani.animate_offset_to(vboxc, Vector2(0, -430))
 			event.keycode = KEY_RIGHT
+		ShowStat.CHARA_BTN:
+			ani.animate_offset_to(vboxc, Vector2(0, -860))
+			event.keycode = KEY_O
 	
 	# 快捷键：shortcut 被禁用时更新到 _saved_shortcut，恢复后即生效
 	var target := btn.shortcut if btn.shortcut else _saved_shortcut
@@ -124,3 +131,5 @@ func _on_button_pressed() -> void:
 			UiStatMGR.change_state(UiStatMGR.UIState.STORE_VIEW)
 		ShowStat.DELVIEW_BACK:
 			eb.page_right.emit()
+		ShowStat.CHARA_BTN:
+			pass  # 对应页面尚未实现，跳转逻辑留空

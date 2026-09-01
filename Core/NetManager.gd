@@ -122,6 +122,10 @@ func _on_config_changed(key: String, section: String, _value: Variant) -> void:
 			is_online = false
 			_start_quick_retry()
 
+## 查询在线模式是否启用（离线时不联网；供 UI 隐藏在线相关组件，静态便捷入口）
+static func is_online_mode() -> bool:
+	return instance != null and instance._online_mode_enabled
+
 ## 设置在线模式开关（由 Main.gd 在初始化和配置变更时调用）
 func set_online_mode(enabled: bool) -> void:
 	_online_mode_enabled = enabled

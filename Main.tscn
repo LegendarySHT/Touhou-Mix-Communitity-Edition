@@ -533,6 +533,11 @@ region = Rect2(160, 0, 80, 80)
 atlas = ExtResource("17_xrxkg")
 region = Rect2(160, 160, 80, 80)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_5tuhn"]
+atlas = ExtResource("17_xrxkg")
+region = Rect2(0, 320, 80, 80)
+margin = Rect2(1, 0, 0, 0)
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6vipk"]
 content_margin_left = 20.0
 content_margin_right = 20.0
@@ -1188,6 +1193,16 @@ offset_transform_enabled = true
 offset_transform_rotation = -0.5235988
 mouse_filter = 2
 texture = SubResource("AtlasTexture_d4kk1")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Chara" type="TextureRect" parent="RB_Btn/VBoxC" unique_id=1842346566]
+custom_minimum_size = Vector2(180, 180)
+layout_mode = 2
+offset_transform_enabled = true
+offset_transform_rotation = -0.5235988
+mouse_filter = 2
+texture = SubResource("AtlasTexture_5tuhn")
 expand_mode = 1
 stretch_mode = 5
 
