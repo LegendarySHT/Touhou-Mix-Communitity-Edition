@@ -60,6 +60,10 @@ var _vocal_loaded_path: String = ""
 ## 音频不同步阈值（毫秒）
 var sync_threshold_ms: float = 200.0
 
+## 音频校准延迟（毫秒，设置页音频校准写入 audio_playback_delay）
+## 仅叠加到自动/背景音符与人声时钟，玩家手动触发（touch）的音符实时发声，不附加此延迟。
+var _audio_delay_ms: float = 0.0
+
 ## 上次同步检查时的MIDI位置（毫秒）
 var last_sync_check_pos_ms: float = 0.0
 
@@ -98,6 +102,9 @@ func _ready() -> void:
 	
 	# 从配置文件加载音源设置
 	_load_soundfont_from_config()
+
+	# 加载音频校准延迟（设置页音频校准写入 audio_playback_delay）
+	_audio_delay_ms = float(ConfigManager.instance.get_int("Gameplay", "audio_playback_delay", 0))
 	
 	# 监听设置改变信号（用于动态切换MIDI后端和音源）
 	if EvtBus:
@@ -166,8 +173,8 @@ func _process(_delta: float) -> void:
 	if not is_playing or backend == null:
 		return
 
-	# MeltySynth 后端：使用毫秒位置
-	position_ms = backend.get_position_ms()
+	# MeltySynth 后端：使用毫秒位置（叠加音频校准延迟，见 _audio_delay_ms）
+	position_ms = backend.get_position_ms() - _audio_delay_ms
 	# 将毫秒转为tick（使用BPM时间线）
 	if midi_timebase > 0:
 		position = calculate_tick_from_position_with_bpm_timeline(position_ms, midi_timebase)
@@ -1454,7 +1461,7 @@ func get_realtime_position_ms() -> float:
 	_realtime_pos_cache_frame = current_frame
 	var backend = _get_active_backend()
 	if backend != null:
-		_realtime_pos_cache = backend.get_position_ms()
+		_realtime_pos_cache = backend.get_position_ms() - _audio_delay_ms
 	else:
 		_realtime_pos_cache = position_ms
 	return _realtime_pos_cache
@@ -1492,6 +1499,7 @@ func set_vocal_offset_ms(offset_ms: float) -> void:
 ## 应用人声偏移（重新调整人声播放位置）
 func apply_vocal_offset() -> void:
 	# Used when the latency setting changes while playback continues.
+	# 人声走音频渲染时钟，必须用 get_raw_position_ms()（不含视觉用的校准延迟）
 	_seek_vocal_to_midi_position(get_raw_position_ms())
 
 ## Seek vocal to a MIDI position without relying on a stale position_ms read.
@@ -1510,6 +1518,7 @@ func _seek_vocal_to_midi_position(midi_position_ms: float) -> void:
 		return
 
 	_vocal_initialized = true
+	# 调用方传入的是音频渲染时钟（get_raw_position_ms），已与人声消费帧对齐，无需再扣别的延迟
 	var vocal_position_ms := midi_position_ms - vocal_offset_ms
 	if vocal_position_ms < 0.0:
 		audio_manager.set_vocal_playing(false)
@@ -1533,6 +1542,7 @@ func start_vocal_playback() -> void:
 		return
 
 	var vocal_file_path = current_midi_data.vocal_file_path
+	# 用音频渲染时钟（get_raw_position_ms）定位人声，与 MIDI 合成器同一时钟，避免叠加视觉校准延迟造成错位
 	var expected_vocal_position = get_raw_position_ms() - vocal_offset_ms
 	var start_position_ms = max(0.0, expected_vocal_position)
 
@@ -1664,17 +1674,17 @@ func _sync_vocal_with_midi() -> void:
 		_vocal_initialized = false
 		return
 
-	# 使用已渲染的原始音频回调时钟：人声位置由同一个 miniaudio 设备回调消费。
-	# 不要使用 position_ms，它已经包含设备延迟补偿，和人声消费帧不在同一坐标系。
-	var raw_midi_position_ms: float = get_raw_position_ms()
-	var expected_vocal_position = raw_midi_position_ms - vocal_offset_ms
+	# 人声是音频流，与 MIDI 合成器共用音频渲染时钟（get_raw_position_ms）。
+	# 不要用 get_position_ms()（含视觉判定用的校准/设备延迟），否则会把校准延迟叠进人声导致错位。
+	var midi_position_ms: float = get_raw_position_ms()
+	var expected_vocal_position = midi_position_ms - vocal_offset_ms
 
 	# 如果人声已初始化但未播放（预卷期间被暂停，或刚 start_vocal_playback）
 	if _vocal_initialized and not audio_manager.is_vocal_playing():
 		# 只有当 MIDI 已跨越人声起点（vocal_offset_ms）才恢复播放
 		if expected_vocal_position >= 0.0:
 			audio_manager.set_vocal_playing(true)
-			last_sync_check_pos_ms = raw_midi_position_ms
+			last_sync_check_pos_ms = midi_position_ms
 		return
 
 	if not audio_manager.is_vocal_playing():
@@ -1687,7 +1697,7 @@ func _sync_vocal_with_midi() -> void:
 		return
 
 	# 检查是否需要同步（时间间隔 > 100ms）
-	if abs(raw_midi_position_ms - last_sync_check_pos_ms) < 100.0:
+	if abs(midi_position_ms - last_sync_check_pos_ms) < 100.0:
 		return
 
 	# 获取人声当前播放进度
@@ -1700,7 +1710,7 @@ func _sync_vocal_with_midi() -> void:
 		GLogger.info("Vocal sync adjusted: diff=%.0f ms, target=%.0f ms" % [diff, expected_vocal_position], "MidiPlaybackManager")
 
 	# 更新上次同步检查的位置
-	last_sync_check_pos_ms = raw_midi_position_ms
+	last_sync_check_pos_ms = midi_position_ms
 
 ## 设置音频同步阈值（毫秒）
 func set_sync_threshold(threshold_ms: float) -> void:
@@ -1722,6 +1732,11 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			set_sync_threshold(float(value))
 			GLogger.info("Audio sync threshold changed to %.0f ms" % sync_threshold_ms, "MidiPlaybackManager")
 			return
+
+		# 音频校准延迟变化（设置页 DelayAdjust 保存后触发），实时生效
+		if key == "audio_playback_delay":
+			_audio_delay_ms = float(value)
+			GLogger.info("Audio playback delay changed to %.0f ms" % _audio_delay_ms, "MidiPlaybackManager")
 
 		# 处理音源文件配置变更
 		if key == "soundfont_file":

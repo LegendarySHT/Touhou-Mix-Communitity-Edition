@@ -177,8 +177,11 @@ func _on_delay_btn_pressed() -> void:
 	var click_x: float = _adjust_line.offset_transform_position.x
 	# 生成残影：直接用 AdjustLine 当前位置，残影直观反映点击时刻 AdjustLine 的位置
 	_spawn_adjust_line_ghost(click_x)
-	# px → ms：除以速度 _ANIM_SPEED 乘 1000，取反使 x<0→正值
+	# px → ms：取反使 x<0→正值（汇总符号规范：左=正，即音频偏晚=正向补偿）
+	# 用户在听到节拍时才点击：音频输出偏晚 → 点击落在重拍位置左侧（click_x<0）→ 应得正向补偿
 	var delay: float = -click_x / _ANIM_SPEED * 1000.0
+	# 样本与显示/保存范围保持一致（±_MAX_DELAY_MS），避免越界均值（如 ±700ms）与保存时的 clamp 矛盾
+	delay = clampf(delay, -_MAX_DELAY_MS, _MAX_DELAY_MS)
 	_calib_samples.append(delay)
 	# 稳定性检测：与前一个样本的差值 ≤ 50ms → 计数器 +1，否则归零
 	if not is_nan(_last_sample):
@@ -266,10 +269,12 @@ func _compute_stable_average() -> float:
 	return sum / float(_calib_samples.size() - start)
 
 # 更新 CenterLine 位置（坐标映射与 _on_delay_btn_pressed 互逆）
+# 符号规范统一：左=正（音频偏晚=正向补偿）。
+# 音频偏晚时用户"听到节拍再点"会落在左侧，中心线提示条也应在左侧提示正确的点击位置
 # clamp 到 ±_MAX_DELAY_MS 避免越出 DelayIndicator 容器边界
 func _update_center_line(delay_ms: float) -> void:
 	var clamped: float = clampf(delay_ms, -_MAX_DELAY_MS, _MAX_DELAY_MS)
-	# ms → px：乘 _ANIM_SPEED 除 1000，与 _on_delay_btn_pressed 互逆
+	# ms → px：取反使正延迟落在左侧，与 _on_delay_btn_pressed 的"左=正"一致
 	_center_line.offset_transform_position = Vector2(-clamped * _ANIM_SPEED / 1000.0, 0)
 
 # 统一设置延迟值：更新 LineEdit 和 CenterLine（程序化设置，避开 text_changed 重复更新）
@@ -294,9 +299,9 @@ func _input(event: InputEvent) -> void:
 	var rect := _delay_indicator.get_global_rect()
 	if not rect.has_point(event.position):
 		return
-	# 计算手指相对于 DelayIndicator 中心的 x 偏移（px），下转 ms）
+	# 计算手指相对于 DelayIndicator 中心的 x 偏移（px，下转 ms）
 	var local_x: float = event.position.x - rect.get_center().x
-	# px → ms：除以 _ANIM_SPEED 乘 1000，取反使左侧→正延迟
+	# px → ms：左侧→正延迟，与按钮点击/中心线的"左=正"约定一致
 	var delay: float = -local_x / _ANIM_SPEED * 1000.0
 	delay = clampf(delay, -_MAX_DELAY_MS, _MAX_DELAY_MS)
 	_set_delay_value(delay)

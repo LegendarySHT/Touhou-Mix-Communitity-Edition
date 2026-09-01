@@ -29,6 +29,10 @@ class_name TrackView
 var current_midi_data: MidiData = null
 var is_progress_dragging: bool = false
 
+# 静音按钮记住的上一次音量条值（<0 表示本次会话尚未静音过，恢复时用默认值）
+var _prev_midi_vol: float = -1.0
+var _prev_vocal_vol: float = -1.0
+
 var current_tick: int = 0
 var last_position_ms: float = 0.0  # 用于检测循环播放重置
 
@@ -331,24 +335,53 @@ func _on_progress_bar_value_changed(value: float) -> void:
 		current_time.text = _format_time(value)
 
 
-# 音量按钮回调
+# 音量按钮回调：按下→把对应音量条拉到0静音（记住原值），再按→恢复原值。
+# 不禁止滑块：静音状态下滑动滑块会解除静音并采用新值（见 _on_midi/vocal_volume_changed）
 func _on_volume_btn_toggled(toggle_on: bool, btn: TextureButton) -> void:
-	if btn == midi_vol_btn:
-		midi_vol_slider.editable = not toggle_on
-	elif btn == vocal_vol_btn:
-		vocal_vol_slider.editable = not toggle_on
+	# 静音时的体积（dB），避免 linear_to_db(0) 产生 -inf
+	const MUTE_DB: float = -80.0
+	const DEFAULT_MIDI_VOL: float = 0.5  # 无历史值时恢复的默认MIDI音量（50%）
+	const DEFAULT_VOCAL_VOL: float = 1.0 # 无历史值时恢复的默认人声音量（100%）
 
-	var mute_clr := ThemeManager.DANGER_COLOR
-	btn.modulate = Color(mute_clr.r, mute_clr.g, mute_clr.b, 0.6) if toggle_on else Color(1, 1, 1, 1)
+	if btn == midi_vol_btn:
+		if toggle_on:
+			_prev_midi_vol = midi_vol_slider.value
+			_set_display_midi_volume(0.0)
+			midi_playback_manager.set_volume_db(MUTE_DB)
+		else:
+			_on_midi_volume_changed(_prev_midi_vol if _prev_midi_vol >= 0.0 else DEFAULT_MIDI_VOL)
+	elif btn == vocal_vol_btn:
+		if toggle_on:
+			_prev_vocal_vol = vocal_vol_slider.value
+			_vocal_controller.set_display_vocal_volume(0.0)
+			midi_playback_manager.set_vocal_volume_db(MUTE_DB)
+		else:
+			_on_vocal_volume_changed(_prev_vocal_vol if _prev_vocal_vol >= 0.0 else DEFAULT_VOCAL_VOL)
+
+	_set_volume_btn_visual(btn, toggle_on)
+
+# 统一更新音量按钮的静音视觉状态
+func _set_volume_btn_visual(btn: TextureButton, muted: bool) -> void:
+	if muted:
+		var clr := ThemeManager.DANGER_COLOR
+		btn.modulate = Color(clr.r, clr.g, clr.b, 0.6)
+	else:
+		btn.modulate = Color(1, 1, 1, 1)
 
 # MIDI音量改变回调
 func _on_midi_volume_changed(value: float) -> void:
 	if midi_playback_manager == null:
 		return
 
+	# 静音状态下拖动滑块到非0 → 视为解除静音并采用新值
+	if midi_vol_btn.button_pressed and value > 0.0:
+		_prev_midi_vol = value
+		midi_vol_btn.set_pressed_no_signal(false)
+		_set_volume_btn_visual(midi_vol_btn, false)
+
 	# MIDI音量实际效果为UI值的2倍: 0.5=0dB, 1.0=+6dB
-	# 公式: linear = value * 2.0
 	var volume_db = linear_to_db(value * 2.0)
+	volume_db = maxf(volume_db, -80.0)  # value=0 → -inf，钳到 -80 静音
 	midi_playback_manager.set_volume_db(volume_db)
 
 	# 更新标签
@@ -358,8 +391,15 @@ func _on_vocal_volume_changed(value: float) -> void:
 	if midi_playback_manager == null:
 		return
 
+	# 静音状态下拖动滑块到非0 → 解除静音并采用新值
+	if vocal_vol_btn.button_pressed and value > 0.0:
+		_prev_vocal_vol = value
+		vocal_vol_btn.set_pressed_no_signal(false)
+		_set_volume_btn_visual(vocal_vol_btn, false)
+
 	# 人声音量1:1映射（0-1 线性）
 	var volume_db = linear_to_db(value)
+	volume_db = maxf(volume_db, -80.0)
 	midi_playback_manager.set_vocal_volume_db(volume_db)
 
 	# 更新MidiData中的音量值，用于持久化

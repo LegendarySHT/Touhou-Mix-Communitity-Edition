@@ -194,11 +194,6 @@ public partial class MeltySynthPlayer
 				{
 					_volumeLinear = volumeLinear;
 				}
-				// 同时通过 miniaudio API 设置主音量 (原子操作, 线程安全)
-				if (_bridgeHandle != IntPtr.Zero)
-				{
-					MiniaudioNative.ma_bridge_set_volume(_bridgeHandle, volumeLinear);
-				}
 			}
 
 			int IAudioOutputBridge.PostSeekSilenceFrames
