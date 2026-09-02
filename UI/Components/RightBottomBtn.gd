@@ -46,7 +46,7 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 
 func _on_state_change(_old_state, new_state: UIStateManager.UIState):
-	if new_state in [ui.UIState.ALBUM_VIEW, ui.UIState.SONG_VIEW]:
+	if new_state in [ui.UIState.ALBUM_VIEW]:
 		switch_display(ShowStat.STORE_BTN)
 	elif new_state in [ui.UIState.PLAY_VIEW]:
 		switch_display(ShowStat.NONE)

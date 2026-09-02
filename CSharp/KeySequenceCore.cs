@@ -333,6 +333,27 @@ public partial class KeySequenceCore : RefCounted
 
     private int BlockHand(float x) => x < _screenWidth * 0.5f ? 0 : 1;
 
+    // 指定手（0 左 / 1 右）的全部手指是否都在该时刻握长条（该侧手已被长条占满）
+    private bool HandFullyHoldingLong(int hand, float atMs)
+    {
+        bool any = false;
+        foreach (var f in _touches)
+        {
+            if (f.Hand != hand) continue;
+            any = true;
+            if (!f.HoldingLongAt(atMs)) return false;
+        }
+        return any;
+    }
+
+    // 音符是否明显远离中心 reachable 区（另一只手跨不过来到这个位置）
+    private bool FarFromCenter(float x, int nh)
+    {
+        float center = _screenWidth * 0.5f;
+        float reach = _keyWidth * 0.5f;
+        return nh == 0 ? x < center - reach : x > center + reach;
+    }
+
     // ========== Step A 建块（仅建块 + 同刻过载保护，不含 Long 状态写入）==========
     private void BuildChords(int from, int to, List<BlockInfo> allBlocks)
     {
@@ -473,11 +494,19 @@ public partial class KeySequenceCore : RefCounted
             float gap = (b.StartMs - t.LastPressTimeMs) / 1000.0f;
             if (gap < _minTapInterval) b.Type = 1;
         }
+        // 规则 D：所属那只手的全部手指都被长条占满（如左手两指都按住长条、左边又来 block），
+        // 且音符远离中心、另一只手指跨不过来 → 该侧无法点到的 Block → Slide（仅普通 Block）
+        if (b.Type == 0)
+        {
+            int nh = BlockHand(b.X);
+            if (HandFullyHoldingLong(nh, b.StartMs) && FarFromCenter(b.X, nh)) b.Type = 1;
+        }
 
         // 独占写入 Long 状态：仅最终 Type == 2 才写（被降级绝不写）
         if (b.Type == 2)
         {
-            _laneLongEnd[b.Lane] = b.EndMs + _cooldownSec * 1000.0f;
+            // 同轨长条压制：结束时间额外延长一个连点最小时间，让长条后紧接的同轨 block 也被当作被按住而降级
+            _laneLongEnd[b.Lane] = b.EndMs + (_cooldownSec + _minTapInterval) * 1000.0f;
             t.HoldingLongEnd = b.EndMs;   // 该触点握持长条直到 EndMs
         }
 

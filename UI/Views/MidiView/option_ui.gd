@@ -16,7 +16,7 @@ const MODE_AUTO_ID: int = 1
 const DIFFICULTY_PRESETS: Dictionary = {
 	0: {"max_simultaneous_blocks": 2, "min_tap_interval": 0.3, "min_touch_cooldown_time": 0.3, "max_touch_move_speed": 800, "max_block_coalesce_time": 5},
 	1: {"max_simultaneous_blocks": 2, "min_tap_interval": 0.15, "min_touch_cooldown_time": 0.15, "max_touch_move_speed": 1200, "max_block_coalesce_time": 8},
-	2: {"max_simultaneous_blocks": 3, "min_tap_interval": 0.1, "min_touch_cooldown_time": 0.1, "max_touch_move_speed": 99999, "max_block_coalesce_time": 12},
+	2: {"max_simultaneous_blocks": 3, "min_tap_interval": 0.15, "min_touch_cooldown_time": 0.1, "max_touch_move_speed": 99999, "max_block_coalesce_time": 12},
 	3: {"max_simultaneous_blocks": 8, "min_tap_interval": 0.0, "min_touch_cooldown_time": 0.0, "max_touch_move_speed": 99999, "max_block_coalesce_time": 0},
 }
 const DIFFICULTY_CUSTOM_ID: int = 4
