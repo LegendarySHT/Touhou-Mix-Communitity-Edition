@@ -346,6 +346,19 @@ public partial class KeySequenceCore : RefCounted
         return any;
     }
 
+    // 指定手当前握持的长条总数是否已达该手全部手指数（无空闲手指可再握新长条）
+    private bool HandHoldingCapacityFull(int hand)
+    {
+        int count = 0;
+        foreach (var f in _touches)
+        {
+            if (f.Hand != hand) continue;
+            count++;
+            if (f.HoldingLongCount <= 0) return false;   // 有手指空闲（当前未握任何长条）
+        }
+        return count > 0;
+    }
+
     // 音符是否明显远离中心 reachable 区（另一只手跨不过来到这个位置）
     private bool FarFromCenter(float x, int nh)
     {
@@ -470,7 +483,6 @@ public partial class KeySequenceCore : RefCounted
         {
             var batch = byBatch[bid];
             MatchBlocksToTouches(batch);
-            batch.Sort((a, b) => a.StartMs.CompareTo(b.StartMs));
             foreach (var b in batch) DegradeBlockType(b);
         }
     }
@@ -483,7 +495,10 @@ public partial class KeySequenceCore : RefCounted
 
         // 长条已到的块释放其握持状态（长条结束前其触点不再空闲）
         if (t.HoldingLongEnd >= 0 && b.StartMs >= t.HoldingLongEnd)
+        {
             t.HoldingLongEnd = float.NegativeInfinity;
+            t.HoldingLongCount = 0;   // 该触点握持的长条已全部结束，握持数清零
+        }
 
         // 最终降级判定（按 StartMs 升序处理，天然有序；用原始 lane，不受钳位漂移影响）
         // 规则 A：同轨 Long 压制；规则 B：连点过密压制；规则 C：触点正在握长条（手指占用，无法再按）→ Slide
@@ -502,12 +517,18 @@ public partial class KeySequenceCore : RefCounted
             if (HandFullyHoldingLong(nh, b.StartMs) && FarFromCenter(b.X, nh)) b.Type = 1;
         }
 
+        // 规则 E：音符是长条时，若所属那只手的握持长条数已达该手全部手指数（无指可握新长条），
+        // 则新长条退化为 Block——两边手指都被长条占满时，中间无法再握更多长条
+        if (b.Type == 2 && HandHoldingCapacityFull(BlockHand(b.X)))
+            b.Type = 0;
+
         // 独占写入 Long 状态：仅最终 Type == 2 才写（被降级绝不写）
         if (b.Type == 2)
         {
             // 同轨长条压制：结束时间额外延长一个连点最小时间，让长条后紧接的同轨 block 也被当作被按住而降级
             _laneLongEnd[b.Lane] = b.EndMs + (_cooldownSec + _minTapInterval) * 1000.0f;
             t.HoldingLongEnd = b.EndMs;   // 该触点握持长条直到 EndMs
+            t.HoldingLongCount++;         // 该触点握持的长条数 +1
         }
 
         // 更新手指状态（位置用原始 X，仅供后续触点匹配启发式，Phase B 会重推）
@@ -531,6 +552,8 @@ public partial class KeySequenceCore : RefCounted
             t.LastPressTimeMs = float.NegativeInfinity;
             t.LastPressX = t.HomeX;
             t.IsFree = true;
+            t.HoldingLongEnd = float.NegativeInfinity;   // 清握持状态，避免 Phase B 后残留
+            t.HoldingLongCount = 0;
         }
         var byTouch = new Dictionary<int, List<BlockInfo>>();
         foreach (var b in blocks)
@@ -865,6 +888,8 @@ public partial class KeySequenceCore : RefCounted
         // 该触点当前正在握持的长条绝对结束时刻（-inf 表示未握长条），用于"手指占用"判定
         public float HoldingLongEnd = float.NegativeInfinity;
         public bool HoldingLongAt(float t) => HoldingLongEnd >= t;
+        // 该触点当前正握的长条数（跨批累计，规则 E 用：长条无指可握时退化为 Block）
+        public int HoldingLongCount;
     }
 
     private class BlockInfo
