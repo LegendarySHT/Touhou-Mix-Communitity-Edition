@@ -542,7 +542,6 @@ public partial class KeySequenceCore : RefCounted
         foreach (var kv in byTouch)
         {
             var list = kv.Value;
-            list.Sort((a, b) => a.StartMs.CompareTo(b.StartMs));
             var t = _touches[kv.Key];
             foreach (var b in list)
             {
@@ -561,6 +560,17 @@ public partial class KeySequenceCore : RefCounted
                 t.LastPressTimeMs = b.StartMs;
                 t.LastPressX = b.X;
             }
+        }
+        // 轨道重排后再按轨道复检连点间隔：音符被移/钳到新轨道后，
+        // 需与"新轨道上其前一个音符"的时间差 >= 连点最小时间，否则降级 Slide（仅普通 Block）。
+        // 规则 B 只查同一手指的上一按，音符换轨后参照已失真，这里用轨道修正。
+        var laneLast = new float[_laneCount];
+        for (int k = 0; k < _laneCount; k++) laneLast[k] = float.NegativeInfinity;
+        foreach (var b in blocks)   // blocks 至此已按 StartMs 有序（BuildChords 建成即有序，中间步骤不打乱）
+        {
+            if (b.Type == 0 && b.StartMs - laneLast[b.Lane] < _minTapInterval * 1000.0f)
+                b.Type = 1;
+            laneLast[b.Lane] = b.StartMs;
         }
     }
 
