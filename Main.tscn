@@ -1,13 +1,13 @@
 [gd_scene format=3 uid="uid://jvmwtrulpf5g"]
 
 [ext_resource type="Script" uid="uid://dvieqmomxd1k7" path="res://Main.gd" id="1_w3rk5"]
-[ext_resource type="Texture2D" uid="uid://bf7nd5qojdcla" path="res://Resources/icon/lily-white.png" id="2_3b0ty"]
 [ext_resource type="Script" uid="uid://co2lh8xsnaw8m" path="res://UI/Components/PlayerInfo/PlayerInfoPanel.gd" id="2_w3rk5"]
 [ext_resource type="Script" uid="uid://dhil2784gca17" path="res://UI/Components/RightBottomBtn.gd" id="7_sqvbp"]
 [ext_resource type="Script" uid="uid://d2g2knk0s5svb" path="res://UI/Views/AlbumView/AlbumView.gd" id="7_w3rk5"]
 [ext_resource type="Script" uid="uid://dpn6fchjbt3b8" path="res://UI/Components/SkewArea.gd" id="8_3b0ty"]
 [ext_resource type="Script" uid="uid://cka36xm3jh6b" path="res://UI/Views/SongView/SongView.gd" id="8_w3rk5"]
 [ext_resource type="Script" uid="uid://cohp1v184ht7q" path="res://UI/Components/ShortCutMenu/shortcut_menu.gd" id="11_oye8v"]
+[ext_resource type="Script" uid="uid://c6wk4t2kxbamq" path="res://UI/Components/CharaInteract.gd" id="12_5tuhn"]
 [ext_resource type="Texture2D" uid="uid://68fry5jr6m8l" path="res://Resources/icon/icon_set2.png" id="13_bg4s2"]
 [ext_resource type="PackedScene" uid="uid://cmg2kkhga3yj5" path="res://UI/Views/AlbumView/albumNode.tscn" id="17_5mvff"]
 [ext_resource type="Texture2D" uid="uid://65e7xhqxd2c6" path="res://Resources/icon/icon_set.png" id="17_xrxkg"]
@@ -370,6 +370,17 @@ colors = PackedColorArray(0, 0.28235295, 0.6862745, 1, 0.39607844, 0.43137255, 0
 gradient = SubResource("Gradient_mxvw5")
 fill_to = Vector2(1, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_iygje"]
+content_margin_left = 20.0
+content_margin_top = 10.0
+content_margin_right = 20.0
+content_margin_bottom = 10.0
+bg_color = Color(0, 0, 0, 0.3372549)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5mvff"]
 draw_center = false
 border_width_left = 5
@@ -603,6 +614,57 @@ texture = SubResource("GradientTexture2D_xrxkg")
 expand_mode = 3
 metadata/_edit_lock_ = true
 
+[node name="Chara" type="Control" parent="." unique_id=44287360]
+custom_minimum_size = Vector2(800, 1000)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -800.0
+offset_top = -1000.0
+grow_horizontal = 0
+grow_vertical = 0
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 1000)
+offset_transform_visual_only = false
+mouse_filter = 2
+
+[node name="CharaBtn" type="TextureButton" parent="Chara" unique_id=174886287]
+custom_minimum_size = Vector2(600, 0)
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -855.0
+offset_right = 300.0
+offset_bottom = -0.835022
+grow_horizontal = 2
+grow_vertical = 0
+offset_transform_enabled = true
+ignore_texture_size = true
+script = ExtResource("12_5tuhn")
+
+[node name="Dialog" type="Label" parent="Chara" unique_id=1574841853]
+visible = false
+custom_minimum_size = Vector2(400, 40)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.1
+anchor_top = 0.5
+anchor_right = 0.9
+anchor_bottom = 0.5
+offset_top = 55.58252
+offset_bottom = 95.58252
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_iygje")
+autowrap_mode = 3
+
 [node name="skew" type="Node2D" parent="." unique_id=761664000]
 editor_description = "用来摆放需要倾斜的组件的"
 skew = 0.2617994
@@ -633,6 +695,7 @@ grow_horizontal = 0
 size_flags_horizontal = 4
 offset_transform_enabled = true
 offset_transform_position = Vector2(134, -500)
+mouse_filter = 2
 script = ExtResource("11_oye8v")
 
 [node name="Btns" type="HBoxContainer" parent="skew/C/ShortCutMenu" unique_id=403981443]
@@ -1055,39 +1118,6 @@ offset_transform_enabled = true
 offset_transform_position = Vector2(900, 200)
 mouse_filter = 2
 script = ExtResource("2_w3rk5")
-
-[node name="Chara" type="Control" parent="PlayerInfo" unique_id=44287360]
-custom_minimum_size = Vector2(800, 1000)
-layout_mode = 1
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -600.0
-offset_top = -1000.0
-grow_horizontal = 0
-grow_vertical = 0
-mouse_filter = 2
-
-[node name="texture" type="TextureRect" parent="PlayerInfo/Chara" unique_id=880171298]
-custom_minimum_size = Vector2(600, 0)
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -300.0
-offset_top = -855.0
-offset_right = 300.0
-offset_bottom = -0.835022
-grow_horizontal = 2
-grow_vertical = 0
-mouse_filter = 2
-texture = ExtResource("2_3b0ty")
-expand_mode = 5
-stretch_mode = 6
 
 [node name="ExpandPanelShader" type="ColorRect" parent="PlayerInfo" unique_id=207008174]
 visible = false

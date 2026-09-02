@@ -165,7 +165,8 @@ func check_critical_resources() -> void:
 		"Soundfont Directory": DEFAULT_SOUNDFONT_SRC,
 		"Background Directory": DEFAULT_BACKGROUND_SRC,
 		"Skins Directory": SkinManager.DEFAULT_SKINS_SRC,
-		"Particles Directory": ParticleMGR.DEFAULT_PARTICLES_SRC
+		"Particles Directory": ParticleMGR.DEFAULT_PARTICLES_SRC,
+		"Charas Directory": CharaMGR.DEFAULT_CHARAS_SRC
 	}
 	
 	for resource_name in critical_resources.keys():
@@ -778,6 +779,7 @@ func _scan_all_resources() -> void:
 	audio_files_index.clear()
 	SkinMGR.clear_index()
 	ParticleMGR.clear_index()
+	CharaMGR.clear_index()
 	soundfonts_index.clear()
 	backgrounds_index.clear()
 
@@ -823,6 +825,11 @@ func _scan_all_resources() -> void:
 		func(): ParticleMGR._build_particles_index_worker(particles_rw),
 		false, "ScanParticles"
 	)
+	var charas_rw: Dictionary = {}
+	var charas_task := WorkerThreadPool.add_task(
+		func(): CharaMGR._build_charas_index_worker(charas_rw),
+		false, "ScanCharas"
+	)
 	var sf_rw: Dictionary = {}
 	var sf_task := WorkerThreadPool.add_task(
 		func(): _scan_soundfonts_worker(sf_rw),
@@ -858,11 +865,12 @@ func _scan_all_resources() -> void:
 	# === 阶段 A.6：等待 skins/sf/bg 完成 ===
 	# 快速路径：只等 skins/sf/bg（charts 已从缓存恢复）
 	# 全量路径：_scan_charts_full_sync 已完成，只等 skins/sf/bg
-	var simple_tasks := [skins_task, particles_task, sf_task, bg_task]
+	var simple_tasks := [skins_task, particles_task, charas_task, sf_task, bg_task]
 	while not _all_simple_tasks_completed(simple_tasks):
 		await get_tree().process_frame
 	WorkerThreadPool.wait_for_task_completion(skins_task)
 	WorkerThreadPool.wait_for_task_completion(particles_task)
+	WorkerThreadPool.wait_for_task_completion(charas_task)
 	WorkerThreadPool.wait_for_task_completion(sf_task)
 	WorkerThreadPool.wait_for_task_completion(bg_task)
 
@@ -881,6 +889,12 @@ func _scan_all_resources() -> void:
 			GLogger.warning(log_entry.msg, "ParticleMGR")
 		else:
 			GLogger.info(log_entry.msg, "ParticleMGR")
+	CharaMGR.charas_index = charas_rw.get("charas", {})
+	for log_entry in charas_rw.get("logs", []):
+		if log_entry.get("is_warning", true):
+			GLogger.warning(log_entry.msg, "CharaMGR")
+		else:
+			GLogger.info(log_entry.msg, "CharaMGR")
 	soundfonts_index = sf_rw.get("soundfonts", {})
 	for w in sf_rw.get("warnings", []):
 		GLogger.warning(w, "FileSystemMGR")
@@ -902,17 +916,17 @@ func _scan_all_resources() -> void:
 
 	var t_end := Time.get_ticks_usec()
 	if use_fast_path:
-		GLogger.info("Resources ready in %.0fms (charts=%d from cache, skins=%d, particles=%d, sf=%d, bg=%d)" % [
+		GLogger.info("Resources ready in %.0fms (charts=%d from cache, skins=%d, particles=%d, charas=%d, sf=%d, bg=%d)" % [
 			(t_end - t_start) / 1000.0,
 			charts_index.size(), SkinMGR.skins_index.size(),
-			ParticleMGR.particles_index.size(),
+			ParticleMGR.particles_index.size(), CharaMGR.charas_index.size(),
 			soundfonts_index.size(), backgrounds_index.size()
 		], "FileSystemMGR")
 	else:
-		GLogger.info("Directory structure initialized in %.0fms (charts=%d, skins=%d, particles=%d, sf=%d, bg=%d)" % [
+		GLogger.info("Directory structure initialized in %.0fms (charts=%d, skins=%d, particles=%d, charas=%d, sf=%d, bg=%d)" % [
 			(t_end - t_start) / 1000.0,
 			charts_index.size(), SkinMGR.skins_index.size(),
-			ParticleMGR.particles_index.size(),
+			ParticleMGR.particles_index.size(), CharaMGR.charas_index.size(),
 			soundfonts_index.size(), backgrounds_index.size()
 		], "FileSystemMGR")
 

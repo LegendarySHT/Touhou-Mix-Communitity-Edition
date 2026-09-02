@@ -2,22 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bf7nd5qojdcla"
-path.s3tc="res://.godot/imported/lily-white.png-31094b9f67ea79f2f8e3bf51b21dcbed.s3tc.ctex"
-path.etc2="res://.godot/imported/lily-white.png-31094b9f67ea79f2f8e3bf51b21dcbed.etc2.ctex"
+uid="uid://cb4yi8i305ifg"
+path="res://.godot/imported/tenshi-stand.png-6b027f9019105506376491833e664cd0.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
-source_file="res://Resources/icon/lily-white.png"
-dest_files=["res://.godot/imported/lily-white.png-31094b9f67ea79f2f8e3bf51b21dcbed.s3tc.ctex", "res://.godot/imported/lily-white.png-31094b9f67ea79f2f8e3bf51b21dcbed.etc2.ctex"]
+source_file="res://Resources/Charas/tenshi-stand/tenshi-stand.png"
+dest_files=["res://.godot/imported/tenshi-stand.png-6b027f9019105506376491833e664cd0.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

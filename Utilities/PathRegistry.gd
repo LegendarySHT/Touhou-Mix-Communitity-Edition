@@ -21,6 +21,7 @@ const RB_BTN := "/root/Main/RB_Btn"
 ## 常驻 UI
 const PLAYER_INFO := "/root/Main/PlayerInfo"
 const PLAYER_INFO_TAB_C := "/root/Main/PlayerInfo/InfoPanelBtn/TabC"
+const CHARACTER := "/root/Main/Chara"
 
 const POPUP_WINDOW_SHADER := "/root/Main/PopupWindowShader"
 ## 通用加载/导入提示（根节点下，ProgressBar 为 ProcessTip 子节点）

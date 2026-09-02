@@ -178,6 +178,9 @@ func set_display(result: ScoreData, midi: MidiData = null, is_auto: bool = false
 	score.text = result.get_formated_score()
 	pp.text = result.get_pp()
 
+	# 立绘：按评级切换人物表情
+	_update_chara_art(result.get_rank())
+
 	# 歌曲信息（专辑/歌名/Midi名/Midi作者/难度）
 	_update_song_info(midi)
 
@@ -196,6 +199,14 @@ func set_display(result: ScoreData, midi: MidiData = null, is_auto: bool = false
 	_entry_animation_done = false
 	# 新一局：递增上传代次，使上一次未完成上传的回调结果失效
 	_upload_generation += 1
+
+## 按评级合成并切换人物立绘（人物未就绪或合成失败时静默跳过，保留原立绘）
+func _update_chara_art(rank: String) -> void:
+	if CharaMGR.charas_index.is_empty():
+		return
+	var tex := CharaMGR.get_current_portrait_by_rank(rank)
+	if tex:
+		chara.texture = tex
 
 ## 填充歌曲信息（来自本次游玩的 MidiData，与 PlayView 信息面板保持一致）
 func _update_song_info(midi: MidiData) -> void:

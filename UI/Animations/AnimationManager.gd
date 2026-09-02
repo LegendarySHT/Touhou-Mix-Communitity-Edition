@@ -310,6 +310,7 @@ func _exit_tree() -> void:
 var ui_exist = {
 	"Album_List" : false,
 	"Player_Info": false,
+	"Character": false,
 	"Shortcut_Menu" : false,
 	"Song_List" : false,
 	"Sorted_List" : false,
@@ -324,9 +325,9 @@ var ui_exist = {
 ## 记录每个页面存在哪些组件
 var ui_part = {
 	UIStateManager.UIState.NONE: [],  # 启动初始态：无组件，避免 _scene_transition_exit 对 NONE 键取空
-	UIStateManager.UIState.ALBUM_VIEW: ["Album_List", "Player_Info", "Shortcut_Menu"],
-	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Player_Info", "Shortcut_Menu"],
-	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Player_Info", "Shortcut_Menu"],
+	UIStateManager.UIState.ALBUM_VIEW: ["Album_List", "Player_Info", "Shortcut_Menu", "Character"],
+	UIStateManager.UIState.SONG_VIEW: ["Song_List", "Player_Info", "Shortcut_Menu", "Character"],
+	UIStateManager.UIState.SORTED_VIEW: ["Sorted_List", "Player_Info", "Shortcut_Menu", "Character"],
 	UIStateManager.UIState.MIDI_VIEW: ["Midi_Info_View"],
 	UIStateManager.UIState.STORE_VIEW: ["Store_View"],
 	UIStateManager.UIState.TRACK_VIEW: ["Track_List"],
@@ -339,6 +340,7 @@ var ui_path_map = {
 	"Album_List" : PathRegistry.ALBUM_LIST,
 	"Song_List" : PathRegistry.SONG_LIST,
 	"Player_Info": PathRegistry.PLAYER_INFO,
+	"Character": PathRegistry.CHARACTER,
 	"Sorted_List" : PathRegistry.SORTED_MIDIS_LIST,
 	"Shortcut_Menu" : PathRegistry.SHORTCUT_MENU,
 	"Midi_Info_View" : PathRegistry.MIDI_VIEW,
@@ -495,10 +497,9 @@ func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_sta
 				ani_comp.restore_panel_state()
 			)
 		"Player_Info":
-			var chara = ani_comp.get_node("Chara")
-			if chara: animate_offset_to(chara, Vector2(0, chara.size.y), 0.35, "CharactorPosition")
 			animate_offset_to(ani_comp, Vector2(900, 200), 0.55, "PlayerInfoPosition")
-			
+		"Character":
+			animate_offset_to(ani_comp, Vector2(0, ani_comp.size.y), 0.35, "CharacterPosition")
 		"Shortcut_Menu":
 			ani_comp.play_transition_animation(true)
 		"Store_View":
@@ -621,12 +622,11 @@ func animate_ui_in(ui_name: String, _old_state: UIStateManager.UIState) -> Tween
 			if not NetManager.is_online_mode():
 				ani_comp.visible = false
 				return null
-			var chara: Node = ani_comp.get_node("Chara")
 			ani_comp.offset_transform_position = Vector2(900, 200)
-			if chara: chara.offset_transform_position = Vector2(0, chara.size.y)
 			animate_offset_back(ani_comp, 0.35, "PlayerInfoPosition")
-			if chara: animate_offset_back(chara, 0.55, "CharactorPosition")
-		
+		"Character":
+			ani_comp.offset_transform_position = Vector2(0, ani_comp.size.y)
+			animate_offset_back(ani_comp, 0.35, "CharacterPosition")
 		"Shortcut_Menu":
 			tween = ani_comp.play_transition_animation(false)
 		"Store_View":
