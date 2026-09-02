@@ -217,7 +217,30 @@ public partial class MidiParserNative : RefCounted
                 return a.pitch.CompareTo(b.pitch);
             });
 
-            // 6. BPM 时间线 time_ms 计算（累积）
+            // 6. BPM 时间线：多 track 的 Tempo 事件可能乱序，须先按 tick 全局归并排序，
+            //    否则时间线非单调，时长换算/累积会取错 BPM 段（如误按全程默认 BPM 计算）
+            {
+                var merged = new List<KeyValuePair<int, double>>(bpmTicks.Count);
+                for (int i = 0; i < bpmTicks.Count; i++)
+                    merged.Add(new KeyValuePair<int, double>(bpmTicks[i], bpmValues[i]));
+                merged.Sort((a, b) => a.Key.CompareTo(b.Key));
+                var ticks = new List<int>(merged.Count);
+                var vals = new List<double>(merged.Count);
+                foreach (var kv in merged)
+                {
+                    if (ticks.Count > 0 && ticks[ticks.Count - 1] == kv.Key)
+                        vals[vals.Count - 1] = kv.Value; // 同 tick 后者覆盖
+                    else
+                    {
+                        ticks.Add(kv.Key);
+                        vals.Add(kv.Value);
+                    }
+                }
+                bpmTicks = ticks;
+                bpmValues = vals;
+            }
+
+            // 7. BPM 时间线 time_ms 计算（累积）
             for (int i = 1; i < bpmTicks.Count; i++)
             {
                 var tickDelta = bpmTicks[i] - bpmTicks[i - 1];
@@ -226,10 +249,10 @@ public partial class MidiParserNative : RefCounted
                 bpmTimesMs.Add(bpmTimesMs[i - 1] + tickDelta * msPerTick);
             }
 
-            // 7. duration 计算（从 maxEndTick + bpm_timeline）
+            // 8. duration 计算（从 maxEndTick + bpm_timeline）
             double durationMs = CalculateDurationMs(maxEndTick, bpmTicks, bpmValues, resolution);
 
-            // 8. 乐器提取：对没有 program_change 的通道补充默认值
+            // 9. 乐器提取：对没有 program_change 的通道补充默认值
             foreach (var trackPair in trackChannelsSeen)
             {
                 var trackIdx = trackPair.Key;
@@ -242,7 +265,7 @@ public partial class MidiParserNative : RefCounted
                 }
             }
 
-            // 9. 打包返回
+            // 10. 打包返回
             var count = notes.Count;
             var pitches = new int[count];
             var velocities = new int[count];
@@ -262,7 +285,7 @@ public partial class MidiParserNative : RefCounted
                 channels[i] = n.channel;
             }
 
-            // 10. (track, channel) 音符分组——C# worker 一次性统计，供 GDScript 侧快速重建
+            // 11. (track, channel) 音符分组——C# worker 一次性统计，供 GDScript 侧快速重建
             //     避免 GDScript 逐键 COW/字符串哈希（22w 音符下可慢到秒级）。notes 按 start_tick 升序，
             //     逐元素 push 的下标 i 即 SOA 索引，故各分组内保持升序，与原始 grouped_indices 语义一致。
             var swGrp = System.Diagnostics.Stopwatch.StartNew();
