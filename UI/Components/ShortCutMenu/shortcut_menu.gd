@@ -66,12 +66,16 @@ func _on_state_changed(old_state: UIStateManager.UIState, new_state: UIStateMana
 	if new_state != UIStateManager.UIState.SORTED_VIEW and not (old_state in valid_state and new_state in valid_state):
 		sort_button.button_pressed = false
 		favor_list_button.button_pressed = false
-	# 仅进入排序筛选页（SORTED_VIEW）或进出 MidiView 时清空搜索词；Album/Song 之间导航保留就地搜索
-	if new_state == UIStateManager.UIState.SORTED_VIEW or new_state == UIStateManager.UIState.MIDI_VIEW or old_state == UIStateManager.UIState.MIDI_VIEW:
+	# 仅进入排序筛选页（SORTED_VIEW）清空搜索词；其余导航（含进出 MidiView）保留就地搜索
+	if new_state == UIStateManager.UIState.SORTED_VIEW:
 		search_lineedit.text = ""
 		if EvtBus.current_search_query != "":
 			EvtBus.current_search_query = ""
 			EvtBus.search_query_changed.emit("")
+	# 从 MidiView 返回 SongView 仍保留就地搜索词时，自动展开快捷菜单以显示当前筛选状态
+	if old_state == UIStateManager.UIState.MIDI_VIEW and new_state == UIStateManager.UIState.SONG_VIEW:
+		if EvtBus.current_search_query != "" and not sort_button.button_pressed:
+			sort_button.button_pressed = true
 
 func _on_menu_tab_btn_toggled(toggled_on: bool, btn: Button):
 	var tween = AniMGR.create_managed_tween(self)
