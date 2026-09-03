@@ -753,12 +753,13 @@ offset_bottom = -0.835022
 grow_horizontal = 2
 grow_vertical = 0
 offset_transform_enabled = true
+offset_transform_pivot_ratio = Vector2(0.5, 1)
 ignore_texture_size = true
 script = ExtResource("12_5tuhn")
 
 [node name="Dialog" type="Label" parent="Chara" unique_id=1574841853]
 visible = false
-custom_minimum_size = Vector2(400, 40)
+custom_minimum_size = Vector2(300, 40)
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.1
@@ -766,6 +767,7 @@ anchor_top = 0.5
 anchor_right = 0.9
 anchor_bottom = 0.5
 offset_top = 55.58252
+offset_right = -80.0
 offset_bottom = 95.58252
 grow_horizontal = 2
 theme_override_font_sizes/font_size = 32

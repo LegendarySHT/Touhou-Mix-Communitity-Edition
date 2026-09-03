@@ -8,6 +8,8 @@ const FLOAT_AMPLITUDE := 10.0
 const FLOAT_DURATION := 1.5
 
 @onready var _hbox: HBoxContainer = $CharaList/HBox
+@onready var _chara_list: ScrollContainer = $CharaList
+@onready var _title: Label = $Title
 @onready var _detail: TextureButton = $CharaDetail
 @onready var _detail_panel: Panel = $CharaDetail/Panel
 @onready var _detail_bg: TextureRect = $CharaDetail/Panel/BG
@@ -48,14 +50,14 @@ func _build_chara_list() -> void:
 
 ############################ 专属入场/退场（由 AnimationManager 调用） ############################
 
-## 从右侧向左滑入
+## 入场：CharaList 左滑淡入，Title 下滑淡入
 func play_enter() -> void:
 	_teardown_detail()
 	visible = true
 	modulate.a = 1.0
-	offset_transform_position = Vector2(get_viewport().get_visible_rect().size.x, 0)
-	AniMGR.animate_offset_back(self, 0.35, "CharaViewSlideIn")
-	AniMGR.animate_fade_in(self, 0.3, "Chara_View_in")
+	offset_transform_position = Vector2.ZERO
+	AniMGR.animate_fade_slide_in(_chara_list, Vector2(300, 0), 0.35, "CharaListIn")
+	AniMGR.animate_fade_slide_in(_title, Vector2(0, -_title.size.y), 0.35, "TitleIn")
 
 ## 向右滑出
 func play_exit() -> void:

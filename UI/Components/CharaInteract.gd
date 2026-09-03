@@ -7,8 +7,9 @@ extends TextureButton
 
 ## 命中测试：像素 alpha 低于该值视为透明空隙（不响应点击）
 const ALPHA_THRESHOLD := 0.1
-## 跳跃高度（像素）
-const JUMP_DIST := 30.0
+## 立绘浮动振幅（px）与周期（s）
+const FLOAT_AMPLITUDE := 10.0
+const FLOAT_DURATION := 1.5
 ## 对话气泡停留时长（秒）
 const DIALOG_HOLD_TIME := 2.6
 
@@ -18,13 +19,16 @@ var _hit_img: Image = null
 var _chara_key: String = ""
 ## 对话气泡节点（Chara 下的兄弟 Label）
 var _dialog: Label = null
-var _jump_tween: Tween = null
+var _press_tween: Tween = null
+var _float_tween: Tween = null
 var _dialog_tween: Tween = null
 
 func _ready() -> void:
 	# 装饰性交互元素，不参与键盘焦点导航
 	focus_mode = Control.FOCUS_NONE
 	pressed.connect(_on_pressed)
+	button_down.connect(_on_button_down)
+	button_up.connect(_on_button_up)
 
 	_dialog = get_node_or_null("../Dialog")
 	if _dialog != null:
@@ -54,6 +58,7 @@ func _apply_chara() -> void:
 		return
 	_chara_key = key
 	set_chara_emotion(0)
+	_start_floating()
 
 ## 切换人物表情（合成对应表情立绘并缓存原始图像用于命中测试）
 func set_chara_emotion(emotion: int) -> void:
@@ -89,27 +94,41 @@ func has_point(point: Vector2) -> bool:
 func _in_drawn_area(point: Vector2) -> bool:
 	return point.x >= 0.0 and point.y >= 0.0 and point.x <= size.x and point.y <= size.y
 
-## 点击：跳跃 + 随机对话气泡 + 短暂切换表情后复原
+## 点击：随机对话气泡 + 短暂切换表情后复原
 func _on_pressed() -> void:
 	if _chara_key.is_empty():
 		return
-	_play_jump()
 	var dialog := CharaMGR.get_dialog(_chara_key)
 	if not dialog.text.is_empty():
 		# 先切到对话对应表情，气泡结束后回到默认表情
 		set_chara_emotion(int(dialog.emotion))
 		_show_dialog(dialog.text, Callable(self, "_revert_emotion"))
 
-## 人物竖直弹跳
-func _play_jump() -> void:
-	if _jump_tween != null:
-		_jump_tween.kill()
-	_jump_tween = create_tween()
-	_jump_tween.set_trans(Tween.TRANS_CUBIC)
-	_jump_tween.tween_property(self, "offset_transform_position:y", -JUMP_DIST, 0.12) \
-		.set_ease(Tween.EASE_OUT)
-	_jump_tween.tween_property(self, "offset_transform_position:y", 0.0, 0.24) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+## 按下：y 轴缩放为 0.99
+func _on_button_down() -> void:
+	if _press_tween != null:
+		_press_tween.kill()
+	_press_tween = create_tween()
+	_press_tween.tween_property(self, "offset_transform_scale:y", 0.99, 0.08).set_ease(Tween.EASE_OUT)
+
+## 松手：弹回 1.02 再恢复 1
+func _on_button_up() -> void:
+	if _press_tween != null:
+		_press_tween.kill()
+	_press_tween = create_tween()
+	_press_tween.tween_property(self, "offset_transform_scale:y", 1.02, 0.12).set_ease(Tween.EASE_OUT)
+	_press_tween.tween_property(self, "offset_transform_scale:y", 1.0, 0.2).set_ease(Tween.EASE_OUT)
+
+## 立绘上下浮动无限循环动画
+func _start_floating() -> void:
+	_stop_floating()
+	_float_tween = AniMGR.animate_floating(self, FLOAT_AMPLITUDE, FLOAT_DURATION, "main_chara_float")
+
+func _stop_floating() -> void:
+	if _float_tween and _float_tween.is_valid():
+		_float_tween.kill()
+		_float_tween = null
+	offset_transform_position = Vector2.ZERO
 
 ## 显示对话气泡，停留后淡出
 func _show_dialog(text: String, on_done: Callable) -> void:
