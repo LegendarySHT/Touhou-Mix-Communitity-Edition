@@ -1,4 +1,4 @@
-extends Panel
+extends Button
 
 class_name LT_Btn
 
@@ -18,7 +18,6 @@ enum ShowStat {
 
 @onready var vboxc: VBoxContainer = $VBoxC
 @onready var arrow: TextureRect = $VBoxC/Res
-@onready var btn: Button = $Button
 @onready var lag_label: Label = $Lag
 
 func _ready() -> void:
@@ -95,12 +94,12 @@ func _process(_delta: float) -> void:
 func _set_shortcut_enabled(enabled: bool) -> void:
 	if enabled:
 		if _saved_shortcut:
-			btn.shortcut = _saved_shortcut
+			shortcut = _saved_shortcut
 			_saved_shortcut = null
 	else:
-		if btn.shortcut:
-			_saved_shortcut = btn.shortcut
-			btn.shortcut = null
+		if shortcut:
+			_saved_shortcut = shortcut
+			shortcut = null
 
 func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 	if content_to_show == _current_stat:
@@ -134,7 +133,7 @@ func switch_display(content_to_show: ShowStat = ShowStat.SETTING_BTN):
 			event.keycode = KEY_Q
 
 	# 快捷键：shortcut 被禁用时更新到 _saved_shortcut，恢复后即生效
-	var target := btn.shortcut if btn.shortcut else _saved_shortcut
+	var target := shortcut if shortcut else _saved_shortcut
 	if target:
 		if target.events.is_empty():
 			target.events = [event]
@@ -157,6 +156,6 @@ func _on_button_pressed() -> void:
 		ui.UIState.SCORE_VIEW:
 			ui.change_state(ui.UIState.PLAY_VIEW, false)
 			#await get_tree().create_timer(0.3).timeout
-			get_node(PathRegistry.PLAY_VIEW).retry_btn.pressed.emit()
+			get_node(PathRegistry.PLAY_VIEW).retry_pressed.emit()
 		_:
 			ui.change_state(ui.UIState.SETTINGS_VIEW)

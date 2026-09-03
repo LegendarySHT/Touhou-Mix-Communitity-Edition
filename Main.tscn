@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://dpn6fchjbt3b8" path="res://UI/Components/SkewArea.gd" id="8_3b0ty"]
 [ext_resource type="Script" uid="uid://cka36xm3jh6b" path="res://UI/Views/SongView/SongView.gd" id="8_w3rk5"]
 [ext_resource type="Script" uid="uid://cohp1v184ht7q" path="res://UI/Components/ShortCutMenu/shortcut_menu.gd" id="11_oye8v"]
+[ext_resource type="Script" uid="uid://cyabeyldoy6yb" path="res://UI/Components/StyleBoxHighlightGradient.gd" id="12_2gh4u"]
 [ext_resource type="Script" uid="uid://c6wk4t2kxbamq" path="res://UI/Components/CharaInteract.gd" id="12_5tuhn"]
 [ext_resource type="Texture2D" uid="uid://68fry5jr6m8l" path="res://Resources/icon/icon_set2.png" id="13_bg4s2"]
 [ext_resource type="PackedScene" uid="uid://cmg2kkhga3yj5" path="res://UI/Views/AlbumView/albumNode.tscn" id="17_5mvff"]
@@ -476,12 +477,65 @@ events = [SubResource("InputEventKey_w3rk5")]
 atlas = ExtResource("13_bg4s2")
 region = Rect2(240, 0, 80, 80)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mxvw5"]
-bg_color = Color(0.050980393, 0.5294118, 1, 1)
-border_width_right = 8
-border_color = Color(1, 1, 1, 1)
+[sub_resource type="StyleBox" id="StyleBox_cxuku"]
+resource_local_to_scene = false
+resource_name = ""
+content_margin_left = -1.0
+content_margin_top = -1.0
+content_margin_right = -1.0
+content_margin_bottom = -1.0
+script = ExtResource("12_2gh4u")
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+highlight_angle = 270.0
+metadata/_custom_type_script = "uid://cyabeyldoy6yb"
 
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_oye8v"]
+[sub_resource type="StyleBox" id="StyleBox_2gh4u"]
+resource_local_to_scene = false
+resource_name = ""
+content_margin_left = -1.0
+content_margin_top = -1.0
+content_margin_right = -1.0
+content_margin_bottom = -1.0
+script = ExtResource("12_2gh4u")
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+highlight_angle = 270.0
+metadata/_custom_type_script = "uid://cyabeyldoy6yb"
+
+[sub_resource type="StyleBox" id="StyleBox_devvj"]
+resource_local_to_scene = false
+resource_name = ""
+content_margin_left = -1.0
+content_margin_top = -1.0
+content_margin_right = -1.0
+content_margin_bottom = -1.0
+script = ExtResource("12_2gh4u")
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+highlight_angle = 270.0
+metadata/_custom_type_script = "uid://cyabeyldoy6yb"
+
+[sub_resource type="StyleBox" id="StyleBox_3b0ty"]
+resource_local_to_scene = false
+resource_name = ""
+content_margin_left = -1.0
+content_margin_top = -1.0
+content_margin_right = -1.0
+content_margin_bottom = -1.0
+script = ExtResource("12_2gh4u")
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+highlight_angle = 270.0
+metadata/_custom_type_script = "uid://cyabeyldoy6yb"
 
 [sub_resource type="InputEventKey" id="InputEventKey_devvj"]
 pressed = true
@@ -520,12 +574,65 @@ border_width_left = 8
 border_width_top = 8
 border_color = Color(0.18, 0.35766667, 1, 0.5686275)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3b0ty"]
-bg_color = Color(0.4392157, 0.7294118, 0.98039216, 1)
-border_width_left = 8
-border_color = Color(1, 1, 1, 1)
+[sub_resource type="StyleBox" id="StyleBox_gvnrf"]
+resource_local_to_scene = false
+resource_name = ""
+content_margin_left = -1.0
+content_margin_top = -1.0
+content_margin_right = -1.0
+content_margin_bottom = -1.0
+script = ExtResource("12_2gh4u")
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+highlight_angle = 70.0
+metadata/_custom_type_script = "uid://cyabeyldoy6yb"
 
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_5mvff"]
+[sub_resource type="StyleBox" id="StyleBox_bg4s2"]
+resource_local_to_scene = false
+resource_name = ""
+content_margin_left = -1.0
+content_margin_top = -1.0
+content_margin_right = -1.0
+content_margin_bottom = -1.0
+script = ExtResource("12_2gh4u")
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+highlight_angle = 70.0
+metadata/_custom_type_script = "uid://cyabeyldoy6yb"
+
+[sub_resource type="StyleBox" id="StyleBox_hhcpw"]
+resource_local_to_scene = false
+resource_name = ""
+content_margin_left = -1.0
+content_margin_top = -1.0
+content_margin_right = -1.0
+content_margin_bottom = -1.0
+script = ExtResource("12_2gh4u")
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+highlight_angle = 70.0
+metadata/_custom_type_script = "uid://cyabeyldoy6yb"
+
+[sub_resource type="StyleBox" id="StyleBox_mxvw5"]
+resource_local_to_scene = false
+resource_name = ""
+content_margin_left = -1.0
+content_margin_top = -1.0
+content_margin_right = -1.0
+content_margin_bottom = -1.0
+script = ExtResource("12_2gh4u")
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+highlight_angle = 70.0
+metadata/_custom_type_script = "uid://cyabeyldoy6yb"
 
 [sub_resource type="InputEventKey" id="InputEventKey_3b0ty"]
 device = -1
@@ -1029,36 +1136,28 @@ focus_next = NodePath("")
 focus_mode = 0
 button_pressed = true
 
-[node name="LT_Btn" type="Panel" parent="." unique_id=1967536020]
+[node name="LT_Btn" type="Button" parent="." unique_id=427482582]
 layout_mode = 0
-offset_left = 25.999996
-offset_top = -73.999985
-offset_right = 235.52328
-offset_bottom = 588.7093
+offset_left = 23.999994
+offset_top = -75.999985
+offset_right = 233.52328
+offset_bottom = 586.7093
 rotation = 0.34906584
-theme_override_styles/panel = SubResource("StyleBoxFlat_mxvw5")
-script = ExtResource("23_mxvw5")
-
-[node name="Button" type="Button" parent="LT_Btn" unique_id=427482582]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_right = -7.9132843
-offset_bottom = -0.70928955
-grow_horizontal = 2
-grow_vertical = 2
 focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxEmpty_oye8v")
+theme_override_styles/normal = SubResource("StyleBox_cxuku")
+theme_override_styles/pressed = SubResource("StyleBox_2gh4u")
+theme_override_styles/hover = SubResource("StyleBox_devvj")
+theme_override_styles/hover_pressed = SubResource("StyleBox_3b0ty")
 shortcut = SubResource("Shortcut_3b0ty")
 shortcut_in_tooltip = false
+script = ExtResource("23_mxvw5")
 
 [node name="Lag" type="Label" parent="LT_Btn" unique_id=413405156]
 layout_mode = 0
-offset_left = 100.0
-offset_top = 260.0
-offset_right = 199.99998
-offset_bottom = 332.99994
+offset_left = 100.00001
+offset_top = 260.00003
+offset_right = 200.0
+offset_bottom = 332.99997
 rotation = -0.34906584
 theme_override_font_sizes/font_size = 30
 text = "9999
@@ -1066,9 +1165,9 @@ ms"
 
 [node name="VBoxC" type="VBoxContainer" parent="LT_Btn" unique_id=757212644]
 layout_mode = 0
-offset_left = 30.0
-offset_top = -380.0
-offset_right = 200.0
+offset_left = 30.000023
+offset_top = -380.00003
+offset_right = 200.00003
 offset_bottom = 670.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -1158,8 +1257,7 @@ offset_left = 55.0
 offset_top = 10.0
 offset_right = -205.0
 
-[node name="RB_Btn" type="Panel" parent="." unique_id=334519352]
-z_index = 23
+[node name="RB_Btn" type="Button" parent="." unique_id=1566254107]
 clip_contents = true
 layout_mode = 1
 anchors_preset = 3
@@ -1175,30 +1273,22 @@ grow_horizontal = 0
 grow_vertical = 0
 rotation = 0.5235988
 pivot_offset = Vector2(266.30273, 475.3533)
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_3b0ty")
-script = ExtResource("7_sqvbp")
-
-[node name="Button" type="Button" parent="RB_Btn" unique_id=1566254107]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 6.0
-offset_right = -1.0
-grow_horizontal = 2
-grow_vertical = 2
 focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxEmpty_5mvff")
+mouse_filter = 1
+theme_override_styles/normal = SubResource("StyleBox_gvnrf")
+theme_override_styles/pressed = SubResource("StyleBox_bg4s2")
+theme_override_styles/hover = SubResource("StyleBox_hhcpw")
+theme_override_styles/hover_pressed = SubResource("StyleBox_mxvw5")
 shortcut = SubResource("Shortcut_bg4s2")
 shortcut_in_tooltip = false
 icon_alignment = 1
+script = ExtResource("7_sqvbp")
 
 [node name="VBoxC" type="VBoxContainer" parent="RB_Btn" unique_id=571032761]
 layout_mode = 0
-offset_left = 15.0
+offset_left = 9.0
 offset_top = 350.0
-offset_right = 195.0
+offset_right = 189.0
 offset_bottom = 1390.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -1322,7 +1412,7 @@ offset_transform_enabled = true
 [connection signal="pressed" from="skew/C/ShortCutMenu/Panel/Page/SortPage/SortButton/Ordering" to="skew/C/ShortCutMenu" method="_on_ordering_pressed"]
 [connection signal="pressed" from="skew/C/RandomSelectBtn" to="skew/C/AlbumList" method="_on_random_select_btn_pressed"]
 [connection signal="pressed" from="skew/C/SelectedAlbum" to="skew/C/SelectedAlbum" method="_on_selected_album_pressed"]
-[connection signal="pressed" from="LT_Btn/Button" to="LT_Btn" method="_on_button_pressed"]
+[connection signal="pressed" from="LT_Btn" to="LT_Btn" method="_on_button_pressed"]
 [connection signal="gui_input" from="PlayerInfo/ExpandPanelShader" to="PlayerInfo" method="_on_shader_overlay_gui_input"]
 [connection signal="pressed" from="PlayerInfo/InfoPanelBtn" to="PlayerInfo" method="_on_expand_panel_pressed"]
-[connection signal="pressed" from="RB_Btn/Button" to="RB_Btn" method="_on_button_pressed"]
+[connection signal="pressed" from="RB_Btn" to="RB_Btn" method="_on_button_pressed"]

@@ -262,30 +262,17 @@ func _restore_selection_on_return() -> void:
 		_restore_scroll_to_index(selected_item)
 	# selected_item == -1（自动吸附尚未选定）时不动，交由 _process 吸附到当前可见项，避免矫位到第一项
 
-## 恢复到指定项：优先直接改容器滚动值跳转；仅当目标距离当前很远（如启动恢复、列表仍停在顶部）时，
-## 先把滚动值预置到目标前一屏，再做最后一段短吸附补完，避免整条列表从顶部长距离滚动过去
+## 恢复到指定项：仅当目标距离当前很远（如启动恢复、列表仍停在顶部）时，
+## 先把滚动值预置到目标前一屏，再做最后一段短吸附补完；距离短时不做任何滚动
+## 值预处理，直接复用原本的强制吸附（避免手动改滚动值打断吸附态、造成选中项收起再重选）
 func _restore_scroll_to_index(index: int) -> void:
 	if list_items.is_empty() or index < 0 or index >= list_items.size():
 		return
-	var target_scroll: int = container.get_child(index).position.y - snap_offset_y
+	var target_scroll: int = int(container.get_child(index).position.y) - int(snap_offset_y)
 	if absf(target_scroll - scroll_vertical) > size.y:
-		# 从远处恢复：预置滚动到目标前一屏，再由 force_snap_to 短吸附补完最后这段距离
+		# 从远处恢复：预置滚动到目标前一屏，再由 force_snap_to 短吸附补完最后这段
 		scroll_vertical = maxi(target_scroll - int(size.y), 0)
-		force_snap_to(index)
-		return
-	# 目标已接近（返回前视图本就可见）：直接改滚动值跳转，不播过渡
-	_is_dragging_bar = false
-	_pointer_pressed = false
-	_pointer_release_observed = false
-	scroll_vertical = scroll_vertical  # 取消原生拖拽会话（含惯性）
-	_drag_scrolling = false
-	_scroll_stable = true
-	if _scroll_stable_timer and not _scroll_stable_timer.is_stopped():
-		_scroll_stable_timer.stop()
-	_scroll_speed = 0.0
-	select_item(index)
-	scroll_vertical = target_scroll
-	_finish_snap()
+	force_snap_to(index)
 
 func on_item_button_confirmed(index: int):
 	var album_id: String = String(current_albums[index].get("id", ""))

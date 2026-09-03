@@ -362,12 +362,36 @@ func invalidate_background_cache(file_name: String = "") -> void:
 
 # ============ 样式工具方法 ============
 
-## 修改节点已有 StyleBoxFlat 的 bg_color（不新建 StyleBox，保留 tscn 预设的圆角/边框/阴影等配置）
+## 修改节点已有 StyleBox 的 bg_color（不新建 StyleBox，保留 tscn 预设的圆角/边框等配置）
 func _modify_panel_color(node: Control, color_key: String) -> void:
 	var sb := node.get_theme_stylebox("panel")
+	if sb == null or sb is StyleBoxEmpty:
+		return
+	_apply_color_to_stylebox(sb, get_color(color_key))
+
+## 统一给（原生 StyleBoxFlat 或自定义自绘风格框）设置 bg_color/border_color
+func _apply_color_to_stylebox(sb: StyleBox, color: Color) -> void:
 	if sb is StyleBoxFlat:
-		sb.bg_color = get_color(color_key)
-		sb.border_color = get_color(color_key).lightened(0.3)
+		sb.bg_color = color
+		sb.border_color = color.lightened(0.3)
+	# StyleBoxHighlightGradient（GDScript 自绘渐变风格框，继承 StyleBox 基类，属性命名与原生命名一致）
+	elif sb is StyleBoxHighlightGradient:
+		sb.bg_color = color
+		sb.border_color = color.lightened(0.3)
+
+## 对按钮各状态（normal/hover/pressed/hover_pressed）stylebox 应用主题色，各状态自带明暗变体
+func _modify_button_states_color(btn: Button, color_key: String) -> void:
+	var base := get_color(color_key)
+	for spec in [
+		["normal", base],
+		["hover", base.lightened(0.12)],
+		["pressed", base.darkened(0.15)],
+		["hover_pressed", base],
+	]:
+		var sb := btn.get_theme_stylebox(spec[0])
+		if sb == null or sb is StyleBoxEmpty:
+			continue
+		_apply_color_to_stylebox(sb, spec[1])
 
 # ============ 列表项样式 ============
 

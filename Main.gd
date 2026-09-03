@@ -267,14 +267,14 @@ func _init_ui() -> void:
 
 ## 应用主题色到主框架组件（由 ThemeManager 广播调用 + _init_ui 首次自调）
 func apply_theme() -> void:
-	# LT_Btn — 蓝 (primary)
-	var lt := get_node_or_null("LT_Btn")
+	# LT_Btn — 蓝 (primary)，按钮各状态渐变框
+	var lt := get_node_or_null("LT_Btn") as Button
 	if lt:
-		ThemeMGR._modify_panel_color(lt, "primary")
+		ThemeMGR._modify_button_states_color(lt, "primary")
 	# RB_Btn — 淡蓝 (primary_light)
-	var rb := get_node_or_null("RB_Btn")
+	var rb := get_node_or_null("RB_Btn") as Button
 	if rb:
-		ThemeMGR._modify_panel_color(rb, "primary_light")
+		ThemeMGR._modify_button_states_color(rb, "primary_light")
 	# ShortCutMenu 面板 — 蓝 (primary)
 	var sc_panel := get_node_or_null("skew/C/ShortCutMenu/Panel")
 	if sc_panel:
