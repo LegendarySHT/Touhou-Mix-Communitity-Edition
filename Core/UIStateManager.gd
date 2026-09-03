@@ -16,6 +16,8 @@ enum UIState {
 	SETTINGS_VIEW = 5,   # 设置页面
 	PLAY_VIEW = 6,		 # 打歌界面
 	SCORE_VIEW = 61,	 # 结算界面
+	CHARA_VIEW = 7,		 # 选角色界面
+	PROFILE_VIEW = 8,	 # 个人资料界面
 }
 
 ## 当前UI状态（启动时为 NONE，数据就绪后通过 change_state 进入真实视图）
@@ -43,6 +45,7 @@ const LAZY_VIEW_PATHS := {
 	UIState.SETTINGS_VIEW: "res://UI/Views/SettingView/SettingView.tscn",
 	UIState.PLAY_VIEW: "res://UI/Views/PlayView/PlayView.tscn",
 	UIState.SCORE_VIEW: "res://UI/Views/ScoreView/ScoreView.tscn",
+	UIState.CHARA_VIEW: "res://UI/Views/CharaView/CharaView.tscn",
 }
 
 ## 视图父节点路径（与 Main.tscn 结构对应）
@@ -53,6 +56,7 @@ const LAZY_VIEW_PARENTS := {
 	UIState.SETTINGS_VIEW: PathRegistry.SKEW_C,
 	UIState.PLAY_VIEW: PathRegistry.MAIN,
 	UIState.SCORE_VIEW: PathRegistry.MAIN,
+	UIState.CHARA_VIEW: PathRegistry.MAIN,
 }
 
 ## 已加载的懒加载视图实例 {UIState: Node}
@@ -165,6 +169,10 @@ func ensure_view_loaded(state: UIState) -> Node:
 	# StoreView → 移到 RB_Btn 之前；ScoreView → 移到 LT_Btn 之前
 	match state:
 		UIState.STORE_VIEW:
+			var rb := get_node_or_null(PathRegistry.RB_BTN)
+			if rb and rb.get_parent() == parent:
+				parent.move_child(instance, rb.get_index())
+		UIState.CHARA_VIEW:
 			var rb := get_node_or_null(PathRegistry.RB_BTN)
 			if rb and rb.get_parent() == parent:
 				parent.move_child(instance, rb.get_index())
@@ -282,6 +290,10 @@ func get_state_name(state: UIState) -> String:
 			return "PLAY_VIEW"
 		UIState.SCORE_VIEW:
 			return "SCORE_VIEW"
+		UIState.CHARA_VIEW:
+			return "CHARA_VIEW"
+		UIState.PROFILE_VIEW:
+			return "PROFILE_VIEW"
 		_:
 			return "UNKNOWN_STATE"
 

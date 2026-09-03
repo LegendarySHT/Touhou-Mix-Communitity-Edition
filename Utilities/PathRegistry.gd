@@ -21,6 +21,7 @@ const RB_BTN := "/root/Main/RB_Btn"
 ## 常驻 UI
 const PLAYER_INFO := "/root/Main/PlayerInfo"
 const PLAYER_INFO_TAB_C := "/root/Main/PlayerInfo/InfoPanelBtn/TabC"
+const PROFILE_PAGE := "/root/Main/PlayerInfo/InfoPanelBtn/TabC/ProfilePage"
 const CHARACTER := "/root/Main/Chara"
 
 const POPUP_WINDOW_SHADER := "/root/Main/PopupWindowShader"
@@ -39,6 +40,7 @@ const RANDOM_SELECT_BTN := "/root/Main/skew/C/RandomSelectBtn"
 
 ## 懒加载视图（实例化后存在，读取前请用 get_node_or_null）
 const STORE_VIEW := "/root/Main/Store"
+const CHARA_VIEW := "/root/Main/CharaView"
 const STORE_MIDI_LIST := "/root/Main/Store/StoreMidiList"
 const MIDI_VIEW := "/root/Main/skew/C/MidiView"
 const MIDI_LIST := "/root/Main/skew/C/MidiView/LeftArea/InfoWindow/HBoxC/MidiList"

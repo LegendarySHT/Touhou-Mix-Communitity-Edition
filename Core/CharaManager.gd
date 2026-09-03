@@ -128,6 +128,7 @@ func _load_chara_worker(chara_path: String, chara_key: String, is_builtin: bool,
 		"emotion_offset": _parse_offset(general.get("emotion_offset", [0, 0])),
 		"character_image": character_image,
 		"emotion_image": str(general.get("emotion_image", "")).strip_edges(),
+		"background_image": str(general.get("background_image", "")).strip_edges(),
 		"rating": parsed.get("rating", {}),
 		"dialog": parsed.get("dialog", {}),
 	}
@@ -267,6 +268,26 @@ func get_portrait(chara_key: String, emotion: int) -> Texture2D:
 	if texture != null:
 		_composite_cache[cache_key] = texture
 	return texture
+
+## 获取人物背景贴图（background_image），返回 null 表示未配置/加载失败
+func get_background(chara_key: String) -> Texture2D:
+	chara_key = resolve_chara_key(chara_key)
+	if chara_key.is_empty():
+		return null
+	var meta: Dictionary = charas_index[chara_key]
+	var bg_name := str(meta.get("background_image", "")).strip_edges()
+	if bg_name.is_empty():
+		return null
+	var file_path: String = str(meta.get("path", "")).path_join(bg_name)
+	if file_path.begins_with("res://"):
+		if ResourceLoader.exists(file_path):
+			return load(file_path) as Texture2D
+		return null
+	# 用户目录：解码为 ImageTexture
+	var img := ImageUtil.load_image_file(file_path)
+	if img == null:
+		return null
+	return ImageTexture.create_from_image(img)
 
 ## 加载图片为 Image（内置走 ResourceLoader → get_image，用户走 ImageUtil）
 func _load_image(file_path: String) -> Image:

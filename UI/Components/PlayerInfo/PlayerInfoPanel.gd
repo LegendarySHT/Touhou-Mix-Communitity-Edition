@@ -54,6 +54,7 @@ func _ready() -> void:
 	# 其 _ready 恢复会话后 emit auth_changed，此处需要响应）
 	if not EvtBus.auth_changed.is_connected(_on_auth_changed):
 		EvtBus.auth_changed.connect(_on_auth_changed)
+	UiStatMGR.state_changed.connect(_on_ui_state_changed)
 	# 启动时若已登录（AuthManager 可能已恢复会话），直接进入已登录状态
 	if AuthManager.instance != null and AuthManager.instance.is_logged_in:
 		_animate_to_state(State.LOGGED_IN)
@@ -96,6 +97,16 @@ func _animate_to_state(s: State) -> void:
 		State.EXPANDED, State.LOGGED_IN_EXPANDED, State.FULL_EXPANDED:
 			_play_shortcut_menu_exit()
 			_setup_rb_btn_for_state(s)
+
+	# 全屏详情（FULL_EXPANDED）对应用户模型 PROFILE_VIEW 状态：进入/退出走 UIState 栈，
+	# 让 PROFILE → CHARA → 返回等导航复用标准 change_state/go_back，无需特判
+	if s == State.FULL_EXPANDED:
+		if UiStatMGR.current_state != UIStateManager.UIState.PROFILE_VIEW:
+			UiStatMGR.change_state(UIStateManager.UIState.PROFILE_VIEW, true)
+	elif _state == State.FULL_EXPANDED:
+		if UiStatMGR.current_state == UIStateManager.UIState.PROFILE_VIEW:
+			UiStatMGR.go_back()
+
 	_state = s
 
 # ========== 内容可见性 ==========
@@ -163,7 +174,7 @@ func _get_geometry_params(s: State) -> Dictionary:
 func _animate_panel_geometry(s: State, t: Tween) -> void:
 	var p := _get_geometry_params(s)
 	t.tween_property(info_panel_btn, "offset_transform_position", Vector2(p.margin, 0), ANIM_DURATION)
-	t.tween_property(info_panel_btn, "offset_left", p.offset.x, ANIM_DURATION)
+	t.tween_property(info_panel_btn, "offset_left", p.offset.x-10, ANIM_DURATION)
 	t.tween_property(info_panel_btn, "offset_top", p.offset.y, ANIM_DURATION)
 	for sb in _btn_styleboxes:
 		t.tween_property(sb, "skew", Vector2(p.skew, 0), ANIM_DURATION)
@@ -230,9 +241,9 @@ func _setup_rb_btn_for_state(s: State) -> void:
 		# 仅在首次进入展开时保存原始状态（避免展开↔半展开之间切换时覆盖）
 		if _saved_rb_stat < 0:
 			_saved_rb_stat = rb_btn.get_current_stat()
-		# FULL_EXPANDED 的 RB_Btn 缩回到半展开；其它展开状态完全收起
+		# FULL_EXPANDED 作为 PROFILE_VIEW 视图，右下角用正常返回键（go_back），不再接管回调
 		if s == State.FULL_EXPANDED:
-			rb_btn.pressed_override = Callable(self, "_shrink_to_half")
+			rb_btn.pressed_override = Callable()
 		else:
 			rb_btn.pressed_override = Callable(self, "_collapse")
 		rb_btn.switch_display(rb_btn.ShowStat.BACK_BTN)
@@ -270,9 +281,10 @@ func _collapse() -> void:
 		target_state = State.LOGGED_IN
 	_animate_to_state(target_state)
 
-## FULL_EXPANDED 的 RB_Btn：缩回到半展开
-func _shrink_to_half() -> void:
-	_animate_to_state(State.LOGGED_IN_EXPANDED)
+## UIState 变化：离开 PROFILE_VIEW（返回基础视图 / 去 CHARA 返回基础）时收起全屏面板
+func _on_ui_state_changed(_old_state: UIStateManager.UIState, new_state: UIStateManager.UIState) -> void:
+	if _state == State.FULL_EXPANDED and new_state != UIStateManager.UIState.PROFILE_VIEW and new_state != UIStateManager.UIState.CHARA_VIEW:
+		_animate_to_state(State.LOGGED_IN)
 
 ## ProfileView 展开/收起详情按钮（由 PlayerInfoContent.expand_toggled 触发）
 func _on_expand_toggled() -> void:

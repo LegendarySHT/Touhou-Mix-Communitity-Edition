@@ -2,6 +2,7 @@
 	"general": {
 		"character_image": "tenshi-stand.png",
 		"emotion_image": "emos.png",
+		"background_image": "bg.jpg",
 		"emotion_cols": 4,
 		"emotion_rows": 3,
 		"emotion_offset": [182, 86]
@@ -10,7 +11,7 @@
 		"author": "dairi",
 		"unlock_condition": "内置人物无需解锁",
 		"name": "比那名居天子",
-		"description": "天空的大地由我主宰！\"——自称。\\n实际是个闲到发慌的天人，靠拆神社和找人类打架打发时间。\\n能力：地震+气质操控。弱点：桃子吃太多。"
+		"description": "天空的大地由我主宰！\"——自称。\n实际是个闲到发慌的天人，靠拆神社和找人类打架打发时间。\n能力：地震+气质操控。弱点：桃子吃太多。"
 	},
 	"rating": {
 		"Ω": 8,

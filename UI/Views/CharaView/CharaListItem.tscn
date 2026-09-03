@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://c0mtsyy46whs1"]
+
+[ext_resource type="Texture2D" uid="uid://cb4yi8i305ifg" path="res://Resources/Charas/tenshi-stand/tenshi-stand.png" id="1_eg3ua"]
+[ext_resource type="Script" uid="uid://fc1wmsiiitme" path="res://UI/Views/CharaView/charaListItem.gd" id="2_nffhk"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3y6u5"]
+bg_color = Color(0, 0, 0, 0.2784314)
+corner_radius_top_left = 25
+corner_radius_bottom_right = 25
+corner_detail = 1
+expand_margin_top = 15.0
+expand_margin_bottom = 10.0
+
+[node name="Chara" type="TextureButton" unique_id=1092599467]
+custom_minimum_size = Vector2(512, 0)
+size_flags_vertical = 8
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 150)
+offset_transform_visual_only = false
+texture_normal = ExtResource("1_eg3ua")
+script = ExtResource("2_nffhk")
+
+[node name="Name" type="Label" parent="." unique_id=397533912]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 25.0
+offset_top = -250.0
+offset_right = -25.0
+offset_bottom = -190.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxFlat_3y6u5")
+text = "天子"
+horizontal_alignment = 1
+
+[node name="Info" type="Label" parent="Name" unique_id=1961228171]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -19.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 16
+text = "内置角色"
+horizontal_alignment = 1
+
+[connection signal="button_down" from="." to="." method="_on_button_down"]
+[connection signal="button_up" from="." to="." method="_on_button_up"]
+[connection signal="pressed" from="." to="." method="_on_pressed"]

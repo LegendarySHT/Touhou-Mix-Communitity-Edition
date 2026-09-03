@@ -205,12 +205,98 @@ func animate_offset_rotation(target: Node, to_rotation: float, duration: float =
 	tween.tween_property(target, "offset_transform_rotation", to_rotation, duration)
 	return tween
 
+######################################## 组合动画（后续通用复用） ########################################
+
+## 原地淡入 + 缩放（from_scale → 1），适合弹窗/面板入场
+func animate_fade_scale_in(target: Control, from_scale: Vector2 = Vector2(1.1, 1.1),
+							duration: float = DURATION_NORMAL, tween_id: String = "") -> Tween:
+	var tween := _create_tween(tween_id)
+	tween.set_ease(EASING_STANDARD)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	if not target.visible:
+		target.visible = true
+	target.modulate.a = 0.0
+	target.offset_transform_enabled = true
+	target.offset_transform_scale = from_scale
+	tween.tween_property(target, "modulate:a", 1.0, duration)
+	tween.parallel().tween_property(target, "offset_transform_scale", Vector2.ONE, duration)
+	return tween
+
+## 原地淡出 + 缩放（轻微缩小/放大），作为 fade_scale_in 的反向动画
+func animate_fade_scale_out(target: Control, to_scale: Vector2 = Vector2(0.96, 0.96),
+							 duration: float = DURATION_NORMAL, tween_id: String = "") -> Tween:
+	var tween := _create_tween(tween_id)
+	tween.set_ease(EASING_STANDARD)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(target, "modulate:a", 0.0, duration)
+	tween.parallel().tween_property(target, "offset_transform_scale", to_scale, duration)
+	tween.finished.connect(func() -> void:
+		if target and target.visible:
+			target.visible = false
+	)
+	return tween
+
+## 淡入 + 位移滑入（from_offset → 原位）
+func animate_fade_slide_in(target: Control, from_offset: Vector2,
+							duration: float = DURATION_NORMAL, tween_id: String = "") -> Tween:
+	var tween := _create_tween(tween_id)
+	tween.set_ease(EASING_STANDARD)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	if not target.visible:
+		target.visible = true
+	target.modulate.a = 0.0
+	target.offset_transform_enabled = true
+	target.offset_transform_position = from_offset
+	tween.tween_property(target, "modulate:a", 1.0, duration)
+	tween.parallel().tween_property(target, "offset_transform_position", Vector2.ZERO, duration)
+	return tween
+
+## 淡出 + 位移滑出（to_offset），作为 fade_slide_in 的反向动画
+func animate_fade_slide_out(target: Control, to_offset: Vector2,
+							 duration: float = DURATION_NORMAL, tween_id: String = "") -> Tween:
+	var tween := _create_tween(tween_id)
+	tween.set_ease(EASING_STANDARD)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(target, "modulate:a", 0.0, duration)
+	tween.parallel().tween_property(target, "offset_transform_position", to_offset, duration)
+	tween.finished.connect(func() -> void:
+		if target and target.visible:
+			target.visible = false
+	)
+	return tween
+
+## 淡入 + 位移滑入 + 缩放（from_offset + from_scale → 原位 1:1），适合大图入场
+func animate_fade_slide_scale_in(target: Control, from_offset: Vector2, from_scale: Vector2 = Vector2.ONE,
+								   duration: float = DURATION_NORMAL, tween_id: String = "") -> Tween:
+	var tween := _create_tween(tween_id)
+	tween.set_ease(EASING_STANDARD)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	if not target.visible:
+		target.visible = true
+	target.modulate.a = 0.0
+	target.offset_transform_enabled = true
+	target.offset_transform_position = from_offset
+	target.offset_transform_scale = from_scale
+	tween.tween_property(target, "modulate:a", 1.0, duration)
+	tween.parallel().tween_property(target, "offset_transform_position", Vector2.ZERO, duration)
+	tween.parallel().tween_property(target, "offset_transform_scale", Vector2.ONE, duration)
+	return tween
+
+## 上下浮动无限循环动画（offset 相对基准 0 上下浮动 amplitude；用 stop_tween 结束）
+func animate_floating(target: Control, amplitude: float, duration: float = 1.5,
+						tween_id: String = "") -> Tween:
+	var tween := _create_tween(tween_id)
+	tween.set_loops()
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(target, "offset_transform_position:y", amplitude, duration)
+	tween.tween_property(target, "offset_transform_position:y", 0.0, duration)
+	return tween
+
 ## 延迟执行回调
 func delay_call(callback: Callable, delay: float, tween_id: String = "") -> Tween:
 	var tween = _create_tween(tween_id)
-	tween.tween_callback(callback)
-	if delay > 0:
-		tween.set_delay(delay)
+	tween.tween_callback(callback).set_delay(delay)
 	return tween
 
 ## 创建序列动画（多个动画依次执行）
@@ -320,6 +406,8 @@ var ui_exist = {
 	"Play_View": false,
 	"Setting_View": false,
 	"Score_View": false,
+	"Chara_View": false,
+	"Profile_Page": false,
 }
 
 ## 记录每个页面存在哪些组件
@@ -334,6 +422,8 @@ var ui_part = {
 	UIStateManager.UIState.SETTINGS_VIEW: ["Setting_View"],
 	UIStateManager.UIState.PLAY_VIEW: ["Play_View"],
 	UIStateManager.UIState.SCORE_VIEW: ["Score_View"],
+	UIStateManager.UIState.CHARA_VIEW: ["Chara_View"],
+	UIStateManager.UIState.PROFILE_VIEW: ["Profile_Page", "Player_Info"]
 }
 
 var ui_path_map = {
@@ -349,6 +439,8 @@ var ui_path_map = {
 	"Play_View": PathRegistry.PLAY_VIEW,
 	"Setting_View": PathRegistry.SETTING_VIEW,
 	"Score_View": PathRegistry.SCORE_VIEW,
+	"Chara_View": PathRegistry.CHARA_VIEW,
+	"Profile_Page": PathRegistry.PROFILE_PAGE,
 }
 
 func get_comp(ui_part_name: String) -> Node:
@@ -458,8 +550,8 @@ func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_sta
 			animate_list_item_horizontal(album_list, sIndex, -1200, tween_id)
 
 			out_item_idx = sIndex
-			tween = animate_fade_out(album_list, 0.7, "AlbumListFadeOut")
-			tween = animate_fade_out(get_node(PathRegistry.RANDOM_SELECT_BTN), 0.7, "RandomSelectFadeOut")
+			tween = animate_fade_out(album_list, 0.5, "AlbumListFadeOut")
+			animate_fade_out(get_node(PathRegistry.RANDOM_SELECT_BTN), 0.7, "RandomSelectFadeOut")
 		"Song_List":
 			# 静态 SelectedAlbum：离开 SongView 时左移退出，结束后隐藏并复位（去向一致）
 			var sa := get_node_or_null(PathRegistry.SELECTED_ALBUM)
@@ -497,7 +589,7 @@ func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_sta
 				ani_comp.restore_panel_state()
 			)
 		"Player_Info":
-			animate_offset_to(ani_comp, Vector2(900, 200), 0.55, "PlayerInfoPosition")
+			animate_offset_to(ani_comp, Vector2(ani_comp.size.x * 1.3, ani_comp.offset_transform_position.y), 0.55, "PlayerInfoPosition")
 		"Character":
 			animate_offset_to(ani_comp, Vector2(0, ani_comp.size.y), 0.35, "CharacterPosition")
 		"Shortcut_Menu":
@@ -527,6 +619,18 @@ func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_sta
 			ani_comp.animate(false)
 			var ani_time = 0.45 if new_state == UIStateManager.UIState.PLAY_VIEW else 1.2
 			tween = animate_fade_out(ani_comp, ani_time, tween_id)
+		"Chara_View":
+			if ani_comp == null or not is_instance_valid(ani_comp):
+				return null
+			if ani_comp.has_method("play_exit"):
+				ani_comp.play_exit()
+		"Profile_Page":
+			var navi := ani_comp.get_node_or_null("Navi")
+			if navi:
+				animate_offset_to(navi, Vector2(0, navi.size.y), 0.3, "ProfileNaviOut")
+			var content := ani_comp.get_node_or_null("PC/PageContent")
+			if content:
+				tween = animate_fade_out(content, 0.3, tween_id)
 
 	return tween
 
@@ -656,5 +760,22 @@ func animate_ui_in(ui_name: String, _old_state: UIStateManager.UIState) -> Tween
 			tween = animate_fade_in(ani_comp, 0.45, tween_id)
 			tween.finished.connect(func ():
 				ani_comp.animate())
+		"Chara_View":
+			if ani_comp == null or not is_instance_valid(ani_comp):
+				return null
+			if ani_comp.has_method("play_enter"):
+				ani_comp.play_enter()
+		"Profile_Page":
+			# 底栏向上滑入 + 内容区淡入
+			var navi := ani_comp.get_node_or_null("Navi")
+			if navi:
+				navi.offset_transform_position = Vector2(0, navi.size.y)
+				animate_offset_back(navi, 0.3, "ProfileNaviIn")
+			var content := ani_comp.get_node_or_null("PC/PageContent")
+			if content:
+				content.modulate.a = 0.0
+				tween = animate_fade_in(content, 0.35, tween_id)
 
 	return tween
+
+############################## Chara_View 专属动画 ##############################

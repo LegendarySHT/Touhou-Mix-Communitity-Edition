@@ -393,14 +393,28 @@ alignment = 1
 
 [node name="Border" type="PanelContainer" parent="PC/PageContent/Profile/Main/PC/Displayer" unique_id=1414132698]
 custom_maximum_size = Vector2(425, 550)
+clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_i6pqd")
 
-[node name="CardImg" type="TextureRect" parent="PC/PageContent/Profile/Main/PC/Displayer/Border" unique_id=1545527890]
+[node name="CharaImg" type="TextureRect" parent="PC/PageContent/Profile/Main/PC/Displayer/Border" unique_id=1545527890]
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
+
+[node name="BGImg" type="TextureRect" parent="PC/PageContent/Profile/Main/PC/Displayer/Border" unique_id=1336824707]
+show_behind_parent = true
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 5
+stretch_mode = 6
+
+[node name="ColorRect" type="ColorRect" parent="PC/PageContent/Profile/Main/PC/Displayer/Border" unique_id=109545152]
+show_behind_parent = true
+layout_mode = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.48235294)
 
 [node name="Info" type="PanelContainer" parent="PC/PageContent/Profile/Main/PC/Displayer" unique_id=1109395736]
 custom_maximum_size = Vector2(225, 450)
@@ -413,24 +427,24 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_ft172")
 layout_mode = 2
 alignment = 1
 
-[node name="Label" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=2072238485]
+[node name="Name" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=2072238485]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "Chara Name"
 
-[node name="Label2" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=1693289358]
+[node name="Illustrator" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=1693289358]
 layout_mode = 2
 size_flags_vertical = 2
 theme_override_font_sizes/font_size = 24
 text = "by [author]"
 
-[node name="Label3" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=1646996614]
+[node name="CollectiontTitle" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=1646996614]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "已收集角色"
 horizontal_alignment = 1
 
-[node name="Label4" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=1116389370]
+[node name="CollectProgress" type="Label" parent="PC/PageContent/Profile/Main/PC/Displayer/Info/VBox" unique_id=1116389370]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "1/100"

@@ -117,4 +117,4 @@ func _on_button_pressed() -> void:
 		ShowStat.DELVIEW_BACK:
 			eb.page_right.emit()
 		ShowStat.CHARA_BTN:
-			pass  # 对应页面尚未实现，跳转逻辑留空
+			UiStatMGR.change_state(UiStatMGR.UIState.CHARA_VIEW)

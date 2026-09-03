@@ -32,6 +32,11 @@ signal avatar_loaded(texture: Texture2D)
 @onready var profile_pp_label: Label = $PC/PageContent/Profile/Main/Header/HBoxContainer/NameLevelVBox/Level/PPLabel
 @onready var profile_bio_label: Label = $PC/PageContent/Profile/Data/VBox/Desc/Label
 @onready var profile_avatar_rect: TextureRect = $PC/PageContent/Profile/Main/Header/HBoxContainer/AvatarBig/TextureRect
+# ========== Profile 角色展示（Displayer） ==========
+@onready var chara_display_img: TextureRect = $PC/PageContent/Profile/Main/PC/Displayer/Border/CharaImg
+@onready var bg_display_img: TextureRect = $PC/PageContent/Profile/Main/PC/Displayer/Border/BGImg
+@onready var chara_info_name: Label = $PC/PageContent/Profile/Main/PC/Displayer/Info/VBox/Name
+@onready var chara_info_author: Label = $PC/PageContent/Profile/Main/PC/Displayer/Info/VBox/Illustrator
 
 # ========== History 页统计显示节点（TopBar/Grid） ==========
 @onready var history_pp_label: Label = $PC/PageContent/History/PC/TopBar/PC/InnerMargin/Grid/pp
@@ -109,9 +114,49 @@ func _ready() -> void:
 	old_pwd_edit.secret = true
 	new_pwd_edit.secret = true
 	_reset_avatar_adjust()
+	# 头像卡（Border 整块卡片框）点击进入 Chara_View：卡片框接收点击，头像图透传
+	var card_border := get_node_or_null("PC/PageContent/Profile/Main/PC/Displayer/Border")
+	if card_border:
+		card_border.gui_input.connect(_on_card_border_gui_input)
 	if ThemeMGR:
 		ThemeMGR.register_theme_applier(self)
 		apply_theme()
+	# 角色展示：初始加载当前人物，并监听切换（选中角色后刷新）
+	_load_chara_display()
+	EvtBus.config_changed.connect(_on_config_changed)
+	# FileSystemManager 由 Main._ready 创建（晚于本节点 _ready），故延迟一帧再连扫描完成信号，
+	# 保证启动扫描完成后能按最终选中的角色加载一次
+	call_deferred("_connect_scan_ready")
+
+func _connect_scan_ready() -> void:
+	if FileSystemManager.instance and not FileSystemManager.instance.resources_ready.is_connected(_load_chara_display):
+		FileSystemManager.instance.resources_ready.connect(_load_chara_display)
+
+## 角色切换（[Chara] chara_id）时刷新展示
+func _on_config_changed(key: String, section: String, _value: Variant) -> void:
+	if key == "chara_id" and section == "Chara":
+		_load_chara_display()
+
+## 加载当前选中角色的立绘、背景与名字/作者到 Displayer
+func _load_chara_display() -> void:
+	var key := CharaMGR.get_current_chara_key()
+	if key.is_empty():
+		return
+	var data: Dictionary = CharaMGR.get_chara_data(key)
+	var tex := CharaMGR.get_portrait(key, 0)
+	if tex:
+		chara_display_img.texture = tex
+	var bg := CharaMGR.get_background(key)
+	if bg:
+		bg_display_img.texture = bg
+	# 名字与作者
+	chara_info_name.text = str(data.get("name", key))
+	chara_info_author.text = "by %s" % str(data.get("author", ""))
+
+## 头像卡点击：进入 CHARA_VIEW（标准视图导航，返回键经 UiState 栈回 PROFILE_VIEW）
+func _on_card_border_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		UiStatMGR.change_state(UIStateManager.UIState.CHARA_VIEW)
 
 func _exit_tree() -> void:
 	if ThemeMGR:

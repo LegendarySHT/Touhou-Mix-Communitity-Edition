@@ -1258,6 +1258,7 @@ offset_top = 10.0
 offset_right = -205.0
 
 [node name="RB_Btn" type="Button" parent="." unique_id=1566254107]
+z_index = 99
 clip_contents = true
 layout_mode = 1
 anchors_preset = 3

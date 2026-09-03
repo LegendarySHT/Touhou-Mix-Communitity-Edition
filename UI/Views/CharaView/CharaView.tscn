@@ -1,5 +1,80 @@
 [gd_scene format=3 uid="uid://bl5slwqqoifg4"]
 
+[ext_resource type="Texture2D" uid="uid://cb4yi8i305ifg" path="res://Resources/Charas/tenshi-stand/tenshi-stand.png" id="1_6lf20"]
+[ext_resource type="Script" uid="uid://ct71cf7ogsvvc" path="res://UI/Views/CharaView/CharaView.gd" id="1_mugt3"]
+[ext_resource type="PackedScene" uid="uid://c0mtsyy46whs1" path="res://UI/Views/CharaView/CharaListItem.tscn" id="2_xna20"]
+[ext_resource type="Texture2D" uid="uid://cxh4t0l7yawwc" path="res://Resources/Covers/71abc9f426fd729c415cd5960067bbcb.jpg" id="3_07cun"]
+[ext_resource type="Shader" uid="uid://dt7qgfyboldgt" path="res://UI/Views/CharaView/MeshDot.gdshader" id="3_60w2y"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2xvos"]
+content_margin_left = 25.0
+content_margin_top = 60.0
+draw_center = false
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.49411765)
+expand_margin_bottom = 10.0
+
+[sub_resource type="Gradient" id="Gradient_07cun"]
+colors = PackedColorArray(0, 0, 0, 0.8, 0, 0, 0, 0.8)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_3y6u5"]
+gradient = SubResource("Gradient_07cun")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_iygje"]
+shader = ExtResource("3_60w2y")
+shader_parameter/dot_color = Color(1, 1, 1, 0.4627451)
+shader_parameter/bg_color = Color(0, 0, 0, 0)
+shader_parameter/dot_size = 0.3
+shader_parameter/spacing = 12.0
+shader_parameter/move_speed = Vector2(-5, 5)
+shader_parameter/center_scale = 5.0
+shader_parameter/center_radius = 0.5
+shader_parameter/smoothness = 0.2
+
+[sub_resource type="Gradient" id="Gradient_xna20"]
+offsets = PackedFloat32Array(0, 0.53114754, 1)
+colors = PackedColorArray(1, 1, 1, 0.6156863, 1, 1, 1, 1, 1, 1, 1, 0.56078434)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ck4ec"]
+gradient = SubResource("Gradient_xna20")
+
+[sub_resource type="Gradient" id="Gradient_d2iif"]
+interpolation_mode = 2
+offsets = PackedFloat32Array(0, 0.16721311, 0.53114754, 1)
+colors = PackedColorArray(0, 0, 0, 0, 0.040918868, 0.04594399, 0.054558486, 0.061019357, 0.38674608, 0.453767, 0.56859124, 0.5647059, 0.29919407, 0.41557875, 0.62042314, 0.79607844)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_iygje"]
+gradient = SubResource("Gradient_d2iif")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_iygje"]
+content_margin_left = 10.0
+content_margin_top = 15.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.6, 0.6, 0.6, 0)
+
+[sub_resource type="LabelSettings" id="LabelSettings_iygje"]
+font_size = 120
+shadow_size = 25
+shadow_color = Color(0, 0.22352941, 0.70980394, 0.41960785)
+shadow_offset = Vector2(3, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j02sm"]
+bg_color = Color(0, 0, 0, 0.32941177)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8, 0.8, 0.8, 0.7176471)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yuy5i"]
+bg_color = Color(0, 0, 0, 0.8392157)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+corner_detail = 5
+
 [node name="CharaView" type="Control" unique_id=2022291714]
 layout_mode = 3
 anchors_preset = 15
@@ -7,3 +82,197 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_mugt3")
+
+[node name="Title" type="Label" parent="." unique_id=1008770526]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 91.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 80
+theme_override_styles/normal = SubResource("StyleBoxFlat_2xvos")
+text = "角色列表"
+
+[node name="CharaList" type="ScrollContainer" parent="." unique_id=753285390]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HBox" type="HBoxContainer" parent="CharaList" unique_id=1334364538]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="Chara" parent="CharaList/HBox" unique_id=1092599467 instance=ExtResource("2_xna20")]
+layout_mode = 2
+
+[node name="CharaDetail" type="TextureButton" parent="." unique_id=1845463010]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture_normal = SubResource("GradientTexture2D_3y6u5")
+stretch_mode = 0
+
+[node name="Panel" type="Panel" parent="CharaDetail" unique_id=1267920987]
+custom_minimum_size = Vector2(0, 400)
+clip_contents = true
+layout_mode = 1
+offset_top = 340.0
+offset_right = 1920.0
+offset_bottom = 740.0
+offset_transform_enabled = true
+mouse_filter = 2
+
+[node name="BG" type="TextureRect" parent="CharaDetail/Panel" unique_id=169228102]
+custom_minimum_size = Vector2(0, 400)
+clip_contents = true
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 1920.0
+grow_horizontal = 2
+offset_transform_enabled = true
+mouse_filter = 2
+texture = ExtResource("3_07cun")
+expand_mode = 4
+stretch_mode = 5
+
+[node name="MeshDot" type="TextureRect" parent="CharaDetail/Panel" unique_id=178940303]
+material = SubResource("ShaderMaterial_iygje")
+custom_minimum_size = Vector2(0, 400)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -340.0
+offset_bottom = 340.0
+grow_horizontal = 2
+grow_vertical = 2
+rotation = -0.034906585
+scale = Vector2(1.1, 1.1)
+pivot_offset_ratio = Vector2(0.5, 0.5)
+mouse_filter = 2
+texture = SubResource("GradientTexture1D_ck4ec")
+
+[node name="RightShader" type="TextureRect" parent="CharaDetail" unique_id=608952636]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 500.0
+offset_top = 200.0
+offset_right = 500.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+rotation = 0.17453292
+scale = Vector2(1, 1.2)
+pivot_offset_ratio = Vector2(1, 0.5)
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_iygje")
+
+[node name="Desc" type="Label" parent="CharaDetail" unique_id=1634978454]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.45
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 20.0
+offset_top = -200.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme_override_colors/font_color = Color(0.18717614, 0.18717614, 0.18717614, 1)
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_iygje")
+text = "人物描述"
+
+[node name="Name" type="Label" parent="CharaDetail" unique_id=1784649538]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.45
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 20.0
+offset_top = 180.0
+offset_bottom = 35.0
+grow_horizontal = 0
+grow_vertical = 2
+offset_transform_enabled = true
+text = "人物名称"
+label_settings = SubResource("LabelSettings_iygje")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Illustrator" type="Label" parent="CharaDetail" unique_id=1944551029]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -250.0
+offset_bottom = -220.0
+grow_horizontal = 0
+grow_vertical = 2
+offset_transform_enabled = true
+theme_override_font_sizes/font_size = 24
+text = "插图 xxx"
+
+[node name="SelectBtn" type="Button" parent="CharaDetail" unique_id=219925961]
+custom_minimum_size = Vector2(200, 90)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = 500.0
+offset_right = -250.0
+offset_bottom = 45.0
+grow_horizontal = 0
+grow_vertical = 2
+offset_transform_enabled = true
+focus_mode = 0
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_j02sm")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_yuy5i")
+text = "选择"
+
+[node name="Chara" type="TextureRect" parent="CharaDetail" unique_id=545696298]
+custom_minimum_size = Vector2(512, 0)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.3
+anchor_top = 1.0
+anchor_right = 0.3
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -930.0
+offset_right = 400.0
+offset_bottom = 170.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_vertical = 8
+offset_transform_enabled = true
+mouse_filter = 2
+texture = ExtResource("1_6lf20")
+expand_mode = 1
+stretch_mode = 5
+
+[connection signal="pressed" from="CharaDetail" to="." method="_on_chara_detail_close"]
+[connection signal="pressed" from="CharaDetail/SelectBtn" to="." method="_on_chara_select"]
