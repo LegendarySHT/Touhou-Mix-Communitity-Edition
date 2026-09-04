@@ -18,6 +18,10 @@ func _ready() -> void:
 	if meltysynth_player != null and meltysynth_player.has_signal("vocal_finished"):
 		meltysynth_player.connect("vocal_finished", Callable(self, "_on_vocal_finished"))
 
+## 设置最大复音数（走属性 setter，由其驱动 C# 调用统一生效）
+func set_max_polyphony(value: int) -> void:
+	max_polyphony = value
+
 func _on_vocal_finished() -> void:
 	vocal_finished.emit()
 	# 尽管 meltysynth_player 是 C# 对象，我们可以通过 call() 和方法名称与之交互

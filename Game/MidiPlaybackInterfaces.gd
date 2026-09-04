@@ -123,6 +123,79 @@ func get_preset_name(_program: int, _bank: int = 0) -> String:
 func set_manually_controlled_notes(_manually_controlled: Dictionary) -> void:
 	push_error("set_manually_controlled_notes not implemented")
 
+## ===================== 扩展能力（循环/系统时钟/音频输出） =====================
+
+## 设置循环播放
+func set_loop(_enabled: bool) -> void:
+	push_error("set_loop not implemented")
+
+## 获取循环播放状态
+func get_loop() -> bool:
+	push_error("get_loop not implemented")
+	return false
+
+## 设置是否启用系统时钟模式
+func set_use_system_stopwatch(_enabled: bool) -> void:
+	push_error("set_use_system_stopwatch not implemented")
+
+## 设置最大复音数
+func set_max_polyphony(_value: int) -> void:
+	push_error("set_max_polyphony not implemented")
+
+## 设置音频总线
+func set_bus(_bus_name: String) -> void:
+	push_error("set_bus not implemented")
+
+## 强制重建音频输出设备（跟随当前系统默认输出端点；用于蓝牙连接/断开后重路由）
+func recreate_audio_output() -> void:
+	push_error("recreate_audio_output not implemented")
+
+## ===================== 人声（vocal）链路 =====================
+
+## 加载人声文件（miniaudio 统一输出链路）
+func load_vocal_file(_path: String) -> bool:
+	push_error("load_vocal_file not implemented")
+	return false
+
+## 卸载人声资源
+func unload_vocal() -> void:
+	push_error("unload_vocal not implemented")
+
+## 暂停人声
+func pause_vocal() -> void:
+	push_error("pause_vocal not implemented")
+
+## 恢复人声
+func resume_vocal() -> void:
+	push_error("resume_vocal not implemented")
+
+## 停止人声
+func stop_vocal() -> void:
+	push_error("stop_vocal not implemented")
+
+## 跳转人声位置（毫秒）
+func seek_vocal(_position_ms: float) -> void:
+	push_error("seek_vocal not implemented")
+
+## 设置人声音量（线性值 0.0-1.0）
+func set_vocal_volume(_volume_linear: float) -> void:
+	push_error("set_vocal_volume not implemented")
+
+## 获取人声位置（毫秒）
+func get_vocal_position_ms() -> float:
+	push_error("get_vocal_position_ms not implemented")
+	return 0.0
+
+## 人声是否正在播放
+func is_vocal_playing() -> bool:
+	push_error("is_vocal_playing not implemented")
+	return false
+
+## 人声是否已自然结束
+func is_vocal_finished() -> bool:
+	push_error("is_vocal_finished not implemented")
+	return false
+
 ## ===================== 信号 =====================
 
 @warning_ignore("unused_signal")
