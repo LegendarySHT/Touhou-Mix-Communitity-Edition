@@ -391,6 +391,17 @@ public partial class MeltySynthPlayer : Node
 	}
 
 	/// <summary>
+	/// 中断恢复：音频被系统打断（如来电/切后台）后，安卓 AAudio 被系统夺走音频焦点，
+	/// 仅 ma_device_stop/start 无法重新申请到会话，必须整桥销毁重建才能恢复声音。
+	/// 重建会保留 sequencer 位置与合成器音源，但原生人声解码器会丢失（由 MidiPlaybackManager 重新加载）。
+	/// </summary>
+	public void recover_audio_output()
+	{
+		GD.Print("[MeltySynthPlayer] Recreating audio output bridge for interruption recovery");
+		recreate_audio_output();
+	}
+
+	/// <summary>
 	/// 获取当前音频延迟 (毫秒).
 	/// miniaudio 后端: 设备内部延迟 (ma_device_get_latency) + RingBuffer 延迟
 	/// </summary>

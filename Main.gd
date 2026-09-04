@@ -51,10 +51,15 @@ func _notification(what: int) -> void:
 		if ChartDB:
 			ChartDB.CloseDb()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
-		# 应用焦点回归：重新检测蓝牙输出（用户可能在离开期间切换了输出设备），
-		# 蓝牙状态变化时自动切换延迟预设并重建音频桥跟随新默认设备
-		if MidiPlaybackManager.instance != null:
-			MidiPlaybackManager.instance.refresh_audio_delay()
+			# 应用焦点回归：重新检测蓝牙输出（用户可能在离开期间切换了输出设备），
+			# 蓝牙状态变化时自动切换延迟预设并重建音频桥跟随新默认设备
+			if MidiPlaybackManager.instance != null:
+				MidiPlaybackManager.instance.refresh_audio_delay()
+				# 安卓：返回前台时仍处 PLAY_VIEW，设备可能已被系统打断(全屏来电/切后台再回)，
+				# 设备级重启自愈，避免挂断/返回后无声音；即使已自动暂停也先修好设备
+				if OS.get_name() == "Android" \
+						and state_manager.current_state == UIStateManager.UIState.PLAY_VIEW:
+					MidiPlaybackManager.instance.recover_audio_output()
 
 ## 桌面端 Esc 键（仅在无其他控件消费事件时触发）
 func _unhandled_input(event: InputEvent) -> void:

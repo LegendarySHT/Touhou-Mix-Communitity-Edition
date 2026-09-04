@@ -623,6 +623,18 @@ func _globalize_vocal_path(path: String) -> String:
 		return ProjectSettings.globalize_path(path)
 	return path
 
+## 音频中断恢复（安卓系统打断后整桥重建）：恢复声音、保留播放位置与音源
+## 重建会丢失原生人声解码器，置 _vocal_initialized 标记以便 resume 时从当前播放位置重载人声
+func recover_audio_output() -> void:
+	if midi_player == null or current_midi_data == null:
+		return
+	if midi_player.has_method("recover_audio_output"):
+		midi_player.call("recover_audio_output")
+		_vocal_initialized = false
+		# 设备重建后原始渲染时钟可能变化，重置 stall 缓存避免误判
+		_last_raw_midi_position_ms = -1.0
+		GLogger.info("Audio output bridge recreated for interruption recovery", "MidiPlaybackManager")
+
 ## 兼容性空流程：原生解码已在 load_midi 预载，无需等待 worker
 func await_vocal_preload() -> void:
 	pass

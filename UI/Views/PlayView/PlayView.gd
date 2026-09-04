@@ -196,8 +196,19 @@ func _process(delta: float) -> void:
 				_position_stall_frames += 1
 				if _position_stall_frames >= _PLAYBACK_STALL_THRESHOLD:
 					_position_stall_frames = 0
-					GLogger.warning("Playback position stalled at %.1fms, triggering game finished" % current_time, "PlayView")
-					_on_game_finished()
+					# 区分曲终与音频中断：停滞在接近总时长处视为自然结束，否则视为设备被系统打断
+					if current_midi and current_time >= current_midi.duration_ms - 100.0:
+						GLogger.warning("Playback position stalled at end %.1fms, triggering game finished" % current_time, "PlayView")
+						_on_game_finished()
+					elif OS.get_name() == "Android":
+						# 安卓设备被系统打断（如来电/切后台）：整桥重建恢复声音，再自动弹暂停
+						# 阻止停滞被误判为曲终跳结算，同时覆盖悬浮来电不暂停 Activity 时的自动暂停
+						if playback_mgr:
+							playback_mgr.recover_audio_output()
+						_auto_pause_on_background("audio_interrupted")
+					else:
+						GLogger.warning("Playback position stalled at %.1fms, triggering game finished" % current_time, "PlayView")
+						_on_game_finished()
 			else:
 				_position_stall_frames = 0
 			_last_playback_position = current_time
