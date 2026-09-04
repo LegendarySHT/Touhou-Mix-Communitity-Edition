@@ -217,7 +217,10 @@ func show_kb_mode_adjust(current_keys: String = "", current_display_names: Strin
 ## 关闭时由 FallingAdjust 内部 save_config 即时写入 ConfigManager 并触发 config_changed
 ## 返回 Dictionary 字段见 FallingAdjust.get_result（供 SettingList 同步 _pending_config）
 func show_falling_adjust() -> Dictionary:
-	_pop_up_window(6)
+	# 等 _pop_up_window 内部 popup() 完成（弹窗可见）后再初始化并启动下落预览：
+	# init_adjust 末尾会 await 一帧后调用 _start_preview_loop，其依赖 is_visible_in_tree() 为真
+	await _pop_up_window(6)
+	_falling_adjust.init_adjust()
 	await window_close
 	# 兜底停止预览（popup_hide 已调用，此处再保险一次）
 	_falling_adjust.stop_preview()
