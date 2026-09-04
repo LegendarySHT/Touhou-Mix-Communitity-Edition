@@ -130,9 +130,8 @@ func refresh_audio_delay() -> void:
 		GLogger.info("Audio output changed (bluetooth=%s), switching delay preset" % str(is_bt), "MidiPlaybackManager")
 		# WASAPI 流绑定打开设备时的端点，需重建音频桥才跟随新默认设备。
 		# Android 的 AAudio 独占模式 + 蓝牙初始化有风险，不重建（开局前已连蓝牙的场景初始即走蓝牙端点）。
-		if OS.get_name() == "Windows" and midi_player != null \
-				and midi_player.has_method("recreate_audio_output"):
-			midi_player.call("recreate_audio_output")
+		if OS.get_name() == "Windows" and midi_player != null:
+			midi_player.recreate_audio_output()
 	_apply_delay_preset()
 
 ## 按当前输出类型读取并应用延迟预设（蓝牙 → audio_playback_delay_bt，否则 audio_playback_delay）
@@ -160,11 +159,9 @@ func _on_settings_changed(setting_name: String, value: Variant) -> void:
 		GLogger.info("Applying system stopwatch setting", "MidiPlaybackManager")
 		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
 		var backend = _get_active_backend()
-		if backend != null and backend.has_method("set_use_system_stopwatch"):
+		if backend != null:
 			backend.set_use_system_stopwatch(use_system_stopwatch)
 			GLogger.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
-		else:
-			GLogger.warning("Current backend does not support system stopwatch setting", "MidiPlaybackManager")
 
 	# 最大复音数改变（需要重新加载SoundFont才能生效）
 	if setting_name == "*" or setting_name == "max_polyphony":
@@ -182,10 +179,9 @@ func _on_settings_changed(setting_name: String, value: Variant) -> void:
 		var backend = _get_active_backend()
 		if backend != null:
 			# 设置新的复音数
-			if backend.has_method("set_max_polyphony"):
-				var max_polyphony = ConfigManager.instance.get_int("Playback", "max_polyphony", 96)
-				backend.call("set_max_polyphony", max_polyphony)
-				GLogger.info("Updated max polyphony to: %d" % max_polyphony, "MidiPlaybackManager")
+			var max_polyphony = ConfigManager.instance.get_int("Playback", "max_polyphony", 96)
+			backend.set_max_polyphony(max_polyphony)
+			GLogger.info("Updated max polyphony to: %d" % max_polyphony, "MidiPlaybackManager")
 
 			# 重新加载SoundFont使设置生效
 			_load_soundfont_from_config()
@@ -378,18 +374,14 @@ func load_midi(midi_data: MidiData) -> bool:
 	# 加载到活跃后端
 	var backend = _get_active_backend()
 	if backend != null:
-		if backend.has_method("load_midi"):
-			backend.load_midi(midi_file_path)
-		elif backend.has_method("set_file"):
-			backend.set_file(midi_file_path)
-		elif "file" in backend:
-			backend.file = midi_file_path
+		# load_midi 为接口契约方法（MeltySynth 后端唯一实现），不再做 has_method 动态探测
+		backend.load_midi(midi_file_path)
 	
 	# 应用轨道-通道音量配置
 	if midi_data.track_channel_volume_config and not midi_data.track_channel_volume_config.is_empty():
 		for track_idx in midi_data.track_channel_volume_config.keys():
 			for ch in midi_data.track_channel_volume_config[track_idx].keys():
-				if backend != null and backend.has_method("set_track_channel_volume"):
+				if backend != null:
 					backend.set_track_channel_volume(track_idx, ch, midi_data.track_channel_volume_config[track_idx][ch])
 		GLogger.info("Applied %d track volume configs" % midi_data.track_channel_volume_config.size(), "MidiPlaybackManager")
 	else:
@@ -406,7 +398,7 @@ func load_midi(midi_data: MidiData) -> bool:
 				if seen_pairs.has(pair_key):
 					continue
 				seen_pairs[pair_key] = true
-				if backend != null and backend.has_method("set_track_channel_volume"):
+				if backend != null:
 					backend.set_track_channel_volume(soa.track(i), soa.channel(i), default_volume)
 				default_count += 1
 		else:
@@ -416,7 +408,7 @@ func load_midi(midi_data: MidiData) -> bool:
 					if seen_pairs.has(pair_key):
 						continue
 					seen_pairs[pair_key] = true
-					if backend != null and backend.has_method("set_track_channel_volume"):
+					if backend != null:
 						backend.set_track_channel_volume(note.track_index, note.channel, default_volume)
 					default_count += 1
 		if default_count > 0:
@@ -435,7 +427,7 @@ func load_midi(midi_data: MidiData) -> bool:
 		for track_idx in midi_data.track_channel_instrument_overrides.keys():
 			for ch in midi_data.track_channel_instrument_overrides[track_idx].keys():
 				var instr = midi_data.track_channel_instrument_overrides[track_idx][ch]
-				if backend != null and backend.has_method("set_track_channel_instrument"):
+				if backend != null:
 					backend.set_track_channel_instrument(track_idx, ch, instr["bank"], instr["program"])
 		GLogger.info("Applied %d instrument overrides" % midi_data.track_channel_instrument_overrides.size(), "MidiPlaybackManager")
 	
@@ -443,7 +435,7 @@ func load_midi(midi_data: MidiData) -> bool:
 	_apply_mute_state_to_backend(backend)
 	
 	# 应用系统时钟配置（后端实现了 set_use_system_stopwatch 即可）
-	if backend != null and backend.has_method("set_use_system_stopwatch"):
+	if backend != null:
 		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
 		backend.set_use_system_stopwatch(use_system_stopwatch)
 		GLogger.info("System stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
@@ -606,10 +598,10 @@ func _preload_vocal_native() -> void:
 		GLogger.warning("Vocal file does not exist, skip native preload: %s" % path, "MidiPlaybackMGR")
 		return
 	var backend = _get_active_backend()
-	if backend == null or not backend.has_method("load_vocal_file"):
+	if backend == null:
 		return
 	if path != _vocal_loaded_path:
-		var ok: bool = backend.call("load_vocal_file", _globalize_vocal_path(path))
+		var ok: bool = backend.load_vocal_file(_globalize_vocal_path(path))
 		if ok:
 			_vocal_loaded_path = path
 			_vocal_initialized = false
@@ -654,7 +646,7 @@ func play() -> void:
 	_log_volume_state("play()")
 
 	# 设置音源
-	if not _soundfont_preloaded_to_backend and not current_soundfont_path.is_empty() and backend.has_method("set_soundfont"):
+	if not _soundfont_preloaded_to_backend and not current_soundfont_path.is_empty():
 		backend.set_soundfont(current_soundfont_path)
 		_soundfont_preloaded_to_backend = true
 
@@ -746,10 +738,7 @@ func resume() -> void:
 func set_loop(enabled: bool) -> void:
 	var backend = _get_active_backend()
 	if backend != null:
-		if backend.has_method("set_loop"):
-			backend.call("set_loop", enabled)
-		elif "loop" in backend:
-			backend.loop = enabled
+		backend.set_loop(enabled)
 	
 	# 同时更新配置
 	midi_player_config["loop"] = enabled
@@ -759,10 +748,7 @@ func set_loop(enabled: bool) -> void:
 func get_loop() -> bool:
 	var backend = _get_active_backend()
 	if backend != null:
-		if backend.has_method("get_loop"):
-			return backend.call("get_loop")
-		elif "loop" in backend:
-			return backend.loop
+		return backend.get_loop()
 	return false
 
 ## 跳转到指定位置
@@ -910,7 +896,7 @@ func ensure_soundfont_loaded() -> void:
 ## 无声音、无副作用；后端不支持时静默跳过
 func warmup_manual_path() -> void:
 	var backend = _get_active_backend()
-	if backend == null or not backend.has_method("warmup_manual_path"):
+	if backend == null:
 		return
 	backend.warmup_manual_path(cached_track_channel_instruments)
 	GLogger.info("Manual trigger path warmed up (%d tracks)" % cached_track_channel_instruments.size(), "MidiPlaybackManager")
@@ -1017,23 +1003,19 @@ func _initialize_meltysynth_backend() -> bool:
 
 	# 配置播放器参数
 	wrapper.set("max_polyphony", midi_player_config["max_polyphony"])
-	if wrapper.has_method("set_loop"):
-		wrapper.call("set_loop", midi_player_config["loop"])
+	wrapper.set_loop(midi_player_config["loop"])
 	GLogger.info("Set playback parameters", "MidiPlaybackManager")
 
-	if wrapper.has_method("set_volume_db"):
-		wrapper.call("set_volume_db", midi_player_config["volume_db"])
-		GLogger.info("Called set_volume_db", "MidiPlaybackManager")
+	wrapper.set_volume_db(midi_player_config["volume_db"])
+	GLogger.info("Called set_volume_db", "MidiPlaybackManager")
 
-	if wrapper.has_method("set_bus"):
-		wrapper.call("set_bus", "Master")
-		GLogger.info("Called set_bus", "MidiPlaybackManager")
+	wrapper.set_bus("Master")
+	GLogger.info("Called set_bus", "MidiPlaybackManager")
 
 	# 初始化系统时钟配置
-	if wrapper.has_method("set_use_system_stopwatch"):
-		var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
-		wrapper.call("set_use_system_stopwatch", use_system_stopwatch)
-		GLogger.info("Set system stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
+	var use_system_stopwatch = ConfigManager.instance.get_int("Playback", "use_system_stopwatch", 0) == 1
+	wrapper.set_use_system_stopwatch(use_system_stopwatch)
+	GLogger.info("Set system stopwatch mode: %s" % ("ON" if use_system_stopwatch else "OFF"), "MidiPlaybackManager")
 
 	# 设置最大复音数
 	wrapper.set("max_polyphony", ConfigManager.instance.get_int("Playback", "max_polyphony", 96))
@@ -1106,8 +1088,7 @@ func set_volume_db(volume: float) -> void:
 		return
 
 	# 应用到活跃后端
-	if backend.has_method("set_volume_db"):
-		backend.call("set_volume_db", volume)
+	backend.set_volume_db(volume)
 
 	midi_player_config["volume_db"] = volume
 
@@ -1130,7 +1111,7 @@ func _log_volume_state(tag: String) -> void:
 	var backend = _get_active_backend()
 	var db_cfg: float = midi_player_config.get("volume_db", 0.0)
 	var db_backend: float = db_cfg
-	if backend != null and backend.has_method("get_volume_db"):
+	if backend != null:
 		db_backend = backend.get_volume_db()
 	var midi_vol: float = current_midi_data.midi_volume if current_midi_data else 0.0
 	var eff: float = get_effective_midi_volume(midi_vol) if current_midi_data else 0.0
@@ -1149,8 +1130,7 @@ func set_track_channel_volume(track_index: int, channel: int, volume_linear: flo
 	var clamped_volume = clamp(volume_linear, 0.0, 1.0)
 
 	# 通过后端抽象调用
-	if backend.has_method("set_track_channel_volume"):
-		backend.set_track_channel_volume(track_index, channel, clamped_volume)
+	backend.set_track_channel_volume(track_index, channel, clamped_volume)
 
 	GLogger.info("Track %d Channel %d volume set to: %.1f%%" %
 		[track_index, channel, clamped_volume * 100.0], "MidiPlaybackManager")
@@ -1160,15 +1140,13 @@ func get_track_channel_volume(track_index: int, channel: int) -> float:
 	var backend = _get_active_backend()
 	if backend == null:
 		return 1.0
-	if backend.has_method("get_track_channel_volume"):
-		return backend.get_track_channel_volume(track_index, channel)
-	return 1.0
+	return backend.get_track_channel_volume(track_index, channel)
 
 ## 设置人声音量
 func set_vocal_volume_db(volume_db: float) -> void:
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("set_vocal_volume"):
-		backend.call("set_vocal_volume", db_to_linear(volume_db))
+	if backend != null:
+		backend.set_vocal_volume(db_to_linear(volume_db))
 		GLogger.info("Set vocal volume to %.2f dB" % volume_db, "MidiPlaybackManager")
 	else:
 		push_error("[MidiPlaybackManager] AudioManager not available")
@@ -1197,7 +1175,7 @@ func set_track_channel_mute(track_index: int, channel: int, muted: bool) -> void
 
 	# 3. 通知后端（MeltySynth 的 set_track_channel_mute 内部会停止该通道正在播放的音符）
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("set_track_channel_mute"):
+	if backend != null:
 		backend.set_track_channel_mute(track_index, channel, muted)
 
 ## 仅在运行时设置 (track, channel) 的静音状态（不写入MidiData）
@@ -1208,7 +1186,7 @@ func set_track_channel_mute_runtime(track_index: int, channel: int, muted: bool)
 		return
 
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("set_track_channel_mute"):
+	if backend != null:
 		backend.set_track_channel_mute(track_index, channel, muted)
 
 ## 查询 (track, channel) 对的静音状态
@@ -1247,19 +1225,15 @@ func get_presets_list() -> Array:
 	var backend = _get_active_backend()
 	if backend == null:
 		return []
-	if backend.has_method("get_presets_list"):
-		return backend.get_presets_list()
-	return []
-
+	return backend.get_presets_list()
+	
 ## 获取指定 bank/program 的乐器名称
 func get_preset_name(program: int, bank: int = 0) -> String:
 	var backend = _get_active_backend()
 	if backend == null:
 		return "Unknown"
-	if backend.has_method("get_preset_name"):
-		return backend.get_preset_name(program, bank)
-	return "Unknown"
-
+	return backend.get_preset_name(program, bank)
+	
 ## 获取指定 (track, channel) 的乐器信息
 func get_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
 	if cached_track_channel_instruments.has(track_index) and cached_track_channel_instruments[track_index].has(channel):
@@ -1267,7 +1241,7 @@ func get_track_channel_instrument(track_index: int, channel: int) -> Dictionary:
 
 	# 缓存未命中（如 Addon 后端运行期才登记的新通道），回退到后端维护的信息
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("get_track_channel_instrument"):
+	if backend != null:
 		var result = backend.get_track_channel_instrument(track_index, channel)
 		if not result.is_empty():
 			return result
@@ -1281,7 +1255,7 @@ func get_original_track_channel_instrument(track_index: int, channel: int) -> Di
 ## 设置轨道通道的乐器
 func set_track_channel_instrument(track_index: int, channel: int, bank: int, program: int) -> void:
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("set_track_channel_instrument"):
+	if backend != null:
 		backend.set_track_channel_instrument(track_index, channel, bank, program)
 
 ## 从缓存中获取乐器信息
@@ -1303,7 +1277,7 @@ func _get_default_instrument(channel: int) -> Dictionary:
 
 ## 同步轨道-通道静音状态到后端（清理旧MIDI残留）
 func _apply_mute_state_to_backend(backend: MidiPlaybackInterface) -> void:
-	if backend == null or not backend.has_method("set_track_channel_mute"):
+	if backend == null:
 		return
 	
 	# 优先使用缓存的(track, channel)映射，确保覆盖所有实际通道
@@ -1459,18 +1433,15 @@ func set_manual_control_from_core(ksm) -> void:
 			manually_controlled[track_index][channel][pitch] = {}
 		var tick_map = manually_controlled[track_index][channel][pitch]
 		tick_map[start_tick] = int(tick_map.get(start_tick, 0)) + 1
-	if midi_player.has_method("set_manually_controlled_notes"):
-		midi_player.set_manually_controlled_notes(manually_controlled)
-		GLogger.info("Set manual control from core: %d notes" % ksm.manual_count(), "MidiPlaybackManager")
-	else:
-		push_warning("[MidiPlaybackManager] MidiPlayer does not support set_manually_controlled_notes")
+	midi_player.set_manually_controlled_notes(manually_controlled)
+	GLogger.info("Set manual control from core: %d notes" % ksm.manual_count(), "MidiPlaybackManager")
 
 ## 清除所有手动控制note标记（恢复所有notes自动播放）
 ## 当退出PlayView返回TrackView等场景时调用
 func clear_manual_control_notes() -> void:
 	
 	# 传递空字典给MidiPlayer，清除所有手动控制标记
-	if midi_player.has_method("set_manually_controlled_notes"):
+	if midi_player:
 		midi_player.set_manually_controlled_notes({})
 		GLogger.info("Cleared all manual control notes, restored auto-play", "MidiPlaybackManager")
 
@@ -1488,8 +1459,8 @@ func get_position_ms() -> float:
 ## 人声同步必须使用该时钟，避免与 get_position_ms() 的设备延迟补偿混用
 func get_raw_position_ms() -> float:
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("get_raw_position_ms"):
-		return float(backend.call("get_raw_position_ms"))
+	if backend != null:
+		return float(backend.get_raw_position_ms())
 	return position_ms
 
 ## 实时获取当前播放位置（毫秒），绕过 _process 缓存
@@ -1621,14 +1592,14 @@ func play_vocal_file(path: String, offset_ms: float) -> bool:
 	if path.is_empty():
 		return false
 	var backend = _get_active_backend()
-	if backend == null or not backend.has_method("load_vocal_file"):
+	if backend == null:
 		return false
 
 	if path != _vocal_loaded_path:
 		if not FileAccess.file_exists(path):
 			GLogger.warning("Vocal file does not exist, skipping vocal playback: %s" % path, "MidiPlaybackMGR")
 			return false
-		var ok: bool = backend.call("load_vocal_file", _globalize_vocal_path(path))
+		var ok: bool = backend.load_vocal_file(_globalize_vocal_path(path))
 		if not ok:
 			GLogger.warning("Vocal native load failed: %s" % path, "MidiPlaybackMGR")
 			return false
@@ -1636,8 +1607,8 @@ func play_vocal_file(path: String, offset_ms: float) -> bool:
 
 	# Always seek, including zero. Reusing a native decoder must not depend on the
 	# previous stop/EOF state; this also makes retry and loop restart deterministic.
-	backend.call("seek_vocal", max(0.0, offset_ms))
-	backend.call("resume_vocal")
+	backend.seek_vocal(max(0.0, offset_ms))
+	backend.resume_vocal()
 	_vocal_initialized = true
 	return true
 
@@ -1651,52 +1622,52 @@ func _restart_vocal_for_current_position() -> void:
 ## 停止人声（保持文件已加载，位置归零）
 func stop_vocal_file() -> void:
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("stop_vocal"):
-		backend.call("stop_vocal")
+	if backend != null:
+		backend.stop_vocal()
 
 ## 卸载人声资源（释放原生 decoder/ring buffer）
 func unload_vocal() -> void:
 	_vocal_loaded_path = ""
 	_vocal_initialized = false
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("unload_vocal"):
-		backend.call("unload_vocal")
+	if backend != null:
+		backend.unload_vocal()
 
 ## 暂停 / 恢复人声
 func set_vocal_playing(playing: bool) -> void:
 	var backend = _get_active_backend()
 	if backend == null:
 		return
-	if playing and backend.has_method("resume_vocal"):
-		backend.call("resume_vocal")
-	elif not playing and backend.has_method("pause_vocal"):
-		backend.call("pause_vocal")
+	if playing:
+		backend.resume_vocal()
+	elif not playing:
+		backend.pause_vocal()
 
 ## 获取人声播放进度（毫秒，与 MIDI 同一输出时钟）
 func get_vocal_position() -> float:
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("get_vocal_position_ms"):
-		return backend.call("get_vocal_position_ms")
+	if backend != null:
+		return backend.get_vocal_position_ms()
 	return 0.0
 
 ## 跳转人声播放进度（毫秒）
 func seek_vocal(vocal_position_ms: float) -> void:
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("seek_vocal"):
-		backend.call("seek_vocal", vocal_position_ms)
+	if backend != null:
+		backend.seek_vocal(vocal_position_ms)
 
 ## 人声是否正在播放（自然结束返回 false）
 func is_vocal_playing() -> bool:
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("is_vocal_playing"):
-		return backend.call("is_vocal_playing")
+	if backend != null:
+		return backend.is_vocal_playing()
 	return false
 
 ## 人声是否已自然结束
 func is_vocal_finished() -> bool:
 	var backend = _get_active_backend()
-	if backend != null and backend.has_method("is_vocal_finished"):
-		return backend.call("is_vocal_finished")
+	if backend != null:
+		return backend.is_vocal_finished()
 	return false
 
 ## 自动同步人声与MIDI（在_process中每帧调用）
@@ -1808,10 +1779,9 @@ func _on_config_changed(key: String, section: String, value: Variant) -> void:
 			var backend = _get_active_backend()
 			if backend != null:
 				# 设置新的复音数
-				if backend.has_method("set_max_polyphony"):
-					var max_polyphony = int(value) if value is int else ConfigManager.instance.get_int("Playback", "max_polyphony", 96)
-					backend.call("set_max_polyphony", max_polyphony)
-					GLogger.info("Updated max polyphony to: %d" % max_polyphony, "MidiPlaybackManager")
+				var max_polyphony = int(value) if value is int else ConfigManager.instance.get_int("Playback", "max_polyphony", 96)
+				backend.set_max_polyphony(max_polyphony)
+				GLogger.info("Updated max polyphony to: %d" % max_polyphony, "MidiPlaybackManager")
 
 				# 重新加载SoundFont使设置生效
 				_load_soundfont_from_config()
