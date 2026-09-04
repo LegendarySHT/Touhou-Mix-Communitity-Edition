@@ -27,15 +27,52 @@ shadow_offset = Vector2(2, 2)
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_shxvi"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3y6u5"]
-draw_center = false
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nu1yf"]
+content_margin_left = 20.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.1, 0.1, 0.6)
 border_width_left = 2
 border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.6392157)
+corner_radius_top_left = 15
+corner_radius_top_right = 15
+corner_radius_bottom_right = 15
+corner_radius_bottom_left = 15
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1nkbp"]
+content_margin_left = 20.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.101960786, 0.101960786, 0.101960786, 0.1764706)
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 0.43529412)
+corner_radius_top_left = 15
+corner_radius_top_right = 15
+corner_radius_bottom_right = 15
+corner_radius_bottom_left = 15
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3y6u5"]
+draw_center = false
+border_width_top = 2
 border_color = Color(1, 1, 1, 1)
 expand_margin_left = 2.0
 expand_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b1c4s"]
+draw_center = false
+border_width_bottom = 2
+expand_margin_left = 15.0
+expand_margin_right = 15.0
+expand_margin_bottom = 10.0
 
 [node name="TabC" type="TabContainer" unique_id=1566850446]
 anchors_preset = 15
@@ -180,6 +217,8 @@ text = "帐号"
 custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_nu1yf")
+theme_override_styles/focus = SubResource("StyleBoxFlat_1nkbp")
 
 [node name="Password" type="Label" parent="C/Skew/LogIn" unique_id=1913502855]
 layout_mode = 2
@@ -190,6 +229,8 @@ text = "密码"
 custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_nu1yf")
+theme_override_styles/focus = SubResource("StyleBoxFlat_1nkbp")
 secret = true
 
 [node name="ConfirmPassword" type="Label" parent="C/Skew/LogIn" unique_id=1095402338]
@@ -203,6 +244,8 @@ visible = false
 custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_nu1yf")
+theme_override_styles/focus = SubResource("StyleBoxFlat_1nkbp")
 secret = true
 
 [node name="Control" type="Control" parent="C/Skew/LogIn" unique_id=197178585]
@@ -314,6 +357,7 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "Unranked"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="ProgressMC" type="MarginContainer" parent="ProfileView" unique_id=98318325]
 layout_mode = 2
@@ -349,6 +393,7 @@ horizontal_alignment = 1
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
 text = "Max Combo: 0"
 horizontal_alignment = 1
 
@@ -356,18 +401,29 @@ horizontal_alignment = 1
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
 text = "Play Time: 0h"
 horizontal_alignment = 1
 
 [node name="ExpandBtn" type="Button" parent="ProfileView" unique_id=581980517]
-custom_minimum_size = Vector2(0, 45)
+custom_minimum_size = Vector2(220, 45)
 layout_mode = 2
+size_flags_horizontal = 0
+offset_transform_enabled = true
+offset_transform_position = Vector2(60, 0)
+offset_transform_position_ratio = Vector2(0, 0.5)
+offset_transform_visual_only = false
 theme_override_font_sizes/font_size = 24
 text = "展开详情"
 
 [node name="LogoutBtn" type="Button" parent="ProfileView" unique_id=581980518]
-custom_minimum_size = Vector2(0, 45)
+custom_minimum_size = Vector2(220, 45)
 layout_mode = 2
+size_flags_horizontal = 0
+offset_transform_enabled = true
+offset_transform_position = Vector2(210, -15)
+offset_transform_position_ratio = Vector2(1, -0.5)
+offset_transform_visual_only = false
 theme_override_font_sizes/font_size = 24
 text = "退出登录"
 

@@ -273,7 +273,6 @@ offset_transform_enabled = true
 theme_override_styles/panel = SubResource("StyleBoxFlat_iygje")
 
 [node name="AdjustLine" type="PanelContainer" parent="DelayAdjust/DelayIndicator" unique_id=2043927068]
-visible = false
 custom_minimum_size = Vector2(5, 0)
 layout_mode = 1
 anchors_preset = 13

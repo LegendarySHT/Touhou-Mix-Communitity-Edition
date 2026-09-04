@@ -421,9 +421,9 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 24
 corner_radius_bottom_left = 24
 expand_margin_top = 125.0
-shadow_color = Color(0, 0, 0, 0.19900002)
+shadow_color = Color(0, 0, 0, 0.40392157)
 shadow_size = 15
-shadow_offset = Vector2(15, 15)
+shadow_offset = Vector2(10, 10)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_devvj"]
 content_margin_left = 20.0
@@ -455,7 +455,11 @@ region = Rect2(0, 320, 80, 80)
 atlas = ExtResource("13_bg4s2")
 region = Rect2(0, 240, 80, 80)
 
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_40n85"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2gh4u"]
+draw_center = false
+border_width_top = 2
+border_width_bottom = 2
+border_color = Color(0.8, 0.8, 0.8, 0.68235296)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_5h6qm"]
 atlas = ExtResource("13_bg4s2")
@@ -868,7 +872,7 @@ custom_minimum_size = Vector2(600, 700)
 layout_mode = 2
 offset_transform_enabled = true
 offset_transform_scale = Vector2(1, 0.001)
-offset_transform_pivot_ratio = Vector2(0.5, -0.15)
+offset_transform_pivot_ratio = Vector2(0.5, -0.17)
 offset_transform_visual_only = false
 theme_override_styles/panel = SubResource("StyleBoxFlat_sqvbp")
 
@@ -978,8 +982,10 @@ theme_override_constants/separation = 20
 custom_minimum_size = Vector2(500, 530)
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxEmpty_40n85")
+theme_override_styles/panel = SubResource("StyleBoxFlat_2gh4u")
 follow_focus = true
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="VBoxC" type="VBoxContainer" parent="skew/C/ShortCutMenu/Panel/Page/FavorPage/FavorList" unique_id=1181947446]
 layout_mode = 2
