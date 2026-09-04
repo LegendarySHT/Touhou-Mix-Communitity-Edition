@@ -585,13 +585,14 @@ public partial class KeySequenceCore : RefCounted
             }
         }
         // 轨道重排后再按轨道复检连点间隔：音符被移/钳到新轨道后，
-        // 需与"新轨道上其前一个音符"的时间差 >= 连点最小时间，否则降级 Slide（仅普通 Block）。
+        // 需与"新轨道上其前一个音符"的时间差 >= 连点最小时间，否则降级 Slide。
         // 规则 B 只查同一手指的上一按，音符换轨后参照已失真，这里用轨道修正。
         var laneLast = new float[_laneCount];
         for (int k = 0; k < _laneCount; k++) laneLast[k] = float.NegativeInfinity;
         foreach (var b in blocks)   // blocks 至此已按 StartMs 有序（BuildChords 建成即有序，中间步骤不打乱）
         {
-            if (b.Type == 0 && b.StartMs - laneLast[b.Lane] < _minTapInterval * 1000.0f)
+            // Long 换轨后若与同轨前一音符连点过密也降级 Slide，避免 BLock/Long 同轨紧接被跳过
+            if (b.Type != 1 && b.StartMs - laneLast[b.Lane] < _minTapInterval * 1000.0f)
                 b.Type = 1;
             laneLast[b.Lane] = b.StartMs;
         }
