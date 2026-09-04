@@ -166,7 +166,15 @@ func _pulse_animation(enable: bool):
 	else:
 		AniMGR.create_managed_tween(self).tween_property(self, "offset_transform_scale", Vector2.ONE, 0.2).set_ease(Tween.EASE_IN_OUT)
 
-# 虚函数：初始化列表项
+## 程序化选中前清理残留的鼠标按压标记
+## 拖拽滚动时 Godot 经 SCROLL_BEGIN 清掉按钮内部 press 状态却不会发 button_up，
+## 该列表项的 _mouse_press/_mouse_press_pos 会残留旧按位置，导致随后的吸附选中触发
+## _on_toggled 时把 final 判成 false 而不展开。程序化选中前主动复位，保证展开判定正确。
+func clear_mouse_press_state() -> void:
+	_mouse_press = false
+	_mouse_press_pos = Vector2.ZERO
+
+## 虚函数：初始化列表项
 func initialize(id: String, type: String) -> void:
 	item_id = id
 	item_type = type

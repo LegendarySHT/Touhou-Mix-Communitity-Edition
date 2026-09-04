@@ -566,7 +566,12 @@ func select_item(index: int) -> int:
 		return index
 
 	index = (index + list_items.size()) % list_items.size()
-	container.get_child(index).button.button_pressed = true
+	# 程序化选中前清理目标项残留的鼠标按压标记（拖拽结束后会残留 _mouse_press 与旧按位置，
+	# 使 _on_toggled 误判 final 为 false，导致吸附选中后该项不展开）
+	var item: ListItemBase = container.get_child(index)
+	if is_instance_valid(item) and item.has_method("clear_mouse_press_state"):
+		item.call("clear_mouse_press_state")
+	item.button.button_pressed = true
 	selected_item = index
 
 	return index
