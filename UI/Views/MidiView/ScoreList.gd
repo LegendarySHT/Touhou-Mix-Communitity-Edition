@@ -152,6 +152,7 @@ func load_scores(midi: MidiData) -> void:
 			rank_str,
 			accuracy_pct,
 			float(s.get("pp", 0.0)),
+			int(s.get("maxCombo", 0)),
 			int(s.get("perfectCount", 0)),
 			int(s.get("greatCount", 0)),
 			int(s.get("goodCount", 0)),
@@ -188,12 +189,13 @@ func _show_local_best(midi: MidiData) -> void:
 	var node := create_and_add_item("local_best", "score")
 	# 本地最佳固定排名第 1
 	node.setup_score(
-		1,
-		int(local.get("totalScore", 0)),
-		str(local.get("rank", "F")),
-		float(local.get("accuracy", 0.0)) * 100.0,
-		float(local.get("pp", 0.0)),
-		int(local.get("perfectCount", 0)),
+			1,
+			int(local.get("totalScore", 0)),
+			str(local.get("rank", "F")),
+			float(local.get("accuracy", 0.0)) * 100.0,
+			float(local.get("pp", 0.0)),
+			int(local.get("maxCombo", 0)),
+			int(local.get("perfectCount", 0)),
 		int(local.get("greatCount", 0)),
 		int(local.get("goodCount", 0)),
 		int(local.get("badCount", 0)),

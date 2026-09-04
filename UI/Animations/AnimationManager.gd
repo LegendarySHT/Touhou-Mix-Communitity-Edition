@@ -616,9 +616,7 @@ func animate_ui_out(ui_name: String, _old_state: UIStateManager.UIState, new_sta
 			else:
 				ani_comp.switch_page()
 		"Score_View":
-			ani_comp.animate(false)
-			var ani_time = 0.45 if new_state == UIStateManager.UIState.PLAY_VIEW else 1.2
-			tween = animate_fade_out(ani_comp, ani_time, tween_id)
+			tween = ani_comp.animate(false)
 		"Chara_View":
 			if ani_comp == null or not is_instance_valid(ani_comp):
 				return null
@@ -757,9 +755,10 @@ func animate_ui_in(ui_name: String, _old_state: UIStateManager.UIState) -> Tween
 			tween = animate_offset_back(btns, 0.25, "sv_btns")
 			animate_offset_back(setting_list, 0.35, "sv_info")
 		"Score_View":
-			tween = animate_fade_in(ani_comp, 0.45, tween_id)
-			tween.finished.connect(func ():
-				ani_comp.animate())
+			if ani_comp == null or not is_instance_valid(ani_comp):
+				return null
+			ani_comp.visible = true
+			ani_comp.call("animate")
 		"Chara_View":
 			if ani_comp == null or not is_instance_valid(ani_comp):
 				return null
@@ -777,5 +776,3 @@ func animate_ui_in(ui_name: String, _old_state: UIStateManager.UIState) -> Tween
 				tween = animate_fade_in(content, 0.35, tween_id)
 
 	return tween
-
-############################## Chara_View 专属动画 ##############################

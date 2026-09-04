@@ -148,7 +148,7 @@ region = Rect2(320, 80, 80, 80)
 content_margin_top = 40.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_h1etv"]
-content_margin_left = 25.0
+content_margin_left = 60.0
 content_margin_right = 25.0
 draw_center = false
 

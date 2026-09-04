@@ -1,5 +1,8 @@
 extends Control
 
+## 结算界面返回演奏并重开一局时触发（LT_Btn 在 SCORE_VIEW 点击触发）
+signal retry_pressed
+
 # 音符显示区
 @onready var flow_area: Panel = $FlowArea
 # 背景控制器（BackgroundControl 节点，封装封面/模糊/暗化/闪光）
@@ -8,23 +11,23 @@ extends Control
 @onready var hud: PlayHud = $Layer
 
 # 菜单及歌曲信息的背景遮罩
-@onready var center_bg:ColorRect = $Layer/CenterBackGround
+@onready var center_bg:ColorRect = $CenterBackGround
 # 菜单
-@onready var menu: Control = $Layer/CenterBackGround/VBox/Menu
-@onready var retry_btn: Button = $Layer/CenterBackGround/VBox/Menu/retry
+@onready var menu: Control = $CenterBackGround/VBox/Menu
+@onready var retry_btn: Button = $CenterBackGround/VBox/Menu/retry
 # 歌曲信息
-@onready var song_info: Control = $Layer/CenterBackGround/VBox/SongInfo
-@onready var cover: TextureRect = $Layer/CenterBackGround/VBox/SongInfo/PanelContainer/TextureRect
+@onready var song_info: Control = $CenterBackGround/VBox/SongInfo
+@onready var cover: TextureRect = $CenterBackGround/VBox/SongInfo/PanelContainer/TextureRect
 # 原曲
-@onready var album: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/album
-@onready var song: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/song
-@onready var artist: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/artist
+@onready var album: Label = $CenterBackGround/VBox/SongInfo/GridContainer/album
+@onready var song: Label = $CenterBackGround/VBox/SongInfo/GridContainer/song
+@onready var artist: Label = $CenterBackGround/VBox/SongInfo/GridContainer/artist
 # midi
-@onready var midi_name: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/midiName
-@onready var midi_author: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/midiAuthor
-@onready var midi_duration: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/midiDuration
+@onready var midi_name: Label = $CenterBackGround/VBox/SongInfo/GridContainer/midiName
+@onready var midi_author: Label = $CenterBackGround/VBox/SongInfo/GridContainer/midiAuthor
+@onready var midi_duration: Label = $CenterBackGround/VBox/SongInfo/GridContainer/midiDuration
 # 难度
-@onready var difficulty: Label = $Layer/CenterBackGround/VBox/SongInfo/GridContainer/difficulty
+@onready var difficulty: Label = $CenterBackGround/VBox/SongInfo/GridContainer/difficulty
 
 # 难度预设显示名（下标即 difficulty id：0=Easy,1=Normal,2=Hard,3=Lunatic,4=Custom）
 const DIFFICULTY_NAMES: Array[String] = ["Easy", "Normal", "Hard", "Lunatic", "Custom"]
@@ -120,6 +123,9 @@ func _ready() -> void:
 	hud.flash_requested.connect(bg_ctrl.flash)
 
 	retry_btn.pressed.connect(func ():
+		_prepare_game()
+	)
+	retry_pressed.connect(func ():
 		_prepare_game()
 	)
 	

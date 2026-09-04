@@ -329,51 +329,57 @@ func _play_loop_ani():
 	_loop_ani_chara.tween_property(chara, "position:y", chara.position.y - 10, 1.5)
 
 func animate(ani_in: bool = true):
-	# 窗口大小
-	var wh = size.y
-	var ww = size.x
+	if not ani_in:
+		# 整页缩放淡出
+		_kill_loop_ani()
+		return ani.animate_fade_scale_out(self, Vector2.ONE * 0.8, 0.2, "sv_exit")
 
-	# 外围组件
-	if ani_in:
-		_entry_animation_done = false
-		ani.animate_scale(bg, Vector2.ONE, 0.5, "sv_bg")
-		# LevelingProgress 不在进入结算时弹出（上传成功后由 _show_level_panel_on_upload_success 触发）
-		# 若上传已成功弹出过，则入场动画不覆盖已弹出的面板
-		if not _level_panel_shown:
-			info.visible = false
-			info.offset_transform_position = Vector2(- info.size.x, 0)
+	if _entry_animation_done:
+		return
 
-		ani.animate_offset_back(chara, 0.8, "sv_chara")
-		ani.animate_offset_back(bottom, 0.8, "sv_bottom")
-	else:
-		ani.animate_scale(bg, Vector2.ZERO, 0.25, "sv_bg")
-		ani.animate_offset_to(info, Vector2(- info.size.x, 0), 0.25, "sv_info")
+	_entry_animation_done = false
+	# 复位整页状态（上次退出可能已缩放淡出隐藏）
+	visible = true
+	modulate.a = 1.0
+	offset_transform_position = Vector2.ZERO
+	offset_transform_scale = Vector2.ONE
+	# LevelingProgress 不在进入结算时弹出（上传成功后由 _show_level_panel_on_upload_success 触发）
+	if not _level_panel_shown:
+		info.visible = false
+		info.offset_transform_position = Vector2(-info.size.x, 0)
 
-		ani.animate_offset_to(chara, Vector2(0, wh), 0.5, "sv_chara")
-		ani.animate_offset_to(bottom, Vector2(0, wh), 0.5, "sv_bottom")
-	
-	await get_tree().create_timer(0.05).timeout
-	# 数值组件
-	if ani_in:
-		ani.animate_offset_back(rank, 0.8, "sv_rank")
+	# 前置隐藏并放置到各自起始偏移，避免轮到它们之前已在目标位置显示
+	_place_staged_node(bg, Vector2.ZERO, Vector2.ONE * 0.8)
+	_place_staged_node(score_panel, Vector2(-100, 0), Vector2.ONE)
+	_place_staged_node(bottom, Vector2(0, 150), Vector2.ONE)
+	_place_staged_node(rank, Vector2(0, 150), Vector2.ONE)
+	_place_staged_node(accuracy, Vector2(0, 100), Vector2.ONE)
+	_place_staged_node(chara, Vector2(0, 150), Vector2.ONE)
 
-		ani.animate_fade_in(score_panel, 1, "sv_score_fade")
-		ani.animate_offset_back(score, 0.5, "sv_score")
-		ani.animate_offset_back(pp, 0.8, "sv_pp")
+	# 第 1 阶段：背景从 0.8 原地缩放淡入（外围按钮入场沿用原有逻辑）
+	ani.animate_fade_scale_in(bg, Vector2.ONE * 0.8, 0.35, "sv_bg")
+	await get_tree().create_timer(0.35).timeout
 
-		ani.animate_offset_back(accuracy, 1.5, "sv_acc")
-	else:
-		ani.animate_offset_to(rank, Vector2(0, wh), 0.5, "sv_rank")
+	# 第 2 阶段：Score 左滑、Bottom 上滑淡入
+	ani.animate_fade_slide_in(score_panel, Vector2(-100, 0), 0.4, "sv_score")
+	ani.animate_fade_slide_in(bottom, Vector2(0, 150), 0.4, "sv_bottom")
+	await get_tree().create_timer(0.4).timeout
 
-		ani.animate_fade_out(score_panel, 1, "sv_score_fade")
-		ani.animate_offset_to(score, Vector2(-ww, 0), 0.5, "sv_score")
-		ani.animate_offset_to(pp, Vector2(-ww, 0), 0.8, "sv_pp")
+	# 第 3 阶段：Rank / Accuracy / Chara 上滑淡入（Accuracy 时长略短）
+	ani.animate_fade_slide_in(rank, Vector2(0, 150), 0.55, "sv_rank")
+	ani.animate_fade_slide_in(chara, Vector2(0, 150), 0.4, "sv_chara")
+	ani.animate_fade_slide_in(accuracy, Vector2(0, 100), 0.3, "sv_acc")
+	await get_tree().create_timer(0.4).timeout
 
-		ani.animate_offset_to(accuracy, Vector2(0, wh), 1.5, "sv_acc")
-
-	await get_tree().create_timer(0.8).timeout
 	_entry_animation_done = true
 	_play_loop_ani()
+
+## 前置放置动画起始状态（隐藏 + 缩放 + 偏移），供分阶段入场前各组件归位
+func _place_staged_node(node: Control, from_offset: Vector2, from_scale: Vector2) -> void:
+	node.offset_transform_enabled = true
+	node.offset_transform_position = from_offset
+	node.offset_transform_scale = from_scale
+	node.modulate.a = 0.0
 
 ## 由 PlayView 在进入结算界面后调用，异步上传成绩并展示结果/重试按钮
 func request_upload(midi: MidiData, snapshot: Dictionary) -> void:
@@ -411,20 +417,13 @@ func _on_upload_state_gui_input(event: InputEvent) -> void:
 		_manual_pending = false
 		_do_upload_score()
 
-## 展示上传状态并从右侧滑入
+## 展示上传状态并从右侧 100px 滑入淡入
 func _show_upload_slide() -> void:
 	upload_state.visible = true
 	if _upload_tween:
 		_upload_tween.kill()
 		_upload_tween = null
-	upload_state.offset_transform_enabled = true
-	# 起始位置移到右侧外侧，再滑入
-	var start_x := maxf(upload_state.size.x, 250.0) * 1.5
-	upload_state.offset_transform_position = Vector2(start_x, 0)
-	_upload_tween = AniMGR.create_managed_tween(upload_state, "sv_upload_state")
-	_upload_tween.set_trans(Tween.TRANS_CUBIC)
-	_upload_tween.set_ease(Tween.EASE_OUT)
-	_upload_tween.tween_property(upload_state, "offset_transform_position", Vector2.ZERO, 0.4)
+	_upload_tween = ani.animate_fade_slide_in(upload_state, Vector2(100, 0), 0.3, "sv_upload_state")
 
 ## 服务端没有该 MIDI 时属于正常的在线不收录场景，不向玩家展示失败状态。
 func _hide_upload_state() -> void:
@@ -502,5 +501,5 @@ func _show_level_panel_on_upload_success() -> void:
 			if not is_inside_tree():
 				return
 	info.visible = true
-	ani.animate_offset_back(info, 0.5, "sv_info")
+	ani.animate_fade_slide_in(info, Vector2(-100, 0), 0.3, "sv_info")
 	_update_player_info()
