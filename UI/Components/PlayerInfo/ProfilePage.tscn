@@ -39,11 +39,14 @@ content_margin_top = 30.0
 content_margin_right = 40.0
 content_margin_bottom = 30.0
 bg_color = Color(0, 0.3017038, 0.5170863, 1)
-border_width_left = 6
-border_width_top = 6
-border_width_right = 6
-border_width_bottom = 6
+border_width_left = 2
+border_width_top = 2
+border_width_right = 4
+border_width_bottom = 4
 border_color = Color(0.16862746, 0.5686275, 1, 1)
+shadow_color = Color(0, 0, 0, 0.33333334)
+shadow_size = 10
+shadow_offset = Vector2(5, 5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hhcpw"]
 draw_center = false
@@ -76,11 +79,14 @@ content_margin_top = 20.0
 content_margin_right = 25.0
 content_margin_bottom = 20.0
 bg_color = Color(0, 0.3019608, 0.5176471, 1)
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
+border_width_left = 2
+border_width_top = 2
+border_width_right = 4
+border_width_bottom = 4
 border_color = Color(0.16862746, 0.5686275, 1, 1)
+shadow_color = Color(0, 0, 0, 0.33333334)
+shadow_size = 10
+shadow_offset = Vector2(5, 5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_moh5i"]
 content_margin_left = 20.0
@@ -88,8 +94,8 @@ content_margin_top = 20.0
 content_margin_right = 50.0
 content_margin_bottom = 20.0
 bg_color = Color(0.16862746, 0.5686275, 1, 1)
-border_width_left = 8
-border_width_top = 8
+border_width_left = 4
+border_width_top = 4
 border_width_right = 8
 border_width_bottom = 8
 border_color = Color(0, 0.3019608, 0.5176471, 1)
@@ -97,6 +103,9 @@ corner_radius_top_left = 75
 corner_radius_top_right = 75
 corner_radius_bottom_right = 75
 corner_radius_bottom_left = 75
+shadow_color = Color(0, 0, 0, 0.33333334)
+shadow_size = 10
+shadow_offset = Vector2(5, 5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ag846"]
 content_margin_left = 20.0
@@ -104,15 +113,18 @@ content_margin_top = 20.0
 content_margin_right = 50.0
 content_margin_bottom = 20.0
 bg_color = Color(0.6257103, 0.43240646, 0.9897513, 1)
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
+border_width_left = 2
+border_width_top = 2
+border_width_right = 4
+border_width_bottom = 4
 border_color = Color(0, 0.3019608, 0.5176471, 1)
 corner_radius_top_left = 75
 corner_radius_top_right = 75
 corner_radius_bottom_right = 75
 corner_radius_bottom_left = 75
+shadow_color = Color(0, 0, 0, 0.33333334)
+shadow_size = 10
+shadow_offset = Vector2(5, 5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j7lut"]
 content_margin_left = 20.0
@@ -120,15 +132,18 @@ content_margin_top = 20.0
 content_margin_right = 50.0
 content_margin_bottom = 20.0
 bg_color = Color(0.7891194, 0.4806652, 0.30015868, 1)
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
+border_width_left = 2
+border_width_top = 2
+border_width_right = 4
+border_width_bottom = 4
 border_color = Color(0, 0.3019608, 0.5176471, 1)
 corner_radius_top_left = 75
 corner_radius_top_right = 75
 corner_radius_bottom_right = 75
 corner_radius_bottom_left = 75
+shadow_color = Color(0, 0, 0, 0.33333334)
+shadow_size = 10
+shadow_offset = Vector2(5, 5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1pkam"]
 content_margin_left = 0.0
@@ -136,10 +151,10 @@ content_margin_top = 0.0
 content_margin_right = 0.0
 content_margin_bottom = 0.0
 bg_color = Color(0.12941177, 0.14509805, 0.16078432, 1)
-border_width_left = 10
-border_width_top = 10
-border_width_right = 10
-border_width_bottom = 10
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
 border_color = Color(0, 0.34117648, 0.6431373, 1)
 corner_radius_top_left = 63
 corner_radius_top_right = 63
@@ -200,10 +215,10 @@ corner_radius_bottom_left = 25
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j02sm"]
 bg_color = Color(0.11372549, 0.12156863, 0.12941177, 1)
-border_width_left = 12
-border_width_top = 12
-border_width_right = 12
-border_width_bottom = 12
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
 border_color = Color(3.7445723e-05, 0.46399152, 0.85955125, 1)
 corner_radius_top_left = 81
 corner_radius_top_right = 81
@@ -216,10 +231,10 @@ expand_margin_bottom = 6.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hs1if"]
 bg_color = Color(0.1677157, 0.17797163, 0.18822837, 1)
-border_width_left = 12
-border_width_top = 12
-border_width_right = 12
-border_width_bottom = 12
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
 border_color = Color(0, 0.463739, 0.859696, 0.75900006)
 corner_radius_top_left = 81
 corner_radius_top_right = 81
@@ -251,6 +266,39 @@ expand_margin_bottom = 6.0
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_7fsko"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ng81m"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8simf"]
+content_margin_left = 20.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.1, 0.1, 0.6)
+border_width_left = 2
+border_width_top = 2
+border_color = Color(1, 1, 1, 0.6392157)
+corner_radius_top_left = 15
+corner_radius_top_right = 15
+corner_radius_bottom_right = 15
+corner_radius_bottom_left = 15
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xqmw5"]
+content_margin_left = 20.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.101960786, 0.101960786, 0.101960786, 0.1764706)
+draw_center = false
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 0.43529412)
+corner_radius_top_left = 15
+corner_radius_top_right = 15
+corner_radius_bottom_right = 15
+corner_radius_bottom_left = 15
+corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b1c4s"]
 bg_color = Color(0.16862746, 0.5686275, 1, 1)
@@ -293,10 +341,10 @@ corner_radius_bottom_left = 24
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3xm0o"]
 draw_center = false
-border_width_left = 10
-border_width_top = 10
-border_width_right = 10
-border_width_bottom = 10
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
 border_color = Color(1, 1, 1, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3y6u5"]
@@ -305,6 +353,9 @@ border_width_top = 6
 border_color = Color(0, 0.34274265, 0.6441993, 1)
 expand_margin_left = 500.0
 expand_margin_right = 500.0
+shadow_color = Color(0, 0, 0, 0.33333334)
+shadow_size = 10
+shadow_offset = Vector2(0, -10)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gvb4a"]
 bg_color = Color(0.16862746, 0.5686275, 1, 1)
@@ -379,6 +430,7 @@ metadata/_tab_index = 0
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
+theme_override_constants/separation = 0
 
 [node name="PC" type="PanelContainer" parent="PC/PageContent/Profile/Main" unique_id=68459101]
 layout_mode = 2
@@ -460,7 +512,7 @@ layout_mode = 2
 theme_override_constants/separation = 30
 
 [node name="AvatarBig" type="Panel" parent="PC/PageContent/Profile/Main/Header/HBoxContainer" unique_id=21134669]
-custom_minimum_size = Vector2(200, 200)
+custom_minimum_size = Vector2(150, 150)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -919,22 +971,26 @@ alignment = 1
 
 [node name="NicknameTitle" type="Label" parent="PC/PageContent/Edit/HBox/ProfileEdit" unique_id=1934781578]
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 36
 text = "昵称"
 
 [node name="Nickname" type="HBoxContainer" parent="PC/PageContent/Edit/HBox/ProfileEdit" unique_id=523899921]
-custom_minimum_size = Vector2(0, 80)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_constants/separation = 50
 
 [node name="LineEdit" type="LineEdit" parent="PC/PageContent/Edit/HBox/ProfileEdit/Nickname" unique_id=752248277]
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/normal = SubResource("StyleBoxFlat_8simf")
+theme_override_styles/focus = SubResource("StyleBoxFlat_xqmw5")
 
 [node name="ConfirmBtn" type="Button" parent="PC/PageContent/Edit/HBox/ProfileEdit/Nickname" unique_id=190632065]
-custom_minimum_size = Vector2(150, 80)
+custom_minimum_size = Vector2(120, 60)
 layout_mode = 2
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 32
 theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_6cgaj")
 theme_override_styles/hover = SubResource("StyleBoxFlat_0xjso")
@@ -958,12 +1014,14 @@ theme_override_constants/separation = 50
 custom_minimum_size = Vector2(0, 400)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_8simf")
+theme_override_styles/focus = SubResource("StyleBoxFlat_xqmw5")
 
 [node name="ConfirmBtn" type="Button" parent="PC/PageContent/Edit/HBox/ProfileEdit/Desc" unique_id=2128739761]
-custom_minimum_size = Vector2(150, 80)
+custom_minimum_size = Vector2(120, 60)
 layout_mode = 2
 size_flags_vertical = 8
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 32
 theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_6cgaj")
 theme_override_styles/hover = SubResource("StyleBoxFlat_0xjso")
@@ -974,6 +1032,7 @@ custom_maximum_size = Vector2(-1, 720)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 4.0
+theme_override_constants/separation = 15
 alignment = 1
 
 [node name="AvatorEdit" type="HBoxContainer" parent="PC/PageContent/Edit/HBox/OtherEdit" unique_id=1186454364]
@@ -1003,22 +1062,22 @@ step = 0.01
 value = 1.0
 
 [node name="UploadBtn" type="Button" parent="PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit/AdjustBtns" unique_id=907560232]
-custom_minimum_size = Vector2(230, 80)
+custom_minimum_size = Vector2(180, 70)
 layout_mode = 2
 size_flags_horizontal = 10
 size_flags_vertical = 8
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 32
 theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_6cgaj")
 theme_override_styles/hover = SubResource("StyleBoxFlat_0xjso")
 text = "选取头像"
 
 [node name="SaveBtn" type="Button" parent="PC/PageContent/Edit/HBox/OtherEdit/AvatorEdit/AdjustBtns" unique_id=228919255]
-custom_minimum_size = Vector2(230, 80)
+custom_minimum_size = Vector2(180, 70)
 layout_mode = 2
 size_flags_horizontal = 10
 size_flags_vertical = 8
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 32
 theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_6cgaj")
 theme_override_styles/hover = SubResource("StyleBoxFlat_0xjso")
@@ -1028,38 +1087,45 @@ text = "保存"
 layout_mode = 2
 theme_override_font_sizes/font_size = 42
 text = "原密码"
+vertical_alignment = 2
 
 [node name="Password" type="HBoxContainer" parent="PC/PageContent/Edit/HBox/OtherEdit" unique_id=263827390]
-custom_minimum_size = Vector2(0, 80)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_constants/separation = 50
 
 [node name="LineEdit" type="LineEdit" parent="PC/PageContent/Edit/HBox/OtherEdit/Password" unique_id=195476193]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_8simf")
+theme_override_styles/focus = SubResource("StyleBoxFlat_xqmw5")
 
 [node name="Space" type="Control" parent="PC/PageContent/Edit/HBox/OtherEdit/Password" unique_id=302538164]
-custom_minimum_size = Vector2(150, 80)
+custom_minimum_size = Vector2(120, 60)
 layout_mode = 2
 
 [node name="NewPasswordTitle" type="Label" parent="PC/PageContent/Edit/HBox/OtherEdit" unique_id=1215803896]
 layout_mode = 2
 theme_override_font_sizes/font_size = 42
 text = "新密码"
+vertical_alignment = 2
 
 [node name="NewPassword" type="HBoxContainer" parent="PC/PageContent/Edit/HBox/OtherEdit" unique_id=875889579]
-custom_minimum_size = Vector2(0, 80)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_constants/separation = 50
 
 [node name="LineEdit" type="LineEdit" parent="PC/PageContent/Edit/HBox/OtherEdit/NewPassword" unique_id=120020574]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 5
+theme_override_styles/normal = SubResource("StyleBoxFlat_8simf")
+theme_override_styles/focus = SubResource("StyleBoxFlat_xqmw5")
 
 [node name="ConfirmBtn" type="Button" parent="PC/PageContent/Edit/HBox/OtherEdit/NewPassword" unique_id=1395434135]
-custom_minimum_size = Vector2(150, 80)
+custom_minimum_size = Vector2(120, 60)
 layout_mode = 2
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 32
 theme_override_styles/normal = SubResource("StyleBoxFlat_b1c4s")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_6cgaj")
 theme_override_styles/hover = SubResource("StyleBoxFlat_0xjso")
