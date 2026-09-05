@@ -1455,6 +1455,14 @@ func tick_to_ms(tick: float) -> float:
 func get_position_ms() -> float:
 	return position_ms
 
+## 后端实际总时长（毫秒，midiFile.Length；播放位置被 clamp 的目标值）
+## 解析器 duration_ms 可能与其不一致，曲终/进度条判断以本值为准
+func get_backend_duration_ms() -> float:
+	var backend = _get_active_backend()
+	if backend == null:
+		return 0.0
+	return backend.get_duration_ms()
+
 ## 获取音频回调已渲染的 MIDI 原始位置（毫秒）
 ## 人声同步必须使用该时钟，避免与 get_position_ms() 的设备延迟补偿混用
 func get_raw_position_ms() -> float:

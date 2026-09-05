@@ -15,8 +15,14 @@ var max_polyphony: int = 96:
 			meltysynth_player.call("set_max_polyphony", value)
 
 func _ready() -> void:
+	if meltysynth_player != null and meltysynth_player.has_signal("finished"):
+		meltysynth_player.connect("finished", Callable(self, "_on_finished"))
 	if meltysynth_player != null and meltysynth_player.has_signal("vocal_finished"):
 		meltysynth_player.connect("vocal_finished", Callable(self, "_on_vocal_finished"))
+
+## 转发 C# 自然结束信号，供 MidiPlaybackManager.midi_finished → PlayView 结算
+func _on_finished() -> void:
+	finished.emit()
 
 ## 设置最大复音数（走属性 setter，由其驱动 C# 调用统一生效）
 func set_max_polyphony(value: int) -> void:

@@ -196,8 +196,12 @@ func _process(delta: float) -> void:
 				_position_stall_frames += 1
 				if _position_stall_frames >= _PLAYBACK_STALL_THRESHOLD:
 					_position_stall_frames = 0
-					# 区分曲终与音频中断：停滞在接近总时长处视为自然结束，否则视为设备被系统打断
-					if current_midi and current_time >= current_midi.duration_ms - 100.0:
+					# 区分曲终与音频中断：播放位置被后端 clamp 到 midiFile.Length，
+					# 以实际后端总时长为主、解析器 duration_ms 为辅判定曲终（两者可能不一致）
+					var backend_ms: float = playback_mgr.get_backend_duration_ms() if playback_mgr else 0.0
+					var at_end: bool = (current_midi != null and current_time >= current_midi.duration_ms - 100.0) \
+							or (backend_ms > 0.0 and current_time >= backend_ms - 100.0)
+					if at_end:
 						GLogger.warning("Playback position stalled at end %.1fms, triggering game finished" % current_time, "PlayView")
 						_on_game_finished()
 					elif OS.get_name() == "Android":
