@@ -1675,11 +1675,15 @@ public partial class MeltySynthPlayer : Node
 
 		using var stream = OpenFileAsStream(path);
 		_soundFont = new SoundFont(stream);
+		// BlockSize=256 与回调周期对齐（Android 256帧@48k≈5.33ms/回调）。
+		// 此前 512 让整个块渲染集中在"每两次回调中的一次"（突发 5.5-6.2ms > 预算），
+		// 导致设备缓冲周期性欠载；256 把渲染量均摊到每次回调（约 2.8-3.2ms），
+		// 不增加延迟、不改复音数，事件触发粒度也细化到回调边界（与人声消费帧对齐）。
 		var settings = new SynthesizerSettings(_sampleRate)
 		{
 			MaximumPolyphony = max_polyphony,
-		BlockSize = 512,
-		EnableReverbAndChorus = false
+			BlockSize = 256,
+			EnableReverbAndChorus = false
 		};
 
 		// ========== 创建两个独立的合成器 ==========
@@ -1727,8 +1731,8 @@ public partial class MeltySynthPlayer : Node
 			var manualSettings = new SynthesizerSettings(_sampleRate)
 			{
 				MaximumPolyphony = Math.Max(16, max_polyphony / 4),  // 至少 16 个复音
-			BlockSize = 512,
-			EnableReverbAndChorus = false
+				BlockSize = 256,
+				EnableReverbAndChorus = false
 			};
 			_manualSynth = new Synthesizer(_soundFont, manualSettings);
 			// GD.Print($"[MeltySynthPlayer] Created separate synthesizers: " +

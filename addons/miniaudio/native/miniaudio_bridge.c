@@ -321,7 +321,10 @@ static void vocal_start_producer(ma_bridge* p)
         return;
     }
     p->vocalProducerStop = 0;
-    if (ma_thread_create(&p->vocalProducerThread, ma_thread_priority_normal, 0,
+    /* 低优先级：解码线程在 Android 上持续占用 ~15-35% 核（MP3 每 85ms 音频解码一次），
+     * 与高优先级 AAudio 音频回调争抢 CPU 并加重发热降频。环缓冲水位半满时约有 683ms
+     * 盈余，解码延迟完全不敏感，把优先级降到 low 让调度器优先保证音频回调线程。 */
+    if (ma_thread_create(&p->vocalProducerThread, ma_thread_priority_low, 0,
                          vocal_producer_entry, p, NULL) != MA_SUCCESS) {
         p->vocalProducerRunning = 0;
         return;

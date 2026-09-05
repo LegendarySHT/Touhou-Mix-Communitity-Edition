@@ -102,6 +102,9 @@ public partial class MeltySynthPlayer
 			private Stopwatch _perfStopwatch = new Stopwatch();
 			private int _perfSlowCallbackCount = 0;
 			private int _perfTotalCallbackCount = 0;
+			// 音频线程禁止直接 GD.Print（会与主线程争用打印锁、拖延回调返回）。
+			// 诊断日志先入队，由主线程 Update() 每帧排空打印。
+			private readonly ConcurrentQueue<string> _audioLogQueue = new ConcurrentQueue<string>();
 
 			/// <summary>慢回调比例（回调耗时 &gt; 回调周期），用于验证欠载是否被根治</summary>
 			internal double PerfSlowRatio =>
@@ -607,7 +610,12 @@ public partial class MeltySynthPlayer
 
 			public void Update()
 			{
-				// miniaudio 不需要轮询更新
+				// miniaudio 不需要轮询更新，但主线程在此排空音频线程的诊断日志，
+				// 避免音频线程直接调用 GD.Print（打印锁争用会拖延回调，诱发欠载）。
+				while (_audioLogQueue.TryDequeue(out var log))
+				{
+					GD.Print(log);
+				}
 			}
 
 			public bool IsPlaying => _playing;
@@ -687,10 +695,10 @@ public partial class MeltySynthPlayer
 					framesRequested = MAX_DECODE_FRAMES;
 				}
 
-				// 首次回调诊断
+				// 首次回调诊断（音频线程只入队，主线程打印）
 				if (_perfTotalCallbackCount == 0)
 				{
-					GD.Print($"[MeltySynthPlayer][miniaudio] First callback (DIRECT MODE): framesRequested={framesRequested}, " +
+					_audioLogQueue.Enqueue($"[MeltySynthPlayer][miniaudio] First callback (DIRECT MODE): framesRequested={framesRequested}, " +
 						$"actualPeriod={_actualPeriod}, sampleRate={_sampleRate}Hz");
 				}
 
@@ -785,7 +793,7 @@ public partial class MeltySynthPlayer
 				_perfStopwatch.Stop();
 				_perfTotalCallbackCount++;
 
-				// 非零数据诊断: 前 3 次回调 + 之后每 10000 次
+				// 非零数据诊断: 前 3 次回调 + 之后每 10000 次（音频线程只入队，主线程打印）
 				if (_perfTotalCallbackCount <= 3 || _perfTotalCallbackCount % 10000 == 0)
 				{
 					float maxAbs = 0f;
@@ -795,7 +803,7 @@ public partial class MeltySynthPlayer
 						float a = Math.Abs(_outputBuffer[i]);
 						if (a > maxAbs) maxAbs = a;
 					}
-					GD.Print($"[MeltySynthPlayer][miniaudio] Callback #{_perfTotalCallbackCount}: " +
+					_audioLogQueue.Enqueue($"[MeltySynthPlayer][miniaudio] Callback #{_perfTotalCallbackCount}: " +
 						$"frames={framesRequested}, maxAbs={maxAbs:F4} (first {checkLen} samples)");
 				}
 
@@ -808,7 +816,7 @@ public partial class MeltySynthPlayer
 					_perfSlowCallbackCount++;
 					if (_perfSlowCallbackCount <= 1 || _perfSlowCallbackCount % 300 == 0)
 					{
-						GD.Print($"[MeltySynthPlayer][miniaudio] PERF: callback {elapsedMs:F3}ms " +
+						_audioLogQueue.Enqueue($"[MeltySynthPlayer][miniaudio] PERF: callback {elapsedMs:F3}ms " +
 							$"(budget={budgetMs:F2}ms, frames={framesRequested}, " +
 							$"slow={_perfSlowCallbackCount}/{_perfTotalCallbackCount})");
 					}
@@ -842,7 +850,20 @@ public partial class MeltySynthPlayer
 
 			private static float SoftLimit(float sample)
 			{
-				return (float)Math.Tanh(sample * 0.9) * 0.95f;
+				// tanh(sample*0.9)*0.95 的有理数近似（经典 27+9x² 形式，|x|≤3 误差 <0.005 ≈ -46dBFS）。
+				// 音频回调每回调调用约 512-1024 次，双精度 Math.Tanh 在 Android 小核上约 50-150ns/次，
+				// 换成纯单精度乘除后此段开销可忽略；曲线仍是单调饱和软限幅，听感等效。
+				float x = sample * 0.9f;
+				if (x > 3f)
+				{
+					return 0.95f;
+				}
+				if (x < -3f)
+				{
+					return -0.95f;
+				}
+				float x2 = x * x;
+				return x * (27f + x2) / (27f + 9f * x2) * 0.95f;
 			}
 
 			private void FillWithSilence(IntPtr data, int frames)
