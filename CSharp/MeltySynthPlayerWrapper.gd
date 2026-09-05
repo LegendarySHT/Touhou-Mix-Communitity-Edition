@@ -316,3 +316,9 @@ func get_vocal_underrun_count() -> int:
 		return 0
 	var result = meltysynth_player.call("get_vocal_underrun_count")
 	return result if result is int else 0
+
+func get_audio_debug_info() -> Dictionary:
+	if meltysynth_player == null:
+		return {}
+	var result = meltysynth_player.call("get_audio_debug_info")
+	return result if result is Dictionary else {}

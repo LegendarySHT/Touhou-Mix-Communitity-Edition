@@ -1678,6 +1678,20 @@ func is_vocal_finished() -> bool:
 		return backend.is_vocal_finished()
 	return false
 
+## 人声环形缓冲区欠载次数（诊断用，验证统一时钟架构下欠载是否被根治）
+func get_vocal_underrun_count() -> int:
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("get_vocal_underrun_count"):
+		return backend.get_vocal_underrun_count()
+	return 0
+
+## 音频调试诊断信息（延迟分解 / 慢回调统计 / 人声欠载 / 外推量）
+func get_audio_debug_info() -> Dictionary:
+	var backend = _get_active_backend()
+	if backend != null and backend.has_method("get_audio_debug_info"):
+		return backend.get_audio_debug_info()
+	return {}
+
 ## 自动同步人声与MIDI（在_process中每帧调用）
 func _sync_vocal_with_midi() -> void:
 	var audio_manager = AudioManager.instance

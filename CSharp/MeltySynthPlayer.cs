@@ -90,10 +90,8 @@ public partial class MeltySynthPlayer : Node
 	private double _lastPositionMs = 0.0;  // 最后已知播放位置（暂停/seek 后保持，供 get_position_ms 读取）
 	private bool _hasSkippedPreroolEvents = false;  // 标志：已跳过 pre-roll 事件
 
-	// 系统时钟模式的时间追踪
-	private bool _useSystemStopwatch = false;      // 是否启用系统时钟模式
-	private bool _previousPlaying = false;         // 上一帧的播放状态
-
+	// 【废弃】系统秒表时钟模式已移除（单一音频主时钟）。判定位置一律基于音频回调
+	// 已渲染帧（RenderedPosition）推导，墙钟与音频渲染在设备欠载时严重漂移。
 	private readonly ConcurrentDictionary<int, float> _virtualChannelVolumes = new ConcurrentDictionary<int, float>();
 	private readonly ConcurrentDictionary<int, (int bank, int program)> _virtualChannelInstruments = new ConcurrentDictionary<int, (int bank, int program)>();
 	private readonly ConcurrentDictionary<int, int> _virtualChannelCurrentBank = new ConcurrentDictionary<int, int>();
@@ -445,6 +443,23 @@ public partial class MeltySynthPlayer : Node
 		return result;
 	}
 
+	/// <summary>
+	/// 获取音频调试诊断信息（慢回调统计 / 人声欠载 / 外推量），用于验证统一时钟架构。
+	/// </summary>
+	public Godot.Collections.Dictionary get_audio_debug_info()
+	{
+		var result = GetAudioLatencyBreakdown();
+		if (_audioOutput is MiniaudioAudioOutputBridge maBridge)
+		{
+			result["perf_total_callbacks"] = maBridge.PerfTotalCallbacks;
+			result["perf_slow_callbacks"] = maBridge.PerfSlowCallbacks;
+			result["perf_slow_ratio"] = maBridge.PerfSlowRatio;
+			result["vocal_underrun_count"] = (int)maBridge.GetVocalUnderrunCount();
+			result["extrapolation_ms"] = maBridge.GetExtrapolationMs();
+		}
+		return result;
+	}
+
 	public override void _Ready()
 	{
 		GD.Print("[MeltySynthPlayer] _Ready() called");
@@ -465,16 +480,6 @@ public partial class MeltySynthPlayer : Node
 				_vocalFinishedSignaled = true;
 				EmitSignal(SignalName.vocal_finished);
 			}
-		}
-
-		// 【修复D-1】记录播放开始的时刻（用于系统时钟模式）
-		if (playing && !_previousPlaying)
-		{
-			_previousPlaying = true;
-		}
-		else if (!playing && _previousPlaying)
-		{
-			_previousPlaying = false;
 		}
 
 		// 【关键】处理待处理的 seek 操作优先级最高，即使不在播放中也要处理
@@ -900,56 +905,34 @@ public partial class MeltySynthPlayer : Node
 			return _lastPositionMs;
 		}
 
-		// 【修复D-3】使用 Sequencer 内部系统时钟模式（如果启用）
-		if (_useSystemStopwatch)
-		{
-			if (_sequencer == null || !_sequencerStarted)
-			{
-				return _lastPositionMs;
-			}
-
-			double resultMs = _sequencer.Position.TotalMilliseconds;
-
-			// 补偿设备缓冲延迟: Position 是墙钟时间, 比实际音频输出领先一个设备缓冲周期
-			// 玩家根据听到的音频触摸, 判定必须用实际音频位置而非墙钟位置
-			if (_audioOutput != null && _audioOutput.IsPlaying)
-			{
-				float deviceLatencyMs = _audioOutput.GetLatencyMs();
-				resultMs = Math.Max(0.0, resultMs - deviceLatencyMs);
-			}
-
-			_lastPositionMs = resultMs;
-			return resultMs;
-		}
-
-		// 【原有逻辑】使用 sequencer.Position + 缓冲补偿
 		if (_sequencer == null || !_sequencerStarted)
 		{
 			return _lastPositionMs;
 		}
 
-		var sequencerMs = _sequencer.Position.TotalMilliseconds;
+		// 【单一音频主时钟】判定钟 = 音频回调已渲染帧 + 短外推 - 固定设备延迟。
+		// 不再使用系统秒表墙钟：墙钟推算与音频实际渲染无关，设备欠载时严重漂移
+		// （Android 上回调超时导致音频落后墙钟可达数秒）。
+		// 基准改用 RenderedPosition（精确渲染帧），替代 Position（块量化，可超前最多 512 帧）。
+		// renderedTime 只在回调边界推进，读取时陈旧 0~1 周期，用外推消除锯齿
+		// （上限 2 周期，真实卡顿时停止外推）。
+		double renderedMs = _sequencer.RenderedPosition.TotalMilliseconds;
 
-		// 补偿设备缓冲延迟: 用 GetLatencyMs() 获取真实延迟(设备内部 + RingBuffer)
-		// 替代原先 GetTotalBufferFrames - GetFramesAvailable 的计算(后者在直接渲染模式下返回占位值导致负数)
 		if (_audioOutput != null && _audioOutput.IsPlaying)
 		{
-			float latencyMs = _audioOutput.GetLatencyMs();
-			// 【修复】非系统时钟模式：Position 只在音频回调边界推进（读取时陈旧 0~一个周期），
-			// 减去固定缓冲深度后产生 0→周期 的锯齿滞后。用"自上次回调渲染以来的墙钟流逝"
-			// 外推消除锯齿（上限 2 周期，真实音频卡顿时停止外推）。
 			double extrapolationMs = 0.0;
 			if (_audioOutput is MiniaudioAudioOutputBridge maBridge)
 			{
 				extrapolationMs = maBridge.GetExtrapolationMs();
 			}
-			var compensatedMs = Math.Max(0.0, sequencerMs + extrapolationMs - latencyMs);
-			_lastPositionMs = compensatedMs;
-			return compensatedMs;
+			float latencyMs = _audioOutput.GetLatencyMs();
+			double resultMs = Math.Max(0.0, renderedMs + extrapolationMs - latencyMs);
+			_lastPositionMs = resultMs;
+			return resultMs;
 		}
 
-		_lastPositionMs = sequencerMs;
-		return sequencerMs;
+		_lastPositionMs = renderedMs;
+		return renderedMs;
 	}
 
 	/// <summary>
@@ -989,22 +972,19 @@ public partial class MeltySynthPlayer : Node
 		return _virtualChannelVolumes.TryGetValue(virtualId, out var volume) ? volume : 1.0f;
 	}
 
-	// 【修复D】设置是否使用系统时钟模式
+	// 【已废弃】单一音频主时钟下不再使用系统秒表。保留签名以兼容接口/包装层调用链，
+	// 内部不再启用 sequencer 系统时钟模式（墙钟与音频渲染在设备欠载时严重漂移）。
 	public void set_use_system_stopwatch(bool enabled)
 	{
-		_useSystemStopwatch = enabled;
-		if (_sequencer != null)
+		if (enabled)
 		{
-			_sequencer.SetSystemClockMode(enabled);
-			_sequencer.SetDiagnosticsEnabled(enabled);
+			GD.Print("[MeltySynthPlayer] use_system_stopwatch is deprecated: judge clock always uses the audio render clock (ignored)");
 		}
-		// GD.Print($"[MeltySynthPlayer] System stopwatch mode: {(_useSystemStopwatch ? "ON" : "OFF")}" +
-		// 	$", sequencerReady={_sequencer != null}, sequencerStarted={_sequencerStarted}");
 	}
 
 	public bool get_use_system_stopwatch()
 	{
-		return _useSystemStopwatch;
+		return false;
 	}
 
 	public void set_track_channel_instrument(int trackIndex, int channel, int bank, int program)
@@ -1687,8 +1667,10 @@ public partial class MeltySynthPlayer : Node
 		{
 			OnSendMessage = OnSendMessage
 		};
-		_sequencer.SetSystemClockMode(_useSystemStopwatch);
-		_sequencer.SetDiagnosticsEnabled(_useSystemStopwatch);
+		// 【单一音频主时钟】显式关闭系统时钟模式：事件按音频渲染帧触发，
+		// 判定钟由 get_position_ms 基于 RenderedPosition 推导。
+		_sequencer.SetSystemClockMode(false);
+		_sequencer.SetDiagnosticsEnabled(false);
 		GD.Print("[MeltySynthPlayer] Created sequencer with autoSynth");
 
 		// 手动音符合成器（独立，用于低延迟响应）
@@ -1791,13 +1773,6 @@ public partial class MeltySynthPlayer : Node
 			return;
 		}
 
-		var restoreSystemClock = _useSystemStopwatch;
-		if (restoreSystemClock)
-		{
-			_sequencer.SetSystemClockMode(false);
-			_sequencer.SetDiagnosticsEnabled(false);
-		}
-
 		if (targetMs < 0.0)
 		{
 			targetMs = 0.0;
@@ -1819,12 +1794,6 @@ public partial class MeltySynthPlayer : Node
 			var block = (int)Math.Min(remaining, _synth.BlockSize);
 			_sequencer.Render(scratchLeft.AsSpan(0, block), scratchRight.AsSpan(0, block));
 			remaining -= block;
-		}
-
-		if (restoreSystemClock)
-		{
-			_sequencer.SetSystemClockMode(true);
-			_sequencer.SetDiagnosticsEnabled(true);
 		}
 	}
 

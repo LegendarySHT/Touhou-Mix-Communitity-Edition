@@ -183,10 +183,11 @@ static func get_setting_groups() -> Array:
 				"id": "use_system_stopwatch",
 				"name_en": "Use System Stopwatch",
 				"name_zh": "使用系统时钟",
-				"description": "通过使用系统时钟(硬件时钟)来提高精度，如果游戏内音频时而提前时而延后可以启用",
+				"description": "已废弃：判定时钟统一使用音频渲染时钟（单一音频主时钟），不再依赖系统墙钟推算位置",
 				"type": "TYPE_OPTION",
 				"default_value": "0",
 				"advanced": true,
+				"not_implemented": true,
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}

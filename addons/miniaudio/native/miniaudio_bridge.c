@@ -180,7 +180,7 @@ static ma_backend to_ma_backend(ma_bridge_backend b)
 // Vocal playback helpers
 // ---------------------------------------------------------------------------
 #define MA_BRIDGE_VOCAL_CHANNELS 2
-#define MA_BRIDGE_VOCAL_CHUNK_FRAMES 2048
+#define MA_BRIDGE_VOCAL_CHUNK_FRAMES 4096
 
 static ma_uint32 vocal_next_pow2(ma_uint32 v)
 {
@@ -251,7 +251,7 @@ static ma_thread_result MA_THREADCALL vocal_producer_entry(void* pData)
 
     while (!p->vocalProducerStop) {
         if (!p->vocalLoaded || !p->vocalDecoderValid || p->vocalEndReached) {
-            ma_sleep(2);
+            ma_sleep(4);
             continue;
         }
 
@@ -265,7 +265,7 @@ static ma_thread_result MA_THREADCALL vocal_producer_entry(void* pData)
                 }
                 ma_spinlock_unlock(&p->vocalLock);
             } else {
-                ma_sleep(2);
+                ma_sleep(4);
             }
             continue;
         }
@@ -273,7 +273,18 @@ static ma_thread_result MA_THREADCALL vocal_producer_entry(void* pData)
         ma_uint32 used = vocal_ring_used(p);
         if (p->vocalRingCapacity == 0 ||
             (p->vocalRingCapacity - 1 - used) < MA_BRIDGE_VOCAL_CHUNK_FRAMES) {
-            ma_sleep(2);
+            /* 环满：播放中按消费 1 个 chunk 周期的量级休眠（4096帧@48k≈85ms，
+             * 取 25ms 保证余量 ≥60ms 不欠载）；预载/暂停期短眠尽快填满。 */
+            ma_sleep(p->vocalPlaying ? 25 : 4);
+            continue;
+        }
+
+        /* 高水位节流：播放中保持环半满（65536/2=32768帧≈683ms 盈余）。
+         * 半满后解码节奏 ≈ 每消费 ~4096 帧补一次（约 85ms 周期），
+         * 唤醒率从 ~500次/s 降到 ~40次/s，且任何时刻至少 0.6s 缓冲兜底欠载。
+         * underrun 后环空（used≈0 < 半满）立即补解码，无额外延迟。 */
+        if (p->vocalPlaying && used >= (p->vocalRingCapacity >> 1)) {
+            ma_sleep(25);
             continue;
         }
 

@@ -103,6 +103,12 @@ public partial class MeltySynthPlayer
 			private int _perfSlowCallbackCount = 0;
 			private int _perfTotalCallbackCount = 0;
 
+			/// <summary>慢回调比例（回调耗时 &gt; 回调周期），用于验证欠载是否被根治</summary>
+			internal double PerfSlowRatio =>
+				_perfTotalCallbackCount > 0 ? (double)_perfSlowCallbackCount / _perfTotalCallbackCount : 0.0;
+			internal int PerfTotalCallbacks => _perfTotalCallbackCount;
+			internal int PerfSlowCallbacks => _perfSlowCallbackCount;
+
 			// ---- 位置外推（非系统时钟模式） ----
 			// _sequencer.Position 只在音频回调边界推进，读取时陈旧 0~一个周期。
 			// 记录最后一次渲染的墙钟时间戳，get_position_ms 据此外推消除锯齿滞后。
@@ -794,7 +800,9 @@ public partial class MeltySynthPlayer
 				}
 
 				double elapsedMs = _perfStopwatch.Elapsed.TotalMilliseconds;
-				double budgetMs = (double)framesRequested / _sampleRate * 1000.0 * 0.5;
+				// 【修复】budget 即回调周期（frames/sampleRate），此前误乘 0.5 把
+				// 256帧@48k 的 5.33ms 预算算成 2.67ms，制造大量伪慢回调误报。
+				double budgetMs = (double)framesRequested / _sampleRate * 1000.0;
 				if (elapsedMs > budgetMs)
 				{
 					_perfSlowCallbackCount++;
