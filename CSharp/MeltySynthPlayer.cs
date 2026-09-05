@@ -129,6 +129,27 @@ public partial class MeltySynthPlayer : Node
 			_audioOutput.Play();
 	}
 
+	// 【并发修复】MidiFileSequencer/Synthesizer 非线程安全：音频回调在 _synthLock 内执行
+	// _sequencer.Render()（遍历 voices），主线程的 seek/play/stop 会调用 synthesizer.Reset()/
+	// ProcessMidiMessage() 修改同一集合，无锁并发导致数组越界并持续报错。
+	// 所有对 sequencer/synthesizer 的写操作必须在此锁内执行，与回调渲染互斥。
+	// 注意：ma_bridge_stop（等待回调完成）与 ma_bridge_start 都必须在锁外调用，避免死锁。
+	private void WithSynthLock(Action action)
+	{
+		if (_audioOutput is MiniaudioAudioOutputBridge maBridge)
+		{
+			lock (maBridge.SyncRoot)
+			{
+				action();
+			}
+		}
+		else
+		{
+			// 无音频桥（无回调线程）时无需加锁
+			action();
+		}
+	}
+
 
 	private void EnsureAudioInitialized()
 	{
@@ -503,14 +524,18 @@ public partial class MeltySynthPlayer : Node
 				_hasSkippedPreroolEvents = false;  // 重置标志，准备首次 crossing zero
 		
 				// 停止所有播放（AudioStreamPlayer 和 Sequencer）
+				// 注意：ma_bridge_stop 会等待回调完成，必须在锁外调用（回调可能阻塞在锁上）
 				_audioOutput?.Stop();
 				
-				// 【关键】停止 sequencer，防止在后台继续运行
-				if (_sequencer != null)
+				// 【关键】停止 sequencer，防止在后台继续运行（与回调渲染互斥）
+				WithSynthLock(() =>
 				{
-					_sequencer.Stop();
-					// GD.Print($"[MeltySynthPlayer] Stopped sequencer for pre-roll mode");
-				}
+					if (_sequencer != null)
+					{
+						_sequencer.Stop();
+						// GD.Print($"[MeltySynthPlayer] Stopped sequencer for pre-roll mode");
+					}
+				});
 				
 			// GD.Print($"[MeltySynthPlayer] Pre-roll mode: offset set to {_currentOffsetMs} ms");
 				_pendingSeekMs = double.NaN;
@@ -519,47 +544,53 @@ public partial class MeltySynthPlayer : Node
 
 			// 正数 seek：正常处理
 			// 1. 如果正在播放，停止 AudioStreamPlayer 清空缓冲区
+			// 注意：ma_bridge_stop 会等待回调完成，必须在锁外调用
 			_audioOutput?.Stop();
 
 			// 2. 确保 sequencer 已启动，再使用原生 Seek
-			if (!_sequencerStarted)
+			// 整个 sequencer 状态重建（Play/Seek/Reset/状态消息重放）与回调渲染互斥，
+			// 避免 synthesizer.Reset()/ProcessMidiMessage() 与回调 voices 遍历并发导致数组越界。
+			WithSynthLock(() =>
 			{
-				_sequencer.Play(_midiFile, loop);
-				_sequencerStarted = true;
-				ApplyInstrumentOverridesToSynth();
-			}
-
-			if (_preferNativeSequencerSeek)
-			{
-				try
+				if (!_sequencerStarted)
 				{
-					_sequencer.Seek(TimeSpan.FromMilliseconds(_pendingSeekMs));
+					_sequencer.Play(_midiFile, loop);
+					_sequencerStarted = true;
+					ApplyInstrumentOverridesToSynth();
 				}
-				catch (Exception ex)
+
+				if (_preferNativeSequencerSeek)
 				{
-					GD.PrintErr($"[MeltySynthPlayer] Native sequencer seek failed, fallback to legacy seek: {ex.Message}");
+					try
+					{
+						_sequencer.Seek(TimeSpan.FromMilliseconds(_pendingSeekMs));
+					}
+					catch (Exception ex)
+					{
+						GD.PrintErr($"[MeltySynthPlayer] Native sequencer seek failed, fallback to legacy seek: {ex.Message}");
+						LegacySeekByFastForward(_pendingSeekMs);
+					}
+					// 原生 Seek 内部会调用 synthesizer.Reset()，把 Play 时应用的乐器覆盖清掉；
+					// 这里幂等地重新应用（通道状态消息已在重建过程中按序生效，重复应用无害）。
+					ApplyInstrumentOverridesToSynth();
+					// Schedule post-seek silence to consume transient note attacks.
+					// Rendered audio will be silently discarded for ~50ms instead of
+					// doing a synchronous flush that can crash the renderer.
+					// 通过接口访问音频后端
+					if (_audioOutput != null)
+						_audioOutput.PostSeekSilenceFrames = (int)(_sampleRate * 0.05);
+				}
+				else
+				{
 					LegacySeekByFastForward(_pendingSeekMs);
 				}
-				// 原生 Seek 内部会调用 synthesizer.Reset()，把 Play 时应用的乐器覆盖清掉；
-				// 这里幂等地重新应用（通道状态消息已在重建过程中按序生效，重复应用无害）。
-				ApplyInstrumentOverridesToSynth();
-				// Schedule post-seek silence to consume transient note attacks.
-				// Rendered audio will be silently discarded for ~50ms instead of
-				// doing a synchronous flush that can crash the renderer.
-				// 通过接口访问音频后端
-				if (_audioOutput != null)
-					_audioOutput.PostSeekSilenceFrames = (int)(_sampleRate * 0.05);
-			}
-			else
-			{
-				LegacySeekByFastForward(_pendingSeekMs);
-			}
+			});
 			_currentOffsetMs = 0.0;  // 清除任何 pre-roll offset
 			_hasSkippedPreroolEvents = true;  // 正数seek时无需跳过事件
 			ResetRenderTimestamp();
 			_lastPositionMs = _pendingSeekMs;  // 记录 seek 目标，供非播放状态读取
 
-			// 3. 如果之前在播放，重新启动 AudioStreamPlayer
+			// 3. 如果之前在播放，重新启动 AudioStreamPlayer（锁外，ma_bridge_start 不等待回调）
 			if (playing)
 			{
 				RequestAudioOutputPlay();
@@ -582,16 +613,19 @@ public partial class MeltySynthPlayer : Node
 			// 检查是否跨越零点（从 pre-roll 进入正常播放）
 			if (_currentOffsetMs >= 0.0 && !_hasSkippedPreroolEvents)
 			{
-				// 第一次跨越零点：启动 sequencer 和 AudioStreamPlayer
-				if (_sequencer != null && _midiFile != null && !_sequencerStarted)
+				// 第一次跨越零点：启动 sequencer 和 AudioStreamPlayer（与回调渲染互斥）
+				WithSynthLock(() =>
 				{
-					// GD.Print($"[MeltySynthPlayer] Crossing zero from pre-roll, starting sequencer at position 0");
-					_sequencer.Play(_midiFile, loop);
-					_sequencerStarted = true;
-					ApplyInstrumentOverridesToSynth();
-				}
+					if (_sequencer != null && _midiFile != null && !_sequencerStarted)
+					{
+						// GD.Print($"[MeltySynthPlayer] Crossing zero from pre-roll, starting sequencer at position 0");
+						_sequencer.Play(_midiFile, loop);
+						_sequencerStarted = true;
+						ApplyInstrumentOverridesToSynth();
+					}
+				});
 				
-				// 【关键】启动 AudioStreamPlayer，确保 sequencer 和播放器同步
+				// 【关键】启动 AudioStreamPlayer，确保 sequencer 和播放器同步（锁外）
 				RequestAudioOutputPlay();
 				
 				_hasSkippedPreroolEvents = true;
@@ -662,13 +696,16 @@ public partial class MeltySynthPlayer : Node
 			return;
 		}
 
-		// 如果 MIDI 已加载但还未启动 sequencer，则启动它
+		// 如果 MIDI 已加载但还未启动 sequencer，则启动它（与回调渲染互斥）
 		if (_midiFile != null && !_sequencerStarted)
 		{
 			// GD.Print($"[MeltySynthPlayer] Starting sequencer with MIDI file, loop={loop}");
-			_sequencer.Play(_midiFile, loop);
-			_sequencerStarted = true;
-			ApplyInstrumentOverridesToSynth();
+			WithSynthLock(() =>
+			{
+				_sequencer.Play(_midiFile, loop);
+				_sequencerStarted = true;
+				ApplyInstrumentOverridesToSynth();
+			});
 		}
 		else if (_midiFile == null)
 		{
@@ -687,8 +724,13 @@ public partial class MeltySynthPlayer : Node
 	public void stop()
 	{
 		playing = false;
+		// ma_bridge_stop 会等待回调完成，必须在锁外调用
 		_audioOutput?.Stop();
-		_sequencer?.Stop();
+		// 与回调渲染互斥
+		WithSynthLock(() =>
+		{
+			_sequencer?.Stop();
+		});
 		_sequencerStarted = false;  // 重置标志，下次 play() 会重新启动
 		_currentOffsetMs = 0.0;  // 重置 offset
 		_lastPositionMs = 0.0;  // 重置最后已知位置（stop 语义为回到开头）
@@ -702,8 +744,13 @@ public partial class MeltySynthPlayer : Node
 		}
 
 		playing = false;
+		// ma_bridge_stop 会等待回调完成，必须在锁外调用
 		_audioOutput?.Stop();
-		_sequencer?.Stop();
+		// 与回调渲染互斥
+		WithSynthLock(() =>
+		{
+			_sequencer?.Stop();
+		});
 		_sequencerStarted = false;
 		_hasSkippedPreroolEvents = false;
 		_currentOffsetMs = 0.0;

@@ -778,7 +778,7 @@ public partial class MeltySynthPlayer
 				}
 				catch (Exception ex)
 				{
-					GD.PrintErr($"[MeltySynthPlayer][miniaudio] FillDataDirect exception: {ex.Message}");
+					GD.PrintErr($"[MeltySynthPlayer][miniaudio] FillDataDirect exception: {ex}");
 					FillWithSilence(pOutput, framesRequested);
 				}
 
