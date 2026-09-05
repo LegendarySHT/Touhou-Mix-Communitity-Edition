@@ -17,7 +17,7 @@ var note_judge_width: int = 100  # 统一判定宽度，从 Judge/block_judging_
 var note_visual_width: int = 200  # 从 Appearance/block_size 配置读取
 var glow_intensity: float = 1.0
 var glow_size: float = 20.0
-var check_slide_when_finger_up: bool = true  # Judge/check_instant_blocks_when_finger_up
+var check_slide_when_finger_up: bool = false  # Judge/check_instant_blocks_when_finger_up
 var only_perfect_slides: bool = false  # Judge/only_perfect_instant_blocks_before_judge
 var note_judger: NoteJudger = NoteJudger.new()
 
@@ -301,7 +301,7 @@ func init_flow_area():
 	# 从配置读取判定有效区（时间窗）
 	var judge_window_idx = ConfigManager.instance.get_int("Judge", "judge_window_ms", 0)
 	judge_window_ms = _JUDGE_WINDOW_OPTIONS[clampi(judge_window_idx, 0, _JUDGE_WINDOW_OPTIONS.size() - 1)]
-	check_slide_when_finger_up = ConfigManager.instance.get_int("Judge", "check_instant_blocks_when_finger_up", 1) == 1
+	check_slide_when_finger_up = ConfigManager.instance.get_int("Judge", "check_instant_blocks_when_finger_up", 0) == 1
 	only_perfect_slides = ConfigManager.instance.get_int("Judge", "only_perfect_instant_blocks_before_judge", 0) == 1
 
 	# 从配置读取比例系数
@@ -1149,16 +1149,21 @@ func _handle_press(touch_id: int, pos: Vector2, input_time_ms: float = -1.0) -> 
 	)
 	if candidate_notes.is_empty():
 		return
-	if only_perfect_slides:
-		candidate_notes = candidate_notes.filter(func(i):
-			return _st_type[i] != FlowNote.NoteType.Slide
-		)
-		if candidate_notes.is_empty():
-			return
 
 	var note_index := note_judger.find_best_note_index(pos, candidate_notes, note_judge_width)
 	if note_index < 0:
 		return
+
+	# 完美滑块模式：点击滑块不按点块判——仅当处于完美窗口内才以滑块(Perfect)计分，
+	# 否则跳过本次点击（不判定其他音符）
+	if only_perfect_slides and _st_type[note_index] == FlowNote.NoteType.Slide:
+		if abs(_st_start[note_index] - judge_time_ms) > float(judge_windows["perfect"]):
+			return
+		if parent_node.play_mode:
+			_manual_off_scheduler.trigger_from_sequence(KeySequenceManager.instance, note_index)
+		_judge_note(note_index, true, judge_time_ms, -1, "Perfect")
+		return
+
 	if parent_node.play_mode:
 		_manual_off_scheduler.trigger_from_sequence(KeySequenceManager.instance, note_index)
 	if _st_type[note_index] == FlowNote.NoteType.Slide:
@@ -1336,17 +1341,16 @@ func _check_slide_stat(note_index: int) -> bool:
 		return true
 	return false
 
-## rule 5（抬手=滑出轨道）：位移 ≥ 一个音符宽度即视为滑出，判定当前所在轨道
-## 未过线但在 perfect 窗口内的滑键
+## 抬手判定：判定当前所在轨道「未过线但在 perfect 窗口内」的滑键（含原地抬手）
+## 由「抬手时判定滑块」设置控制的入口（_handle_release 中调用）
 func _judge_slides_on_lift(touch_id: int, input_time_ms: float = -1.0) -> void:
 	if not _gestures.has(touch_id):
 		return
 	var g: Dictionary = _gestures[touch_id]
-	if abs(g["last_pos"].x - g["press_pos"].x) < note_visual_width:
-		return
 	var judge_time_ms := input_time_ms
 	if judge_time_ms < 0.0:
 		judge_time_ms = _get_realtime_position_ms()
+	# 抬手即判定所在轨道未过线但在完美窗口内的滑键（含原地抬手）
 	for lane in _finger_lanes(g["last_pos"].x):
 		_judge_slides_exiting_lane(lane, g["last_pos"], judge_time_ms)
 
@@ -1366,8 +1370,6 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 	for i in candidate_notes:
 		if _rt_flags[i] & (F_HELD | F_JUDGED | F_REMOVED | F_CAN_JUDGE):
 			continue
-		if only_perfect_slides and _st_type[i] == FlowNote.NoteType.Slide:
-			continue
 
 		# 代表 Y 坐标：Long 与 Block/Slide 统一用 _rt_cy
 		var note_y: float = _rt_cy[i]
@@ -1381,7 +1383,13 @@ func judge_note_at_lane(lane_l: int, lane_r: int, input_time_ms: float = -1.0) -
 	if best_note >= 0:
 		if parent_node.play_mode:
 			_manual_off_scheduler.trigger_from_sequence(KeySequenceManager.instance, best_note)
-		if _st_type[best_note] == FlowNote.NoteType.Slide:
+		# 完美滑块模式：点击滑块不按点块判——仅处于完美窗口内以滑块(Perfect)计分，否则跳过本次点击
+		if only_perfect_slides and _st_type[best_note] == FlowNote.NoteType.Slide:
+			var eff_time := input_time_ms if input_time_ms >= 0.0 else _get_realtime_position_ms()
+			if abs(_st_start[best_note] - eff_time) > float(judge_windows["perfect"]):
+				return -1
+			_judge_note(best_note, true, input_time_ms, -1, "Perfect")
+		elif _st_type[best_note] == FlowNote.NoteType.Slide:
 			# 键盘点击滑块按点块(Block)计分（重置滑块衰减链）；与滑过接住（Slide 计分）路径互斥
 			_judge_note(best_note, true, input_time_ms, FlowNote.NoteType.Block)
 		else:

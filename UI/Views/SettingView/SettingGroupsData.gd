@@ -361,9 +361,9 @@ static func get_setting_groups() -> Array:
 				"id": "check_instant_blocks_when_finger_up",
 				"name_en": "Check Instant Blocks When Finger Up",
 				"name_zh": "抬手时判定滑块",
-				"description": "若启用该项，在抬起手指时，处于判定范围内的滑块会进行判定",
+				"description": "若启用该项，在原地落指并抬指时，处于判定范围内的滑块会进行判定，不影响其他的提前判定滑键逻辑",
 				"type": "TYPE_OPTION",
-				"default_value": "1",
+				"default_value": "0",
 				"options": [
 					{"text_en": "Off", "text_zh": "关闭"},
 					{"text_en": "On", "text_zh": "开启"}
